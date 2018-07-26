@@ -1,9 +1,17 @@
 pragma solidity ^0.4.22;
 
+import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
+
+
+contract OracleInterface {
+    string public ETHUSD;
+}
+
+
 contract Derivative {
     // Financial information
     mapping(address => int256) public balances; // Stored in Wei
-    address[] addressLUT;  // Array that stores relevant addresses
+    int256 default_penalty;  //
     int256 required_margin;  //
 
     // Contract states
@@ -14,69 +22,94 @@ contract Derivative {
     uint start_time;
     uint end_time;
 
-    uint256 npv;  // Net present value is measured in Wei
+    int256 npv;  // Net present value is measured in Wei
 
     function Constructor(
-      address counterparty_address,
-      uint start_time,
-      uint end_time,
-      int256 required_margin
+      address _counterparty_address,
+      uint _start_time,
+      uint _end_time,
+      int256 _default_penalty,
+      int256 _required_margin
       ) public {
 
         // Contract states
-        start_time = start_time;
-        end_time = end_time;
-        required_margin = required_margin;
+        start_time = _start_time;
+        end_time = _end_time;
+        default_penalty = _default_penalty;
+        required_margin = _required_margin;
         uint256 npv = 0;
 
         // Address information
-        address owner_address = msg.sender;
-        address counterparty_address = counterparty_address;
-        address[] addressLUT = [owner_address, counterparty_address];
+        owner_address = msg.sender;
+        counterparty_address = _counterparty_address;
         balances[owner_address] = 0;
         balances[counterparty_address] = 0;
     }
 
-    function update_balances(int npv, int npv_new) {
+    function update_balances(int256 npv_new) internal {
         // Compute difference -- Add the difference to owner and subtract
         // from
-        int npv_diff = npv - npv_new;
+        int256 npv_diff = npv - npv_new;
+        npv = npv_new;
 
-        balances[owner_address] += npv_diff
-        balances[counterparty_address] -= npv_diff
+        balances[owner_address] += npv_diff;
+        balances[counterparty_address] -= npv_diff;
     }
 
-    function who_defaults() public returns (bool is_default, address defaulter) {
-      // For loop over addressLUT and check each account for default
-      return false, owner_address
+    function is_default(address party_i) returns (bool) {
+        return balances[party_i] < required_margin;
+    }
+
+    function who_defaults() public returns (bool in_default, address defaulter, address not_defaulter) {
+        in_default = false;
+
+        if (is_default(owner_address)) {
+            defaulter = owner_address;
+            not_defaulter = counterparty_address;
+            in_default = true;
+        }
+        else if (is_default(counterparty_address)) {
+            defaulter = counterparty_address;
+            not_defaulter = owner_address;
+            in_default = true;
+        }
+
+        return (in_default, defaulter, not_defaulter);
     }
 
     function is_terminated(uint time) public returns (bool ttt){
-      ttt = terminated || time > end_time;
+        ttt = terminated || time > end_time;
     }
 
     // Concrete contracts should inherit from this contract and then should only
     // need to implement a `compute_npv` function. This allows for generic
     // choices of npv functions
-    function compute_npv(uint256 price, uint256 wei_cent_conversion) public returns (uint256 value);
+    function compute_npv() public returns (int256 value);
 
-    function remargin(uint256 price, uint256 wei_exchangerate) {
+    function remargin(int256 price, int256 wei_exchangerate) {
         // Check if time is over
 
         // Update npv of contract
-        uint npv_new = compute_npv(price, wei_exchangerate);
-        update_balances(npv, npv_new);
+        int256 npv_new = compute_npv();
+        update_balances(npv_new);
 
         // Check for default
-        defaulted, defaulter = who_defaults()
-        if defaulted {
-          balances[defaulter] -= min(balances[defaulter], default_penalty)
-          terminated = true
+        bool in_default;
+        address defaulter;
+        address not_defaulter;
+        (in_default, defaulter, not_defaulter) = who_defaults();
+
+        if (in_default) {
+            int256 penalty;
+            penalty = (balances[defaulter] < default_penalty) ? balances[defaulter] : default_penalty;
+            balances[defaulter] -= penalty;
+            balances[not_defaulter] += penalty;
+            terminated = true;
         }
     }
 
     function deposit() payable public returns (bool success) {
-      balances[msg.sender] += msg.value;
+      balances[msg.sender] += int256(msg.value);
       return true;
     }
 
@@ -85,20 +118,36 @@ contract Derivative {
       // up to full balance -- If not, then they are required to leave at least
       // `required_margin` in the account
       if (defaulted || terminated) {
-        if (balances[msg.sender] < amount) {
+        if (balances[msg.sender] < int256(amount)) {
           throw;
         } else {
-          msg.sender.transfer(amount)
+          msg.sender.transfer(amount);
         }
       } else {
-        if (balances[msg.sender] - required_margin < amount) {
+        if (balances[msg.sender] - required_margin < int256(amount)) {
           throw;
         } else {
-          msg.sender.transfer(amount)
+          msg.sender.transfer(amount);
         }
       }
 
-      return true
+      return true;
     }
 
+}
+
+
+
+contract Derivative_ConstantNPV is usingOraclize, Derivative {
+    
+    OracleInterface oracle;    
+    address oracleAddress = 0x739De5b0fa95F40664CbdfC5D350e0c43B66f72e;
+    
+    function compute_npv() public returns (int256 value) {
+        oracle = OracleInterface(oracleAddress);
+        string memory p = oracle.ETHUSD();
+        int256 price = int256(parseInt(p, 2));
+        
+        return price;
+    }
 }
