@@ -12,26 +12,26 @@ contract OracleInterface {
 contract Derivative {
     // Financial information
     mapping(address => int256) public balances; // Stored in Wei
-    int256 default_penalty;  //
-    int256 required_margin;  //
+    int256 public default_penalty;  //
+    int256 public required_margin;  //
 
     // Contract states
-    address owner_address;
-    address counterparty_address;
-    bool defaulted = false;
-    bool terminated = false;
-    uint start_time;
-    uint end_time;
+    address owner_address;          // should this be public?
+    address counterparty_address;   //
+    bool public defaulted = false;
+    bool public terminated = false;
+    uint public start_time;
+    uint public end_time;
 
     int256 npv;  // Net present value is measured in Wei
 
     function Constructor(
-      address _counterparty_address,
-      uint _start_time,
-      uint _end_time,
-      int256 _default_penalty,
-      int256 _required_margin
-      ) public {
+        address _counterparty_address,
+        uint _start_time,
+        uint _end_time,
+        int256 _default_penalty,
+        int256 _required_margin
+    ) public {
 
         // Contract states
         start_time = _start_time;
@@ -91,13 +91,13 @@ contract Derivative {
     // choices of npv functions
     function compute_npv() public returns (int256 value);
 
-    function remargin() internal {
+    function remargin() external {
         // Check if time is over...
         // TODO: Ensure that the contract is remargined at the time that the
         // contract ends
         uint current_time = now;
         if (current_time > end_time) {
-          terminated = true;
+            terminated = true;
         }
 
         // Update npv of contract
@@ -119,18 +119,19 @@ contract Derivative {
 
             balances[defaulter] -= penalty;
             balances[not_defaulter] += penalty;
+            defaulted = true;
             terminated = true;
         }
     }
 
     function deposit() payable public returns (bool success) {
-      balances[msg.sender] += int256(msg.value);
-      return true;
+        balances[msg.sender] += int256(msg.value);
+        return true;
     }
 
     function withdraw(uint256 amount) payable public returns (bool success) {
         // If the contract has been defaulted on or terminated then can withdraw
-        // up to full balance -- If not, then they are required to leave at least
+        // up to full balance -- If not then they are required to leave at least
         // `required_margin` in the account
         int256 withdrawable_amount = (defaulted || terminated) ?
                                      balances[msg.sender] :
@@ -138,11 +139,11 @@ contract Derivative {
 
         // Can only withdraw the allowed amount
         require(
-          (int256(withdrawable_amount) > int256(amount)),
-          "Attempting to withdraw more than allowed"
+            (int256(withdrawable_amount) > int256(amount)),
+            "Attempting to withdraw more than allowed"
         );
 
-        // Transfer amount -- Note: important to `-=` before the send so that the
+        // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
         // to return
         balances[msg.sender] -= int256(amount);
@@ -150,6 +151,7 @@ contract Derivative {
 
       return true;
     }
+
 }
 
 
