@@ -38,7 +38,7 @@ contract Derivative {
         end_time = _end_time;
         default_penalty = _default_penalty;
         required_margin = _required_margin;
-        uint256 npv = 0;
+        npv = 0;
 
         // Address information
         owner_address = msg.sender;
@@ -57,12 +57,13 @@ contract Derivative {
         balances[counterparty_address] -= npv_diff;
     }
 
-    function is_default(address party_i) constant returns (bool) {
+    function is_default(address party_i) constant public returns (bool) {
         return balances[party_i] < required_margin;
     }
 
     function who_defaults()
         constant
+        public
         returns (bool in_default, address defaulter, address not_defaulter)
     {
         in_default = false;
@@ -81,7 +82,7 @@ contract Derivative {
         return (in_default, defaulter, not_defaulter);
     }
 
-    function is_terminated(uint time) public returns (bool ttt){
+    function is_terminated(uint time) constant public returns (bool ttt){
         ttt = terminated || time > end_time;
     }
 
@@ -90,7 +91,7 @@ contract Derivative {
     // choices of npv functions
     function compute_npv() public returns (int256 value);
 
-    function remargin() {
+    function remargin() internal {
         // Check if time is over...
         // TODO: Ensure that the contract is remargined at the time that the
         // contract ends
