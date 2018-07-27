@@ -3,6 +3,7 @@ pragma solidity ^0.4.22;
 import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
 
 
+// This interface allows us to get the Ethereum-USD exchange rate
 contract OracleInterface {
     string public ETHUSD;
 }
@@ -48,7 +49,7 @@ contract Derivative {
 
     function update_balances(int256 npv_new) internal {
         // Compute difference -- Add the difference to owner and subtract
-        // from
+        // from counterparty. Then update npv state variable
         int256 npv_diff = npv - npv_new;
         npv = npv_new;
 
@@ -56,11 +57,14 @@ contract Derivative {
         balances[counterparty_address] -= npv_diff;
     }
 
-    function is_default(address party_i) returns (bool) {
+    function is_default(address party_i) constant returns (bool) {
         return balances[party_i] < required_margin;
     }
 
-    function who_defaults() public returns (bool in_default, address defaulter, address not_defaulter) {
+    function who_defaults()
+        constant
+        returns (bool in_default, address defaulter, address not_defaulter)
+    {
         in_default = false;
 
         if (is_default(owner_address)) {
@@ -86,8 +90,14 @@ contract Derivative {
     // choices of npv functions
     function compute_npv() public returns (int256 value);
 
-    function remargin(int256 price, int256 wei_exchangerate) {
-        // Check if time is over
+    function remargin() {
+        // Check if time is over...
+        // TODO: Ensure that the contract is remargined at the time that the
+        // contract ends
+        uint current_time = now;
+        if (current_time > end_time) {
+          terminated = true;
+        }
 
         // Update npv of contract
         int256 npv_new = compute_npv();
@@ -99,9 +109,13 @@ contract Derivative {
         address not_defaulter;
         (in_default, defaulter, not_defaulter) = who_defaults();
 
+        // Check whether goes into default
         if (in_default) {
             int256 penalty;
-            penalty = (balances[defaulter] < default_penalty) ? balances[defaulter] : default_penalty;
+            penalty = (balances[defaulter] < default_penalty) ?
+                      balances[defaulter] :
+                      default_penalty;
+
             balances[defaulter] -= penalty;
             balances[not_defaulter] += penalty;
             terminated = true;
@@ -114,40 +128,41 @@ contract Derivative {
     }
 
     function withdraw(uint256 amount) payable public returns (bool success) {
-      // If the contract has been defaulted on or terminated then can withdraw
-      // up to full balance -- If not, then they are required to leave at least
-      // `required_margin` in the account
-      if (defaulted || terminated) {
-        if (balances[msg.sender] < int256(amount)) {
-          throw;
-        } else {
-          msg.sender.transfer(amount);
-        }
-      } else {
-        if (balances[msg.sender] - required_margin < int256(amount)) {
-          throw;
-        } else {
-          msg.sender.transfer(amount);
-        }
-      }
+        // If the contract has been defaulted on or terminated then can withdraw
+        // up to full balance -- If not, then they are required to leave at least
+        // `required_margin` in the account
+        int256 withdrawable_amount = (defaulted || terminated) ?
+                                     balances[msg.sender] :
+                                     balances[msg.sender] - required_margin;
+
+        // Can only withdraw the allowed amount
+        require(
+          (int256(withdrawable_amount) > int256(amount)),
+          "Attempting to withdraw more than allowed"
+        );
+
+        // Transfer amount -- Note: important to `-=` before the send so that the
+        // function can not be called multiple times while waiting for transfer
+        // to return
+        balances[msg.sender] -= int256(amount);
+        msg.sender.transfer(amount);
 
       return true;
     }
-
 }
 
 
 
 contract Derivative_ConstantNPV is usingOraclize, Derivative {
-    
-    OracleInterface oracle;    
+
+    OracleInterface oracle;
     address oracleAddress = 0x739De5b0fa95F40664CbdfC5D350e0c43B66f72e;
-    
+
     function compute_npv() public returns (int256 value) {
         oracle = OracleInterface(oracleAddress);
         string memory p = oracle.ETHUSD();
         int256 price = int256(parseInt(p, 2));
-        
+
         return price;
     }
 }
