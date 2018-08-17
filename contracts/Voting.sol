@@ -20,8 +20,17 @@ contract VoteCoin {
     mapping(address => uint) public balances;
 
     // Information used for votes
-    uint nVotes;
+    uint public nVotes;
     mapping(uint => Vote) public votes;
+
+    function Constuctor() public {
+        name = "Test";
+        symbol = "TTT";
+        nTokens = 1000;
+        nVotes = 0;
+
+        balances[msg.sender] = nTokens;
+    }
 
     //
     // Methods related to tokens
@@ -77,7 +86,7 @@ contract VoteCoin {
         votes[voteID] = Vote(_nProposals, new address[](0), false, 0);
     }
 
-    function tallyVote(uint _voteID) private returns (uint winningProposal){  // Make this owner only
+    function tallyVote(uint _voteID) public returns (uint winningProposal){  // Make this owner only
         require(votes[_voteID].voteTallied == false, "Vote has already been tallied");
         votes[_voteID].voteTallied = true;  // Once we've checked, tally begins
 
