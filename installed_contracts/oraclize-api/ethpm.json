@@ -1,0 +1,14 @@
+{
+  "authors": {},
+  "license": "",
+  "description": "",
+  "keywords": [],
+  "links": {},
+  "sources": [
+    "./contracts/usingOraclize.sol"
+  ],
+  "dependencies": {},
+  "manifest_version": 1,
+  "package_name": "oraclize-api",
+  "version": "1.0.0"
+}
