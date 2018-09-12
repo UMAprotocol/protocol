@@ -1,23 +1,43 @@
 {
-  "name": "protocol",
-  "version": "1.0.0",
-  "description": "Contains some code for a first pass at a derivatives contract",
-  "main": "truffle-config.js",
+  "name": "prototype",
+  "version": "0.0.1",
+  "description": "Frontend for VoteCoint",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "webpack-dev-server"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/risklabs/protocol.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/risklabs/protocol/issues"
-  },
-  "homepage": "https://github.com/risklabs/protocol#readme",
-  "dependencies": {
-    "openzeppelin-solidity": "1.11.0"
+  "author": "Chase Coleman and Spencer Lyon",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-eslint": "^8.2.3",
+    "babel-loader": "^7.1.4",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-plugin-transform-react-jsx": "^6.24.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.7.0",
+    "babel-register": "^6.26.0",
+    "copy-webpack-plugin": "^4.5.1",
+    "css-loader": "^0.28.11",
+    "eslint": "^4.19.1",
+    "eslint-config-standard": "^6.0.0",
+    "eslint-plugin-babel": "^4.0.0",
+    "eslint-plugin-mocha": "^4.8.0",
+    "eslint-plugin-promise": "^3.0.0",
+    "eslint-plugin-standard": "^2.0.0",
+    "html-webpack-plugin": "^3.2.0",
+    "json-loader": "^0.5.7",
+    "node-sass": "^4.9.0",
+    "sass-loader": "^7.0.3",
+    "source-map-support": "^0.5.3",
+    "style-loader": "^0.21.0",
+    "truffle": "^4.1.13",
+    "truffle-contract": "^3.0.6",
+    "web3": "^0.20.0",
+    "webpack": "^4.12.0",
+    "webpack-cli": "^3.0.6",
+    "webpack-dev-server": "^3.1.4",
+    "ethereum-bridge": "^0.6.1",
+    "openzeppelin-solidity": "^2.0.0-rc.1"
   }
 }

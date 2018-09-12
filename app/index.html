@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vote Coin</title>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+  <script src="./app.js"></script>
+</head>
+<body>
+  <h1>US to ETH</h1>
+  <p>The current ETH to USD conversion is listed at <span id="price"></span></p>
+
+  <br>
+  <h1>Vote</h1>
+  <br><br><button id="send" onclick="App.voteYes()">This is correct</button>
+  <br><br><button id="send" onclick="App.voteNo()">This is incorrect</button>
+  <br><br>
+  <span id="status"></span>
+  <br>
+  <span class="hint"><strong>Hint:</strong> open the browser developer console to view any errors and warnings.</span>
+</body>
+</html>
