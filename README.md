@@ -1,5 +1,28 @@
 # InitialContract
 
+## Prototype
+
+How to run:
+
+1. Install nodejs and npm
+1. Run `npm install -g truffle`
+1. Run `truffle develop`. Pay attention to the line `Mnemonic: ...` that is printed after the private keys, we will use this later.
+1. Make sure you have metamask or mist configured in your browswer and connected to truffle developer chain. This requires:
+    - Installation
+    - Configure a Custom RPC that points to url http://127.0.0.1:9545
+    - Sign in using mnemonic printed out near the top of the `truffle develop` output. To do this (with metamask) you click "Import account using seed phrase", on popup enter mnemonic and create a pasword.
+1. In truffle console run `compile --reset`
+1. Also in truffle console run `migrate --reset`
+1. In different shell run `npx ethereum-bridge -a 9 -H 127.0.0.1 -p 9545 --dev`
+    - When this finishes, look for
+    ```
+    Please add this line to your contract constructor:
+
+    OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
+    ```
+    Make sure the address inside `OraclizeAddrResolverI` matches the line of code in `contracts/Vote.sol`
+1. In another shell `npm run dev`
+1. Open browser and go to address indicated by `npm run serve` (usually http://localhost:8080)
 Contains some code for a first pass at a derivatives contract
 
 ## Links
