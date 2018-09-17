@@ -6,6 +6,7 @@ How to run:
 
 1. Install nodejs and npm
 1. Run `npm install -g truffle`
+1. Run `npm install`
 1. Run `truffle develop`. Pay attention to the line `Mnemonic: ...` that is printed after the private keys, we will use this later.
 1. Make sure you have metamask or mist configured in your browswer and connected to truffle developer chain. This requires:
     - Installation
@@ -32,6 +33,8 @@ https://medium.com/@olxc/ethereum-and-smart-contracts-basics-e5c84838b19
 http://solidity.readthedocs.io/en/develop/index.html
 
 https://karl.tech/learning-solidity-part-2-voting/
+
+https://media.consensys.net/time-sure-does-fly-ed4518792679
 
 Read article below (and other things by Alex Evans):
 
