@@ -37,18 +37,17 @@ contract Derivative {
     constructor(
         address _counterpartyAddress,
         address _oracleAddress,
-        uint _startTime,
-        uint _endTime,
+        uint _duration,
         int256 _defaultPenalty,
         int256 _requiredMargin
     ) public {
 
         // Contract states
-        startTime = _startTime;
-        endTime = _endTime;
+        startTime = now;
+        endTime = startTime + _duration;
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
-        npv = 0;
+        npv = setNpv();
 
         // Address information
         ownerAddress = msg.sender;
@@ -57,6 +56,12 @@ contract Derivative {
         balances[ownerAddress] = 0;
         balances[counterpartyAddress] = 0;
     }
+
+    // Concrete contracts should inherit from this contract and then should only
+    // need to implement a `computeNpv`/`setNpv` function. This allows for
+    //generic choices of npv functions
+    function computeNpv() public returns (int256 value);
+    function setNpv() public returns (int256 value);
 
     function updateBalances(int256 npvNew) internal {
         // Compute difference -- Add the difference to owner and subtract
@@ -67,40 +72,6 @@ contract Derivative {
         balances[ownerAddress] += npvDiff;
         balances[counterpartyAddress] -= npvDiff;
     }
-
-    function isDefault(address party) constant public returns (bool) {
-        return balances[party] < requiredMargin;
-    }
-
-    function whoDefaults()
-        constant
-        public
-        returns (bool inDefault, address defaulter, address notDefaulter)
-    {
-        inDefault = false;
-
-        if (isDefault(ownerAddress)) {
-            defaulter = ownerAddress;
-            notDefaulter = counterpartyAddress;
-            inDefault = true;
-        }
-        else if (isDefault(counterpartyAddress)) {
-            defaulter = counterpartyAddress;
-            notDefaulter = ownerAddress;
-            inDefault = true;
-        }
-
-        return (inDefault, defaulter, notDefaulter);
-    }
-
-    function isTerminated(uint time) constant public returns (bool ttt){
-        ttt = terminated || time > endTime;
-    }
-
-    // Concrete contracts should inherit from this contract and then should only
-    // need to implement a `compute_npv` function. This allows for generic
-    // choices of npv functions
-    function computeNpv() public returns (int256 value);
 
     function remargin() external {
         // Check if time is over...
@@ -163,11 +134,39 @@ contract Derivative {
       return true;
     }
 
+    function isDefault(address party) constant public returns (bool) {
+        return balances[party] < requiredMargin;
+    }
+
+    function whoDefaults()
+        constant
+        public
+        returns (bool inDefault, address defaulter, address notDefaulter)
+    {
+        inDefault = false;
+
+        if (isDefault(ownerAddress)) {
+            defaulter = ownerAddress;
+            notDefaulter = counterpartyAddress;
+            inDefault = true;
+        }
+        else if (isDefault(counterpartyAddress)) {
+            defaulter = counterpartyAddress;
+            notDefaulter = ownerAddress;
+            inDefault = true;
+        }
+
+        return (inDefault, defaulter, notDefaulter);
+    }
+
+    function isTerminated(uint time) constant public returns (bool ttt){
+        ttt = terminated || time > endTime;
+    }
+
 }
 
 
-contract Derivative_ConstantNPV is Derivative, usingOraclize {
-
+contract Derivative_ZeroNPV is Derivative, usingOraclize {
 
     function computeNpv() public returns (int256 value) {
         oracle = VoteCoinInterface(oracleAddress);
@@ -175,5 +174,9 @@ contract Derivative_ConstantNPV is Derivative, usingOraclize {
         int256 price = int256(parseInt(p, 2));
 
         return price;
+    }
+
+    function setNpv() public returns (int256 value) {
+        value = 0;
     }
 }

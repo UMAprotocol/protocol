@@ -13,9 +13,16 @@ pragma solidity ^0.4.24;
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
+import "./Derivative.sol";
 
 
 contract VoteCoin is ERC20, usingOraclize {
+
+    struct DerivativeContract {
+        address owner;
+        address counterparty;
+        uint contractId;
+    }
 
     struct VoteYesNo {
         address[] voters;
@@ -27,17 +34,18 @@ contract VoteCoin is ERC20, usingOraclize {
     }
 
     // Event information to facilitate communication with web interface
+    event LogConstructorInitiated(string nextStep);
+    event LogNewOraclizeQuery(string description);
+    event LogPriceUpdated(string price);
+    event NewDerivativeCreated(address maker, address taker);
     event NewVote(uint _voteID);
     event VoterChangedVote(address _voter, uint _proposal);
-    event VoterVoted(address _voter, uint _proposal);
     event VoteTallied(uint _voteID, uint _winningProposal, uint winningTally);
-    event LogConstructorInitiated(string nextStep);
-    event LogPriceUpdated(string price);
-    event LogNewOraclizeQuery(string description);
+    event VoterVoted(address _voter, uint _proposal);
 
     // Meta information about tokens
-    string public name;
-    string public symbol;
+    string public name = "TestVoteCoin";
+    string public symbol = "TVC";
 
     // Information used for votes
     uint public currVoteId;
@@ -47,13 +55,14 @@ contract VoteCoin is ERC20, usingOraclize {
     // Price info
     string public ETHUSD = "0";
 
+    // Derivative Market attached to VoteCoin for now -- Could be separated
+    // into its own type, but this is easy for now
+    // DerivativeContract[] allDerivatives = new DerivativeContract[](0);
+
     // For development
     address OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
-    // address OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
 
     constructor() public payable {
-        name = "TestVoteCoin";
-        symbol = "TVC";
         voteDuration = 120;
 
         _mint(msg.sender, 10000);
@@ -75,10 +84,13 @@ contract VoteCoin is ERC20, usingOraclize {
           _mint(_voter, 1000);
         }
 
+        // This will never happen
         require(balanceOf(_voter) > 0, "Not enough tokens to vote");
         require(_proposal < 2, "Only can vote yes (1) or no (0)");
         require(allVotes[_voteID].voteTallied == false);
 
+        // Check whether map has default value -- If so, then they haven't
+        // voted -- Easier on the gas cost than looping
         // Set address vote to _proposal
         allVotes[_voteID].votedFor[_voter] = _proposal;
 
@@ -138,7 +150,7 @@ contract VoteCoin is ERC20, usingOraclize {
         require(allVotes[_voteId].voteTallied == false, "Vote has already been tallied");
 
         // Find winner
-        uint winningProposal = 0; // determineWinner(_voteId);
+        uint winningProposal = 0;  // determineWinner(_voteId);
         uint winningTally = 0;
         allVotes[_voteId].winner = winningProposal;
         allVotes[_voteId].endTime = now;
@@ -176,4 +188,8 @@ contract VoteCoin is ERC20, usingOraclize {
             oraclize_query(voteDuration, "URL", "json(https://api.gdax.com/products/ETH-USD/ticker).price");
         }
     }
+
+    //
+    // Methods for creating new derivatives
+    //
 }  // End of contract
