@@ -22,6 +22,7 @@ How to run:
     OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
     ```
     Make sure the address inside `OraclizeAddrResolverI` matches the line of code in `contracts/Vote.sol`
+1. Run `VoteCoin.deployed().then(function(instance){instance.updatePrice()})` to start fetching prices.
 1. In another shell `npm run dev`
 1. Open browser and go to address indicated by `npm run serve` (usually http://localhost:8080)
 Contains some code for a first pass at a derivatives contract
