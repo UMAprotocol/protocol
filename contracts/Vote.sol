@@ -86,30 +86,22 @@ contract VoteCoin is ERC20, usingOraclize {
 
         // This will never happen
         require(balanceOf(_voter) > 0, "Not enough tokens to vote");
-        require(_proposal < 2, "Only can vote yes (1) or no (0)");
-        require(allVotes[_voteID].voteTallied == false);
+        require(_proposal < 3 && _proposal > 0, "Only can vote yes (2) or no (1)");
 
-        // Check whether map has default value -- If so, then they haven't
-        // voted -- Easier on the gas cost than looping
+        VoteYesNo storage vote = allVotes[_voteID];
+        require(vote.voteTallied == false);
+
+        bool alreadyVoted = vote.votedFor[_voter] != 0;
+
         // Set address vote to _proposal
-        allVotes[_voteID].votedFor[_voter] = _proposal;
-
-        // Check whether this voter is changing their vote or voting for first
-        // time
-        uint nVoters = allVotes[_voteID].voters.length;
-        bool alreadyVoted = false;
-        for (uint i=0; i<nVoters; i++) {
-            if (allVotes[_voteID].voters[i] == _voter) {
-                alreadyVoted = true;
-            }
-        }
+        vote.votedFor[_voter] = _proposal;
 
         // If this is first time, add them to voters array
-        if (alreadyVoted == false) {
-            allVotes[_voteID].voters.push(_voter);
-            emit VoterVoted(_voter, _proposal);
-        } else {
+        if (alreadyVoted) {
             emit VoterChangedVote(_voter, _proposal);
+        } else {
+            vote.voters.push(_voter);
+            emit VoterVoted(_voter, _proposal);
         }
     }
 
@@ -125,8 +117,9 @@ contract VoteCoin is ERC20, usingOraclize {
     }
 
     function determineWinner(uint _voteId) internal view returns (uint winningProposal) {
-        uint voted1 = 0;
-        uint nVoters = allVotes[_voteId].voters.length;
+        uint voted2 = 0;
+        VoteYesNo storage vote = allVotes[_voteId];
+        uint nVoters = vote.voters.length;
 
         // Declare variables used later
         address currVoter;
@@ -134,16 +127,16 @@ contract VoteCoin is ERC20, usingOraclize {
         uint currWeight;
         uint totalWeight;
         for (uint i=0; i<nVoters; i++) {
-            currVoter = allVotes[_voteId].voters[i];
-            currProposalVote = allVotes[_voteId].votedFor[currVoter];
+            currVoter = vote.voters[i];
+            currProposalVote = vote.votedFor[currVoter];
             currWeight = balanceOf(currVoter);
             totalWeight = totalWeight + currWeight;
-            if (currProposalVote == 1) {
-                voted1 = voted1 + currWeight;
+            if (currProposalVote == 2) {
+                voted2 = voted2 + currWeight;
             }
         }
 
-        winningProposal = totalWeight-voted1 < voted1 ? 1 : 0;
+        winningProposal = totalWeight - voted2 < voted2 ? 2 : 1;
     }
 
     function tallyVote(uint _voteId) private {
