@@ -10,6 +10,7 @@
 */
 pragma solidity ^0.4.24;
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
@@ -17,6 +18,9 @@ import "./Derivative.sol";
 
 
 contract VoteCoin is ERC20, usingOraclize {
+
+    // Note: SafeMath only works for uints right now.
+    using SafeMath for uint;
 
     struct DerivativeContract {
         address owner;
@@ -118,7 +122,7 @@ contract VoteCoin is ERC20, usingOraclize {
     }
 
     function newVote() private {
-        currVoteId++;
+        currVoteId = currVoteId.add(1);
 
         allVotes[currVoteId] = VoteYesNo(new address[](0), 0, false, now, now);
         emit NewVote(currVoteId);
@@ -137,13 +141,13 @@ contract VoteCoin is ERC20, usingOraclize {
             currVoter = allVotes[_voteId].voters[i];
             currProposalVote = allVotes[_voteId].votedFor[currVoter];
             currWeight = balanceOf(currVoter);
-            totalWeight = totalWeight + currWeight;
+            totalWeight = totalWeight.add(currWeight);
             if (currProposalVote == 1) {
-                voted1 = voted1 + currWeight;
+                voted1 = voted1.add(currWeight);
             }
         }
 
-        winningProposal = totalWeight-voted1 < voted1 ? 1 : 0;
+        winningProposal = totalWeight.sub(voted1) < voted1 ? 1 : 0;
     }
 
     function tallyVote(uint _voteId) private {
