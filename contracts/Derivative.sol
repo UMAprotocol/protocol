@@ -22,6 +22,15 @@ contract Derivative {
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
 
+    enum State {
+        Prefunded,
+        Live,
+        Disputed,
+        Expired,
+        Default,
+        Settled
+    }
+
     // Financial information
     mapping(address => int256) public balances; // Stored in Wei
     int256 public defaultPenalty;  //
@@ -30,8 +39,8 @@ contract Derivative {
     // Contract states
     address public ownerAddress;          // should this be public?
     address public counterpartyAddress;   //
-    bool public defaulted = false;
-    bool public terminated = false;
+
+    State public state = State.Prefunded;
     uint public startTime;
     uint public endTime;
 
@@ -68,7 +77,7 @@ contract Derivative {
         // contract ends
         uint currentTime = now; // solhint-disable-line not-rely-on-time
         if (currentTime > endTime) {
-            terminated = true;
+            state = State.Expired;
         }
 
         // Update npv of contract
@@ -90,8 +99,7 @@ contract Derivative {
 
             balances[defaulter] -= penalty;
             balances[notDefaulter] += penalty;
-            defaulted = true;
-            terminated = true;
+            state = State.Default;
         }
     }
 
@@ -110,7 +118,7 @@ contract Derivative {
         // If the contract has been defaulted on or terminated then can withdraw
         // up to full balance -- If not then they are required to leave at least
         // `required_margin` in the account
-        int256 withdrawableAmount = (defaulted || terminated) ?
+        int256 withdrawableAmount = (state >= State.Default) ?
             balances[msg.sender] :
             balances[msg.sender] - requiredMargin;
 
@@ -154,7 +162,7 @@ contract Derivative {
     }
 
     function isTerminated(uint time) public constant returns (bool ttt) {
-        ttt = terminated || time > endTime;
+        ttt = state >= State.Expired || time > endTime;
     }
 
     function updateBalances(int256 npvNew) internal {
