@@ -8,6 +8,7 @@
 pragma solidity ^0.4.24;
 
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 // This interface allows us to get the Ethereum-USD exchange rate
@@ -17,6 +18,10 @@ contract VoteCoinInterface {
 
 
 contract Derivative {
+
+    // Note: SafeMath only works for uints right now.
+    using SafeMath for uint;
+
     // Financial information
     mapping(address => int256) public balances; // Stored in Wei
     int256 public defaultPenalty;  //
@@ -44,7 +49,7 @@ contract Derivative {
 
         // Contract states
         startTime = now; // solhint-disable-line not-rely-on-time
-        endTime = startTime + _duration;
+        endTime = startTime.add(_duration);
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
         npv = setNpv();
