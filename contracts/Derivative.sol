@@ -80,8 +80,8 @@ contract Derivative {
         if (inDefault) {
             int256 penalty;
             penalty = (balances[defaulter] < defaultPenalty) ?
-                        balances[defaulter] :
-                        defaultPenalty;
+                balances[defaulter] :
+                defaultPenalty;
 
             balances[defaulter] -= penalty;
             balances[notDefaulter] += penalty;
@@ -106,8 +106,8 @@ contract Derivative {
         // up to full balance -- If not then they are required to leave at least
         // `required_margin` in the account
         int256 withdrawableAmount = (defaulted || terminated) ?
-                                    balances[msg.sender] :
-                                    balances[msg.sender] - requiredMargin;
+            balances[msg.sender] :
+            balances[msg.sender] - requiredMargin;
 
         // Can only withdraw the allowed amount
         require(
