@@ -110,7 +110,15 @@ contract Derivative {
     function setNpv() public returns (int256 value);
 
     function deposit() public payable returns (bool success) {
+        require(msg.sender == ownerAddress || msg.sender == counterpartyAddress);
+
         balances[msg.sender] += int256(msg.value);
+
+        if (state = State.Prefunded) {
+            if (balances[ownerAddress] > requiredMargin && balances[counterpartyAddress] > requiredMargin) {
+                state = State.Live;
+            }
+        }
         return true;
     }
 
