@@ -36,16 +36,15 @@ contract Derivative {
     int256 public defaultPenalty;  //
     int256 public requiredMargin;  //
 
-    // Contract states
+    // Other addresses/contracts
     address public ownerAddress;          // should this be public?
     address public counterpartyAddress;   //
+    VoteCoinInterface public oracle;
 
     State public state = State.Prefunded;
     uint public startTime;
     uint public endTime;
 
-    VoteCoinInterface public oracle;
-    address public oracleAddress;
     int256 public npv;  // Net present value is measured in Wei
 
     constructor(
@@ -61,20 +60,18 @@ contract Derivative {
         endTime = startTime.add(_duration);
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
-        npv = setNpv();
+        npv = initialNpv();
 
         // Address information
-        ownerAddress = msg.sender;
-        oracleAddress = _oracleAddress;
+        oracle = VoteCoinInterface(_oracleAddress);
         counterpartyAddress = _counterpartyAddress;
         balances[ownerAddress] = 0;
         balances[counterpartyAddress] = 0;
     }
 
-    function remargin() external {
+    function remargin() public {
         // Check if time is over...
-        // TODO: Ensure that the contract is remargined at the time that the
-        // contract ends
+        // TODO: If the contract is expired, remargin to the NPV at expiry rather than the current NPV.
         uint currentTime = now; // solhint-disable-line not-rely-on-time
         if (currentTime > endTime) {
             state = State.Expired;
@@ -82,40 +79,27 @@ contract Derivative {
 
         // Update npv of contract
         int256 npvNew = computeNpv();
-        updateBalances(npvNew);
-
-        // Check for default
-        bool inDefault;
-        address defaulter;
-        address notDefaulter;
-        (inDefault, defaulter, notDefaulter) = whoDefaults();
-
-        // Check whether goes into default
-        if (inDefault) {
-            int256 penalty;
-            penalty = (balances[defaulter] < defaultPenalty) ?
-                balances[defaulter] :
-                defaultPenalty;
-
-            balances[defaulter] -= penalty;
-            balances[notDefaulter] += penalty;
-            state = State.Default;
-        }
+        remargin(npvNew);
     }
 
     // Concrete contracts should inherit from this contract and then should only
-    // need to implement a `computeNpv`/`setNpv` function. This allows for
-    //generic choices of npv functions
-    function computeNpv() public returns (int256 value);
-    function setNpv() public returns (int256 value);
+    // need to implement a `computeNpv`/`initialNpv` function. This allows for
+    // generic choices of npv functions.
+    function computeNpv() public view returns (int256 value);
+    function initialNpv() public view returns (int256 value);
+
+    function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
+        return requiredAccountBalanceOnRemargin(msg.sender);
+    }
 
     function deposit() public payable returns (bool success) {
         require(msg.sender == ownerAddress || msg.sender == counterpartyAddress);
 
         balances[msg.sender] += int256(msg.value);
 
-        if (state = State.Prefunded) {
-            if (balances[ownerAddress] > requiredMargin && balances[counterpartyAddress] > requiredMargin) {
+        if (state == State.Prefunded) {
+            if (balances[ownerAddress] > requiredAccountBalanceOnRemargin(ownerAddress) &&
+                balances[counterpartyAddress] > requiredAccountBalanceOnRemargin(counterpartyAddress)) {
                 state = State.Live;
             }
         }
@@ -123,10 +107,15 @@ contract Derivative {
     }
 
     function withdraw(uint256 amount) public payable returns (bool success) {
+        // Remargin before allowing a withdrawal.
+        remargin();
+
         // If the contract has been defaulted on or terminated then can withdraw
         // up to full balance -- If not then they are required to leave at least
-        // `required_margin` in the account
-        int256 withdrawableAmount = (state >= State.Default) ?
+        // `required_margin` in the account. If the contract is in the prefunded
+        // state, all parties are allowed to remove any balance they have in the
+        // contract.
+        int256 withdrawableAmount = (state >= State.Default || state == State.Prefunded) ?
             balances[msg.sender] :
             balances[msg.sender] - requiredMargin;
 
@@ -173,30 +162,73 @@ contract Derivative {
         ttt = state >= State.Expired || time > endTime;
     }
 
-    function updateBalances(int256 npvNew) internal {
-        // Compute difference -- Add the difference to owner and subtract
-        // from counterparty. Then update npv state variable
-        int256 npvDiff = npv - npvNew;
-        npv = npvNew;
+    // Remargins the account based on a provided NPV value.
+    // The internal remargin method allows certain calls into the contract to automatically remargin to non-current NPV
+    // values (time of expiry, last agreed upon price, etc).
+    function remargin(int256 npvNew) internal {
+        updateBalances(npvNew);
 
-        balances[ownerAddress] += npvDiff;
-        balances[counterpartyAddress] -= npvDiff;
+        // Check for default
+        bool inDefault;
+        address defaulter;
+        address notDefaulter;
+        (inDefault, defaulter, notDefaulter) = whoDefaults();
+
+        // Check whether goes into default
+        if (inDefault) {
+            int256 penalty;
+            penalty = (balances[defaulter] < defaultPenalty) ?
+                balances[defaulter] :
+                defaultPenalty;
+
+            balances[defaulter] -= penalty;
+            balances[notDefaulter] += penalty;
+            state = State.Default;
+        }
     }
 
+    // Gets the change change in balance for the owners account when the most recent NPV is applied.
+    // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
+    function getOwnerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
+        return npv - npvNew;
+    }
+
+    function updateBalances(int256 npvNew) internal {
+        // Compute difference -- Add the difference to owner and subtract
+        // from counterparty. Then update npv state variable.
+        int256 ownerDiff = getOwnerNpvDiff(npvNew);
+        npv = npvNew;
+
+        balances[ownerAddress] += ownerDiff;
+        balances[counterpartyAddress] -= ownerDiff;
+    }
+
+    function requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
+        int256 ownerDiff = getOwnerNpvDiff(computeNpv());
+
+        if (party == ownerAddress) {
+            return requiredMargin + ownerDiff;
+        }
+
+        if (party == counterpartyAddress) {
+            return requiredMargin - ownerDiff;
+        }
+
+        return 0;
+    }
 }
 
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
 
-    function computeNpv() public returns (int256 value) {
-        oracle = VoteCoinInterface(oracleAddress);
+    function computeNpv() public view returns (int256 value) {
         string memory p = oracle.ethUsd();
         int256 price = int256(parseInt(p, 2));
 
         return price;
     }
 
-    function setNpv() public returns (int256 value) {
-        value = 0;
+    function initialNpv() public view returns (int256 value) {
+        return 0;
     }
 }
