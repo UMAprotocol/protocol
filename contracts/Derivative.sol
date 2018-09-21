@@ -23,11 +23,30 @@ contract Derivative {
     using SafeMath for uint;
 
     enum State {
+        // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
+        // remargining happens. Allowed state transitions: Live, Expired.
         Prefunded,
+
+        // The contract is funded, the required margin has been provided by both parties, and remargining is happening
+        // on demand. Parties are only able to withdraw down to the required margin. Possible state transitions:
+        // Disputed, Expired, Defaulted.
         Live,
+
+        // One of the parties has disputed the price feed. The contract is frozen until the dispute is resolved.
+        // Possible state transitions: Defaulted, Settled.
         Disputed,
+
+        // The contract has passed its expiration and the final remargin has occurred. It is still possible to dispute
+        // the settlement price. Possible state transitions: Settled.
         Expired,
-        Default,
+
+        // One party failed to keep their margin above the required margin, so the contract has gone into default.
+        // The defaulting party was assessed a penalty and both parties are able to freely withdraw their remaining
+        // account balances. Remargining is not allowed. Possible state transitions: None.
+        Defaulted,
+
+        // The final remargin has occured, and all parties have agreed on the settlement price. Account balances can be
+        // fully withdrawn. Possible state transitions: None.
         Settled
     }
 
@@ -70,6 +89,13 @@ contract Derivative {
     }
 
     function remargin() public {
+        // TODO(mrice32): remargin might make sense for Disputeed and Expired, but the exact flow for those states
+        // still needs to be decided.
+        // If the state is not live, remargining does not make sense.
+        if (state != State.Live) {
+            return;
+        }
+
         // Check if time is over...
         // TODO: If the contract is expired, remargin to the NPV at expiry rather than the current NPV.
         uint currentTime = now; // solhint-disable-line not-rely-on-time
@@ -116,7 +142,7 @@ contract Derivative {
         // `required_margin` in the account. If the contract is in the prefunded
         // state, all parties are allowed to remove any balance they have in the
         // contract.
-        int256 withdrawableAmount = (state >= State.Default || state == State.Prefunded) ?
+        int256 withdrawableAmount = (state >= State.Defaulted || state == State.Prefunded) ?
             balances[msg.sender] :
             balances[msg.sender] - requiredMargin;
 
@@ -184,7 +210,7 @@ contract Derivative {
 
             balances[defaulter] -= penalty;
             balances[notDefaulter] += penalty;
-            state = State.Default;
+            state = State.Defaulted;
         }
     }
 
