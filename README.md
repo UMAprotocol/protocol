@@ -27,7 +27,7 @@ How to run:
 1. Open browser and go to address indicated by `npm run serve` (usually http://localhost:8080)
 Contains some code for a first pass at a derivatives contract
 
-## Additional Developer Tools
+## Developer Information and Tools
 
 ### Solhint - Solidity Linter
 Find more information about solhint [here](https://protofire.github.io/solhint/). There are plugins available to see solhint errors inline in many IDEs.
@@ -40,6 +40,10 @@ npm install -g solhint
 ```
 solhint contracts/**/*.sol
 ```
+
+## Style Guide
+
+See [STYLE.md](STYLE.md).
 
 ## Links
 
