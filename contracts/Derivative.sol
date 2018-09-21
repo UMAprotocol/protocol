@@ -158,7 +158,7 @@ contract Derivative {
         return (inDefault, defaulter, notDefaulter);
     }
 
-    function isTerminated(uint time) public constant returns (bool ttt) {
+    function isExpired(uint time) public constant returns (bool ttt) {
         ttt = state >= State.Expired || time > endTime;
     }
 
