@@ -208,14 +208,14 @@ contract Derivative {
         int256 ownerDiff = getOwnerNpvDiff(computeNpv());
 
         if (party == ownerAddress) {
-            return requiredMargin + ownerDiff;
+            balance = requiredMargin + ownerDiff;
         }
 
         if (party == counterpartyAddress) {
-            return requiredMargin - ownerDiff;
+            balance = requiredMargin - ownerDiff;
         }
 
-        return 0;
+        balance = balance > 0 ? balance : 0;
     }
 }
 
