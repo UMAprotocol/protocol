@@ -214,7 +214,7 @@ contract Derivative {
         }
     }
 
-    // Gets the change change in balance for the owners account when the most recent NPV is applied.
+    // Gets the change in balance for the owners account when the most recent NPV is applied.
     // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
     function getOwnerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
         return npv - npvNew;
