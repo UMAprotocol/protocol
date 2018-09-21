@@ -9,12 +9,7 @@ pragma solidity ^0.4.24;
 
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-
-
-// This interface allows us to get the Ethereum-USD exchange rate
-contract VoteCoinInterface {
-    string public ethUsd;
-}
+import "./VoteTokenInterface.sol";
 
 
 contract Derivative {
@@ -58,7 +53,7 @@ contract Derivative {
     // Other addresses/contracts
     address public ownerAddress;          // should this be public?
     address public counterpartyAddress;   //
-    VoteCoinInterface public oracle;
+    VoteTokenInterface public oracle;
 
     State public state = State.Prefunded;
     uint public startTime;
@@ -82,7 +77,7 @@ contract Derivative {
         npv = initialNpv();
 
         // Address information
-        oracle = VoteCoinInterface(_oracleAddress);
+        oracle = VoteTokenInterface(_oracleAddress);
         counterpartyAddress = _counterpartyAddress;
         balances[ownerAddress] = 0;
         balances[counterpartyAddress] = 0;
@@ -98,20 +93,32 @@ contract Derivative {
 
         // Check if time is over...
         // TODO: If the contract is expired, remargin to the NPV at expiry rather than the current NPV.
-        uint currentTime = now; // solhint-disable-line not-rely-on-time
-        if (currentTime > endTime) {
+        uint currentTime = oracle.mostRecentUnverifiedPublishingTime();
+        if (currentTime >= endTime) {
             state = State.Expired;
+            currentTime = oracle.mostRecentUnverifiedPublishingTime(endTime);
         }
 
         // Update npv of contract
-        int256 npvNew = computeNpv();
+        var (success, npvNew) = computeUnverifiedNpv(currentTime);
+        assert(success);
         remargin(npvNew);
     }
 
-    // Concrete contracts should inherit from this contract and then should only
-    // need to implement a `computeNpv`/`initialNpv` function. This allows for
-    // generic choices of npv functions.
-    function computeNpv() public view returns (int256 value);
+    // Concrete contracts should inherit from this contract and then should only need to implement a
+    // `computeUnverifiedNpv`, `computeVerifiedNpv`, and `initialNpv` function. This allows for generic choices of NPV
+    // functions.
+    // Compute NPV for a particular timestamp. If the NPV for this time is not available, `success` will be false, and
+    // `value` should be ignored.
+    function computeUnverifiedNpv(uint timestamp) public view returns (bool success, int256 value);
+
+    // Same as the above, but for the verified price feed.
+    function computeVerifiedNpv(uint timestamp) public view returns (bool success, int256 value);
+
+    // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
+    // contract, the contract will only move money when the computed NPV differs from this value. For example, if
+    // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
+    // `computeUnverifiedNpv` returned 51.
     function initialNpv() public view returns (int256 value);
 
     function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
@@ -231,7 +238,9 @@ contract Derivative {
     }
 
     function requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        int256 ownerDiff = getOwnerNpvDiff(computeNpv());
+        var (success, newNpv) = computeUnverifiedNpv(oracle.mostRecentUnverifiedPublishingTime());
+        require(success);
+        int256 ownerDiff = getOwnerNpvDiff(newNpv);
 
         if (party == ownerAddress) {
             balance = requiredMargin + ownerDiff;
@@ -248,11 +257,14 @@ contract Derivative {
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
 
-    function computeNpv() public view returns (int256 value) {
-        string memory p = oracle.ethUsd();
-        int256 price = int256(parseInt(p, 2));
+    function computeUnverifiedNpv(uint timestamp) public view returns (bool success, int256 value) {
+        // This could be more complex, but in our case, just return the oracle value.
+        return oracle.getUnverifiedPrice(timestamp);
+    }
 
-        return price;
+    function computeVerifiedNpv(uint timestamp) public view returns (bool success, int256 value) {
+        // This could be more complex, but in our case, just return the oracle value.
+        return oracle.getVerifiedPrice(timestamp);
     }
 
     function initialNpv() public view returns (int256 value) {
