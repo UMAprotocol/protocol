@@ -101,6 +101,7 @@ contract Derivative {
             if (balances[ownerAddress] > requiredAccountBalanceOnRemargin(ownerAddress) &&
                 balances[counterpartyAddress] > requiredAccountBalanceOnRemargin(counterpartyAddress)) {
                 state = State.Live;
+                remargin();
             }
         }
         return true;
