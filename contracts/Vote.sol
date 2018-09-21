@@ -10,6 +10,7 @@
 */
 pragma solidity ^0.4.24;
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
@@ -17,6 +18,9 @@ import "./Derivative.sol";
 
 
 contract VoteCoin is ERC20, usingOraclize {
+
+    // Note: SafeMath only works for uints right now.
+    using SafeMath for uint;
 
     struct DerivativeContract {
         address owner;
@@ -38,7 +42,7 @@ contract VoteCoin is ERC20, usingOraclize {
     event LogNewOraclizeQuery(string description);
     event LogPriceUpdated(string price);
     event NewDerivativeCreated(address maker, address taker);
-    event NewVote(uint _voteID);
+    event VoteCreated(uint _voteID);
     event VoterChangedVote(address _voter, uint _proposal);
     event VoteTallied(uint _voteID, uint _winningProposal, uint winningTally);
     event VoterVoted(address _voter, uint _proposal);
@@ -53,14 +57,14 @@ contract VoteCoin is ERC20, usingOraclize {
     mapping(uint => VoteYesNo) public allVotes;
 
     // Price info
-    string public ETHUSD = "0";
+    string public ethUsd = "0";
 
     // Derivative Market attached to VoteCoin for now -- Could be separated
     // into its own type, but this is easy for now
     // DerivativeContract[] allDerivatives = new DerivativeContract[](0);
 
     // For development
-    address OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
+    address constant public OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
 
     constructor() public payable {
         voteDuration = 120;
@@ -74,6 +78,41 @@ contract VoteCoin is ERC20, usingOraclize {
         emit LogConstructorInitiated("Constructor was initiated. Call 'updatePrice()' to send the Oraclize Query.");
     }
 
+    function vote(uint _voteID, uint _proposal) external {
+        _vote(msg.sender, _voteID, _proposal);
+    }
+
+    //
+    // Methods for retrieving price and checking whether verified
+    //
+    function __callback(bytes32, string result) public {
+        if (msg.sender != oraclize_cbAddress()) revert();
+
+        // Tally old vote
+        tallyVote(currVoteId);
+
+        // Here we could issue rewards for having voting with majority
+
+        // Price arrives
+        ethUsd = result;
+        emit LogPriceUpdated(ethUsd);
+
+        // Create new vote
+        newVote();
+
+        updatePrice();
+    }
+
+    function updatePrice() public payable {
+        if (oraclize_getPrice("URL") > address(this).balance) {
+            emit LogNewOraclizeQuery("Oraclize query was NOT sent, please add some ETH to cover for the query fee");
+        } else {
+            emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer..");
+            // Waits `voteDuration` and then sends query
+            oraclize_query(voteDuration, "URL", "json(https://api.gdax.com/products/ETH-USD/ticker).price");
+        }
+    }
+
     //
     // Methods related to voting
     //
@@ -81,7 +120,7 @@ contract VoteCoin is ERC20, usingOraclize {
 
         // TODO (REMOVE LATER) -- For now just issue tokens when someone votes
         if (balanceOf(_voter) < 1) {
-          _mint(_voter, 1000);
+            _mint(_voter, 1000);
         }
 
         // This will never happen
@@ -105,17 +144,6 @@ contract VoteCoin is ERC20, usingOraclize {
         }
     }
 
-    function vote(uint _voteID, uint _proposal) external {
-        _vote(msg.sender, _voteID, _proposal);
-    }
-
-    function newVote() private {
-        currVoteId++;
-
-        allVotes[currVoteId] = VoteYesNo(new address[](0), 0, false, now, now);
-        emit NewVote(currVoteId);
-    }
-
     function determineWinner(uint _voteId) internal view returns (uint winningProposal) {
         uint voted2 = 0;
         VoteYesNo storage currentVote = allVotes[_voteId];
@@ -126,17 +154,25 @@ contract VoteCoin is ERC20, usingOraclize {
         uint currProposalVote;
         uint currWeight;
         uint totalWeight;
-        for (uint i=0; i<nVoters; i++) {
+        for (uint i=0; i < nVoters; i++) {
             currVoter = currentVote.voters[i];
             currProposalVote = currentVote.votedFor[currVoter];
             currWeight = balanceOf(currVoter);
             totalWeight = totalWeight + currWeight;
             if (currProposalVote == 2) {
-                voted2 = voted2 + currWeight;
+                voted2 = voted2.add(currWeight);
             }
         }
 
-        winningProposal = totalWeight - voted2 < voted2 ? 2 : 1;
+        winningProposal = totalWeight.sub(voted2) < voted2 ? 2 : 1;
+    }
+
+    function newVote() private {
+        currVoteId = currVoteId.add(1);
+
+        uint currentTime = now; // solhint-disable-line not-rely-on-time
+        allVotes[currVoteId] = VoteYesNo(new address[](0), 0, false, currentTime, currentTime);
+        emit VoteCreated(currVoteId);
     }
 
     function tallyVote(uint _voteId) private {
@@ -146,40 +182,9 @@ contract VoteCoin is ERC20, usingOraclize {
         uint winningProposal = 0;  // determineWinner(_voteId);
         uint winningTally = 0;
         allVotes[_voteId].winner = winningProposal;
-        allVotes[_voteId].endTime = now;
+        allVotes[_voteId].endTime = now; // solhint-disable-line not-rely-on-time
         allVotes[_voteId].voteTallied = true;
         emit VoteTallied(_voteId, winningProposal, winningTally);
-    }
-
-    //
-    // Methods for retrieving price and checking whether verified
-    //
-    function __callback(bytes32 myid, string result) public {
-        if (msg.sender != oraclize_cbAddress()) revert();
-
-        // Tally old vote
-        tallyVote(currVoteId);
-
-        // Here we could issue rewards for having voting with majority
-
-        // Price arrives
-        ETHUSD = result;
-        emit LogPriceUpdated(ETHUSD);
-
-        // Create new vote
-        newVote();
-
-        updatePrice();
-    }
-
-    function updatePrice() public payable {
-        if (oraclize_getPrice("URL") > address(this).balance) {
-            emit LogNewOraclizeQuery("Oraclize query was NOT sent, please add some ETH to cover for the query fee");
-        } else {
-            emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer..");
-            // Waits `voteDuration` and then sends query
-            oraclize_query(voteDuration, "URL", "json(https://api.gdax.com/products/ETH-USD/ticker).price");
-        }
     }
 
     //

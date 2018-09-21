@@ -5,34 +5,39 @@
 
   TODO: Implement tax function
 */
-pragma solidity ^0.4.22;
+pragma solidity ^0.4.24;
 
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 // This interface allows us to get the Ethereum-USD exchange rate
 contract VoteCoinInterface {
-    string public ETHUSD;
+    string public ethUsd;
 }
 
 
 contract Derivative {
+
+    // Note: SafeMath only works for uints right now.
+    using SafeMath for uint;
+
     // Financial information
     mapping(address => int256) public balances; // Stored in Wei
     int256 public defaultPenalty;  //
     int256 public requiredMargin;  //
 
     // Contract states
-    address ownerAddress;          // should this be public?
-    address counterpartyAddress;   //
+    address public ownerAddress;          // should this be public?
+    address public counterpartyAddress;   //
     bool public defaulted = false;
     bool public terminated = false;
     uint public startTime;
     uint public endTime;
 
-    VoteCoinInterface oracle;
-    address oracleAddress;
-    int256 npv;  // Net present value is measured in Wei
+    VoteCoinInterface public oracle;
+    address public oracleAddress;
+    int256 public npv;  // Net present value is measured in Wei
 
     constructor(
         address _counterpartyAddress,
@@ -43,8 +48,8 @@ contract Derivative {
     ) public {
 
         // Contract states
-        startTime = now;
-        endTime = startTime + _duration;
+        startTime = now; // solhint-disable-line not-rely-on-time
+        endTime = startTime.add(_duration);
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
         npv = setNpv();
@@ -57,27 +62,11 @@ contract Derivative {
         balances[counterpartyAddress] = 0;
     }
 
-    // Concrete contracts should inherit from this contract and then should only
-    // need to implement a `computeNpv`/`setNpv` function. This allows for
-    //generic choices of npv functions
-    function computeNpv() public returns (int256 value);
-    function setNpv() public returns (int256 value);
-
-    function updateBalances(int256 npvNew) internal {
-        // Compute difference -- Add the difference to owner and subtract
-        // from counterparty. Then update npv state variable
-        int256 npvDiff = npv - npvNew;
-        npv = npvNew;
-
-        balances[ownerAddress] += npvDiff;
-        balances[counterpartyAddress] -= npvDiff;
-    }
-
     function remargin() external {
         // Check if time is over...
         // TODO: Ensure that the contract is remargined at the time that the
         // contract ends
-        uint currentTime = now;
+        uint currentTime = now; // solhint-disable-line not-rely-on-time
         if (currentTime > endTime) {
             terminated = true;
         }
@@ -96,8 +85,8 @@ contract Derivative {
         if (inDefault) {
             int256 penalty;
             penalty = (balances[defaulter] < defaultPenalty) ?
-                      balances[defaulter] :
-                      defaultPenalty;
+                balances[defaulter] :
+                defaultPenalty;
 
             balances[defaulter] -= penalty;
             balances[notDefaulter] += penalty;
@@ -106,18 +95,24 @@ contract Derivative {
         }
     }
 
-    function deposit() payable public returns (bool success) {
+    // Concrete contracts should inherit from this contract and then should only
+    // need to implement a `computeNpv`/`setNpv` function. This allows for
+    //generic choices of npv functions
+    function computeNpv() public returns (int256 value);
+    function setNpv() public returns (int256 value);
+
+    function deposit() public payable returns (bool success) {
         balances[msg.sender] += int256(msg.value);
         return true;
     }
 
-    function withdraw(uint256 amount) payable public returns (bool success) {
+    function withdraw(uint256 amount) public payable returns (bool success) {
         // If the contract has been defaulted on or terminated then can withdraw
         // up to full balance -- If not then they are required to leave at least
         // `required_margin` in the account
         int256 withdrawableAmount = (defaulted || terminated) ?
-                                     balances[msg.sender] :
-                                     balances[msg.sender] - requiredMargin;
+            balances[msg.sender] :
+            balances[msg.sender] - requiredMargin;
 
         // Can only withdraw the allowed amount
         require(
@@ -131,16 +126,16 @@ contract Derivative {
         balances[msg.sender] -= int256(amount);
         msg.sender.transfer(amount);
 
-      return true;
+        return true;
     }
 
-    function isDefault(address party) constant public returns (bool) {
+    function isDefault(address party) public constant returns (bool) {
         return balances[party] < requiredMargin;
     }
 
     function whoDefaults()
-        constant
         public
+        constant
         returns (bool inDefault, address defaulter, address notDefaulter)
     {
         inDefault = false;
@@ -149,8 +144,7 @@ contract Derivative {
             defaulter = ownerAddress;
             notDefaulter = counterpartyAddress;
             inDefault = true;
-        }
-        else if (isDefault(counterpartyAddress)) {
+        } else if (isDefault(counterpartyAddress)) {
             defaulter = counterpartyAddress;
             notDefaulter = ownerAddress;
             inDefault = true;
@@ -159,18 +153,28 @@ contract Derivative {
         return (inDefault, defaulter, notDefaulter);
     }
 
-    function isTerminated(uint time) constant public returns (bool ttt){
+    function isTerminated(uint time) public constant returns (bool ttt) {
         ttt = terminated || time > endTime;
+    }
+
+    function updateBalances(int256 npvNew) internal {
+        // Compute difference -- Add the difference to owner and subtract
+        // from counterparty. Then update npv state variable
+        int256 npvDiff = npv - npvNew;
+        npv = npvNew;
+
+        balances[ownerAddress] += npvDiff;
+        balances[counterpartyAddress] -= npvDiff;
     }
 
 }
 
 
-contract Derivative_ZeroNPV is Derivative, usingOraclize {
+contract DerivativeZeroNPV is Derivative, usingOraclize {
 
     function computeNpv() public returns (int256 value) {
         oracle = VoteCoinInterface(oracleAddress);
-        string memory p = oracle.ETHUSD();
+        string memory p = oracle.ethUsd();
         int256 price = int256(parseInt(p, 2));
 
         return price;
