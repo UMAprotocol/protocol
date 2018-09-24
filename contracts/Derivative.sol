@@ -100,6 +100,8 @@ contract Derivative {
         }
 
         // Update npv of contract
+        // Note: solhint doesn't currently handle the new multiple declaration + assignment feature in solidity.
+        // solhint-disable-next-line indent
         (bool success, int256 npvNew) = computeUnverifiedNpv(currentTime);
         assert(success);
         remargin(npvNew);
@@ -238,6 +240,8 @@ contract Derivative {
     }
 
     function requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
+        // Note: solhint doesn't currently handle the new multiple declaration + assignment feature in solidity.
+        // solhint-disable-next-line indent
         (bool success, int256 npvNew) = computeUnverifiedNpv(oracle.mostRecentUnverifiedPublishingTime());
         require(success);
         int256 ownerDiff = getOwnerNpvDiff(npvNew);
