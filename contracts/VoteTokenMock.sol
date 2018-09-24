@@ -7,10 +7,11 @@ pragma solidity ^0.4.24;
 
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./VoteTokenInterface.sol";
 
 
-contract VoteTokenMock is VoteTokenInterface {
+contract VoteTokenMock is VoteTokenInterface, Ownable {
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
 
@@ -24,49 +25,68 @@ contract VoteTokenMock is VoteTokenInterface {
         uint latestPublishTime;
     }
 
-    FeedInfo private unverifiedFeed;
-    FeedInfo private verifiedFeed;
+    FeedInfo private _unverifiedFeed;
+    FeedInfo private _verifiedFeed;
 
     // First time at which a price will be published.
-    uint private startTime;
+    uint private _startTime;
 
     // The publishing interval for this price feed. All publish times are just multiples of this interval starting at 0.
     uint constant private PRICE_PUBLISH_INTERVAL = 60;
 
     constructor(
-        uint startTime_
+        uint startTime
     ) public {
-        startTime = intervalTime(startTime_, startTime_);
+        _startTime = _intervalTime(startTime, startTime);
+    }
+
+    // These functions are only here for the purpose of mocking a real feed. If this were meant for production, we
+    // would want to provide the time and check that the time lines up with the expected next time on the feed.
+    function addUnverifiedPrice(int256 newPrice) public onlyOwner {
+        _addNextPriceToFeed(newPrice, _unverifiedFeed);
+    }
+
+    function addVerifiedPrice(int256 newPrice) public onlyOwner {
+        _addNextPriceToFeed(newPrice, _verifiedFeed);
     }
 
     function mostRecentUnverifiedPublishingTime() public view returns (uint publishTime) {
-        return unverifiedFeed.latestPublishTime;
+        return _unverifiedFeed.latestPublishTime;
     }
 
     function mostRecentUnverifiedPublishingTime(uint time) public view returns (uint publishTime) {
-        return intervalTime(time, unverifiedFeed.latestPublishTime);
-    }
-
-    function getUnverifiedPrice(uint publishTime) public view returns (bool success, int256 price) {
-        return getPrice(publishTime, unverifiedFeed);
+        return _intervalTime(time, _unverifiedFeed.latestPublishTime);
     }
 
     function mostRecentVerifiedPublishingTime() public view returns (uint publishTime) {
-        return verifiedFeed.latestPublishTime;
+        return _verifiedFeed.latestPublishTime;
     }
 
     function mostRecentVerifiedPublishingTime(uint time) public view returns (uint publishedTime) {
-        return intervalTime(time, verifiedFeed.latestPublishTime);
+        return _intervalTime(time, _verifiedFeed.latestPublishTime);
     }
 
-    function getVerifiedPrice(uint publishTime) public view returns (bool success, int256 price) {
-        return getPrice(publishTime, verifiedFeed);
+    function unverifiedPrice(uint publishTime) public view returns (bool success, int256 price) {
+        return _getPrice(publishTime, _unverifiedFeed);
+    }
+
+    function verifiedPrice(uint publishTime) public view returns (bool success, int256 price) {
+        return _getPrice(publishTime, _verifiedFeed);
+    }
+
+    // Adds a new price to the mocked out feed. If this were meant for production, we would want to provide the time
+    // and check that the time lines up with the expected next time on the feed.
+    function _addNextPriceToFeed(int256 newPrice, FeedInfo storage feedInfo) private {
+        uint newTime = feedInfo.latestPublishTime.add(PRICE_PUBLISH_INTERVAL);
+        assert(feedInfo.prices[newTime] == 0);
+        feedInfo.prices[newTime] = newPrice;
+        feedInfo.latestPublishTime = newTime;
     }
 
     // Gets the price given a desired time and feed. If the time is not a valid, published time for that feed,
     // `success` will be false and `price` should be ignored. 
-    function getPrice(uint publishTime, FeedInfo storage feedInfo) private view returns (bool success, int256 price) {
-        uint convertedTime = intervalTime(publishTime, feedInfo.latestPublishTime);
+    function _getPrice(uint publishTime, FeedInfo storage feedInfo) private view returns (bool success, int256 price) {
+        uint convertedTime = _intervalTime(publishTime, feedInfo.latestPublishTime);
         if (convertedTime == publishTime && convertedTime != 0) {
             success = true;
             price = feedInfo.prices[convertedTime];
@@ -79,9 +99,9 @@ contract VoteTokenMock is VoteTokenInterface {
     // of `PRICE_PUBLISH_INTERVAL` unless the time is outside the bounds of the published times for that feed. If
     // `time` is later than `latestFeedTime`, `latestFeedTime` is returned. If time is before the global
     // `startTime` of this feed, then 0 is returned.
-    function intervalTime(uint time, uint latestFeedTime) private view returns (uint timeInInterval) {
+    function _intervalTime(uint time, uint latestFeedTime) private view returns (uint timeInInterval) {
         if (time < latestFeedTime) {
-            return time < startTime ? 0 : time.div(PRICE_PUBLISH_INTERVAL).mul(PRICE_PUBLISH_INTERVAL);
+            return time < _startTime ? 0 : time.div(PRICE_PUBLISH_INTERVAL).mul(PRICE_PUBLISH_INTERVAL);
         } else {
             return latestFeedTime;
         }

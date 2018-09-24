@@ -100,7 +100,7 @@ contract Derivative {
         }
 
         // Update npv of contract
-        var (success, npvNew) = computeUnverifiedNpv(currentTime);
+        (bool success, int256 npvNew) = computeUnverifiedNpv(currentTime);
         assert(success);
         remargin(npvNew);
     }
@@ -238,9 +238,9 @@ contract Derivative {
     }
 
     function requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        var (success, newNpv) = computeUnverifiedNpv(oracle.mostRecentUnverifiedPublishingTime());
+        (bool success, int256 npvNew) = computeUnverifiedNpv(oracle.mostRecentUnverifiedPublishingTime());
         require(success);
-        int256 ownerDiff = getOwnerNpvDiff(newNpv);
+        int256 ownerDiff = getOwnerNpvDiff(npvNew);
 
         if (party == ownerAddress) {
             balance = requiredMargin + ownerDiff;
@@ -256,18 +256,17 @@ contract Derivative {
 
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
+    function initialNpv() public view returns (int256 value) {
+        return 0;
+    }
 
     function computeUnverifiedNpv(uint timestamp) public view returns (bool success, int256 value) {
         // This could be more complex, but in our case, just return the oracle value.
-        return oracle.getUnverifiedPrice(timestamp);
+        return oracle.unverifiedPrice(timestamp);
     }
 
     function computeVerifiedNpv(uint timestamp) public view returns (bool success, int256 value) {
         // This could be more complex, but in our case, just return the oracle value.
-        return oracle.getVerifiedPrice(timestamp);
-    }
-
-    function initialNpv() public view returns (int256 value) {
-        return 0;
+        return oracle.verifiedPrice(timestamp);
     }
 }
