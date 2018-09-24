@@ -12,8 +12,29 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 // This interface allows us to get the Ethereum-USD exchange rate
-contract VoteCoinInterface {
-    string public ethUsd;
+interface VoteTokenInterface {
+    // Gets the latest time that an unverified price was published. Returns 0 if no unverified prices have been
+    // published.
+    function mostRecentUnverifiedPublishingTime() external view returns (uint publishTime);
+
+    // Gets the time that an unverified price was publushed that is nearest to `time` without being greater than
+    // `time`. Returns 0 if no verified prices had been published before `time`.
+    function mostRecentUnverifiedPublishingTime(uint time) external view returns (uint publishTime);
+
+    // Gets the unverified price at `publishTime`. If no price was recorded for `publishTime`, then `success` will be
+    // false and the value of `price` should be ignored.
+    function getUnverifiedPrice(uint publishTime) external view returns (bool success, int256 price);
+
+    // Gets the latest time that a verified price was published. Returns 0 if no verified prices have been published.
+    function mostRecentVerifiedPublishingTime() external view returns (uint publishTime);
+
+    // Gets the time that a verified price was publushed that is nearest to `time` without being greater than
+    // `time`. Returns 0 if no verified prices had been published before `time`.
+    function mostRecentVerifiedPublishingTime(uint time) external view returns (uint publishTime);
+
+    // Gets the verified price at `publishTime`. If no price was recorded for `publishTime`, then `success` will be
+    // false and the value of `price` should be ignored.
+    function getVerifiedPrice(uint publishTime) external view returns (bool success, int256 price);
 }
 
 
@@ -64,7 +85,7 @@ contract Derivative {
     // Other addresses/contracts
     address public ownerAddress;          // should this be public?
     address public counterpartyAddress;   //
-    VoteCoinInterface public oracle;
+    VoteTokenInterface public oracle;
 
     State public state = State.Prefunded;
     uint public startTime;
@@ -89,7 +110,7 @@ contract Derivative {
         npv = initialNpv();
 
         // Address information
-        oracle = VoteCoinInterface(_oracleAddress);
+        oracle = VoteTokenInterface(_oracleAddress);
         counterpartyAddress = _counterpartyAddress;
         balances[ownerAddress] = 0;
         balances[counterpartyAddress] = 0;
@@ -125,8 +146,8 @@ contract Derivative {
         balances[msg.sender] += int256(msg.value);
 
         if (state == State.Prefunded) {
-            if (balances[ownerAddress] > requiredAccountBalanceOnRemargin(ownerAddress) &&
-                balances[counterpartyAddress] > requiredAccountBalanceOnRemargin(counterpartyAddress)) {
+            if (balances[ownerAddress] > _requiredAccountBalanceOnRemargin(ownerAddress) &&
+                balances[counterpartyAddress] > _requiredAccountBalanceOnRemargin(counterpartyAddress)) {
                 state = State.Live;
                 remargin();
             }
@@ -153,7 +174,7 @@ contract Derivative {
         // TODO: If the contract is expired, remargin to the NPV at expiry
         // rather than the current NPV.
         // Checks whether contract has ended
-        uint npvTime = oracle.getTime();
+        uint npvTime = oracle.mostRecentUnverifiedPublishingTime();
         if (npvTime > endTime) {
             npvTime = endTime;
             state = State.Expired;
@@ -257,8 +278,8 @@ contract Derivative {
         address notDefaulter;
         (inDefault, defaulter, notDefaulter) = whoDefaults();
         if (inDefault) {
-            state = State.defaulted;
-            endTime = oracle.getTime(); // Change end time to moment when default occurred
+            state = State.Defaulted;
+            endTime = oracle.mostRecentUnverifiedPublishingTime(); // Change end time to moment when default occurred
         }
 
         return true;
@@ -282,7 +303,7 @@ contract Derivative {
     }
 
     function _requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        int256 ownerDiff = getOwnerNpvDiff(computeNpv());
+        int256 ownerDiff = _getOwnerNpvDiff(computeNpv(now));
 
         if (party == ownerAddress) {
             balance = requiredMargin + ownerDiff;
@@ -300,9 +321,10 @@ contract Derivative {
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
 
-    function computeNpv() public view returns (int256 value) {
-        string memory p = oracle.ethUsd();
-        int256 price = int256(parseInt(p, 2));
+    function computeNpv(uint _time) public view returns (int256 price) {
+        bool success;
+        (success, price) = oracle.getUnverifiedPrice(_time);
+        require(success);
 
         return price;
     }
