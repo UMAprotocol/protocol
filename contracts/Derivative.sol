@@ -23,38 +23,35 @@ contract Derivative {
     using SafeMath for uint;
 
     enum State {
-        // Both parties have not yet provided the initial margin - they can
-        // freely deposit and withdraw, and no remargining happens.
+
+        // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
+        // remargining happens.
         // Possible state transitions: Live, Settled
         Prefunded,
 
-        // The contract is funded, the required margin has been provided by both
-        // parties, and remargining is happening on demand. Parties are only able
-        // to withdraw down to the required margin.
+        // The contract is funded, the required margin has been provided by both parties, and remargining is happening
+        // on demand. Parties are only able to withdraw down to the required margin.
         // Possible state transitions: Disputed, Expired, Defaulted.
         Live,
 
-        // One of the parties has disputed the price feed. The contract is
-        // frozen until the dispute is resolved.
+        // One of the parties has disputed the price feed. The contract is frozen until the dispute is resolved.
         // Possible state transitions: Defaulted, Settled.
         Disputed,
 
-        // The contract has passed its expiration and the final remargin has
-        // occurred. It is still possible to dispute the settlement price.
+        // The contract has passed its expiration and the final remargin has occurred. It is still possible to dispute
+        // the settlement price.
         // Possible state transitions: Disputed, Settled.
         Expired,
 
-        // One party failed to keep their margin above the required margin, so
-        // the contract has gone into default. If the price is undisputed then
-        // the defaulting party will be required to pay a default penalty, but,
-        // if disputed, contract becomes disputed and penalty will only be paid
-        // if verified price confirms default. If both parties agree the
-        // contract is in default then becomes settled
+        // One party failed to keep their margin above the required margin, so the contract has gone into default. If
+        // the price is undisputed then the defaulting party will be required to pay a default penalty, but, if
+        // disputed, contract becomes disputed and penalty will only be paid if verified price confirms default. If both
+        // parties agree the contract is in default then becomes settled
         // Possible state transitions: Disputed, Settled
         Defaulted,
 
-        // The final remargin has occured, and all parties have agreed on the
-        // settlement price. Account balances can be fully withdrawn.
+        // The final remargin has occured, and all parties have agreed on the settlement price. Account balances can be
+        // fully withdrawn.
         // Possible state transitions: None.
         Settled
     }
@@ -98,11 +95,26 @@ contract Derivative {
         balances[counterpartyAddress] = 0;
     }
 
-    // Concrete contracts should inherit from this contract and then should only
-    // need to implement a `computeNpv`/`initialNpv` function. This allows for
-    // generic choices of npv functions.
+    // Concrete contracts should inherit from this contract and then should only need to implement a
+    // `computeNpv`/`initialNpv` function. This allows for generic choices of npv functions.
     function computeNpv(uint _time) public view returns (int256 value);
     function initialNpv() public view returns (int256 value);
+
+    function confirmPrice() public {
+        // Figure out who is who
+        address confirmer = msg.sender;
+        address other = msg.sender == ownerAddress ? counterpartyAddress : ownerAddress;
+
+        // Confirmer confirmed...
+        confirmedPrice[confirmer] = true;
+
+        // If both have confirmed then advance state to settled
+        if (confirmedPrice[other]) {
+            state = State.Settled;
+            // Remargin on agreed upon price
+            remargin();
+        }
+    }
 
     function deposit() public payable returns (bool success) {
         // Make sure that one of participants is sending the deposit and that
@@ -120,6 +132,45 @@ contract Derivative {
             }
         }
         return true;
+    }
+
+    function dispute() public {
+        require(
+            state == State.Live ||
+            state == State.Expired ||
+            state == State.Defaulted,
+            "Contract must be Live/Expired/Defaulted to dispute"
+        );
+        state = State.Disputed;
+    }
+
+    function remargin() public returns (bool success) {
+        // If the state is not live, remargining does not make sense.
+        if (state != State.Live) {
+            return false;
+        }
+
+        // TODO: If the contract is expired, remargin to the NPV at expiry
+        // rather than the current NPV.
+        // Checks whether contract has ended
+        uint npvTime = oracle.getTime();
+        if (npvTime > endTime) {
+            npvTime = endTime;
+            state = State.Expired;
+        }
+
+        // Update npv of contract
+        // Need to give normalized time
+        int256 npvNew = computeNpv(npvTime);
+        success = _remargin(npvNew);
+
+        return success;
+    }
+
+    function settleAgreedPrice() public {
+    }
+
+    function settleVerifiedPrice() public {
     }
 
     function withdraw(uint256 amount) public payable returns (bool success) {
@@ -152,86 +203,15 @@ contract Derivative {
         return true;
     }
 
-    function dispute() public {
-        require(
-            state == State.Live ||
-            state == State.Expired ||
-            state == State.Defaulted,
-            "Contract must be Live/Expired/Defaulted to dispute"
-        );
-        state = State.Disputed;
-    }
-
-    // Remargins the account based on a provided NPV value.
-    // The internal remargin method allows certain calls into the contract to
-    // automatically remargin to non-current NPV values (time of expiry, last
-    // agreed upon price, etc).
-    function _remargin(int256 npvNew) internal returns (bool success) {
-        // If the state is not live, remargining does not make sense.
-        if (state != State.Live) {
-            return false;
-        }
-
-        // Update the balances of contract
-        updateBalances(npvNew);
-
-        // Make sure contract has not moved into default
-        bool inDefault;
-        address defaulter;
-        address notDefaulter;
-        (inDefault, defaulter, notDefaulter) = whoDefaults();
-        if inDefault {
-            state = State.defaulted;
-            endTime = oracle.getTime(); // Change end time to moment when default occurred
-        }
-
-        return true;
-    }
-
-    function remargin() public returns (bool success) {
-        // TODO: If the contract is expired, remargin to the NPV at expiry
-        // rather than the current NPV.
-        // Checks whether contract has ended
-        uint npvTime = oracle.getTime();
-        if (npvTime > endTime) {
-            npvTime = endTime;
-            state = State.Expired;
-        }
-
-        // Update npv of contract
-        int256 npvNew = computeNpv(npvTime);
-        success = _remargin(npvNew);
-
-        return success;
-    }
-
-    function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
-        return requiredAccountBalanceOnRemargin(msg.sender);
-    }
-
-    function requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        int256 ownerDiff = getOwnerNpvDiff(computeNpv());
-
-        if (party == ownerAddress) {
-            balance = requiredMargin + ownerDiff;
-        }
-
-        if (party == counterpartyAddress) {
-            balance = requiredMargin - ownerDiff;
-        }
-
-        balance = balance > 0 ? balance : 0;
-    }
-
     function isDefault(address party) public view returns (bool) {
         return balances[party] < requiredMargin;
     }
 
-    function whoDefaults()
-        public
-        view
-        returns (bool inDefault, address defaulter, address notDefaulter)
-    {
+    function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
+        return _requiredAccountBalanceOnRemargin(msg.sender);
+    }
+
+    function whoDefaults() public view returns (bool inDefault, address defaulter, address notDefaulter) {
         inDefault = false;
 
         if (isDefault(ownerAddress)) {
@@ -245,41 +225,6 @@ contract Derivative {
         }
 
         return (inDefault, defaulter, notDefaulter);
-    }
-
-    // Gets the change in balance for the owners account when the most recent
-    // NPV is applied. Note: there's a function for this because signage is
-    // tricky here, and it must be done the same everywhere.
-    function getOwnerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
-        return npv - npvNew;
-    }
-
-    function updateBalances(int256 npvNew) internal {
-        // Compute difference -- Add the difference to owner and subtract
-        // from counterparty. Then update npv state variable.
-        int256 ownerDiff = getOwnerNpvDiff(npvNew);
-        npv = npvNew;
-
-        balances[ownerAddress] += ownerDiff;
-        balances[counterpartyAddress] -= ownerDiff;
-    }
-
-    function confirmPrice() public {
-        // Figure out who is who
-        address confirmer = msg.sender;
-        address other = msg.sender == ownerAddress ? counterpartyAddress : ownerAddress;
-
-        // Confirmer confirmed...
-        confirmedPrice[confirmer] = true;
-
-        // If both have confirmed then advance state to settled
-        if (confirmedPrice[other]) {
-            state = State.Settled;
-            // Remargin on agreed upon price
-            remargin();
-        } else {
-            // Start 24 h timer for other person to confirm or dispute
-        }
     }
 
     function _settle(int256 price) internal returns (bool success) {
@@ -298,10 +243,56 @@ contract Derivative {
         return true;
     }
 
-    function settleWithAgreedPrice() public {
+    // Remargins the account based on a provided NPV value.
+    // The internal remargin method allows certain calls into the contract to
+    // automatically remargin to non-current NPV values (time of expiry, last
+    // agreed upon price, etc).
+    function _remargin(int256 npvNew) internal returns (bool success) {
+        // Update the balances of contract
+        _updateBalances(npvNew);
+
+        // Make sure contract has not moved into default
+        bool inDefault;
+        address defaulter;
+        address notDefaulter;
+        (inDefault, defaulter, notDefaulter) = whoDefaults();
+        if (inDefault) {
+            state = State.defaulted;
+            endTime = oracle.getTime(); // Change end time to moment when default occurred
+        }
+
+        return true;
     }
 
-    function settleWithVerifiedPrice() public {
+    function _updateBalances(int256 npvNew) internal {
+        // Compute difference -- Add the difference to owner and subtract
+        // from counterparty. Then update npv state variable.
+        int256 ownerDiff = _getOwnerNpvDiff(npvNew);
+        npv = npvNew;
+
+        balances[ownerAddress] += ownerDiff;
+        balances[counterpartyAddress] -= ownerDiff;
+    }
+
+    // Gets the change in balance for the owners account when the most recent
+    // NPV is applied. Note: there's a function for this because signage is
+    // tricky here, and it must be done the same everywhere.
+    function _getOwnerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
+        return npv - npvNew;
+    }
+
+    function _requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
+        int256 ownerDiff = getOwnerNpvDiff(computeNpv());
+
+        if (party == ownerAddress) {
+            balance = requiredMargin + ownerDiff;
+        }
+
+        if (party == counterpartyAddress) {
+            balance = requiredMargin - ownerDiff;
+        }
+
+        balance = balance > 0 ? balance : 0;
     }
 
 }

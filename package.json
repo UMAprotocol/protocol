@@ -39,5 +39,8 @@
     "webpack-dev-server": "^3.1.4",
     "ethereum-bridge": "^0.6.1",
     "openzeppelin-solidity": "^2.0.0-rc.1"
+  },
+  "dependencies": {
+    "solhint": "^1.2.1"
   }
 }
