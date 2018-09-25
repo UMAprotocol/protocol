@@ -2,7 +2,7 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:10.10.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - checkout
@@ -24,7 +24,7 @@ jobs:
             - ~/protocol
   build:
     docker:
-      - image: circleci/node:10.10.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -38,7 +38,7 @@ jobs:
             - ~/protocol
   lint:
     docker:
-      - image: circleci/node:10.10.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - restore_cache:
