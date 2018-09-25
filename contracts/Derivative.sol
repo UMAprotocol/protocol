@@ -22,7 +22,7 @@ contract Derivative {
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
 
-    enum State {
+    enum Stat {
         // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
         // remargining happens. Allowed state transitions: Live, Expired.
         Prefunded,
