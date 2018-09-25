@@ -92,36 +92,28 @@ contract Derivative {
         }
 
         // Check if time is over...
-        // TODO: If the contract is expired, remargin to the NPV at expiry rather than the current NPV.
-        uint currentTime = oracle.mostRecentUnverifiedPublishingTime();
+        (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
+        require(currentTime != 0);
         if (currentTime >= endTime) {
             state = State.Expired;
-            currentTime = oracle.mostRecentUnverifiedPublishingTime(endTime);
+            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
         }
 
         // Update npv of contract
-        // Note: solhint doesn't currently handle the new multiple declaration + assignment feature in solidity.
-        // solhint-disable-next-line indent
-        (bool success, int256 npvNew) = computeUnverifiedNpv(currentTime);
-        assert(success);
-        remargin(npvNew);
+        remargin(computeNpv(oraclePrice));
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
     // `computeUnverifiedNpv`, `computeVerifiedNpv`, and `initialNpv` function. This allows for generic choices of NPV
     // functions.
-    // Compute NPV for a particular timestamp. If the NPV for this time is not available, `success` will be false, and
-    // `value` should be ignored.
-    function computeUnverifiedNpv(uint timestamp) public view returns (bool success, int256 value);
-
-    // Same as the above, but for the verified price feed.
-    function computeVerifiedNpv(uint timestamp) public view returns (bool success, int256 value);
+    // Compute NPV for a particular price value provided by the oracle.
+    function computeNpv(int256 oraclePrice) public view returns (int256 npvNew);
 
     // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
     // contract, the contract will only move money when the computed NPV differs from this value. For example, if
     // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
     // `computeUnverifiedNpv` returned 51.
-    function initialNpv() public view returns (int256 value);
+    function initialNpv() public view returns (int256 npvNew);
 
     function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
         return requiredAccountBalanceOnRemargin(msg.sender);
@@ -242,9 +234,9 @@ contract Derivative {
     function requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
         // Note: solhint doesn't currently handle the new multiple declaration + assignment feature in solidity.
         // solhint-disable-next-line indent
-        (bool success, int256 npvNew) = computeUnverifiedNpv(oracle.mostRecentUnverifiedPublishingTime());
-        require(success);
-        int256 ownerDiff = getOwnerNpvDiff(npvNew);
+        (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
+        require(currentTime != 0);
+        int256 ownerDiff = getOwnerNpvDiff(computeNpv(oraclePrice));
 
         if (party == ownerAddress) {
             balance = requiredMargin + ownerDiff;
@@ -260,17 +252,12 @@ contract Derivative {
 
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
-    function initialNpv() public view returns (int256 value) {
+    function initialNpv() public view returns (int256 npvNew) {
         return 0;
     }
 
-    function computeUnverifiedNpv(uint timestamp) public view returns (bool success, int256 value) {
+    function computeNpv(int256 oraclePrice) public view returns (int256 npvNew) {
         // This could be more complex, but in our case, just return the oracle value.
-        return oracle.unverifiedPrice(timestamp);
-    }
-
-    function computeVerifiedNpv(uint timestamp) public view returns (bool success, int256 value) {
-        // This could be more complex, but in our case, just return the oracle value.
-        return oracle.verifiedPrice(timestamp);
+        return oraclePrice;
     }
 }

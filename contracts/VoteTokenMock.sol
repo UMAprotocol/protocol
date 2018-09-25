@@ -50,28 +50,27 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
         _addNextPriceToFeed(newPrice, _verifiedFeed);
     }
 
-    function mostRecentUnverifiedPublishingTime() public view returns (uint publishTime) {
-        return _unverifiedFeed.latestPublishTime;
+    function unverifiedPrice() public view returns (uint publishTime, int256 price) {
+        return _mostRecentPriceTime(_verifiedFeed);
     }
 
-    function mostRecentUnverifiedPublishingTime(uint time) public view returns (uint publishTime) {
-        return _intervalTime(time, _unverifiedFeed.latestPublishTime);
+    function unverifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
+        return _getPrice(time, _unverifiedFeed);
     }
 
-    function mostRecentVerifiedPublishingTime() public view returns (uint publishTime) {
-        return _verifiedFeed.latestPublishTime;
+    function verifiedPrice() public view returns (uint publishTime, int256 price) {
+        return _mostRecentPriceTime(_verifiedFeed);
     }
 
-    function mostRecentVerifiedPublishingTime(uint time) public view returns (uint publishedTime) {
-        return _intervalTime(time, _verifiedFeed.latestPublishTime);
+    function verifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
+        return _getPrice(time, _verifiedFeed);
     }
 
-    function unverifiedPrice(uint publishTime) public view returns (bool success, int256 price) {
-        return _getPrice(publishTime, _unverifiedFeed);
-    }
-
-    function verifiedPrice(uint publishTime) public view returns (bool success, int256 price) {
-        return _getPrice(publishTime, _verifiedFeed);
+    // Returns the most recent price-time pair for a particular feed.
+    function _mostRecentPriceTime(FeedInfo storage feedInfo) private view returns (uint publishTime, int256 price) {
+        // Note: if `latestPublushTime` is still 0 (no prices have been written to this feed), then `price` will be 0
+        // (the default value for mapped values).
+        return (feedInfo.latestPublishTime, feedInfo.prices[feedInfo.latestPublishTime]);
     }
 
     // Adds a new price to the mocked out feed. If this were meant for production, we would want to provide the time
@@ -83,16 +82,15 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
         feedInfo.latestPublishTime = newTime;
     }
 
-    // Gets the price given a desired time and feed. If the time is not a valid, published time for that feed,
-    // `success` will be false and `price` should be ignored. 
-    function _getPrice(uint publishTime, FeedInfo storage feedInfo) private view returns (bool success, int256 price) {
-        uint convertedTime = _intervalTime(publishTime, feedInfo.latestPublishTime);
-        if (convertedTime == publishTime && convertedTime != 0) {
-            success = true;
-            price = feedInfo.prices[convertedTime];
-        } else {
-            success = false;
-        }
+    // Gets the price given a desired time and feed. If there is no price before `time`, `publishTime` will be 0 and
+    // `price` should be ignored.
+    function _getPrice(uint time, FeedInfo storage feedInfo)
+        private
+        view
+        returns (uint publishTime, int256 price)
+    {
+        uint convertedTime = _intervalTime(time, feedInfo.latestPublishTime);
+        return (convertedTime, feedInfo.prices[convertedTime]);
     }
 
     // Gets the closest earlier time to `time` for a particular feed. Effectively floors `time` to the nearest multiple
