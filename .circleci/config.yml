@@ -31,7 +31,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Compile contracts
-          command: `npm bin`/truffle compile
+          command: $(npm bin)/truffle compile
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -45,7 +45,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Lint
-          command: `npm bin`/solhint contracts/**/*.sol
+          command: $(npm bin)/solhint contracts/**/*.sol
 
 workflows:
   version: 2
