@@ -88,7 +88,7 @@ contract Derivative {
         balances[counterpartyAddress] = 0;
     }
 
-    function remargin() public {
+    function remargin() {
         // TODO(mrice32): remargin might make sense for Disputeed and Expired, but the exact flow for those states
         // still needs to be decided.
         // If the state is not live, remargining does not make sense.

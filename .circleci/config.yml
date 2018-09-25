@@ -45,7 +45,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Lint
-          command: $(npm bin)/solhint contracts/**/*.sol
+          command: $(npm bin)/solhint --max-warnings=0 contracts/**/*.sol
 
 workflows:
   version: 2
