@@ -9,28 +9,7 @@ pragma solidity ^0.4.24;
 
 import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-
-
-// This interface allows us to get the Ethereum-USD exchange rate
-interface VoteTokenInterface {
-    // Gets the latest price-time pair at which an unverified price was published. `publishTime` will be 0 and `price`
-    // should be ignored if no unverified prices have been published.
-    function unverifiedPrice() external view returns (uint publishTime, int256 price);
-
-    // Gets the price-time pair that an unverified price was published that is nearest to `time` without being greater
-    // than `time`. `publishTime` will be 0 and `price` should be ignored if no unverified prices had been published
-    // before `publishTime`.
-    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price);
-
-    // Gets the latest price-time pair at which a verified price was published. `publishTime` will be 0 and `price`
-    // should be ignored if no verified prices have been published.
-    function verifiedPrice() external view returns (uint publishTime, int256 price);
-
-    // Gets the price-time pair that a verified price was published that is nearest to `time` without being greater
-    // than `time`. `publishTime` will be 0 and `price` should be ignored if no verified prices had been published
-    // before `publishTime`.
-    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price);
-}
+import "./VoteTokenInterface.sol";
 
 
 contract Derivative {
@@ -111,8 +90,13 @@ contract Derivative {
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
-    // `computeNpv`/`initialNpv` function. This allows for generic choices of npv functions.
-    function computeNpv(uint _time) public view returns (int256 value);
+    // `computeNpv` and `initialNpv` function. This allows for generic choices of NPV
+    // functions.
+    function computeNpv(int256 oraclePrice) public view returns (int256 value);
+    // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
+    // contract, the contract will only move money when the computed NPV differs from this value. For example, if
+    // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
+    // `computeUnverifiedNpv` returned 51.
     function initialNpv() public view returns (int256 value);
 
     function confirmPrice() public {
@@ -170,16 +154,16 @@ contract Derivative {
         // TODO: If the contract is expired, remargin to the NPV at expiry
         // rather than the current NPV.
         // Checks whether contract has ended
-        (uint npvTime, int256 _) = oracle.unverifiedPrice(); // Double check this
-        if (npvTime > endTime) {
-            npvTime = endTime;
+
+        (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
+        require(currentTime != 0);
+        if (currentTime >= endTime) {
+            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
             state = State.Expired;
         }
 
         // Update npv of contract
-        // Need to give normalized time
-        int256 npvNew = computeNpv(npvTime);
-        success = _remargin(npvNew);
+        success = _remargin(computeNpv(oraclePrice));
 
         return success;
     }
@@ -330,13 +314,13 @@ contract Derivative {
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
 
-    function computeNpv(uint _time) public view returns (int256 price) {
-        (_time, price) = oracle.unverifiedPrice(_time);
-
-        return price;
+    function computeNpv(int256 oraclePrice) public view returns (int256 npvNew) {
+        // This could be more complex, but in our case, just return the oracle value.
+        return oraclePrice;
     }
 
-    function initialNpv() public view returns (int256 value) {
+    function initialNpv() public view returns (int256 npvNew) {
         return 0;
     }
+
 }

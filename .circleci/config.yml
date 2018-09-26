@@ -1,0 +1,60 @@
+version: 2
+jobs:
+  checkout_and_install:
+    docker:
+      - image: circleci/node:latest
+    working_directory: ~/protocol
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dep-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
+            - v1-dep-cache-{{ .Branch }}-
+            - v1-dep-cache-
+      - run:
+          name: Install Dependencies
+          command: npm install --quiet
+      - save_cache:
+          key: v1-dependency-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - save_cache:
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/protocol
+  build:
+    docker:
+      - image: circleci/node:latest
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Compile contracts
+          command: npx truffle compile
+      - save_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/protocol
+  lint:
+    docker:
+      - image: circleci/node:latest
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Lint
+          command: npx solhint --max-warnings=1 contracts/**/*.sol
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - checkout_and_install
+      - build:
+          requires:
+            - checkout_and_install
+      - lint:
+          requires:
+            - checkout_and_install

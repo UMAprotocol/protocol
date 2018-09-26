@@ -41,6 +41,6 @@
     "openzeppelin-solidity": "^2.0.0-rc.1"
   },
   "dependencies": {
-    "solhint": "^1.2.1"
+    "solhint": "^1.3.0"
   }
 }
