@@ -34,35 +34,33 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     // The publishing interval for this price feed. All publish times are just multiples of this interval starting at 0.
     uint constant private PRICE_PUBLISH_INTERVAL = 60;
 
-    constructor(
-        uint startTime
-    ) public {
+    constructor(uint startTime) public {
         _startTime = _intervalTime(startTime, startTime);
     }
 
     // These functions are only here for the purpose of mocking a real feed. If this were meant for production, we
     // would want to provide the time and check that the time lines up with the expected next time on the feed.
-    function addUnverifiedPrice(int256 newPrice) public onlyOwner {
+    function addUnverifiedPrice(int256 newPrice) external onlyOwner {
         _addNextPriceToFeed(newPrice, _unverifiedFeed);
     }
 
-    function addVerifiedPrice(int256 newPrice) public onlyOwner {
+    function addVerifiedPrice(int256 newPrice) external onlyOwner {
         _addNextPriceToFeed(newPrice, _verifiedFeed);
     }
 
-    function unverifiedPrice() public view returns (uint publishTime, int256 price) {
+    function unverifiedPrice() external view returns (uint publishTime, int256 price) {
         return _mostRecentPriceTime(_verifiedFeed);
     }
 
-    function unverifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
+    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
         return _getPrice(time, _unverifiedFeed);
     }
 
-    function verifiedPrice() public view returns (uint publishTime, int256 price) {
+    function verifiedPrice() external view returns (uint publishTime, int256 price) {
         return _mostRecentPriceTime(_verifiedFeed);
     }
 
-    function verifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
+    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
         return _getPrice(time, _verifiedFeed);
     }
 
