@@ -15,11 +15,19 @@ example, Solhint doesn't care about exactly how hanging indents are done. The so
 should all have one more indent than the first line. We follow the solidity style guide and use a single hanging
 indent.
 
-### Ordering Stuff
+### Ordering
+
+#### Enums/Structs
+
+Enums/Structs that will be used within the contract should be declared prior to everything.
+
+#### Variables
+
+All variables should be declared immediately following the enums/structs. Variables should be sorted by visibility like functions (see the `Functions` section for details). Instead of sorting alphabetically within visibility groups, however, related variables should be grouped together.
 
 #### Functions
 
-Solhint enforces that functions are ordered by:
+Functions should follow variable declarations. Solhint enforces that functions are ordered by:
 
 1. Constructor
 2. External
@@ -30,20 +38,11 @@ Solhint enforces that functions are ordered by:
 In addition to this ordering by function privacy, within each of these 5 groups there are additional
 rules:
 
-1. All abstract functions should precede all concrete functions
-2. Within the abstract/concrete groups, view/pure functions should come after other functions (in that order)
-3. Finally, sort each group of functions (e.g. external abstract, external abstract view...) alphabetically.
-4. If two functions share a name, alphabetically order by the type of the arguments
+1. All abstract functions should precede all concrete functions.
+2. Within the abstract/concrete groups, view/pure functions should come after other functions (in that order).
+3. Sort each group of functions (e.g. external abstract, external abstract view...) alphabetically.
+4. If two functions share a name, alphabetically order by the arguments (both type and name).
 
-#### Enums/Structs
-
-Enums/Structs that will be used within the contract should be declared prior to everything
-
-#### Variables
-
-All variables should be declared immediately following the enums/structs. These should also be
-grouped by their privacy level. Public variables first then private. Order in a sensible way, but
-that might not be alphabetically.
 
 ## Javascript
 
