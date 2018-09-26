@@ -45,6 +45,17 @@ solhint contracts/**/*.sol
 
 See [STYLE.md](STYLE.md).
 
+## Release Process
+
+TODO(mrice32): add to this as new release needs come up.
+
+1. Create a new branch for the release.
+1. Remove `package-lock.json` from `.gitignore`.
+1. Run `rm -rf node_modules && npm install`.
+1. Run `git add package-lock.json`.
+1. Commit and push this branch.
+1. Open a PR to merge this release branch into master.
+
 ## Links
 
 https://medium.com/@olxc/ethereum-and-smart-contracts-basics-e5c84838b19
