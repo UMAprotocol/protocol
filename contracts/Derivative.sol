@@ -13,28 +13,23 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 // This interface allows us to get the Ethereum-USD exchange rate
 interface VoteTokenInterface {
-    // Gets the latest time that an unverified price was published. Returns 0 if no unverified prices have been
-    // published.
-    function mostRecentUnverifiedPublishingTime() external view returns (uint publishTime);
+    // Gets the latest price-time pair at which an unverified price was published. `publishTime` will be 0 and `price`
+    // should be ignored if no unverified prices have been published.
+    function unverifiedPrice() external view returns (uint publishTime, int256 price);
 
-    // Gets the time that an unverified price was publushed that is nearest to `time` without being greater than
-    // `time`. Returns 0 if no verified prices had been published before `time`.
-    function mostRecentUnverifiedPublishingTime(uint time) external view returns (uint publishTime);
+    // Gets the price-time pair that an unverified price was published that is nearest to `time` without being greater
+    // than `time`. `publishTime` will be 0 and `price` should be ignored if no unverified prices had been published
+    // before `publishTime`.
+    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price);
 
-    // Gets the unverified price at `publishTime`. If no price was recorded for `publishTime`, then `success` will be
-    // false and the value of `price` should be ignored.
-    function getUnverifiedPrice(uint publishTime) external view returns (bool success, int256 price);
+    // Gets the latest price-time pair at which a verified price was published. `publishTime` will be 0 and `price`
+    // should be ignored if no verified prices have been published.
+    function verifiedPrice() external view returns (uint publishTime, int256 price);
 
-    // Gets the latest time that a verified price was published. Returns 0 if no verified prices have been published.
-    function mostRecentVerifiedPublishingTime() external view returns (uint publishTime);
-
-    // Gets the time that a verified price was publushed that is nearest to `time` without being greater than
-    // `time`. Returns 0 if no verified prices had been published before `time`.
-    function mostRecentVerifiedPublishingTime(uint time) external view returns (uint publishTime);
-
-    // Gets the verified price at `publishTime`. If no price was recorded for `publishTime`, then `success` will be
-    // false and the value of `price` should be ignored.
-    function getVerifiedPrice(uint publishTime) external view returns (bool success, int256 price);
+    // Gets the price-time pair that a verified price was published that is nearest to `time` without being greater
+    // than `time`. `publishTime` will be 0 and `price` should be ignored if no verified prices had been published
+    // before `publishTime`.
+    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price);
 }
 
 
@@ -44,7 +39,6 @@ contract Derivative {
     using SafeMath for uint;
 
     enum State {
-
         // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
         // remargining happens.
         // Possible state transitions: Live, Settled
@@ -130,6 +124,8 @@ contract Derivative {
         confirmedPrice[confirmer] = true;
 
         // If both have confirmed then advance state to settled
+        // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
+        // passes then we want to settle and remargin
         if (confirmedPrice[other]) {
             state = State.Settled;
             // Remargin on agreed upon price
@@ -174,7 +170,7 @@ contract Derivative {
         // TODO: If the contract is expired, remargin to the NPV at expiry
         // rather than the current NPV.
         // Checks whether contract has ended
-        uint npvTime = oracle.mostRecentUnverifiedPublishingTime();
+        (uint npvTime, int256 _) = oracle.unverifiedPrice(); // Double check this
         if (npvTime > endTime) {
             npvTime = endTime;
             state = State.Expired;
@@ -189,9 +185,16 @@ contract Derivative {
     }
 
     function settleAgreedPrice() public {
+        remargin();
+        _settle();
+        state = State.Settled;
     }
 
     function settleVerifiedPrice() public {
+        int256 npvNew = computeNpv(endTime);
+        bool success = _remargin(npvNew);
+        _settle();
+        state = State.Settled;
     }
 
     function withdraw(uint256 amount) public payable returns (bool success) {
@@ -248,10 +251,14 @@ contract Derivative {
         return (inDefault, defaulter, notDefaulter);
     }
 
-    function _settle(int256 price) internal returns (bool success) {
+    function _settle() internal returns (bool success) {
 
         // Check whether goes into default
-        /* if (inDefault) {
+        bool inDefault;
+        address defaulter;
+        address notDefaulter;
+        (inDefault, defaulter, notDefaulter) = whoDefaults();
+        if (state == State.Defaulted) {
             int256 penalty;
             penalty = (balances[defaulter] < defaultPenalty) ?
                 balances[defaulter] :
@@ -260,7 +267,8 @@ contract Derivative {
             balances[defaulter] -= penalty;
             balances[notDefaulter] += penalty;
             state = State.Defaulted;
-        } */
+        }
+
         return true;
     }
 
@@ -279,7 +287,8 @@ contract Derivative {
         (inDefault, defaulter, notDefaulter) = whoDefaults();
         if (inDefault) {
             state = State.Defaulted;
-            endTime = oracle.mostRecentUnverifiedPublishingTime(); // Change end time to moment when default occurred
+            int256 price;
+            (endTime, price) = oracle.unverifiedPrice(); // Change end time to moment when default occurred
         }
 
         return true;
@@ -322,9 +331,7 @@ contract Derivative {
 contract DerivativeZeroNPV is Derivative, usingOraclize {
 
     function computeNpv(uint _time) public view returns (int256 price) {
-        bool success;
-        (success, price) = oracle.getUnverifiedPrice(_time);
-        require(success);
+        (_time, price) = oracle.unverifiedPrice(_time);
 
         return price;
     }
