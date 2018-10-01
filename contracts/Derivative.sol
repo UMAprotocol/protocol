@@ -298,7 +298,7 @@ contract Derivative {
     }
 
     function _requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
+        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
         int256 ownerDiff = _getOwnerNpvDiff(computeNpv(oraclePrice));
 
         if (party == ownerAddress) {
