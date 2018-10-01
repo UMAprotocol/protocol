@@ -97,7 +97,7 @@ contract Derivative {
     // contract, the contract will only move money when the computed NPV differs from this value. For example, if
     // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
     // `computeUnverifiedNpv` returned 51.
-    function initialNpv() public view returns (int256 value);
+    function initialNpv() public view returns (int256 npvNew);
 
     function confirmPrice() public {
         // Figure out who is who
@@ -165,14 +165,14 @@ contract Derivative {
     }
 
     function settleAgreedPrice() public {
-        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime)
+        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
         require(unverifiedTime == endTime);
 
         _settle(oraclePrice);
     }
 
     function settleVerifiedPrice() public {
-        (uint verifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime)
+        (uint verifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
         require(verifiedTime == endTime);
 
         _settle(oraclePrice);
@@ -232,12 +232,12 @@ contract Derivative {
         return (inDefault, defaulter, notDefaulter);
     }
 
-    // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. It handles all
-    // of the settlement logic including assessing penalties and then moves the state to `Settled`.
-    function _settle(uint price) internal returns (bool success) {
+    // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. This function handles all of
+    // the settlement logic including assessing penalties and then moves the state to `Settled`.
+    function _settle(int256 price) internal returns (bool success) {
 
         // Remargin at whatever price we're using (verified or unverified)
-        bool success = _remargin(computeNpv(price));
+        success = _remargin(computeNpv(price));
         require(success == true);
 
         // Check whether goes into default
@@ -274,8 +274,7 @@ contract Derivative {
         (inDefault, defaulter, notDefaulter) = whoDefaults();
         if (inDefault) {
             state = State.Defaulted;
-            int256 price;
-            (endTime, price) = oracle.unverifiedPrice(); // Change end time to moment when default occurred
+            (endTime,) = oracle.unverifiedPrice(); // Change end time to moment when default occurred
         }
 
         return true;
@@ -299,7 +298,7 @@ contract Derivative {
     }
 
     function _requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime)
+        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
         int256 ownerDiff = _getOwnerNpvDiff(computeNpv(oraclePrice));
 
         if (party == ownerAddress) {
@@ -312,7 +311,6 @@ contract Derivative {
 
         balance = balance > 0 ? balance : 0;
     }
-
 }
 
 
