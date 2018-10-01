@@ -165,15 +165,19 @@ contract Derivative {
     }
 
     function settleAgreedPrice() public {
+        // TODO: Currently no enforcement mechanism to check whether people have agreed upon the current unverified
+        //       price. This needs to be addressed.
+        (uint currentTime,) = oracle.unverifiedPrice();
         (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
-        require(unverifiedTime == endTime);
+        require(currentTime >= endTime);
 
         _settle(oraclePrice);
     }
 
     function settleVerifiedPrice() public {
+        (uint currentTime,) = oracle.verifiedPrice();
         (uint verifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
-        require(verifiedTime == endTime);
+        require(currentTime >= endTime);
 
         _settle(oraclePrice);
     }
@@ -298,7 +302,7 @@ contract Derivative {
     }
 
     function _requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
+        (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
         int256 ownerDiff = _getOwnerNpvDiff(computeNpv(oraclePrice));
 
         if (party == ownerAddress) {
