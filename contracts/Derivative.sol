@@ -65,7 +65,7 @@ contract Derivative {
     uint public endTime;
 
     int256 public npv;  // Net present value is measured in Wei
-    mapping(address => bool) public confirmedPrice;
+    mapping(address => bool) public hasConfirmedPrice;
 
     constructor(
         address _counterpartyAddress,
@@ -92,7 +92,7 @@ contract Derivative {
     // Concrete contracts should inherit from this contract and then should only need to implement a
     // `computeNpv` and `initialNpv` function. This allows for generic choices of NPV
     // functions.
-    function computeNpv(int256 oraclePrice) public view returns (int256 value);
+    function computeNpv(int256 oraclePrice) public view returns (int256 npvNew);
     // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
     // contract, the contract will only move money when the computed NPV differs from this value. For example, if
     // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
@@ -101,16 +101,17 @@ contract Derivative {
 
     function confirmPrice() public {
         // Figure out who is who
+        require(msg.sender == ownerAddress || msg.sender == counterpartyAddress);
         address confirmer = msg.sender;
         address other = msg.sender == ownerAddress ? counterpartyAddress : ownerAddress;
 
         // Confirmer confirmed...
-        confirmedPrice[confirmer] = true;
+        hasConfirmedPrice[confirmer] = true;
 
         // If both have confirmed then advance state to settled
         // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
         // passes then we want to settle and remargin
-        if (confirmedPrice[other]) {
+        if (hasConfirmedPrice[other]) {
             state = State.Settled;
             // Remargin on agreed upon price
             remargin();
@@ -151,10 +152,7 @@ contract Derivative {
             return false;
         }
 
-        // TODO: If the contract is expired, remargin to the NPV at expiry
-        // rather than the current NPV.
         // Checks whether contract has ended
-
         (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
         require(currentTime != 0);
         if (currentTime >= endTime) {
@@ -163,22 +161,21 @@ contract Derivative {
         }
 
         // Update npv of contract
-        success = _remargin(computeNpv(oraclePrice));
-
-        return success;
+        return  _remargin(computeNpv(oraclePrice));
     }
 
     function settleAgreedPrice() public {
-        remargin();
-        _settle();
-        state = State.Settled;
+        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime)
+        require(unverifiedTime == endTime);
+
+        _settle(oraclePrice);
     }
 
     function settleVerifiedPrice() public {
-        int256 npvNew = computeNpv(endTime);
-        bool success = _remargin(npvNew);
-        _settle();
-        state = State.Settled;
+        (uint verifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime)
+        require(verifiedTime == endTime);
+
+        _settle(oraclePrice);
     }
 
     function withdraw(uint256 amount) public payable returns (bool success) {
@@ -235,14 +232,20 @@ contract Derivative {
         return (inDefault, defaulter, notDefaulter);
     }
 
-    function _settle() internal returns (bool success) {
+    // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. It handles all
+    // of the settlement logic including assessing penalties and then moves the state to `Settled`.
+    function _settle(uint price) internal returns (bool success) {
+
+        // Remargin at whatever price we're using (verified or unverified)
+        bool success = _remargin(computeNpv(price));
+        require(success == true);
 
         // Check whether goes into default
         bool inDefault;
         address defaulter;
         address notDefaulter;
         (inDefault, defaulter, notDefaulter) = whoDefaults();
-        if (state == State.Defaulted) {
+        if (inDefault) {
             int256 penalty;
             penalty = (balances[defaulter] < defaultPenalty) ?
                 balances[defaulter] :
@@ -250,10 +253,10 @@ contract Derivative {
 
             balances[defaulter] -= penalty;
             balances[notDefaulter] += penalty;
-            state = State.Defaulted;
         }
+        state = State.Settled;
 
-        return true;
+        return success;
     }
 
     // Remargins the account based on a provided NPV value.
@@ -296,7 +299,8 @@ contract Derivative {
     }
 
     function _requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
-        int256 ownerDiff = _getOwnerNpvDiff(computeNpv(now));
+        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime)
+        int256 ownerDiff = _getOwnerNpvDiff(computeNpv(oraclePrice));
 
         if (party == ownerAddress) {
             balance = requiredMargin + ownerDiff;
