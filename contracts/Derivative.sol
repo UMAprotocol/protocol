@@ -54,6 +54,8 @@ contract Derivative {
     mapping(address => int256) public balances; // Stored in Wei
     int256 public defaultPenalty;  //
     int256 public requiredMargin;  //
+    string public _product;
+    uint public _size;
 
     // Other addresses/contracts
     address public ownerAddress;          // should this be public?
@@ -63,21 +65,26 @@ contract Derivative {
     State public state = State.Prefunded;
     uint public startTime;
     uint public endTime;
+    uint public lastRemarginTime;
 
     int256 public npv;  // Net present value is measured in Wei
     mapping(address => bool) public hasConfirmedPrice;
 
     constructor(
+        address _ownerAddress,
         address _counterpartyAddress,
         address _oracleAddress,
-        uint _duration,
         int256 _defaultPenalty,
-        int256 _requiredMargin
-    ) public {
+        int256 _requiredMargin,
+        uint expiry,
+        string product,
+        uint size
+    ) public payable {
+        ownerAddress = _ownerAddress;
 
         // Contract states
-        startTime = now; // solhint-disable-line not-rely-on-time
-        endTime = startTime.add(_duration);
+        endTime = expiry;
+        lastRemarginTime = now;
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
         npv = initialNpv();
@@ -85,8 +92,10 @@ contract Derivative {
         // Address information
         oracle = VoteTokenInterface(_oracleAddress);
         counterpartyAddress = _counterpartyAddress;
-        balances[ownerAddress] = 0;
+        balances[ownerAddress] = int256(msg.value);
         balances[counterpartyAddress] = 0;
+        _product = product;
+        _size = size;
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
@@ -160,6 +169,8 @@ contract Derivative {
             state = State.Expired;
         }
 
+        lastRemarginTime = currentTime;
+
         // Update npv of contract
         return  _remargin(computeNpv(oraclePrice));
     }
@@ -218,6 +229,18 @@ contract Derivative {
 
     function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
         return _requiredAccountBalanceOnRemargin(msg.sender);
+    }
+
+    function npvIfRemarginedImmediately() public view returns (int256 immediateNpv) {
+        // Checks whether contract has ended
+        (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
+        require(currentTime != 0);
+        if (currentTime >= endTime) {
+            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
+            state = State.Expired;
+        }
+
+        return computeNpv(oraclePrice);
     }
 
     function whoDefaults() public view returns (bool inDefault, address defaulter, address notDefaulter) {
@@ -319,6 +342,25 @@ contract Derivative {
 
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
+
+    constructor(
+        address _ownerAddress,
+        address _counterpartyAddress,
+        address _oracleAddress,
+        int256 _defaultPenalty,
+        int256 _requiredMargin,
+        uint expiry,
+        string product,
+        uint size
+    ) public payable Derivative(
+        _ownerAddress,
+        _counterpartyAddress,
+        _oracleAddress,
+        _defaultPenalty,
+        _requiredMargin,
+        expiry,
+        product,
+        size) {}
 
     function computeNpv(int256 oraclePrice) public view returns (int256 npvNew) {
         // This could be more complex, but in our case, just return the oracle value.

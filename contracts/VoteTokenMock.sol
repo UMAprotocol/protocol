@@ -34,7 +34,8 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     // The publishing interval for this price feed. All publish times are just multiples of this interval starting at 0.
     uint constant private PRICE_PUBLISH_INTERVAL = 60;
 
-    constructor(uint startTime) public {
+    constructor() public {
+        uint startTime = now;
         _startTime = _intervalTime(startTime, startTime);
     }
 
