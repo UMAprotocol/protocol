@@ -168,16 +168,16 @@ contract Derivative {
         // TODO: Currently no enforcement mechanism to check whether people have agreed upon the current unverified
         //       price. This needs to be addressed.
         (uint currentTime,) = oracle.unverifiedPrice();
-        (uint unverifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
         require(currentTime >= endTime);
+        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
 
         _settle(oraclePrice);
     }
 
     function settleVerifiedPrice() public {
         (uint currentTime,) = oracle.verifiedPrice();
-        (uint verifiedTime, int256 oraclePrice) = oracle.verifiedPrice(endTime);
         require(currentTime >= endTime);
+        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
 
         _settle(oraclePrice);
     }
