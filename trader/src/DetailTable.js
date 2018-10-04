@@ -242,56 +242,61 @@ class DetailTable extends React.Component {
     return data;
   }
 
+  getDescription(element) {
+    if (element.formValue && element.key === "deposit") {
+      return (
+        <TextField
+          id="quantity"
+          name="quantity"
+          label={element.formValue}
+          fullWidth
+          value={this.state.deposit}
+          onChange={event => {
+            if (!isNaN(event.target.value)) {
+              this.setState({ deposit: event.target.value });
+            }
+          }}
+        />
+      );
+    } else if (element.formValue && element.key === "withdraw") {
+      return (
+        <TextField
+          id="withdraw"
+          name="withdraw"
+          label={element.formValue}
+          fullWidth
+          value={this.state.withdraw}
+          onChange={event => {
+            if (!isNaN(event.target.value)) {
+              this.setState({ withdraw: event.target.value });
+            }
+          }}
+        />
+      );
+    } else {
+      return element.key;
+    }
+  }
+
+  getValue(element) {
+    if (element.buttonValue) {
+      return (
+        <Button
+          className={this.props.classes.button}
+          onClick={element.buttonValue}
+          disabled={!element.enabled}
+          color="primary"
+        >
+          {element.value}
+        </Button>
+      );
+    } else {
+      return element.value;
+    }
+  }
+
   render() {
     const { classes } = this.props;
-
-    var getKey = elt => {
-      if (elt.formValue && elt.key === "deposit") {
-        return (
-          <TextField
-            id="quantity"
-            name="quantity"
-            label={elt.formValue}
-            fullWidth
-            value={this.state.deposit}
-            onChange={event => {
-              if (!isNaN(event.target.value)) {
-                this.setState({ deposit: event.target.value });
-              }
-            }}
-          />
-        );
-      } else if (elt.formValue && elt.key === "withdraw") {
-        return (
-          <TextField
-            id="withdraw"
-            name="withdraw"
-            label={elt.formValue}
-            fullWidth
-            value={this.state.withdraw}
-            onChange={event => {
-              if (!isNaN(event.target.value)) {
-                this.setState({ withdraw: event.target.value });
-              }
-            }}
-          />
-        );
-      } else {
-        return elt.key;
-      }
-    };
-
-    var getElement = elt => {
-      if (elt.buttonValue) {
-        return (
-          <Button className={classes.button} onClick={elt.buttonValue} disabled={!elt.enabled} color="primary">
-            {elt.value}
-          </Button>
-        );
-      } else {
-        return elt.value;
-      }
-    };
 
     return (
       <Paper className={classes.root}>
@@ -301,9 +306,9 @@ class DetailTable extends React.Component {
               return (
                 <TableRow key={n.id}>
                   <TableCell component="th" scope="row">
-                    {getKey(n)}
+                    {this.getDescription(n)}
                   </TableCell>
-                  <TableCell numeric>{getElement(n)}</TableCell>
+                  <TableCell numeric>{this.getValue(n)}</TableCell>
                 </TableRow>
               );
             })}
