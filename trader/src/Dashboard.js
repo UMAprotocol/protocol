@@ -155,7 +155,7 @@ class Dashboard extends React.Component {
     // TODO(mrice32): this is to make up for the UTC offset issue when setting hours - this should be done in a systematic way
     date.setDate(date.getDate() + 1);
 
-    var counterparty = "0x500";
+    var counterparty = "0xf17f52151ebef6c7334fad080c5704d77216b732";
 
     var notional = new BigNumber(state.quantity);
     var notionalInWei = BigNumber(this.web3.utils.toWei(notional.toString(), 'ether'));

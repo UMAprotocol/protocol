@@ -110,6 +110,7 @@ contract Derivative {
 
     function confirmPrice() public {
         // Figure out who is who
+        require(state == State.Expired || state == State.Disputed || state == State.Defaulted);
         require(msg.sender == ownerAddress || msg.sender == counterpartyAddress);
         address confirmer = msg.sender;
         address other = msg.sender == ownerAddress ? counterpartyAddress : ownerAddress;
@@ -121,9 +122,7 @@ contract Derivative {
         // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
         // passes then we want to settle and remargin
         if (hasConfirmedPrice[other]) {
-            state = State.Settled;
-            // Remargin on agreed upon price
-            remargin();
+            _settleAgreedPrice();
         }
     }
 
@@ -136,8 +135,8 @@ contract Derivative {
         balances[msg.sender] += int256(msg.value);
 
         if (state == State.Prefunded) {
-            if (balances[ownerAddress] > _requiredAccountBalanceOnRemargin(ownerAddress) &&
-                balances[counterpartyAddress] > _requiredAccountBalanceOnRemargin(counterpartyAddress)) {
+            if (balances[ownerAddress] >= _requiredAccountBalanceOnRemargin(ownerAddress) &&
+                balances[counterpartyAddress] >= _requiredAccountBalanceOnRemargin(counterpartyAddress)) {
                 state = State.Live;
                 remargin();
             }
@@ -153,6 +152,7 @@ contract Derivative {
             "Contract must be Live/Expired/Defaulted to dispute"
         );
         state = State.Disputed;
+        endTime = lastRemarginTime;
     }
 
     function remargin() public returns (bool success) {
@@ -175,17 +175,22 @@ contract Derivative {
         return  _remargin(computeNpv(oraclePrice));
     }
 
-    function settleAgreedPrice() public {
+    function settle() public {
+        require(state == State.Disputed || state == State.Expired || state == State.Defaulted);
+        _settleVerifiedPrice();
+    }
+
+    function _settleAgreedPrice() internal {
         // TODO: Currently no enforcement mechanism to check whether people have agreed upon the current unverified
         //       price. This needs to be addressed.
         (uint currentTime,) = oracle.unverifiedPrice();
         require(currentTime >= endTime);
-        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
+        (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
 
         _settle(oraclePrice);
     }
 
-    function settleVerifiedPrice() public {
+    function _settleVerifiedPrice() internal {
         (uint currentTime,) = oracle.verifiedPrice();
         require(currentTime >= endTime);
         (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
@@ -237,7 +242,6 @@ contract Derivative {
         require(currentTime != 0);
         if (currentTime >= endTime) {
             (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
-            state = State.Expired;
         }
 
         return computeNpv(oraclePrice);
@@ -265,7 +269,7 @@ contract Derivative {
 
         // Remargin at whatever price we're using (verified or unverified)
         success = _remargin(computeNpv(price));
-        require(success == true);
+        require(success);
 
         // Check whether goes into default
         bool inDefault;
@@ -329,11 +333,11 @@ contract Derivative {
         int256 ownerDiff = _getOwnerNpvDiff(computeNpv(oraclePrice));
 
         if (party == ownerAddress) {
-            balance = requiredMargin + ownerDiff;
+            balance = requiredMargin - ownerDiff;
         }
 
         if (party == counterpartyAddress) {
-            balance = requiredMargin - ownerDiff;
+            balance = requiredMargin + ownerDiff;
         }
 
         balance = balance > 0 ? balance : 0;
