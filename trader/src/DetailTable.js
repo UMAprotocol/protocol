@@ -4,16 +4,10 @@ import { withStyles } from "@material-ui/core/styles";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
-import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
-import Typography from "@material-ui/core/Typography";
-import Divider from "@material-ui/core/Divider";
-import Grid from "@material-ui/core/Grid";
 import TextField from "@material-ui/core/TextField";
 import Button from "@material-ui/core/Button";
-
-import BigNumber from "bignumber.js";
 
 const styles = {
   root: {
@@ -252,7 +246,7 @@ class DetailTable extends React.Component {
     const { classes } = this.props;
 
     var getKey = elt => {
-      if (elt.formValue && elt.key == "deposit") {
+      if (elt.formValue && elt.key === "deposit") {
         return (
           <TextField
             id="quantity"
@@ -267,7 +261,7 @@ class DetailTable extends React.Component {
             }}
           />
         );
-      } else if (elt.formValue && elt.key == "withdraw") {
+      } else if (elt.formValue && elt.key === "withdraw") {
         return (
           <TextField
             id="withdraw"

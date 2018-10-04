@@ -30,7 +30,6 @@ class SimpleTable extends React.Component {
     if (deployedRegistry) {
       var contractCount = await deployedRegistry.getNumRegisteredContracts({ from: account });
       var i;
-      var data = [];
       for (i = 0; i < contractCount.c[0]; i++) {
         var address = await deployedRegistry.getRegisteredContract(i, account, { from: account });
         var deployedDerivative = derivative.at(address);
