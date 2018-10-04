@@ -95,7 +95,7 @@ class DetailTable extends React.Component {
     var deployedDerivative = derivative.at(address);
     var data = [];
     var i = 1;
-    data.push({key:"Address", value:address, id:i++})
+    data.push({key:"Address", value:address, id:i++});
 
     var productDescription = await deployedDerivative._product({from:account});
     data.push({key:"Product Description", value:productDescription, id:i++});
@@ -154,6 +154,7 @@ class DetailTable extends React.Component {
       case 5:
         state = "Settled";
         canWithdraw = true;
+        break;
       default:
         state = "Invalid or unknown state returned by contract";
     }
@@ -186,7 +187,7 @@ class DetailTable extends React.Component {
 
     data.push({key:"Would you like to confirm the current NPV for settlement?", buttonValue:() => { this.confirmPrice(this.props) }, value:"Confirm", enabled:canConfirm, id:i++});
 
-    data.push({key:"Would you like to settle (verified price must be ready at the expiry)?", buttonValue:() => { this.settle(this.props) }, value:"Settle", enabled:canSettle, id:i++});
+    data.push({key:"Would you like to settle (verified price must be ready at the expiry)?", buttonValue:() => { this.settleVerifiedPrice(this.props) }, value:"Settle", enabled:canSettle, id:i++});
 
     return data;
   }
