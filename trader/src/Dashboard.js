@@ -207,149 +207,149 @@ class Dashboard extends React.Component {
     });
   }
 
+  generatePage() {
+    if (this.state.page == "list") {
+      return (
+        <main className={classes.content}>
+          <div className={classes.appBarSpacer} />
+          <Typography variant="display1" gutterBottom component="h2">
+            Contracts
+          </Typography>
+          <div className={classes.tableContainer}>
+            <SimpleTable
+              didTapAddress={didTapAddress}
+              deployedRegistry={this.state.deployedRegistry}
+              account={this.state.account}
+              derivative={this.derivative}
+            />
+          </div>
+        </main>
+      );
+    } else if (this.state.page == "detailed") {
+      return (
+        <main className={classes.content}>
+          <div className={classes.appBarSpacer} />
+          <IconButton
+            onClick={() => {
+              this.setState({ page: "list" });
+            }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="display1" gutterBottom component="h2">
+            Contract Details
+          </Typography>
+          <div className={classes.tableContainer}>
+            <DetailTable
+              address={this.state.address}
+              derivative={this.derivative}
+              account={this.state.account}
+              web3={this.web3}
+            />
+          </div>
+        </main>
+      );
+    } else {
+      // Note: this should be moved to another component.
+      return (
+        <main className={classes.content}>
+          <div className={classes.appBarSpacer} />
+          <React.Fragment>
+            <Paper className={classes.paper}>
+              <Typography variant="display1" gutterBottom component="h2">
+                New Contract
+              </Typography>
+              <Grid container spacing={24}>
+                <Grid item xs={12} sm={6}>
+                  <InputLabel htmlFor="product">Product</InputLabel>
+                  <Select
+                    value={this.state.product}
+                    onChange={event => {
+                      this.setState({ product: event.target.value });
+                    }}
+                    inputProps={{
+                      name: "product",
+                      id: "product"
+                    }}
+                    fullWidth
+                    label="Product"
+                  >
+                    <MenuItem value={"ETH/USD"}>ETH/USD</MenuItem>
+                    <MenuItem value={"USD/ETH"}>USD/ETH</MenuItem>
+                    <MenuItem value={"ETH/BTC"}>ETH/BTC</MenuItem>
+                    <MenuItem value={"BTC/ETH"}>BTC/ETH</MenuItem>
+                  </Select>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    id="date"
+                    label="Expiry"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{
+                      shrink: true
+                    }}
+                    value={this.state.expiry}
+                    onChange={event => this.setState({ expiry: event.target.value })}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    id="quantity"
+                    name="quantity"
+                    label="Notional (ETH)"
+                    fullWidth
+                    value={this.state.quantity}
+                    onChange={event => {
+                      if (!isNaN(event.target.value)) {
+                        this.setState({ quantity: parseInt(Number(event.target.value)) });
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    required
+                    id="margin"
+                    name="margin"
+                    label="Initial Margin Deposit (ETH)"
+                    fullWidth
+                    value={this.state.margin}
+                    onChange={event => {
+                      if (!isNaN(event.target.value)) {
+                        this.setState({ margin: event.target.value });
+                      }
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    disabled={!this.state.submitButton}
+                    className={classes.button}
+                    onClick={() => {
+                      this.deployContract(this.state);
+                    }}
+                    color="primary"
+                    fullWidth
+                  >
+                    Submit
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          </React.Fragment>
+        </main>
+      );
+    }
+  }
+
   render() {
     const { classes } = this.props;
 
     var didTapAddress = address => {
       this.setState({ address: address, page: "detailed" });
-    };
-
-    var generatePage = state => {
-      if (this.state.page == "list") {
-        return (
-          <main className={classes.content}>
-            <div className={classes.appBarSpacer} />
-            <Typography variant="display1" gutterBottom component="h2">
-              Contracts
-            </Typography>
-            <div className={classes.tableContainer}>
-              <SimpleTable
-                didTapAddress={didTapAddress}
-                deployedRegistry={this.state.deployedRegistry}
-                account={this.state.account}
-                derivative={this.derivative}
-              />
-            </div>
-          </main>
-        );
-      } else if (this.state.page == "detailed") {
-        return (
-          <main className={classes.content}>
-            <div className={classes.appBarSpacer} />
-            <IconButton
-              onClick={() => {
-                this.setState({ page: "list" });
-              }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography variant="display1" gutterBottom component="h2">
-              Contract Details
-            </Typography>
-            <div className={classes.tableContainer}>
-              <DetailTable
-                address={this.state.address}
-                derivative={this.derivative}
-                account={this.state.account}
-                web3={this.web3}
-              />
-            </div>
-          </main>
-        );
-      } else {
-        // Note: this should be moved to another component.
-        return (
-          <main className={classes.content}>
-            <div className={classes.appBarSpacer} />
-            <React.Fragment>
-              <Paper className={classes.paper}>
-                <Typography variant="display1" gutterBottom component="h2">
-                  New Contract
-                </Typography>
-                <Grid container spacing={24}>
-                  <Grid item xs={12} sm={6}>
-                    <InputLabel htmlFor="product">Product</InputLabel>
-                    <Select
-                      value={this.state.product}
-                      onChange={event => {
-                        this.setState({ product: event.target.value });
-                      }}
-                      inputProps={{
-                        name: "product",
-                        id: "product"
-                      }}
-                      fullWidth
-                      label="Product"
-                    >
-                      <MenuItem value={"ETH/USD"}>ETH/USD</MenuItem>
-                      <MenuItem value={"USD/ETH"}>USD/ETH</MenuItem>
-                      <MenuItem value={"ETH/BTC"}>ETH/BTC</MenuItem>
-                      <MenuItem value={"BTC/ETH"}>BTC/ETH</MenuItem>
-                    </Select>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      id="date"
-                      label="Expiry"
-                      type="date"
-                      fullWidth
-                      InputLabelProps={{
-                        shrink: true
-                      }}
-                      value={this.state.expiry}
-                      onChange={event => this.setState({ expiry: event.target.value })}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      id="quantity"
-                      name="quantity"
-                      label="Notional (ETH)"
-                      fullWidth
-                      value={this.state.quantity}
-                      onChange={event => {
-                        if (!isNaN(event.target.value)) {
-                          this.setState({ quantity: parseInt(Number(event.target.value)) });
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      required
-                      id="margin"
-                      name="margin"
-                      label="Initial Margin Deposit (ETH)"
-                      fullWidth
-                      value={this.state.margin}
-                      onChange={event => {
-                        if (!isNaN(event.target.value)) {
-                          this.setState({ margin: event.target.value });
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Button
-                      disabled={!this.state.submitButton}
-                      className={classes.button}
-                      onClick={() => {
-                        this.deployContract(this.state);
-                      }}
-                      color="primary"
-                      fullWidth
-                    >
-                      Submit
-                    </Button>
-                  </Grid>
-                </Grid>
-              </Paper>
-            </React.Fragment>
-          </main>
-        );
-      }
     };
 
     return (
@@ -386,7 +386,7 @@ class Dashboard extends React.Component {
             <Divider />
             <List>{mainListItems(this)}</List>
           </Drawer>
-          {generatePage(this.state)}
+          {this.generatePage()}
         </div>
       </React.Fragment>
     );
