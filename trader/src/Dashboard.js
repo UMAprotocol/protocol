@@ -1,87 +1,84 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-import classNames from 'classnames';
-import { withStyles } from '@material-ui/core/styles';
-import CssBaseline from '@material-ui/core/CssBaseline';
-import Drawer from '@material-ui/core/Drawer';
-import AppBar from '@material-ui/core/AppBar';
-import Toolbar from '@material-ui/core/Toolbar';
-import List from '@material-ui/core/List';
-import Typography from '@material-ui/core/Typography';
-import Divider from '@material-ui/core/Divider';
-import IconButton from '@material-ui/core/IconButton';
-import Badge from '@material-ui/core/Badge';
-import MenuIcon from '@material-ui/icons/Menu';
-import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
-import NotificationsIcon from '@material-ui/icons/Notifications';
-import { mainListItems } from './listItems';
-import SimpleTable from './SimpleTable';
-import DetailTable from './DetailTable.js';
-import Button from '@material-ui/core/Button';
-import ArrowBackIcon from '@material-ui/icons/ArrowBack';
-import Input from '@material-ui/core/Input';
-import Grid from '@material-ui/core/Grid';
-import TextField from '@material-ui/core/TextField';
-import FormControlLabel from '@material-ui/core/FormControlLabel';
-import Checkbox from '@material-ui/core/Checkbox';
-import Select from '@material-ui/core/Select';
-import MenuItem from '@material-ui/core/MenuItem';
-import FormControl from '@material-ui/core/FormControl';
-import InputLabel from '@material-ui/core/InputLabel';
-import Paper from '@material-ui/core/Paper';
-import Web3 from 'web3';
-import {
-  default as contract
-} from 'truffle-contract';
+import React from "react";
+import PropTypes from "prop-types";
+import classNames from "classnames";
+import { withStyles } from "@material-ui/core/styles";
+import CssBaseline from "@material-ui/core/CssBaseline";
+import Drawer from "@material-ui/core/Drawer";
+import AppBar from "@material-ui/core/AppBar";
+import Toolbar from "@material-ui/core/Toolbar";
+import List from "@material-ui/core/List";
+import Typography from "@material-ui/core/Typography";
+import Divider from "@material-ui/core/Divider";
+import IconButton from "@material-ui/core/IconButton";
+import Badge from "@material-ui/core/Badge";
+import MenuIcon from "@material-ui/icons/Menu";
+import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
+import NotificationsIcon from "@material-ui/icons/Notifications";
+import { mainListItems } from "./listItems";
+import SimpleTable from "./SimpleTable";
+import DetailTable from "./DetailTable.js";
+import Button from "@material-ui/core/Button";
+import ArrowBackIcon from "@material-ui/icons/ArrowBack";
+import Input from "@material-ui/core/Input";
+import Grid from "@material-ui/core/Grid";
+import TextField from "@material-ui/core/TextField";
+import FormControlLabel from "@material-ui/core/FormControlLabel";
+import Checkbox from "@material-ui/core/Checkbox";
+import Select from "@material-ui/core/Select";
+import MenuItem from "@material-ui/core/MenuItem";
+import FormControl from "@material-ui/core/FormControl";
+import InputLabel from "@material-ui/core/InputLabel";
+import Paper from "@material-ui/core/Paper";
+import Web3 from "web3";
+import { default as contract } from "truffle-contract";
 
 // Import our contract artifacts and turn them into usable abstractions.
-import voteTokenMock from './contracts/VoteTokenMock.json';
-import derivative from './contracts/Derivative.json';
-import registry from './contracts/Registry.json';
+import voteTokenMock from "./contracts/VoteTokenMock.json";
+import derivative from "./contracts/Derivative.json";
+import registry from "./contracts/Registry.json";
 
-import BigNumber from 'bignumber.js';
-
+import BigNumber from "bignumber.js";
 
 const drawerWidth = 300;
 
 const styles = theme => ({
   root: {
-    display: 'flex',
+    display: "flex"
   },
   toolbar: {
-    paddingRight: 24, // keep right padding when drawer closed
+    paddingRight: 24 // keep right padding when drawer closed
   },
   toolbarIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    padding: '0 8px',
-    ...theme.mixins.toolbar,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    padding: "0 8px",
+    ...theme.mixins.toolbar
   },
   appBar: {
     zIndex: theme.zIndex.drawer + 1,
-    transition: theme.transitions.create(['width', 'margin'], {
+    transition: theme.transitions.create(["width", "margin"], {
       easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
-    }),
+      duration: theme.transitions.duration.leavingScreen
+    })
   },
   appBarShift: {
     marginLeft: drawerWidth,
     width: `calc(100% - ${drawerWidth}px)`,
-    transition: theme.transitions.create(['width', 'margin'], {
+    transition: theme.transitions.create(["width", "margin"], {
       easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
+      duration: theme.transitions.duration.enteringScreen
+    })
   },
   menuButton: {
     marginLeft: 12,
-    marginRight: 36,
+    marginRight: 36
   },
   menuButtonHidden: {
-    display: 'none',
+    display: "none"
   },
   title: {
-    flexGrow: 1,
+    flexGrow: 1
   },
   paper: {
     marginTop: theme.spacing.unit * 3,
@@ -90,42 +87,42 @@ const styles = theme => ({
     [theme.breakpoints.up(600 + theme.spacing.unit * 3 * 2)]: {
       marginTop: theme.spacing.unit * 2,
       marginBottom: theme.spacing.unit * 6,
-      padding: theme.spacing.unit * 3,
-    },
+      padding: theme.spacing.unit * 3
+    }
   },
   drawerPaper: {
-    position: 'relative',
-    whiteSpace: 'nowrap',
+    position: "relative",
+    whiteSpace: "nowrap",
     width: drawerWidth,
-    transition: theme.transitions.create('width', {
+    transition: theme.transitions.create("width", {
       easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.enteringScreen,
-    }),
+      duration: theme.transitions.duration.enteringScreen
+    })
   },
   drawerPaperClose: {
-    overflowX: 'hidden',
-    transition: theme.transitions.create('width', {
+    overflowX: "hidden",
+    transition: theme.transitions.create("width", {
       easing: theme.transitions.easing.sharp,
-      duration: theme.transitions.duration.leavingScreen,
+      duration: theme.transitions.duration.leavingScreen
     }),
     width: theme.spacing.unit * 7,
-    [theme.breakpoints.up('sm')]: {
-      width: theme.spacing.unit * 9,
-    },
+    [theme.breakpoints.up("sm")]: {
+      width: theme.spacing.unit * 9
+    }
   },
   appBarSpacer: theme.mixins.toolbar,
   content: {
     flexGrow: 1,
     padding: theme.spacing.unit * 3,
-    height: '100vh',
-    overflow: 'auto',
+    height: "100vh",
+    overflow: "auto"
   },
   chartContainer: {
-    marginLeft: -22,
+    marginLeft: -22
   },
   tableContainer: {
-    height: 320,
-  },
+    height: 320
+  }
 });
 
 class Dashboard extends React.Component {
@@ -133,11 +130,11 @@ class Dashboard extends React.Component {
     open: true,
     page: "list",
     address: "0x0",
-    product: 'ETH/USD',
+    product: "ETH/USD",
     quantity: 1,
-    margin: '0.0',
-    expiry: '2019-01-01',
-    submitButton: false,
+    margin: "0.0",
+    expiry: "2019-01-01",
+    submitButton: false
   };
 
   handleDrawerOpen = () => {
@@ -157,25 +154,25 @@ class Dashboard extends React.Component {
     var counterparty = "0xf17f52151ebef6c7334fad080c5704d77216b732";
 
     var notional = new BigNumber(state.quantity);
-    var notionalInWei = BigNumber(this.web3.utils.toWei(notional.toString(), 'ether'));
+    var notionalInWei = BigNumber(this.web3.utils.toWei(notional.toString(), "ether"));
     var marginInEth = notionalInWei.idiv(10);
     var defaultPenaltyInEth = notionalInWei.idiv(20);
 
     // Default penalty = ~5% of total contract value. Margin ~= 10% of total contract value.
     var response = await this.state.deployedRegistry.createDerivative(
-        counterparty,
-        this.deployedVoteTokenMock.address,
-        defaultPenaltyInEth.toString(),
-        marginInEth.toString(),
-        (date.valueOf() / 1000).toString(),
-        state.product,
-        notional.toString(),
-        {from: this.state.account, gas: 6654755, value:this.web3.utils.toWei(state.margin)}
+      counterparty,
+      this.deployedVoteTokenMock.address,
+      defaultPenaltyInEth.toString(),
+      marginInEth.toString(),
+      (date.valueOf() / 1000).toString(),
+      state.product,
+      notional.toString(),
+      { from: this.state.account, gas: 6654755, value: this.web3.utils.toWei(state.margin) }
     );
-    
+
     // var response = await this.deployedRegistry.getNumRegisteredContracts({from: this.account});
-    this.setState({page:"list"});
-  }
+    this.setState({ page: "list" });
+  };
 
   constructor(props) {
     super(props);
@@ -191,132 +188,165 @@ class Dashboard extends React.Component {
     this.registry.setProvider(this.web3.currentProvider);
 
     this.web3.eth.getAccounts().then(async (accounts, err) => {
-        if (err != null) {
-            throw Error("couldn't get accounts");
-        }
+      if (err != null) {
+        throw Error("couldn't get accounts");
+      }
 
-        if (accounts.length === 0) {
-            throw Error("Couldn't get any accounts! Make sure your Ethereum client is configured correctly.");
-        }
+      if (accounts.length === 0) {
+        throw Error("Couldn't get any accounts! Make sure your Ethereum client is configured correctly.");
+      }
 
-        this.accounts = accounts;
+      this.accounts = accounts;
 
-        this.setState({account:this.accounts[0]});
+      this.setState({ account: this.accounts[0] });
 
-        var deployedRegistry = await this.registry.deployed();
-        this.setState({deployedRegistry: deployedRegistry});
-        this.deployedVoteTokenMock = await this.voteTokenMock.deployed();
-        this.setState({submitButton:true});
+      var deployedRegistry = await this.registry.deployed();
+      this.setState({ deployedRegistry: deployedRegistry });
+      this.deployedVoteTokenMock = await this.voteTokenMock.deployed();
+      this.setState({ submitButton: true });
     });
   }
 
   render() {
     const { classes } = this.props;
 
-    var didTapAddress = (address) => {
-        this.setState({ address:address, page:"detailed" })
-    }
+    var didTapAddress = address => {
+      this.setState({ address: address, page: "detailed" });
+    };
 
-    var generatePage = (state) => {
+    var generatePage = state => {
       if (this.state.page == "list") {
         return (
           <main className={classes.content}>
-          <div className={classes.appBarSpacer} />
-          <Typography variant="display1" gutterBottom component="h2">
-            Contracts
-          </Typography>
-          <div className={classes.tableContainer}>
-            <SimpleTable didTapAddress={didTapAddress} deployedRegistry={this.state.deployedRegistry} account={this.state.account} derivative={this.derivative} />
-          </div>
+            <div className={classes.appBarSpacer} />
+            <Typography variant="display1" gutterBottom component="h2">
+              Contracts
+            </Typography>
+            <div className={classes.tableContainer}>
+              <SimpleTable
+                didTapAddress={didTapAddress}
+                deployedRegistry={this.state.deployedRegistry}
+                account={this.state.account}
+                derivative={this.derivative}
+              />
+            </div>
           </main>
         );
       } else if (this.state.page == "detailed") {
         return (
           <main className={classes.content}>
-          <div className={classes.appBarSpacer} />
-          <IconButton onClick={() => { this.setState({page:"list"})} }>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="display1" gutterBottom component="h2">
-            Contract Details
-          </Typography>
-          <div className={classes.tableContainer}>
-            <DetailTable address={this.state.address} derivative={this.derivative} account={this.state.account} web3={this.web3} />
-          </div>
+            <div className={classes.appBarSpacer} />
+            <IconButton
+              onClick={() => {
+                this.setState({ page: "list" });
+              }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="display1" gutterBottom component="h2">
+              Contract Details
+            </Typography>
+            <div className={classes.tableContainer}>
+              <DetailTable
+                address={this.state.address}
+                derivative={this.derivative}
+                account={this.state.account}
+                web3={this.web3}
+              />
+            </div>
           </main>
         );
-
       } else {
         // Note: this should be moved to another component.
         return (
           <main className={classes.content}>
-          <div className={classes.appBarSpacer} />
-          <React.Fragment>
-          <Paper className={classes.paper}>
-          <Typography variant="display1" gutterBottom component="h2">
-            New Contract
-          </Typography>
-      <Grid container spacing={24}>
-        <Grid item xs={12} sm={6}>
-          <InputLabel htmlFor="product">Product</InputLabel>
-          <Select
-            value={this.state.product}
-            onChange={event => {this.setState({product: event.target.value})}}
-            inputProps={{
-              name: 'product',
-              id: 'product',
-            }}
-            fullWidth
-            label="Product"
-          >
-            <MenuItem value={"ETH/USD"}>ETH/USD</MenuItem>
-            <MenuItem value={"USD/ETH"}>USD/ETH</MenuItem>
-            <MenuItem value={"ETH/BTC"}>ETH/BTC</MenuItem>
-            <MenuItem value={"BTC/ETH"}>BTC/ETH</MenuItem>
-          </Select>
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            required
-            id="date"
-            label="Expiry"
-            type="date"
-            fullWidth
-            InputLabelProps={{
-                shrink: true,
-            }}
-            value={this.state.expiry}
-            onChange={event => this.setState({expiry:event.target.value})}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            required
-            id="quantity"
-            name="quantity"
-            label="Notional (ETH)"
-            fullWidth
-            value={this.state.quantity}
-            onChange={event => {if (!isNaN(event.target.value)) { this.setState({quantity:parseInt(Number(event.target.value))})}}}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            required
-            id="margin"
-            name="margin"
-            label="Initial Margin Deposit (ETH)"
-            fullWidth
-            value={this.state.margin}
-            onChange={event => {if (!isNaN(event.target.value)) { this.setState({margin:event.target.value})}}}
-          />
-        </Grid>
-        <Grid item xs={12}>
-          <Button disabled={!this.state.submitButton} className={classes.button} onClick={() => { this.deployContract(this.state) }} color="primary" fullWidth>Submit</Button>
-        </Grid>
-      </Grid>
-      </Paper>
-    </React.Fragment>
+            <div className={classes.appBarSpacer} />
+            <React.Fragment>
+              <Paper className={classes.paper}>
+                <Typography variant="display1" gutterBottom component="h2">
+                  New Contract
+                </Typography>
+                <Grid container spacing={24}>
+                  <Grid item xs={12} sm={6}>
+                    <InputLabel htmlFor="product">Product</InputLabel>
+                    <Select
+                      value={this.state.product}
+                      onChange={event => {
+                        this.setState({ product: event.target.value });
+                      }}
+                      inputProps={{
+                        name: "product",
+                        id: "product"
+                      }}
+                      fullWidth
+                      label="Product"
+                    >
+                      <MenuItem value={"ETH/USD"}>ETH/USD</MenuItem>
+                      <MenuItem value={"USD/ETH"}>USD/ETH</MenuItem>
+                      <MenuItem value={"ETH/BTC"}>ETH/BTC</MenuItem>
+                      <MenuItem value={"BTC/ETH"}>BTC/ETH</MenuItem>
+                    </Select>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      required
+                      id="date"
+                      label="Expiry"
+                      type="date"
+                      fullWidth
+                      InputLabelProps={{
+                        shrink: true
+                      }}
+                      value={this.state.expiry}
+                      onChange={event => this.setState({ expiry: event.target.value })}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      required
+                      id="quantity"
+                      name="quantity"
+                      label="Notional (ETH)"
+                      fullWidth
+                      value={this.state.quantity}
+                      onChange={event => {
+                        if (!isNaN(event.target.value)) {
+                          this.setState({ quantity: parseInt(Number(event.target.value)) });
+                        }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      required
+                      id="margin"
+                      name="margin"
+                      label="Initial Margin Deposit (ETH)"
+                      fullWidth
+                      value={this.state.margin}
+                      onChange={event => {
+                        if (!isNaN(event.target.value)) {
+                          this.setState({ margin: event.target.value });
+                        }
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Button
+                      disabled={!this.state.submitButton}
+                      className={classes.button}
+                      onClick={() => {
+                        this.deployContract(this.state);
+                      }}
+                      color="primary"
+                      fullWidth
+                    >
+                      Submit
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </React.Fragment>
           </main>
         );
       }
@@ -326,29 +356,17 @@ class Dashboard extends React.Component {
       <React.Fragment>
         <CssBaseline />
         <div className={classes.root}>
-          <AppBar
-            position="absolute"
-            className={classNames(classes.appBar, this.state.open && classes.appBarShift)}
-          >
+          <AppBar position="absolute" className={classNames(classes.appBar, this.state.open && classes.appBarShift)}>
             <Toolbar disableGutters={!this.state.open} className={classes.toolbar}>
               <IconButton
                 color="inherit"
                 aria-label="Open drawer"
                 onClick={this.handleDrawerOpen}
-                className={classNames(
-                  classes.menuButton,
-                  this.state.open && classes.menuButtonHidden,
-                )}
+                className={classNames(classes.menuButton, this.state.open && classes.menuButtonHidden)}
               >
                 <MenuIcon />
               </IconButton>
-              <Typography
-                component="h1"
-                variant="title"
-                color="inherit"
-                noWrap
-                className={classes.title}
-              >
+              <Typography component="h1" variant="title" color="inherit" noWrap className={classes.title}>
                 Trading Dashboard
               </Typography>
             </Toolbar>
@@ -356,7 +374,7 @@ class Dashboard extends React.Component {
           <Drawer
             variant="permanent"
             classes={{
-              paper: classNames(classes.drawerPaper, !this.state.open && classes.drawerPaperClose),
+              paper: classNames(classes.drawerPaper, !this.state.open && classes.drawerPaperClose)
             }}
             open={this.state.open}
           >
@@ -376,8 +394,7 @@ class Dashboard extends React.Component {
 }
 
 Dashboard.propTypes = {
-  classes: PropTypes.object.isRequired,
+  classes: PropTypes.object.isRequired
 };
 
 export default withStyles(styles)(Dashboard);
-
