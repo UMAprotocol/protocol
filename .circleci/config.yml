@@ -56,7 +56,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: npx truffle test
+          command: npx truffle test --network ci
 
 workflows:
   version: 2
