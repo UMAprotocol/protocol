@@ -49,6 +49,7 @@ jobs:
     docker:
       - image: circleci/node:latest
       - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -e 100000000000 -l 4700038
     working_directory: ~/protocol
     steps:
       - restore_cache:
