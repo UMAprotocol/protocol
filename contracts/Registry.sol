@@ -4,7 +4,7 @@ import "./Derivative.sol";
 
 
 contract Registry {
-    mapping(address => address[]) private _registeredContracts;
+    mapping(address => address[]) private registeredContracts;
 
     event Register(address indexed originator, address indexed derivative);
 
@@ -43,15 +43,15 @@ contract Registry {
     }
 
     function getNumRegisteredContracts(address originator) public view returns (uint number) {
-        return _registeredContracts[originator].length;
+        return registeredContracts[originator].length;
     }
 
     function getRegisteredContract(uint index, address originator) public view returns (address contractAddress) {
-        return _registeredContracts[originator][index];
+        return registeredContracts[originator][index];
     }
 
     function _register(address originator, address contractToRegister) internal {
-        _registeredContracts[originator].push(contractToRegister);
+        registeredContracts[originator].push(contractToRegister);
         emit Register(originator, contractToRegister);
     }
 }
