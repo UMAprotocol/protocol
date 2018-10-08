@@ -7,7 +7,6 @@
 */
 pragma solidity ^0.4.24;
 
-import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./VoteTokenInterface.sol";
 
@@ -367,7 +366,7 @@ contract Derivative {
 }
 
 
-contract DerivativeZeroNPV is Derivative, usingOraclize {
+contract SimpleDerivative is Derivative {
 
     constructor(
         address _ownerAddress,

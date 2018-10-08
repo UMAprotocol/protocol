@@ -5,7 +5,6 @@
 */
 pragma solidity ^0.4.24;
 
-import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./VoteTokenInterface.sol";

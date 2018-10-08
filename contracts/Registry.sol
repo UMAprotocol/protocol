@@ -19,7 +19,7 @@ contract Registry {
 
         // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
         //       from the taker. This is just for convenience
-        DerivativeZeroNPV derivative = (new DerivativeZeroNPV).value(msg.value)(
+        SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
             counterpartyAddress,
             msg.sender,
             oracleAddress,
