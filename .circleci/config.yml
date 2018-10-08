@@ -8,14 +8,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-dep-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
-            - v1-dep-cache-{{ .Branch }}-
-            - v1-dep-cache-
+            - v1-dependency-cache-{{ checksum "package-lock.json" }}
+            - v1-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v1-dependency-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          key: v1-dependency-cache-{{ checksum "package-lock.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -49,12 +48,13 @@ jobs:
   test:
     docker:
       - image: circleci/node:latest
+      - image: trufflesuite/ganache-cli
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Compile contracts
+          name: Run tests
           command: npx truffle test
 
 workflows:
