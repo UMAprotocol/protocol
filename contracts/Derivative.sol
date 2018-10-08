@@ -150,7 +150,7 @@ contract Derivative {
 
     function dispute() public {
         require(
-            // Right now, we don't allow for disuptes while live, so commented out
+            // TODO: We need to add the dispute bond logic
             state == State.Live ||
             state == State.Expired ||
             state == State.Defaulted,
