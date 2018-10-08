@@ -17,7 +17,7 @@ contract Registry {
         string product,
         uint notional) external payable returns (address derivativeAddress) {
 
-        DerivativeZeroNPV derivative = (new DerivativeZeroNPV).value(msg.value)(
+        SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
             msg.sender,
             counterpartyAddress,
             oracleAddress,
