@@ -57,8 +57,6 @@ contract Derivative {
         bool hasConfirmedPrice;
     }
 
-
-
     // Financial information
     int256 public defaultPenalty;
     int256 public requiredMargin;
@@ -111,11 +109,7 @@ contract Derivative {
         require(state == State.Expired || state == State.Defaulted || state == State.Disputed);
 
         // Figure out who is who
-        bool senderIsMaker = msg.sender == maker.accountAddress;
-        bool senderIsTaker = msg.sender == maker.accountAddress;
-        require(senderIsMaker || senderIsTaker);
-        ContractParty storage confirmer = maker ? senderIsMaker : taker;
-        ContractParty storage other = taker ? senderIsMaker : maker;
+        (ContractParty storage confirmer, ContractParty storage other) = _whoAmI(msg.sender);
 
         // Confirmer confirmed...
         confirmer.hasConfirmedPrice = true;
@@ -137,17 +131,12 @@ contract Derivative {
         // Make sure that one of participants is sending the deposit and that
         // we are in a "depositable" state
         require(state == State.Live || state == State.Prefunded);
-        bool senderIsMaker = msg.sender == maker.accountAddress;
-        bool senderIsTaker = msg.sender == maker.accountAddress;
-        require(senderIsMaker || senderIsTaker);
-
-        ContractParty storage depositer = maker ? senderIsMaker : taker;
-        depositer.balance += int256(msg.value);
+        (ContractParty storage depositer,) = _whoAmI(msg.sender);
+        depositer.balance += int256(msg.value);  // Want this to be safemath when available
 
         if (state == State.Prefunded) {
-            ContractParty storage other = taker ? senderIsMaker : maker;
-            if (maker.balances > _requiredAccountBalanceOnRemargin(maker) &&
-                taker.balances > _requiredAccountBalanceOnRemargin(taker)) {
+            if (maker.balance > _requiredAccountBalanceOnRemargin(maker) &&
+                taker.balance > _requiredAccountBalanceOnRemargin(taker)) {
                 state = State.Live;
                 remargin();
             }
@@ -206,10 +195,7 @@ contract Derivative {
         // Make sure either in Prefunded, Live, or Settled
         require(state == State.Prefunded || state == State.Live || state == State.Settled);
 
-        bool senderIsMaker = msg.sender == maker.accountAddress;
-        bool senderIsTaker = msg.sender == taker.accountAddress;
-        require(senderIsMaker || senderIsTaker);
-        ContractParty storage withdrawer = maker ? senderIsMaker : taker;
+        (ContractParty storage withdrawer,) = _whoAmI(msg.sender);
 
         // Remargin before allowing a withdrawal.
         remargin();
@@ -237,28 +223,20 @@ contract Derivative {
         return true;
     }
 
-    function isDefault(ContractParty storage party) public view returns (bool) {
-        return party.balance < requiredMargin;
-    }
-
     function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
-        bool senderIsMaker = msg.sender == maker.accountAddress;
-        bool senderIsTaker = msg.sender == taker.accountAddress;
-        require(senderIsMaker || senderIsTaker);
+        (ContractParty storage sender, ContractParty storage other) = _whoAmI(msg.sender);
 
-        ContractParty storage checker = maker ? senderIsMaker : taker;
-
-        return _requiredAccountBalanceOnRemargin(checker);
+        return _requiredAccountBalanceOnRemargin(sender);
     }
 
     function whoDefaults() public view returns (bool inDefault, address defaulter, address notDefaulter) {
         inDefault = false;
 
-        if (isDefault(maker)) {
+        if (_isDefault(maker)) {
             defaulter = maker.accountAddress;
             notDefaulter = taker.accountAddress;
             inDefault = true;
-        } else if (isDefault(taker)) {
+        } else if (_isDefault(taker)) {
             defaulter = taker.accountAddress;
             notDefaulter = maker.accountAddress;
             inDefault = true;
@@ -267,25 +245,37 @@ contract Derivative {
         return (inDefault, defaulter, notDefaulter);
     }
 
+    function _isDefault(ContractParty storage party) internal view returns (bool) {
+        return party.balance < requiredMargin;
+    }
+
+    function _whoAmI(address _sndrAddr) internal view returns (ContractParty storage sender, ContractParty storage other) {
+        bool senderIsMaker = (msg.sender == maker.accountAddress);
+        bool senderIsTaker = (msg.sender == taker.accountAddress);
+
+        require((_sndrAddr==maker.accountAddress) || (_sndrAddr==taker.accountAddress), "Only participants can call");
+        require((senderIsMaker || senderIsTaker) == true); // At least one should be true
+        require((senderIsMaker && senderIsTaker) == false); // But not both
+
+        sender = senderIsMaker ? maker : taker;
+        other = senderIsTaker ? taker : maker;
+
+        return (sender, other);
+    }
+
     // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. This function handles all of
     // the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settle(int256 price) internal returns (bool success) {
 
-        ContractParty storage checker = maker ? senderIsMaker : taker;
+        (ContractParty storage checker, ContractParty storage other ) = _whoAmI(msg.sender);
 
         // Remargin at whatever price we're using (verified or unverified)
         success = _remargin(computeNpv(price));
         require(success == true);
 
         // Check whether goes into default
-        bool inDefault;
-        address defaulter;
-        address notDefaulter;
-        (inDefault, defaulter, notDefaulter) = whoDefaults();
-        bool defaulterIsMaker = defaulter == maker.accountAddress;
-        bool defaulterIsTaker = defaulter == taker.accountAddress;
-        ContractParty storage defaulter = maker ? defaulterIsMaker : taker;
-        ContractParty storage notDefaulter = taker ? defaulterIsMaker : maker;
+        (bool inDefault, address _defaulter, address _notDefaulter) = whoDefaults();
+        (ContractParty storage defaulter, ContractParty storage notDefaulter) = _whoAmI(_defaulter);
 
         if (inDefault) {
             int256 penalty;
@@ -328,8 +318,8 @@ contract Derivative {
         int256 makerDiff = _getMakerNpvDiff(npvNew);
         npv = npvNew;
 
-        maker += makerDiff;
-        taker -= takerDiff;
+        maker.balance += makerDiff;
+        taker.balance -= makerDiff;
     }
 
     // Gets the change in balance for the owners account when the most recent
