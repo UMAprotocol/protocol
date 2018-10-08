@@ -57,6 +57,8 @@ contract Derivative {
         bool hasConfirmedPrice;
     }
 
+
+
     // Financial information
     int256 public defaultPenalty;
     int256 public requiredMargin;
