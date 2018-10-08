@@ -17,9 +17,11 @@ contract Registry {
         string product,
         uint notional) external payable returns (address derivativeAddress) {
 
+        // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
+        //       from the taker. This is just for convenience
         SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
-            msg.sender,
             counterpartyAddress,
+            msg.sender,
             oracleAddress,
             defaultPenalty,
             requiredMargin,
