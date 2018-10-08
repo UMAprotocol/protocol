@@ -16,6 +16,7 @@ contract Derivative {
 
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
+    // using SafeMath for int256;
 
     enum State {
         // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
@@ -57,8 +58,8 @@ contract Derivative {
     }
 
     // Financial information
-    int256 public defaultPenalty;  //
-    int256 public requiredMargin;  //
+    int256 public defaultPenalty;
+    int256 public requiredMargin;
 
     // Other addresses/contracts
     ContractParty public maker;
@@ -80,17 +81,17 @@ contract Derivative {
         int256 _requiredMargin
     ) public {
 
+        // Address information
+        oracle = VoteTokenInterface(_oracleAddress);
+        maker = ContractParty(_makerAddress, 0, false);
+        taker = ContractParty(msg.sender, 0, false);
+
         // Contract states
         startTime = now; // solhint-disable-line not-rely-on-time
         endTime = startTime.add(_duration);
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
         npv = initialNpv();
-
-        // Address information
-        oracle = VoteTokenInterface(_oracleAddress);
-        maker = ContractParty(_makerAddress, 0, false);
-        taker = ContractParty(msg.sender, 0, false);
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
@@ -281,8 +282,8 @@ contract Derivative {
         (inDefault, defaulter, notDefaulter) = whoDefaults();
         bool defaulterIsMaker = defaulter == maker.accountAddress;
         bool defaulterIsTaker = defaulter == taker.accountAddress;
-        ContractParty storage defaulter = maker ? defaulterIsMaker : taker
-        ContractParty storage notDefaulter = taker ? defaulterIsMaker : maker
+        ContractParty storage defaulter = maker ? defaulterIsMaker : taker;
+        ContractParty storage notDefaulter = taker ? defaulterIsMaker : maker;
 
         if (inDefault) {
             int256 penalty;
