@@ -152,7 +152,7 @@ contract Derivative {
     function dispute() public {
         require(
             // Right now, we don't allow for disuptes while live, so commented out
-            // state == State.Live ||
+            state == State.Live ||
             state == State.Expired ||
             state == State.Defaulted,
             "Contract must be Live/Expired/Defaulted to dispute"
@@ -235,6 +235,10 @@ contract Derivative {
         return computeNpv(oraclePrice);
     }
 
+    // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in
+    //       every other place and here we're returning addresses. We probably want a nice public method that returns
+    //       something intuitive and an internal method that's a little easier to use inside the contract, but messier
+    //       for outside
     function whoDefaults() public view returns (bool inDefault, address defaulter, address notDefaulter) {
         inDefault = false;
 
