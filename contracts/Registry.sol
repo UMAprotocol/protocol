@@ -15,7 +15,7 @@ contract Registry {
         int256 requiredMargin,
         uint expiry,
         string product,
-        uint size) external payable returns (address derivativeAddress) {
+        uint notional) external payable returns (address derivativeAddress) {
 
         DerivativeZeroNPV derivative = (new DerivativeZeroNPV).value(msg.value)(
             msg.sender,
@@ -25,7 +25,7 @@ contract Registry {
             requiredMargin,
             expiry,
             product,
-            size
+            notional
         );
 
         _register(msg.sender, address(derivative));

@@ -55,7 +55,7 @@ contract Derivative {
     int256 public defaultPenalty;  //
     int256 public requiredMargin;  //
     string public product;
-    uint public size; // TODO(mrice32): use this variable to scale NPV changes. 
+    uint public notional; // TODO(mrice32): use this variable to scale NPV changes.
 
     // Other addresses/contracts
     address public ownerAddress;          // should this be public?
@@ -78,7 +78,7 @@ contract Derivative {
         int256 _requiredMargin,
         uint expiry,
         string _product,
-        uint _size
+        uint _notional
     ) public payable {
         ownerAddress = _ownerAddress;
 
@@ -97,7 +97,7 @@ contract Derivative {
         balances[ownerAddress] = int256(msg.value);
         balances[counterpartyAddress] = 0;
         product = _product;
-        size = _size;
+        notional = _notional;
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
@@ -225,7 +225,7 @@ contract Derivative {
         (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
         require(currentTime != 0);
         if (currentTime >= endTime) {
-            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
+            (, oraclePrice) = oracle.unverifiedPrice(endTime);
         }
 
         return computeNpv(oraclePrice);
@@ -357,7 +357,7 @@ contract DerivativeZeroNPV is Derivative, usingOraclize {
         int256 _requiredMargin,
         uint expiry,
         string product,
-        uint size
+        uint notional
     ) public payable Derivative(
         _ownerAddress,
         _counterpartyAddress,
@@ -366,7 +366,7 @@ contract DerivativeZeroNPV is Derivative, usingOraclize {
         _requiredMargin,
         expiry,
         product,
-        size) {} // solhint-disable-line no-empty-blocks
+        notional) {} // solhint-disable-line no-empty-blocks
 
     function computeNpv(int256 oraclePrice) public view returns (int256 npvNew) {
         // This could be more complex, but in our case, just return the oracle value.
