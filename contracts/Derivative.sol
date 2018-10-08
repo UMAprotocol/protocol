@@ -257,11 +257,10 @@ contract Derivative {
         return party.balance < requiredMargin;
     }
 
-    function _whoAmI(address _sndrAddr) internal view returns (ContractParty storage sender, ContractParty storage other) {
-        bool senderIsMaker = (msg.sender == maker.accountAddress);
-        bool senderIsTaker = (msg.sender == taker.accountAddress);
+    function _whoAmI(address _sndrAddr) internal view returns (ContractParty storage sndr, ContractParty storage othr) {
+        bool senderIsMaker = (_sndrAddr == maker.accountAddress);
+        bool senderIsTaker = (_sndrAddr == taker.accountAddress);
 
-        require((_sndrAddr==maker.accountAddress) || (_sndrAddr==taker.accountAddress), "Only participants can call");
         require((senderIsMaker || senderIsTaker) == true); // At least one should be true
         require((senderIsMaker && senderIsTaker) == false); // But not both
 
@@ -359,7 +358,7 @@ contract Derivative {
 
         if (party.accountAddress == maker.accountAddress) {
             balance = requiredMargin - makerDiff;
-        } else if  (party.accountAddress == taker.accountAddress) {
+        } else if (party.accountAddress == taker.accountAddress) {
             balance = requiredMargin + makerDiff;
         }
 
