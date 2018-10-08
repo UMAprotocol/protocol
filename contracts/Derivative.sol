@@ -88,14 +88,14 @@ contract Derivative {
     ) public payable {
         // Address information
         oracle = VoteTokenInterface(_oracleAddress);
+        // TODO: Think about who is sending the `msg.value`
+        require(_makerAddress != _takerAddress);
         maker = ContractParty(_makerAddress, 0, false);
-        taker = ContractParty(_takerAddress, 0, false);
+        taker = ContractParty(_takerAddress, int256(msg.value), false);
 
         // Contract states
         endTime = expiry;
-        // TODO(mrice32): maybe this should be 0 (never remargined). We should discuss what would make more sense to the
-        // user.
-        lastRemarginTime = 0; // solhint-disable-line not-rely-on-time
+        lastRemarginTime = 0;
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
         product = _product;
@@ -127,8 +127,6 @@ contract Derivative {
         // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
         // passes then we want to settle and remargin
         if (other.hasConfirmedPrice) {
-            state = State.Settled;
-
             // Remargin on agreed upon price
             _settleAgreedPrice();
         }
@@ -260,9 +258,7 @@ contract Derivative {
     function _whoAmI(address _sndrAddr) internal view returns (ContractParty storage sndr, ContractParty storage othr) {
         bool senderIsMaker = (_sndrAddr == maker.accountAddress);
         bool senderIsTaker = (_sndrAddr == taker.accountAddress);
-
         require((senderIsMaker || senderIsTaker) == true); // At least one should be true
-        require((senderIsMaker && senderIsTaker) == false); // But not both
 
         sndr = senderIsMaker ? maker : taker;
         othr = senderIsTaker ? taker : maker;
