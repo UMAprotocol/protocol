@@ -34,9 +34,8 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     // The publishing interval for this price feed. All publish times are just multiples of this interval starting at 0.
     uint constant private PRICE_PUBLISH_INTERVAL = 60;
 
-    constructor() public {
-        uint startTime = now;
-        _startTime = _intervalTime(startTime, startTime + 1);
+    constructor(uint startTime) public {
+        _startTime = _intervalTime(startTime, startTime);
     }
 
     // These functions are only here for the purpose of mocking a real feed. If this were meant for production, we
@@ -50,7 +49,7 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     }
 
     function unverifiedPrice() external view returns (uint publishTime, int256 price) {
-        return _mostRecentPriceTime(_unverifiedFeed);
+        return _mostRecentPriceTime(_verifiedFeed);
     }
 
     function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
@@ -75,8 +74,7 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     // Adds a new price to the mocked out feed. If this were meant for production, we would want to provide the time
     // and check that the time lines up with the expected next time on the feed.
     function _addNextPriceToFeed(int256 newPrice, FeedInfo storage feedInfo) private {
-        uint newTime = (feedInfo.latestPublishTime == 0 ?
-            _startTime : feedInfo.latestPublishTime.add(PRICE_PUBLISH_INTERVAL));
+        uint newTime = feedInfo.latestPublishTime.add(PRICE_PUBLISH_INTERVAL);
         assert(feedInfo.prices[newTime] == 0);
         feedInfo.prices[newTime] = newPrice;
         feedInfo.latestPublishTime = newTime;
