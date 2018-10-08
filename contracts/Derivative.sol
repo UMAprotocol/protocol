@@ -264,10 +264,10 @@ contract Derivative {
         require((senderIsMaker || senderIsTaker) == true); // At least one should be true
         require((senderIsMaker && senderIsTaker) == false); // But not both
 
-        sender = senderIsMaker ? maker : taker;
-        other = senderIsTaker ? taker : maker;
+        sndr = senderIsMaker ? maker : taker;
+        othr = senderIsTaker ? taker : maker;
 
-        return (sender, other);
+        return (sndr, othr);
     }
 
     // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. This function handles all of
