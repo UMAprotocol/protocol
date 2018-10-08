@@ -60,6 +60,8 @@ contract Derivative {
     // Financial information
     int256 public defaultPenalty;
     int256 public requiredMargin;
+    string public product;
+    uint public notional; // TODO(mrice32): use this variable to scale NPV changes.
 
     // Other addresses/contracts
     ContractParty public maker;
@@ -69,28 +71,35 @@ contract Derivative {
     State public state = State.Prefunded;
     uint public startTime;
     uint public endTime;
+    uint public lastRemarginTime;
 
     int256 public npv;  // Net present value is measured in Wei
     mapping(address => bool) public hasConfirmedPrice;
 
     constructor(
         address _makerAddress,
+        address _takerAddress,
         address _oracleAddress,
-        uint _duration,
         int256 _defaultPenalty,
-        int256 _requiredMargin
-    ) public {
-
+        int256 _requiredMargin,
+        uint expiry,
+        string _product,
+        uint _notional
+    ) public payable {
         // Address information
         oracle = VoteTokenInterface(_oracleAddress);
         maker = ContractParty(_makerAddress, 0, false);
-        taker = ContractParty(msg.sender, 0, false);
+        taker = ContractParty(_takerAddress, 0, false);
 
         // Contract states
-        startTime = now; // solhint-disable-line not-rely-on-time
-        endTime = startTime.add(_duration);
+        endTime = expiry;
+        // TODO(mrice32): maybe this should be 0 (never remargined). We should discuss what would make more sense to the
+        // user.
+        lastRemarginTime = 0; // solhint-disable-line not-rely-on-time
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
+        product = _product;
+        notional = _notional;
         npv = initialNpv();
     }
 
@@ -117,13 +126,11 @@ contract Derivative {
         // If both have confirmed then advance state to settled
         // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
         // passes then we want to settle and remargin
-        (uint currentTime,) = oracle.unverifiedPrice();
         if (other.hasConfirmedPrice) {
             state = State.Settled;
 
             // Remargin on agreed upon price
-            (uint unverifiedTime, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
-            _remargin(computeNpv(oraclePrice));
+            _settleAgreedPrice();
         }
     }
 
@@ -135,8 +142,8 @@ contract Derivative {
         depositer.balance += int256(msg.value);  // Want this to be safemath when available
 
         if (state == State.Prefunded) {
-            if (maker.balance > _requiredAccountBalanceOnRemargin(maker) &&
-                taker.balance > _requiredAccountBalanceOnRemargin(taker)) {
+            if (maker.balance >= _requiredAccountBalanceOnRemargin(maker) &&
+                taker.balance >= _requiredAccountBalanceOnRemargin(taker)) {
                 state = State.Live;
                 remargin();
             }
@@ -153,6 +160,7 @@ contract Derivative {
             "Contract must be Live/Expired/Defaulted to dispute"
         );
         state = State.Disputed;
+        endTime = lastRemarginTime;
     }
 
     function remargin() public returns (bool success) {
@@ -169,26 +177,15 @@ contract Derivative {
             state = State.Expired;
         }
 
+        lastRemarginTime = currentTime;
+
         // Update npv of contract
         return  _remargin(computeNpv(oraclePrice));
     }
 
-    function settleAgreedPrice() public {
-        // TODO: Currently no enforcement mechanism to check whether people have agreed upon the current unverified
-        //       price. This needs to be addressed.
-        (uint currentTime,) = oracle.unverifiedPrice();
-        require(currentTime >= endTime);
-        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
-
-        _settle(oraclePrice);
-    }
-
-    function settleVerifiedPrice() public {
-        (uint currentTime,) = oracle.verifiedPrice();
-        require(currentTime >= endTime);
-        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
-
-        _settle(oraclePrice);
+    function settle() public {
+        require(state == State.Disputed || state == State.Expired || state == State.Defaulted);
+        _settleVerifiedPrice();
     }
 
     function withdraw(uint256 amount) public payable returns (bool success) {
@@ -224,9 +221,20 @@ contract Derivative {
     }
 
     function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
-        (ContractParty storage sender, ContractParty storage other) = _whoAmI(msg.sender);
+        (ContractParty storage sender,) = _whoAmI(msg.sender);
 
         return _requiredAccountBalanceOnRemargin(sender);
+    }
+
+    function npvIfRemarginedImmediately() public view returns (int256 immediateNpv) {
+        // Checks whether contract has ended
+        (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
+        require(currentTime != 0);
+        if (currentTime >= endTime) {
+            (, oraclePrice) = oracle.unverifiedPrice(endTime);
+        }
+
+        return computeNpv(oraclePrice);
     }
 
     function whoDefaults() public view returns (bool inDefault, address defaulter, address notDefaulter) {
@@ -267,14 +275,12 @@ contract Derivative {
     // the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settle(int256 price) internal returns (bool success) {
 
-        (ContractParty storage checker, ContractParty storage other ) = _whoAmI(msg.sender);
-
         // Remargin at whatever price we're using (verified or unverified)
         success = _remargin(computeNpv(price));
-        require(success == true);
+        require(success);
 
         // Check whether goes into default
-        (bool inDefault, address _defaulter, address _notDefaulter) = whoDefaults();
+        (bool inDefault, address _defaulter, ) = whoDefaults();
         (ContractParty storage defaulter, ContractParty storage notDefaulter) = _whoAmI(_defaulter);
 
         if (inDefault) {
@@ -289,6 +295,24 @@ contract Derivative {
         state = State.Settled;
 
         return success;
+    }
+
+    function _settleAgreedPrice() internal {
+        // TODO: Currently no enforcement mechanism to check whether people have agreed upon the current unverified
+        //       price. This needs to be addressed.
+        (uint currentTime,) = oracle.unverifiedPrice();
+        require(currentTime >= endTime);
+        (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
+
+        _settle(oraclePrice);
+    }
+
+    function _settleVerifiedPrice() internal {
+        (uint currentTime,) = oracle.verifiedPrice();
+        require(currentTime >= endTime);
+        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
+
+        _settle(oraclePrice);
     }
 
     // Remargins the account based on a provided NPV value.
@@ -334,11 +358,9 @@ contract Derivative {
         int256 makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice));
 
         if (party.accountAddress == maker.accountAddress) {
-            balance = requiredMargin + makerDiff;
-        }
-
-        if (party.accountAddress == taker.accountAddress) {
             balance = requiredMargin - makerDiff;
+        } else if  (party.accountAddress == taker.accountAddress) {
+            balance = requiredMargin + makerDiff;
         }
 
         balance = balance > 0 ? balance : 0;
@@ -347,6 +369,25 @@ contract Derivative {
 
 
 contract DerivativeZeroNPV is Derivative, usingOraclize {
+
+    constructor(
+        address _ownerAddress,
+        address _counterpartyAddress,
+        address _oracleAddress,
+        int256 _defaultPenalty,
+        int256 _requiredMargin,
+        uint expiry,
+        string product,
+        uint notional
+    ) public payable Derivative(
+        _ownerAddress,
+        _counterpartyAddress,
+        _oracleAddress,
+        _defaultPenalty,
+        _requiredMargin,
+        expiry,
+        product,
+        notional) {} // solhint-disable-line no-empty-blocks
 
     function computeNpv(int256 oraclePrice) public view returns (int256 npvNew) {
         // This could be more complex, but in our case, just return the oracle value.
