@@ -86,3 +86,7 @@ workflows:
           requires:
             - checkout_and_install
             - build
+      - coverage:
+          requires:
+            - checkout_and_install
+            - build
