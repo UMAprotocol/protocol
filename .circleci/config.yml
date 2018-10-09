@@ -62,7 +62,7 @@ jobs:
     docker:
       - image: circleci/node:latest
       - image: trufflesuite/ganache-cli
-        command: npm install solidity-coverage && npx testrpc-sc -i 12345 -p 8555
+        command: npm install solidity-coverage && npx testrpc-sc -i 12345 -p 8555 -l 17592186044500 -g 1
     working_directory: ~/protocol
     steps:
       - restore_cache:
