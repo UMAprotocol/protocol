@@ -26,7 +26,7 @@ contract("Derivative", function(accounts) {
           (date.valueOf() / 1000).toString(),
           "ETH/USD",
           web3.toWei("1", "ether"),
-          { from: accounts[0], value: web3.toWei("1", "ether") }
+          { from: accounts[0], value: web3.toWei("1", "ether"), gasLimit: 17592186044415 }
         );
       })
       .then(function(response) {
