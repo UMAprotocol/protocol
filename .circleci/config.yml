@@ -69,7 +69,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: mv .solcover-ci.js .solcover.js && cat .solcover.js && npm run solidity-coverage
+          command: mv .solcover-ci.js .solcover.js && cat .solcover.js && npm run coverage
 
 workflows:
   version: 2
