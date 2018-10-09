@@ -7,7 +7,6 @@
 */
 pragma solidity ^0.4.24;
 
-import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./VoteTokenInterface.sol";
 
@@ -16,6 +15,7 @@ contract Derivative {
 
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
+    // using SafeMath for int256;
 
     enum State {
         // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
@@ -50,16 +50,21 @@ contract Derivative {
         Settled
     }
 
+    struct ContractParty {
+        address accountAddress;
+        int256 balance;
+        bool hasConfirmedPrice;
+    }
+
     // Financial information
-    mapping(address => int256) public balances; // Stored in Wei
-    int256 public defaultPenalty;  //
-    int256 public requiredMargin;  //
+    int256 public defaultPenalty;
+    int256 public requiredMargin;
     string public product;
     uint public notional; // TODO(mrice32): use this variable to scale NPV changes.
 
     // Other addresses/contracts
-    address public ownerAddress;          // should this be public?
-    address public counterpartyAddress;   //
+    ContractParty public maker;
+    ContractParty public taker;
     VoteTokenInterface public oracle;
 
     State public state = State.Prefunded;
@@ -71,8 +76,8 @@ contract Derivative {
     mapping(address => bool) public hasConfirmedPrice;
 
     constructor(
-        address _ownerAddress,
-        address _counterpartyAddress,
+        address _makerAddress,
+        address _takerAddress,
         address _oracleAddress,
         int256 _defaultPenalty,
         int256 _requiredMargin,
@@ -80,24 +85,21 @@ contract Derivative {
         string _product,
         uint _notional
     ) public payable {
-        ownerAddress = _ownerAddress;
+        // Address information
+        oracle = VoteTokenInterface(_oracleAddress);
+        // TODO: Think about who is sending the `msg.value`
+        require(_makerAddress != _takerAddress);
+        maker = ContractParty(_makerAddress, 0, false);
+        taker = ContractParty(_takerAddress, int256(msg.value), false);
 
         // Contract states
         endTime = expiry;
-        // TODO(mrice32): maybe this should be 0 (never remargined). We should discuss what would make more sense to the
-        // user.
-        lastRemarginTime = now; // solhint-disable-line not-rely-on-time
+        lastRemarginTime = 0;
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
-        npv = initialNpv();
-
-        // Address information
-        oracle = VoteTokenInterface(_oracleAddress);
-        counterpartyAddress = _counterpartyAddress;
-        balances[ownerAddress] = int256(msg.value);
-        balances[counterpartyAddress] = 0;
         product = _product;
         notional = _notional;
+        npv = initialNpv();
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
@@ -111,19 +113,20 @@ contract Derivative {
     function initialNpv() public view returns (int256 npvNew);
 
     function confirmPrice() public {
+        // Right now, only dispute if in a pre-settlement state
+        require(state == State.Expired || state == State.Defaulted || state == State.Disputed);
+
         // Figure out who is who
-        require(state == State.Expired || state == State.Disputed || state == State.Defaulted);
-        require(msg.sender == ownerAddress || msg.sender == counterpartyAddress);
-        address confirmer = msg.sender;
-        address other = msg.sender == ownerAddress ? counterpartyAddress : ownerAddress;
+        (ContractParty storage confirmer, ContractParty storage other) = _whoAmI(msg.sender);
 
         // Confirmer confirmed...
-        hasConfirmedPrice[confirmer] = true;
+        confirmer.hasConfirmedPrice = true;
 
         // If both have confirmed then advance state to settled
         // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
         // passes then we want to settle and remargin
-        if (hasConfirmedPrice[other]) {
+        if (other.hasConfirmedPrice) {
+            // Remargin on agreed upon price
             _settleAgreedPrice();
         }
     }
@@ -132,13 +135,12 @@ contract Derivative {
         // Make sure that one of participants is sending the deposit and that
         // we are in a "depositable" state
         require(state == State.Live || state == State.Prefunded);
-        require(msg.sender == ownerAddress || msg.sender == counterpartyAddress);
-
-        balances[msg.sender] += int256(msg.value);
+        (ContractParty storage depositer,) = _whoAmI(msg.sender);
+        depositer.balance += int256(msg.value);  // Want this to be safemath when available
 
         if (state == State.Prefunded) {
-            if (balances[ownerAddress] >= _requiredAccountBalanceOnRemargin(ownerAddress) &&
-                balances[counterpartyAddress] >= _requiredAccountBalanceOnRemargin(counterpartyAddress)) {
+            if (maker.balance >= _requiredAccountBalanceOnRemargin(maker) &&
+                taker.balance >= _requiredAccountBalanceOnRemargin(taker)) {
                 state = State.Live;
                 remargin();
             }
@@ -148,6 +150,7 @@ contract Derivative {
 
     function dispute() public {
         require(
+            // TODO: We need to add the dispute bond logic
             state == State.Live ||
             state == State.Expired ||
             state == State.Defaulted,
@@ -186,6 +189,8 @@ contract Derivative {
         // Make sure either in Prefunded, Live, or Settled
         require(state == State.Prefunded || state == State.Live || state == State.Settled);
 
+        (ContractParty storage withdrawer,) = _whoAmI(msg.sender);
+
         // Remargin before allowing a withdrawal.
         remargin();
 
@@ -194,8 +199,8 @@ contract Derivative {
         // must leave at least `requiredMargin`. Not allowed to withdraw in
         // other states
         int256 withdrawableAmount = (state == State.Prefunded || state == State.Settled) ?
-            balances[msg.sender] :
-            balances[msg.sender] - requiredMargin;
+            withdrawer.balance :
+            withdrawer.balance - requiredMargin;
 
         // Can only withdraw the allowed amount
         require(
@@ -206,18 +211,16 @@ contract Derivative {
         // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
         // to return
-        balances[msg.sender] -= int256(amount);
-        msg.sender.transfer(amount);
+        withdrawer.balance -= int256(amount);
+        withdrawer.accountAddress.transfer(amount);
 
         return true;
     }
 
-    function isDefault(address party) public view returns (bool) {
-        return balances[party] < requiredMargin;
-    }
-
     function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
-        return _requiredAccountBalanceOnRemargin(msg.sender);
+        (ContractParty storage sender,) = _whoAmI(msg.sender);
+
+        return _requiredAccountBalanceOnRemargin(sender);
     }
 
     function npvIfRemarginedImmediately() public view returns (int256 immediateNpv) {
@@ -231,20 +234,39 @@ contract Derivative {
         return computeNpv(oraclePrice);
     }
 
+    // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in
+    //       every other place and here we're returning addresses. We probably want a nice public method that returns
+    //       something intuitive and an internal method that's a little easier to use inside the contract, but messier
+    //       for outside
     function whoDefaults() public view returns (bool inDefault, address defaulter, address notDefaulter) {
         inDefault = false;
 
-        if (isDefault(ownerAddress)) {
-            defaulter = ownerAddress;
-            notDefaulter = counterpartyAddress;
+        if (_isDefault(maker)) {
+            defaulter = maker.accountAddress;
+            notDefaulter = taker.accountAddress;
             inDefault = true;
-        } else if (isDefault(counterpartyAddress)) {
-            defaulter = counterpartyAddress;
-            notDefaulter = ownerAddress;
+        } else if (_isDefault(taker)) {
+            defaulter = taker.accountAddress;
+            notDefaulter = maker.accountAddress;
             inDefault = true;
         }
 
         return (inDefault, defaulter, notDefaulter);
+    }
+
+    function _isDefault(ContractParty storage party) internal view returns (bool) {
+        return party.balance < requiredMargin;
+    }
+
+    function _whoAmI(address _sndrAddr) internal view returns (ContractParty storage sndr, ContractParty storage othr) {
+        bool senderIsMaker = (_sndrAddr == maker.accountAddress);
+        bool senderIsTaker = (_sndrAddr == taker.accountAddress);
+        require((senderIsMaker || senderIsTaker) == true); // At least one should be true
+
+        sndr = senderIsMaker ? maker : taker;
+        othr = senderIsTaker ? taker : maker;
+
+        return (sndr, othr);
     }
 
     // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. This function handles all of
@@ -256,18 +278,17 @@ contract Derivative {
         require(success);
 
         // Check whether goes into default
-        bool inDefault;
-        address defaulter;
-        address notDefaulter;
-        (inDefault, defaulter, notDefaulter) = whoDefaults();
+        (bool inDefault, address _defaulter, ) = whoDefaults();
+        (ContractParty storage defaulter, ContractParty storage notDefaulter) = _whoAmI(_defaulter);
+
         if (inDefault) {
             int256 penalty;
-            penalty = (balances[defaulter] < defaultPenalty) ?
-                balances[defaulter] :
+            penalty = (defaulter.balance < defaultPenalty) ?
+                defaulter.balance :
                 defaultPenalty;
 
-            balances[defaulter] -= penalty;
-            balances[notDefaulter] += penalty;
+            defaulter.balance -= penalty;
+            notDefaulter.balance += penalty;
         }
         state = State.Settled;
 
@@ -316,30 +337,28 @@ contract Derivative {
     function _updateBalances(int256 npvNew) internal {
         // Compute difference -- Add the difference to owner and subtract
         // from counterparty. Then update npv state variable.
-        int256 ownerDiff = _getOwnerNpvDiff(npvNew);
+        int256 makerDiff = _getMakerNpvDiff(npvNew);
         npv = npvNew;
 
-        balances[ownerAddress] += ownerDiff;
-        balances[counterpartyAddress] -= ownerDiff;
+        maker.balance += makerDiff;
+        taker.balance -= makerDiff;
     }
 
     // Gets the change in balance for the owners account when the most recent
     // NPV is applied. Note: there's a function for this because signage is
     // tricky here, and it must be done the same everywhere.
-    function _getOwnerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
+    function _getMakerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
         return npv - npvNew;
     }
 
-    function _requiredAccountBalanceOnRemargin(address party) internal view returns (int256 balance) {
+    function _requiredAccountBalanceOnRemargin(ContractParty storage party) internal view returns (int256 balance) {
         (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
-        int256 ownerDiff = _getOwnerNpvDiff(computeNpv(oraclePrice));
+        int256 makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice));
 
-        if (party == ownerAddress) {
-            balance = requiredMargin - ownerDiff;
-        }
-
-        if (party == counterpartyAddress) {
-            balance = requiredMargin + ownerDiff;
+        if (party.accountAddress == maker.accountAddress) {
+            balance = requiredMargin - makerDiff;
+        } else if (party.accountAddress == taker.accountAddress) {
+            balance = requiredMargin + makerDiff;
         }
 
         balance = balance > 0 ? balance : 0;
@@ -347,7 +366,7 @@ contract Derivative {
 }
 
 
-contract DerivativeZeroNPV is Derivative, usingOraclize {
+contract SimpleDerivative is Derivative {
 
     constructor(
         address _ownerAddress,
