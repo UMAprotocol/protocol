@@ -3,20 +3,20 @@ module.exports = {
   // for more about customizing your Truffle configuration!
   networks: {
     ci: {
-      host: "localhost",
+      host: "127.0.0.1",
       port: 8545,
       network_id: 1234,
       gas: 4700000
     },
     coverage: {
-      host: "localhost",
+      host: "127.0.0.1",
       network_id: "*",
       port: 8555,
       gas: 0xfffffffffff,
       gasPrice: 0x01
     },
     ci_coverage: {
-      host: "localhost",
+      host: "127.0.0.1",
       network_id: 12345,
       port: 8545,
       gas: 0xfffffffffff,
