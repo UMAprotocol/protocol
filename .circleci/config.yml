@@ -8,14 +8,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-dep-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
-            - v1-dep-cache-{{ .Branch }}-
-            - v1-dep-cache-
+            - v1-dependency-cache-{{ checksum "package-lock.json" }}
+            - v1-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v1-dependency-cache-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          key: v1-dependency-cache-{{ checksum "package-lock.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -46,6 +45,18 @@ jobs:
       - run:
           name: Lint
           command: npx solhint --max-warnings=1 contracts/**/*.sol
+  test:
+    docker:
+      - image: circleci/node:latest
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -e 100000000000 -l 4700038
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: npx truffle test --network ci
 
 workflows:
   version: 2
@@ -58,3 +69,7 @@ workflows:
       - lint:
           requires:
             - checkout_and_install
+      - test:
+          requires:
+            - checkout_and_install
+            - build
