@@ -61,15 +61,15 @@ jobs:
   coverage:
     docker:
       - image: circleci/node:latest
-      - image: trufflesuite/ganache-cli
-        command: npm install solidity-coverage && npx testrpc-sc -i 12345 -p 8555 -l 17592186044500 -g 1
+      - image: circleci/node:latest
+        command: npm install truffle && npm install solidity-coverage && npx testrpc-sc -i 12345 -p 8555 -l 17592186044415 -g 1
     working_directory: ~/protocol
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: mv .solcover-ci.js .solcover.js && cat .solcover.js && npx solidity-coverage
+          command: mv .solcover-ci.js .solcover.js && cat .solcover.js && npm run solidity-coverage
 
 workflows:
   version: 2
