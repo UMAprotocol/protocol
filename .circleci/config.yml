@@ -8,13 +8,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-dependency-cache-{{ checksum "package-lock.json" }}
+            - v1-dependency-cache-{{ checksum "package.json" }}
             - v1-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v1-dependency-cache-{{ checksum "package-lock.json" }}
+          key: v1-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -57,6 +57,19 @@ jobs:
       - run:
           name: Run tests
           command: npx truffle test --network ci
+
+  coverage:
+    docker:
+      - image: circleci/node:latest
+      - image: trufflesuite/ganache-cli
+        command: npm install solidity-coverage && npx testrpc-sc -i 12345
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: mv .solcover-ci.js .solcover.js && npx solidity-coverage
 
 workflows:
   version: 2

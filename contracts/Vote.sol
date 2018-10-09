@@ -13,11 +13,11 @@ pragma solidity ^0.4.24;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
+// import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "./Derivative.sol";
 
 
-contract VoteCoin is ERC20, usingOraclize {
+contract VoteCoin is ERC20 {
 
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
@@ -62,10 +62,8 @@ contract VoteCoin is ERC20, usingOraclize {
     // Derivative Market attached to VoteCoin for now -- Could be separated
     // into its own type, but this is easy for now
     // DerivativeContract[] allDerivatives = new DerivativeContract[](0);
-
     // For development
-    address constant public OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
-
+    // address constant public OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
     constructor() public payable {
         voteDuration = 120;
 
@@ -86,7 +84,7 @@ contract VoteCoin is ERC20, usingOraclize {
     // Methods for retrieving price and checking whether verified
     //
     function __callback(bytes32, string result) public {
-        if (msg.sender != oraclize_cbAddress()) revert();
+        // if (msg.sender != oraclize_cbAddress()) revert();
 
         // Tally old vote
         tallyVote(currVoteId);
@@ -104,13 +102,13 @@ contract VoteCoin is ERC20, usingOraclize {
     }
 
     function updatePrice() public payable {
-        if (oraclize_getPrice("URL") > address(this).balance) {
-            emit LogNewOraclizeQuery("Oraclize query was NOT sent, please add some ETH to cover for the query fee");
-        } else {
-            emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer..");
-            // Waits `voteDuration` and then sends query
-            oraclize_query(voteDuration, "URL", "json(https://api.gdax.com/products/ETH-USD/ticker).price");
-        }
+        // if (oraclize_getPrice("URL") > address(this).balance) {
+        //     emit LogNewOraclizeQuery("Oraclize query was NOT sent, please add some ETH to cover for the query fee");
+        // } else {
+        //     emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer..");
+        //     // Waits `voteDuration` and then sends query
+        //     oraclize_query(voteDuration, "URL", "json(https://api.gdax.com/products/ETH-USD/ticker).price");
+        // }
     }
 
     //

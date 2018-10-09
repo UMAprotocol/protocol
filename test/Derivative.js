@@ -17,6 +17,7 @@ contract("Derivative", function(accounts) {
         deployedOracle = instance;
         var date = new Date();
         date.setMonth(date.getMonth() + 3);
+
         return deployedRegistry.createDerivative(
           accounts[1],
           deployedOracle.address,
@@ -29,10 +30,10 @@ contract("Derivative", function(accounts) {
         );
       })
       .then(function(response) {
-        return deployedRegistry.getNumRegisteredContractsBySender({ from: accounts[0] });
+        return deployedRegistry.getNumRegisteredContractsBySender.call({ from: accounts[0] });
       })
       .then(function(response) {
-        return deployedRegistry.getRegisteredContractBySender(response.sub(1).toString(), { from: accounts[0] });
+        return deployedRegistry.getRegisteredContractBySender.call(response.sub(1).toString(), { from: accounts[0] });
       })
       .then(function(response) {
         derivativeContract = Derivative.at(response.toString());
