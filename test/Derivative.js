@@ -19,9 +19,9 @@ contract("Derivative", function(accounts) {
     deployedOracle = await Oracle.deployed();
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
-    await deployedOracle.addUnverifiedPrice(web3.toWei("0", "ether"), {from: ownerAddress});
-    await deployedOracle.addUnverifiedPrice(web3.toWei("0", "ether"), {from: ownerAddress});
-    await deployedOracle.addVerifiedPrice(web3.toWei("0", "ether"), {from: ownerAddress});
+    await deployedOracle.addUnverifiedPrice(web3.toWei("0", "ether"), { from: ownerAddress });
+    await deployedOracle.addUnverifiedPrice(web3.toWei("0", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.toWei("0", "ether"), { from: ownerAddress });
   });
 
   beforeEach(async () => {
@@ -29,18 +29,21 @@ contract("Derivative", function(accounts) {
     expiry = (await deployedOracle.latestUnverifiedPrice())[0].add(120);
 
     await deployedRegistry.createDerivative(
-          makerAddress,
-          deployedOracle.address,
-          web3.toWei("0.05", "ether"),
-          web3.toWei("0.1", "ether"),
-          expiry.toString(),
-          "ETH/USD",
-          web3.toWei("1", "ether"),
-          { from: takerAddress, value: web3.toWei("1", "ether") }
-        );
+      makerAddress,
+      deployedOracle.address,
+      web3.toWei("0.05", "ether"),
+      web3.toWei("0.1", "ether"),
+      expiry.toString(),
+      "ETH/USD",
+      web3.toWei("1", "ether"),
+      { from: takerAddress, value: web3.toWei("1", "ether") }
+    );
 
     var numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: takerAddress });
-    var derivativeAddress = await deployedRegistry.getRegisteredContractBySender(numRegisteredContracts.sub(1).toString(), { from: takerAddress });
+    var derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
+      numRegisteredContracts.sub(1).toString(),
+      { from: takerAddress }
+    );
     derivativeContract = Derivative.at(derivativeAddress);
   });
 
@@ -49,7 +52,7 @@ contract("Derivative", function(accounts) {
 
     // TODO: add a javascript lib that will map from enum name to uint value.
     // '0' == State.Prefunded
-    assert.equal(state.toString(), '0');
+    assert.equal(state.toString(), "0");
 
     // Note: the originator of the contract is, by definition, the taker.
     var takerStruct = await derivativeContract.taker();
@@ -76,27 +79,27 @@ contract("Derivative", function(accounts) {
     // Maker deposit below the margin requirement should not change the contract state.
     await derivativeContract.deposit({ from: makerAddress, value: web3.toWei("0.07", "ether") });
     state = await derivativeContract.state();
-    assert.equal(state.toString(), '0');
+    assert.equal(state.toString(), "0");
     var makerStruct = await derivativeContract.maker();
     assert.equal(makerStruct[1], web3.toWei("0.07", "ether"));
 
     // Maker deposit above the margin requirement should send the contract into the Live state.
     await derivativeContract.deposit({ from: makerAddress, value: web3.toWei("0.03", "ether") });
     state = await derivativeContract.state();
-    assert.equal(state.toString(), '1');
+    assert.equal(state.toString(), "1");
 
     // Attempt to withdraw past the min margin once live. Should throw.
     assert(await didContractThrow(derivativeContract.withdraw(web3.toWei("0.05", "ether"), { from: makerAddress })));
 
     // Change the price to -0.5 ETH.
-    await deployedOracle.addUnverifiedPrice(web3.toWei("-0.5", "ether"), {from: ownerAddress});
+    await deployedOracle.addUnverifiedPrice(web3.toWei("-0.5", "ether"), { from: ownerAddress });
 
-    // Right now, oracle price decreases hurt the taker and help the maker, which means the amount the taker needs in their account to survive the a -0.5 remargin is 0.6 (0.1 normal requirement + 0.5 price change). 
-    var takerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin( { from: takerAddress });
+    // Right now, oracle price decreases hurt the taker and help the maker, which means the amount the taker needs in their account to survive the a -0.5 remargin is 0.6 (0.1 normal requirement + 0.5 price change).
+    var takerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: takerAddress });
     assert.equal(takerRequiredBalance.toString(), web3.toWei("0.6", "ether"));
 
     // Since the price is moving toward the maker, the required balance to survive the remargin is 0.
-    var makerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin( {from: makerAddress });
+    var makerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: makerAddress });
     assert.equal(makerRequiredBalance.toString(), web3.toWei("0", "ether"));
 
     var expectedNpv = await derivativeContract.npvIfRemarginedImmediately();
@@ -115,22 +118,22 @@ contract("Derivative", function(accounts) {
     assert.equal(takerBalance.toString(), web3.toWei("0.5", "ether"));
 
     // Move the verified feed past expiration, but ensure the price stays at the expiry rather than moving to the current.
-    await deployedOracle.addUnverifiedPrice(web3.toWei("-0.5", "ether"), {from: ownerAddress});
-    await deployedOracle.addUnverifiedPrice(web3.toWei("-0.6", "ether"), {from: ownerAddress});
-    await derivativeContract.remargin( {from: takerAddress });
+    await deployedOracle.addUnverifiedPrice(web3.toWei("-0.5", "ether"), { from: ownerAddress });
+    await deployedOracle.addUnverifiedPrice(web3.toWei("-0.6", "ether"), { from: ownerAddress });
+    await derivativeContract.remargin({ from: takerAddress });
     newNpv = await derivativeContract.npv();
     assert.equal(newNpv.toString(), web3.toWei("-0.5", "ether"));
 
     // Check that the state is expiry.
     state = await derivativeContract.state();
-    assert.equal(state.toString(), '3');
+    assert.equal(state.toString(), "3");
 
     // One party confirms the unverified price.
     await derivativeContract.confirmPrice({ from: makerAddress });
 
     // Check that the state is still expiry since both have not confirmed.
     state = await derivativeContract.state();
-    assert.equal(state.toString(), '3');
+    assert.equal(state.toString(), "3");
 
     // Attempt to withdraw past the min margin. Should throw.
     assert(await didContractThrow(derivativeContract.withdraw(web3.toWei("0.6", "ether"), { from: makerAddress })));
@@ -138,18 +141,17 @@ contract("Derivative", function(accounts) {
     // Settle the contract now that both parties have confirmed.
     await derivativeContract.confirmPrice({ from: takerAddress });
     state = await derivativeContract.state();
-    assert.equal(state.toString(), '5');
+    assert.equal(state.toString(), "5");
 
     // Attempt to withdraw more than the maker has in the contract.
     assert(await didContractThrow(derivativeContract.withdraw(web3.toWei("0.7", "ether"), { from: makerAddress })));
 
-    await derivativeContract.withdraw(web3.toWei("0.6", "ether"), { from: makerAddress })
+    await derivativeContract.withdraw(web3.toWei("0.6", "ether"), { from: makerAddress });
     makerBalance = (await derivativeContract.maker())[1];
     assert.equal(makerBalance.toString(), web3.toWei("0", "ether"));
 
-    await derivativeContract.withdraw(web3.toWei("0.5", "ether"), { from: takerAddress })
+    await derivativeContract.withdraw(web3.toWei("0.5", "ether"), { from: takerAddress });
     takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.toWei("0", "ether"));
-
   });
 });
