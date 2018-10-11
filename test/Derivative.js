@@ -27,7 +27,8 @@ contract("Derivative", function(accounts) {
     await deployedOracle.addUnverifiedPrice(web3.toWei("0", "ether"), { from: ownerAddress });
 
     // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time
-    // steps.
+    // steps. Note: Make sure all tests end with same number of unverified/verified prices then this function will
+    // add one additional unverified price
     expiry = (await deployedOracle.latestUnverifiedPrice())[0].add(120);
 
     await deployedRegistry.createDerivative(
@@ -157,9 +158,14 @@ contract("Derivative", function(accounts) {
     await derivativeContract.withdraw(web3.toWei("0.5", "ether"), { from: takerAddress });
     takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.toWei("0", "ether"));
+
+    await deployedOracle.addVerifiedPrice(web3.toWei("0.0", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.toWei("-0.5", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.toWei("-0.5", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.toWei("-0.6", "ether"), { from: ownerAddress });
   });
 
-  it("Prefunded -> Live -> Defaulted -> Settled", async function() {
+  it("Prefunded -> Live -> Defaulted (maker) -> Confirmed", async function() {
     var state = await derivativeContract.state();
     assert.equal(state.toString(), "0");
 
@@ -205,5 +211,108 @@ contract("Derivative", function(accounts) {
     await derivativeContract.withdraw(web3.toWei("1.06", "ether"), { from: takerAddress });
     takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.toWei("0", "ether"));
+
+    await deployedOracle.addVerifiedPrice(web3.toWei("0.00", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.toWei("0.01", "ether"), { from: ownerAddress });
   });
+
+  it("Prefunded -> Live -> Defaulted (taker) -> No Confirm -> Settled", async function () {
+    var state = await derivativeContract.state();
+    assert.equal(state.toString(), "0");
+
+    // Maker deposit to start contract
+    await derivativeContract.deposit({ from: makerAddress, value: web3.toWei("1.00", "ether") });
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "1");
+
+    // Change the price to 0.16 ETH to send the taker into default.
+    await deployedOracle.addUnverifiedPrice(web3.toWei("-0.91", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.toWei("0.0", "ether"), { from: ownerAddress });
+    await derivativeContract.remargin({ from: makerAddress });
+
+    // Check that the state is default.
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "4");
+
+    // Attempt to withdraw while in default (even if the withdrawal amount is below the amount that will be left after
+    // settlement). Should throw.
+    assert(await didContractThrow(derivativeContract.withdraw(web3.toWei("0.03", "ether"), { from: makerAddress })));
+    assert(await didContractThrow(derivativeContract.withdraw(web3.toWei("0.5", "ether"), { from: takerAddress })));
+
+    // One party confirms the unverified price.
+    await derivativeContract.confirmPrice({ from: makerAddress });
+
+    // Check that the state is still in default since both have not confirmed.
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "4");
+
+    // Verify the price that caused default and have taker call settle
+    await deployedOracle.addVerifiedPrice(web3.toWei("-0.91", "ether"), { from: ownerAddress });
+    await derivativeContract.settle({from: takerAddress});
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "5");
+
+    await derivativeContract.withdraw(web3.toWei("1.96", "ether"), { from: makerAddress });
+    makerBalance = (await derivativeContract.maker())[1];
+    assert.equal(makerBalance.toString(), web3.toWei("0", "ether"));
+
+    await derivativeContract.withdraw(web3.toWei("0.04", "ether"), { from: takerAddress });
+    takerBalance = (await derivativeContract.taker())[1];
+    assert.equal(takerBalance.toString(), web3.toWei("0", "ether"));
+  });
+
+  it("Pre -> Live -> Default (m) -> Dispute -> V price default (t) -> No Confirm -> Settled", async function () {
+    var state = await derivativeContract.state();
+    assert.equal(state.toString(), "0");
+
+    // Maker deposit to start contract
+    await derivativeContract.deposit({ from: makerAddress, value: web3.toWei("1.00", "ether") });
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "1");
+
+    // Change the price to 0.91 ETH to send the maker into default.
+    await deployedOracle.addVerifiedPrice(web3.toWei("0.0", "ether"), { from: ownerAddress });
+    await deployedOracle.addUnverifiedPrice(web3.toWei("0.91", "ether"), { from: ownerAddress });
+    await derivativeContract.remargin({ from: makerAddress });
+
+    // Check that the state is default.
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "4");
+
+    // Maker disputes price
+    await derivativeContract.dispute({from: makerAddress});
+
+    // Check that the state is disputed
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "2");
+
+    // Attempt to withdraw while in dispute (even if the withdrawal amount is below the amount that will be left after
+    // settlement). Should throw.
+    assert(await didContractThrow(derivativeContract.withdraw(web3.toWei("0.03", "ether"), { from: makerAddress })));
+    assert(await didContractThrow(derivativeContract.withdraw(web3.toWei("0.5", "ether"), { from: takerAddress })));
+
+    // Can't settle because not a recent enough verified price
+    assert(await didContractThrow(derivativeContract.settle({from: takerAddress})));
+
+    // Verify price that is -1 * unverified price so that taker will now be in default
+    await deployedOracle.addVerifiedPrice(web3.toWei("-0.91", "ether"), { from: ownerAddress });
+
+    // Check that the state is still in dispute since not confirmed or settled yet
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "2");
+
+    // Call settle
+    await derivativeContract.settle({from: makerAddress});
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "5");
+
+    await derivativeContract.withdraw(web3.toWei("1.96", "ether"), { from: makerAddress });
+    makerBalance = (await derivativeContract.maker())[1];
+    assert.equal(makerBalance.toString(), web3.toWei("0", "ether"));
+
+    await derivativeContract.withdraw(web3.toWei("0.04", "ether"), { from: takerAddress });
+    takerBalance = (await derivativeContract.taker())[1];
+    assert.equal(takerBalance.toString(), web3.toWei("0", "ether"));
+  });
+
 });
