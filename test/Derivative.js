@@ -125,9 +125,11 @@ contract("Derivative", function(accounts) {
     // current.
     await deployedOracle.addUnverifiedPrice(web3.toWei("-0.5", "ether"), { from: ownerAddress });
     await deployedOracle.addUnverifiedPrice(web3.toWei("-0.6", "ether"), { from: ownerAddress });
+    expectedNpv = await derivativeContract.npvIfRemarginedImmediately();
     await derivativeContract.remargin({ from: takerAddress });
     newNpv = await derivativeContract.npv();
     assert.equal(newNpv.toString(), web3.toWei("-0.5", "ether"));
+    assert.equal(expectedNpv.toString(), newNpv.toString());
 
     // Check that the state is expiry.
     state = await derivativeContract.state();
