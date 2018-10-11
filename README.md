@@ -85,3 +85,6 @@ https://blockgeeks.com/guides/proof-of-work-vs-proof-of-stake/
 https://cryptologie.net/article/424/writing-a-dapp-for-the-ethereum-block-chain/
 https://medium.com/@mvmurthy/full-stack-hello-world-voting-ethereum-dapp-tutorial-part-1-40d2d0d807c2
 https://electronjs.org/docs/tutorial/first-app
+https://medium.com/metax-publication/a-walkthrough-of-plcr-voting-in-solidity-92420bd5b87c
+https://blog.colony.io/towards-better-ethereum-voting-protocols-7e54cb5a0119
+https://github.com/stonecoldpat/anonymousvoting
