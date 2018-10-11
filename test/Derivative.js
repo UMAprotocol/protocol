@@ -25,7 +25,7 @@ contract("Derivative", function(accounts) {
   });
 
   beforeEach(async () => {
-    // Create an quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time steps.
+    // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time steps.
     expiry = (await deployedOracle.latestUnverifiedPrice())[0].add(120);
 
     await deployedRegistry.createDerivative(
