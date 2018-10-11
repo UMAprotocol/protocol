@@ -63,10 +63,14 @@ jobs:
       - image: trufflesuite/ganache-cli
     working_directory: ~/protocol
     steps:
+      - checkout
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Run tests
+          name: Install Dependencies
+          command: npm install --quiet
+      - run:
+          name: Run coverage
           command: cat .solcover.js && npm run coverage
 
 workflows:
