@@ -25,7 +25,8 @@ contract("Derivative", function(accounts) {
   });
 
   beforeEach(async () => {
-    // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time steps.
+    // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time
+    // steps.
     expiry = (await deployedOracle.latestUnverifiedPrice())[0].add(120);
 
     await deployedRegistry.createDerivative(
@@ -94,7 +95,8 @@ contract("Derivative", function(accounts) {
     // Change the price to -0.5 ETH.
     await deployedOracle.addUnverifiedPrice(web3.toWei("-0.5", "ether"), { from: ownerAddress });
 
-    // Right now, oracle price decreases hurt the taker and help the maker, which means the amount the taker needs in their account to survive the a -0.5 remargin is 0.6 (0.1 normal requirement + 0.5 price change).
+    // Right now, oracle price decreases hurt the taker and help the maker, which means the amount the taker needs in
+    // their account to survive the a -0.5 remargin is 0.6 (0.1 normal requirement + 0.5 price change).
     var takerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: takerAddress });
     assert.equal(takerRequiredBalance.toString(), web3.toWei("0.6", "ether"));
 
@@ -117,7 +119,8 @@ contract("Derivative", function(accounts) {
     var takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.toWei("0.5", "ether"));
 
-    // Move the verified feed past expiration, but ensure the price stays at the expiry rather than moving to the current.
+    // Move the verified feed past expiration, but ensure the price stays at the expiry rather than moving to the
+    // current.
     await deployedOracle.addUnverifiedPrice(web3.toWei("-0.5", "ether"), { from: ownerAddress });
     await deployedOracle.addUnverifiedPrice(web3.toWei("-0.6", "ether"), { from: ownerAddress });
     await derivativeContract.remargin({ from: takerAddress });
