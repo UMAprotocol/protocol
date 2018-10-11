@@ -59,6 +59,14 @@ jobs:
           command: npx truffle test --network ci
   coverage:
     docker:
+      # TODO(mrice32): we made a compromise here to get solidity-coverage to work. We're just creating a new build
+      # inside the trufflesuite/ganache-cli for solidity-coverage. This is because there were issues (not 100% sure
+      # about the cause) with getting solidity-coverage's testrpc to run correctly in the remote image. However,
+      # it cannot run locally without the opened 8545 port that this image has. So the solution we chose was to
+      # just run coverage within that docker image. Caching doesn't seem to work cross-image, so we have to re-checkout
+      # the repo and reinstall deps. We could have also run all the above tests inside this new image. However, we
+      # want to ensure that there is no implicit dependence on the bundled deps or setup inside the
+      # trufflesuite/ganache-cli image, so we want to continue generic testing against the bare node image.
       - image: trufflesuite/ganache-cli
     working_directory: ~/protocol
     steps:
