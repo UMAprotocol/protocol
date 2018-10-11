@@ -263,8 +263,8 @@ contract Derivative {
         return senderIsMaker ? (maker, taker) : (taker, maker);
     }
 
-    // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all of
-    // the settlement logic including assessing penalties and then moves the state to `Settled`.
+    // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
+    // of the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settle(int256 price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
