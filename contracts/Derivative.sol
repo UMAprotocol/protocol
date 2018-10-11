@@ -131,7 +131,7 @@ contract Derivative {
         }
     }
 
-    function deposit() public payable returns (bool success) {
+    function deposit() public payable {
         // Make sure that one of participants is sending the deposit and that
         // we are in a "depositable" state
         require(state == State.Live || state == State.Prefunded);
@@ -145,7 +145,6 @@ contract Derivative {
                 remargin();
             }
         }
-        return true;
     }
 
     function dispute() public {
@@ -160,11 +159,9 @@ contract Derivative {
         endTime = lastRemarginTime;
     }
 
-    function remargin() public returns (bool success) {
+    function remargin() public {
         // If the state is not live, remargining does not make sense.
-        if (state != State.Live) {
-            return false;
-        }
+        require(state == State.Live);
 
         // Checks whether contract has ended
         (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
@@ -185,7 +182,7 @@ contract Derivative {
         _settleVerifiedPrice();
     }
 
-    function withdraw(uint256 amount) public payable returns (bool success) {
+    function withdraw(uint256 amount) public payable {
         // Make sure either in Prefunded, Live, or Settled
         require(state == State.Prefunded || state == State.Live || state == State.Settled);
 
@@ -213,8 +210,6 @@ contract Derivative {
         // to return
         withdrawer.balance -= int256(amount);
         withdrawer.accountAddress.transfer(amount);
-
-        return true;
     }
 
     function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
@@ -258,24 +253,20 @@ contract Derivative {
         return party.balance < requiredMargin;
     }
 
-    function _whoAmI(address _sndrAddr) internal view returns (ContractParty storage sndr, ContractParty storage othr) {
-        bool senderIsMaker = (_sndrAddr == maker.accountAddress);
-        bool senderIsTaker = (_sndrAddr == taker.accountAddress);
-        require((senderIsMaker || senderIsTaker) == true); // At least one should be true
+    function _whoAmI(address sndrAddr) internal view returns (ContractParty storage sndr, ContractParty storage othr) {
+        bool senderIsMaker = (sndrAddr == maker.accountAddress);
+        bool senderIsTaker = (sndrAddr == taker.accountAddress);
+        require(senderIsMaker || senderIsTaker); // At least one should be true
 
-        sndr = senderIsMaker ? maker : taker;
-        othr = senderIsTaker ? taker : maker;
-
-        return (sndr, othr);
+        return senderIsMaker ? (maker, taker) : (taker, maker);
     }
 
     // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. This function handles all of
     // the settlement logic including assessing penalties and then moves the state to `Settled`.
-    function _settle(int256 price) internal returns (bool success) {
+    function _settle(int256 price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
-        success = _remargin(computeNpv(price));
-        require(success);
+        _remargin(computeNpv(price));
 
         // Check whether goes into default
         (bool inDefault, address _defaulter, ) = whoDefaults();
@@ -291,8 +282,6 @@ contract Derivative {
             notDefaulter.balance += penalty;
         }
         state = State.Settled;
-
-        return success;
     }
 
     function _settleAgreedPrice() internal {
@@ -317,7 +306,7 @@ contract Derivative {
     // The internal remargin method allows certain calls into the contract to
     // automatically remargin to non-current NPV values (time of expiry, last
     // agreed upon price, etc).
-    function _remargin(int256 npvNew) internal returns (bool success) {
+    function _remargin(int256 npvNew) internal {
         // Update the balances of contract
         _updateBalances(npvNew);
 
@@ -330,8 +319,6 @@ contract Derivative {
             state = State.Defaulted;
             (endTime,) = oracle.unverifiedPrice(); // Change end time to moment when default occurred
         }
-
-        return true;
     }
 
     function _updateBalances(int256 npvNew) internal {
