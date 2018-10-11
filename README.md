@@ -41,6 +41,17 @@ npm install -g solhint
 solhint contracts/**/*.sol
 ```
 
+## Coverage
+We use the [solidity-coverage](https://github.com/sc-forks/solidity-coverage) package to generate our coverage reports.
+These can be generated manually by developers. There are no regression tests or published reports. CircleCI does
+generate a coverage report automatically, but currently that generation is only used to ensure that it continues
+to work and for a small amount of information available in the console output of the coverage generation about total
+lines covered. To run the coverage report, run:
+```
+npm run coverage
+```
+The full report can be viewed by opening the `coverage/index.html` in a browser.
+
 ## Style Guide
 
 See [STYLE.md](STYLE.md).

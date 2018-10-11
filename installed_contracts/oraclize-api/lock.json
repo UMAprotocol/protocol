@@ -1,8 +1,0 @@
-{
-	"lockfile_version": "1",
-	"package_name": "oraclize-api",
-	"version": "1.0.0",
-	"sources": {
-		"./contracts/usingOraclize.sol": "ipfs://QmYzmJhtEvJBbFLR5X29fqum6BwUM1cGAfMfdpyYxGUQf6"
-	}
-}
