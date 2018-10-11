@@ -188,8 +188,10 @@ contract Derivative {
 
         (ContractParty storage withdrawer,) = _whoAmI(msg.sender);
 
-        // Remargin before allowing a withdrawal.
-        remargin();
+        // Remargin before allowing a withdrawal, but only if in the live state.
+        if (state == State.Live) {
+            remargin();
+        }
 
         // If the contract has been settled or is in prefunded state then can
         // withdraw up to full balance. If the contract is in live state then
