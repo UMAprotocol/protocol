@@ -28,14 +28,14 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     FeedInfo private _verifiedFeed;
 
     // First time at which a price will be published.
-    uint private _startTime;
+    uint private startTime;
 
     // The publishing interval for this price feed. All publish times are just multiples of this interval starting at 0.
     uint constant private PRICE_PUBLISH_INTERVAL = 60;
 
     constructor() public {
-        uint startTime = now; // solhint-disable-line not-rely-on-time
-        _startTime = _intervalTime(startTime, startTime + 1);
+        uint time = now; // solhint-disable-line not-rely-on-time
+        startTime = _intervalTime(time, time + 1);
     }
 
     // These functions are only here for the purpose of mocking a real feed. If this were meant for production, we
@@ -48,16 +48,16 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
         _addNextPriceToFeed(newPrice, _verifiedFeed);
     }
 
-    function unverifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestUnverifiedPrice() external view returns (uint publishTime, int256 price) {
         return _mostRecentPriceTime(_unverifiedFeed);
+    }
+
+    function latestVerifiedPrice() external view returns (uint publishTime, int256 price) {
+        return _mostRecentPriceTime(_verifiedFeed);
     }
 
     function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
         return _getPrice(time, _unverifiedFeed);
-    }
-
-    function verifiedPrice() external view returns (uint publishTime, int256 price) {
-        return _mostRecentPriceTime(_verifiedFeed);
     }
 
     function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
@@ -75,7 +75,7 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     // and check that the time lines up with the expected next time on the feed.
     function _addNextPriceToFeed(int256 newPrice, FeedInfo storage feedInfo) private {
         uint newTime = (feedInfo.latestPublishTime == 0 ?
-            _startTime : feedInfo.latestPublishTime.add(PRICE_PUBLISH_INTERVAL));
+            startTime : feedInfo.latestPublishTime.add(PRICE_PUBLISH_INTERVAL));
         assert(feedInfo.prices[newTime] == 0);
         feedInfo.prices[newTime] = newPrice;
         feedInfo.latestPublishTime = newTime;
@@ -98,7 +98,7 @@ contract VoteTokenMock is VoteTokenInterface, Ownable {
     // `startTime` of this feed, then 0 is returned.
     function _intervalTime(uint time, uint latestFeedTime) private view returns (uint timeInInterval) {
         if (time < latestFeedTime) {
-            return time < _startTime ? 0 : time.div(PRICE_PUBLISH_INTERVAL).mul(PRICE_PUBLISH_INTERVAL);
+            return time < startTime ? 0 : time.div(PRICE_PUBLISH_INTERVAL).mul(PRICE_PUBLISH_INTERVAL);
         } else {
             return latestFeedTime;
         }

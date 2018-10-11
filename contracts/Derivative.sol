@@ -164,7 +164,7 @@ contract Derivative {
         require(state == State.Live);
 
         // Checks whether contract has ended
-        (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
+        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
         if (currentTime >= endTime) {
             (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
@@ -188,8 +188,10 @@ contract Derivative {
 
         (ContractParty storage withdrawer,) = _whoAmI(msg.sender);
 
-        // Remargin before allowing a withdrawal.
-        remargin();
+        // Remargin before allowing a withdrawal, but only if in the live state.
+        if (state == State.Live) {
+            remargin();
+        }
 
         // If the contract has been settled or is in prefunded state then can
         // withdraw up to full balance. If the contract is in live state then
@@ -201,7 +203,7 @@ contract Derivative {
 
         // Can only withdraw the allowed amount
         require(
-            (int256(withdrawableAmount) > int256(amount)),
+            (int256(withdrawableAmount) >= int256(amount)),
             "Attempting to withdraw more than allowed"
         );
 
@@ -220,7 +222,7 @@ contract Derivative {
 
     function npvIfRemarginedImmediately() public view returns (int256 immediateNpv) {
         // Checks whether contract has ended
-        (uint currentTime, int256 oraclePrice) = oracle.unverifiedPrice();
+        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
         if (currentTime >= endTime) {
             (, oraclePrice) = oracle.unverifiedPrice(endTime);
@@ -261,8 +263,8 @@ contract Derivative {
         return senderIsMaker ? (maker, taker) : (taker, maker);
     }
 
-    // Function is internally only called by `settleAgreedPrice` or `settleVerifiedPrice`. This function handles all of
-    // the settlement logic including assessing penalties and then moves the state to `Settled`.
+    // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
+    // of the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settle(int256 price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
@@ -270,9 +272,9 @@ contract Derivative {
 
         // Check whether goes into default
         (bool inDefault, address _defaulter, ) = whoDefaults();
-        (ContractParty storage defaulter, ContractParty storage notDefaulter) = _whoAmI(_defaulter);
 
         if (inDefault) {
+            (ContractParty storage defaulter, ContractParty storage notDefaulter) = _whoAmI(_defaulter);
             int256 penalty;
             penalty = (defaulter.balance < defaultPenalty) ?
                 defaulter.balance :
@@ -285,9 +287,7 @@ contract Derivative {
     }
 
     function _settleAgreedPrice() internal {
-        // TODO: Currently no enforcement mechanism to check whether people have agreed upon the current unverified
-        //       price. This needs to be addressed.
-        (uint currentTime,) = oracle.unverifiedPrice();
+        (uint currentTime,) = oracle.latestUnverifiedPrice();
         require(currentTime >= endTime);
         (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
 
@@ -295,7 +295,7 @@ contract Derivative {
     }
 
     function _settleVerifiedPrice() internal {
-        (uint currentTime,) = oracle.verifiedPrice();
+        (uint currentTime,) = oracle.latestVerifiedPrice();
         require(currentTime >= endTime);
         (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
 
@@ -317,7 +317,7 @@ contract Derivative {
         (inDefault, defaulter, notDefaulter) = whoDefaults();
         if (inDefault) {
             state = State.Defaulted;
-            (endTime,) = oracle.unverifiedPrice(); // Change end time to moment when default occurred
+            (endTime,) = oracle.latestUnverifiedPrice(); // Change end time to moment when default occurred
         }
     }
 
