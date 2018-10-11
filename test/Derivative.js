@@ -17,7 +17,6 @@ contract("Derivative", function(accounts) {
         deployedOracle = instance;
         var date = new Date();
         date.setMonth(date.getMonth() + 3);
-
         return deployedRegistry.createDerivative(
           accounts[1],
           deployedOracle.address,
