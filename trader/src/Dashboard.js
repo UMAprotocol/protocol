@@ -28,7 +28,7 @@ import { default as contract } from "truffle-contract";
 import BigNumber from "bignumber.js";
 
 // Import our contract artifacts and turn them into usable abstractions.
-import voteTokenMock from "./contracts/VoteTokenMock.json";
+import OracleMock from "./contracts/OracleMock.json";
 import derivative from "./contracts/Derivative.json";
 import registry from "./contracts/Registry.json";
 
@@ -154,7 +154,7 @@ class Dashboard extends React.Component {
     // Default penalty = ~5% of total contract value. Margin ~= 10% of total contract value.
     await this.state.deployedRegistry.createDerivative(
       counterparty,
-      this.deployedVoteTokenMock.address,
+      this.deployedOracleMock.address,
       defaultPenaltyInEth.toString(),
       marginInEth.toString(),
       (date.valueOf() / 1000).toString(),
@@ -172,11 +172,11 @@ class Dashboard extends React.Component {
 
     this.web3 = new Web3(Web3.givenProvider);
 
-    this.voteTokenMock = contract(voteTokenMock);
+    this.OracleMock = contract(OracleMock);
     this.derivative = contract(derivative);
     this.registry = contract(registry);
 
-    this.voteTokenMock.setProvider(this.web3.currentProvider);
+    this.OracleMock.setProvider(this.web3.currentProvider);
     this.derivative.setProvider(this.web3.currentProvider);
     this.registry.setProvider(this.web3.currentProvider);
 
@@ -195,7 +195,7 @@ class Dashboard extends React.Component {
 
       var deployedRegistry = await this.registry.deployed();
       this.setState({ deployedRegistry: deployedRegistry });
-      this.deployedVoteTokenMock = await this.voteTokenMock.deployed();
+      this.deployedOracleMock = await this.OracleMock.deployed();
       this.setState({ submitButton: true });
     });
   }
