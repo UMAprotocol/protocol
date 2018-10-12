@@ -34,9 +34,6 @@ contract VoteInterface {
     // Returns the current period type ("commit", "reveal", or "none").
     function getCurrentPeriodType() external view returns (string periodType);
 
-    // Gets the active pollId.
-    function getActivePoll() external view returns (uint pollId);
-
     // Gets the product that the price votes apply to.
     function getProduct() external view returns (string product);
 
@@ -51,7 +48,10 @@ contract VoteInterface {
 
     // Gets the committed hash for a particular poll and voter. This is meant to be used as a debugging tool if a call
     // to revealVote() unexpectedly fails.
-    // Note: this function will fail is the poll is not currently active or the voter has not participated in this
-    // poll.
+    // Note: this function will fail is the poll is not currently active, the voter has not participated in this poll,
+    // or if the voter has already revealed their vote for this poll.
     function getCommittedVoteForUser(uint pollId, address voter) external view returns (bytes32 secretHash);
+
+    // Gets the active pollId.
+    function getActivePoll() public view returns (uint pollId);
 }

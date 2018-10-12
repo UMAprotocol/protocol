@@ -10,182 +10,150 @@
 */
 pragma solidity ^0.4.24;
 
+pragma experimental ABIEncoderV2;
+
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-// import "installed_contracts/oraclize-api/contracts/usingOraclize.sol";
 import "./Derivative.sol";
+import "./VoteInterface.sol";
+import "./OracleInterface.sol";
 
 
-contract VoteCoin is ERC20 {
+contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
 
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
 
-    struct DerivativeContract {
-        address owner;
-        address counterparty;
-        uint contractId;
+    enum PeriodType {
+        Commit,
+        Reveal
     }
 
-    struct VoteYesNo {
-        address[] voters;
-        mapping(address => uint) votedFor;
-        uint winner;
-        bool voteTallied;
-        uint startTime;
-        uint endTime;
+    PeriodType public period;
+
+    uint public currentPollStartTime;
+    uint public currentPollId;
+
+    string public product;
+
+    struct Poll {
+        uint votesFor;
+        uint votesAgainst;
+        mapping(address => bytes32) committedVotes;
     }
 
-    // Event information to facilitate communication with web interface
-    event LogConstructorInitiated(string nextStep);
-    event LogNewOraclizeQuery(string description);
-    event LogPriceUpdated(string price);
-    event NewDerivativeCreated(address maker, address taker);
-    event VoteCreated(uint _voteID);
-    event VoterChangedVote(address _voter, uint _proposal);
-    event VoteTallied(uint _voteID, uint _winningProposal, uint winningTally);
-    event VoterVoted(address _voter, uint _proposal);
+    mapping(uint => Poll) private polls;
 
-    // Meta information about tokens
-    string public name = "TestVoteCoin";
-    string public symbol = "TVC";
+    uint private constant SECONDS_PER_WEEK = 604800;
+    uint private constant SECONDS_PER_THREE_DAYS = 259200;
+    uint private constant MONDAY_EPOCH_EST_OFFSET = 327600;
 
-    // Information used for votes
-    uint public currVoteId;
-    uint public voteDuration;
-    mapping(uint => VoteYesNo) public allVotes;
-
-    // Price info
-    string public ethUsd = "0";
-
-    // Derivative Market attached to VoteCoin for now -- Could be separated
-    // into its own type, but this is easy for now
-    // DerivativeContract[] allDerivatives = new DerivativeContract[](0);
-    // For development
-    // address constant public OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
-    constructor() public payable {
-        voteDuration = 120;
-
+    constructor(string _product) public {
+        checkTimeAndUpdateState();
+        currentPollId = 1;
         _mint(msg.sender, 10000);
-
-        currVoteId = 0;
-        newVote();
-        // updatePrice();
-
-        emit LogConstructorInitiated("Constructor was initiated. Call 'updatePrice()' to send the Oraclize Query.");
+        product = _product;
     }
 
-    function vote(uint _voteID, uint _proposal) external {
-        _vote(msg.sender, _voteID, _proposal);
+    function commitVote(uint pollId, bytes32 secretHash) external {
+        checkTimeAndUpdateState();
+        require(period == PeriodType.Commit);
+        require(pollId == currentPollId);
+        Poll storage poll = polls[pollId];
+        require(secretHash != 0);
+
+        // Allow vote rewrites.
+        poll.committedVotes[msg.sender] = secretHash;
     }
 
-    //
-    // Methods for retrieving price and checking whether verified
-    //
-    function __callback(bytes32, string result) public {
-        // if (msg.sender != oraclize_cbAddress()) revert();
+    function revealVote(uint pollId, bool voteOption, uint salt) external {
+        checkTimeAndUpdateState();
+        require(period == PeriodType.Reveal);
+        require(pollId == currentPollId);
 
-        // Tally old vote
-        tallyVote(currVoteId);
+        Poll storage poll = polls[pollId];
 
-        // Here we could issue rewards for having voting with majority
+        bytes32 secretHash = poll.committedVotes[msg.sender];
+        require(secretHash != 0);
+        require(keccak256(abi.encodePacked(voteOption, salt)) == secretHash);
 
-        // Price arrives
-        ethUsd = result;
-        emit LogPriceUpdated(ethUsd);
-
-        // Create new vote
-        newVote();
-
-        updatePrice();
-    }
-
-    function updatePrice() public payable {
-        // if (oraclize_getPrice("URL") > address(this).balance) {
-        //     emit LogNewOraclizeQuery("Oraclize query was NOT sent, please add some ETH to cover for the query fee");
-        // } else {
-        //     emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer..");
-        //     // Waits `voteDuration` and then sends query
-        //     oraclize_query(voteDuration, "URL", "json(https://api.gdax.com/products/ETH-USD/ticker).price");
-        // }
-    }
-
-    //
-    // Methods related to voting
-    //
-    function _vote(address _voter, uint _voteID, uint _proposal) internal {
-
-        // TODO (REMOVE LATER) -- For now just issue tokens when someone votes
-        if (balanceOf(_voter) < 1) {
-            _mint(_voter, 1000);
-        }
-
-        // This will never happen
-        require(balanceOf(_voter) > 0, "Not enough tokens to vote");
-        require(_proposal < 3 && _proposal > 0, "Only can vote yes (2) or no (1)");
-
-        VoteYesNo storage currentVote = allVotes[_voteID];
-        require(currentVote.voteTallied == false);
-
-        bool alreadyVoted = currentVote.votedFor[_voter] != 0;
-
-        // Set address vote to _proposal
-        currentVote.votedFor[_voter] = _proposal;
-
-        // If this is first time, add them to voters array
-        if (alreadyVoted) {
-            emit VoterChangedVote(_voter, _proposal);
+        // TODO(mrice32): add snapshotting to prevent using the same tokens to vote.
+        uint userBalance = balanceOf(msg.sender);
+        if (voteOption) {
+            poll.votesFor += userBalance;
         } else {
-            currentVote.voters.push(_voter);
-            emit VoterVoted(_voter, _proposal);
+            poll.votesAgainst += userBalance;
+        }
+
+        delete poll.committedVotes[msg.sender];
+    }
+
+    function getCurrentCommitRevealPeriods() external view returns (Period commit, Period reveal) {
+        commit.startTime = currentPollStartTime;
+        commit.endTime = currentPollStartTime + SECONDS_PER_THREE_DAYS;
+        reveal.startTime = commit.endTime;
+        reveal.endTime = currentPollStartTime + SECONDS_PER_WEEK;
+    }
+
+    function getCurrentPeriodType() external view returns (string periodType) {
+        PeriodType currentPeriod = period;
+        if (currentPeriod == PeriodType.Commit) {
+            return "commit";
+        } else if (currentPeriod == PeriodType.Reveal) {
+            return "reveal";
+        } else {
+            assert(false);
         }
     }
 
-    function determineWinner(uint _voteId) internal view returns (uint winningProposal) {
-        uint voted2 = 0;
-        VoteYesNo storage currentVote = allVotes[_voteId];
-        uint nVoters = currentVote.voters.length;
+    function getProduct() external view returns (string _product) {
+        return product;
+    }
 
-        // Declare variables used later
-        address currVoter;
-        uint currProposalVote;
-        uint currWeight;
-        uint totalWeight;
-        for (uint i=0; i < nVoters; i++) {
-            currVoter = currentVote.voters[i];
-            currProposalVote = currentVote.votedFor[currVoter];
-            currWeight = balanceOf(currVoter);
-            totalWeight = totalWeight + currWeight;
-            if (currProposalVote == 2) {
-                voted2 = voted2.add(currWeight);
-            }
+    function getProposal(uint) external view returns (PriceTime[] prices) {
+        prices = new PriceTime[](0);
+    }
+
+    function getProposedPriceAtTime(uint, uint) external view returns (int256 price) {
+        return 0;
+    }
+
+    function getCommittedVoteForUser(uint pollId, address voter) external view returns (bytes32 secretHash) {         
+        require(getActivePoll() == pollId);
+        Poll storage poll = polls[pollId];
+        secretHash = poll.committedVotes[voter];
+        require(secretHash != 0);
+    }
+
+    function checkTimeAndUpdateState() public {
+        uint time = now; // solhint-disable-line not-rely-on-time
+        uint computedStartTime = getStartOfPeriod(time);
+
+        if (computedStartTime != currentPollStartTime) {
+            currentPollStartTime = computedStartTime;
+            // TODO(mrice32): commit poll results here.
+            ++currentPollId;
         }
 
-        winningProposal = totalWeight.sub(voted2) < voted2 ? 2 : 1;
+        // TODO(mrice32): make this better on gas by only writing if the value changed.
+        if (time >= computedStartTime + SECONDS_PER_THREE_DAYS) {
+            period = PeriodType.Reveal;
+        } else {
+            period = PeriodType.Commit;
+        }
     }
 
-    function newVote() private {
-        currVoteId = currVoteId.add(1);
-
-        uint currentTime = now; // solhint-disable-line not-rely-on-time
-        allVotes[currVoteId] = VoteYesNo(new address[](0), 0, false, currentTime, currentTime);
-        emit VoteCreated(currVoteId);
+    function getActivePoll() public view returns (uint pollId) {
+        // solhint-disable-next-line not-rely-on-time
+        return getStartOfPeriod(now) != currentPollStartTime ? currentPollId + 1 : currentPollId;
     }
 
-    function tallyVote(uint _voteId) private {
-        require(allVotes[_voteId].voteTallied == false, "Vote has already been tallied");
-
-        // Find winner
-        uint winningProposal = 0;  // determineWinner(_voteId);
-        uint winningTally = 0;
-        allVotes[_voteId].winner = winningProposal;
-        allVotes[_voteId].endTime = now; // solhint-disable-line not-rely-on-time
-        allVotes[_voteId].voteTallied = true;
-        emit VoteTallied(_voteId, winningProposal, winningTally);
+    function getStartOfPeriod(uint timestamp) private pure returns (uint) {
+        return (((timestamp
+            - MONDAY_EPOCH_EST_OFFSET)
+            / SECONDS_PER_WEEK
+            * SECONDS_PER_WEEK)
+            + MONDAY_EPOCH_EST_OFFSET);
     }
-
-    //
-    // Methods for creating new derivatives
-    //
-}  // End of contract
+}
