@@ -26,7 +26,7 @@ contract VoteInterface {
     // Reveals the sender's previously committed vote for a particular poll.
     // Note: this function will fail if keccak256(abi.encodePacked(voteOption, salt)) doesn't match the secretHash,
     // this pollId is not currently active, or if the contract is not in the reveal period.
-    function revealVote(uint pollId, uint voteOption, uint salt) external;
+    function revealVote(uint pollId, bool voteOption, uint salt) external;
 
     // Returns the commit and reveal periods for the active polls. 
     function getCurrentCommitRevealPeriods() external view returns (Period commit, Period reveal);
@@ -34,9 +34,11 @@ contract VoteInterface {
     // Returns the current period type ("commit", "reveal", or "none").
     function getCurrentPeriodType() external view returns (string periodType);
 
-    // Gets the active or upcoming (if getCurrentPeriodType() type returns "none") pollId for this product.
-    // Note: this function will fail if this contract is not publishing prices for that symbol. 
-    function getPollIdForProduct(string product) external view returns (uint pollId);
+    // Gets the active pollId.
+    function getActivePoll() external view returns (uint pollId);
+
+    // Gets the product that the price votes apply to.
+    function getProduct() external view returns (string product);
 
     // Gets the proposed price-time pairs for a particular pollId.
     // Note: this function will fail if the pollId is not active.
