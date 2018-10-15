@@ -1,5 +1,5 @@
 /*
-  VoteTokenMock implementation.
+  OracleMock implementation.
 
   Simple mock implementation of a Vote Token to be used by a derivative for querying price feeds.
 */
@@ -7,10 +7,10 @@ pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./VoteTokenInterface.sol";
+import "./OracleInterface.sol";
 
 
-contract VoteTokenMock is VoteTokenInterface, Ownable {
+contract OracleMock is OracleInterface, Ownable {
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
 

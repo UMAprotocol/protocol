@@ -2,7 +2,7 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 
 var Derivative = artifacts.require("Derivative");
 var Registry = artifacts.require("Registry");
-var Oracle = artifacts.require("VoteTokenMock");
+var Oracle = artifacts.require("OracleMock");
 
 contract("Derivative", function(accounts) {
   var derivativeContract;

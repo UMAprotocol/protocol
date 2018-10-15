@@ -12,7 +12,7 @@ All that's needed to install all required packages is running `npm install` from
 compile --reset
 migrate --reset
 var voteToken;
-VoteTokenMock.deployed().then(instance => {voteToken = instance});
+OracleMock.deployed().then(instance => {voteToken = instance});
 ```
 1. Once the above commands have executed, run the follwing command to set an initial mock oracle price:
 ```js
