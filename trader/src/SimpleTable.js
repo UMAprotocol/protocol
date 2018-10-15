@@ -28,12 +28,12 @@ class SimpleTable extends React.Component {
     var data = [];
 
     if (deployedRegistry) {
-      var contractCount = await deployedRegistry.getNumRegisteredContracts({ from: account });
+      var contractCount = await deployedRegistry.getNumRegisteredContracts(account, { from: account });
       var i;
-      for (i = 0; i < contractCount.c[0]; i++) {
+      for (i = 0; i < Number(contractCount.toString()); i++) {
         var address = await deployedRegistry.getRegisteredContract(i, account, { from: account });
         var deployedDerivative = derivative.at(address);
-        var product = await deployedDerivative._product({ from: account });
+        var product = await deployedDerivative.product({ from: account });
         data.push({ product: product, address: address, id: i });
       }
     }
