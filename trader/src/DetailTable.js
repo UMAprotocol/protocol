@@ -88,7 +88,7 @@ class DetailTable extends React.Component {
     var i = 1;
     data.push({ key: "Address", value: address, id: i++ });
 
-    var productDescription = await deployedDerivative._product({ from: account });
+    var productDescription = await deployedDerivative.product({ from: account });
     data.push({ key: "Product Description", value: productDescription, id: i++ });
 
     var expiry = await deployedDerivative.endTime({ from: account });
@@ -160,11 +160,22 @@ class DetailTable extends React.Component {
     var minMargin = await deployedDerivative.requiredMargin({ from: account });
     data.push({ key: "Minimum Margin (ETH)", value: web3.utils.fromWei(minMargin.toString(), "ether"), id: i++ });
 
-    var yourMargin = await deployedDerivative.balances(account, { from: account });
+    var takerStruct = await deployedDerivative.taker({ from: account });
+    var makerStruct = await deployedDerivative.maker({ from: account });
+
+    var userStruct;
+    var counterpartyStruct;
+    if (takerStruct[0].toString().toLowerCase() == account.toString().toLowerCase()) {
+      userStruct = takerStruct;
+      counterpartyStruct = makerStruct;
+    } else {
+      userStruct = makerStruct;
+      counterpartyStruct = takerStruct;
+    }
+    var yourMargin = userStruct[1];
     data.push({ key: "Your Margin Balance (ETH)", value: web3.utils.fromWei(yourMargin.toString(), "ether"), id: i++ });
 
-    var counterpartyAddress = await deployedDerivative.counterpartyAddress({ from: account });
-    var counterpartyMargin = await deployedDerivative.balances(counterpartyAddress, { from: account });
+    var counterpartyMargin = counterpartyStruct[1];
     data.push({
       key: "Counterparty Margin Balance (ETH)",
       value: web3.utils.fromWei(counterpartyMargin.toString(), "ether"),
