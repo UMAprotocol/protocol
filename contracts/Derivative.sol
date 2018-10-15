@@ -8,7 +8,7 @@
 pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./VoteTokenInterface.sol";
+import "./OracleInterface.sol";
 
 
 contract Derivative {
@@ -65,7 +65,7 @@ contract Derivative {
     // Other addresses/contracts
     ContractParty public maker;
     ContractParty public taker;
-    VoteTokenInterface public oracle;
+    OracleInterface public oracle;
 
     State public state = State.Prefunded;
     uint public startTime;
@@ -86,7 +86,7 @@ contract Derivative {
         uint _notional
     ) public payable {
         // Address information
-        oracle = VoteTokenInterface(_oracleAddress);
+        oracle = OracleInterface(_oracleAddress);
         // TODO: Think about who is sending the `msg.value`
         require(_makerAddress != _takerAddress);
         maker = ContractParty(_makerAddress, 0, false);

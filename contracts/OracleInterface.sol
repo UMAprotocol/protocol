@@ -1,12 +1,12 @@
 /*
-  VoteTokenInterface contract.
+  OracleInterface contract.
   The interface that contracts use to query verified and unverified price feeds.
 */
 pragma solidity ^0.4.24;
 
 
 // This interface allows contracts to query verified and unverified prices from the VoteToken.
-interface VoteTokenInterface {
+interface OracleInterface {
     // Gets the latest price-time pair at which an unverified price was published. `publishTime` will be 0 and `price`
     // should be ignored if no unverified prices have been published.
     function latestUnverifiedPrice() external view returns (uint publishTime, int256 price);
