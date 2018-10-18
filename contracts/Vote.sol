@@ -37,6 +37,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
 
     uint public currentVotePeriodStartTime;
     uint public currentPollId;
+    uint public runoffPollId;
 
     string public product;
 
@@ -46,7 +47,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
 
     struct Proposal {
         uint numVotes;
-        string proposalHash;
+        string ipfsHash;
     }
 
     struct Poll {
@@ -150,10 +151,42 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         delete poll.committedVotes[msg.sender];
     }
 
+    function proposeFeed(string ipfsHash) external {
+        // TODO(mrice32): do something to ensure the same proposal cannot be made twice.
+        checkTimeAndUpdateState();
+        require(period == PeriodType.Commit || period == PeriodType.Reveal);
+        Poll storage poll = polls[currentPollId.add(1)];
+        Proposal memory proposal;
+        proposal.ipfsHash = ipfsHash;
+        poll.proposals.push(proposal);
+    }
+
     function addUnverifiedPrice(PriceTime priceTime) external {
         PriceTime[] memory priceTimes = new PriceTime[](1);
         priceTimes[0] = priceTime;
         addUnverifiedPrices(priceTimes);
+    }
+
+    function getProposals() external view returns (Proposal[] proposals) {
+        uint time = now;
+        uint computedStartTime = _getStartOfPeriod(time);
+        if (computedStartTime == currentVotePeriodStartTime) {
+
+            // TODO(mrice32): use runoffPollId.
+            uint pollId;
+            if (period == PeriodType.Commit || period == PeriodType.Reveal) {
+                pollId = currentPollId.add(1);
+            } else {
+                pollId = currentPollId;
+            }
+
+            Poll storage poll = polls[pollId];
+            // proposals = new Proposal[](poll.proposals.length);
+            proposals = poll.proposals;
+
+        } else {
+            return new Proposal[](0);
+        }
     }
 
     function getCurrentCommitRevealPeriods() external view returns (Period[] memory periods) {
@@ -241,14 +274,38 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         uint time = now; // solhint-disable-line not-rely-on-time
         uint computedStartTime = _getStartOfPeriod(time);
 
+        PeriodType newPeriod = _getPeriodType(computedStartTime, time);
+
         if (computedStartTime != currentVotePeriodStartTime) {
             currentVotePeriodStartTime = computedStartTime;
             // TODO(mrice32): commit poll results here.
             currentPollId = currentPollId.add(1);
+
+            // Clear the poll to ensure nothing has been added to it (for instance if the last runoff was skipped).
+            delete polls[currentPollId];
+            Poll storage poll = polls[currentPollId];
+
+
+            Proposal memory defaultProposal;
+            poll.proposals.push(defaultProposal);
+            poll.proposals.push(defaultProposal);
+
+            // One is the "yes" vote.
+            polls[currentPollId].currentLeader = 1;
+
             skipRunoff = true;
         }
 
-        period = _getPeriodType(computedStartTime, time);
+        PeriodType oldPeriod = period;
+
+        if (oldPeriod != newPeriod) {
+            // This captures the edge cases where we skip periods due to inactivity (some of these transitions may not
+            // be possible), but the edge cases are important to avoid old votes being used for new polls.
+            if ((oldPeriod == PeriodType.Commit || oldPeriod == PeriodType.Reveal)
+                && (newPeriod == PeriodType.RunoffCommit || newPeriod == PeriodType.RunoffReveal)) {
+                currentPollId = currentPollId.add(1);
+            }
+        } 
 
     }
 
@@ -311,7 +368,8 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
                 // variables.
                 if ((periodType == PeriodType.RunoffCommit || periodType == PeriodType.RunoffReveal) && skipRunoff) {
                     periodType = PeriodType.Wait;
-                } 
+                }
+                return periodType;
             }
         }
 
