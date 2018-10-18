@@ -309,11 +309,6 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
 
     }
 
-    function getActivePoll() public view returns (uint pollId) {
-        // solhint-disable-next-line not-rely-on-time
-        return _getStartOfPeriod(now) != currentVotePeriodStartTime ? currentPollId.add(1) : currentPollId;
-    }
-
     function _getStartOfPeriod(uint timestamp) private view returns (uint) {
         return (((timestamp
             - epochOffset)
