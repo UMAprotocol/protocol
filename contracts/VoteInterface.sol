@@ -17,6 +17,7 @@ contract VoteInterface {
     struct Period {
         uint startTime;
         uint endTime;
+        string state;
     }
 
     // Commits the sender's vote weighted by their balance at the start of the commit period.
@@ -29,7 +30,7 @@ contract VoteInterface {
     function revealVote(uint pollId, bool voteOption, uint salt) external;
 
     // Returns the commit and reveal periods for the active polls. 
-    function getCurrentCommitRevealPeriods() external view returns (Period commit, Period reveal);
+    function getCurrentCommitRevealPeriods() external view returns (Period[] memory periods);
 
     // Returns the current period type ("commit", "reveal", or "none").
     function getCurrentPeriodType() external view returns (string periodType);
