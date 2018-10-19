@@ -275,6 +275,13 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         }
     }
 
+    function uploadVerifiedPrices(PriceTime[] memory priceTimes) public onlyOwner {
+        require(priceTimes.length > 0);
+        uint voteIdx = _getVotePeriodIndexForStartTime(_getStartOfPeriod(priceTimes[0].time));
+        VotePeriod storage votePeriod = votePeriods[voteIdx];
+        
+    }
+
     function checkTimeAndUpdateState() public {
         uint time = now; // solhint-disable-line not-rely-on-time
         uint computedStartTime = _getStartOfPeriod(time);
