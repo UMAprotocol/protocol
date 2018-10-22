@@ -45,7 +45,9 @@ library PriceTimeArray {
         }
     }
 
-    function _appendArray(PriceTime.Data[] storage self, PriceTime.Data[] storage mergingArray, uint interval) internal {
+    function _appendArray(PriceTime.Data[] storage self, PriceTime.Data[] storage mergingArray, uint interval)
+        internal
+    {
         require(self._getIndex(mergingArray[0].time, interval) == self.length);
         self._mergeArray(mergingArray, interval);
     }
@@ -273,12 +275,13 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         (periodTimings[index++], startOffset) = _initPeriodTiming(startOffset, totalVotingDuration.sub(startOffset),
             VotePeriod.PeriodType.Wait);
 
+        uint time = now; // solhint-disable-line not-rely-on-time
+
         // Ensure that voting periods start and end exactly on price publishing points to establish predictable price
         // stream sizes and start points.
-        // solhint-disable-next-line not-rely-on-time
-        require(_getStartOfPeriod(now).mod(_priceInterval) == 0 && totalVotingDuration.mod(_priceInterval) == 0);
+        require(_getStartOfPeriod(time).mod(_priceInterval) == 0 && totalVotingDuration.mod(_priceInterval) == 0);
 
-        _newVotePeriod(_getStartOfPeriod(now));
+        _newVotePeriod(_getStartOfPeriod(time));
 
         checkTimeAndUpdateState();
     }
@@ -324,7 +327,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function getProposals() external view returns (Proposal.Data[] proposals) {
-        uint time = now;
+        uint time = now; // solhint-disable-line not-rely-on-time
         uint computedStartTime = _getStartOfPeriod(time);
 
         VotePeriod.Data storage votePeriod = _getCurrentVotePeriod();
@@ -458,12 +461,17 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         nextStartOffset = periodTiming.endOffset;
     }
 
-    function _getPeriodType(uint votePeriodStartTime, uint currentTime) private view returns (VotePeriod.PeriodType periodType) {
+    function _getPeriodType(uint votePeriodStartTime, uint currentTime)
+        private
+        view
+        returns (VotePeriod.PeriodType periodType)
+    {
         for (uint i = 0; i < periodTimings.length; ++i) {
             if (periodTimings[i].startOffset.add(votePeriodStartTime) <= currentTime
                 && currentTime < periodTimings[i].endOffset.add(votePeriodStartTime)) {
                 periodType = periodTimings[i].state;
-                if ((periodType == VotePeriod.PeriodType.RunoffCommit || periodType == VotePeriod.PeriodType.RunoffReveal)
+                if ((periodType == VotePeriod.PeriodType.RunoffCommit
+                    || periodType == VotePeriod.PeriodType.RunoffReveal)
                     && _getCurrentVotePeriod()._skipRunoff()) {
                     periodType = VotePeriod.PeriodType.Wait;
                 }
