@@ -6,13 +6,16 @@ pragma solidity ^0.4.24;
 pragma experimental ABIEncoderV2;
 
 
-// This interface allows users to vote on price changes.
-contract VoteInterface {
-
-    struct PriceTime {
+library PriceTime {
+    struct Data {
         int256 price;
         uint time;
     }
+}
+
+
+// This interface allows users to vote on price changes.
+contract VoteInterface {
 
     struct Period {
         uint startTime;
@@ -40,7 +43,7 @@ contract VoteInterface {
 
     // Gets the proposed price-time pairs for a particular pollId.
     // Note: this function will fail if the pollId is not active.
-    function getProposal(uint pollId) external view returns (PriceTime[] prices);
+    function getProposal(uint pollId) external view returns (PriceTime.Data[] prices);
 
     // Gets the proposed price for a particular poll and time.
     // Note: this function will fail if the poll is not active or the time is outside of the bounds of the poll's
