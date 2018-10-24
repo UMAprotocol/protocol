@@ -39,7 +39,7 @@ contract VoteInterface {
     // Reveals the sender's previously committed vote for a particular poll.
     // Note: this function will fail if keccak256(abi.encodePacked(voteOption, salt)) doesn't match the secretHash,
     // this pollId is not currently active, or if the contract is not in the reveal period.
-    function revealVote(uint voteOption, uint salt);
+    function revealVote(uint voteOption, uint salt) external;
 
     // Returns the commit and reveal periods for the active polls. 
     function getCurrentCommitRevealPeriods() external view returns (Period[] memory periods);
