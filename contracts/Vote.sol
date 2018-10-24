@@ -87,13 +87,13 @@ library Poll {
         // Primary should have 2 proposals (no and yes).
         self.proposals.length = 2;
         self.currentLeader = 1;
-        require(self.totalVotes == 0);
+        self.totalVotes = 0;
     }
 
-    function _initRunoff(Data storage self) internal view {
-        require(self.proposals.length == 0);
-        require(self.currentLeader == 0);
-        require(self.totalVotes == 0);
+    function _initRunoff(Data storage self) internal {
+        self.proposals.length = 0;
+        self.currentLeader = 0;
+        self.totalVotes = 0;
     }
 
     function _commitVote(Data storage self, bytes32 secretHash) internal {
@@ -153,10 +153,6 @@ library VotePeriod {
         Poll.Data primaryPoll;
         Poll.Data runoffPoll;
 
-        // Note: the following two fields will only be needed in a runoff vote.
-        // Stores the uploaded prices intended to overwrite the unverifiedPrice feed.
-        PriceTime.Data[] uploadedPriceTime;
-
         // Set to prevent the same IPFS hash from being proposed twice.
         mapping(string => bool) ipfsHashSet;
     }
@@ -186,9 +182,25 @@ library VotePeriod {
             ? self.runoffPoll : self.primaryPoll);
     }
 
-    function _uploadPrices(Data storage self, PriceTime.Data[] memory uploadArray, uint interval) internal {
+    function _verifyPrices(
+        Data storage self,
+        PriceTime.Data[] storage unverifiedPrices,
+        uint interval,
+        uint voteDuration
+    )
+        internal
+        view
+        returns (bool success, uint newFirstUnverifiedIndex)
+    {
         require(self._skipRunoff());
-        self.uploadedPriceTime._mergeArray(uploadArray, interval);
+        (uint startTime, uint endTime) = self._getPricePeriod(voteDuration);
+
+        // uint startIndex =
+        unverifiedPrices._getIndex(startTime, interval);
+        uint endIndex = unverifiedPrices._getIndex(endTime, interval);
+        
+        // TODO(mrice32): do ipfs hash verification here.
+        return (true, endIndex);
     }
 
     function _getVotingPeriod(Data storage self, uint voteDuration)
@@ -316,16 +328,6 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         addUnverifiedPrices(priceTimes);
     }
 
-    function uploadVerifiedPrices(PriceTime.Data[] priceTimes) external onlyOwner {
-        require(priceTimes.length > 0);
-        uint voteIdx = _getVotePeriodIndexForStartTime(_getStartOfPeriod(priceTimes[0].time)).sub(1);
-        require(voteIdx == _getVotePeriodIndexForStartTime(unverifiedPrices[firstUnverifiedIndex].time));
-        VotePeriod.Data storage votePeriod = votePeriods[voteIdx];
-        require(currentVotePeriodIndex != voteIdx || period == VotePeriod.PeriodType.Wait);
-
-        votePeriod._uploadPrices(priceTimes, priceInterval);
-    }
-
     function getProposals() external view returns (Proposal.Data[] proposals) {
         uint time = now; // solhint-disable-line not-rely-on-time
         uint computedStartTime = _getStartOfPeriod(time);
@@ -396,7 +398,54 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         return _getCurrentVotePeriod()._getVotingPoll(period)._getCommittedVote(voter);
     }
 
+    function validatePrices() public {
+        require(unverifiedPrices.length > firstUnverifiedIndex);
+        uint idx = _getVotePeriodIndexForPriceTime(unverifiedPrices[firstUnverifiedIndex].time);
+        VotePeriod.Data storage votePeriod = votePeriods[idx];
+        if (votePeriod._skipRunoff()) {
+            _commitPrices(period, currentVotePeriodIndex);
+        } else {
+            (bool success, uint newFirstUnverifiedIndex) = votePeriod._verifyPrices(
+                unverifiedPrices,
+                priceInterval,
+                totalVotingDuration
+            );
+
+            firstUnverifiedIndex = newFirstUnverifiedIndex;
+
+            require(success);
+        }
+    }
+
     function addUnverifiedPrices(PriceTime.Data[] memory priceTimes) public onlyOwner {
+        require(priceTimes.length > 0);
+
+        uint currentLength = unverifiedPrices.length;
+
+        // We don't need to do any checks if we're appending to the end - this is always allowed.
+        if (currentLength != 0 && unverifiedPrices[currentLength - 1].time >= priceTimes[0].time) {
+
+            // Verified prices cannot be changed.
+            require(unverifiedPrices._getIndex(priceTimes[0].time, priceInterval) >= firstUnverifiedIndex);
+
+
+            uint startVotePeriod = _getVotePeriodIndexForStartTime(priceTimes[0].time);
+            uint endVotePeriod = _getVotePeriodIndexForStartTime(priceTimes[priceTimes.length.sub(1)].time);
+            for (uint i = startVotePeriod; i <= endVotePeriod; ++i) {
+                if (i <= currentVotePeriodIndex) {
+                    // Must be trying to change the prices to the winner of the price feed.
+                    require(!votePeriods[i]._skipRunoff());
+
+                    if (i == currentVotePeriodIndex) {
+                        // If this is the current vote period, ensure that we're in the wait portion
+                        require(period == VotePeriod.PeriodType.Wait);
+                    }
+                }
+            }
+
+        }
+
+
         unverifiedPrices._mergeArray(priceTimes, priceInterval);
     }
 
@@ -501,7 +550,8 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         for (uint idx = _getVotePeriodIndexForStartTime(lastVerifiedTime); idx < idxLimit; ++idx) {
             VotePeriod.Data storage votePeriod = votePeriods[idx];
             if (votePeriod._skipRunoff()) {
-                newFirstUnverifiedIndex = unverifiedPrices._getIndex(votePeriod.startTime, priceInterval);
+                (, uint endTime) = votePeriod._getPricePeriod(totalVotingDuration);
+                newFirstUnverifiedIndex = unverifiedPrices._getIndex(endTime, priceInterval);
             } else {
                 break;
             }
@@ -511,14 +561,20 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function _getVotePeriodIndexForStartTime(uint startTime) private view returns (uint index) {
-        if (votePeriods.length == 0) {
-            return 0;
+        uint currentLength = votePeriods.length;
+        if (currentLength == 0) {
+            index = 0;
         } else {
-            return startTime.sub(votePeriods[0].startTime).div(totalVotingDuration);
+            index = startTime.sub(votePeriods[0].startTime).div(totalVotingDuration);
+            require(index < currentLength);
         }
     }
 
     function _getCurrentVotePeriod() private view returns (VotePeriod.Data storage votePeriod) {
         return votePeriods[currentVotePeriodIndex];
+    }
+
+    function _getVotePeriodIndexForPriceTime(uint time) private view returns (uint index) {
+        return _getVotePeriodIndexForStartTime(_getStartOfPeriod(time)).add(1);
     }
 }
