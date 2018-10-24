@@ -109,6 +109,7 @@ library Poll {
         bytes32 secretHash = self.committedVotes[msg.sender];
         require(secretHash != 0);
         require(keccak256(abi.encodePacked(voteOption, salt)) == secretHash);
+        delete self.committedVotes[msg.sender];
 
         self.totalVotes = self.totalVotes.add(userBalance);
 
@@ -118,8 +119,6 @@ library Poll {
         if (proposal.numVotes > self.proposals[self.currentLeader].numVotes) {
             self.currentLeader = voteOption;
         }
-
-        delete self.committedVotes[msg.sender];
     }
 
     function _addProposal(Data storage self, string ipfsHash) internal {
