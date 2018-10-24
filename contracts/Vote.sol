@@ -65,14 +65,6 @@ library PriceTimeArray {
 }
 
 
-library Proposal {
-    struct Data {
-        uint numVotes;
-        string ipfsHash;
-    }
-}
-
-
 library Poll {
     using SafeMath for uint;
 
@@ -397,6 +389,41 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         return _getCurrentVotePeriod()._getVotingPoll(period)._getCommittedVote(voter);
     }
 
+    function latestUnverifiedPrice() external view returns (uint publishTime, int256 price) {
+        uint currentLength = unverifiedPrices.length;
+        if (currentLength == 0) {
+            return (0, 0);
+        } else {
+            PriceTime.Data storage priceTime = unverifiedPrices[currentLength.sub(1)];
+            return (priceTime.time, priceTime.price);
+        }
+    }
+
+    function latestVerifiedPrice() external view returns (uint publishTime, int256 price) {
+        if (firstUnverifiedIndex == 0) {
+            return (0, 0);
+        } else {
+            uint lastVerifiedIndex = firstUnverifiedIndex.sub(1);
+            PriceTime.Data storage priceTime = unverifiedPrices[lastVerifiedIndex];
+            return (priceTime.time, priceTime.price);
+        }
+    }
+
+    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+        uint idx = unverifiedPrices._getIndex(time, priceInterval);
+        require(idx < unverifiedPrices.length);
+        PriceTime.Data storage priceTime = unverifiedPrices[idx];
+        return (priceTime.time, priceTime.price);
+    }
+
+    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+        uint idx = unverifiedPrices._getIndex(time, priceInterval);
+        require(idx < unverifiedPrices.length);
+        require(idx < firstUnverifiedIndex);
+        PriceTime.Data storage priceTime = unverifiedPrices[idx];
+        return (priceTime.time, priceTime.price);
+    }
+
     function validatePrices() public {
         require(unverifiedPrices.length > firstUnverifiedIndex);
         uint idx = _getVotePeriodIndexForPriceTime(unverifiedPrices[firstUnverifiedIndex].time);
@@ -537,7 +564,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function _commitPrices(VotePeriod.PeriodType newPeriodType, uint newVoteIndex) private {
-        uint lastVerifiedTime = unverifiedPrices[firstUnverifiedIndex].time;
+        uint lastVerifiedTime = unverifiedPrices[firstUnverifiedIndex.sub(1)].time;
         uint idxLimit = votePeriods.length;
 
         if (newPeriodType != VotePeriod.PeriodType.Wait) {
