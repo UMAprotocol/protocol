@@ -289,7 +289,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         checkTimeAndUpdateState();
     }
 
-    function commitVote(bytes32 secretHash) external {
+    function commitVote(bytes32 secretHash) public {
         checkTimeAndUpdateState();
         require(period == VotePeriod.PeriodType.Commit || period == VotePeriod.PeriodType.RunoffCommit);
 
@@ -298,7 +298,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
 
     // TODO(mrice32): maybe we should force the user to encode the proposal IPFS hash into their secretHash rather than
     // the index of the option to be sure they're aware of what they're voting for.
-    function revealVote(uint voteOption, uint salt) external {
+    function revealVote(uint voteOption, uint salt) public {
         checkTimeAndUpdateState();
         require(period == VotePeriod.PeriodType.Reveal || period == VotePeriod.PeriodType.RunoffReveal);
 
@@ -306,20 +306,20 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         _getCurrentVotePeriod()._revealVote(voteOption, salt, balanceOf(msg.sender), period);
     }
 
-    function proposeFeed(string ipfsHash) external {
+    function proposeFeed(string ipfsHash) public {
         checkTimeAndUpdateState();
         require(period == VotePeriod.PeriodType.Commit || period == VotePeriod.PeriodType.Reveal);
 
         _getCurrentVotePeriod()._proposeFeed(ipfsHash);
     }
 
-    function addUnverifiedPrice(PriceTime.Data priceTime) external {
+    function addUnverifiedPrice(PriceTime.Data priceTime) public {
         PriceTime.Data[] memory priceTimes = new PriceTime.Data[](1);
         priceTimes[0] = priceTime;
         addUnverifiedPrices(priceTimes);
     }
 
-    function getProposals() external view returns (Proposal.Data[] proposals) {
+    function getProposals() public view returns (Proposal.Data[] proposals) {
         uint time = now; // solhint-disable-line not-rely-on-time
         uint computedStartTime = _getStartOfPeriod(time);
 
@@ -332,7 +332,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         }
     }
 
-    function getCurrentCommitRevealPeriods() external view returns (Period[] memory periods) {
+    function getCurrentCommitRevealPeriods() public view returns (Period[] memory periods) {
         uint startOfPeriod = _getStartOfPeriod(now); // solhint-disable-line not-rely-on-time
         periods = new Period[](periodTimings.length);
         for (uint i = 0; i < periodTimings.length; ++i) {
@@ -344,16 +344,16 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         }
     }
 
-    function getCurrentPeriodType() external view returns (string periodType) {
+    function getCurrentPeriodType() public view returns (string periodType) {
         uint currentTime = now; // solhint-disable-line not-rely-on-time
         return _getStringPeriodType(_getPeriodType(_getStartOfPeriod(currentTime), currentTime));
     }
 
-    function getProduct() external view returns (string _product) {
+    function getProduct() public view returns (string _product) {
         return product;
     }
 
-    function getDefaultProposalPrices() external view returns (PriceTime.Data[] prices) {
+    function getDefaultProposalPrices() public view returns (PriceTime.Data[] prices) {
         // TODO(mrice32): we may want to subtract some time offset to ensure all unverifiedPrices being voted on are
         // in before the voting period starts.
         // Note: this will fail if the entire voting period of prices previous do not exist.
@@ -370,7 +370,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         }
     }
 
-    function getDefaultProposedPriceAtTime(uint time) external view returns (int256 price) {
+    function getDefaultProposedPriceAtTime(uint time) public view returns (int256 price) {
         VotePeriod.Data storage votePeriod = _getCurrentVotePeriod();
         (uint startTime, uint endTime) = votePeriod._getPricePeriod(totalVotingDuration);
         require(time >= startTime && time < endTime);
@@ -380,7 +380,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         return unverifiedPrices[index].price;
     }
 
-    function getCommittedVoteForUser(address voter) external view returns (bytes32 secretHash) {
+    function getCommittedVoteForUser(address voter) public view returns (bytes32 secretHash) {
         require(period == VotePeriod.PeriodType.Commit
             || period == VotePeriod.PeriodType.Reveal
             || period == VotePeriod.PeriodType.RunoffCommit
@@ -389,7 +389,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         return _getCurrentVotePeriod()._getVotingPoll(period)._getCommittedVote(voter);
     }
 
-    function latestUnverifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestUnverifiedPrice() public view returns (uint publishTime, int256 price) {
         uint currentLength = unverifiedPrices.length;
         if (currentLength == 0) {
             return (0, 0);
@@ -399,7 +399,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         }
     }
 
-    function latestVerifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestVerifiedPrice() public view returns (uint publishTime, int256 price) {
         if (firstUnverifiedIndex == 0) {
             return (0, 0);
         } else {
@@ -409,14 +409,14 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         }
     }
 
-    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function unverifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
         uint idx = unverifiedPrices._getIndex(time, priceInterval);
         require(idx < unverifiedPrices.length);
         PriceTime.Data storage priceTime = unverifiedPrices[idx];
         return (priceTime.time, priceTime.price);
     }
 
-    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function verifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
         uint idx = unverifiedPrices._getIndex(time, priceInterval);
         require(idx < unverifiedPrices.length);
         require(idx < firstUnverifiedIndex);
@@ -564,16 +564,20 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function _commitPrices(VotePeriod.PeriodType newPeriodType, uint newVoteIndex) private {
-        uint lastVerifiedTime = unverifiedPrices[firstUnverifiedIndex.sub(1)].time;
-        uint idxLimit = votePeriods.length;
+        uint startIdx = 0;
+        if (firstUnverifiedIndex != 0) {
+            uint lastVerifiedTime = unverifiedPrices[firstUnverifiedIndex.sub(1)].time;
+            startIdx = _getVotePeriodIndexForStartTime(lastVerifiedTime);
+        }
 
+        uint endIdx = votePeriods.length;
         if (newPeriodType != VotePeriod.PeriodType.Wait) {
-            idxLimit = newVoteIndex;
+            endIdx = newVoteIndex;
         }
 
         uint newFirstUnverifiedIndex = firstUnverifiedIndex;
 
-        for (uint idx = _getVotePeriodIndexForStartTime(lastVerifiedTime); idx < idxLimit; ++idx) {
+        for (uint idx = startIdx; idx < endIdx; ++idx) {
             VotePeriod.Data storage votePeriod = votePeriods[idx];
             if (votePeriod._skipRunoff()) {
                 (, uint endTime) = votePeriod._getPricePeriod(totalVotingDuration);
