@@ -1,12 +1,5 @@
 /*
   PriceTime Library
-
-  Implements an early version of VoteCoin protocols
-
-  * ERC20 token
-  * Uses Oraclize to fetch ETH/USD exchange rate
-  * Allows users to vote yes/no on whether a price is accurate
-
 */
 pragma solidity ^0.4.24;
 
