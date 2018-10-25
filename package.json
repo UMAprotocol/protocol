@@ -38,7 +38,7 @@
     "solidity-coverage": "^0.5.11",
     "source-map-support": "^0.5.3",
     "style-loader": "^0.21.0",
-    "truffle": "^4.1.13",
+    "truffle": "^4.1.14",
     "truffle-contract": "^3.0.6",
     "web3": "^0.20.0",
     "webpack": "^4.12.0",
