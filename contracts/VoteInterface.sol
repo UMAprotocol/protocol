@@ -6,13 +6,7 @@ pragma solidity ^0.4.24;
 
 pragma experimental ABIEncoderV2;
 
-
-library PriceTime {
-    struct Data {
-        int256 price;
-        uint time;
-    }
-}
+import "./PriceTime.sol";
 
 
 library Proposal {
