@@ -6,7 +6,7 @@ module.exports = {
       host: "127.0.0.1",
       port: 8545,
       network_id: 1234,
-      gas: 4700000
+      gas: 6720000
     },
     coverage: {
       host: "127.0.0.1",
@@ -14,6 +14,18 @@ module.exports = {
       port: 8545,
       gas: 0xfffffffffff,
       gasPrice: 0x01
+    },
+    development: {
+      host: "127.0.0.1",
+      port: 8545,
+      network_id: "*",
+      gas: 6720000
+    },
+    test: {
+      host: "127.0.0.1",
+      port: 8545,
+      network_id: "*",
+      gas: 6720000
     }
   }
 };
