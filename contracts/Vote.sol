@@ -14,7 +14,7 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./Testable.sol";
 import "./Derivative.sol";
 import "./VoteInterface.sol";
 import "./OracleInterface.sol";
@@ -171,7 +171,7 @@ library VotePeriod {
 }
 
 
-contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
+contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
 
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
@@ -206,7 +206,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
 
     PeriodTiming[5] private periodTimings;
 
-    constructor(string _product, uint _priceInterval) public {
+    constructor(string _product, uint _priceInterval, bool isTest) public Testable(isTest) {
         _mint(msg.sender, 10000);
         product = _product;
         priceInterval = _priceInterval;
@@ -233,7 +233,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
         (periodTimings[index++], startOffset) = _initPeriodTiming(startOffset, totalVotingDuration.sub(startOffset),
             VotePeriod.PeriodType.Wait);
 
-        uint time = now; // solhint-disable-line not-rely-on-time
+        uint time = getCurrentTime();
 
         // Ensure that voting periods start and end exactly on price publishing points to establish predictable price
         // stream sizes and start points.
@@ -275,7 +275,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function getProposals() public view returns (Proposal.Data[] proposals) {
-        uint time = now; // solhint-disable-line not-rely-on-time
+        uint time = getCurrentTime();
         uint computedStartTime = _getStartOfPeriod(time);
 
         VotePeriod.Data storage votePeriod = _getCurrentVotePeriod();
@@ -288,7 +288,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function getCurrentCommitRevealPeriods() public view returns (Period[] memory periods) {
-        uint startOfPeriod = _getStartOfPeriod(now); // solhint-disable-line not-rely-on-time
+        uint startOfPeriod = _getStartOfPeriod(getCurrentTime());
         periods = new Period[](periodTimings.length);
         for (uint i = 0; i < periodTimings.length; ++i) {
             Period memory timePeriod = periods[i];
@@ -300,7 +300,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function getCurrentPeriodType() public view returns (string periodType) {
-        uint currentTime = now; // solhint-disable-line not-rely-on-time
+        uint currentTime = getCurrentTime();
         return _getStringPeriodType(_getPeriodType(_getStartOfPeriod(currentTime), currentTime));
     }
 
@@ -431,7 +431,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Ownable {
     }
 
     function checkTimeAndUpdateState() public {
-        uint time = now; // solhint-disable-line not-rely-on-time
+        uint time = getCurrentTime();
         uint computedStartTime = _getStartOfPeriod(time);
 
         VotePeriod.PeriodType newPeriod = _getPeriodType(computedStartTime, time);
