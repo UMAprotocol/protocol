@@ -5,12 +5,16 @@ import "./Derivative.sol";
 
 contract Registry {
     mapping(address => address[]) private registeredContracts;
+    address private oracleAddress;
 
     event Register(address indexed originator, address indexed derivative);
 
+    constructor(address _oracleAddress) public {
+        oracleAddress = _oracleAddress;
+    }
+
     function createDerivative(
         address counterpartyAddress,
-        address oracleAddress,
         int256 defaultPenalty,
         int256 requiredMargin,
         uint expiry,
