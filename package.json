@@ -4,7 +4,7 @@
   "description": "Frontend for VoteCoint",
   "scripts": {
     "dev": "webpack-dev-server",
-    "prettier": "prettier --write 'test/**/*.js'",
+    "prettier": "prettier --write 'test/**/*.js' 'migrations/*.js'",
     "coverage": "npx solidity-coverage"
   },
   "author": "Chase Coleman and Spencer Lyon",

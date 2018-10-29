@@ -154,7 +154,6 @@ class Dashboard extends React.Component {
     // Default penalty = ~5% of total contract value. Margin ~= 10% of total contract value.
     await this.state.deployedRegistry.createDerivative(
       counterparty,
-      this.deployedOracleMock.address,
       defaultPenaltyInEth.toString(),
       marginInEth.toString(),
       (date.valueOf() / 1000).toString(),

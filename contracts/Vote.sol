@@ -173,8 +173,7 @@ library VotePeriod {
 
 contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
 
-    // Note: SafeMath only works for uints right now.
-    using SafeMath for uint;
+    // Note: SafeMath only works for uints right     using SafeMath for uint;
     using VotePeriod for VotePeriod.Data;
     using Poll for Poll.Data;
     using PriceTime for PriceTime.Data[];
