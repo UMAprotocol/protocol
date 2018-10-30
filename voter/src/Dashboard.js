@@ -148,7 +148,7 @@ class Dashboard extends React.Component {
 
   update = async vote => {
     var period = await this.getPeriod(vote);
-    if (period === "primary_commit" || period === "primary_reveal") {
+    if (period === "primary_commit" || period === "primary_reveal" || period === "wait") {
       var prices = await vote.methods.getDefaultProposalPrices().call();
       var data = [];
       for (var i = 0; i < prices.length; ++i) {
@@ -166,8 +166,6 @@ class Dashboard extends React.Component {
         proposalHashes.push({id: i, hash: proposals[i][1]});
       }
       this.setState({ proposalHashes: proposalHashes, period: period })
-    } else {
-      this.setState({ period: period })
     }
   }
 
@@ -178,6 +176,7 @@ class Dashboard extends React.Component {
     } else if (this.state.period === "primary_reveal" || this.state.period === "runoff_reveal") {
       await this.state.deployedVote.methods.revealVote(choice.toString(), this.state.secret.toString()).send({from: this.state.account, gas: 6720000 });
     }
+    await this.update(this.state.deployedVote);
   }
 
   getPeriod = async vote => {
@@ -368,6 +367,11 @@ class Dashboard extends React.Component {
             <Typography component="div" className={classes.chartContainer}>
               <SimpleLineChart data={this.state.data} />
             </Typography>
+            <Paper className={classes.paper}>
+              <Typography variant="display1" gutterBottom component="h2">
+                Waiting...
+              </Typography>
+            </Paper>
         </main>
       );
     }

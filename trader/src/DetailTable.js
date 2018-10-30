@@ -9,6 +9,22 @@ import Paper from "@material-ui/core/Paper";
 import TextField from "@material-ui/core/TextField";
 import Button from "@material-ui/core/Button";
 
+function lookupCounterpartyName(address) {
+  if (address.toString().toLowerCase() === "0xf17f52151ebef6c7334fad080c5704d77216b732") {
+    return "Allison";
+  } else if (address.toString().toLowerCase() === "0xc5fdf4076b8f3a5357c5e395ab970b5b54098fef") {
+    return "Chase";
+  } else if (address.toString().toLowerCase() === "0x821aea9a577a9b44299b9c15c88cf3087f3b5544") {
+    return "Hart";
+  } else if (address.toString().toLowerCase() === "0x0d1d4e623d10f9fba5db95830f7d3839406c6af2") {
+    return "Matt";
+  } else if (address.toString().toLowerCase() === "0x2932b7a2355d6fecc4b5c0b6bd44cc31df247a2e") {
+    return "Regina"
+  } else {
+    return "Unknown";
+  }
+}
+
 const styles = {
   root: {
     width: "100%",
@@ -91,16 +107,38 @@ class DetailTable extends React.Component {
     var productDescription = await deployedDerivative.product({ from: account });
     data.push({ key: "Product Description", value: productDescription, id: i++ });
 
+    var takerStruct = await deployedDerivative.taker({ from: account });
+    var makerStruct = await deployedDerivative.maker({ from: account });
+
+    var userStruct;
+    var counterpartyStruct;
+    if (takerStruct[0].toString().toLowerCase() === account.toString().toLowerCase()) {
+      userStruct = takerStruct;
+      counterpartyStruct = makerStruct;
+    } else {
+      userStruct = makerStruct;
+      counterpartyStruct = takerStruct;
+    }
+
+    data.push({ key: "Counterparty name", value: lookupCounterpartyName(counterpartyStruct[0]), id: i++});
+    data.push({ key: "Counterparty address", value: counterpartyStruct[0], id: i++});
+
     var expiry = await deployedDerivative.endTime({ from: account });
     var expiryDate = new Date(Number(expiry.toString()) * 1000);
     data.push({ key: "Expiry", value: expiryDate.toString(), id: i++ });
 
     var lastRemarginNpv = await deployedDerivative.npv({ from: account });
-    data.push({ key: "NPV on Last Remargin", value: web3.utils.fromWei(lastRemarginNpv.toString(), "ether"), id: i++ });
+    data.push({ key: "Current NPV", value: web3.utils.fromWei(lastRemarginNpv.toString(), "ether"), id: i++ });
 
     var lastRemarginTime = await deployedDerivative.lastRemarginTime({ from: account });
-    var lastRemarginDate = new Date(Number(lastRemarginTime.toString()) * 1000);
-    data.push({ key: "Time of Last Remargin", value: lastRemarginDate.toString(), id: i++ });
+    var lastRemarginString;
+    if (Number(lastRemarginTime) == 0) {
+      lastRemarginString = "Never Remargined";
+    } else {
+      var lastRemarginDate = new Date(Number(lastRemarginTime.toString()) * 1000);
+      lastRemarginString = lastRemarginDate.toString();
+    }
+    data.push({ key: "Time of Last Remargin", value: lastRemarginString, id: i++ });
 
     var currentState = await deployedDerivative.state({ from: account });
     var state;
@@ -160,18 +198,6 @@ class DetailTable extends React.Component {
     var minMargin = await deployedDerivative.requiredMargin({ from: account });
     data.push({ key: "Minimum Margin (ETH)", value: web3.utils.fromWei(minMargin.toString(), "ether"), id: i++ });
 
-    var takerStruct = await deployedDerivative.taker({ from: account });
-    var makerStruct = await deployedDerivative.maker({ from: account });
-
-    var userStruct;
-    var counterpartyStruct;
-    if (takerStruct[0].toString().toLowerCase() === account.toString().toLowerCase()) {
-      userStruct = takerStruct;
-      counterpartyStruct = makerStruct;
-    } else {
-      userStruct = makerStruct;
-      counterpartyStruct = takerStruct;
-    }
     var yourMargin = userStruct[1];
     data.push({ key: "Your Margin Balance (ETH)", value: web3.utils.fromWei(yourMargin.toString(), "ether"), id: i++ });
 

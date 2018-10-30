@@ -28,7 +28,7 @@ module.exports = {
       gas: 6720000
     },
     app: {
-      host: "35.229.96.33",
+      host: "35.237.15.252",
       port: 9545,
       network_id: "*",
       gas: 6720000
