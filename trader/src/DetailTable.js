@@ -165,7 +165,7 @@ class DetailTable extends React.Component {
 
     var userStruct;
     var counterpartyStruct;
-    if (takerStruct[0].toString().toLowerCase() == account.toString().toLowerCase()) {
+    if (takerStruct[0].toString().toLowerCase() === account.toString().toLowerCase()) {
       userStruct = takerStruct;
       counterpartyStruct = makerStruct;
     } else {

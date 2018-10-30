@@ -99,7 +99,10 @@ contract Derivative {
         requiredMargin = _requiredMargin;
         product = _product;
         notional = _notional;
-        npv = initialNpv();
+
+        // TODO(mrice32): we should have an ideal start time rather than blindly polling.
+        (, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        npv = initialNpv(oraclePrice);
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
@@ -110,7 +113,7 @@ contract Derivative {
     // contract, the contract will only move money when the computed NPV differs from this value. For example, if
     // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
     // `computeUnverifiedNpv` returned 51.
-    function initialNpv() public view returns (int256 npvNew);
+    function initialNpv(int256 oraclePrice) public view returns (int256 npvNew);
 
     function confirmPrice() public {
         // Right now, only dispute if in a pre-settlement state
@@ -379,8 +382,8 @@ contract SimpleDerivative is Derivative {
         return oraclePrice;
     }
 
-    function initialNpv() public view returns (int256 npvNew) {
-        return 0;
+    function initialNpv(int256 oraclePrice) public view returns (int256 npvNew) {
+        return oraclePrice;
     }
 
 }

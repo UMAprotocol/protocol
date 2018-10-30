@@ -3,20 +3,12 @@ import PropTypes from "prop-types";
 import classNames from "classnames";
 import { withStyles } from "@material-ui/core/styles";
 import CssBaseline from "@material-ui/core/CssBaseline";
-import Drawer from "@material-ui/core/Drawer";
 import AppBar from "@material-ui/core/AppBar";
 import Toolbar from "@material-ui/core/Toolbar";
-import List from "@material-ui/core/List";
 import Typography from "@material-ui/core/Typography";
-import Divider from "@material-ui/core/Divider";
 import IconButton from "@material-ui/core/IconButton";
 import MenuIcon from "@material-ui/icons/Menu";
-import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
-import { mainListItems } from "./listItems";
-import SimpleTable from "./SimpleTable";
-import DetailTable from "./DetailTable.js";
 import Button from "@material-ui/core/Button";
-import ArrowBackIcon from "@material-ui/icons/ArrowBack";
 import Grid from "@material-ui/core/Grid";
 import TextField from "@material-ui/core/TextField";
 import Select from "@material-ui/core/Select";
@@ -26,13 +18,24 @@ import Paper from "@material-ui/core/Paper";
 import Web3 from "web3";
 import { default as contract } from "truffle-contract";
 import BigNumber from "bignumber.js";
+import SimpleLineChart from "./SimpleLineChart";
 
 // Import our contract artifacts and turn them into usable abstractions.
-import OracleMock from "./contracts/OracleMock.json";
+import vote from "./contracts/VoteCoin.json";
 import derivative from "./contracts/Derivative.json";
 import registry from "./contracts/Registry.json";
 
 const drawerWidth = 300;
+
+
+function getNewWeb3(existingWeb3) {
+    var Web3 = require('web3');
+    return new Web3(existingWeb3.currentProvider);
+}
+
+function convertContractToNewWeb3(newWeb3, existingContract) {
+    return new newWeb3.eth.Contract(existingContract.abi, existingContract.address);
+}
 
 const styles = theme => ({
   root: {
@@ -121,13 +124,18 @@ const styles = theme => ({
 class Dashboard extends React.Component {
   state = {
     open: true,
-    page: "list",
+    page: "plot",
     address: "0x0",
     product: "ETH/USD",
     quantity: 1,
     margin: "0.0",
     expiry: "2019-01-01",
-    submitButton: false
+    submitButton: false,
+    data: [],
+    proposalHashes: [],
+    hashIndex: 0,
+    period: "wait",
+    secret: ""
   };
 
   handleDrawerOpen = () => {
@@ -138,45 +146,135 @@ class Dashboard extends React.Component {
     this.setState({ open: false });
   };
 
-  deployContract = async state => {
-    var date = new Date(state.expiry);
-    date.setHours(17);
-    // TODO(mrice32): this is to make up for the UTC offset issue when setting hours - this should be done in a systematic way
-    date.setDate(date.getDate() + 1);
+  update = async vote => {
+    var period = await this.getPeriod(vote);
+    if (period === "primary_commit" || period === "primary_reveal") {
+      var prices = await vote.methods.getDefaultProposalPrices().call();
+      var data = [];
+      for (var i = 0; i < prices.length; ++i) {
+        var date = new Date(prices[i][1] * 1000)
+        date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+        data.push({time: date.toDateString(), Price: this.web3.utils.fromWei(prices[i][0].toString())});
+      }
 
-    var counterparty = "0xf17f52151ebef6c7334fad080c5704d77216b732";
+      this.setState({ data: data, period: period });
+    } else if (period === "runoff_commit" || period === "runoff_reveal") {
+      // Grab proposal hashes
+      var proposals = await vote.methods.getProposals().call();
+      var proposalHashes = [];
+      for (var i = 0; i < proposals.length; ++i) {
+        proposalHashes.push({id: i, hash: proposals[i][1]});
+      }
+      this.setState({ proposalHashes: proposalHashes, period: period })
+    } else {
+      this.setState({ period: period })
+    }
+  }
 
-    var notional = new BigNumber(state.quantity);
-    var notionalInWei = BigNumber(this.web3.utils.toWei(notional.toString(), "ether"));
-    var marginInEth = notionalInWei.idiv(10);
-    var defaultPenaltyInEth = notionalInWei.idiv(20);
+  submitVote = async choice => {
+    if (this.state.period === "primary_commit" || this.state.period === "runoff_commit") {
+      var hashValue = await this.state.deployedVote.methods.computeHash(choice.toString(), this.state.secret.toString()).call();
+      await this.state.deployedVote.methods.commitVote(hashValue).send({ from: this.state.account, gas: 6720000 });
+    } else if (this.state.period === "primary_reveal" || this.state.period === "runoff_reveal") {
+      await this.state.deployedVote.methods.revealVote(choice.toString(), this.state.secret.toString()).send({from: this.state.account, gas: 6720000 });
+    }
+  }
 
-    // Default penalty = ~5% of total contract value. Margin ~= 10% of total contract value.
-    await this.state.deployedRegistry.createDerivative(
-      counterparty,
-      this.deployedOracleMock.address,
-      defaultPenaltyInEth.toString(),
-      marginInEth.toString(),
-      (date.valueOf() / 1000).toString(),
-      state.product,
-      notional.toString(),
-      { from: this.state.account, gas: 6654755, value: this.web3.utils.toWei(state.margin) }
+  getPeriod = async vote => {
+    var currentPeriod = await vote.methods.getCurrentPeriodType().call();
+
+    var periodName;
+    switch (currentPeriod) {
+      case "commit":
+        periodName = "primary_commit";
+        break;
+      case "reveal":
+        periodName = "primary_reveal";
+        break;
+      case "runoff commit":
+        periodName = "runoff_commit";
+        break;
+      case "runoff reveal":
+        periodName = "runoff_reveal";
+        break;
+      case "wait":
+        periodName = "wait";
+        break;
+      default:
+        periodName = this.state.period;
+    }
+
+    return periodName;
+  }
+
+  generateHashes = () => {
+    return (
+      <Select
+        value={this.state.hashIndex}
+        onChange={event => {
+          console.log(event.target.value);
+          this.setState({ hashIndex: event.target.value });
+        }}
+        inputProps={{
+          name: "hash",
+          id: "hash"
+        }}
+        fullWidth
+        label="IPFS Hash"
+      >
+        {this.state.proposalHashes.map(n => {
+          return <MenuItem key={n.id} value={n.id}>{n.hash}</MenuItem>;
+        })}
+      </Select>
+    );
+  }
+
+  generateVoteButton = (label, voteInput) => {
+    const { classes } = this.props; 
+    return (
+      <Button
+        className={classes.button}
+        onClick={() => {
+          this.submitVote(voteInput());
+        }}
+        color="primary"
+        fullWidth
+      >
+        {label}
+      </Button>
     );
 
-    // var response = await this.deployedRegistry.getNumRegisteredContracts({from: this.account});
-    this.setState({ page: "list" });
-  };
+  }
+
+  generateSecret = () => {
+    return (
+      <TextField
+        required
+        id="secret"
+        name="secret"
+        label="Secret"
+        fullWidth
+        value={this.state.secret}
+        onChange={event => {
+          if (!isNaN(event.target.value)) {
+            this.setState({ secret: event.target.value });
+          }
+        }}
+      />
+    );
+  }
 
   constructor(props) {
     super(props);
 
+
     this.web3 = new Web3(Web3.givenProvider);
 
-    this.OracleMock = contract(OracleMock);
+    this.vote = contract(vote)
     this.derivative = contract(derivative);
     this.registry = contract(registry);
 
-    this.OracleMock.setProvider(this.web3.currentProvider);
+    this.vote.setProvider(this.web3.currentProvider);
     this.derivative.setProvider(this.web3.currentProvider);
     this.registry.setProvider(this.web3.currentProvider);
 
@@ -193,10 +291,10 @@ class Dashboard extends React.Component {
 
       this.setState({ account: this.accounts[0] });
 
-      var deployedRegistry = await this.registry.deployed();
-      this.setState({ deployedRegistry: deployedRegistry });
-      this.deployedOracleMock = await this.OracleMock.deployed();
-      this.setState({ submitButton: true });
+      var deployedRegistry = convertContractToNewWeb3(this.web3, await this.registry.deployed());
+      var deployedVote = convertContractToNewWeb3(this.web3, await this.vote.deployed());
+      this.setState({ deployedRegistry: deployedRegistry, deployedVote: deployedVote });
+      await this.update(deployedVote);
     });
   }
 
@@ -207,138 +305,69 @@ class Dashboard extends React.Component {
       this.setState({ address: address, page: "detailed" });
     };
 
-    if (this.state.page === "list") {
+    if (this.state.period === "primary_commit" || this.state.period === "primary_reveal") {
       return (
         <main className={classes.content}>
           <div className={classes.appBarSpacer} />
-          <Typography variant="display1" gutterBottom component="h2">
-            Contracts
-          </Typography>
-          <div className={classes.tableContainer}>
-            <SimpleTable
-              didTapAddress={didTapAddress}
-              deployedRegistry={this.state.deployedRegistry}
-              account={this.state.account}
-              derivative={this.derivative}
-            />
-          </div>
+          <Typography variant="h4" gutterBottom component="h2">
+              ETH/USD Price
+            </Typography>
+            <Typography component="div" className={classes.chartContainer}>
+              <SimpleLineChart data={this.state.data} />
+            </Typography>
+            <Paper className={classes.paper}>
+              <Typography variant="display1" gutterBottom component="h2">
+                {this.state.period === "primary_commit" ? "Commit Vote" : "Reveal Vote"}
+              </Typography>
+              <Grid container spacing={24}>
+                <Grid item xs={12}>
+                  {this.generateSecret()}
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  {this.generateVoteButton(this.state.period === "primary_commit" ? "Commit Dispute" : "Reveal Dispute", () => { return 0; })}
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  {this.generateVoteButton(this.state.period === "primary_commit" ? "Commit Verification" : "Reveal Verification", () => { return 1; })}
+                </Grid>
+              </Grid>
+            </Paper>
         </main>
       );
-    } else if (this.state.page === "detailed") {
+    } else if (this.state.period === "runoff_commit" || this.state.period === "runoff_reveal") {
       return (
-        <main className={classes.content}>
-          <div className={classes.appBarSpacer} />
-          <IconButton
-            onClick={() => {
-              this.setState({ page: "list" });
-            }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="display1" gutterBottom component="h2">
-            Contract Details
-          </Typography>
-          <div className={classes.tableContainer}>
-            <DetailTable
-              address={this.state.address}
-              derivative={this.derivative}
-              account={this.state.account}
-              web3={this.web3}
-            />
-          </div>
-        </main>
-      );
-    } else {
-      // Note: this should be moved to another component.
-      return (
-        <main className={classes.content}>
+         <main className={classes.content}>
           <div className={classes.appBarSpacer} />
           <React.Fragment>
             <Paper className={classes.paper}>
               <Typography variant="display1" gutterBottom component="h2">
-                New Contract
+                {this.state.period === "runoff_commit" ? "Commit Vote" : "Reveal Vote"}
               </Typography>
               <Grid container spacing={24}>
-                <Grid item xs={12} sm={6}>
-                  <InputLabel htmlFor="product">Product</InputLabel>
-                  <Select
-                    value={this.state.product}
-                    onChange={event => {
-                      this.setState({ product: event.target.value });
-                    }}
-                    inputProps={{
-                      name: "product",
-                      id: "product"
-                    }}
-                    fullWidth
-                    label="Product"
-                  >
-                    <MenuItem value={"ETH/USD"}>ETH/USD</MenuItem>
-                    <MenuItem value={"USD/ETH"}>USD/ETH</MenuItem>
-                    <MenuItem value={"ETH/BTC"}>ETH/BTC</MenuItem>
-                    <MenuItem value={"BTC/ETH"}>BTC/ETH</MenuItem>
-                  </Select>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    required
-                    id="date"
-                    label="Expiry"
-                    type="date"
-                    fullWidth
-                    InputLabelProps={{
-                      shrink: true
-                    }}
-                    value={this.state.expiry}
-                    onChange={event => this.setState({ expiry: event.target.value })}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    required
-                    id="quantity"
-                    name="quantity"
-                    label="Notional (ETH)"
-                    fullWidth
-                    value={this.state.quantity}
-                    onChange={event => {
-                      if (!isNaN(event.target.value)) {
-                        this.setState({ quantity: parseInt(Number(event.target.value), 10) });
-                      }
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    required
-                    id="margin"
-                    name="margin"
-                    label="Initial Margin Deposit (ETH)"
-                    fullWidth
-                    value={this.state.margin}
-                    onChange={event => {
-                      if (!isNaN(event.target.value)) {
-                        this.setState({ margin: event.target.value });
-                      }
-                    }}
-                  />
-                </Grid>
                 <Grid item xs={12}>
-                  <Button
-                    disabled={!this.state.submitButton}
-                    className={classes.button}
-                    onClick={() => {
-                      this.deployContract(this.state);
-                    }}
-                    color="primary"
-                    fullWidth
-                  >
-                    Submit
-                  </Button>
+                  <InputLabel htmlFor="hash">IPFS Hash</InputLabel>
+                  {this.generateHashes()}
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  {this.generateSecret()}
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  {this.generateVoteButton(this.state.period === "runoff_commit" ? "Commit Choice" : "Reveal Choice", () => { return this.state.hashIndex; })}
                 </Grid>
               </Grid>
             </Paper>
           </React.Fragment>
+        </main>
+      );
+    } else {
+      return (
+        <main className={classes.content}>
+          <div className={classes.appBarSpacer} />
+          <Typography variant="h4" gutterBottom component="h2">
+              ETH/USD Price
+            </Typography>
+            <Typography component="div" className={classes.chartContainer}>
+              <SimpleLineChart data={this.state.data} />
+            </Typography>
         </main>
       );
     }
@@ -351,8 +380,8 @@ class Dashboard extends React.Component {
       <React.Fragment>
         <CssBaseline />
         <div className={classes.root}>
-          <AppBar position="absolute" className={classNames(classes.appBar, this.state.open && classes.appBarShift)}>
-            <Toolbar disableGutters={!this.state.open} className={classes.toolbar}>
+          <AppBar position="absolute" className={classNames(classes.appBar, false && classes.appBarShift)}>
+            <Toolbar disableGutters={false} className={classes.toolbar}>
               <IconButton
                 color="inherit"
                 aria-label="Open drawer"
@@ -362,25 +391,10 @@ class Dashboard extends React.Component {
                 <MenuIcon />
               </IconButton>
               <Typography component="h1" variant="title" color="inherit" noWrap className={classes.title}>
-                Trading Dashboard
+                Voting Dashboard
               </Typography>
             </Toolbar>
           </AppBar>
-          <Drawer
-            variant="permanent"
-            classes={{
-              paper: classNames(classes.drawerPaper, !this.state.open && classes.drawerPaperClose)
-            }}
-            open={this.state.open}
-          >
-            <div className={classes.toolbarIcon}>
-              <IconButton onClick={this.handleDrawerClose}>
-                <ChevronLeftIcon />
-              </IconButton>
-            </div>
-            <Divider />
-            <List>{mainListItems(this)}</List>
-          </Drawer>
           {this.generatePage()}
         </div>
       </React.Fragment>

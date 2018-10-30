@@ -171,11 +171,9 @@ class Dashboard extends React.Component {
 
     this.web3 = new Web3(Web3.givenProvider);
 
-    this.OracleMock = contract(OracleMock);
     this.derivative = contract(derivative);
     this.registry = contract(registry);
 
-    this.OracleMock.setProvider(this.web3.currentProvider);
     this.derivative.setProvider(this.web3.currentProvider);
     this.registry.setProvider(this.web3.currentProvider);
 
@@ -194,7 +192,6 @@ class Dashboard extends React.Component {
 
       var deployedRegistry = await this.registry.deployed();
       this.setState({ deployedRegistry: deployedRegistry });
-      this.deployedOracleMock = await this.OracleMock.deployed();
       this.setState({ submitButton: true });
     });
   }
