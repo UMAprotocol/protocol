@@ -27,14 +27,13 @@ import registry from "./contracts/Registry.json";
 
 const drawerWidth = 300;
 
-
 function getNewWeb3(existingWeb3) {
-    var Web3 = require('web3');
-    return new Web3(existingWeb3.currentProvider);
+  var Web3 = require("web3");
+  return new Web3(existingWeb3.currentProvider);
 }
 
 function convertContractToNewWeb3(newWeb3, existingContract) {
-    return new newWeb3.eth.Contract(existingContract.abi, existingContract.address);
+  return new newWeb3.eth.Contract(existingContract.abi, existingContract.address);
 }
 
 const styles = theme => ({
@@ -152,9 +151,9 @@ class Dashboard extends React.Component {
       var prices = await vote.methods.getDefaultProposalPrices().call();
       var data = [];
       for (var i = 0; i < prices.length; ++i) {
-        var date = new Date(prices[i][1] * 1000)
+        var date = new Date(prices[i][1] * 1000);
         date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-        data.push({time: date.toDateString(), Price: this.web3.utils.fromWei(prices[i][0].toString())});
+        data.push({ time: date.toDateString(), Price: this.web3.utils.fromWei(prices[i][0].toString()) });
       }
 
       this.setState({ data: data, period: period });
@@ -163,21 +162,25 @@ class Dashboard extends React.Component {
       var proposals = await vote.methods.getProposals().call();
       var proposalHashes = [];
       for (var i = 0; i < proposals.length; ++i) {
-        proposalHashes.push({id: i, hash: proposals[i][1]});
+        proposalHashes.push({ id: i, hash: proposals[i][1] });
       }
-      this.setState({ proposalHashes: proposalHashes, period: period })
+      this.setState({ proposalHashes: proposalHashes, period: period });
     }
-  }
+  };
 
   submitVote = async choice => {
     if (this.state.period === "primary_commit" || this.state.period === "runoff_commit") {
-      var hashValue = await this.state.deployedVote.methods.computeHash(choice.toString(), this.state.secret.toString()).call();
+      var hashValue = await this.state.deployedVote.methods
+        .computeHash(choice.toString(), this.state.secret.toString())
+        .call();
       await this.state.deployedVote.methods.commitVote(hashValue).send({ from: this.state.account, gas: 6720000 });
     } else if (this.state.period === "primary_reveal" || this.state.period === "runoff_reveal") {
-      await this.state.deployedVote.methods.revealVote(choice.toString(), this.state.secret.toString()).send({from: this.state.account, gas: 6720000 });
+      await this.state.deployedVote.methods
+        .revealVote(choice.toString(), this.state.secret.toString())
+        .send({ from: this.state.account, gas: 6720000 });
     }
     await this.update(this.state.deployedVote);
-  }
+  };
 
   getPeriod = async vote => {
     var currentPeriod = await vote.methods.getCurrentPeriodType().call();
@@ -204,7 +207,7 @@ class Dashboard extends React.Component {
     }
 
     return periodName;
-  }
+  };
 
   generateHashes = () => {
     return (
@@ -222,14 +225,18 @@ class Dashboard extends React.Component {
         label="IPFS Hash"
       >
         {this.state.proposalHashes.map(n => {
-          return <MenuItem key={n.id} value={n.id}>{n.hash}</MenuItem>;
+          return (
+            <MenuItem key={n.id} value={n.id}>
+              {n.hash}
+            </MenuItem>
+          );
         })}
       </Select>
     );
-  }
+  };
 
   generateVoteButton = (label, voteInput) => {
-    const { classes } = this.props; 
+    const { classes } = this.props;
     return (
       <Button
         className={classes.button}
@@ -242,8 +249,7 @@ class Dashboard extends React.Component {
         {label}
       </Button>
     );
-
-  }
+  };
 
   generateSecret = () => {
     return (
@@ -261,15 +267,14 @@ class Dashboard extends React.Component {
         }}
       />
     );
-  }
+  };
 
   constructor(props) {
     super(props);
 
-
     this.web3 = new Web3(Web3.givenProvider);
 
-    this.vote = contract(vote)
+    this.vote = contract(vote);
     this.derivative = contract(derivative);
     this.registry = contract(registry);
 
@@ -309,32 +314,42 @@ class Dashboard extends React.Component {
         <main className={classes.content}>
           <div className={classes.appBarSpacer} />
           <Typography variant="h4" gutterBottom component="h2">
-              ETH/USD Price
+            ETH/USD Price
+          </Typography>
+          <Typography component="div" className={classes.chartContainer}>
+            <SimpleLineChart data={this.state.data} />
+          </Typography>
+          <Paper className={classes.paper}>
+            <Typography variant="display1" gutterBottom component="h2">
+              {this.state.period === "primary_commit" ? "Commit Vote" : "Reveal Vote"}
             </Typography>
-            <Typography component="div" className={classes.chartContainer}>
-              <SimpleLineChart data={this.state.data} />
-            </Typography>
-            <Paper className={classes.paper}>
-              <Typography variant="display1" gutterBottom component="h2">
-                {this.state.period === "primary_commit" ? "Commit Vote" : "Reveal Vote"}
-              </Typography>
-              <Grid container spacing={24}>
-                <Grid item xs={12}>
-                  {this.generateSecret()}
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  {this.generateVoteButton(this.state.period === "primary_commit" ? "Commit Dispute" : "Reveal Dispute", () => { return 0; })}
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  {this.generateVoteButton(this.state.period === "primary_commit" ? "Commit Verification" : "Reveal Verification", () => { return 1; })}
-                </Grid>
+            <Grid container spacing={24}>
+              <Grid item xs={12}>
+                {this.generateSecret()}
               </Grid>
-            </Paper>
+              <Grid item xs={12} sm={6}>
+                {this.generateVoteButton(
+                  this.state.period === "primary_commit" ? "Commit Dispute" : "Reveal Dispute",
+                  () => {
+                    return 0;
+                  }
+                )}
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                {this.generateVoteButton(
+                  this.state.period === "primary_commit" ? "Commit Verification" : "Reveal Verification",
+                  () => {
+                    return 1;
+                  }
+                )}
+              </Grid>
+            </Grid>
+          </Paper>
         </main>
       );
     } else if (this.state.period === "runoff_commit" || this.state.period === "runoff_reveal") {
       return (
-         <main className={classes.content}>
+        <main className={classes.content}>
           <div className={classes.appBarSpacer} />
           <React.Fragment>
             <Paper className={classes.paper}>
@@ -350,7 +365,12 @@ class Dashboard extends React.Component {
                   {this.generateSecret()}
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  {this.generateVoteButton(this.state.period === "runoff_commit" ? "Commit Choice" : "Reveal Choice", () => { return this.state.hashIndex; })}
+                  {this.generateVoteButton(
+                    this.state.period === "runoff_commit" ? "Commit Choice" : "Reveal Choice",
+                    () => {
+                      return this.state.hashIndex;
+                    }
+                  )}
                 </Grid>
               </Grid>
             </Paper>
@@ -362,16 +382,16 @@ class Dashboard extends React.Component {
         <main className={classes.content}>
           <div className={classes.appBarSpacer} />
           <Typography variant="h4" gutterBottom component="h2">
-              ETH/USD Price
+            ETH/USD Price
+          </Typography>
+          <Typography component="div" className={classes.chartContainer}>
+            <SimpleLineChart data={this.state.data} />
+          </Typography>
+          <Paper className={classes.paper}>
+            <Typography variant="display1" gutterBottom component="h2">
+              Waiting...
             </Typography>
-            <Typography component="div" className={classes.chartContainer}>
-              <SimpleLineChart data={this.state.data} />
-            </Typography>
-            <Paper className={classes.paper}>
-              <Typography variant="display1" gutterBottom component="h2">
-                Waiting...
-              </Typography>
-            </Paper>
+          </Paper>
         </main>
       );
     }
