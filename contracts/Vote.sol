@@ -359,35 +359,28 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         uint currentLength = unverifiedPrices.length;
         if (currentLength == 0) {
             return (0, 0);
-        } else {
-            PriceTime.Data storage priceTime = unverifiedPrices[currentLength.sub(1)];
-            return (priceTime.time, priceTime.price);
         }
+
+        PriceTime.Data storage priceTime = unverifiedPrices[currentLength.sub(1)];
+        return (priceTime.time, priceTime.price);
     }
 
     function latestVerifiedPrice() public view returns (uint publishTime, int256 price) {
         if (firstUnverifiedIndex == 0) {
             return (0, 0);
-        } else {
-            uint lastVerifiedIndex = firstUnverifiedIndex.sub(1);
-            PriceTime.Data storage priceTime = unverifiedPrices[lastVerifiedIndex];
-            return (priceTime.time, priceTime.price);
         }
+
+        uint lastVerifiedIndex = firstUnverifiedIndex.sub(1);
+        PriceTime.Data storage priceTime = unverifiedPrices[lastVerifiedIndex];
+        return (priceTime.time, priceTime.price);
     }
 
     function unverifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
-        uint idx = unverifiedPrices._getIndex(time, priceInterval);
-        require(idx < unverifiedPrices.length);
-        PriceTime.Data storage priceTime = unverifiedPrices[idx];
-        return (priceTime.time, priceTime.price);
+        return unverifiedPrices._getBestPriceTimeForTime(time, unverifiedPrices.length, priceInterval);
     }
 
     function verifiedPrice(uint time) public view returns (uint publishTime, int256 price) {
-        uint idx = unverifiedPrices._getIndex(time, priceInterval);
-        require(idx < unverifiedPrices.length);
-        require(idx < firstUnverifiedIndex);
-        PriceTime.Data storage priceTime = unverifiedPrices[idx];
-        return (priceTime.time, priceTime.price);
+        return unverifiedPrices._getBestPriceTimeForTime(time, firstUnverifiedIndex, priceInterval);
     }
 
     function validatePrices() public {

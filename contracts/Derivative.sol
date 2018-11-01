@@ -60,7 +60,7 @@ contract Derivative {
     int256 public defaultPenalty;
     int256 public requiredMargin;
     string public product;
-    uint public notional; // TODO(mrice32): use this variable to scale NPV changes.
+    uint public notional;
 
     // Other addresses/contracts
     ContractParty public maker;
@@ -98,8 +98,7 @@ contract Derivative {
         defaultPenalty = _defaultPenalty;
         requiredMargin = _requiredMargin;
         product = _product;
-        // Internally, we round off notional to 1/1000 of ether to help us w/ fixed point math.
-        notional = _notional / (1 finney);
+        notional = _notional;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (, int256 oraclePrice) = oracle.latestUnverifiedPrice();
@@ -378,14 +377,13 @@ contract SimpleDerivative is Derivative {
         product,
         notional) {} // solhint-disable-line no-empty-blocks
 
-    // Note the 1/1000 below is because the notional is a fixed point representation rounded off at 1/1000.
     function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
         // This could be more complex, but in our case, just return the oracle value.
-        return (oraclePrice * int256(_notional)) / 1000;
+        return (oraclePrice * int256(_notional)) / (1 ether);
     }
 
     function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
-        return (oraclePrice * int256(_notional)) / 1000;
+        return (oraclePrice * int256(_notional)) / (1 ether);
     }
 
 }
