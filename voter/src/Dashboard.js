@@ -27,6 +27,7 @@ import registry from "./contracts/Registry.json";
 
 const drawerWidth = 300;
 
+// Note: react compilation fails if these are pulled from "protocol/scripts".
 function getNewWeb3(existingWeb3) {
   var Web3 = require("web3");
   return new Web3(existingWeb3.currentProvider);

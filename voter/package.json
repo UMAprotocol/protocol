@@ -1,5 +1,5 @@
 {
-  "name": "trader",
+  "name": "voter",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -17,7 +17,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-    "link-contracts": "cd src && ln -s ../../build/contracts contracts && ln -s ../../scripts scripts",
+    "link-contracts": "cd src && ln -s ../../build/contracts contracts",
     "prettier": "prettier --write 'src/**/*.js'"
   },
   "devDependencies": {

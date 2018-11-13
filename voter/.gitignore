@@ -16,7 +16,6 @@
 .env.test.local
 .env.production.local
 src/contracts
-src/scripts
 
 npm-debug.log*
 yarn-debug.log*

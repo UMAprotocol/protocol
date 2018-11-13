@@ -158,7 +158,7 @@ class Dashboard extends React.Component {
       marginInEth.toString(),
       (date.valueOf() / 1000).toString(),
       state.product,
-      notional.toString(),
+      notionalInWei.toString(),
       { from: this.state.account, gas: 6654755, value: this.web3.utils.toWei(state.margin) }
     );
 
@@ -245,7 +245,7 @@ class Dashboard extends React.Component {
         </main>
       );
     } else {
-      // Note: this should be moved to another component.
+      // TODO(mrice32): this should be moved to another component.
       return (
         <main className={classes.content}>
           <div className={classes.appBarSpacer} />

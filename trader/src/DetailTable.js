@@ -19,7 +19,7 @@ function lookupCounterpartyName(address) {
   } else if (address.toString().toLowerCase() === "0x0d1d4e623d10f9fba5db95830f7d3839406c6af2") {
     return "Matt";
   } else if (address.toString().toLowerCase() === "0x2932b7a2355d6fecc4b5c0b6bd44cc31df247a2e") {
-    return "Regina"
+    return "Regina";
   } else {
     return "Unknown";
   }
@@ -120,8 +120,8 @@ class DetailTable extends React.Component {
       counterpartyStruct = takerStruct;
     }
 
-    data.push({ key: "Counterparty name", value: lookupCounterpartyName(counterpartyStruct[0]), id: i++});
-    data.push({ key: "Counterparty address", value: counterpartyStruct[0], id: i++});
+    data.push({ key: "Counterparty name", value: lookupCounterpartyName(counterpartyStruct[0]), id: i++ });
+    data.push({ key: "Counterparty address", value: counterpartyStruct[0], id: i++ });
 
     var expiry = await deployedDerivative.endTime({ from: account });
     var expiryDate = new Date(Number(expiry.toString()) * 1000);
