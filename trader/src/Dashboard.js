@@ -147,9 +147,9 @@ class Dashboard extends React.Component {
     var counterparty = this.state.counterparty;
 
     var notional = new BigNumber(state.quantity);
-    var notionalInWei = BigNumber(this.web3.utils.toWei(notional.toString(), "ether"));
-    var marginInEth = notionalInWei.idiv(10);
-    var defaultPenaltyInEth = notionalInWei.idiv(20);
+    var notionalInWei = new BigNumber(this.web3.utils.toWei(notional.toString(), "ether"));
+    var marginInEth = notionalInWei.div(10);
+    var defaultPenaltyInEth = notionalInWei.div(20);
 
     // Default penalty = ~5% of total contract value. Margin ~= 10% of total contract value.
     await this.state.deployedRegistry.createDerivative(
