@@ -4,6 +4,7 @@
 
 All that's needed to install all required packages is running `npm install` from the `trader/` directory.
 
+
 ## Running
 
 1. Run `truffle develop` from the top level (`protocol/`) directory.
