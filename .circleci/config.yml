@@ -77,7 +77,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: npm install -g npm@latest && npm install --quiet
       - run:
           name: Run coverage
           command: npm run coverage
