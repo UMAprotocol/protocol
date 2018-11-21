@@ -8,7 +8,7 @@
   * Allows users to vote yes/no on whether a price is accurate
 
 */
-pragma solidity ^0.4.24;
+pragma solidity >=0.4.24;
 
 pragma experimental ABIEncoderV2;
 

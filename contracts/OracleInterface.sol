@@ -2,7 +2,7 @@
   OracleInterface contract.
   The interface that contracts use to query verified and unverified price feeds.
 */
-pragma solidity ^0.4.24;
+pragma solidity >=0.4.24;
 
 
 // This interface allows contracts to query verified and unverified prices from the VoteToken.
