@@ -75,7 +75,7 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: apk add git && && apk add python && npm install --quiet
+          command: apk add git && apk add python && npm install --quiet
       - run:
           name: Run coverage
           command: npm run coverage
