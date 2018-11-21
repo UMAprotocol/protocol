@@ -8,24 +8,29 @@ contract Registry {
     mapping(address => address[]) private registeredContracts;
     address private oracleAddress;
 
-    event Register(address indexed originator, address indexed derivative);
+    event Register(address indexed party, address indexed derivative);
 
     constructor(address _oracleAddress) public {
         oracleAddress = _oracleAddress;
     }
 
     function createDerivative(
-        address counterpartyAddress,
+        address counterparty,
         int256 defaultPenalty,
         int256 requiredMargin,
         uint expiry,
         string product,
-        uint notional) external payable returns (address derivativeAddress) {
+        uint notional
+    )
+        external
+        payable
+        returns (address derivativeAddress)
+    {
 
         // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
         //       from the taker. This is just for convenience
         SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
-            counterpartyAddress,
+            counterparty,
             msg.sender,
             oracleAddress,
             defaultPenalty,
@@ -36,38 +41,40 @@ contract Registry {
         );
 
         _register(msg.sender, address(derivative));
-        _register(counterpartyAddress, address(derivative));
+        _register(counterparty, address(derivative));
 
         return address(derivative);
     }
 
     function createTokenizedDerivative(
-        address counterpartyAddress,
-        int256 defaultPenalty,
-        int256 requiredMargin,
-        uint expiry,
+        address provider,
+        address investor,
+        uint defaultPenalty,
+        uint providerRequiredMargin,
         string product,
-        uint notional) external payable returns (address derivativeAddress) {
+        uint fixedYearlyFee,
+        uint disputeDeposit
+    )
+        external
+        returns (address derivativeAddress)
+    {
 
-        // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
-        //       from the taker. This is just for convenience
         SimpleTokenizedDerivative derivative = new SimpleTokenizedDerivative(
-            counterpartyAddress,
-            msg.sender,
+            provider,
+            investor,
             oracleAddress,
             defaultPenalty,
-            requiredMargin,
-            expiry,
+            providerRequiredMargin,
             product,
-            notional
+            fixedYearlyFee,
+            disputeDeposit
         );
 
-        _register(msg.sender, address(derivative));
-        _register(counterpartyAddress, address(derivative));
+        _register(provider, address(derivative));
+        _register(investor, address(derivative));
 
         return address(derivative);
     }
-
 
     function getNumRegisteredContractsBySender() external view returns (uint number) {
         return getNumRegisteredContracts(msg.sender);
@@ -77,16 +84,16 @@ contract Registry {
         return getRegisteredContract(index, msg.sender);
     }
 
-    function getNumRegisteredContracts(address originator) public view returns (uint number) {
-        return registeredContracts[originator].length;
+    function getNumRegisteredContracts(address party) public view returns (uint number) {
+        return registeredContracts[party].length;
     }
 
-    function getRegisteredContract(uint index, address originator) public view returns (address contractAddress) {
-        return registeredContracts[originator][index];
+    function getRegisteredContract(uint index, address party) public view returns (address contractAddress) {
+        return registeredContracts[party][index];
     }
 
-    function _register(address originator, address contractToRegister) internal {
-        registeredContracts[originator].push(contractToRegister);
-        emit Register(originator, contractToRegister);
+    function _register(address party, address contractToRegister) internal {
+        registeredContracts[party].push(contractToRegister);
+        emit Register(party, contractToRegister);
     }
 }
