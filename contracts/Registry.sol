@@ -1,6 +1,7 @@
 pragma solidity >=0.4.24;
 
 import "./Derivative.sol";
+import "./TokenizedDerivative.sol";
 
 
 contract Registry {
@@ -39,6 +40,34 @@ contract Registry {
 
         return address(derivative);
     }
+
+    function createTokenizedDerivative(
+        address counterpartyAddress,
+        int256 defaultPenalty,
+        int256 requiredMargin,
+        uint expiry,
+        string product,
+        uint notional) external payable returns (address derivativeAddress) {
+
+        // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
+        //       from the taker. This is just for convenience
+        SimpleTokenizedDerivative derivative = new SimpleTokenizedDerivative(
+            counterpartyAddress,
+            msg.sender,
+            oracleAddress,
+            defaultPenalty,
+            requiredMargin,
+            expiry,
+            product,
+            notional
+        );
+
+        _register(msg.sender, address(derivative));
+        _register(counterpartyAddress, address(derivative));
+
+        return address(derivative);
+    }
+
 
     function getNumRegisteredContractsBySender() external view returns (uint number) {
         return getNumRegisteredContracts(msg.sender);

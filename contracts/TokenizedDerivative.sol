@@ -10,6 +10,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./OracleInterface.sol";
 
 
+// TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
 contract TokenizedDerivative is ERC20 {
 
     // Note: SafeMath only works for uints right now.
