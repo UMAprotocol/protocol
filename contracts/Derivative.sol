@@ -73,7 +73,6 @@ contract Derivative {
     uint public lastRemarginTime;
 
     int256 public npv;  // Net present value is measured in Wei
-    mapping(address => bool) public hasConfirmedPrice;
 
     constructor(
         address _makerAddress,
@@ -151,6 +150,8 @@ contract Derivative {
     }
 
     function dispute() public {
+        require(msg.sender == maker.accountAddress || msg.sender == taker.accountAddress);
+
         require(
             // TODO: We need to add the dispute bond logic
             state == State.Live ||
