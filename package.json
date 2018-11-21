@@ -1,13 +1,13 @@
 {
   "name": "prototype",
-  "version": "0.0.1",
-  "description": "Frontend for VoteCoint",
+  "version": "0.1.0",
+  "description": "UMA Protocol Smart Contracts",
   "scripts": {
     "dev": "webpack-dev-server",
     "prettier": "prettier --write 'test/**/*.js' 'migrations/*.js'",
-    "coverage": "npx solidity-coverage"
+    "coverage": "$(npm bin)/solidity-coverage"
   },
-  "author": "Chase Coleman and Spencer Lyon",
+  "author": "UMA Team",
   "license": "MIT",
   "devDependencies": {
     "babel-cli": "^6.26.0",

@@ -75,7 +75,7 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: apt-get -y install git-all && npm install --quiet
+          command: apt -y install git-all && npm install --quiet
       - run:
           name: Run coverage
           command: npm run coverage
