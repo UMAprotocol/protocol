@@ -1,7 +1,7 @@
 /*
   Interface for a contract that implements commit-reveal voting.
 */
-pragma solidity ^0.4.24;
+pragma solidity >= 0.4.24;
 
 
 pragma experimental ABIEncoderV2;

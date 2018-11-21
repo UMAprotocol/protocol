@@ -30,7 +30,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Compile contracts
-          command: npx truffle compile
+          command: $(npm bin)/truffle compile
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -44,7 +44,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Lint
-          command: npx solhint --max-warnings=1 contracts/**/*.sol
+          command: $(npm bin)/solhint --max-warnings=1 contracts/**/*.sol
   test:
     docker:
       - image: circleci/node:latest
@@ -56,7 +56,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: npx truffle test --network ci
+          command: $(npm bin)/truffle test --network ci
   coverage:
     docker:
       # Note: we made a compromise here to get solidity-coverage to work. We're just creating a new build inside the
@@ -75,7 +75,7 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: apk add make git python g++ && npm install --quiet
       - run:
           name: Run coverage
           command: npm run coverage

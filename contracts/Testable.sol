@@ -4,7 +4,7 @@
   Base class that provides time overrides, but only if being run in test mode.
 */
 
-pragma solidity ^0.4.24;
+pragma solidity >=0.4.24;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
@@ -33,11 +33,11 @@ contract Testable is Ownable {
         currentTime = _time;
     }
 
-    function isTestMode() public constant returns (bool) {
+    function isTestMode() public view returns (bool) {
         return isTest;
     }
 
-    function getCurrentTime() public constant returns (uint) {
+    function getCurrentTime() public view returns (uint) {
         if (isTest) {
             return currentTime;
         } else {

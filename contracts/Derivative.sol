@@ -5,7 +5,7 @@
 
   TODO: Implement tax function
 */
-pragma solidity ^0.4.24;
+pragma solidity >=0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./OracleInterface.sol";
