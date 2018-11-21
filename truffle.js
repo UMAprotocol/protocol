@@ -17,15 +17,21 @@ module.exports = {
     },
     develop: {
       host: "127.0.0.1",
-      port: 8545,
+      port: 9545,
       network_id: "*",
       gas: 6720000
     },
     test: {
       host: "127.0.0.1",
-      port: 8545,
+      port: 9545,
       network_id: "*",
       gas: 6720000
-    }
+    },
+    app: {
+      host: "35.211.70.170",
+      port: 63202,
+      network_id: "*",
+      gas: 6720000
+    },
   }
 };

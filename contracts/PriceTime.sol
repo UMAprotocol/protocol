@@ -53,4 +53,24 @@ library PriceTime {
             require(idx <= self.length);
         }
     }
+
+    function _getBestPriceTimeForTime(Data[] storage self, uint time, uint lengthToConsider, uint interval)
+        internal
+        view
+        returns (uint publishTime, int256 price)
+    {
+        if (lengthToConsider == 0 || time < self[0].time) {
+            return (0, 0);
+        }
+
+        uint idx = lengthToConsider.sub(1);
+
+        if (time < self[idx].time) {
+            idx = self._getIndex(time.div(interval).mul(interval), interval);
+        }
+
+        Data storage priceTime = self[idx];
+
+        return (priceTime.time, priceTime.price);
+    }
 }

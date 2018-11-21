@@ -8,7 +8,8 @@ var enableControllableTiming = network => {
     network === "develop" ||
     network === "development" ||
     network === "ci" ||
-    network === "coverage"
+    network === "coverage" ||
+    network === "app"
   );
 };
 
@@ -20,7 +21,7 @@ module.exports = function(deployer, network, accounts) {
   if (shouldUseMockOracle(network)) {
     deployer
       .then(() => {
-        return deployer.deploy(Vote, "BTC/USD", "60", enableControllableTiming(network), {
+        return deployer.deploy(Vote, "BTC/USD", "86400", enableControllableTiming(network), {
           from: accounts[0],
           value: 0
         });
@@ -40,7 +41,7 @@ module.exports = function(deployer, network, accounts) {
   } else {
     deployer
       .then(() => {
-        return deployer.deploy(Vote, "BTC/USD", "60", enableControllableTiming(network), {
+        return deployer.deploy(Vote, "BTC/USD", "86400", enableControllableTiming(network), {
           from: accounts[0],
           value: 0
         });

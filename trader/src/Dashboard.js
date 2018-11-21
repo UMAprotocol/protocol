@@ -28,7 +28,6 @@ import { default as contract } from "truffle-contract";
 import BigNumber from "bignumber.js";
 
 // Import our contract artifacts and turn them into usable abstractions.
-import OracleMock from "./contracts/OracleMock.json";
 import derivative from "./contracts/Derivative.json";
 import registry from "./contracts/Registry.json";
 
@@ -127,7 +126,8 @@ class Dashboard extends React.Component {
     quantity: 1,
     margin: "0.0",
     expiry: "2019-01-01",
-    submitButton: false
+    submitButton: false,
+    counterparty: "0xf17f52151ebef6c7334fad080c5704d77216b732"
   };
 
   handleDrawerOpen = () => {
@@ -144,12 +144,12 @@ class Dashboard extends React.Component {
     // TODO(mrice32): this is to make up for the UTC offset issue when setting hours - this should be done in a systematic way
     date.setDate(date.getDate() + 1);
 
-    var counterparty = "0xf17f52151ebef6c7334fad080c5704d77216b732";
+    var counterparty = this.state.counterparty;
 
     var notional = new BigNumber(state.quantity);
-    var notionalInWei = BigNumber(this.web3.utils.toWei(notional.toString(), "ether"));
-    var marginInEth = notionalInWei.idiv(10);
-    var defaultPenaltyInEth = notionalInWei.idiv(20);
+    var notionalInWei = new BigNumber(this.web3.utils.toWei(notional.toString(), "ether"));
+    var marginInEth = notionalInWei.div(10);
+    var defaultPenaltyInEth = notionalInWei.div(20);
 
     // Default penalty = ~5% of total contract value. Margin ~= 10% of total contract value.
     await this.state.deployedRegistry.createDerivative(
@@ -158,7 +158,7 @@ class Dashboard extends React.Component {
       marginInEth.toString(),
       (date.valueOf() / 1000).toString(),
       state.product,
-      notional.toString(),
+      notionalInWei.toString(),
       { from: this.state.account, gas: 6654755, value: this.web3.utils.toWei(state.margin) }
     );
 
@@ -171,11 +171,9 @@ class Dashboard extends React.Component {
 
     this.web3 = new Web3(Web3.givenProvider);
 
-    this.OracleMock = contract(OracleMock);
     this.derivative = contract(derivative);
     this.registry = contract(registry);
 
-    this.OracleMock.setProvider(this.web3.currentProvider);
     this.derivative.setProvider(this.web3.currentProvider);
     this.registry.setProvider(this.web3.currentProvider);
 
@@ -194,7 +192,6 @@ class Dashboard extends React.Component {
 
       var deployedRegistry = await this.registry.deployed();
       this.setState({ deployedRegistry: deployedRegistry });
-      this.deployedOracleMock = await this.OracleMock.deployed();
       this.setState({ submitButton: true });
     });
   }
@@ -248,7 +245,7 @@ class Dashboard extends React.Component {
         </main>
       );
     } else {
-      // Note: this should be moved to another component.
+      // TODO(mrice32): this should be moved to another component.
       return (
         <main className={classes.content}>
           <div className={classes.appBarSpacer} />
@@ -273,9 +270,6 @@ class Dashboard extends React.Component {
                     label="Product"
                   >
                     <MenuItem value={"ETH/USD"}>ETH/USD</MenuItem>
-                    <MenuItem value={"USD/ETH"}>USD/ETH</MenuItem>
-                    <MenuItem value={"ETH/BTC"}>ETH/BTC</MenuItem>
-                    <MenuItem value={"BTC/ETH"}>BTC/ETH</MenuItem>
                   </Select>
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -321,6 +315,27 @@ class Dashboard extends React.Component {
                       }
                     }}
                   />
+                </Grid>
+                <Grid item xs={12}>
+                  <InputLabel htmlFor="counterparty">Counterparty</InputLabel>
+                  <Select
+                    value={this.state.counterparty}
+                    onChange={event => {
+                      this.setState({ counterparty: event.target.value });
+                    }}
+                    inputProps={{
+                      name: "counterparty",
+                      id: "counterparty"
+                    }}
+                    fullWidth
+                    label="Counterparty"
+                  >
+                    <MenuItem value={"0xf17f52151ebef6c7334fad080c5704d77216b732"}>Allison</MenuItem>
+                    <MenuItem value={"0xc5fdf4076b8f3a5357c5e395ab970b5b54098fef"}>Chase</MenuItem>
+                    <MenuItem value={"0x821aea9a577a9b44299b9c15c88cf3087f3b5544"}>Hart</MenuItem>
+                    <MenuItem value={"0x0d1d4e623d10f9fba5db95830f7d3839406c6af2"}>Matt</MenuItem>
+                    <MenuItem value={"0x2932b7a2355d6fecc4b5c0b6bd44cc31df247a2e"}>Regina</MenuItem>
+                  </Select>
                 </Grid>
                 <Grid item xs={12}>
                   <Button

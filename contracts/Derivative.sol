@@ -60,7 +60,7 @@ contract Derivative {
     int256 public defaultPenalty;
     int256 public requiredMargin;
     string public product;
-    uint public notional; // TODO(mrice32): use this variable to scale NPV changes.
+    uint public notional;
 
     // Other addresses/contracts
     ContractParty public maker;
@@ -99,18 +99,21 @@ contract Derivative {
         requiredMargin = _requiredMargin;
         product = _product;
         notional = _notional;
-        npv = initialNpv();
+
+        // TODO(mrice32): we should have an ideal start time rather than blindly polling.
+        (, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        npv = initialNpv(oraclePrice, notional);
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
     // `computeNpv` and `initialNpv` function. This allows for generic choices of NPV
     // functions.
-    function computeNpv(int256 oraclePrice) public view returns (int256 npvNew);
+    function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
     // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
     // contract, the contract will only move money when the computed NPV differs from this value. For example, if
     // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
     // `computeUnverifiedNpv` returned 51.
-    function initialNpv() public view returns (int256 npvNew);
+    function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
 
     function confirmPrice() public {
         // Right now, only dispute if in a pre-settlement state
@@ -174,7 +177,7 @@ contract Derivative {
         lastRemarginTime = currentTime;
 
         // Update npv of contract
-        return  _remargin(computeNpv(oraclePrice));
+        return  _remargin(computeNpv(oraclePrice, notional));
     }
 
     function settle() public {
@@ -228,7 +231,7 @@ contract Derivative {
             (, oraclePrice) = oracle.unverifiedPrice(endTime);
         }
 
-        return computeNpv(oraclePrice);
+        return computeNpv(oraclePrice, notional);
     }
 
     // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in
@@ -268,7 +271,7 @@ contract Derivative {
     function _settle(int256 price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
-        _remargin(computeNpv(price));
+        _remargin(computeNpv(price, notional));
 
         // Check whether goes into default
         (bool inDefault, address _defaulter, ) = whoDefaults();
@@ -340,7 +343,7 @@ contract Derivative {
 
     function _requiredAccountBalanceOnRemargin(ContractParty storage party) internal view returns (int256 balance) {
         (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
-        int256 makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice));
+        int256 makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice, notional));
 
         if (party.accountAddress == maker.accountAddress) {
             balance = requiredMargin - makerDiff;
@@ -374,13 +377,13 @@ contract SimpleDerivative is Derivative {
         product,
         notional) {} // solhint-disable-line no-empty-blocks
 
-    function computeNpv(int256 oraclePrice) public view returns (int256 npvNew) {
+    function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
         // This could be more complex, but in our case, just return the oracle value.
-        return oraclePrice;
+        return (oraclePrice * int256(_notional)) / (1 ether);
     }
 
-    function initialNpv() public view returns (int256 npvNew) {
-        return 0;
+    function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
+        return (oraclePrice * int256(_notional)) / (1 ether);
     }
 
 }
