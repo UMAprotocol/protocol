@@ -184,7 +184,7 @@ contract TokenizedDerivative is ERC20 {
 
         // Value of the tokens is just the percentage of all the tokens multiplied by the balance of the investor
         // margin account.
-        uint tokenPercentage = (numTokens * 1 ether) / totalSupply();
+        uint tokenPercentage = numTokens.mul(1 ether).div(totalSupply());
         uint tokenValue = _takePercentage(uint(investorBalance), tokenPercentage);
 
         investor.balance -= int256(tokenValue);
