@@ -84,6 +84,19 @@ contract TokenizedDerivative is ERC20 {
 
     uint public constant SECONDS_PER_YEAR = 31536000;
 
+    modifier onlyContractParties {
+        require(msg.sender == provider.accountAddress || msg.sender == investor.accountAddress);
+        _;
+    }
+
+    modifier onlyInvestor {
+        require(msg.sender == investor.accountAddress);
+    }
+
+    modifier onlyProvider {
+        require(msg.sender == provider.accountAddress);
+    }
+
     constructor(
         address _providerAddress,
         address _investorAddress,
@@ -124,8 +137,7 @@ contract TokenizedDerivative is ERC20 {
         state = State.Live;
     }
 
-    function authorizeTokens(uint newAuthorizedNavInWei) external payable {
-        require(msg.sender == provider.accountAddress);
+    function authorizeTokens(uint newAuthorizedNavInWei) external payable onlyProvider {
         deposit();
         remargin();
 
@@ -135,7 +147,7 @@ contract TokenizedDerivative is ERC20 {
         require(!_reduceAuthorizedTokens(nav));
     }
 
-    function createTokens(bool exact) external payable {
+    function createTokens(bool exact) external payable onlyInvestor {
         require(msg.sender == investor.accountAddress);
 
         remargin();
@@ -217,7 +229,7 @@ contract TokenizedDerivative is ERC20 {
         assert(navNew >= 0);
     }
 
-    function confirmPrice() public {
+    function confirmPrice() public onlyContractParties {
         // Right now, only dispute if in a pre-settlement state
         require(state == State.Expired || state == State.Defaulted);
 
@@ -236,9 +248,8 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function deposit() public payable {
+    function deposit() public payable onlyProvider {
         // Only allow the provider to deposit margin.
-        require(msg.sender == provider.accountAddress);
 
         // Make sure that one of participants is sending the deposit and that
         // we are in a "depositable" state
@@ -246,8 +257,7 @@ contract TokenizedDerivative is ERC20 {
         provider.balance += int256(msg.value);  // Want this to be safemath when available
     }
 
-    function dispute() public payable {
-        require(msg.sender == provider.accountAddress || msg.sender == investor.accountAddress);
+    function dispute() public payable onlyContractParties {
         require(
             // TODO: We need to add the dispute bond logic
             state == State.Live ||
@@ -306,9 +316,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function withdraw(uint256 amount) public payable {
-        require(msg.sender == provider.accountAddress);
-
+    function withdraw(uint256 amount) public payable onlyProvider {
         // Make sure either in Live or Settled
         require(state == State.Live || state == State.Settled);
 
