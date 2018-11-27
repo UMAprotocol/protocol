@@ -91,10 +91,12 @@ contract TokenizedDerivative is ERC20 {
 
     modifier onlyInvestor {
         require(msg.sender == investor.accountAddress);
+        _;
     }
 
     modifier onlyProvider {
         require(msg.sender == provider.accountAddress);
+        _;
     }
 
     constructor(
