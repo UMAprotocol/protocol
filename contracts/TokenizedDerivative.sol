@@ -3,11 +3,12 @@
 
   Implements a simplified version of tokenized Product/ETH Products.
 */
-pragma solidity ^0.4.24;
+pragma solidity >=0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./OracleInterface.sol";
+import "./ContractCreator.sol";
 
 
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
@@ -550,4 +551,40 @@ contract SimpleTokenizedDerivative is TokenizedDerivative {
         return computeUnitNav(oraclePrice);
     }
 
+}
+
+
+contract TokenizedDerivativeCreator is ContractCreator {
+    constructor(address registryAddress, address _oracleAddress)
+        public
+        ContractCreator(registryAddress, _oracleAddress) {} // solhint-disable-line no-empty-blocks
+
+    function createTokenizedDerivative(
+        address provider,
+        address investor,
+        uint defaultPenalty,
+        uint providerRequiredMargin,
+        string product,
+        uint fixedYearlyFee,
+        uint disputeDeposit
+    )
+        external
+        returns (address derivativeAddress)
+    {
+
+        SimpleTokenizedDerivative derivative = new SimpleTokenizedDerivative(
+            provider,
+            investor,
+            oracleAddress,
+            defaultPenalty,
+            providerRequiredMargin,
+            product,
+            fixedYearlyFee,
+            disputeDeposit
+        );
+
+        _registerNewContract(provider, investor, address(derivative));
+
+        return address(derivative);
+    }
 }

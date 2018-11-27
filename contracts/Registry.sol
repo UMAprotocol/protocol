@@ -1,79 +1,26 @@
 pragma solidity >=0.4.24;
 
-import "./Derivative.sol";
-import "./TokenizedDerivative.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 
-contract Registry {
+contract Registry is Ownable {
     mapping(address => address[]) private registeredContracts;
-    address private oracleAddress;
+    mapping(address => bool) private contractCreators;
 
     event Register(address indexed party, address indexed derivative);
 
-    constructor(address _oracleAddress) public {
-        oracleAddress = _oracleAddress;
+    function addContractCreator(address contractCreator) external onlyOwner {
+        contractCreators[contractCreator] = true;
     }
 
-    function createDerivative(
-        address counterparty,
-        int256 defaultPenalty,
-        int256 requiredMargin,
-        uint expiry,
-        string product,
-        uint notional
-    )
-        external
-        payable
-        returns (address derivativeAddress)
-    {
-
-        // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
-        //       from the taker. This is just for convenience
-        SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
-            counterparty,
-            msg.sender,
-            oracleAddress,
-            defaultPenalty,
-            requiredMargin,
-            expiry,
-            product,
-            notional
-        );
-
-        _register(msg.sender, address(derivative));
-        _register(counterparty, address(derivative));
-
-        return address(derivative);
+    function removeContractCreator(address contractCreator) external onlyOwner {
+        contractCreators[contractCreator] = false;
     }
 
-    function createTokenizedDerivative(
-        address provider,
-        address investor,
-        uint defaultPenalty,
-        uint providerRequiredMargin,
-        string product,
-        uint fixedYearlyFee,
-        uint disputeDeposit
-    )
-        external
-        returns (address derivativeAddress)
-    {
-
-        SimpleTokenizedDerivative derivative = new SimpleTokenizedDerivative(
-            provider,
-            investor,
-            oracleAddress,
-            defaultPenalty,
-            providerRequiredMargin,
-            product,
-            fixedYearlyFee,
-            disputeDeposit
-        );
-
-        _register(provider, address(derivative));
-        _register(investor, address(derivative));
-
-        return address(derivative);
+    function registerContract(address firstParty, address secondParty, address contractToRegister) external {
+        require(contractCreators[msg.sender]);
+        _register(firstParty, contractToRegister);
+        _register(secondParty, contractToRegister);
     }
 
     function getNumRegisteredContractsBySender() external view returns (uint number) {

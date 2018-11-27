@@ -3,11 +3,13 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 var Derivative = artifacts.require("Derivative");
 var Registry = artifacts.require("Registry");
 var Oracle = artifacts.require("OracleMock");
+var DerivativeCreator = artifacts.require("DerivativeCreator");
 
 contract("Derivative", function(accounts) {
   var derivativeContract;
   var deployedRegistry;
   var deployedOracle;
+  var deployedDerivativeCreator;
 
   var ownerAddress = accounts[0];
   var takerAddress = accounts[1];
@@ -17,6 +19,8 @@ contract("Derivative", function(accounts) {
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
+    deployedDerivativeCreator = await DerivativeCreator.deployed();
+
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0", "ether"), { from: ownerAddress });
@@ -31,7 +35,7 @@ contract("Derivative", function(accounts) {
     // add one additional unverified price
     expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(120);
 
-    await deployedRegistry.createDerivative(
+    await deployedDerivativeCreator.createDerivative(
       makerAddress,
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.1", "ether"),
