@@ -1,0 +1,253 @@
+const { didContractThrow } = require("./utils/DidContractThrow.js");
+
+var TokenizedDerivative = artifacts.require("TokenizedDerivative");
+var Registry = artifacts.require("Registry");
+var Oracle = artifacts.require("OracleMock");
+var TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
+const BigNumber = require('bignumber.js');
+
+contract("TokenizedDerivative", function(accounts) {
+  var derivativeContract;
+  var deployedRegistry;
+  var deployedOracle;
+  var tokenizedDerivativeCreator;
+
+  var ownerAddress = accounts[0];
+  var provider = accounts[1];
+  var investor = accounts[2];
+  var thirdParty = accounts[3];
+
+  var computeNewNav = (previousNav, priceReturn, fees) => {
+    var expectedReturnWithFees = priceReturn.sub(fees);
+    var retVal = BigNumber(web3.utils.fromWei(expectedReturnWithFees.mul(previousNav), "ether"));
+    var flooredRetVal = retVal.integerValue(BigNumber.ROUND_FLOOR);
+    return web3.utils.toBN(flooredRetVal);
+  }
+
+  var computeExpectedPenalty = (navToPenalize, penaltyPercentage) => {
+    return web3.utils.toBN(web3.utils.fromWei(navToPenalize.mul(penaltyPercentage), "ether"));
+  }
+
+  before(async function() {
+    // Set the deployed registry and oracle.
+    deployedRegistry = await Registry.deployed();
+    deployedOracle = await Oracle.deployed();
+    tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
+
+    // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
+  });
+
+  beforeEach(async () => {
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
+
+    // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time
+    // steps. Note: Make sure all tests end with same number of unverified/verified prices then this function will
+    // add one additional unverified price
+    expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(120);
+
+    await tokenizedDerivativeCreator.createTokenizedDerivative(
+      provider,
+      investor,
+      web3.utils.toWei("0.05", "ether"),
+      web3.utils.toWei("0.1", "ether"),
+      "ETH/USD",
+      web3.utils.toWei("0.01", "ether"),
+      web3.utils.toWei("0.05", "ether"),
+      { from: provider }
+    );
+
+    var numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: provider });
+    var derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
+      numRegisteredContracts.subn(1).toString(),
+      { from: provider }
+    );
+    derivativeContract = await TokenizedDerivative.at(derivativeAddress);
+  });
+
+  it("Live -> Default", async function() {
+    var state = await derivativeContract.state();
+    var tokensOutstanding = await derivativeContract.totalSupply();
+    var nav = await derivativeContract.nav();
+
+    // TODO: add a javascript lib that will map from enum name to uint value.
+    // '0' == State.Live
+    assert.equal(state.toString(), "0");
+    assert.equal(tokensOutstanding.toString(), "0");
+    assert.equal(nav.toString(), "0");
+
+    var providerStruct = await derivativeContract.provider();
+    var investorStruct = await derivativeContract.investor();
+
+    assert.equal(providerStruct[0], provider);
+    assert.equal(investorStruct[0]. investor);
+
+    // Ensure the balance of the provider is 0 ETH (as is deposited in beforeEach()).
+    assert.equal(providerStruct[1].toString(), web3.utils.toWei("0", "ether"));
+
+    // Check that the deposit function correctly credits the provider account.
+    await derivativeContract.deposit({ from: provider, value: web3.utils.toWei("0.2", "ether") });
+    providerStruct = await derivativeContract.provider();
+    assert.equal(providerStruct[1].toString(), web3.utils.toWei("0.2", "ether"));
+
+    // Check that the withdraw function correctly withdraws from the taker account.
+    await derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: provider });
+    providerStruct = await derivativeContract.provider();
+    assert.equal(providerStruct[1].toString(), web3.utils.toWei("0.1", "ether"));
+
+    // Contract doesn't have enough of a deposit to authorize that 2 ETH worth of new tokens.
+    assert(await didContractThrow(derivativeContract.authorizeTokens(web3.utils.toWei("2", "ether"), { from: provider })));
+
+    // Succeeds when we send enough ETH to cover the additional margin.
+    await derivativeContract.authorizeTokens(web3.utils.toWei("2", "ether"), { from: provider, value: web3.utils.toWei("0.1", "ether") });
+
+    // Fails because exact is true with a requested NAV of 3 ETH, but authorized NAV is only 2 ETH.
+    assert(await didContractThrow(derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("3", "ether")})));
+
+    // Succeeds because exact is true and requested NAV (1 ETH) is within the authorized NAV (2 ETH).
+    await derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether")});
+
+    var investorTokenBalance = await derivativeContract.balanceOf(investor);
+    var additionalAuthorizedNav = await derivativeContract.additionalAuthorizedNav();
+    investorStruct = await derivativeContract.investor();
+    nav = await derivativeContract.nav();
+
+    assert.equal(investorTokenBalance.toString(), web3.utils.toWei("1", "ether"));
+    assert.equal(additionalAuthorizedNav.toString(), web3.utils.toWei("1", "ether"));
+    assert.equal(investorStruct[1].toString(), web3.utils.toWei("1", "ether"));
+    assert.equal(nav.toString(), web3.utils.toWei("1", "ether"));
+
+    // Succeeds, but should only provide up to the max authorized NAV, which is 1 ETH, since exact is false.
+    await derivativeContract.createTokens(false, { from: investor, value: web3.utils.toWei("3", "ether")});
+
+    investorTokenBalance = await derivativeContract.balanceOf(investor);
+    additionalAuthorizedNav = await derivativeContract.additionalAuthorizedNav();
+    investorStruct = await derivativeContract.investor();
+    nav = await derivativeContract.nav();
+
+    assert.equal(investorTokenBalance.toString(), web3.utils.toWei("2", "ether"));
+    assert.equal(additionalAuthorizedNav.toString(), web3.utils.toWei("0", "ether"));
+    assert.equal(investorStruct[1].toString(), web3.utils.toWei("2", "ether"));
+    assert.equal(nav.toString(), web3.utils.toWei("2", "ether"));
+
+    // This number was chosen so that once the price doubles, the provider will not default.
+    await derivativeContract.deposit({ from: provider, value: web3.utils.toWei("2.6", "ether")});
+
+    providerStruct = await derivativeContract.provider();
+
+    assert.equal(providerStruct[1].toString(), web3.utils.toWei("2.8", "ether"));
+
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("2", "ether"), { from: ownerAddress });
+
+    var latestUnverifiedPrice = (await deployedOracle.latestUnverifiedPrice())[1];
+
+    tokensOutstanding = await derivativeContract.totalSupply();
+
+    assert.equal(tokensOutstanding.toString(), web3.utils.toWei("2", "ether"));
+
+    var expectedReturnWithoutFees = web3.utils.toBN(web3.utils.toWei("2", "ether"));
+
+    var feesPerSecond = await derivativeContract.fixedFeePerSecond();
+    var feesPerMinute = feesPerSecond.muln(60);
+
+
+    var expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerMinute);
+
+    await derivativeContract.remargin({ from: provider });
+
+    // Ensure that a remargin with no new price works appropriately and doesn't create any balance issues.
+    await derivativeContract.remargin({ from: provider });
+
+    nav = await derivativeContract.nav();
+    investorStruct = await derivativeContract.investor();
+
+    assert.equal(nav.toString(), expectedNav.toString());
+    assert.equal(investorStruct[1].toString(), expectedNav.toString());
+
+    // Should fail because the ERC20 tokens have not been authorized.
+    assert(await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: investor })));
+
+    var initialContractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+
+    await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: investor });
+    await derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: investor });
+
+    nav = await derivativeContract.nav();
+
+    totalSupply = await derivativeContract.totalSupply();
+    investorStruct = await derivativeContract.investor();
+    var allowance = await derivativeContract.allowance(investor, derivativeContract.address);
+    var newContractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+
+    expectedNav = expectedNav.divn(2);
+    assert.equal(totalSupply.toString(), web3.utils.toWei("1", "ether"));
+    assert.equal(investorStruct[1].toString(), expectedNav.toString());
+    assert.equal(nav.toString(), expectedNav.toString());
+    assert.equal(allowance.toString(), "0");
+
+    var expectedBalanceChange = expectedNav;
+    var actualBalanceChange = initialContractBalance.sub(newContractBalance);
+    assert.equal(actualBalanceChange.toString(), expectedBalanceChange.toString());
+
+    providerStruct = await derivativeContract.provider();
+
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("2.6", "ether"), { from: ownerAddress });
+    await derivativeContract.remargin({ from: investor });
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("2.6", "ether"), { from: ownerAddress });
+
+    expectedNav = computeNewNav(nav, web3.utils.toBN(web3.utils.toWei("1.3", "ether")), feesPerMinute);
+    var expectedPenalty = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
+
+    var expectedNavChange = expectedNav.sub(nav);
+    state = await derivativeContract.state();
+    nav = await derivativeContract.nav();
+    var initialProviderBalance = providerStruct[1];
+    providerStruct = await derivativeContract.provider();
+    var providerBalancePostRemargin = providerStruct[1];
+
+    assert.equal(state.toString(), "3");
+    assert.equal(nav.toString(), expectedNav.toString());
+    assert.equal(initialProviderBalance.sub(providerBalancePostRemargin).toString(), expectedNavChange.toString());
+
+
+    await derivativeContract.confirmPrice({ from: investor });
+    assert(await didContractThrow(derivativeContract.withdraw(providerBalancePostRemargin.toString(), { from: provider })));
+    await derivativeContract.confirmPrice({ from: provider });
+
+    state = await derivativeContract.state();
+
+    assert.equal(state.toString(), "4");
+
+    providerStruct = await derivativeContract.provider();
+    investorStruct = await derivativeContract.investor();
+    var providerBalancePostSettlement = providerStruct[1];
+    var expectedBalance = providerBalancePostRemargin.sub(expectedPenalty);
+    assert.equal(providerBalancePostSettlement.toString(), expectedBalance.toString());
+
+    initialContractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+    await derivativeContract.withdraw(providerBalancePostSettlement.toString(), { from: provider });
+    newContractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+    assert.equal(initialContractBalance.sub(newContractBalance).toString(), providerBalancePostSettlement.toString());
+
+    // Investor should never be able to use the withdraw function.
+    assert(await didContractThrow(derivativeContract.withdraw(investorStruct[1].toString(), { from: investor })));
+
+    var remainingBalance = await derivativeContract.balanceOf(investor);
+    await derivativeContract.transfer(thirdParty, remainingBalance.toString(), { from: investor });
+
+    await derivativeContract.approve(derivativeContract.address, remainingBalance.toString(), { from: thirdParty });
+    initialContractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+    var initialUserBalance = web3.utils.toBN(await web3.eth.getBalance(thirdParty));
+    await derivativeContract.redeemTokens(remainingBalance.toString(), { from: thirdParty });
+    newContractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+    var newUserBalance = web3.utils.toBN(await web3.eth.getBalance(thirdParty));
+
+    assert.equal(initialContractBalance.sub(newContractBalance).toString(), nav.add(expectedPenalty).toString());
+
+    // 1 means that newUserBalance > initialUserBalance - the user's balance increased.
+    assert.equal(newUserBalance.cmp(initialUserBalance), 1);
+
+    assert.equal(newContractBalance.toString(), "0");
+  });
+});
