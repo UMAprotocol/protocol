@@ -51,6 +51,7 @@ contract("TokenizedDerivative", function(accounts) {
       provider,
       investor,
       web3.utils.toWei("0.05", "ether"),
+      web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.1", "ether"),
       "ETH/USD",
       web3.utils.toWei("0.01", "ether"),
@@ -66,7 +67,7 @@ contract("TokenizedDerivative", function(accounts) {
     derivativeContract = await TokenizedDerivative.at(derivativeAddress);
   });
 
-  it("Live -> Default", async function() {
+  it("Live -> Default -> Settled", async function() {
     var state = await derivativeContract.state();
     var tokensOutstanding = await derivativeContract.totalSupply();
     var nav = await derivativeContract.nav();
@@ -104,6 +105,9 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Fails because exact is true with a requested NAV of 3 ETH, but authorized NAV is only 2 ETH.
     assert(await didContractThrow(derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("3", "ether")})));
+
+    // Fails because the provider is not allowed to create tokens.
+    assert(await didContractThrow(derivativeContract.createTokens(true, { from: provider, value: web3.utils.toWei("1", "ether")})));
 
     // Succeeds because exact is true and requested NAV (1 ETH) is within the authorized NAV (2 ETH).
     await derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether")});
@@ -218,11 +222,12 @@ contract("TokenizedDerivative", function(accounts) {
     // Verify that after both parties confirm, the state is moved to settled.
     await derivativeContract.confirmPrice({ from: investor });
     assert(await didContractThrow(derivativeContract.withdraw(providerBalancePostRemargin.toString(), { from: provider })));
+    assert(await didContractThrow(derivativeContract.confirmPrice({ from: thirdParty })));
     await derivativeContract.confirmPrice({ from: provider });
 
     state = await derivativeContract.state();
 
-    assert.equal(state.toString(), "4");
+    assert.equal(state.toString(), "5");
 
     // Now that the contract is settled, verify that all parties can extract their tokens/balances.
     providerStruct = await derivativeContract.provider();
@@ -258,4 +263,12 @@ contract("TokenizedDerivative", function(accounts) {
     // Contract should be empty.
     assert.equal(newContractBalance.toString(), "0");
   });
+
+ // it("Live -> Terminate -> Settled", async function() {
+
+ // });
+
+ //  it("Live -> Dispute -> Settled", async function() {
+
+ // });
 });
