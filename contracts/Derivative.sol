@@ -9,6 +9,7 @@ pragma solidity >=0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./OracleInterface.sol";
+import "./ContractCreator.sol";
 
 
 contract Derivative {
@@ -73,7 +74,6 @@ contract Derivative {
     uint public lastRemarginTime;
 
     int256 public npv;  // Net present value is measured in Wei
-    mapping(address => bool) public hasConfirmedPrice;
 
     constructor(
         address _makerAddress,
@@ -151,6 +151,8 @@ contract Derivative {
     }
 
     function dispute() public {
+        require(msg.sender == maker.accountAddress || msg.sender == taker.accountAddress);
+
         require(
             // TODO: We need to add the dispute bond logic
             state == State.Live ||
@@ -386,4 +388,42 @@ contract SimpleDerivative is Derivative {
         return (oraclePrice * int256(_notional)) / (1 ether);
     }
 
+}
+
+
+contract DerivativeCreator is ContractCreator {
+    constructor(address registryAddress, address _oracleAddress)
+        public
+        ContractCreator(registryAddress, _oracleAddress) {} // solhint-disable-line no-empty-blocks
+
+    function createDerivative(
+        address counterparty,
+        int256 defaultPenalty,
+        int256 requiredMargin,
+        uint expiry,
+        string product,
+        uint notional
+    )
+        external
+        payable
+        returns (address derivativeAddress)
+    {
+
+        // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
+        //       from the taker. This is just for convenience
+        SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
+            counterparty,
+            msg.sender,
+            oracleAddress,
+            defaultPenalty,
+            requiredMargin,
+            expiry,
+            product,
+            notional
+        );
+
+        _registerNewContract(msg.sender, counterparty, address(derivative));
+
+        return address(derivative);
+    }
 }

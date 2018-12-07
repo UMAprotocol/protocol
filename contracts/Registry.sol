@@ -1,43 +1,26 @@
 pragma solidity >=0.4.24;
 
-import "./Derivative.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
 
-contract Registry {
+contract Registry is Ownable {
     mapping(address => address[]) private registeredContracts;
-    address private oracleAddress;
+    mapping(address => bool) private contractCreators;
 
-    event Register(address indexed originator, address indexed derivative);
+    event Register(address indexed party, address indexed derivative);
 
-    constructor(address _oracleAddress) public {
-        oracleAddress = _oracleAddress;
+    function addContractCreator(address contractCreator) external onlyOwner {
+        contractCreators[contractCreator] = true;
     }
 
-    function createDerivative(
-        address counterpartyAddress,
-        int256 defaultPenalty,
-        int256 requiredMargin,
-        uint expiry,
-        string product,
-        uint notional) external payable returns (address derivativeAddress) {
+    function removeContractCreator(address contractCreator) external onlyOwner {
+        contractCreators[contractCreator] = false;
+    }
 
-        // TODO: Think about which person is going to be creating the contract... Right now, we're assuming it comes
-        //       from the taker. This is just for convenience
-        SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
-            counterpartyAddress,
-            msg.sender,
-            oracleAddress,
-            defaultPenalty,
-            requiredMargin,
-            expiry,
-            product,
-            notional
-        );
-
-        _register(msg.sender, address(derivative));
-        _register(counterpartyAddress, address(derivative));
-
-        return address(derivative);
+    function registerContract(address firstParty, address secondParty, address contractToRegister) external {
+        require(contractCreators[msg.sender]);
+        _register(firstParty, contractToRegister);
+        _register(secondParty, contractToRegister);
     }
 
     function getNumRegisteredContractsBySender() external view returns (uint number) {
@@ -48,16 +31,16 @@ contract Registry {
         return getRegisteredContract(index, msg.sender);
     }
 
-    function getNumRegisteredContracts(address originator) public view returns (uint number) {
-        return registeredContracts[originator].length;
+    function getNumRegisteredContracts(address party) public view returns (uint number) {
+        return registeredContracts[party].length;
     }
 
-    function getRegisteredContract(uint index, address originator) public view returns (address contractAddress) {
-        return registeredContracts[originator][index];
+    function getRegisteredContract(uint index, address party) public view returns (address contractAddress) {
+        return registeredContracts[party][index];
     }
 
-    function _register(address originator, address contractToRegister) internal {
-        registeredContracts[originator].push(contractToRegister);
-        emit Register(originator, contractToRegister);
+    function _register(address party, address contractToRegister) internal {
+        registeredContracts[party].push(contractToRegister);
+        emit Register(party, contractToRegister);
     }
 }

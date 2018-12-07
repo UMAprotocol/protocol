@@ -1,6 +1,8 @@
 var OracleMock = artifacts.require("OracleMock");
 var Registry = artifacts.require("Registry");
 var Vote = artifacts.require("VoteCoin");
+var DerivativeCreator = artifacts.require("DerivativeCreator");
+var TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 
 var enableControllableTiming = network => {
   return (
@@ -18,6 +20,8 @@ var shouldUseMockOracle = network => {
 };
 
 module.exports = function(deployer, network, accounts) {
+  var oracleAddress;
+  var registry;
   if (shouldUseMockOracle(network)) {
     deployer
       .then(() => {
@@ -33,10 +37,30 @@ module.exports = function(deployer, network, accounts) {
         return OracleMock.deployed();
       })
       .then(oracleMock => {
-        return deployer.deploy(Registry, oracleMock.address, { from: accounts[0], value: 0 });
+        oracleAddress = oracleMock.address;
+        return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
       })
       .then(() => {
         return Registry.deployed();
+      })
+      .then(deployedRegistry => {
+        registry = deployedRegistry;
+        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress);
+      })
+      .then(() => {
+        return DerivativeCreator.deployed();
+      })
+      .then(derivativeCreator => {
+        return registry.addContractCreator(derivativeCreator.address);
+      })
+      .then(() => {
+        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress);
+      })
+      .then(() => {
+        return TokenizedDerivativeCreator.deployed();
+      })
+      .then(tokenizedDerivativeCreator => {
+        return registry.addContractCreator(tokenizedDerivativeCreator.address);
       });
   } else {
     deployer
@@ -50,11 +74,30 @@ module.exports = function(deployer, network, accounts) {
         return Vote.deployed();
       })
       .then(oracle => {
-        console.log(oracle.address);
-        return deployer.deploy(Registry, oracle.address, { from: accounts[0], value: 0 });
+        oracleAddress = oracle.address;
+        return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
       })
       .then(() => {
         return Registry.deployed();
+      })
+      .then(deployedRegistry => {
+        registry = deployedRegistry;
+        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress);
+      })
+      .then(() => {
+        return DerivativeCreator.deployed();
+      })
+      .then(derivativeCreator => {
+        return registry.addContractCreator(derivativeCreator.address);
+      })
+      .then(() => {
+        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress);
+      })
+      .then(() => {
+        return TokenizedDerivativeCreator.deployed();
+      })
+      .then(tokenizedDerivativeCreator => {
+        return registry.addContractCreator(tokenizedDerivativeCreator.address);
       });
   }
 };

@@ -3,11 +3,13 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 var Derivative = artifacts.require("Derivative");
 var Registry = artifacts.require("Registry");
 var Oracle = artifacts.require("OracleMock");
+var DerivativeCreator = artifacts.require("DerivativeCreator");
 
 contract("Derivative", function(accounts) {
   var derivativeContract;
   var deployedRegistry;
   var deployedOracle;
+  var deployedDerivativeCreator;
 
   var ownerAddress = accounts[0];
   var takerAddress = accounts[1];
@@ -17,6 +19,7 @@ contract("Derivative", function(accounts) {
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
+    deployedDerivativeCreator = await DerivativeCreator.deployed();
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0", "ether"), { from: ownerAddress });
@@ -31,7 +34,7 @@ contract("Derivative", function(accounts) {
     // add one additional unverified price
     expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(120);
 
-    await deployedRegistry.createDerivative(
+    await deployedDerivativeCreator.createDerivative(
       makerAddress,
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.1", "ether"),
@@ -91,7 +94,9 @@ contract("Derivative", function(accounts) {
     assert.equal(state.toString(), "1");
 
     // Attempt to withdraw past the min margin once live. Should throw.
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.05", "ether"), { from: makerAddress })));
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.05", "ether"), { from: makerAddress }))
+    );
 
     // Change the price to -0.5 ETH.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("-0.5", "ether"), { from: ownerAddress });
@@ -142,7 +147,9 @@ contract("Derivative", function(accounts) {
     assert.equal(state.toString(), "3");
 
     // Attempt to withdraw past the min margin. Should throw.
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.6", "ether"), { from: makerAddress })));
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.6", "ether"), { from: makerAddress }))
+    );
 
     // Settle the contract now that both parties have confirmed.
     await derivativeContract.confirmPrice({ from: takerAddress });
@@ -150,7 +157,9 @@ contract("Derivative", function(accounts) {
     assert.equal(state.toString(), "5");
 
     // Attempt to withdraw more than the maker has in the contract.
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.7", "ether"), { from: makerAddress })));
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.7", "ether"), { from: makerAddress }))
+    );
 
     await derivativeContract.withdraw(web3.utils.toWei("0.6", "ether"), { from: makerAddress });
     makerBalance = (await derivativeContract.maker())[1];
@@ -190,8 +199,12 @@ contract("Derivative", function(accounts) {
 
     // Attempt to withdraw while in default (even if the withdrawal amount is below the amount that will be left after
     // settlement). Should throw.
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.03", "ether"), { from: makerAddress })));
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.5", "ether"), { from: takerAddress })));
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.03", "ether"), { from: makerAddress }))
+    );
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.5", "ether"), { from: takerAddress }))
+    );
 
     // One party confirms the unverified price.
     await derivativeContract.confirmPrice({ from: makerAddress });
@@ -237,8 +250,12 @@ contract("Derivative", function(accounts) {
 
     // Attempt to withdraw while in default (even if the withdrawal amount is below the amount that will be left after
     // settlement). Should throw.
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.03", "ether"), { from: makerAddress })));
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.5", "ether"), { from: takerAddress })));
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.03", "ether"), { from: makerAddress }))
+    );
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.5", "ether"), { from: takerAddress }))
+    );
 
     // One party confirms the unverified price.
     await derivativeContract.confirmPrice({ from: makerAddress });
@@ -289,8 +306,12 @@ contract("Derivative", function(accounts) {
 
     // Attempt to withdraw while in dispute (even if the withdrawal amount is below the amount that will be left after
     // settlement). Should throw.
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.03", "ether"), { from: makerAddress })));
-    assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.5", "ether"), { from: takerAddress })));
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.03", "ether"), { from: makerAddress }))
+    );
+    assert(
+      await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.5", "ether"), { from: takerAddress }))
+    );
 
     // Can't settle because not a recent enough verified price
     assert(await didContractThrow(derivativeContract.settle({ from: takerAddress })));
