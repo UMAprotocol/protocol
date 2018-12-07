@@ -42,18 +42,24 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(() => {
         return Registry.deployed();
-      }).then(deployedRegistry => {
+      })
+      .then(deployedRegistry => {
         registry = deployedRegistry;
         return deployer.deploy(DerivativeCreator, registry.address, oracleAddress);
-      }).then(() => {
+      })
+      .then(() => {
         return DerivativeCreator.deployed();
-      }).then((derivativeCreator) => {
+      })
+      .then(derivativeCreator => {
         return registry.addContractCreator(derivativeCreator.address);
-      }).then(() => {
+      })
+      .then(() => {
         return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress);
-      }).then(() => {
+      })
+      .then(() => {
         return TokenizedDerivativeCreator.deployed();
-      }).then((tokenizedDerivativeCreator) => {
+      })
+      .then(tokenizedDerivativeCreator => {
         return registry.addContractCreator(tokenizedDerivativeCreator.address);
       });
   } else {
@@ -73,18 +79,24 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(() => {
         return Registry.deployed();
-      }).then(deployedRegistry => {
+      })
+      .then(deployedRegistry => {
         registry = deployedRegistry;
         return deployer.deploy(DerivativeCreator, registry.address, oracleAddress);
-      }).then(() => {
+      })
+      .then(() => {
         return DerivativeCreator.deployed();
-      }).then((derivativeCreator) => {
+      })
+      .then(derivativeCreator => {
         return registry.addContractCreator(derivativeCreator.address);
-      }).then(() => {
+      })
+      .then(() => {
         return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress);
-      }).then(() => {
+      })
+      .then(() => {
         return TokenizedDerivativeCreator.deployed();
-      }).then((tokenizedDerivativeCreator) => {
+      })
+      .then(tokenizedDerivativeCreator => {
         return registry.addContractCreator(tokenizedDerivativeCreator.address);
       });
   }
