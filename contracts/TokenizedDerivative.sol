@@ -267,15 +267,9 @@ contract TokenizedDerivative is ERC20 {
     function dispute() public payable onlyContractParties {
         require(
             // TODO: We need to add the dispute bond logic
-            state == State.Live ||
-            state == State.Expired ||
-            state == State.Defaulted ||
-            state == State.Terminated,
-            "Contract must be Live/Expired/Defaulted to dispute"
+            state == State.Live,
+            "Contract must be Live to dispute"
         );
-
-        (ContractParty storage sender, ) = _whoAmI(msg.sender);
-        require(!sender.hasConfirmedPrice);
 
         uint requiredDeposit = uint(_takePercentage(nav, disputeDeposit));
 
@@ -649,6 +643,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
 
         _registerNewContract(provider, investor, address(derivative));
 
-        return address(0x0);
+        return address(derivative);
     }
 }
