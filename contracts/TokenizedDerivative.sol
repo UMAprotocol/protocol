@@ -73,6 +73,11 @@ contract TokenizedDerivative is ERC20 {
     uint public lastRemarginTime;
     uint public disputeDeposit;
 
+    // TODO(mrice32): try to remove these previous variables as they are a gas hog.
+    int public prevUnderlyingPrice;
+    int public prevTokenPrice;
+    uint public prevRemarginTime;
+
     int256 public tokenPrice;
     int256 public underlyingPrice;
     int256 public nav;  // Net asset value is measured in Wei
@@ -231,18 +236,20 @@ contract TokenizedDerivative is ERC20 {
 
     function confirmPrice() public onlyContractParties {
         // Right now, only dispute if in a pre-settlement state
-        require(state == State.Expired || state == State.Defaulted);
+        require(state == State.Expired || state == State.Defaulted || state == State.Terminated);
 
-        // Figure out who is who
-        (ContractParty storage confirmer, ContractParty storage other) = _whoAmI(msg.sender);
+        if (msg.sender == provider.accountAddress) {
+            provider.hasConfirmedPrice = true;
+        }
 
-        // Confirmer confirmed...
-        confirmer.hasConfirmedPrice = true;
+        if (msg.sender == investor.accountAddress) {
+            investor.hasConfirmedPrice = true;
+        }
 
         // If both have confirmed then advance state to settled
         // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
         // passes then we want to settle and remargin
-        if (other.hasConfirmedPrice) {
+        if (provider.hasConfirmedPrice && investor.hasConfirmedPrice) {
             // Remargin on agreed upon price
             _settleAgreedPrice();
         }
@@ -311,9 +318,9 @@ contract TokenizedDerivative is ERC20 {
             (ContractParty storage disputer, ContractParty storage notDisputer) = _whoAmI(dispute.disputer);
             int256 depositValue = int256(dispute.deposit);
             if (nav == dispute.disputedNav) {
-                notDisputer.balance += depositValue;
-            } else {
                 disputer.balance += depositValue;
+            } else {
+                notDisputer.balance += depositValue;
             }
         }
     }
@@ -364,13 +371,10 @@ contract TokenizedDerivative is ERC20 {
         termination.fee = requiredDeposit;
         termination.terminator = msg.sender;
 
-        (ContractParty storage sender, ) = _whoAmI(msg.sender);
-
-        // Terminate automatically approves the current price since the sender would have disputed otherwise.
-        sender.hasConfirmedPrice = true;
-
         state = State.Terminated;
         endTime = lastRemarginTime;
+
+        confirmPrice();
 
         msg.sender.transfer(refund);
     }
@@ -420,7 +424,7 @@ contract TokenizedDerivative is ERC20 {
     function _settle(int256 price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
-        _updateBalances(computeNav(price, endTime));
+        _updateBalances(recomputeNav(price, endTime));
 
         // Check whether goes into default
         (bool inDefault, address _defaulter, ) = whoDefaults();
@@ -440,14 +444,8 @@ contract TokenizedDerivative is ERC20 {
         int termFee = int(termination.fee);
 
         if (termFee > 0) {
-            (ContractParty storage terminator, ContractParty storage notTerminator) = _whoAmI(termination.terminator);
-
-            // If, after the termination, someone disputed and it caused a default, refund the terminator.
-            if (inDefault) {
-                terminator.balance += termFee;
-            } else {
-                notTerminator.balance += termFee;
-            }
+            (, ContractParty storage notTerminator) = _whoAmI(termination.terminator);
+            notTerminator.balance += termFee;
         }
         state = State.Settled;
     }
@@ -545,6 +543,21 @@ contract TokenizedDerivative is ERC20 {
         int newTokenPrice = _takePercentage(tokenPrice, tokenReturn);
         navNew = (int(totalSupply()) * newTokenPrice) / 1 ether;
         assert(navNew >= 0);
+        prevUnderlyingPrice = underlyingPrice;
+        underlyingPrice = oraclePrice;
+        prevTokenPrice = tokenPrice;
+        tokenPrice = newTokenPrice;
+        prevRemarginTime = lastRemarginTime;
+        lastRemarginTime = currentTime;
+    }
+
+    function recomputeNav(int256 oraclePrice, uint currentTime) private returns (int navNew) {
+        assert(lastRemarginTime == currentTime);
+        int underlyingReturn = computeReturn(prevUnderlyingPrice, oraclePrice);
+        uint tokenReturn = uint(underlyingReturn).sub(fixedFeePerSecond.mul(currentTime.sub(prevRemarginTime)));
+        int newTokenPrice = _takePercentage(prevTokenPrice, tokenReturn);
+        navNew = (int(totalSupply()) * newTokenPrice) / 1 ether;
+        assert(navNew >= 0);
         underlyingPrice = oraclePrice;
         tokenPrice = newTokenPrice;
         lastRemarginTime = currentTime;
@@ -554,8 +567,11 @@ contract TokenizedDerivative is ERC20 {
         // Each token is initially worth 1 ether.
         int unitNav = 1 ether;
         lastRemarginTime = currentTime;
+        prevRemarginTime = currentTime;
         tokenPrice = unitNav;
+        prevTokenPrice = unitNav;
         underlyingPrice = oraclePrice;
+        prevUnderlyingPrice = oraclePrice;
         navNew = (int(totalSupply()) * unitNav) / 1 ether;
         assert(navNew >= 0);
     }
