@@ -597,7 +597,7 @@ contract TokenizedDerivative is ERC20 {
 
     function initialNav(int256 oraclePrice, uint currentTime) private returns (int256 navNew) {
         // Each token is initially worth a set amount of ether.
-        int unitNav = 1 ether;
+        int unitNav = 1 ether / 80;
         lastRemarginTime = currentTime;
         prevRemarginTime = currentTime;
         tokenPrice = unitNav;
