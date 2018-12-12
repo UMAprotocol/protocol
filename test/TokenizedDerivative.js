@@ -4,6 +4,7 @@ var TokenizedDerivative = artifacts.require("TokenizedDerivative");
 var Registry = artifacts.require("Registry");
 var Oracle = artifacts.require("OracleMock");
 var TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
+var NoLeverage = artifacts.require("NoLeverage");
 const BigNumber = require("bignumber.js");
 
 contract("TokenizedDerivative", function(accounts) {
@@ -11,6 +12,7 @@ contract("TokenizedDerivative", function(accounts) {
   var deployedRegistry;
   var deployedOracle;
   var tokenizedDerivativeCreator;
+  var noLeverageCalculator;
 
   var ownerAddress = accounts[0];
   var provider = accounts[1];
@@ -33,6 +35,7 @@ contract("TokenizedDerivative", function(accounts) {
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
+    noLeverageCalculator = await NoLeverage.deployed();
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
@@ -56,6 +59,7 @@ contract("TokenizedDerivative", function(accounts) {
       "ETH/USD",
       web3.utils.toWei("0.01", "ether"),
       web3.utils.toWei("0.05", "ether"),
+      noLeverageCalculator.address,
       { from: provider }
     );
 

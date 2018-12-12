@@ -26,16 +26,19 @@ contract OracleMock is OracleInterface, Ownable {
 
     FeedInfo private _unverifiedFeed;
     FeedInfo private _verifiedFeed;
+    bool private mirrorFeeds; // Whether the verified feed should just be an alias for the unverified feed.
 
     // First time at which a price will be published.
-    uint private startTime;
+    uint public startTime;
 
     // The publishing interval for this price feed. All publish times are just multiples of this interval starting at 0.
-    uint constant private PRICE_PUBLISH_INTERVAL = 60;
+    uint private pricePublishInterval;
 
-    constructor() public {
+    constructor(bool _mirrorFeeds, uint _pricePublishInterval) public {
         uint time = now; // solhint-disable-line not-rely-on-time
+        pricePublishInterval = _pricePublishInterval;
         startTime = _intervalTime(time, time + 1);
+        mirrorFeeds = _mirrorFeeds;
     }
 
     // These functions are only here for the purpose of mocking a real feed. If this were meant for production, we
@@ -44,8 +47,19 @@ contract OracleMock is OracleInterface, Ownable {
         _addNextPriceToFeed(newPrice, _unverifiedFeed);
     }
 
+    function addUnverifiedPriceForTime(uint publishTime, int256 newPrice) external onlyOwner {
+        require(_isNextTime(publishTime, _unverifiedFeed));
+        _addNextPriceToFeed(newPrice, _unverifiedFeed);
+    }
+
     function addVerifiedPrice(int256 newPrice) external onlyOwner {
-        _addNextPriceToFeed(newPrice, _verifiedFeed);
+        _addNextPriceToFeed(newPrice, _getVerifiedFeed());
+    }
+
+    function addVerifiedPriceForTime(uint publishTime, int256 newPrice) external onlyOwner {
+        FeedInfo storage verifiedFeed = _getVerifiedFeed();
+        require(_isNextTime(publishTime, verifiedFeed));
+        _addNextPriceToFeed(newPrice, verifiedFeed);
     }
 
     function latestUnverifiedPrice() external view returns (uint publishTime, int256 price) {
@@ -53,7 +67,7 @@ contract OracleMock is OracleInterface, Ownable {
     }
 
     function latestVerifiedPrice() external view returns (uint publishTime, int256 price) {
-        return _mostRecentPriceTime(_verifiedFeed);
+        return _mostRecentPriceTime(_getVerifiedFeed());
     }
 
     function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
@@ -61,7 +75,20 @@ contract OracleMock is OracleInterface, Ownable {
     }
 
     function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
-        return _getPrice(time, _verifiedFeed);
+        return _getPrice(time, _getVerifiedFeed());
+    }
+
+    function _getVerifiedFeed() private view returns (FeedInfo storage feedInfo) {
+        return mirrorFeeds ? _unverifiedFeed : _verifiedFeed;
+    }
+
+    function _isNextTime(uint time, FeedInfo storage feedInfo) private view returns (bool isNextTime) {
+        uint latestPublishTime = feedInfo.latestPublishTime;
+        if (latestPublishTime == 0) {
+            return time == startTime;
+        } else {
+            return time == latestPublishTime.add(pricePublishInterval);
+        }
     }
 
     // Returns the most recent price-time pair for a particular feed.
@@ -75,7 +102,7 @@ contract OracleMock is OracleInterface, Ownable {
     // and check that the time lines up with the expected next time on the feed.
     function _addNextPriceToFeed(int256 newPrice, FeedInfo storage feedInfo) private {
         uint newTime = (feedInfo.latestPublishTime == 0 ?
-            startTime : feedInfo.latestPublishTime.add(PRICE_PUBLISH_INTERVAL));
+            startTime : feedInfo.latestPublishTime.add(pricePublishInterval));
         assert(feedInfo.prices[newTime] == 0);
         feedInfo.prices[newTime] = newPrice;
         feedInfo.latestPublishTime = newTime;
@@ -93,12 +120,12 @@ contract OracleMock is OracleInterface, Ownable {
     }
 
     // Gets the closest earlier time to `time` for a particular feed. Effectively floors `time` to the nearest multiple
-    // of `PRICE_PUBLISH_INTERVAL` unless the time is outside the bounds of the published times for that feed. If
+    // of `pricePublishInterval` unless the time is outside the bounds of the published times for that feed. If
     // `time` is later than `latestFeedTime`, `latestFeedTime` is returned. If time is before the global
     // `startTime` of this feed, then 0 is returned.
     function _intervalTime(uint time, uint latestFeedTime) private view returns (uint timeInInterval) {
         if (time < latestFeedTime) {
-            return time < startTime ? 0 : time.div(PRICE_PUBLISH_INTERVAL).mul(PRICE_PUBLISH_INTERVAL);
+            return time < startTime ? 0 : time.div(pricePublishInterval).mul(pricePublishInterval);
         } else {
             return latestFeedTime;
         }
