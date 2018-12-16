@@ -6,6 +6,8 @@ import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
+import compose from 'recompose/compose';
+import withWidth from '@material-ui/core/withWidth';
 
 const styles = {
   root: {
@@ -23,12 +25,22 @@ class ContractDetails extends React.Component {
   };
 
   async constructTable() {
-    const { tokenizedDerivative, oracle, web3 } = this.props;
+    const { tokenizedDerivative, oracle, web3, width } = this.props;
 
     var data = [];
 
-    data.push({ name: "Address", value: tokenizedDerivative.address.substring(0,15) + "...", id: 0 });
-    data.push({ name: "BTC/ETH Feed", value: oracle.address.substring(0,15) + "...", id: 1 });
+    var contractAddressString;
+    var oracleAddressString;
+    if (width === "xs") {
+      contractAddressString = tokenizedDerivative.address.substring(0,15) + "...";
+      oracleAddressString = oracle.address.substring(0,15) + "..."
+    } else {
+      contractAddressString = tokenizedDerivative.address;
+      oracleAddressString = oracle.address;
+    }
+
+    data.push({ name: "Address", value: contractAddressString, id: 0 });
+    data.push({ name: "BTC/ETH Feed", value: oracleAddressString, id: 1 });
 
     var creationTimestamp = 1544737534;
     var date = new Date(creationTimestamp * 1000);
@@ -97,4 +109,7 @@ ContractDetails.propTypes = {
   classes: PropTypes.object.isRequired
 };
 
-export default withStyles(styles)(ContractDetails);
+export default compose(
+  withStyles(styles),
+  withWidth(),
+)(ContractDetails);

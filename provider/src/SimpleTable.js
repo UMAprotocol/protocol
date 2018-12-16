@@ -65,8 +65,8 @@ class SimpleTable extends React.Component {
 
     var newTokenValue = this.computeNewTokenValue(lastTokenPrice, remarginPrice, mostRecentPrice, Number(mostRecentPriceTime[0].toString()) - Number(lastRemarginTime), feesPerSecond, web3);
 
-    data.push({ name: "BTC/ETH Price", last_update: remarginPriceInEth.toString().substring(0,5), current_value: mostRecentPriceInEth.toString().substring(0,5), id: 1 });
-    data.push({ name: "Token Value", last_update: lastTokenPriceInEth.toString().substring(0,6) + " ETH", current_value: newTokenValue.substring(0,6) + " ETH", id: 2 });
+    data.push({ name: "BTC/ETH Price", last_update: remarginPriceInEth.toString().substring(0,7), current_value: mostRecentPriceInEth.toString().substring(0,7), id: 1 });
+    data.push({ name: "Token Value", last_update: lastTokenPriceInEth.toString().substring(0,8) + " ETH", current_value: newTokenValue.substring(0,8) + " ETH", id: 2 });
 
     return data;
   }
