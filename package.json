@@ -48,6 +48,7 @@
   "dependencies": {
     "ganache-cli": "^6.1.8",
     "js-sha256": "^0.9.0",
+    "node-fetch": "^2.3.0",
     "truffle-hdwallet-provider": "^1.0.0-web3one.2"
   }
 }

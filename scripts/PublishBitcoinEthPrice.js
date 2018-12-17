@@ -1,9 +1,21 @@
 var MockOracle = artifacts.require("OracleMock");
 const BigNumber = require("bignumber.js");
-const request = require('request');
+const fetch = require("node-fetch");
 
 const delay = 900;
 var publishingPrice = false;
+
+
+const getJson = async url => {
+  try {
+    const response = await fetch(url);
+    const json = await response.json();
+    return json;
+  } catch (error) {
+    console.log(error);
+    return;
+  }
+};
 
 async function publishPrices(btcPx, ethPx, oracle, time) {
   publishingPrice = true;
@@ -39,45 +51,37 @@ async function runExport() {
       nextPublishTime = contractTime + delay;
     }
 
-    var btcUsd = "";
-    var ethUsd = "";
-
     var dateUtc = Math.round(Date.now() / 1000);
     if (!publishingPrice && dateUtc >= nextPublishTime) {
 
-      request('https://api.coinbase.com/v2/prices/BTC-USD/spot', { json: true }, (err, res, body) => {
-        if (err) { return console.log(err); }
+      var btcUsdJson = await getJson('https://api.coinbase.com/v2/prices/BTC-USD/spot');
+      if (!btcUsdJson) {
+        console.log("Couldn't get BTC price.");
+        return;
+      }
 
-        btcUsd = body.data.amount;
-        if (ethUsd != "") {
-          publishPrices(btcUsd, ethUsd, oracle, nextPublishTime.toString());
-        }
-      });
+      var btcUsd = btcUsdJson.data.amount;
 
-      request('https://api.coinbase.com/v2/prices/ETH-USD/spot', { json: true }, (err, res, body) => {
-        if (err) { return console.log(err); }
+      var ethUsdJson = await getJson('https://api.coinbase.com/v2/prices/ETH-USD/spot');
 
-        ethUsd = body.data.amount;
-        if (btcUsd != "") {
-          publishPrices(btcUsd, ethUsd, oracle, nextPublishTime.toString());
-        }
-      });
-    } else {
-      // console.log("No price published. Current date: " + dateUtc.toString() + " Next publish time: " + nextPublishTime.toString());
-      // console.log("Should publish in " + ((nextPublishTime - dateUtc) / 60).toString() + " minutes.");
+      if (!ethUsdJson) {
+        console.log("Couldn't get ETH price.");
+        return;
+      }
+
+      var ethUsd = ethUsdJson.data.amount;
+
+      await publishPrices(btcUsd, ethUsd, oracle, nextPublishTime.toString());
+
     }
-
-    // console.log("Finished running export. Setting timeout for next export.")
-    setTimeout(function(){ runExport() }, 5000);
   } catch (error) {
     console.log(error);
-    setTimeout(function(){ runExport() }, 1000);
   }
 }
 
 
 
 module.exports = async function(callback) {
-  runExport();
-  // callback(err);
+  await runExport();
+  callback();
 };
