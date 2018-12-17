@@ -7,7 +7,7 @@ class App extends Component {
   componentDidMount(){
     document.title = "UMA 2XBCE Token Contract"
   }
-  
+
   render() {
     return <Dashboard />;
   }

@@ -18,7 +18,9 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start_internal": "REACT_APP_MODE=internal npm start",
     "build": "react-scripts build",
+    "build_internal": "REACT_APP_MODE=internal npm build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
     "link-contracts": "cd src && ln -s ../../build/contracts contracts",
