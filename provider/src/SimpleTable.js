@@ -68,6 +68,29 @@ class SimpleTable extends React.Component {
     data.push({ name: "BTC/ETH Price", last_update: remarginPriceInEth.toString().substring(0,7), current_value: mostRecentPriceInEth.toString().substring(0,7), id: 1 });
     data.push({ name: "Token Value", last_update: lastTokenPriceInEth.toString().substring(0,8) + " ETH", current_value: newTokenValue.substring(0,8) + " ETH", id: 2 });
 
+
+    var lastNav = BigNumber((await tokenizedDerivative.nav()).toString());
+
+    var totalSupply = await tokenizedDerivative.totalSupply();
+    var oneEth = BigNumber(web3.utils.toWei("1", "ether"));
+    var currentNav = BigNumber(newTokenValue).times(oneEth).times(BigNumber(totalSupply.toString())).div(oneEth);
+    data.push({ name: "NAV", last_update: lastNav.div(oneEth).toString().substring(0,8) + " ETH", current_value: currentNav.div(oneEth).toString().substring(0,8) + " ETH", id: 3 })
+
+
+    var providerStruct = await tokenizedDerivative.provider();
+    var marginPercentage = BigNumber(providerStruct[3].toString());
+    var lastMarginReq = lastNav.times(marginPercentage).div(oneEth);
+    var currentMarginReq = currentNav.times(marginPercentage).div(oneEth);
+
+    data.push({ name: "Margin Required", last_update: lastMarginReq.div(oneEth).toString().substring(0,8) + " ETH", current_value: currentMarginReq.div(oneEth).toString().substring(0,8) + " ETH", id: 4});
+
+    var lastProviderBalance = BigNumber(providerStruct[1].toString());
+    var navChange = currentNav.minus(lastNav);
+    var currentProviderBalance = lastProviderBalance.minus(navChange);
+
+    data.push({ name: "Provider Margin", last_update: lastProviderBalance.div(oneEth).toString().substring(0,8) + " ETH", current_value: currentProviderBalance.div(oneEth).toString().substring(0,8) + " ETH", id: 5});
+
+
     return data;
   }
 
