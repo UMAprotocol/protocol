@@ -1,8 +1,8 @@
-# Trader App
+# Voter App
 
 ## Install
 
-All that's needed to install all required packages is running `npm install` from the `trader/` directory.
+All that's needed to install all required packages is running `npm install` from the `voter/` directory.
 
 ## Running
 
@@ -22,8 +22,8 @@ voteToken.addUnverifiedPrice(web3.toWei('1', 'ether'), {from:web3.eth.accounts[0
     - Installation
     - Configure a Custom RPC that points to url http://127.0.0.1:9545
     - Sign in using mnemonic printed out near the top of the initial `truffle develop` output. To do this (with metamask) you click "Import account using seed phrase", on popup enter mnemonic and create a pasword.
-1. In a separate terminal, run `npm run link-contracts && npm start` from the `trader/` directory.
+1. In a separate terminal, run `npm run link-contracts && npm start` from the `voter/` directory.
 
 ## Contributing
 
-1. Before submitting a PR, be sure to run `npm run prettier` from the `trader/` directory to format the code.
+1. Before submitting a PR, be sure to run `npm run prettier` from the `voter/` directory to format the code.
