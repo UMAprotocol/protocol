@@ -157,11 +157,16 @@ contract TokenizedDerivative is ERC20 {
         string _product,
         uint _fixedYearlyFee, // Percentage of nav * 10^18
         uint _disputeDeposit, // Percentage of nav * 10^18
-        address _returnCalculator
+        address _returnCalculator,
+        uint _startingTokenPrice
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _providerRequiredMargin);
         require(_providerRequiredMargin <= 1 ether);
+        // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
+        // rounding or overflow errors.
+        require(_startingTokenPrice >= (1 ether / (10**9)));
+        require(_startingTokenPrice <= (1 ether * (10**9)));
 
         // Address information
         oracle = OracleInterface(_oracleAddress);
@@ -188,7 +193,7 @@ contract TokenizedDerivative is ERC20 {
         (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
         
-        nav = initialNav(oraclePrice, currentTime);
+        nav = initialNav(oraclePrice, currentTime, _startingTokenPrice);
 
         state = State.Live;
     }
@@ -596,9 +601,8 @@ contract TokenizedDerivative is ERC20 {
         lastRemarginTime = currentTime;
     }
 
-    function initialNav(int256 oraclePrice, uint currentTime) private returns (int256 navNew) {
-        // Each token is initially worth a set amount of ether.
-        int unitNav = 1 ether / 80;
+    function initialNav(int256 oraclePrice, uint currentTime, uint startingPrice) private returns (int256 navNew) {
+        int unitNav = int(startingPrice);
         lastRemarginTime = currentTime;
         prevRemarginTime = currentTime;
         tokenPrice = unitNav;
@@ -633,7 +637,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         string product,
         uint fixedYearlyFee,
         uint disputeDeposit,
-        address returnCalculator
+        address returnCalculator,
+        uint startingTokenPrice
     )
         external
         returns (address derivativeAddress)
@@ -648,7 +653,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             product,
             fixedYearlyFee,
             disputeDeposit,
-            returnCalculator
+            returnCalculator,
+            startingTokenPrice
         );
 
         _registerNewContract(provider, investor, address(derivative));
