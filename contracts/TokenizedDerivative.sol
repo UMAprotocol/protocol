@@ -192,7 +192,7 @@ contract TokenizedDerivative is ERC20 {
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
-        
+
         nav = initialNav(oraclePrice, currentTime, _startingTokenPrice);
 
         state = State.Live;
