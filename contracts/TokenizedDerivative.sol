@@ -163,6 +163,7 @@ contract TokenizedDerivative is ERC20 {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _providerRequiredMargin);
         require(_providerRequiredMargin <= 1 ether);
+        
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
         require(_startingTokenPrice >= (1 ether / (10**9)));
