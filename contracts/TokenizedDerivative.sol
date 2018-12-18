@@ -77,9 +77,10 @@ contract TokenizedDerivative is ERC20 {
         uint marginRequirement; // Percentage of nav*10^18
     }
 
-    string public constant name = "2x Levered Bitcoin-Ether";
-    string public constant symbol = "2XBCE";
-    uint8 public constant decimals = 18;
+    // Note: these variables are to give ERC20 consumers information about the token.
+    string public constant name = "2x Levered Bitcoin-Ether"; // solhint-disable-line const-name-snakecase
+    string public constant symbol = "2XBCE"; // solhint-disable-line const-name-snakecase
+    uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     // Financial information
     uint public defaultPenalty; // Percentage of nav*10^18
