@@ -11,6 +11,25 @@ import "./OracleInterface.sol";
 import "./ContractCreator.sol";
 
 
+contract ReturnCalculator {
+    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn);
+}
+
+
+contract Leveraged2x is ReturnCalculator {
+    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
+        return ((((newOraclePrice * (1 ether)) / oldOraclePrice) - 1 ether) * 2) + 1 ether;
+    }
+}
+
+
+contract NoLeverage is ReturnCalculator {
+    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
+        return (newOraclePrice * (1 ether)) / oldOraclePrice;
+    }
+}
+
+
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
 contract TokenizedDerivative is ERC20 {
 
@@ -58,6 +77,11 @@ contract TokenizedDerivative is ERC20 {
         uint marginRequirement; // Percentage of nav*10^18
     }
 
+    // Note: these variables are to give ERC20 consumers information about the token.
+    string public constant name = "2x Levered Bitcoin-Ether"; // solhint-disable-line const-name-snakecase
+    string public constant symbol = "2XBCE"; // solhint-disable-line const-name-snakecase
+    uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
+
     // Financial information
     uint public defaultPenalty; // Percentage of nav*10^18
     uint public terminationFee; // Percentage of nav*10^18
@@ -67,6 +91,7 @@ contract TokenizedDerivative is ERC20 {
     ContractParty public provider;
     ContractParty public investor;
     OracleInterface public oracle;
+    ReturnCalculator public returnCalculator;
 
     State public state;
     uint public endTime;
@@ -131,11 +156,18 @@ contract TokenizedDerivative is ERC20 {
         uint _providerRequiredMargin, // Percentage of nav*10^18
         string _product,
         uint _fixedYearlyFee, // Percentage of nav * 10^18
-        uint _disputeDeposit // Percentage of nav * 10^18
+        uint _disputeDeposit, // Percentage of nav * 10^18
+        address _returnCalculator,
+        uint _startingTokenPrice
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _providerRequiredMargin);
         require(_providerRequiredMargin <= 1 ether);
+        
+        // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
+        // rounding or overflow errors.
+        require(_startingTokenPrice >= (1 ether / (10**9)));
+        require(_startingTokenPrice <= (1 ether * (10**9)));
 
         // Address information
         oracle = OracleInterface(_oracleAddress);
@@ -143,6 +175,8 @@ contract TokenizedDerivative is ERC20 {
 
         // Note: the investor is required to have 100% margin at all times.
         investor = ContractParty(_investorAddress, 0, false, 1 ether);
+
+        returnCalculator = ReturnCalculator(_returnCalculator);
 
         // Contract states
         lastRemarginTime = 0;
@@ -158,7 +192,9 @@ contract TokenizedDerivative is ERC20 {
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
-        nav = initialNav(oraclePrice, currentTime);
+        require(currentTime != 0);
+
+        nav = initialNav(oraclePrice, currentTime, _startingTokenPrice);
 
         state = State.Live;
     }
@@ -231,8 +267,6 @@ contract TokenizedDerivative is ERC20 {
 
         msg.sender.transfer(tokenValue);
     }
-
-    function computeReturn(int oldOraclePrice, int newOraclePrice) public view returns (int assetReturn);
 
     function confirmPrice() public onlyContractParties {
         // Right now, only dispute if in a pre-settlement state
@@ -528,13 +562,20 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _tokensFromNav(int256 currentNav, int256 unitNav) internal pure returns (int256 numTokens) {
-        return (currentNav * 1 ether) / unitNav;
+        if (unitNav <= 0) {
+            return 0;
+        } else {
+            return (currentNav * 1 ether) / unitNav;
+        }
     }
 
     function computeNav(int256 oraclePrice, uint currentTime) private returns (int256 navNew) {
-        int underlyingReturn = computeReturn(underlyingPrice, oraclePrice);
-        uint tokenReturn = uint(underlyingReturn).sub(fixedFeePerSecond.mul(currentTime.sub(lastRemarginTime)));
-        int newTokenPrice = _takePercentage(tokenPrice, tokenReturn);
+        int underlyingReturn = returnCalculator.computeReturn(underlyingPrice, oraclePrice);
+        int tokenReturn = underlyingReturn - int(fixedFeePerSecond.mul(currentTime.sub(lastRemarginTime)));
+        int newTokenPrice = 0;
+        if (tokenReturn > 0) {
+            newTokenPrice = _takePercentage(tokenPrice, uint(tokenReturn));
+        }
         navNew = (int(totalSupply()) * newTokenPrice) / 1 ether;
         assert(navNew >= 0);
         prevUnderlyingPrice = underlyingPrice;
@@ -545,11 +586,15 @@ contract TokenizedDerivative is ERC20 {
         lastRemarginTime = currentTime;
     }
 
+    // TODO(mrice32): make "old state" and "new state" a storage argument to combine this and computeNav.
     function recomputeNav(int256 oraclePrice, uint currentTime) private returns (int navNew) {
         assert(lastRemarginTime == currentTime);
-        int underlyingReturn = computeReturn(prevUnderlyingPrice, oraclePrice);
-        uint tokenReturn = uint(underlyingReturn).sub(fixedFeePerSecond.mul(currentTime.sub(prevRemarginTime)));
-        int newTokenPrice = _takePercentage(prevTokenPrice, tokenReturn);
+        int underlyingReturn = returnCalculator.computeReturn(prevUnderlyingPrice, oraclePrice);
+        int tokenReturn = underlyingReturn - int(fixedFeePerSecond.mul(currentTime.sub(prevRemarginTime)));
+        int newTokenPrice = 0;
+        if (tokenReturn > 0) {
+            newTokenPrice = _takePercentage(prevTokenPrice, uint(tokenReturn));
+        }
         navNew = (int(totalSupply()) * newTokenPrice) / 1 ether;
         assert(navNew >= 0);
         underlyingPrice = oraclePrice;
@@ -557,9 +602,8 @@ contract TokenizedDerivative is ERC20 {
         lastRemarginTime = currentTime;
     }
 
-    function initialNav(int256 oraclePrice, uint currentTime) private returns (int256 navNew) {
-        // Each token is initially worth 1 ether.
-        int unitNav = 1 ether;
+    function initialNav(int256 oraclePrice, uint currentTime, uint startingPrice) private returns (int256 navNew) {
+        int unitNav = int(startingPrice);
         lastRemarginTime = currentTime;
         prevRemarginTime = currentTime;
         tokenPrice = unitNav;
@@ -580,37 +624,6 @@ contract TokenizedDerivative is ERC20 {
 }
 
 
-contract SimpleTokenizedDerivative is TokenizedDerivative {
-
-    constructor(
-        address _providerAddress,
-        address _investorAddress,
-        address _oracleAddress,
-        uint _defaultPenalty, // Percentage of nav*10^18
-        uint _terminationFee, // Percentage of nav*10^18
-        uint _providerRequiredMargin, // Percentage of nav*10^18
-        string _product,
-        uint _fixedYearlyFee, // Percentage of nav * 10^18
-        uint _disputeDeposit // Percentage of nav * 10^18
-    ) public payable TokenizedDerivative(
-        _providerAddress,
-        _investorAddress,
-        _oracleAddress,
-        _defaultPenalty,
-        _terminationFee,
-        _providerRequiredMargin,
-        _product,
-        _fixedYearlyFee,
-        _disputeDeposit
-    ) {} // solhint-disable-line no-empty-blocks
-
-    function computeReturn(int oldOraclePrice, int newOraclePrice) public view returns (int assetReturn) {
-        return (newOraclePrice * (1 ether)) / oldOraclePrice;
-    }
-
-}
-
-
 contract TokenizedDerivativeCreator is ContractCreator {
     constructor(address registryAddress, address _oracleAddress)
         public
@@ -624,12 +637,14 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint providerRequiredMargin,
         string product,
         uint fixedYearlyFee,
-        uint disputeDeposit
+        uint disputeDeposit,
+        address returnCalculator,
+        uint startingTokenPrice
     )
         external
         returns (address derivativeAddress)
     {
-        SimpleTokenizedDerivative derivative = new SimpleTokenizedDerivative(
+        TokenizedDerivative derivative = new TokenizedDerivative(
             provider,
             investor,
             oracleAddress,
@@ -638,7 +653,9 @@ contract TokenizedDerivativeCreator is ContractCreator {
             providerRequiredMargin,
             product,
             fixedYearlyFee,
-            disputeDeposit
+            disputeDeposit,
+            returnCalculator,
+            startingTokenPrice
         );
 
         _registerNewContract(provider, investor, address(derivative));

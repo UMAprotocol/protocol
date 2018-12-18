@@ -1,0 +1,32 @@
+{
+  "name": "provider",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@material-ui/core": "^3.1.2",
+    "@material-ui/icons": "^3.0.1",
+    "bignumber.js": "^8.0.1",
+    "ethers": "^4.0.18",
+    "js-sha256": "^0.9.0",
+    "react": "^16.5.2",
+    "react-dom": "^16.5.2",
+    "react-scripts": "1.1.5",
+    "recharts": "^1.3.1",
+    "truffle": "^5.0.0-beta.2",
+    "truffle-contract": "^3.0.6",
+    "web3": "^1.0.0-beta.36"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "start_internal": "REACT_APP_MODE=internal npm start",
+    "build": "react-scripts build",
+    "build_internal": "REACT_APP_MODE=internal npm build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject",
+    "link-contracts": "cd src && ln -s ../../build/contracts contracts",
+    "prettier": "prettier --write 'src/**/*.js'"
+  },
+  "devDependencies": {
+    "prettier": "^1.14.3"
+  }
+}
