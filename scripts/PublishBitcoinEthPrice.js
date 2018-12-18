@@ -42,7 +42,6 @@ async function runExport() {
     var oracle = await MockOracle.deployed();
     var priceTime = await oracle.latestUnverifiedPrice();
 
-    // Get th
     var nextPublishTime;
     var contractTime = Number(priceTime[0].toString());
     if (contractTime == 0) {
