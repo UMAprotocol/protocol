@@ -4,7 +4,7 @@
   "description": "UMA Protocol Smart Contracts",
   "scripts": {
     "dev": "webpack-dev-server",
-    "prettier": "prettier --write 'test/**/*.js' 'migrations/*.js'",
+    "prettier": "prettier --write 'test/**/*.js' 'migrations/*.js *.js'",
     "coverage": "$(npm bin)/solidity-coverage"
   },
   "author": "UMA Team",

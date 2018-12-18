@@ -11,7 +11,7 @@ import Web3 from "web3";
 import { default as contract } from "truffle-contract";
 import SimpleTable from "./SimpleTable";
 import ContractDetails from "./ContractDetails";
-import Divider from '@material-ui/core/Divider';
+import Divider from "@material-ui/core/Divider";
 
 // Import our contract artifacts and turn them into usable abstractions.
 import Oracle from "./contracts/OracleMock.json";
@@ -19,7 +19,6 @@ import TokenizedDerivative from "./contracts/TokenizedDerivative.json";
 
 const drawerWidth = 300;
 const tokenizedDerivativeAddress = "0xE1d5Aef716F3a59EFC168A057C9f4F8052adf2d0";
-
 
 const styles = theme => ({
   root: {
@@ -109,7 +108,7 @@ const styles = theme => ({
 class Dashboard extends React.Component {
   state = {
     open: true,
-    page: "plot",
+    page: "plot"
   };
 
   constructor(props) {
@@ -147,9 +146,9 @@ class Dashboard extends React.Component {
 
     if (this.state.tokenizedDerivative && this.state.oracle) {
       var doRemargin = async () => {
-        await this.state.tokenizedDerivative.remargin({from: this.state.account});
+        await this.state.tokenizedDerivative.remargin({ from: this.state.account });
         this.setState({});
-      }
+      };
       return (
         <main className={classes.content}>
           <div className={classes.appBarSpacer} />
@@ -160,7 +159,11 @@ class Dashboard extends React.Component {
               </Typography>
             </Grid>
             <Grid item xs>
-              <ContractDetails tokenizedDerivative={this.state.tokenizedDerivative} oracle={this.state.oracle} web3={this.web3} />
+              <ContractDetails
+                tokenizedDerivative={this.state.tokenizedDerivative}
+                oracle={this.state.oracle}
+                web3={this.web3}
+              />
             </Grid>
             <Grid item xs>
               <Divider />
@@ -172,7 +175,11 @@ class Dashboard extends React.Component {
             </Grid>
             <Grid item xs>
               <div className={classes.tableContainer}>
-                <SimpleTable tokenizedDerivative={this.state.tokenizedDerivative} oracle={this.state.oracle} web3={this.web3} />
+                <SimpleTable
+                  tokenizedDerivative={this.state.tokenizedDerivative}
+                  oracle={this.state.oracle}
+                  web3={this.web3}
+                />
               </div>
             </Grid>
             <Grid item xs>
@@ -194,7 +201,14 @@ class Dashboard extends React.Component {
         <div className={classes.root}>
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
-              <Typography component="h1" variant="title" color="inherit" align="center" noWrap className={classes.title}>
+              <Typography
+                component="h1"
+                variant="title"
+                color="inherit"
+                align="center"
+                noWrap
+                className={classes.title}
+              >
                 UMA 2XBCE Token
               </Typography>
             </Toolbar>

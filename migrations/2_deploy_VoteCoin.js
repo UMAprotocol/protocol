@@ -19,10 +19,17 @@ var enableControllableTiming = network => {
 
 const isDerivativeDemo = network => {
   return network == "derivative_demo" || network == "derivative_demo_ropsten" || network == "derivative_demo_mainnet";
-}
+};
 
 var shouldUseMockOracle = network => {
-  return network === "test" || network === "ci" || network === "coverage" || network == "derivative_demo" || network == "derivative_demo_ropsten" || network == "derivative_demo_mainnet";
+  return (
+    network === "test" ||
+    network === "ci" ||
+    network === "coverage" ||
+    network == "derivative_demo" ||
+    network == "derivative_demo_ropsten" ||
+    network == "derivative_demo_mainnet"
+  );
 };
 
 module.exports = function(deployer, network, accounts) {
@@ -45,16 +52,21 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(deployedRegistry => {
         registry = deployedRegistry;
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, {from: accounts[0], value: 0});
+        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, {
+          from: accounts[0],
+          value: 0
+        });
       })
       .then(() => {
         return TokenizedDerivativeCreator.deployed();
       })
       .then(tokenizedDerivativeCreator => {
         return registry.addContractCreator(tokenizedDerivativeCreator.address);
-      }).then(() => {
+      })
+      .then(() => {
         return deployer.deploy(Leveraged2x);
-      }).then(() => {
+      })
+      .then(() => {
         return Leveraged2x.deployed();
       });
   } else if (shouldUseMockOracle(network)) {
@@ -96,9 +108,11 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(tokenizedDerivativeCreator => {
         return registry.addContractCreator(tokenizedDerivativeCreator.address);
-      }).then(() => {
+      })
+      .then(() => {
         return deployer.deploy(NoLeverage);
-      }).then(() => {
+      })
+      .then(() => {
         return NoLeverage.deployed();
       });
   } else {
@@ -137,9 +151,11 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(tokenizedDerivativeCreator => {
         return registry.addContractCreator(tokenizedDerivativeCreator.address);
-      }).then(() => {
+      })
+      .then(() => {
         return deployer.deploy(NoLeverage);
-      }).then(() => {
+      })
+      .then(() => {
         return NoLeverage.deployed();
       });
   }

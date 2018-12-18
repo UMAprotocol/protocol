@@ -6,8 +6,8 @@ import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
-import compose from 'recompose/compose';
-import withWidth from '@material-ui/core/withWidth';
+import compose from "recompose/compose";
+import withWidth from "@material-ui/core/withWidth";
 
 const styles = {
   root: {
@@ -32,8 +32,8 @@ class ContractDetails extends React.Component {
     var contractAddressString;
     var oracleAddressString;
     if (width === "xs") {
-      contractAddressString = tokenizedDerivative.address.substring(0,15) + "...";
-      oracleAddressString = oracle.address.substring(0,15) + "..."
+      contractAddressString = tokenizedDerivative.address.substring(0, 15) + "...";
+      oracleAddressString = oracle.address.substring(0, 15) + "...";
     } else {
       contractAddressString = tokenizedDerivative.address;
       oracleAddressString = oracle.address;
@@ -44,13 +44,20 @@ class ContractDetails extends React.Component {
 
     var creationTimestamp = 1544737534;
     var date = new Date(creationTimestamp * 1000);
-    var dateFormatOptions = { hour12: false, year: '2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' };
+    var dateFormatOptions = {
+      hour12: false,
+      year: "2-digit",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    };
     data.push({ name: "Created", value: date.toLocaleString(undefined, dateFormatOptions), id: 2 });
 
     var totalSupply = (await tokenizedDerivative.totalSupply()).toString();
     var totalSupplyDecimal = web3.utils.fromWei(totalSupply, "ether");
 
-    data.push({ name: "Total Token Supply", value: totalSupplyDecimal.substring(0,7), id: 3 });
+    data.push({ name: "Total Token Supply", value: totalSupplyDecimal.substring(0, 7), id: 3 });
 
     return data;
   }
@@ -89,12 +96,8 @@ class ContractDetails extends React.Component {
             {this.state.data.map(n => {
               return (
                 <TableRow key={n.id}>
-                  <TableCell padding="dense">
-                    {n.name}
-                  </TableCell>
-                  <TableCell padding="dense">
-                    {n.value}
-                  </TableCell>
+                  <TableCell padding="dense">{n.name}</TableCell>
+                  <TableCell padding="dense">{n.value}</TableCell>
                 </TableRow>
               );
             })}
@@ -111,5 +114,5 @@ ContractDetails.propTypes = {
 
 export default compose(
   withStyles(styles),
-  withWidth(),
+  withWidth()
 )(ContractDetails);
