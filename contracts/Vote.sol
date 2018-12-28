@@ -145,11 +145,12 @@ library VotePeriod {
         require(!self._skipRunoff());
         (uint startTime, uint endTime) = self._getPricePeriod(voteDuration);
 
-        // uint startIndex =
-        unverifiedPrices._getIndex(startTime, interval);
+        uint startIndex = unverifiedPrices._getIndex(startTime, interval);
         uint endIndex = unverifiedPrices._getIndex(endTime, interval);
+
+        require(startIndex <= endIndex);
         
-        // TODO(mrice32): do ipfs hash verification here.
+        // TODO(mrice32): do ipfs hash verification here and make use of startIndex and endIndex.
         return (true, endIndex);
     }
 

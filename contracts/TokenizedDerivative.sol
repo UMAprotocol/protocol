@@ -194,7 +194,7 @@ contract TokenizedDerivative is ERC20 {
         (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
 
-        nav = initialNav(oraclePrice, currentTime, _startingTokenPrice);
+        nav = _initialNav(oraclePrice, currentTime, _startingTokenPrice);
 
         state = State.Live;
     }
@@ -333,7 +333,7 @@ contract TokenizedDerivative is ERC20 {
 
         // Update nav of contract
 
-        int256 newNav = computeNav(oraclePrice, currentTime);
+        int256 newNav = _computeNav(oraclePrice, currentTime);
         _remargin(newNav);
         _reduceAuthorizedTokens(newNav);
     }
@@ -452,7 +452,7 @@ contract TokenizedDerivative is ERC20 {
     function _settle(int256 price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
-        _updateBalances(recomputeNav(price, endTime));
+        _updateBalances(_recomputeNav(price, endTime));
 
         // Check whether goes into default
         (bool inDefault, address _defaulter, ) = whoDefaults();
@@ -569,7 +569,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function computeNav(int256 oraclePrice, uint currentTime) private returns (int256 navNew) {
+    function _computeNav(int256 oraclePrice, uint currentTime) private returns (int256 navNew) {
         int underlyingReturn = returnCalculator.computeReturn(underlyingPrice, oraclePrice);
         int tokenReturn = underlyingReturn - int(fixedFeePerSecond.mul(currentTime.sub(lastRemarginTime)));
         int newTokenPrice = 0;
@@ -587,7 +587,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     // TODO(mrice32): make "old state" and "new state" a storage argument to combine this and computeNav.
-    function recomputeNav(int256 oraclePrice, uint currentTime) private returns (int navNew) {
+    function _recomputeNav(int256 oraclePrice, uint currentTime) private returns (int navNew) {
         assert(lastRemarginTime == currentTime);
         int underlyingReturn = returnCalculator.computeReturn(prevUnderlyingPrice, oraclePrice);
         int tokenReturn = underlyingReturn - int(fixedFeePerSecond.mul(currentTime.sub(prevRemarginTime)));
@@ -602,7 +602,7 @@ contract TokenizedDerivative is ERC20 {
         lastRemarginTime = currentTime;
     }
 
-    function initialNav(int256 oraclePrice, uint currentTime, uint startingPrice) private returns (int256 navNew) {
+    function _initialNav(int256 oraclePrice, uint currentTime, uint startingPrice) private returns (int256 navNew) {
         int unitNav = int(startingPrice);
         lastRemarginTime = currentTime;
         prevRemarginTime = currentTime;

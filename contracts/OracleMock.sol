@@ -39,6 +39,8 @@ contract OracleMock is OracleInterface, Ownable {
         pricePublishInterval = _pricePublishInterval;
         startTime = _intervalTime(time, time + 1);
         mirrorFeeds = _mirrorFeeds;
+        _unverifiedFeed.latestPublishTime = 0;
+        _verifiedFeed.latestPublishTime = 0;
     }
 
     // These functions are only here for the purpose of mocking a real feed. If this were meant for production, we
@@ -125,6 +127,7 @@ contract OracleMock is OracleInterface, Ownable {
     // `startTime` of this feed, then 0 is returned.
     function _intervalTime(uint time, uint latestFeedTime) private view returns (uint timeInInterval) {
         if (time < latestFeedTime) {
+
             return time < startTime ? 0 : time.div(pricePublishInterval).mul(pricePublishInterval);
         } else {
             return latestFeedTime;
