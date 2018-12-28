@@ -39,16 +39,16 @@ contract VoteInterface {
     function getCurrentCommitRevealPeriods() public view returns (Period[] memory periods);
 
     // Returns the current period type ("commit", "reveal", or "none").
-    function getCurrentPeriodType() public view returns (string periodType);
+    function getCurrentPeriodType() public view returns (string memory periodType);
 
     // Gets the product that the price votes apply to.
-    function getProduct() public view returns (string product);
+    function getProduct() public view returns (string memory product);
 
     // Gets the runoff/alternative proposals for the current period.
-    function getProposals() public view returns (Proposal.Data[] proposals);
+    function getProposals() public view returns (Proposal.Data[] memory proposals);
 
     // Gets the default proposal (option 1 during the primary vote period) for the current period.
-    function getDefaultProposalPrices() public view returns (PriceTime.Data[] defaultProposal);
+    function getDefaultProposalPrices() public view returns (PriceTime.Data[] memory defaultProposal);
 
     // Gets the default proposal (option 1 during the primary vote period) price for a particular time during the
     // current period.

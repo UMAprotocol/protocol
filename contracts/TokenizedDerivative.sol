@@ -3,7 +3,7 @@
 
   Implements a simplified version of tokenized Product/ETH Products.
 */
-pragma solidity >=0.4.24;
+pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -71,7 +71,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     struct ContractParty {
-        address accountAddress;
+        address payable accountAddress;
         int256 balance;
         bool hasConfirmedPrice;
         uint marginRequirement; // Percentage of nav*10^18
@@ -118,7 +118,7 @@ contract TokenizedDerivative is ERC20 {
         uint deposit;
     }
 
-    Dispute public dispute;
+    Dispute public disputeInfo;
 
     // The information in the following struct is only valid if in the midst of a Default or Termination.
     struct Termination {
@@ -148,13 +148,13 @@ contract TokenizedDerivative is ERC20 {
     }
 
     constructor(
-        address _providerAddress,
-        address _investorAddress,
+        address payable _providerAddress,
+        address payable _investorAddress,
         address _oracleAddress,
         uint _defaultPenalty, // Percentage of nav*10^18
         uint _terminationFee, // Percentage of nav*10^18
         uint _providerRequiredMargin, // Percentage of nav*10^18
-        string _product,
+        string memory _product,
         uint _fixedYearlyFee, // Percentage of nav * 10^18
         uint _disputeDeposit, // Percentage of nav * 10^18
         address _returnCalculator,
@@ -249,8 +249,8 @@ contract TokenizedDerivative is ERC20 {
 
         uint initialSupply = totalSupply();
 
-        require(this.transferFrom(msg.sender, this, numTokens));
-        _burn(this, numTokens);
+        require(this.transferFrom(msg.sender, address(this), numTokens));
+        _burn(address(this), numTokens);
 
 
         int256 investorBalance = investor.balance;
@@ -312,9 +312,9 @@ contract TokenizedDerivative is ERC20 {
 
         state = State.Disputed;
         endTime = lastRemarginTime;
-        dispute.disputedNav = nav;
-        dispute.disputer = msg.sender;
-        dispute.deposit = requiredDeposit;
+        disputeInfo.disputedNav = nav;
+        disputeInfo.disputer = msg.sender;
+        disputeInfo.deposit = requiredDeposit;
 
         msg.sender.transfer(refund);
     }
@@ -343,9 +343,9 @@ contract TokenizedDerivative is ERC20 {
         require(startingState == State.Disputed || startingState == State.Expired || startingState == State.Defaulted);
         _settleVerifiedPrice();
         if (startingState == State.Disputed) {
-            (ContractParty storage disputer, ContractParty storage notDisputer) = _whoAmI(dispute.disputer);
-            int256 depositValue = int256(dispute.deposit);
-            if (nav == dispute.disputedNav) {
+            (ContractParty storage disputer, ContractParty storage notDisputer) = _whoAmI(disputeInfo.disputer);
+            int256 depositValue = int256(disputeInfo.deposit);
+            if (nav == disputeInfo.disputedNav) {
                 disputer.balance += depositValue;
             } else {
                 notDisputer.balance += depositValue;
@@ -539,7 +539,7 @@ contract TokenizedDerivative is ERC20 {
         if (state != State.Live) {
             didReduce = additionalAuthorizedNav != 0;
             additionalAuthorizedNav = 0;
-            return;
+            return didReduce;
         }
 
         int256 totalAuthorizedNav = currentNav + int256(additionalAuthorizedNav);
@@ -630,12 +630,12 @@ contract TokenizedDerivativeCreator is ContractCreator {
         ContractCreator(registryAddress, _oracleAddress) {} // solhint-disable-line no-empty-blocks
 
     function createTokenizedDerivative(
-        address provider,
-        address investor,
+        address payable provider,
+        address payable investor,
         uint defaultPenalty,
         uint terminationFee,
         uint providerRequiredMargin,
-        string product,
+        string calldata product,
         uint fixedYearlyFee,
         uint disputeDeposit,
         address returnCalculator,
