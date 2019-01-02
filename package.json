@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "webpack-dev-server",
     "prettier": "prettier --write 'test/**/*.js' 'migrations/*.js *.js'",
-    "coverage": "$(npm bin)/solidity-coverage"
+    "//": "comment on the below script - we can get rid of the curl below once solidity-parser merges PR #18",
+    "coverage": "curl https://raw.githubusercontent.com/maxsam4/solidity-parser/solidity-0.5/build/parser.js > node_modules/solidity-parser-sc/build/parser.js && $(npm bin)/solidity-coverage"
   },
   "author": "UMA Team",
   "license": "MIT",
