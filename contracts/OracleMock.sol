@@ -93,7 +93,7 @@ contract OracleMock is OracleInterface, Ownable {
 
     // Returns the most recent price-time pair for a particular feed.
     function _mostRecentPriceTime(FeedInfo storage feedInfo) private view returns (uint publishTime, int256 price) {
-        // Note: if `latestPublushTime` is still 0 (no prices have been written to this feed), then `price` will be 0
+        // Note: if `latestPublishTime` is still 0 (no prices have been written to this feed), then `price` will be 0
         // (the default value for mapped values).
         return (feedInfo.latestPublishTime, feedInfo.prices[feedInfo.latestPublishTime]);
     }
