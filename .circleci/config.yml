@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: npm install --quiet && cat node_modules/openzeppelin-solidity/package.json
       - save_cache:
           key: v1-dependency-cache-{{ checksum "package.json" }}
           paths:
@@ -26,7 +26,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Compile contracts
-          command: $(npm bin)/truffle compile
+          command: npm install && $(npm bin)/truffle compile
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -71,7 +71,7 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: apk add make git python g++ && npm install --quiet
+          command: apk add make git python g++ && npm install --quiet && curl https://raw.githubusercontent.com/maxsam4/solidity-parser/solidity-0.5/build/parser.js > node_modules/solidity-parser-sc/build/parser.js
       - run:
           name: Run coverage
           command: npm run coverage
