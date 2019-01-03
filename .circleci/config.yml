@@ -54,7 +54,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Slither
-          command: sudo add-apt-repository ppa:jonathonf/python-3.6 && sudo apt update && sudo apt install python3.6 && python3.6 -m pip install --upgrade pip setuptools wheel && git clone https://github.com/trailofbits/slither.git && cd slither && sudo python3.6 setup.py install && cd .. && python3.6 -m slither --exclude=naming-convention,solc-version,pragma,external-function .
+          command: sudo apt install software-properties-common && sudo add-apt-repository ppa:jonathonf/python-3.6 && sudo apt update && sudo apt install python3.6 && python3.6 -m pip install --upgrade pip setuptools wheel && git clone https://github.com/trailofbits/slither.git && cd slither && sudo python3.6 setup.py install && cd .. && python3.6 -m slither --exclude=naming-convention,solc-version,pragma,external-function .
   test:
     docker:
       - image: circleci/node:latest
