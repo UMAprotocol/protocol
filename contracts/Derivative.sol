@@ -115,7 +115,7 @@ contract Derivative {
     // `computeUnverifiedNpv` returned 51.
     function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
 
-    function confirmPrice() public {
+    function confirmPrice() external {
         // Right now, only dispute if in a pre-settlement state
         require(state == State.Expired || state == State.Defaulted || state == State.Disputed);
 
@@ -134,7 +134,7 @@ contract Derivative {
         }
     }
 
-    function deposit() public payable {
+    function deposit() external payable {
         // Make sure that one of participants is sending the deposit and that
         // we are in a "depositable" state
         require(state == State.Live || state == State.Prefunded);
@@ -150,7 +150,7 @@ contract Derivative {
         }
     }
 
-    function dispute() public {
+    function dispute() external {
         require(msg.sender == maker.accountAddress || msg.sender == taker.accountAddress);
 
         require(
@@ -182,12 +182,12 @@ contract Derivative {
         return  _remargin(computeNpv(oraclePrice, notional));
     }
 
-    function settle() public {
+    function settle() external {
         require(state == State.Disputed || state == State.Expired || state == State.Defaulted);
         _settleVerifiedPrice();
     }
 
-    function withdraw(uint256 amount) public payable {
+    function withdraw(uint256 amount) external payable {
         // Make sure either in Prefunded, Live, or Settled
         require(state == State.Prefunded || state == State.Live || state == State.Settled);
 
@@ -219,13 +219,13 @@ contract Derivative {
         withdrawer.accountAddress.transfer(amount);
     }
 
-    function requiredAccountBalanceOnRemargin() public view returns (int256 balance) {
+    function requiredAccountBalanceOnRemargin() external view returns (int256 balance) {
         (ContractParty storage sender,) = _whoAmI(msg.sender);
 
         return _requiredAccountBalanceOnRemargin(sender);
     }
 
-    function npvIfRemarginedImmediately() public view returns (int256 immediateNpv) {
+    function npvIfRemarginedImmediately() external view returns (int256 immediateNpv) {
         // Checks whether contract has ended
         (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);

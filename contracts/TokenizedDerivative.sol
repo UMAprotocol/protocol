@@ -298,7 +298,7 @@ contract TokenizedDerivative is ERC20 {
         provider.balance += int256(msg.value);  // Want this to be safemath when available
     }
 
-    function dispute() public payable onlyContractParties {
+    function dispute() external payable onlyContractParties {
         require(
             // TODO: We need to add the dispute bond logic
             state == State.Live,
@@ -338,7 +338,7 @@ contract TokenizedDerivative is ERC20 {
         _reduceAuthorizedTokens(newNav);
     }
 
-    function settle() public {
+    function settle() external {
         State startingState = state;
         require(startingState == State.Disputed || startingState == State.Expired || startingState == State.Defaulted);
         _settleVerifiedPrice();
@@ -353,7 +353,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function withdraw(uint256 amount) public payable onlyProvider {
+    function withdraw(uint256 amount) external payable onlyProvider {
         // Make sure either in Live or Settled
         require(state == State.Live || state == State.Settled);
 
@@ -383,7 +383,7 @@ contract TokenizedDerivative is ERC20 {
         provider.accountAddress.transfer(amount);
     }
 
-    function terminate() public payable onlyContractParties {
+    function terminate() external payable onlyContractParties {
         int terminationNav = nav;
 
         remargin();

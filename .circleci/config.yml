@@ -45,6 +45,16 @@ jobs:
       - run:
           name: Lint
           command: $(npm bin)/solhint --max-warnings=1 contracts/**/*.sol
+  slither:
+    docker:
+      - image: circleci/node:latest
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Slither
+          command: git clone https://github.com/trailofbits/slither.git && cd slither && python3 setup.py install && cd .. && slither .
   test:
     docker:
       - image: circleci/node:latest
@@ -89,6 +99,9 @@ workflows:
           requires:
             - checkout_and_install
       - lint:
+          requires:
+            - checkout_and_install
+      - slither:
           requires:
             - checkout_and_install
       - test:
