@@ -1,3 +1,4 @@
+const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 var OracleMock = artifacts.require("OracleMock");
 var Registry = artifacts.require("Registry");
 var Vote = artifacts.require("VoteCoin");
@@ -114,6 +115,12 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(() => {
         return NoLeverage.deployed();
+      })
+      .then(() => {
+          return deployer.deploy(ManualPriceFeed);
+      })
+      .then(() => {
+          return ManualPriceFeed.deployed();
       });
   } else {
     deployer
