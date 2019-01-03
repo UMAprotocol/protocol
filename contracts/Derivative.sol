@@ -5,7 +5,7 @@
 
   TODO: Implement tax function
 */
-pragma solidity >=0.4.24;
+pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./OracleInterface.sol";
@@ -52,7 +52,7 @@ contract Derivative {
     }
 
     struct ContractParty {
-        address accountAddress;
+        address payable accountAddress;
         int256 balance;
         bool hasConfirmedPrice;
     }
@@ -76,13 +76,13 @@ contract Derivative {
     int256 public npv;  // Net present value is measured in Wei
 
     constructor(
-        address _makerAddress,
-        address _takerAddress,
+        address payable _makerAddress,
+        address payable _takerAddress,
         address _oracleAddress,
         int256 _defaultPenalty,
         int256 _requiredMargin,
         uint expiry,
-        string _product,
+        string memory _product,
         uint _notional
     ) public payable {
         // Address information
@@ -361,13 +361,13 @@ contract Derivative {
 contract SimpleDerivative is Derivative {
 
     constructor(
-        address _ownerAddress,
-        address _counterpartyAddress,
+        address payable _ownerAddress,
+        address payable _counterpartyAddress,
         address _oracleAddress,
         int256 _defaultPenalty,
         int256 _requiredMargin,
         uint expiry,
-        string product,
+        string memory product,
         uint notional
     ) public payable Derivative(
         _ownerAddress,
@@ -397,11 +397,11 @@ contract DerivativeCreator is ContractCreator {
         ContractCreator(registryAddress, _oracleAddress) {} // solhint-disable-line no-empty-blocks
 
     function createDerivative(
-        address counterparty,
+        address payable counterparty,
         int256 defaultPenalty,
         int256 requiredMargin,
         uint expiry,
-        string product,
+        string calldata product,
         uint notional
     )
         external

@@ -30,7 +30,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Compile contracts
-          command: $(npm bin)/truffle compile
+          command: npm install && $(npm bin)/truffle compile
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -75,7 +75,7 @@ jobs:
       - checkout
       - run:
           name: Install Dependencies
-          command: apk add make git python g++ && npm install --quiet
+          command: apk add make git python g++ curl && npm install --quiet
       - run:
           name: Run coverage
           command: npm run coverage

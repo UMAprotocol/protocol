@@ -8,7 +8,7 @@
   * Allows users to vote yes/no on whether a price is accurate
 
 */
-pragma solidity >=0.4.24;
+pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -72,7 +72,7 @@ library Poll {
         }
     }
 
-    function _addProposal(Data storage self, string ipfsHash) internal {
+    function _addProposal(Data storage self, string memory ipfsHash) internal {
         uint idx = self.proposals.length++;
         self.proposals[idx].ipfsHash = ipfsHash;
     }
@@ -107,7 +107,7 @@ library VotePeriod {
         mapping(string => bool) ipfsHashSet;
     }
 
-    function _proposeFeed(Data storage self, string ipfsHash) internal {
+    function _proposeFeed(Data storage self, string memory ipfsHash) internal {
         require(!self.ipfsHashSet[ipfsHash]);
         self.ipfsHashSet[ipfsHash] = true;
         self.runoffPoll._addProposal(ipfsHash);
@@ -210,7 +210,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
 
     PeriodTiming[5] private periodTimings;
 
-    constructor(string _product, uint _priceInterval, bool isTest) public Testable(isTest) {
+    constructor(string memory _product, uint _priceInterval, bool isTest) public Testable(isTest) {
         _mint(msg.sender, 10000);
         product = _product;
         priceInterval = _priceInterval;
@@ -269,20 +269,20 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         _getCurrentVotePeriod()._revealVote(voteOption, salt, balanceOf(msg.sender), period);
     }
 
-    function proposeFeed(string ipfsHash) public {
+    function proposeFeed(string memory ipfsHash) public {
         checkTimeAndUpdateState();
         require(period == VotePeriod.PeriodType.Commit || period == VotePeriod.PeriodType.Reveal);
 
         _getCurrentVotePeriod()._proposeFeed(ipfsHash);
     }
 
-    function addUnverifiedPrice(PriceTime.Data priceTime) public {
+    function addUnverifiedPrice(PriceTime.Data memory priceTime) public {
         PriceTime.Data[] memory priceTimes = new PriceTime.Data[](1);
         priceTimes[0] = priceTime;
         addUnverifiedPrices(priceTimes);
     }
 
-    function getProposals() public view returns (Proposal.Data[] proposals) {
+    function getProposals() public view returns (Proposal.Data[] memory proposals) {
         uint time = getCurrentTime();
         uint computedStartTime = _getStartOfPeriod(time);
 
@@ -307,23 +307,23 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         }
     }
 
-    function getCurrentPeriodType() public view returns (string periodType) {
+    function getCurrentPeriodType() public view returns (string memory periodType) {
         uint currentTime = getCurrentTime();
         return _getStringPeriodType(_getPeriodType(_getStartOfPeriod(currentTime), currentTime));
     }
 
-    function getProduct() public view returns (string _product) {
+    function getProduct() public view returns (string memory _product) {
         return product;
     }
 
-    function getDefaultProposalPrices() public view returns (PriceTime.Data[] prices) {
+    function getDefaultProposalPrices() public view returns (PriceTime.Data[] memory prices) {
         // TODO(mrice32): we may want to subtract some time offset to ensure all unverifiedPrices being voted on are
         // in before the voting period starts.
         // Note: this will fail if the entire voting period of prices previous do not exist.
         VotePeriod.Data storage votePeriod = _getCurrentVotePeriod();
         (uint startTime, uint endTime) = votePeriod._getPricePeriod(totalVotingDuration);
         if (unverifiedPrices.length == 0 || startTime < unverifiedPrices[0].time) {
-            return;
+            return prices;
         }
         uint startIndex = unverifiedPrices._getIndex(startTime, priceInterval);
 
@@ -469,7 +469,11 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return timestamp.sub(epochOffset).div(totalVotingDuration).mul(totalVotingDuration).add(epochOffset);
     }
 
-    function _getStringPeriodType(VotePeriod.PeriodType periodType) private pure returns (string stringPeriodType) {
+    function _getStringPeriodType(VotePeriod.PeriodType periodType)
+        private
+        pure
+        returns (string memory stringPeriodType)
+    {
         if (periodType == VotePeriod.PeriodType.Commit) {
             return "commit";
         } else if (periodType == VotePeriod.PeriodType.Reveal) {
@@ -488,7 +492,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
     function _initPeriodTiming(uint startOffset, uint duration, VotePeriod.PeriodType periodType)
         private
         view
-        returns (PeriodTiming periodTiming, uint nextStartOffset)
+        returns (PeriodTiming memory periodTiming, uint nextStartOffset)
     {
         periodTiming.startOffset = startOffset;
         periodTiming.endOffset = startOffset.add(duration);
