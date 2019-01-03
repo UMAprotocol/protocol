@@ -105,16 +105,6 @@ contract Derivative {
         npv = initialNpv(oraclePrice, notional);
     }
 
-    // Concrete contracts should inherit from this contract and then should only need to implement a
-    // `computeNpv` and `initialNpv` function. This allows for generic choices of NPV
-    // functions.
-    function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
-    // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
-    // contract, the contract will only move money when the computed NPV differs from this value. For example, if
-    // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
-    // `computeUnverifiedNpv` returned 51.
-    function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
-
     function confirmPrice() external {
         // Right now, only dispute if in a pre-settlement state
         require(state == State.Expired || state == State.Defaulted || state == State.Disputed);
@@ -162,24 +152,6 @@ contract Derivative {
         );
         state = State.Disputed;
         endTime = lastRemarginTime;
-    }
-
-    function remargin() public {
-        // If the state is not live, remargining does not make sense.
-        require(state == State.Live);
-
-        // Checks whether contract has ended
-        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
-        require(currentTime != 0);
-        if (currentTime >= endTime) {
-            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
-            state = State.Expired;
-        }
-
-        lastRemarginTime = currentTime;
-
-        // Update npv of contract
-        return  _remargin(computeNpv(oraclePrice, notional));
     }
 
     function settle() external {
@@ -234,6 +206,34 @@ contract Derivative {
         }
 
         return computeNpv(oraclePrice, notional);
+    }
+
+    // Concrete contracts should inherit from this contract and then should only need to implement a
+    // `computeNpv` and `initialNpv` function. This allows for generic choices of NPV
+    // functions.
+    function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
+    // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
+    // contract, the contract will only move money when the computed NPV differs from this value. For example, if
+    // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
+    // `computeUnverifiedNpv` returned 51.
+    function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
+
+    function remargin() public {
+        // If the state is not live, remargining does not make sense.
+        require(state == State.Live);
+
+        // Checks whether contract has ended
+        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        require(currentTime != 0);
+        if (currentTime >= endTime) {
+            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
+            state = State.Expired;
+        }
+
+        lastRemarginTime = currentTime;
+
+        // Update npv of contract
+        return  _remargin(computeNpv(oraclePrice, notional));
     }
 
     // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in

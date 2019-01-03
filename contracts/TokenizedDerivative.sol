@@ -268,36 +268,6 @@ contract TokenizedDerivative is ERC20 {
         msg.sender.transfer(tokenValue);
     }
 
-    function confirmPrice() public onlyContractParties {
-        // Right now, only dispute if in a pre-settlement state
-        require(state == State.Expired || state == State.Defaulted || state == State.Terminated);
-
-        if (msg.sender == provider.accountAddress) {
-            provider.hasConfirmedPrice = true;
-        }
-
-        if (msg.sender == investor.accountAddress) {
-            investor.hasConfirmedPrice = true;
-        }
-
-        // If both have confirmed then advance state to settled
-        // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
-        // passes then we want to settle and remargin
-        if (provider.hasConfirmedPrice && investor.hasConfirmedPrice) {
-            // Remargin on agreed upon price
-            _settleAgreedPrice();
-        }
-    }
-
-    function deposit() public payable onlyProvider {
-        // Only allow the provider to deposit margin.
-
-        // Make sure that one of participants is sending the deposit and that
-        // we are in a "depositable" state
-        require(state == State.Live);
-        provider.balance += int256(msg.value);  // Want this to be safemath when available
-    }
-
     function dispute() external payable onlyContractParties {
         require(
             // TODO: We need to add the dispute bond logic
@@ -317,25 +287,6 @@ contract TokenizedDerivative is ERC20 {
         disputeInfo.deposit = requiredDeposit;
 
         msg.sender.transfer(refund);
-    }
-
-    function remargin() public {
-        // If the state is not live, remargining does not make sense.
-        require(state == State.Live);
-
-        // Checks whether contract has ended
-        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
-        require(currentTime != 0);
-        if (currentTime >= endTime) {
-            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
-            state = State.Expired;
-        }
-
-        // Update nav of contract
-
-        int256 newNav = _computeNav(oraclePrice, currentTime);
-        _remargin(newNav);
-        _reduceAuthorizedTokens(newNav);
     }
 
     function settle() external {
@@ -405,6 +356,55 @@ contract TokenizedDerivative is ERC20 {
         confirmPrice();
 
         msg.sender.transfer(refund);
+    }
+
+    function confirmPrice() public onlyContractParties {
+        // Right now, only dispute if in a pre-settlement state
+        require(state == State.Expired || state == State.Defaulted || state == State.Terminated);
+
+        if (msg.sender == provider.accountAddress) {
+            provider.hasConfirmedPrice = true;
+        }
+
+        if (msg.sender == investor.accountAddress) {
+            investor.hasConfirmedPrice = true;
+        }
+
+        // If both have confirmed then advance state to settled
+        // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
+        // passes then we want to settle and remargin
+        if (provider.hasConfirmedPrice && investor.hasConfirmedPrice) {
+            // Remargin on agreed upon price
+            _settleAgreedPrice();
+        }
+    }
+
+    function deposit() public payable onlyProvider {
+        // Only allow the provider to deposit margin.
+
+        // Make sure that one of participants is sending the deposit and that
+        // we are in a "depositable" state
+        require(state == State.Live);
+        provider.balance += int256(msg.value);  // Want this to be safemath when available
+    }
+
+    function remargin() public {
+        // If the state is not live, remargining does not make sense.
+        require(state == State.Live);
+
+        // Checks whether contract has ended
+        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        require(currentTime != 0);
+        if (currentTime >= endTime) {
+            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
+            state = State.Expired;
+        }
+
+        // Update nav of contract
+
+        int256 newNav = _computeNav(oraclePrice, currentTime);
+        _remargin(newNav);
+        _reduceAuthorizedTokens(newNav);
     }
 
     // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in

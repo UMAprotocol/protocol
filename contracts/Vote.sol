@@ -249,10 +249,6 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         checkTimeAndUpdateState();
     }
 
-    function computeHash(uint voteOption, uint salt) external pure returns (bytes32 hash) {
-        return keccak256(abi.encodePacked(voteOption, salt));
-    }
-
     function commitVote(bytes32 secretHash) external {
         checkTimeAndUpdateState();
         require(period == VotePeriod.PeriodType.Commit || period == VotePeriod.PeriodType.RunoffCommit);
@@ -277,12 +273,24 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         _getCurrentVotePeriod()._proposeFeed(ipfsHash);
     }
 
-    // Note: this method cannot be external because solidity has not implemented structs being passed into external
-    // functions (triggers a difficult to diagnose compiler error).
-    function addUnverifiedPrice(PriceTime.Data memory priceTime) public {
-        PriceTime.Data[] memory priceTimes = new PriceTime.Data[](1);
-        priceTimes[0] = priceTime;
-        addUnverifiedPrices(priceTimes);
+    function validatePrices() external {
+        require(unverifiedPrices.length > firstUnverifiedIndex);
+        checkTimeAndUpdateState();
+        uint idx = _getVotePeriodIndexForPriceTime(unverifiedPrices[firstUnverifiedIndex].time);
+        VotePeriod.Data storage votePeriod = votePeriods[idx];
+        if (votePeriod._skipRunoff()) {
+            _commitPrices(period, currentVotePeriodIndex);
+        } else {
+            (bool success, uint newFirstUnverifiedIndex) = votePeriod._verifyPrices(
+                unverifiedPrices,
+                priceInterval,
+                totalVotingDuration
+            );
+
+            firstUnverifiedIndex = newFirstUnverifiedIndex;
+
+            require(success);
+        }
     }
 
     function getProposals() external view returns (Proposal.Data[] memory proposals) {
@@ -386,24 +394,16 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return unverifiedPrices._getBestPriceTimeForTime(time, firstUnverifiedIndex, priceInterval);
     }
 
-    function validatePrices() external {
-        require(unverifiedPrices.length > firstUnverifiedIndex);
-        checkTimeAndUpdateState();
-        uint idx = _getVotePeriodIndexForPriceTime(unverifiedPrices[firstUnverifiedIndex].time);
-        VotePeriod.Data storage votePeriod = votePeriods[idx];
-        if (votePeriod._skipRunoff()) {
-            _commitPrices(period, currentVotePeriodIndex);
-        } else {
-            (bool success, uint newFirstUnverifiedIndex) = votePeriod._verifyPrices(
-                unverifiedPrices,
-                priceInterval,
-                totalVotingDuration
-            );
+    function computeHash(uint voteOption, uint salt) external pure returns (bytes32 hash) {
+        return keccak256(abi.encodePacked(voteOption, salt));
+    }
 
-            firstUnverifiedIndex = newFirstUnverifiedIndex;
-
-            require(success);
-        }
+    // Note: this method cannot be external because solidity has not implemented structs being passed into external
+    // functions (triggers a difficult to diagnose compiler error).
+    function addUnverifiedPrice(PriceTime.Data memory priceTime) public {
+        PriceTime.Data[] memory priceTimes = new PriceTime.Data[](1);
+        priceTimes[0] = priceTime;
+        addUnverifiedPrices(priceTimes);
     }
 
     function addUnverifiedPrices(PriceTime.Data[] memory priceTimes) public onlyOwner {
