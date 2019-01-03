@@ -61,6 +61,7 @@ contract("TokenizedDerivative", function(accounts) {
       web3.utils.toWei("0.05", "ether"),
       noLeverageCalculator.address,
       web3.utils.toWei("1", "ether"),
+      "0",
       { from: provider }
     );
 
