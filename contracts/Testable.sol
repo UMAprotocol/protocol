@@ -13,7 +13,7 @@ contract Testable is Ownable {
 
     // Is the contract being run on the test network. Note: this variable should be set on construction and never
     // modified.
-    bool private isTest;
+    bool public isTest;
 
     uint private currentTime;
 
@@ -31,10 +31,6 @@ contract Testable is Ownable {
 
     function setCurrentTime(uint _time) external onlyOwner onlyIfTest {
         currentTime = _time;
-    }
-
-    function isTestMode() public view returns (bool) {
-        return isTest;
     }
 
     function getCurrentTime() public view returns (uint) {
