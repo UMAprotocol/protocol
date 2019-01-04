@@ -19,5 +19,5 @@ interface PriceFeedInterface {
     function priceAtTime(bytes32 symbol, uint time) external view returns (uint publishTime, int256 price);
 
     // An event fired when a price is published.
-    event PriceUpdated(bytes32 symbol, uint time, int256 price);
+    event PriceUpdated(bytes32 indexed symbol, uint time, int256 price);
 }
