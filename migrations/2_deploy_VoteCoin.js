@@ -1,13 +1,13 @@
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
-var OracleMock = artifacts.require("OracleMock");
-var Registry = artifacts.require("Registry");
-var Vote = artifacts.require("VoteCoin");
-var DerivativeCreator = artifacts.require("DerivativeCreator");
-var TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
-var Leveraged2x = artifacts.require("Leveraged2x");
-var NoLeverage = artifacts.require("NoLeverage");
+const OracleMock = artifacts.require("OracleMock");
+const Registry = artifacts.require("Registry");
+const Vote = artifacts.require("VoteCoin");
+const DerivativeCreator = artifacts.require("DerivativeCreator");
+const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
+const Leveraged2x = artifacts.require("Leveraged2x");
+const NoLeverage = artifacts.require("NoLeverage");
 
-var enableControllableTiming = network => {
+const enableControllableTiming = network => {
   return (
     network === "test" ||
     network === "develop" ||
@@ -22,7 +22,7 @@ const isDerivativeDemo = network => {
   return network == "derivative_demo" || network == "derivative_demo_ropsten" || network == "derivative_demo_mainnet";
 };
 
-var shouldUseMockOracle = network => {
+const shouldUseMockOracle = network => {
   return (
     network === "test" ||
     network === "ci" ||
@@ -34,8 +34,8 @@ var shouldUseMockOracle = network => {
 };
 
 module.exports = function(deployer, network, accounts) {
-  var oracleAddress;
-  var registry;
+  let oracleAddress;
+  let registry;
   if (isDerivativeDemo(network)) {
     deployer
       .then(() => {
