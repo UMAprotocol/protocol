@@ -4,6 +4,8 @@ cd ~
 DIRECTORY=~/Python-3.6.3
 if [ ! -d "$DIRECTORY" ]
 then
+    # Only run when the pre-built python download isn't found.
+    echo "Building a fresh Python 3.6..."
     sudo apt update -y && sudo apt upgrade
     wget https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tgz
     tar xvf Python-3.6.3.tgz
@@ -13,9 +15,11 @@ then
     sudo rm -rf Python-3.6.3.tgz
 fi
 
+echo "Installing Python 3.6..."
 cd $DIRECTORY
 sudo make altinstall
 
+echo "Installing Slither..."
 cd ~
 git clone https://github.com/trailofbits/slither.git
 cd slither
