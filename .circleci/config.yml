@@ -53,14 +53,14 @@ jobs:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
-          key: python-install
+          key: python-build
       - run:
           name: Slither
           command: ./ci/run_slither.sh
       - save_cache:
-          key: python-install
+          key: python-build
           paths:
-            - /usr/local/bin
+            - ~/Python-3.6.3
   test:
     docker:
       - image: circleci/node:latest
