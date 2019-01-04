@@ -1,3 +1,4 @@
+const CentralizedOracle = artifacts.require("CentralizedOracle");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const OracleMock = artifacts.require("OracleMock");
 const Registry = artifacts.require("Registry");
@@ -121,6 +122,12 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(() => {
           return ManualPriceFeed.deployed();
+      })
+      .then(() => {
+          return deployer.deploy(CentralizedOracle);
+      })
+      .then(() => {
+          return CentralizedOracle.deployed();
       });
   } else {
     deployer
