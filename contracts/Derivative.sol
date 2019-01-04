@@ -16,7 +16,7 @@ contract Derivative {
 
     // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
-    // using SafeMath for int256;
+    using SafeMath for int;
 
     enum State {
         // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
@@ -79,8 +79,8 @@ contract Derivative {
         address payable _makerAddress,
         address payable _takerAddress,
         address _oracleAddress,
-        int256 _defaultPenalty,
-        int256 _requiredMargin,
+        int _defaultPenalty,
+        int _requiredMargin,
         uint expiry,
         string memory _product,
         uint _notional
@@ -101,7 +101,7 @@ contract Derivative {
         notional = _notional;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        (, int oraclePrice) = oracle.latestUnverifiedPrice();
         npv = initialNpv(oraclePrice, notional);
     }
 
@@ -129,7 +129,7 @@ contract Derivative {
         // we are in a "depositable" state
         require(state == State.Live || state == State.Prefunded);
         (ContractParty storage depositer,) = _whoAmI(msg.sender);
-        depositer.balance += int256(msg.value);  // Want this to be safemath when available
+        depositer.balance = depositer.balance.add(int256(msg.value));  // Want this to be safemath when available
 
         if (state == State.Prefunded) {
             if (maker.balance >= _requiredAccountBalanceOnRemargin(maker) &&
@@ -176,7 +176,7 @@ contract Derivative {
         // other states
         int256 withdrawableAmount = (state == State.Prefunded || state == State.Settled) ?
             withdrawer.balance :
-            withdrawer.balance - requiredMargin;
+            withdrawer.balance.sub(requiredMargin);
 
         // Can only withdraw the allowed amount
         require(
@@ -187,7 +187,7 @@ contract Derivative {
         // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
         // to return
-        withdrawer.balance -= int256(amount);
+        withdrawer.balance = withdrawer.balance.sub(int256(amount));
         withdrawer.accountAddress.transfer(amount);
     }
 
@@ -285,8 +285,8 @@ contract Derivative {
                 defaulter.balance :
                 defaultPenalty;
 
-            defaulter.balance -= penalty;
-            notDefaulter.balance += penalty;
+            defaulter.balance = defaulter.balance.sub(penalty);
+            notDefaulter.balance = notDefaulter.balance.add(penalty);
         }
         state = State.Settled;
     }
@@ -332,15 +332,15 @@ contract Derivative {
         int256 makerDiff = _getMakerNpvDiff(npvNew);
         npv = npvNew;
 
-        maker.balance += makerDiff;
-        taker.balance -= makerDiff;
+        maker.balance = maker.balance.add(makerDiff);
+        taker.balance = taker.balance.sub(makerDiff);
     }
 
     // Gets the change in balance for the owners account when the most recent
     // NPV is applied. Note: there's a function for this because signage is
     // tricky here, and it must be done the same everywhere.
     function _getMakerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
-        return npv - npvNew;
+        return npv.sub(npvNew);
     }
 
     function _requiredAccountBalanceOnRemargin(ContractParty storage party) internal view returns (int256 balance) {
@@ -348,9 +348,9 @@ contract Derivative {
         int256 makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice, notional));
 
         if (party.accountAddress == maker.accountAddress) {
-            balance = requiredMargin - makerDiff;
+            balance = requiredMargin.sub(makerDiff);
         } else if (party.accountAddress == taker.accountAddress) {
-            balance = requiredMargin + makerDiff;
+            balance = requiredMargin.add(makerDiff);
         }
 
         balance = balance > 0 ? balance : 0;
@@ -381,11 +381,11 @@ contract SimpleDerivative is Derivative {
 
     function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
         // This could be more complex, but in our case, just return the oracle value.
-        return (oraclePrice * int256(_notional)) / (1 ether);
+        return oraclePrice.mul(int256(_notional)).div(1 ether);
     }
 
     function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
-        return (oraclePrice * int256(_notional)) / (1 ether);
+        return oraclePrice.mul(int256(_notional)).div(1 ether);
     }
 
 }

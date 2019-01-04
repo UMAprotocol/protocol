@@ -37,7 +37,7 @@ contract OracleMock is OracleInterface, Ownable {
     constructor(bool _mirrorFeeds, uint _pricePublishInterval) public {
         uint time = now; // solhint-disable-line not-rely-on-time
         pricePublishInterval = _pricePublishInterval;
-        startTime = _intervalTime(time, time + 1);
+        startTime = _intervalTime(time, time.add(1));
         mirrorFeeds = _mirrorFeeds;
         _unverifiedFeed.latestPublishTime = 0;
         _verifiedFeed.latestPublishTime = 0;

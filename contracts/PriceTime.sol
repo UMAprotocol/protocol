@@ -21,7 +21,7 @@ library PriceTime {
 
         uint currentLength = self.length;
 
-        for (uint i = 0; i < mergingArray.length; ++i) {
+        for (uint i = 0; i < mergingArray.length; i = i.add(1)) {
             // TODO(mrice32): we can break this into two loops to save the branch once we've passed the end of
             // the existing array.
             uint storageIndex = i.add(index);
