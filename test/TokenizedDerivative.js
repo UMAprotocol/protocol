@@ -19,16 +19,50 @@ contract("TokenizedDerivative", function(accounts) {
   var investor = accounts[2];
   var thirdParty = accounts[3];
 
-  var computeNewNav = (previousNav, priceReturn, fees) => {
+  const computeNewNav = (previousNav, priceReturn, fees) => {
     var expectedReturnWithFees = priceReturn.sub(fees);
     var retVal = BigNumber(web3.utils.fromWei(expectedReturnWithFees.mul(previousNav), "ether"));
     var flooredRetVal = retVal.integerValue(BigNumber.ROUND_FLOOR);
     return web3.utils.toBN(flooredRetVal);
   };
 
-  var computeExpectedPenalty = (navToPenalize, penaltyPercentage) => {
+  const computeExpectedPenalty = (navToPenalize, penaltyPercentage) => {
     return web3.utils.toBN(web3.utils.fromWei(navToPenalize.mul(penaltyPercentage), "ether"));
   };
+
+  const deployNewTokenizedDerivative = async (expiryDelay) => {
+    // Note: it is assumed that each deployment starts with the verified and unverified feeds aligned.
+    // To make the tests more realistic, the unverified feed is bumped by one step to ensure it is slightly ahead.
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
+
+    var expiry = 0;
+    if (expiryDelay != undefined) {
+        expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(expiryDelay);
+    }
+
+    await tokenizedDerivativeCreator.createTokenizedDerivative(
+      provider,
+      investor,
+      web3.utils.toWei("0.05", "ether"),
+      web3.utils.toWei("0.05", "ether"),
+      web3.utils.toWei("0.1", "ether"),
+      "ETH/USD",
+      web3.utils.toWei("0.01", "ether"),
+      web3.utils.toWei("0.05", "ether"),
+      noLeverageCalculator.address,
+      web3.utils.toWei("1", "ether"),
+      expiry.toString(),
+      { from: provider }
+    );
+
+    var numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: provider });
+    var derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
+      numRegisteredContracts.subn(1).toString(),
+      { from: provider }
+    );
+    derivativeContract = await TokenizedDerivative.at(derivativeAddress);
+
+  }
 
   before(async function() {
     // Set the deployed registry and oracle.
@@ -42,38 +76,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedOracle.addVerifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
   });
 
-  beforeEach(async () => {
-    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
-
-    // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time
-    // steps. Note: Make sure all tests end with same number of unverified/verified prices then this function will
-    // add one additional unverified price
-    expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(120);
-
-    await tokenizedDerivativeCreator.createTokenizedDerivative(
-      provider,
-      investor,
-      web3.utils.toWei("0.05", "ether"),
-      web3.utils.toWei("0.05", "ether"),
-      web3.utils.toWei("0.1", "ether"),
-      "ETH/USD",
-      web3.utils.toWei("0.01", "ether"),
-      web3.utils.toWei("0.05", "ether"),
-      noLeverageCalculator.address,
-      web3.utils.toWei("1", "ether"),
-      "0",
-      { from: provider }
-    );
-
-    var numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: provider });
-    var derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
-      numRegisteredContracts.subn(1).toString(),
-      { from: provider }
-    );
-    derivativeContract = await TokenizedDerivative.at(derivativeAddress);
-  });
-
   it("Live -> Default -> Settled", async function() {
+    // A new TokenizedDerivative must be deployed before the start of each test case.
+    await deployNewTokenizedDerivative();
+
     var state = await derivativeContract.state();
     var tokensOutstanding = await derivativeContract.totalSupply();
     var nav = await derivativeContract.nav();
@@ -290,6 +296,9 @@ contract("TokenizedDerivative", function(accounts) {
   });
 
   it("Live -> Terminate -> Settled", async function() {
+    // A new TokenizedDerivative must be deployed before the start of each test case.
+    await deployNewTokenizedDerivative();
+
     // Provider initializes contract
     await derivativeContract.deposit({ from: provider, value: web3.utils.toWei("0.4", "ether") });
     await derivativeContract.authorizeTokens(web3.utils.toWei("1", "ether"), {
@@ -338,6 +347,9 @@ contract("TokenizedDerivative", function(accounts) {
   });
 
   it("Live -> Dispute (correctly) -> Settled", async function() {
+    // A new TokenizedDerivative must be deployed before the start of each test case.
+    await deployNewTokenizedDerivative();
+
     // Provider initializes contract
     await derivativeContract.deposit({ from: provider, value: web3.utils.toWei("0.4", "ether") });
     await derivativeContract.authorizeTokens(web3.utils.toWei("1", "ether"), {
@@ -390,6 +402,9 @@ contract("TokenizedDerivative", function(accounts) {
   });
 
   it("Live -> Dispute (incorrectly) -> Settled", async function() {
+    // A new TokenizedDerivative must be deployed before the start of each test case.
+    await deployNewTokenizedDerivative();
+
     // Provider initializes contract
     await derivativeContract.deposit({ from: provider, value: web3.utils.toWei("0.4", "ether") });
     await derivativeContract.authorizeTokens(web3.utils.toWei("1", "ether"), {
