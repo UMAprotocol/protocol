@@ -158,7 +158,8 @@ contract TokenizedDerivative is ERC20 {
         uint _fixedYearlyFee, // Percentage of nav * 10^18
         uint _disputeDeposit, // Percentage of nav * 10^18
         address _returnCalculator,
-        uint _startingTokenPrice
+        uint _startingTokenPrice,
+        uint expiry
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _providerRequiredMargin);
@@ -186,13 +187,17 @@ contract TokenizedDerivative is ERC20 {
         disputeDeposit = _disputeDeposit;
         terminationFee = _terminationFee;
 
-        // Set end time to max value of uint to implement no expiry.
-        endTime = ~uint(0);
-
-
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
+
+        // Set end time to max value of uint to implement no expiry.
+        if (expiry == 0) {
+            endTime = ~uint(0);
+        } else {
+            require(expiry >= currentTime);
+            endTime = expiry;
+        }
 
         nav = _initialNav(oraclePrice, currentTime, _startingTokenPrice);
 
@@ -639,7 +644,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint fixedYearlyFee,
         uint disputeDeposit,
         address returnCalculator,
-        uint startingTokenPrice
+        uint startingTokenPrice,
+        uint expiry
     )
         external
         returns (address derivativeAddress)
@@ -655,7 +661,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             fixedYearlyFee,
             disputeDeposit,
             returnCalculator,
-            startingTokenPrice
+            startingTokenPrice,
+            expiry
         );
 
         _registerNewContract(provider, investor, address(derivative));
