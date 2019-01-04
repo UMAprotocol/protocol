@@ -43,9 +43,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable {
     function latestPrice(bytes32 symbol) external view returns (uint publishTime, int256 price) {
         // Return sentinel values if no prices have been published.
         if (prices[symbol].length == 0) {
-            publishTime = 0;
-            price = 0;
-            return (publishTime, price);
+            return (0, 0);
         }
         uint maxIndex = prices[symbol].length - 1;
         publishTime = prices[symbol][maxIndex].timestamp;
@@ -55,9 +53,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable {
     function priceAtTime(bytes32 symbol, uint time) external view returns (uint publishTime, int256 price) {
         // Return sentinel values if no prices have been published.
         if (prices[symbol].length == 0) {
-            publishTime = 0;
-            price = 0;
-            return (publishTime, price);
+            return (0, 0);
         }
 
         // Find the latest time value that's earlier than the query `time`. Could be optimized with a binary search, but
@@ -71,7 +67,6 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable {
             // values.
             publishTime = 0;
             price = 0;
-            return (publishTime, price);
         } else {
             publishTime = prices[symbol][index].timestamp;
             price = prices[symbol][index].price;
