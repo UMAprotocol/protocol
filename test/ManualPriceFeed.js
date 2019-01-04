@@ -15,7 +15,7 @@ contract("ManualPriceFeed", function(accounts) {
         manualPriceFeed = await ManualPriceFeed.deployed();
     });
 
-    it("No prices > One price > Two prices", async function() {
+    it("No prices > One price > Updated price", async function() {
         const symbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Symbol"));
 
         // No prices have been published, so the symbol is not yet supported.
@@ -36,41 +36,13 @@ contract("ManualPriceFeed", function(accounts) {
         assert.equal(actualPriceTick.publishTime, 100);
         assert.equal(actualPriceTick.price, 500);
 
-        // Querying at time=101 should retrieve the price at time=100.
-        actualPriceTick = await manualPriceFeed.priceAtTime(symbolBytes, 101);
-        assert.equal(actualPriceTick.publishTime, 100);
-        assert.equal(actualPriceTick.price, 500);
-
-        // Querying at time=99 (before the timestamp of the earliest price) should return `publishTime`=0.
-        actualPriceTick = await manualPriceFeed.priceAtTime(symbolBytes, 99);
-        assert.equal(actualPriceTick.publishTime, 0);
-
-        // Push a second price at time=200.
+        // Push an updated price at time=200.
         await manualPriceFeed.pushLatestPrice(symbolBytes, 200, 1000);
 
         // `latestPrice` should retrieve the price at time=200.
         actualPriceTick = await manualPriceFeed.latestPrice(symbolBytes);
         assert.equal(actualPriceTick.publishTime, 200);
         assert.equal(actualPriceTick.price, 1000);
-
-        // Querying at time=201 should retrieve the price at time=200.
-        actualPriceTick = await manualPriceFeed.priceAtTime(symbolBytes, 201);
-        assert.equal(actualPriceTick.publishTime, 200);
-        assert.equal(actualPriceTick.price, 1000);
-
-        // Querying at time=200 should retrieve the price at time=200.
-        actualPriceTick = await manualPriceFeed.priceAtTime(symbolBytes, 200);
-        assert.equal(actualPriceTick.publishTime, 200);
-        assert.equal(actualPriceTick.price, 1000);
-
-        // Querying at time=199 should retrieve the price at time=100.
-        actualPriceTick = await manualPriceFeed.priceAtTime(symbolBytes, 199);
-        assert.equal(actualPriceTick.publishTime, 100);
-        assert.equal(actualPriceTick.price, 500);
-
-        // Querying at time=99 (before the timestamp of the earliest price) should return `publishTime`=0.
-        actualPriceTick = await manualPriceFeed.priceAtTime(symbolBytes, 99);
-        assert.equal(actualPriceTick.publishTime, 0);
     });
 
     it("Multiple symbols", async function() {
