@@ -1,19 +1,19 @@
 const { didContractThrow } = require("./utils/DidContractThrow.js");
 
-var Derivative = artifacts.require("Derivative");
-var Registry = artifacts.require("Registry");
-var Oracle = artifacts.require("OracleMock");
-var DerivativeCreator = artifacts.require("DerivativeCreator");
+const Derivative = artifacts.require("Derivative");
+const Registry = artifacts.require("Registry");
+const Oracle = artifacts.require("OracleMock");
+const DerivativeCreator = artifacts.require("DerivativeCreator");
 
 contract("Derivative", function(accounts) {
-  var derivativeContract;
-  var deployedRegistry;
-  var deployedOracle;
-  var deployedDerivativeCreator;
+  let derivativeContract;
+  let deployedRegistry;
+  let deployedOracle;
+  let deployedDerivativeCreator;
 
-  var ownerAddress = accounts[0];
-  var takerAddress = accounts[1];
-  var makerAddress = accounts[2];
+  const ownerAddress = accounts[0];
+  const takerAddress = accounts[1];
+  const makerAddress = accounts[2];
 
   before(async function() {
     // Set the deployed registry and oracle.
@@ -32,7 +32,7 @@ contract("Derivative", function(accounts) {
     // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time
     // steps. Note: Make sure all tests end with same number of unverified/verified prices then this function will
     // add one additional unverified price
-    expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(120);
+    const expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(120);
 
     await deployedDerivativeCreator.createDerivative(
       makerAddress,
@@ -44,8 +44,8 @@ contract("Derivative", function(accounts) {
       { from: takerAddress, value: web3.utils.toWei("1", "ether") }
     );
 
-    var numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: takerAddress });
-    var derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
+    const numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: takerAddress });
+    const derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
       numRegisteredContracts.subn(1).toString(),
       { from: takerAddress }
     );
@@ -53,14 +53,14 @@ contract("Derivative", function(accounts) {
   });
 
   it("Prefunded -> Live -> Expired -> Settled", async function() {
-    var state = await derivativeContract.state();
+    let state = await derivativeContract.state();
 
     // TODO: add a javascript lib that will map from enum name to uint value.
     // '0' == State.Prefunded
     assert.equal(state.toString(), "0");
 
     // Note: the originator of the contract is, by definition, the taker.
-    var takerStruct = await derivativeContract.taker();
+    let takerStruct = await derivativeContract.taker();
 
     // Ensure the taker is the first account.
     assert.equal(takerStruct[0], takerAddress);
@@ -85,7 +85,7 @@ contract("Derivative", function(accounts) {
     await derivativeContract.deposit({ from: makerAddress, value: web3.utils.toWei("0.07", "ether") });
     state = await derivativeContract.state();
     assert.equal(state.toString(), "0");
-    var makerStruct = await derivativeContract.maker();
+    let makerStruct = await derivativeContract.maker();
     assert.equal(makerStruct[1], web3.utils.toWei("0.07", "ether"));
 
     // Maker deposit above the margin requirement should send the contract into the Live state.
@@ -103,26 +103,26 @@ contract("Derivative", function(accounts) {
 
     // Right now, oracle price decreases hurt the taker and help the maker, which means the amount the taker needs in
     // their account to survive the a -0.5 remargin is 0.6 (0.1 normal requirement + 0.5 price change).
-    var takerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: takerAddress });
+    let takerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: takerAddress });
     assert.equal(takerRequiredBalance.toString(), web3.utils.toWei("0.6", "ether"));
 
     // Since the price is moving toward the maker, the required balance to survive the remargin is 0.
-    var makerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: makerAddress });
+    let makerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: makerAddress });
     assert.equal(makerRequiredBalance.toString(), web3.utils.toWei("0", "ether"));
 
-    var expectedNpv = await derivativeContract.npvIfRemarginedImmediately();
+    let expectedNpv = await derivativeContract.npvIfRemarginedImmediately();
     await derivativeContract.remargin({ from: takerAddress });
 
     // Ensure that the npvIfRemarginedImmediately() matches the actual result of the remargin.
-    var newNpv = await derivativeContract.npv();
+    let newNpv = await derivativeContract.npv();
     assert.equal(newNpv.toString(), web3.utils.toWei("-0.5", "ether"));
     assert.equal(expectedNpv.toString(), newNpv.toString());
 
     // Ensure that the balances were reassessed properly by the remargin.
-    var makerBalance = (await derivativeContract.maker())[1];
+    let makerBalance = (await derivativeContract.maker())[1];
     assert.equal(makerBalance.toString(), web3.utils.toWei("0.6", "ether"));
 
-    var takerBalance = (await derivativeContract.taker())[1];
+    let takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.utils.toWei("0.5", "ether"));
 
     // Move the verified feed past expiration, but ensure the price stays at the expiry rather than moving to the
@@ -176,7 +176,7 @@ contract("Derivative", function(accounts) {
   });
 
   it("Prefunded -> Live -> Defaulted (maker) -> Confirmed", async function() {
-    var state = await derivativeContract.state();
+    let state = await derivativeContract.state();
     assert.equal(state.toString(), "0");
 
     // Maker deposit below the margin requirement should not change the contract state.
@@ -188,7 +188,7 @@ contract("Derivative", function(accounts) {
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0.01", "ether"), { from: ownerAddress });
 
     // Since the price is moving toward the maker, the required balance to survive the remargin is 0.
-    var makerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: makerAddress });
+    let makerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: makerAddress });
     assert.equal(makerRequiredBalance.toString(), web3.utils.toWei("0.11", "ether"));
 
     await derivativeContract.remargin({ from: takerAddress });
@@ -231,7 +231,7 @@ contract("Derivative", function(accounts) {
   });
 
   it("Prefunded -> Live -> Defaulted (taker) -> No Confirm -> Settled", async function() {
-    var state = await derivativeContract.state();
+    let state = await derivativeContract.state();
     assert.equal(state.toString(), "0");
 
     // Maker deposit to start contract
@@ -280,7 +280,7 @@ contract("Derivative", function(accounts) {
   });
 
   it("Pre -> Live -> Default (m) -> Dispute -> V price default (t) -> No Confirm -> Settled", async function() {
-    var state = await derivativeContract.state();
+    let state = await derivativeContract.state();
     assert.equal(state.toString(), "0");
 
     // Maker deposit to start contract
