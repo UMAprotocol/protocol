@@ -452,4 +452,70 @@ contract("TokenizedDerivative", function(accounts) {
     contractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
     assert.equal(contractBalance.toString(), "0");
   });
+
+  it("Live -> Expired -> Settled (agreement)", async function() {
+    // A new TokenizedDerivative must be deployed before the start of each test case.
+    await deployNewTokenizedDerivative(60);
+
+    // Provider initializes contract
+    await derivativeContract.deposit({ from: provider, value: web3.utils.toWei("0.4", "ether") });
+    await derivativeContract.authorizeTokens(web3.utils.toWei("1", "ether"), {
+      from: provider,
+      value: web3.utils.toWei("0.1", "ether")
+    });
+    await derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether") });
+
+    var nav = await derivativeContract.nav();
+
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1.1", "ether"), { from: ownerAddress });
+
+    var expectedReturnWithoutFees = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
+    var feesPerSecond = await derivativeContract.fixedFeePerSecond();
+    var feesPerMinute = feesPerSecond.muln(60);
+    var expectedNewNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerMinute);
+
+    // Move the contract into expiry.
+    await derivativeContract.remargin({ from: provider });
+    var state = await derivativeContract.state();
+    assert.equal(state.toString(), "2");
+
+    nav = await derivativeContract.nav();
+    assert.equal(nav.toString(), expectedNewNav.toString());
+
+    // Both counterparties must confirm to push the contract into settlement.
+    await derivativeContract.confirmPrice({ from: investor });
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "2");
+
+    await derivativeContract.confirmPrice({ from: provider });
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "5");
+
+    // The NAV should have updated based on the new price that came in pre-termination.
+    nav = await derivativeContract.nav();
+    assert.notEqual(nav.toString(), web3.utils.toWei("1", "ether"));
+
+    var investorStruct = await derivativeContract.investor();
+    assert.equal(investorStruct[1].toString(), nav.toString());
+
+    var providerStruct = await derivativeContract.provider();
+    var contractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+    assert.equal(contractBalance.toString(), providerStruct[1].add(nav).toString());
+
+    // Redeem tokens and withdraw money.
+    await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: investor });
+    await derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: investor });
+    await derivativeContract.withdraw(providerStruct[1].toString(), { from: provider });
+
+    contractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
+    assert.equal(contractBalance.toString(), "0");
+
+    await deployedOracle.addVerifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
+    await deployedOracle.addVerifiedPrice(web3.utils.toWei("1.1", "ether"), { from: ownerAddress });
+  });
+
+  it("Live -> Expired -> Settled (oracle price)", async function() {
+    // TODO(mrice32)
+  });
+
 });
