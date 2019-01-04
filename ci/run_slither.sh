@@ -12,13 +12,14 @@ then
     make
     sudo make altinstall
     cd ..
-    rm -rf Python-3.6.3.tgz
-    rm -rf Python-3.6.3
+    sudo rm -rf Python-3.6.3.tgz
+    sudo rm -rf Python-3.6.3
 fi
 
 git clone https://github.com/trailofbits/slither.git
 cd slither
 sudo python3.6 setup.py install
 cd ..
-rm -rf slither
+sudo rm -rf slither
+npx truffle compile
 python3.6 -m slither --truffle-version=latest --exclude=naming-convention,solc-version,pragma,external-function .
