@@ -21,4 +21,4 @@ cd slither
 sudo python3.6 setup.py install
 cd ..
 rm -rf slither
-python3.6 -m slither --exclude=naming-convention,solc-version,pragma,external-function .
+python3.6 -m slither --truffle-version=latest --exclude=naming-convention,solc-version,pragma,external-function .
