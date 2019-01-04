@@ -98,9 +98,12 @@ workflows:
       - build:
           requires:
             - checkout_and_install
+            - lint
+            - slither
       - lint:
           requires:
             - checkout_and_install
+            - slither
       - slither:
           requires:
             - checkout_and_install
@@ -111,4 +114,4 @@ workflows:
       - coverage:
           requires:
             - checkout_and_install
-            - build
+            - test
