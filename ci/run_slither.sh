@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 
-sudo apt update -y
-sudo apt install software-properties-common -y
-sudo add-apt-repository -y ppa:jonathonf/python-3.6
-sudo apt update --allow-unauthenticated --force-yes --yes
-sudo apt install python3.6 -y
-python3.6 -m pip install --upgrade pip setuptools wheel
+which python3.6
+retVal=$?
+if [ $retVal -ne 0 ]
+then
+    sudo apt update -y && sudo apt upgrade
+    wget https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tgz
+    tar xvf Python-3.6.3.tgz
+    cd Python-3.6.3
+    ./configure --enable-optimizations --with-ensurepip=install
+    make
+    sudo make altinstall
+fi
+
 git clone https://github.com/trailofbits/slither.git
 cd slither
 sudo python3.6 setup.py install
