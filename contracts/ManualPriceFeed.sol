@@ -23,8 +23,6 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable {
 
     // Mapping from symbol to the price series for that symbol.
     mapping(bytes32 => PriceTick[]) private prices;
-    // Do we need this separately?
-    mapping(bytes32 => bool) private supportedSymbols;
 
     // Adds a new price to the series for a given symbol. The pushed publishTime must be later than any existing time.
     function pushLatestPrice(bytes32 symbol, uint publishTime, int256 newPrice) external onlyOwner {
