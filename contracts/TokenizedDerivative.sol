@@ -20,7 +20,14 @@ contract Leveraged2x is ReturnCalculator {
     using SafeMath for int;
 
     function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
-        return newOraclePrice.mul(1 ether).div(oldOraclePrice).sub(1 ether).mul(2).add(1 ether);
+        // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
+        int underlyingAssetReturn = newOraclePrice.mul(1 ether).div(oldOraclePrice);
+
+        // Compute the RoR of the underlying asset and multiply by 2 to add the leverage.
+        int leveragedRor = underlyingAssetReturn.sub(1 ether).mul(2);
+
+        // Add 1 (ether) to the leveraged RoR to get the return.
+        return leveragedRor.add(1 ether);
     }
 }
 
