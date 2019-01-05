@@ -52,7 +52,7 @@ contract VoteInterface {
 
     // Gets the default proposal (option 1 during the primary vote period) price for a particular time during the
     // current period.
-    function getDefaultProposedPriceAtTime(uint time) external view returns (int256 price);
+    function getDefaultProposedPriceAtTime(uint time) external view returns (int price);
 
     // Gets the committed hash for a particular poll and voter. This is meant to be used as a debugging tool if a call
     // to revealVote() unexpectedly fails.

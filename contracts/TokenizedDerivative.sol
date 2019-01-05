@@ -83,7 +83,7 @@ contract TokenizedDerivative is ERC20 {
 
     struct ContractParty {
         address payable accountAddress;
-        int256 balance;
+        int balance;
         bool hasConfirmedPrice;
         uint marginRequirement; // Percentage of nav*10^18
     }
@@ -114,9 +114,9 @@ contract TokenizedDerivative is ERC20 {
     int public prevTokenPrice;
     uint public prevRemarginTime;
 
-    int256 public tokenPrice;
-    int256 public underlyingPrice;
-    int256 public nav;  // Net asset value is measured in Wei
+    int public tokenPrice;
+    int public underlyingPrice;
+    int public nav;  // Net asset value is measured in Wei
 
     uint public additionalAuthorizedNav;
 
@@ -124,7 +124,7 @@ contract TokenizedDerivative is ERC20 {
 
     // The information in the following struct is only valid if in the midst of a Dispute.
     struct Dispute {
-        int256 disputedNav;
+        int disputedNav;
         address disputer;
         uint deposit;
     }
@@ -321,7 +321,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function withdraw(uint256 amount) external payable onlyProvider {
+    function withdraw(uint amount) external payable onlyProvider {
         // Make sure either in Live or Settled
         require(state == State.Live || state == State.Settled);
 
@@ -334,7 +334,7 @@ contract TokenizedDerivative is ERC20 {
         // withdraw up to full balance. If the contract is in live state then
         // must leave at least `requiredMargin`. Not allowed to withdraw in
         // other states
-        int256 withdrawableAmount = (state == State.Settled) ?
+        int withdrawableAmount = (state == State.Settled) ?
             provider.balance :
             provider.balance - _getRequiredEthMargin(provider, nav);
 
@@ -419,7 +419,7 @@ contract TokenizedDerivative is ERC20 {
 
         // Update nav of contract
 
-        int256 newNav = _computeNav(oraclePrice, currentTime);
+        int newNav = _computeNav(oraclePrice, currentTime);
         _remargin(newNav);
         _reduceAuthorizedTokens(newNav);
     }
@@ -444,10 +444,10 @@ contract TokenizedDerivative is ERC20 {
         return (inDefault, defaulter, notDefaulter);
     }
 
-    function _getRequiredEthMargin(ContractParty storage party, int256 currentNav)
+    function _getRequiredEthMargin(ContractParty storage party, int currentNav)
         internal
         view
-        returns (int256 requiredEthMargin)
+        returns (int requiredEthMargin)
     {
         return _takePercentage(currentNav, party.marginRequirement);
     }
@@ -466,7 +466,7 @@ contract TokenizedDerivative is ERC20 {
 
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
-    function _settle(int256 price) internal {
+    function _settle(int price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
         _updateBalances(_recomputeNav(price, endTime));
@@ -476,8 +476,8 @@ contract TokenizedDerivative is ERC20 {
 
         if (inDefault) {
             (ContractParty storage defaulter, ContractParty storage notDefaulter) = _whoAmI(_defaulter);
-            int256 penalty;
-            int256 expectedDefaultPenalty = _getDefaultPenaltyEth();
+            int penalty;
+            int expectedDefaultPenalty = _getDefaultPenaltyEth();
             penalty = (defaulter.balance < expectedDefaultPenalty) ?
                 defaulter.balance :
                 expectedDefaultPenalty;
@@ -548,7 +548,7 @@ contract TokenizedDerivative is ERC20 {
 
     // Gets the change in balance for the long side.
     // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
-    function _getLongNavDiff(int navNew) internal view returns (int256 longNavDiff) {
+    function _getLongNavDiff(int navNew) internal view returns (int longNavDiff) {
         return navNew.sub(nav);
     }
 
@@ -565,7 +565,7 @@ contract TokenizedDerivative is ERC20 {
 
         if (reqMargin > providerBalance) {
             // Not enough margin to maintain additionalAuthorizedNav
-            int256 navCap = providerBalance.mul(1 ether).div(int(provider.marginRequirement));
+            int navCap = providerBalance.mul(1 ether).div(int(provider.marginRequirement));
             assert(navCap > currentNav);
             additionalAuthorizedNav = uint(navCap.sub(currentNav));
             return true;
@@ -574,11 +574,11 @@ contract TokenizedDerivative is ERC20 {
         return false;
     }
 
-    function _getDefaultPenaltyEth() internal view returns (int256 penalty) {
+    function _getDefaultPenaltyEth() internal view returns (int penalty) {
         return _takePercentage(termination.nav, defaultPenalty);
     }
 
-    function _tokensFromNav(int256 currentNav, int256 unitNav) internal pure returns (int256 numTokens) {
+    function _tokensFromNav(int currentNav, int unitNav) internal pure returns (int numTokens) {
         if (unitNav <= 0) {
             return 0;
         } else {
@@ -586,7 +586,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function _computeNav(int256 oraclePrice, uint currentTime) private returns (int256 navNew) {
+    function _computeNav(int oraclePrice, uint currentTime) private returns (int navNew) {
         int underlyingReturn = returnCalculator.computeReturn(underlyingPrice, oraclePrice);
         int tokenReturn = underlyingReturn.sub(int(fixedFeePerSecond.mul(currentTime.sub(lastRemarginTime))));
         int newTokenPrice = 0;
@@ -604,7 +604,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     // TODO(mrice32): make "old state" and "new state" a storage argument to combine this and computeNav.
-    function _recomputeNav(int256 oraclePrice, uint currentTime) private returns (int navNew) {
+    function _recomputeNav(int oraclePrice, uint currentTime) private returns (int navNew) {
         assert(lastRemarginTime == currentTime);
         int underlyingReturn = returnCalculator.computeReturn(prevUnderlyingPrice, oraclePrice);
         int tokenReturn = underlyingReturn.sub(int(fixedFeePerSecond.mul(currentTime.sub(prevRemarginTime))));
@@ -619,7 +619,7 @@ contract TokenizedDerivative is ERC20 {
         lastRemarginTime = currentTime;
     }
 
-    function _initialNav(int256 oraclePrice, uint currentTime, uint startingPrice) private returns (int256 navNew) {
+    function _initialNav(int oraclePrice, uint currentTime, uint startingPrice) private returns (int navNew) {
         int unitNav = int(startingPrice);
         lastRemarginTime = currentTime;
         prevRemarginTime = currentTime;
@@ -635,7 +635,7 @@ contract TokenizedDerivative is ERC20 {
         return value.mul(percentage).div(1 ether);
     }
 
-    function _takePercentage(int value, uint percentage) private pure returns (int256 result) {
+    function _takePercentage(int value, uint percentage) private pure returns (int result) {
         return value.mul(int(percentage)).div(1 ether);
     }
 }

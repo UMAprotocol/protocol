@@ -18,7 +18,7 @@ contract OracleMock is OracleInterface, Ownable {
         // TODO(mattrice): may be more gas efficient to store these maps as arrays since the prices are published at
         // regular intervals and an index offset could be easily computed from the time.
         // Maps from the timestamp to the price at that time.
-        mapping(uint => int256) prices;
+        mapping(uint => int) prices;
 
         // Most recent publish times for each price feed.
         uint latestPublishTime;
@@ -45,38 +45,38 @@ contract OracleMock is OracleInterface, Ownable {
 
     // These functions are only here for the purpose of mocking a real feed. If this were meant for production, we
     // would want to provide the time and check that the time lines up with the expected next time on the feed.
-    function addUnverifiedPrice(int256 newPrice) external onlyOwner {
+    function addUnverifiedPrice(int newPrice) external onlyOwner {
         _addNextPriceToFeed(newPrice, _unverifiedFeed);
     }
 
-    function addUnverifiedPriceForTime(uint publishTime, int256 newPrice) external onlyOwner {
+    function addUnverifiedPriceForTime(uint publishTime, int newPrice) external onlyOwner {
         require(_isNextTime(publishTime, _unverifiedFeed));
         _addNextPriceToFeed(newPrice, _unverifiedFeed);
     }
 
-    function addVerifiedPrice(int256 newPrice) external onlyOwner {
+    function addVerifiedPrice(int newPrice) external onlyOwner {
         _addNextPriceToFeed(newPrice, _getVerifiedFeed());
     }
 
-    function addVerifiedPriceForTime(uint publishTime, int256 newPrice) external onlyOwner {
+    function addVerifiedPriceForTime(uint publishTime, int newPrice) external onlyOwner {
         FeedInfo storage verifiedFeed = _getVerifiedFeed();
         require(_isNextTime(publishTime, verifiedFeed));
         _addNextPriceToFeed(newPrice, verifiedFeed);
     }
 
-    function latestUnverifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestUnverifiedPrice() external view returns (uint publishTime, int price) {
         return _mostRecentPriceTime(_unverifiedFeed);
     }
 
-    function latestVerifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestVerifiedPrice() external view returns (uint publishTime, int price) {
         return _mostRecentPriceTime(_getVerifiedFeed());
     }
 
-    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function unverifiedPrice(uint time) external view returns (uint publishTime, int price) {
         return _getPrice(time, _unverifiedFeed);
     }
 
-    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function verifiedPrice(uint time) external view returns (uint publishTime, int price) {
         return _getPrice(time, _getVerifiedFeed());
     }
 
@@ -94,7 +94,7 @@ contract OracleMock is OracleInterface, Ownable {
     }
 
     // Returns the most recent price-time pair for a particular feed.
-    function _mostRecentPriceTime(FeedInfo storage feedInfo) private view returns (uint publishTime, int256 price) {
+    function _mostRecentPriceTime(FeedInfo storage feedInfo) private view returns (uint publishTime, int price) {
         // Note: if `latestPublishTime` is still 0 (no prices have been written to this feed), then `price` will be 0
         // (the default value for mapped values).
         return (feedInfo.latestPublishTime, feedInfo.prices[feedInfo.latestPublishTime]);
@@ -102,7 +102,7 @@ contract OracleMock is OracleInterface, Ownable {
 
     // Adds a new price to the mocked out feed. If this were meant for production, we would want to provide the time
     // and check that the time lines up with the expected next time on the feed.
-    function _addNextPriceToFeed(int256 newPrice, FeedInfo storage feedInfo) private {
+    function _addNextPriceToFeed(int newPrice, FeedInfo storage feedInfo) private {
         uint newTime = (feedInfo.latestPublishTime == 0 ?
             startTime : feedInfo.latestPublishTime.add(pricePublishInterval));
         assert(feedInfo.prices[newTime] == 0);
@@ -115,7 +115,7 @@ contract OracleMock is OracleInterface, Ownable {
     function _getPrice(uint time, FeedInfo storage feedInfo)
         private
         view
-        returns (uint publishTime, int256 price)
+        returns (uint publishTime, int price)
     {
         uint convertedTime = _intervalTime(time, feedInfo.latestPublishTime);
         return (convertedTime, feedInfo.prices[convertedTime]);

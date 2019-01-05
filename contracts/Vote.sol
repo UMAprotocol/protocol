@@ -348,7 +348,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         }
     }
 
-    function getDefaultProposedPriceAtTime(uint time) external view returns (int256 price) {
+    function getDefaultProposedPriceAtTime(uint time) external view returns (int price) {
         VotePeriod.Data storage votePeriod = _getCurrentVotePeriod();
         (uint startTime, uint endTime) = votePeriod._getPricePeriod(totalVotingDuration);
         require(time >= startTime && time < endTime);
@@ -367,7 +367,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return _getCurrentVotePeriod()._getVotingPoll(period)._getCommittedVote(voter);
     }
 
-    function latestUnverifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestUnverifiedPrice() external view returns (uint publishTime, int price) {
         uint currentLength = unverifiedPrices.length;
         if (currentLength == 0) {
             return (0, 0);
@@ -377,7 +377,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return (priceTime.time, priceTime.price);
     }
 
-    function latestVerifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestVerifiedPrice() external view returns (uint publishTime, int price) {
         if (firstUnverifiedIndex == 0) {
             return (0, 0);
         }
@@ -387,11 +387,11 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return (priceTime.time, priceTime.price);
     }
 
-    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function unverifiedPrice(uint time) external view returns (uint publishTime, int price) {
         return unverifiedPrices._getBestPriceTimeForTime(time, unverifiedPrices.length, priceInterval);
     }
 
-    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function verifiedPrice(uint time) external view returns (uint publishTime, int price) {
         return unverifiedPrices._getBestPriceTimeForTime(time, firstUnverifiedIndex, priceInterval);
     }
 

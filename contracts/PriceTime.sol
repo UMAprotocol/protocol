@@ -11,7 +11,7 @@ library PriceTime {
     using PriceTime for Data[];
 
     struct Data {
-        int256 price;
+        int price;
         uint time;
     }
 
@@ -57,7 +57,7 @@ library PriceTime {
     function _getBestPriceTimeForTime(Data[] storage self, uint time, uint lengthToConsider, uint interval)
         internal
         view
-        returns (uint publishTime, int256 price)
+        returns (uint publishTime, int price)
     {
         if (lengthToConsider == 0 || time < self[0].time) {
             return (0, 0);
