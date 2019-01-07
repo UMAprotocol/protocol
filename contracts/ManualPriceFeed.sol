@@ -18,7 +18,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable {
     // A single price update.
     struct PriceTick {
         uint timestamp;
-        int256 price;
+        int price;
     }
 
     // Mapping from symbol to the latest price for that symbol.
@@ -26,7 +26,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable {
 
     // Adds a new price to the series for a given symbol. The pushed publishTime must be later than the last time pushed
     // so far.
-    function pushLatestPrice(bytes32 symbol, uint publishTime, int256 newPrice) external onlyOwner {
+    function pushLatestPrice(bytes32 symbol, uint publishTime, int newPrice) external onlyOwner {
         require(publishTime > prices[symbol].timestamp);
         prices[symbol] = PriceTick(publishTime, newPrice);
         emit PriceUpdated(symbol, publishTime, newPrice);
@@ -37,7 +37,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable {
         isSupported = prices[symbol].timestamp > 0;
     }
 
-    function latestPrice(bytes32 symbol) external view returns (uint publishTime, int256 price) {
+    function latestPrice(bytes32 symbol) external view returns (uint publishTime, int price) {
         publishTime = prices[symbol].timestamp;
         price = prices[symbol].price;
     }
