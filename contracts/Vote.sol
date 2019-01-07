@@ -73,7 +73,8 @@ library Poll {
     }
 
     function _addProposal(Data storage self, string memory ipfsHash) internal {
-        uint idx = self.proposals.length++;
+        uint idx = self.proposals.length;
+        self.proposals.length = idx.add(1);
         self.proposals[idx].ipfsHash = ipfsHash;
     }
 
@@ -177,8 +178,6 @@ library VotePeriod {
 
 
 contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
-
-    // Note: SafeMath only works for uints right     using SafeMath for uint;
     using VotePeriod for VotePeriod.Data;
     using Poll for Poll.Data;
     using PriceTime for PriceTime.Data[];
@@ -309,7 +308,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
     function getCurrentCommitRevealPeriods() external view returns (Period[] memory periods) {
         uint startOfPeriod = _getStartOfPeriod(getCurrentTime());
         periods = new Period[](periodTimings.length);
-        for (uint i = 0; i < periodTimings.length; ++i) {
+        for (uint i = 0; i < periodTimings.length; i = i.add(1)) {
             Period memory timePeriod = periods[i];
             PeriodTiming storage periodTiming = periodTimings[i];
             timePeriod.startTime = periodTiming.startOffset.add(startOfPeriod);
@@ -342,12 +341,12 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         uint endIndex = unverifiedPrices._getIndex(endTime, priceInterval);
 
         prices = new PriceTime.Data[](endIndex.sub(startIndex));
-        for (uint i = startIndex; i < endIndex; ++i) {
+        for (uint i = startIndex; i < endIndex; i = i.add(1)) {
             prices[i.sub(startIndex)] = unverifiedPrices[i];
         }
     }
 
-    function getDefaultProposedPriceAtTime(uint time) external view returns (int256 price) {
+    function getDefaultProposedPriceAtTime(uint time) external view returns (int price) {
         VotePeriod.Data storage votePeriod = _getCurrentVotePeriod();
         (uint startTime, uint endTime) = votePeriod._getPricePeriod(totalVotingDuration);
         require(time >= startTime && time < endTime);
@@ -366,7 +365,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return _getCurrentVotePeriod()._getVotingPoll(period)._getCommittedVote(voter);
     }
 
-    function latestUnverifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestUnverifiedPrice() external view returns (uint publishTime, int price) {
         uint currentLength = unverifiedPrices.length;
         if (currentLength == 0) {
             return (0, 0);
@@ -376,7 +375,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return (priceTime.time, priceTime.price);
     }
 
-    function latestVerifiedPrice() external view returns (uint publishTime, int256 price) {
+    function latestVerifiedPrice() external view returns (uint publishTime, int price) {
         if (firstUnverifiedIndex == 0) {
             return (0, 0);
         }
@@ -386,11 +385,11 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         return (priceTime.time, priceTime.price);
     }
 
-    function unverifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function unverifiedPrice(uint time) external view returns (uint publishTime, int price) {
         return unverifiedPrices._getBestPriceTimeForTime(time, unverifiedPrices.length, priceInterval);
     }
 
-    function verifiedPrice(uint time) external view returns (uint publishTime, int256 price) {
+    function verifiedPrice(uint time) external view returns (uint publishTime, int price) {
         return unverifiedPrices._getBestPriceTimeForTime(time, firstUnverifiedIndex, priceInterval);
     }
 
@@ -413,7 +412,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         uint currentLength = unverifiedPrices.length;
 
         // We don't need to do any checks if we're appending to the end - this is always allowed.
-        if (currentLength != 0 && unverifiedPrices[currentLength - 1].time >= priceTimes[0].time) {
+        if (currentLength != 0 && unverifiedPrices[currentLength.sub(1)].time >= priceTimes[0].time) {
 
             // Verified prices cannot be changed.
             require(unverifiedPrices._getIndex(priceTimes[0].time, priceInterval) >= firstUnverifiedIndex);
@@ -421,7 +420,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
 
             uint startVotePeriod = _getVotePeriodIndexForStartTime(priceTimes[0].time);
             uint endVotePeriod = _getVotePeriodIndexForStartTime(priceTimes[priceTimes.length.sub(1)].time);
-            for (uint i = startVotePeriod; i <= endVotePeriod; ++i) {
+            for (uint i = startVotePeriod; i <= endVotePeriod; i = i.add(1)) {
                 if (i <= currentVotePeriodIndex) {
                     // Must be trying to change the prices to the winner of the price feed.
                     require(!votePeriods[i]._skipRunoff());
@@ -509,7 +508,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         view
         returns (VotePeriod.PeriodType periodType)
     {
-        for (uint i = 0; i < periodTimings.length; ++i) {
+        for (uint i = 0; i < periodTimings.length; i = i.add(1)) {
             if (periodTimings[i].startOffset.add(votePeriodStartTime) <= currentTime
                 && currentTime < periodTimings[i].endOffset.add(votePeriodStartTime)) {
                 periodType = periodTimings[i].state;
@@ -526,7 +525,8 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
     }
 
     function _newVotePeriod(uint startTime) private returns (VotePeriod.Data storage votePeriod) {
-        currentVotePeriodIndex = votePeriods.length++;
+        currentVotePeriodIndex = votePeriods.length;
+        votePeriods.length = votePeriods.length.add(1);
         votePeriod = votePeriods[currentVotePeriodIndex];
         votePeriod._init(startTime);
     }
@@ -545,7 +545,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
 
         uint newFirstUnverifiedIndex = firstUnverifiedIndex;
 
-        for (uint idx = startIdx; idx < endIdx; ++idx) {
+        for (uint idx = startIdx; idx < endIdx; idx = idx.add(1)) {
             VotePeriod.Data storage votePeriod = votePeriods[idx];
             if (votePeriod._skipRunoff()) {
                 (, uint endTime) = votePeriod._getPricePeriod(totalVotingDuration);
