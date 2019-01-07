@@ -86,20 +86,6 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
         needsReview.length = needsReview.length.sub(1);
     }
 
-    // Is this useful? Does it save on gas by being a view function? Or does having this extra function waste bytes in
-    // the contract itself?
-    function isPriceAvailable(uint time, bytes32 symbol) external view returns (bool isAvailable) {
-        return verifiedPrices[symbol][time].isAvailable;
-    }
-
-    function getPriceKnownToBeAvailable(uint time, bytes32 symbol)
-            external
-            view
-        returns (uint timeForPrice, int price) {
-            require(verifiedPrices[symbol][time].isAvailable);
-            return (time, verifiedPrices[symbol][time].price);
-        }
-
     // Gets the queries that still need verified prices.
     function getPendingQueries() external view onlyOwner returns (QueryPoint[] memory queryPoints) {
         return needsReview;
