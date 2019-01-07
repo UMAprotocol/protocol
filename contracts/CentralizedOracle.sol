@@ -82,6 +82,7 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
             queryIndices[queryToCopy.symbol][queryToCopy.time].index = indexToReplace;
             needsReview[indexToReplace] = queryToCopy;
         }
+        delete needsReview[lastIndex];
         needsReview.length = needsReview.length.sub(1);
     }
 
