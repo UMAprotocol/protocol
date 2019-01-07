@@ -11,7 +11,6 @@ import "./OracleInterface.sol";
 
 
 contract OracleMock is OracleInterface, Ownable {
-    // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
 
     struct FeedInfo {

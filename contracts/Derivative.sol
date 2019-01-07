@@ -13,8 +13,6 @@ import "./ContractCreator.sol";
 
 
 contract Derivative {
-
-    // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
     using SafeMath for int;
 
