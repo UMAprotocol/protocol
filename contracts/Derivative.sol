@@ -13,10 +13,8 @@ import "./ContractCreator.sol";
 
 
 contract Derivative {
-
-    // Note: SafeMath only works for uints right now.
     using SafeMath for uint;
-    // using SafeMath for int256;
+    using SafeMath for int;
 
     enum State {
         // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
@@ -53,13 +51,13 @@ contract Derivative {
 
     struct ContractParty {
         address payable accountAddress;
-        int256 balance;
+        int balance;
         bool hasConfirmedPrice;
     }
 
     // Financial information
-    int256 public defaultPenalty;
-    int256 public requiredMargin;
+    int public defaultPenalty;
+    int public requiredMargin;
     string public product;
     uint public notional;
 
@@ -73,14 +71,14 @@ contract Derivative {
     uint public endTime;
     uint public lastRemarginTime;
 
-    int256 public npv;  // Net present value is measured in Wei
+    int public npv;  // Net present value is measured in Wei
 
     constructor(
         address payable _makerAddress,
         address payable _takerAddress,
         address _oracleAddress,
-        int256 _defaultPenalty,
-        int256 _requiredMargin,
+        int _defaultPenalty,
+        int _requiredMargin,
         uint expiry,
         string memory _product,
         uint _notional
@@ -90,7 +88,7 @@ contract Derivative {
         // TODO: Think about who is sending the `msg.value`
         require(_makerAddress != _takerAddress);
         maker = ContractParty(_makerAddress, 0, false);
-        taker = ContractParty(_takerAddress, int256(msg.value), false);
+        taker = ContractParty(_takerAddress, int(msg.value), false);
 
         // Contract states
         endTime = expiry;
@@ -101,7 +99,7 @@ contract Derivative {
         notional = _notional;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        (, int oraclePrice) = oracle.latestUnverifiedPrice();
         npv = initialNpv(oraclePrice, notional);
     }
 
@@ -129,7 +127,7 @@ contract Derivative {
         // we are in a "depositable" state
         require(state == State.Live || state == State.Prefunded);
         (ContractParty storage depositer,) = _whoAmI(msg.sender);
-        depositer.balance += int256(msg.value);  // Want this to be safemath when available
+        depositer.balance = depositer.balance.add(int(msg.value));  // Want this to be safemath when available
 
         if (state == State.Prefunded) {
             if (maker.balance >= _requiredAccountBalanceOnRemargin(maker) &&
@@ -159,7 +157,7 @@ contract Derivative {
         _settleVerifiedPrice();
     }
 
-    function withdraw(uint256 amount) external payable {
+    function withdraw(uint amount) external payable {
         // Make sure either in Prefunded, Live, or Settled
         require(state == State.Prefunded || state == State.Live || state == State.Settled);
 
@@ -174,32 +172,32 @@ contract Derivative {
         // withdraw up to full balance. If the contract is in live state then
         // must leave at least `requiredMargin`. Not allowed to withdraw in
         // other states
-        int256 withdrawableAmount = (state == State.Prefunded || state == State.Settled) ?
+        int withdrawableAmount = (state == State.Prefunded || state == State.Settled) ?
             withdrawer.balance :
-            withdrawer.balance - requiredMargin;
+            withdrawer.balance.sub(requiredMargin);
 
         // Can only withdraw the allowed amount
         require(
-            (int256(withdrawableAmount) >= int256(amount)),
+            (int(withdrawableAmount) >= int(amount)),
             "Attempting to withdraw more than allowed"
         );
 
         // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
         // to return
-        withdrawer.balance -= int256(amount);
+        withdrawer.balance = withdrawer.balance.sub(int(amount));
         withdrawer.accountAddress.transfer(amount);
     }
 
-    function requiredAccountBalanceOnRemargin() external view returns (int256 balance) {
+    function requiredAccountBalanceOnRemargin() external view returns (int balance) {
         (ContractParty storage sender,) = _whoAmI(msg.sender);
 
         return _requiredAccountBalanceOnRemargin(sender);
     }
 
-    function npvIfRemarginedImmediately() external view returns (int256 immediateNpv) {
+    function npvIfRemarginedImmediately() external view returns (int immediateNpv) {
         // Checks whether contract has ended
-        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
         if (currentTime >= endTime) {
             (, oraclePrice) = oracle.unverifiedPrice(endTime);
@@ -211,19 +209,19 @@ contract Derivative {
     // Concrete contracts should inherit from this contract and then should only need to implement a
     // `computeNpv` and `initialNpv` function. This allows for generic choices of NPV
     // functions.
-    function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
+    function computeNpv(int oraclePrice, uint _notional) public view returns (int npvNew);
     // Get the NPV that the contract where the contract is expected to start. Since this is the zero point for the
     // contract, the contract will only move money when the computed NPV differs from this value. For example, if
     // `initialNpv()` returns 50, the contract would move 1 Wei if the contract were remargined and
     // `computeUnverifiedNpv` returned 51.
-    function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew);
+    function initialNpv(int oraclePrice, uint _notional) public view returns (int npvNew);
 
     function remargin() public {
         // If the state is not live, remargining does not make sense.
         require(state == State.Live);
 
         // Checks whether contract has ended
-        (uint currentTime, int256 oraclePrice) = oracle.latestUnverifiedPrice();
+        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
         require(currentTime != 0);
         if (currentTime >= endTime) {
             (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
@@ -270,7 +268,7 @@ contract Derivative {
 
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
-    function _settle(int256 price) internal {
+    function _settle(int price) internal {
 
         // Remargin at whatever price we're using (verified or unverified)
         _remargin(computeNpv(price, notional));
@@ -280,13 +278,13 @@ contract Derivative {
 
         if (inDefault) {
             (ContractParty storage defaulter, ContractParty storage notDefaulter) = _whoAmI(_defaulter);
-            int256 penalty;
+            int penalty;
             penalty = (defaulter.balance < defaultPenalty) ?
                 defaulter.balance :
                 defaultPenalty;
 
-            defaulter.balance -= penalty;
-            notDefaulter.balance += penalty;
+            defaulter.balance = defaulter.balance.sub(penalty);
+            notDefaulter.balance = notDefaulter.balance.add(penalty);
         }
         state = State.Settled;
     }
@@ -294,7 +292,7 @@ contract Derivative {
     function _settleAgreedPrice() internal {
         (uint currentTime,) = oracle.latestUnverifiedPrice();
         require(currentTime >= endTime);
-        (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
+        (, int oraclePrice) = oracle.unverifiedPrice(endTime);
 
         _settle(oraclePrice);
     }
@@ -302,7 +300,7 @@ contract Derivative {
     function _settleVerifiedPrice() internal {
         (uint currentTime,) = oracle.latestVerifiedPrice();
         require(currentTime >= endTime);
-        (, int256 oraclePrice) = oracle.verifiedPrice(endTime);
+        (, int oraclePrice) = oracle.verifiedPrice(endTime);
 
         _settle(oraclePrice);
     }
@@ -311,7 +309,7 @@ contract Derivative {
     // The internal remargin method allows certain calls into the contract to
     // automatically remargin to non-current NPV values (time of expiry, last
     // agreed upon price, etc).
-    function _remargin(int256 npvNew) internal {
+    function _remargin(int npvNew) internal {
         // Update the balances of contract
         _updateBalances(npvNew);
 
@@ -326,31 +324,31 @@ contract Derivative {
         }
     }
 
-    function _updateBalances(int256 npvNew) internal {
+    function _updateBalances(int npvNew) internal {
         // Compute difference -- Add the difference to owner and subtract
         // from counterparty. Then update npv state variable.
-        int256 makerDiff = _getMakerNpvDiff(npvNew);
+        int makerDiff = _getMakerNpvDiff(npvNew);
         npv = npvNew;
 
-        maker.balance += makerDiff;
-        taker.balance -= makerDiff;
+        maker.balance = maker.balance.add(makerDiff);
+        taker.balance = taker.balance.sub(makerDiff);
     }
 
     // Gets the change in balance for the owners account when the most recent
     // NPV is applied. Note: there's a function for this because signage is
     // tricky here, and it must be done the same everywhere.
-    function _getMakerNpvDiff(int256 npvNew) internal view returns (int256 ownerNpvDiff) {
-        return npv - npvNew;
+    function _getMakerNpvDiff(int npvNew) internal view returns (int ownerNpvDiff) {
+        return npv.sub(npvNew);
     }
 
-    function _requiredAccountBalanceOnRemargin(ContractParty storage party) internal view returns (int256 balance) {
-        (, int256 oraclePrice) = oracle.unverifiedPrice(endTime);
-        int256 makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice, notional));
+    function _requiredAccountBalanceOnRemargin(ContractParty storage party) internal view returns (int balance) {
+        (, int oraclePrice) = oracle.unverifiedPrice(endTime);
+        int makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice, notional));
 
         if (party.accountAddress == maker.accountAddress) {
-            balance = requiredMargin - makerDiff;
+            balance = requiredMargin.sub(makerDiff);
         } else if (party.accountAddress == taker.accountAddress) {
-            balance = requiredMargin + makerDiff;
+            balance = requiredMargin.add(makerDiff);
         }
 
         balance = balance > 0 ? balance : 0;
@@ -364,8 +362,8 @@ contract SimpleDerivative is Derivative {
         address payable _ownerAddress,
         address payable _counterpartyAddress,
         address _oracleAddress,
-        int256 _defaultPenalty,
-        int256 _requiredMargin,
+        int _defaultPenalty,
+        int _requiredMargin,
         uint expiry,
         string memory product,
         uint notional
@@ -379,13 +377,13 @@ contract SimpleDerivative is Derivative {
         product,
         notional) {} // solhint-disable-line no-empty-blocks
 
-    function computeNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
+    function computeNpv(int oraclePrice, uint _notional) public view returns (int npvNew) {
         // This could be more complex, but in our case, just return the oracle value.
-        return (oraclePrice * int256(_notional)) / (1 ether);
+        return oraclePrice.mul(int(_notional)).div(1 ether);
     }
 
-    function initialNpv(int256 oraclePrice, uint _notional) public view returns (int256 npvNew) {
-        return (oraclePrice * int256(_notional)) / (1 ether);
+    function initialNpv(int oraclePrice, uint _notional) public view returns (int npvNew) {
+        return oraclePrice.mul(int(_notional)).div(1 ether);
     }
 
 }
@@ -398,8 +396,8 @@ contract DerivativeCreator is ContractCreator {
 
     function createDerivative(
         address payable counterparty,
-        int256 defaultPenalty,
-        int256 requiredMargin,
+        int defaultPenalty,
+        int requiredMargin,
         uint expiry,
         string calldata product,
         uint notional
