@@ -58,7 +58,7 @@ contract Derivative {
     // Financial information
     int public defaultPenalty;
     int public requiredMargin;
-    string public product;
+    bytes32 public product;
     uint public notional;
 
     // Other addresses/contracts
@@ -80,7 +80,7 @@ contract Derivative {
         int _defaultPenalty,
         int _requiredMargin,
         uint expiry,
-        string memory _product,
+        bytes32 _product,
         uint _notional
     ) public payable {
         // Address information
@@ -365,7 +365,7 @@ contract SimpleDerivative is Derivative {
         int _defaultPenalty,
         int _requiredMargin,
         uint expiry,
-        string memory product,
+        bytes32 product,
         uint notional
     ) public payable Derivative(
         _ownerAddress,
@@ -400,7 +400,7 @@ contract DerivativeCreator is ContractCreator {
         int defaultPenalty,
         int requiredMargin,
         uint expiry,
-        string calldata product,
+        bytes32 product,
         uint notional
     )
         external

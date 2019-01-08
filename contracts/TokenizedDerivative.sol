@@ -94,7 +94,7 @@ contract TokenizedDerivative is ERC20 {
     // Financial information
     uint public defaultPenalty; // Percentage of nav*10^18
     uint public terminationFee; // Percentage of nav*10^18
-    string public product;
+    bytes32 public product;
 
     // Other addresses/contracts
     ContractParty public provider;
@@ -163,7 +163,7 @@ contract TokenizedDerivative is ERC20 {
         uint _defaultPenalty, // Percentage of nav*10^18
         uint _terminationFee, // Percentage of nav*10^18
         uint _providerRequiredMargin, // Percentage of nav*10^18
-        string memory _product,
+        bytes32 _product,
         uint _fixedYearlyFee, // Percentage of nav * 10^18
         uint _disputeDeposit, // Percentage of nav * 10^18
         address _returnCalculator,
@@ -651,7 +651,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint defaultPenalty,
         uint terminationFee,
         uint providerRequiredMargin,
-        string calldata product,
+        bytes32 product,
         uint fixedYearlyFee,
         uint disputeDeposit,
         address returnCalculator,

@@ -8,6 +8,7 @@ const NoLeverage = artifacts.require("NoLeverage");
 const BigNumber = require("bignumber.js");
 
 contract("TokenizedDerivative", function(accounts) {
+  let productSymbolBytes;
   let derivativeContract;
   let deployedRegistry;
   let deployedOracle;
@@ -31,6 +32,7 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   const deployNewTokenizedDerivative = async expiryDelay => {
+    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Note: it is assumed that each deployment starts with the verified and unverified feeds aligned.
     // To make the tests more realistic, the unverified feed is bumped by one step to ensure it is slightly ahead.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
@@ -46,7 +48,7 @@ contract("TokenizedDerivative", function(accounts) {
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.1", "ether"),
-      "ETH/USD",
+      productSymbolBytes,
       web3.utils.toWei("0.01", "ether"),
       web3.utils.toWei("0.05", "ether"),
       noLeverageCalculator.address,

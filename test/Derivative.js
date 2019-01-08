@@ -6,6 +6,7 @@ const Oracle = artifacts.require("OracleMock");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
 
 contract("Derivative", function(accounts) {
+  let productSymbolBytes;
   let derivativeContract;
   let deployedRegistry;
   let deployedOracle;
@@ -16,6 +17,7 @@ contract("Derivative", function(accounts) {
   const makerAddress = accounts[2];
 
   before(async function() {
+    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
@@ -39,7 +41,7 @@ contract("Derivative", function(accounts) {
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.1", "ether"),
       expiry.toString(),
-      "ETH/USD",
+      productSymbolBytes,
       web3.utils.toWei("1", "ether"),
       { from: takerAddress, value: web3.utils.toWei("1", "ether") }
     );
