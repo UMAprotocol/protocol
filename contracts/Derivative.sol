@@ -425,6 +425,8 @@ contract DerivativeCreator is ContractCreator {
 
         V2OracleInterface v2Oracle = V2OracleInterface(v2OracleAddress);
         require(v2Oracle.isSymbolSupported(product));
+        PriceFeedInterface priceFeed = PriceFeedInterface(priceFeedAddress);
+        require(priceFeed.isSymbolSupported(product));
         _registerNewContract(msg.sender, counterparty, address(derivative));
 
         return address(derivative);

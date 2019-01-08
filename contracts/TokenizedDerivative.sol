@@ -680,6 +680,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
 
         V2OracleInterface v2Oracle = V2OracleInterface(v2OracleAddress);
         require(v2Oracle.isSymbolSupported(product));
+        PriceFeedInterface priceFeed = PriceFeedInterface(priceFeedAddress);
+        require(priceFeed.isSymbolSupported(product));
         _registerNewContract(provider, investor, address(derivative));
 
         return address(derivative);

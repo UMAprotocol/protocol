@@ -28,6 +28,7 @@ contract("Derivative", function(accounts) {
     deployedDerivativeCreator = await DerivativeCreator.deployed();
 
     deployedCentralizedOracle.addSupportedSymbol(productSymbolBytes);
+    deployedManualPriceFeed.pushLatestPrice(productSymbolBytes, 100, web3.utils.toWei("0", "ether"));
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0", "ether"), { from: ownerAddress });
