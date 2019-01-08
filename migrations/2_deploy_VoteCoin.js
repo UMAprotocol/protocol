@@ -118,7 +118,7 @@ module.exports = function(deployer, network, accounts) {
         return NoLeverage.deployed();
       })
       .then(() => {
-          return deployer.deploy(ManualPriceFeed);
+          return deployer.deploy(ManualPriceFeed, enableControllableTiming(network));
       })
       .then(() => {
           return ManualPriceFeed.deployed();

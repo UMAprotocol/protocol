@@ -23,8 +23,8 @@ contract("ManualPriceFeed", function(accounts) {
         assert.equal(supported, false);
 
         // No prices have been published, so latest `publishTime` is 0.
-        let actualPriceTick = await manualPriceFeed.latestPrice(symbolBytes);
-        assert.equal(actualPriceTick.publishTime, 0);
+        assert(
+            await didContractThrow(manualPriceFeed.latestPrice(symbolBytes)));
 
         // Push a price at time=100, and the symbol should now be supported.
         await manualPriceFeed.pushLatestPrice(symbolBytes, 100, 500);
@@ -58,19 +58,19 @@ contract("ManualPriceFeed", function(accounts) {
         assert.equal(secondSymbolSupported, false);
         assert.equal(absentSymbolSupported, false);
 
-        // And all latest `publishTime`'s are 0.
-        let firstSymbolPriceTick = await manualPriceFeed.latestPrice(firstSymbolBytes);
-        let secondSymbolPriceTick = await manualPriceFeed.latestPrice(secondSymbolBytes);
-        let absentSymbolPriceTick = await manualPriceFeed.latestPrice(absentSymbolBytes);
-        assert.equal(firstSymbolPriceTick.publishTime, 0);
-        assert.equal(secondSymbolPriceTick.publishTime, 0);
-        assert.equal(absentSymbolPriceTick.publishTime, 0);
+        // And all latestPrice calls revert because these symbols are not supported.
+        assert(
+            await didContractThrow(manualPriceFeed.latestPrice(firstSymbolBytes)));
+        assert(
+            await didContractThrow(manualPriceFeed.latestPrice(secondSymbolBytes)));
+        assert(
+            await didContractThrow(manualPriceFeed.latestPrice(absentSymbolBytes)));
 
         // Push a price for the first symbol.
         await manualPriceFeed.pushLatestPrice(firstSymbolBytes, 100, 500);
 
         // Prices exist only for the first symbol.
-        firstSymbolPriceTick = await manualPriceFeed.latestPrice(firstSymbolBytes);
+        let firstSymbolPriceTick = await manualPriceFeed.latestPrice(firstSymbolBytes);
         assert.equal(firstSymbolPriceTick.publishTime, 100);
         assert.equal(firstSymbolPriceTick.price, 500);
         secondSymbolSupported = await manualPriceFeed.isSymbolSupported(secondSymbolBytes);
@@ -83,7 +83,7 @@ contract("ManualPriceFeed", function(accounts) {
 
         // Distinct prices exist for the two symbols, but the absentSymbol is still unsupported.
         firstSymbolPriceTick = await manualPriceFeed.latestPrice(firstSymbolBytes);
-        secondSymbolPriceTick = await manualPriceFeed.latestPrice(secondSymbolBytes);
+        let secondSymbolPriceTick = await manualPriceFeed.latestPrice(secondSymbolBytes);
         assert.equal(firstSymbolPriceTick.publishTime, 100);
         assert.equal(firstSymbolPriceTick.price, 500);
         assert.equal(secondSymbolPriceTick.publishTime, 200);
@@ -95,16 +95,21 @@ contract("ManualPriceFeed", function(accounts) {
     it("Non owner", async function() {
         const symbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Owned"));
 
-        // Verify that anyone can query the price.
+        // Verify that the symbol is not supported yet.
         let supported = await manualPriceFeed.isSymbolSupported(symbolBytes, { from: rando });
         assert.equal(supported, false);
-        let actualPriceTick = await manualPriceFeed.latestPrice(symbolBytes, { from: rando });
-        assert.equal(actualPriceTick.publishTime, 0);
 
         // Non-owners can't push prices.
         assert(
             await didContractThrow(manualPriceFeed.pushLatestPrice(symbolBytes, 100, 500, { from: rando }))
         );
+
+        await manualPriceFeed.pushLatestPrice(symbolBytes, 100, 500, { from: owner })
+
+        // Verify that non-owners can still query prices.
+        let priceTick = await manualPriceFeed.latestPrice(symbolBytes, { from: rando });
+        assert.equal(priceTick.publishTime, 100);
+        assert.equal(priceTick.price, 500);
     });
 
     it("Push non-consecutive prices", async function() {
@@ -116,5 +121,24 @@ contract("ManualPriceFeed", function(accounts) {
         assert(
             await didContractThrow(manualPriceFeed.pushLatestPrice(symbolBytes, 50, 500))
         );
+    });
+
+    it("Push a future price", async function() {
+        const symbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Future-price"));
+
+        const tolerance = 900;
+        const currentTime = 1000;
+        await manualPriceFeed.setCurrentTime(currentTime);
+
+        // Verify that a price later than the current time + tolerance can't be pushed.
+        assert(
+            await didContractThrow(manualPriceFeed.pushLatestPrice(symbolBytes, currentTime + tolerance + 1, 500))
+        );
+
+        // Verify that prices can be pushed within the tolerance.
+        await manualPriceFeed.pushLatestPrice(symbolBytes, currentTime + tolerance, 500);
+        let priceTick = await manualPriceFeed.latestPrice(symbolBytes);
+        assert.equal(priceTick.publishTime, currentTime + tolerance);
+        assert.equal(priceTick.price, 500);
     });
 });
