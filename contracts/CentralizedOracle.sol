@@ -109,10 +109,4 @@ contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
     function isSymbolSupported(bytes32 symbol) external view returns (bool isSupported) {
         return supportedSymbols[symbol];
     }
-
-    // An event fired when a request for a (symbol, time) pair is made.
-    event VerifiedPriceRequested(bytes32 indexed symbol, uint indexed time);
-
-    // An event fired when a verified price is available for a (symbol, time) pair.
-    event VerifiedPriceAvailable(bytes32 indexed symbol, uint indexed time, int price);
 }

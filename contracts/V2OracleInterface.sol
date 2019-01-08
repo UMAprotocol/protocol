@@ -1,6 +1,6 @@
 /*
   V2OracleInterface contract.
- The interface that contracts use to query a verified, trusted price.
+  The interface that contracts use to query a verified, trusted price.
 */
 pragma solidity ^0.5.0;
 
@@ -15,4 +15,10 @@ interface V2OracleInterface {
 
     // Returns whether the Oracle provides verified prices for the given symbol.
     function isSymbolSupported(bytes32 symbol) external view returns (bool isSupported);
+
+    // An event fired when a request for a (symbol, time) pair is made.
+    event VerifiedPriceRequested(bytes32 indexed symbol, uint indexed time);
+
+    // An event fired when a verified price is available for a (symbol, time) pair.
+    event VerifiedPriceAvailable(bytes32 indexed symbol, uint indexed time, int price);
 }
