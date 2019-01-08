@@ -25,7 +25,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable, Testable {
     // Mapping from symbol to the latest price for that symbol.
     mapping(bytes32 => PriceTick) private prices;
 
-    // Rough ethereum timestamp tolerance.
+    // Ethereum timestamp tolerance.
     // Note: this is technically the amount of time that a block timestamp can be *ahead* of the current time. However,
     // we are assuming that blocks will never get more than this amount *behind* the current time. The only requirement
     // limiting how early the timestamp can be is that it must have a later timestamp than its parent. However,
