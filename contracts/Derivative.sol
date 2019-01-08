@@ -10,6 +10,8 @@ pragma solidity ^0.5.0;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./OracleInterface.sol";
 import "./ContractCreator.sol";
+import "./PriceFeedInterface.sol";
+import "./V2OracleInterface.sol";
 
 
 contract Derivative {
@@ -421,6 +423,8 @@ contract DerivativeCreator is ContractCreator {
             notional
         );
 
+        V2OracleInterface v2Oracle = V2OracleInterface(v2OracleAddress);
+        require(v2Oracle.isSymbolSupported(product));
         _registerNewContract(msg.sender, counterparty, address(derivative));
 
         return address(derivative);

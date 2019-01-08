@@ -7,8 +7,10 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./OracleInterface.sol";
 import "./ContractCreator.sol";
+import "./OracleInterface.sol";
+import "./PriceFeedInterface.sol";
+import "./V2OracleInterface.sol";
 
 
 contract ReturnCalculator {
@@ -676,6 +678,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             expiry
         );
 
+        V2OracleInterface v2Oracle = V2OracleInterface(v2OracleAddress);
+        require(v2Oracle.isSymbolSupported(product));
         _registerNewContract(provider, investor, address(derivative));
 
         return address(derivative);

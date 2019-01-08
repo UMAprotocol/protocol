@@ -5,6 +5,8 @@ const Registry = artifacts.require("Registry");
 const Oracle = artifacts.require("OracleMock");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const NoLeverage = artifacts.require("NoLeverage");
+const ManualPriceFeed = artifacts.require("ManualPriceFeed");
+const CentralizedOracle = artifacts.require("CentralizedOracle");
 const BigNumber = require("bignumber.js");
 
 contract("TokenizedDerivative", function(accounts) {
@@ -12,6 +14,8 @@ contract("TokenizedDerivative", function(accounts) {
   let derivativeContract;
   let deployedRegistry;
   let deployedOracle;
+  let deployedCentralizedOracle;
+  let deployedManualPriceFeed;
   let tokenizedDerivativeCreator;
   let noLeverageCalculator;
 
@@ -32,7 +36,6 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   const deployNewTokenizedDerivative = async expiryDelay => {
-    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Note: it is assumed that each deployment starts with the verified and unverified feeds aligned.
     // To make the tests more realistic, the unverified feed is bumped by one step to ensure it is slightly ahead.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
@@ -66,11 +69,16 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   before(async function() {
+    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
+    deployedCentralizedOracle = await CentralizedOracle.deployed();
+    deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     noLeverageCalculator = await NoLeverage.deployed();
+
+    deployedCentralizedOracle.addSupportedSymbol(productSymbolBytes);
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
