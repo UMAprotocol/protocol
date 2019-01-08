@@ -9,8 +9,8 @@ contract("CentralizedOracle", function(accounts) {
     // A deployed instance of the CentralizedOracle contract, ready for testing.
     let centralizedOracle;
 
-    let owner = accounts[0];
-    let rando = accounts[1];
+    const owner = accounts[0];
+    const rando = accounts[1];
 
     before(async function() {
         centralizedOracle = await CentralizedOracle.deployed();
@@ -95,7 +95,6 @@ contract("CentralizedOracle", function(accounts) {
         // Check that the query is pending
         pendingQueries = await centralizedOracle.getPendingQueries();
         assert.equal(pendingQueries.length, 1);
-        // assert.equal(web3.utils.hexToUtf8(web3.utils.bytesToHex(pendingQueries[0].symbol)), firstSymbol);
         assert.equal(pendingQueries[0].time, firstTime);
 
         // Enqueue a second request for a price, and verify that `timeForPrice`=0.

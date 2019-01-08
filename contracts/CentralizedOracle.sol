@@ -29,7 +29,7 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
     // The two structs below are used in an array and mapping to keep track of prices that have been requested but are
     // not yet available.
     struct QueryIndex {
-        bool isAvailable;
+        bool isValid;
         uint index;
     }
 
@@ -45,7 +45,7 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
     // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
     // Is there a generalize this data structure?
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
-    QueryPoint[] private needsReview;
+    QueryPoint[] private requestedPrices;
 
     // Gets the price if available, else enqueues a request (if a request isn't already present).
     function getPrice(bytes32 symbol, uint time) external returns (uint timeForPrice, int price, uint verifiedTime) {
@@ -54,13 +54,13 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
         if (lookup.isAvailable) {
             // We already have a price, return it.
             return (time, lookup.price, 0);
-        } else if (queryIndices[symbol][time].isAvailable) {
+        } else if (queryIndices[symbol][time].isValid) {
             // We already have a pending query, don't need to do anything.
             return (0, 0, SECONDS_IN_WEEK);
         } else {
             // New query, enqueue it for review.
-            queryIndices[symbol][time] = QueryIndex(true, needsReview.length);
-            needsReview.push(QueryPoint(symbol, time));
+            queryIndices[symbol][time] = QueryIndex(true, requestedPrices.length);
+            requestedPrices.push(QueryPoint(symbol, time));
             emit VerifiedPriceRequested(symbol, time);
             return (0, 0, SECONDS_IN_WEEK);
         }
@@ -69,28 +69,31 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
     // Should this take an array for multiple prices?
     function pushPrice(bytes32 symbol, uint time, int price) external onlyOwner {
         verifiedPrices[symbol][time] = Price(true, price);
+        emit VerifiedPriceAvailable(symbol, time, price);
 
         QueryIndex storage queryIndex = queryIndices[symbol][time];
-        require(queryIndex.isAvailable, "Can't push prices that haven't been requested");
+        require(queryIndex.isValid, "Can't push prices that haven't been requested");
         // Delete from the array. Instead of shifting the queries over, replace the contents of `indexToReplace` with
         // the the contents of the last index (unless it is the last index).
         uint indexToReplace = queryIndex.index;
         delete queryIndices[symbol][time];
-        uint lastIndex = needsReview.length - 1;
+        uint lastIndex = requestedPrices.length.sub(1);
         if (lastIndex != indexToReplace) {
-            QueryPoint storage queryToCopy = needsReview[lastIndex];
+            QueryPoint storage queryToCopy = requestedPrices[lastIndex];
             queryIndices[queryToCopy.symbol][queryToCopy.time].index = indexToReplace;
-            needsReview[indexToReplace] = queryToCopy;
+            requestedPrices[indexToReplace] = queryToCopy;
         }
-        delete needsReview[lastIndex];
-        needsReview.length = needsReview.length.sub(1);
+        requestedPrices.length = requestedPrices.length.sub(1);
     }
 
     // Gets the queries that still need verified prices.
     function getPendingQueries() external view onlyOwner returns (QueryPoint[] memory queryPoints) {
-        return needsReview;
+        return requestedPrices;
     }
 
     // An event fired when a request for a (symbol, time) pair is made.
     event VerifiedPriceRequested(bytes32 indexed symbol, uint time);
+
+    // An event fired when a verified price is available for a (symbol, time) pair.
+    event VerifiedPriceAvailable(bytes32 indexed symbol, uint time, int price);
 }
