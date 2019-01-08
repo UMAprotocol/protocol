@@ -12,4 +12,7 @@ interface V2OracleInterface {
     // that corresponds to the next voting period after which a verified price will be available. If no verified price
     // will ever be available, returns `verifiedTime`=first Ethereum time.
     function getPrice(bytes32 symbol, uint time) external returns (uint timeForPrice, int price, uint verifiedTime);
+
+    // Returns whether the Oracle provides verified prices for the given symbol.
+    function isSymbolSupported(bytes32 symbol) external view returns (bool isSupported);
 }

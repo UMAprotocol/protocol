@@ -24,6 +24,8 @@ contract("CentralizedOracle", function(accounts) {
         const price = 500;
         const secondTime = 20;
 
+        // Configure the oracle to support the symbols used in this test.
+        await centralizedOracle.addSupportedSymbol(symbolBytes);
 
         // No queries are currently stored.
         let pendingQueries = await centralizedOracle.getPendingQueries();
@@ -90,14 +92,17 @@ contract("CentralizedOracle", function(accounts) {
     });
 
     it("Enqueue queries (two symbols) > Push > Requery > Push > Requery", async function() {
-        const firstSymbol = "First";
-        const firstSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(firstSymbol));
+        const firstSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("First"));
         const firstTime = 10;
         const firstPrice = 500;
 
         const secondSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Second"));
         const secondTime = 10;
         const secondPrice = 1000;
+
+        // Configure the oracle to support the symbols used in this test.
+        await centralizedOracle.addSupportedSymbol(firstSymbolBytes);
+        await centralizedOracle.addSupportedSymbol(secondSymbolBytes);
 
         // No queries are currently stored.
         let pendingQueries = await centralizedOracle.getPendingQueries();
@@ -161,8 +166,16 @@ contract("CentralizedOracle", function(accounts) {
     it("Non owner", async function() {
         const symbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Owned"));
 
-        let blah = await centralizedOracle.getPrice.call(symbolBytes, 10);
-        await centralizedOracle.getPrice(symbolBytes, 10);
+        // Non-owners can't add supported symbols.
+        assert(
+            await didContractThrow(centralizedOracle.addSupportedSymbol(symbolBytes, { from: rando }))
+        );
+
+        // Configure the oracle to support the symbols used in this test, as an owner.
+        await centralizedOracle.addSupportedSymbol(symbolBytes);
+
+        // Request the price, which any contract can do (for now).
+        await centralizedOracle.getPrice(symbolBytes, 10, { from: rando });
 
         // Non-owners can't push prices.
         assert(
@@ -173,9 +186,19 @@ contract("CentralizedOracle", function(accounts) {
     it("Push unqueried price", async function() {
         const symbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Unqueried"));
 
+        // Configure the oracle to support the symbols used in this test.
+        await centralizedOracle.addSupportedSymbol(symbolBytes);
+
         // Can't push a price that isn't queried yet.
         assert(
             await didContractThrow(centralizedOracle.pushPrice(symbolBytes, 10, 10))
+        );
+    });
+
+    it("Unsupported product", async function() {
+        const symbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Unsupported"));
+        assert(
+            await didContractThrow(centralizedOracle.getPrice(symbolBytes, 10))
         );
     });
 });

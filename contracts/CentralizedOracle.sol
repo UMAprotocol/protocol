@@ -42,6 +42,9 @@ contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
         uint time;
     }
 
+    // The set of symbols the oracle can provide verified prices for.
+    mapping(bytes32 => bool) private supportedSymbols;
+
     // Conceptually we want a (time, symbol) -> price map.
     mapping(bytes32 => mapping(uint => Price)) private verifiedPrices;
 
@@ -54,6 +57,7 @@ contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
 
     // Gets the price if available, else enqueues a request (if a request isn't already present).
     function getPrice(bytes32 symbol, uint time) external returns (uint timeForPrice, int price, uint verifiedTime) {
+        require(supportedSymbols[symbol]);
         // TODO(ptare): Add verification via the registry for the caller.
         Price storage lookup = verifiedPrices[symbol][time];
         if (lookup.isAvailable) {
@@ -71,7 +75,7 @@ contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
         }
     }
 
-    // Should this take an array for multiple prices?
+    // Pushes the verified price for a requested query.
     function pushPrice(bytes32 symbol, uint time, int price) external onlyOwner {
         verifiedPrices[symbol][time] = Price(true, price, getCurrentTime());
         emit VerifiedPriceAvailable(symbol, time, price);
@@ -91,9 +95,19 @@ contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
         requestedPrices.length = requestedPrices.length.sub(1);
     }
 
+    // Adds the provided symbol as a supported symbol.
+    function addSupportedSymbol(bytes32 symbol) external onlyOwner {
+        supportedSymbols[symbol] = true;
+    }
+
     // Gets the queries that still need verified prices.
     function getPendingQueries() external view onlyOwner returns (QueryPoint[] memory queryPoints) {
         return requestedPrices;
+    }
+
+    // Whether the oracle provides verified prices for the provided symbol.
+    function isSymbolSupported(bytes32 symbol) external view returns (bool isSupported) {
+        return supportedSymbols[symbol];
     }
 
     // An event fired when a request for a (symbol, time) pair is made.
