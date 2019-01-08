@@ -111,8 +111,8 @@ contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
     }
 
     // An event fired when a request for a (symbol, time) pair is made.
-    event VerifiedPriceRequested(bytes32 indexed symbol, uint time);
+    event VerifiedPriceRequested(bytes32 indexed symbol, uint indexed time);
 
     // An event fired when a verified price is available for a (symbol, time) pair.
-    event VerifiedPriceAvailable(bytes32 indexed symbol, uint time, int price);
+    event VerifiedPriceAvailable(bytes32 indexed symbol, uint indexed time, int price);
 }
