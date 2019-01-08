@@ -12,6 +12,8 @@ contract("CentralizedOracle", function(accounts) {
     const owner = accounts[0];
     const rando = accounts[1];
 
+    const oraclePriceDelay = 60*60*24*7;
+
     before(async function() {
         centralizedOracle = await CentralizedOracle.deployed();
     });
@@ -22,29 +24,38 @@ contract("CentralizedOracle", function(accounts) {
         const price = 500;
         const secondTime = 20;
 
+
         // No queries are currently stored.
         let pendingQueries = await centralizedOracle.getPendingQueries();
         assert.equal(pendingQueries.length, 0);
 
         // Enqueue the request for a price, and verify that `timeForPrice`=0.
+        let currentTime = 100;
+        await centralizedOracle.setCurrentTime(currentTime);
         let getPriceResult = await centralizedOracle.getPrice.call(symbolBytes, firstTime);
         await centralizedOracle.getPrice(symbolBytes, firstTime);
         assert.equal(getPriceResult.timeForPrice, 0);
+        assert.equal(getPriceResult.verifiedTime, currentTime + oraclePriceDelay);
 
         // Check that the query is pending.
         pendingQueries = await centralizedOracle.getPendingQueries();
         assert.equal(pendingQueries.length, 1);
 
         // Enqueue the second request for a price, and verify that `timeForPrice`=0.
+        currentTime = 5000;
+        await centralizedOracle.setCurrentTime(currentTime);
         getPriceResult = await centralizedOracle.getPrice.call(symbolBytes, secondTime);
         await centralizedOracle.getPrice(symbolBytes, secondTime);
         assert.equal(getPriceResult.timeForPrice, 0);
+        assert.equal(getPriceResult.verifiedTime, currentTime + oraclePriceDelay);
 
         // Check that both queries are pending.
         pendingQueries = await centralizedOracle.getPendingQueries();
         assert.equal(pendingQueries.length, 2);
 
         // Push a price for the first symbol.
+        const firstPricePushTime = 10000;
+        await centralizedOracle.setCurrentTime(firstPricePushTime);
         await centralizedOracle.pushPrice(symbolBytes, firstTime, price);
 
         // Get first price.
@@ -52,12 +63,15 @@ contract("CentralizedOracle", function(accounts) {
         await centralizedOracle.getPrice(symbolBytes, firstTime);
         assert.equal(getPriceResult.timeForPrice, firstTime);
         assert.equal(getPriceResult.price, price);
+        assert.equal(getPriceResult.verifiedTime, firstPricePushTime);
 
         // Check that the second query is pending.
         pendingQueries = await centralizedOracle.getPendingQueries();
         assert.equal(pendingQueries.length, 1);
 
         // Push a price for the second symbol.
+        const secondPricePushTime = 20000;
+        await centralizedOracle.setCurrentTime(secondPricePushTime);
         await centralizedOracle.pushPrice(symbolBytes, secondTime, price);
 
         // Get second price.
@@ -65,12 +79,14 @@ contract("CentralizedOracle", function(accounts) {
         await centralizedOracle.getPrice(symbolBytes, secondTime);
         assert.equal(getPriceResult.timeForPrice, secondTime);
         assert.equal(getPriceResult.price, price);
+        assert.equal(getPriceResult.verifiedTime, secondPricePushTime);
 
         // Get the first price again, just to double check.
         getPriceResult = await centralizedOracle.getPrice.call(symbolBytes, firstTime);
         await centralizedOracle.getPrice(symbolBytes, firstTime);
         assert.equal(getPriceResult.timeForPrice, firstTime);
         assert.equal(getPriceResult.price, price);
+        assert.equal(getPriceResult.verifiedTime, firstPricePushTime);
     });
 
     it("Enqueue queries (two symbols) > Push > Requery > Push > Requery", async function() {

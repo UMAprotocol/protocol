@@ -10,10 +10,11 @@ pragma experimental ABIEncoderV2;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./V2OracleInterface.sol";
+import "./Testable.sol";
 
 
 // Implements an oracle that allows the owner to push prices for queries that have been made.
-contract CentralizedOracle is V2OracleInterface, Ownable {
+contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
     using SafeMath for uint;
 
     // This contract doesn't implement the voting routine, and naively indicates that all requested prices will be
@@ -24,6 +25,8 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
     struct Price {
         bool isAvailable;
         int price;
+        // Time the verified price became available.
+        uint verifiedTime;
     }
 
     // The two structs below are used in an array and mapping to keep track of prices that have been requested but are
@@ -47,28 +50,30 @@ contract CentralizedOracle is V2OracleInterface, Ownable {
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
+    constructor(bool isTest) public Testable(isTest) {} // solhint-disable-line no-empty-blocks
+
     // Gets the price if available, else enqueues a request (if a request isn't already present).
     function getPrice(bytes32 symbol, uint time) external returns (uint timeForPrice, int price, uint verifiedTime) {
         // TODO(ptare): Add verification via the registry for the caller.
         Price storage lookup = verifiedPrices[symbol][time];
         if (lookup.isAvailable) {
             // We already have a price, return it.
-            return (time, lookup.price, 0);
+            return (time, lookup.price, lookup.verifiedTime);
         } else if (queryIndices[symbol][time].isValid) {
             // We already have a pending query, don't need to do anything.
-            return (0, 0, SECONDS_IN_WEEK);
+            return (0, 0, getCurrentTime().add(SECONDS_IN_WEEK));
         } else {
             // New query, enqueue it for review.
             queryIndices[symbol][time] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(symbol, time));
             emit VerifiedPriceRequested(symbol, time);
-            return (0, 0, SECONDS_IN_WEEK);
+            return (0, 0, getCurrentTime().add(SECONDS_IN_WEEK));
         }
     }
 
     // Should this take an array for multiple prices?
     function pushPrice(bytes32 symbol, uint time, int price) external onlyOwner {
-        verifiedPrices[symbol][time] = Price(true, price);
+        verifiedPrices[symbol][time] = Price(true, price, getCurrentTime());
         emit VerifiedPriceAvailable(symbol, time, price);
 
         QueryIndex storage queryIndex = queryIndices[symbol][time];

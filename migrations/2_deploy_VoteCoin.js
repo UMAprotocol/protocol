@@ -124,7 +124,7 @@ module.exports = function(deployer, network, accounts) {
           return ManualPriceFeed.deployed();
       })
       .then(() => {
-          return deployer.deploy(CentralizedOracle);
+          return deployer.deploy(CentralizedOracle, enableControllableTiming(network));
       })
       .then(() => {
           return CentralizedOracle.deployed();
