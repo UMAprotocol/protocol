@@ -102,6 +102,8 @@ contract TokenizedDerivative is ERC20 {
     ContractParty public provider;
     ContractParty public investor;
     OracleInterface public oracle;
+    V2OracleInterface public v2Oracle;
+    PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
 
     State public state;
@@ -162,6 +164,8 @@ contract TokenizedDerivative is ERC20 {
         address payable _providerAddress,
         address payable _investorAddress,
         address _oracleAddress,
+        address _v2OracleAddress,
+        address _priceFeedAddress,
         uint _defaultPenalty, // Percentage of nav*10^18
         uint _terminationFee, // Percentage of nav*10^18
         uint _providerRequiredMargin, // Percentage of nav*10^18
@@ -178,12 +182,17 @@ contract TokenizedDerivative is ERC20 {
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
-        uint maxTokenMagDiff = 10**9;
-        require(_startingTokenPrice >= uint(1 ether).div(maxTokenMagDiff));
-        require(_startingTokenPrice <= uint(1 ether).mul(maxTokenMagDiff));
+        // TODO(ptare): Get stack too deep errors, so temporarily removing this local variable.
+        // uint maxTokenMagDiff = 10**9;
+        // require(_startingTokenPrice >= uint(1 ether).div(maxTokenMagDiff));
+        // require(_startingTokenPrice <= uint(1 ether).mul(maxTokenMagDiff));
+        require(_startingTokenPrice >= uint(1 ether).div(10**9));
+        require(_startingTokenPrice <= uint(1 ether).mul(10**9));
 
         // Address information
         oracle = OracleInterface(_oracleAddress);
+        v2Oracle = V2OracleInterface(_v2OracleAddress);
+        priceFeed = PriceFeedInterface(_priceFeedAddress);
         provider = ContractParty(_providerAddress, 0, false, _providerRequiredMargin);
 
         // Note: the investor is required to have 100% margin at all times.
@@ -667,6 +676,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             provider,
             investor,
             oracleAddress,
+            v2OracleAddress,
+            priceFeedAddress,
             defaultPenalty,
             terminationFee,
             providerRequiredMargin,
