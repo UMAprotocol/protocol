@@ -390,9 +390,10 @@ contract SimpleDerivative is Derivative {
 
 
 contract DerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _oracleAddress)
+    constructor(address registryAddress, address _oracleAddress, address _v2OracleAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(registryAddress, _oracleAddress,
+                        _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
     function createDerivative(
         address payable counterparty,
