@@ -68,11 +68,6 @@ contract TokenizedDerivative is ERC20 {
         // Possible state transitions: Disputed, Settled
         Defaulted,
 
-        // The contract has been terminated by one party. That party can no longer dispute the price, but the other
-        // party can. If a dispute occurs, the termination fee is refunded to the sender.
-        // Possible state transitions: Disputed, Settled.
-        Terminated,
-
         // The final remargin has occured, and all parties have agreed on the settlement price. Account balances can be
         // fully withdrawn.
         // Possible state transitions: None.
@@ -93,7 +88,6 @@ contract TokenizedDerivative is ERC20 {
 
     // Financial information
     uint public defaultPenalty; // Percentage of nav*10^18
-    uint public terminationFee; // Percentage of nav*10^18
     string public product;
 
     // Other addresses/contracts
@@ -129,15 +123,8 @@ contract TokenizedDerivative is ERC20 {
 
     Dispute public disputeInfo;
 
-    // The information in the following struct is only valid if in the midst of a Default or Termination.
-    struct Termination {
-        int nav;
-        // Note: the following fields are only valid if being terminated voluntarily without default.
-        address terminator;
-        uint fee;
-    }
-
-    Termination public termination;
+    // Only valid if in the midst of a Default;
+    int public navAtDefault;
 
     uint public constant SECONDS_PER_YEAR = 31536000;
 
@@ -161,7 +148,6 @@ contract TokenizedDerivative is ERC20 {
         address payable _investorAddress,
         address _oracleAddress,
         uint _defaultPenalty, // Percentage of nav*10^18
-        uint _terminationFee, // Percentage of nav*10^18
         uint _providerRequiredMargin, // Percentage of nav*10^18
         string memory _product,
         uint _fixedYearlyFee, // Percentage of nav * 10^18
@@ -195,7 +181,6 @@ contract TokenizedDerivative is ERC20 {
         product = _product;
         fixedFeePerSecond = _fixedYearlyFee.div(SECONDS_PER_YEAR);
         disputeDeposit = _disputeDeposit;
-        terminationFee = _terminationFee;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
@@ -349,33 +334,9 @@ contract TokenizedDerivative is ERC20 {
         provider.accountAddress.transfer(amount);
     }
 
-    function terminate() external payable onlyContractParties {
-        int terminationNav = nav;
-
-        remargin();
-
-        require(state == State.Live);
-
-        uint requiredDeposit = uint(_takePercentage(terminationNav, terminationFee));
-
-        require(msg.value >= requiredDeposit);
-        uint refund = msg.value.sub(requiredDeposit);
-
-        termination.nav = terminationNav;
-        termination.fee = requiredDeposit;
-        termination.terminator = msg.sender;
-
-        state = State.Terminated;
-        endTime = lastRemarginTime;
-
-        confirmPrice();
-
-        msg.sender.transfer(refund);
-    }
-
     function confirmPrice() public onlyContractParties {
         // Right now, only dispute if in a pre-settlement state
-        require(state == State.Expired || state == State.Defaulted || state == State.Terminated);
+        require(state == State.Expired || state == State.Defaulted);
 
         if (msg.sender == provider.accountAddress) {
             provider.hasConfirmedPrice = true;
@@ -484,12 +445,6 @@ contract TokenizedDerivative is ERC20 {
             notDefaulter.balance = notDefaulter.balance.add(penalty);
         }
 
-        int termFee = int(termination.fee);
-
-        if (termFee > 0) {
-            (, ContractParty storage notTerminator) = _whoAmI(termination.terminator);
-            notTerminator.balance = notTerminator.balance.add(termFee);
-        }
         state = State.Settled;
     }
 
@@ -527,7 +482,7 @@ contract TokenizedDerivative is ERC20 {
         (inDefault, defaulter, notDefaulter) = whoDefaults();
         if (inDefault) {
             state = State.Defaulted;
-            termination.nav = previousNav;
+            navAtDefault = previousNav;
 
             // TODO(mrice32): Pass in the current time rather than querying it.
             (endTime,) = oracle.latestUnverifiedPrice(); // Change end time to moment when default occurred
@@ -573,7 +528,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _getDefaultPenaltyEth() internal view returns (int penalty) {
-        return _takePercentage(termination.nav, defaultPenalty);
+        return _takePercentage(navAtDefault, defaultPenalty);
     }
 
     function _tokensFromNav(int currentNav, int unitNav) internal pure returns (int numTokens) {
@@ -648,7 +603,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
         address payable provider,
         address payable investor,
         uint defaultPenalty,
-        uint terminationFee,
         uint providerRequiredMargin,
         string calldata product,
         uint fixedYearlyFee,
@@ -665,7 +619,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
             investor,
             oracleAddress,
             defaultPenalty,
-            terminationFee,
             providerRequiredMargin,
             product,
             fixedYearlyFee,
