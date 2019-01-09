@@ -546,7 +546,7 @@ contract TokenizedDerivative is ERC20 {
         prevRemarginTime = lastRemarginTime;
         lastRemarginTime = latestTime;
 
-        (navNew, lastTokenPrice) = _updateNavAndPrice();
+        (navNew, lastTokenPrice) = _computePrevToLastTransition();
     }
 
     // TODO(mrice32): make "old state" and "new state" a storage argument to combine this and computeNav.
@@ -556,11 +556,11 @@ contract TokenizedDerivative is ERC20 {
         assert(lastRemarginTime == recomputeTime);
         lastUnderlyingPrice = oraclePrice;
 
-        (navNew, lastTokenPrice) = _updateNavAndPrice();
+        (navNew, lastTokenPrice) = _computePrevToLastTransition();
     }
 
     // Calculates the nav and newTokenPrice based on the return from (`prev`, `last`).
-    function _updateNavAndPrice() private view returns (int navNew, int newTokenPrice) {
+    function _computePrevToLastTransition() private view returns (int navNew, int newTokenPrice) {
         int underlyingReturn = returnCalculator.computeReturn(prevUnderlyingPrice, lastUnderlyingPrice);
         int tokenReturn = underlyingReturn.sub(int(fixedFeePerSecond.mul(lastRemarginTime.sub(prevRemarginTime))));
         newTokenPrice = 0;
