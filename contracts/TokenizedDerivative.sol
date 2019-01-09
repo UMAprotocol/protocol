@@ -184,8 +184,6 @@ contract TokenizedDerivative is ERC20 {
         // rounding or overflow errors.
         // TODO(ptare): Get stack too deep errors, so temporarily removing this local variable.
         // uint maxTokenMagDiff = 10**9;
-        // require(_startingTokenPrice >= uint(1 ether).div(maxTokenMagDiff));
-        // require(_startingTokenPrice <= uint(1 ether).mul(maxTokenMagDiff));
         require(_startingTokenPrice >= uint(1 ether).div(10**9));
         require(_startingTokenPrice <= uint(1 ether).mul(10**9));
 
