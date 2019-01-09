@@ -98,16 +98,21 @@ contract TokenizedDerivative is ERC20 {
 
     State public state;
     uint public endTime;
-    uint public lastRemarginTime;
     uint public disputeDeposit;
 
-    // TODO(mrice32): try to remove these previous variables as they are a gas hog.
+    // The NAV of the contract always reflects the transition from (`prev`, `last`).
+    // In the case of a remargin, a `latest` price is retrieved from the price feed, and we shift `last` -> `prev` and
+    // `latest` -> `last` (and then recompute).
+    // In the case of a dispute, `last` might change (which is why we have to hold on to `prev`).
+    // Could also rename these to (`prev`, `current`), with the feed providing `updated`.
     int public prevUnderlyingPrice;
     int public prevTokenPrice;
     uint public prevRemarginTime;
 
-    int public tokenPrice;
-    int public underlyingPrice;
+    int public lastUnderlyingPrice;
+    uint public lastRemarginTime;
+    int public lastTokenPrice;
+
     int public nav;  // Net asset value is measured in Wei
 
     uint public additionalAuthorizedNav;
@@ -123,7 +128,7 @@ contract TokenizedDerivative is ERC20 {
 
     Dispute public disputeInfo;
 
-    // Only valid if in the midst of a Default;
+    // Only valid if in the midst of a Default.
     int public navAtDefault;
 
     uint public constant SECONDS_PER_YEAR = 31536000;
@@ -175,44 +180,43 @@ contract TokenizedDerivative is ERC20 {
 
         returnCalculator = ReturnCalculator(_returnCalculator);
 
-        // Contract states
-        lastRemarginTime = 0;
+        // Contract parameters.
         defaultPenalty = _defaultPenalty;
         product = _product;
         fixedFeePerSecond = _fixedYearlyFee.div(SECONDS_PER_YEAR);
         disputeDeposit = _disputeDeposit;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
-        require(currentTime != 0);
+        (uint latestTime, int latestUnderlyingPrice) = oracle.latestUnverifiedPrice();
+        require(latestTime != 0);
 
         // Set end time to max value of uint to implement no expiry.
         if (expiry == 0) {
             endTime = ~uint(0);
         } else {
-            require(expiry >= currentTime);
+            require(expiry >= latestTime);
             endTime = expiry;
         }
 
-        nav = _initialNav(oraclePrice, currentTime, _startingTokenPrice);
+        nav = _computeInitialNav(latestUnderlyingPrice, latestTime, _startingTokenPrice);
 
         state = State.Live;
     }
 
     function authorizeTokens(uint newAuthorizedNavInWei) external payable onlyProvider {
+        require(state == State.Live);
+
         deposit();
         remargin();
-
-        require(state == State.Live);
 
         additionalAuthorizedNav = additionalAuthorizedNav.add(newAuthorizedNavInWei);
         require(!_reduceAuthorizedTokens(nav));
     }
 
     function createTokens(bool exact) external payable onlyInvestor {
-        remargin();
-
         require(state == State.Live);
+
+        remargin();
 
         uint authorizedNav = additionalAuthorizedNav;
         require(authorizedNav > 0, "Contract is not authorized to provide any tokens");
@@ -230,9 +234,9 @@ contract TokenizedDerivative is ERC20 {
         additionalAuthorizedNav = authorizedNav.sub(navToPurchase);
         investor.balance = investor.balance.add(int(navToPurchase));
 
-        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), tokenPrice)));
+        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), lastTokenPrice)));
 
-        nav = int(totalSupply()).mul(tokenPrice).div(1 ether);
+        nav = int(totalSupply()).mul(lastTokenPrice).div(1 ether);
 
         if (refund != 0) {
             msg.sender.transfer(refund);
@@ -256,21 +260,19 @@ contract TokenizedDerivative is ERC20 {
         int investorBalance = investor.balance;
         assert(investorBalance >= 0);
 
-
         // Value of the tokens is just the percentage of all the tokens multiplied by the balance of the investor
         // margin account.
         uint tokenPercentage = numTokens.mul(1 ether).div(initialSupply);
         uint tokenValue = _takePercentage(uint(investorBalance), tokenPercentage);
 
         investor.balance = investor.balance.sub(int(tokenValue));
-        nav = int(totalSupply()).mul(tokenPrice).div(1 ether);
+        nav = int(totalSupply()).mul(lastTokenPrice).div(1 ether);
 
         msg.sender.transfer(tokenValue);
     }
 
     function dispute() external payable onlyContractParties {
         require(
-            // TODO: We need to add the dispute bond logic
             state == State.Live,
             "Contract must be Live to dispute"
         );
@@ -305,7 +307,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function withdraw(uint amount) external payable onlyProvider {
-        // Make sure either in Live or Settled
+        // Make sure either in Live or Settled.
         require(state == State.Live || state == State.Settled);
 
         // Remargin before allowing a withdrawal, but only if in the live state.
@@ -316,12 +318,12 @@ contract TokenizedDerivative is ERC20 {
         // If the contract has been settled or is in prefunded state then can
         // withdraw up to full balance. If the contract is in live state then
         // must leave at least `requiredMargin`. Not allowed to withdraw in
-        // other states
+        // other states.
         int withdrawableAmount = (state == State.Settled) ?
             provider.balance :
             provider.balance - _getRequiredEthMargin(provider, nav);
 
-        // Can only withdraw the allowed amount
+        // Can only withdraw the allowed amount.
         require(
             int(withdrawableAmount) >= int(amount),
             "Attempting to withdraw more than allowed"
@@ -329,13 +331,13 @@ contract TokenizedDerivative is ERC20 {
 
         // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
-        // to return
+        // to return.
         provider.balance = provider.balance.sub(int(amount));
         provider.accountAddress.transfer(amount);
     }
 
     function confirmPrice() public onlyContractParties {
-        // Right now, only dispute if in a pre-settlement state
+        // Right now, only dispute if in a pre-settlement state.
         require(state == State.Expired || state == State.Defaulted);
 
         if (msg.sender == provider.accountAddress) {
@@ -346,11 +348,11 @@ contract TokenizedDerivative is ERC20 {
             investor.hasConfirmedPrice = true;
         }
 
-        // If both have confirmed then advance state to settled
+        // If both have confirmed then advance state to settled.
         // Should add some kind of a time check here -- If both have confirmed or one confirmed and sufficient time
-        // passes then we want to settle and remargin
+        // passes then we want to settle and remargin.
         if (provider.hasConfirmedPrice && investor.hasConfirmedPrice) {
-            // Remargin on agreed upon price
+            // Remargin on agreed upon price.
             _settleAgreedPrice();
         }
     }
@@ -359,34 +361,33 @@ contract TokenizedDerivative is ERC20 {
         // Only allow the provider to deposit margin.
 
         // Make sure that one of participants is sending the deposit and that
-        // we are in a "depositable" state
+        // we are in a "depositable" state.
         require(state == State.Live);
-        provider.balance = provider.balance.add(int(msg.value));  // Want this to be safemath when available
+        provider.balance = provider.balance.add(int(msg.value));
     }
 
     function remargin() public {
         // If the state is not live, remargining does not make sense.
         require(state == State.Live);
 
-        // Checks whether contract has ended
-        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
-        require(currentTime != 0);
-        if (currentTime >= endTime) {
-            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
+        // Checks whether contract has ended.
+        (uint latestTime, int latestPrice) = oracle.latestUnverifiedPrice();
+        require(latestTime != 0);
+        if (latestTime >= endTime) {
+            (latestTime, latestPrice) = oracle.unverifiedPrice(endTime);
             state = State.Expired;
         }
 
-        // Update nav of contract
-
-        int newNav = _computeNav(oraclePrice, currentTime);
-        _remargin(newNav);
+        // Update nav of contract.
+        int newNav = _computeNav(latestPrice, latestTime);
+        _remargin(newNav, latestTime);
         _reduceAuthorizedTokens(newNav);
     }
 
     // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in
     //       every other place and here we're returning addresses. We probably want a nice public method that returns
     //       something intuitive and an internal method that's a little easier to use inside the contract, but messier
-    //       for outside
+    //       for outside.
     function whoDefaults() public view returns (bool inDefault, address defaulter, address notDefaulter) {
         inDefault = false;
 
@@ -415,22 +416,25 @@ contract TokenizedDerivative is ERC20 {
         return party.balance < _getRequiredEthMargin(party, nav);
     }
 
-    function _whoAmI(address sndrAddr) internal view returns (ContractParty storage sndr, ContractParty storage othr) {
-        bool senderIsProvider = (sndrAddr == provider.accountAddress);
-        bool senderIsInvestor = (sndrAddr == investor.accountAddress);
-        require(senderIsProvider || senderIsInvestor); // At least one should be true
+    function _whoAmI(address sender)
+        internal
+        view
+        returns (ContractParty storage senderParty, ContractParty storage otherParty) {
+            bool senderIsProvider = (sender == provider.accountAddress);
+            bool senderIsInvestor = (sender == investor.accountAddress);
+            require(senderIsProvider || senderIsInvestor); // At least one should be true
 
-        return senderIsProvider ? (provider, investor) : (investor, provider);
-    }
+            return senderIsProvider ? (provider, investor) : (investor, provider);
+        }
 
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settle(int price) internal {
 
-        // Remargin at whatever price we're using (verified or unverified)
+        // Remargin at whatever price we're using (verified or unverified).
         _updateBalances(_recomputeNav(price, endTime));
 
-        // Check whether goes into default
+        // Check whether anyone goes into default.
         (bool inDefault, address _defaulter, ) = whoDefaults();
 
         if (inDefault) {
@@ -468,24 +472,19 @@ contract TokenizedDerivative is ERC20 {
     // The internal remargin method allows certain calls into the contract to
     // automatically remargin to non-current NAV values (time of expiry, last
     // agreed upon price, etc).
-    function _remargin(int navNew) internal {
+    function _remargin(int navNew, uint latestTime) internal {
         // Save the current NAV in case it's required to compute the default penalty.
         int previousNav = nav;
 
-        // Update the balances of contract
+        // Update the balances of the contract.
         _updateBalances(navNew);
 
-        // Make sure contract has not moved into default
-        bool inDefault;
-        address defaulter;
-        address notDefaulter;
-        (inDefault, defaulter, notDefaulter) = whoDefaults();
+        // Make sure contract has not moved into default.
+        (bool inDefault, , ) = whoDefaults();
         if (inDefault) {
             state = State.Defaulted;
             navAtDefault = previousNav;
-
-            // TODO(mrice32): Pass in the current time rather than querying it.
-            (endTime,) = oracle.latestUnverifiedPrice(); // Change end time to moment when default occurred
+            endTime = latestTime; // Change end time to moment when default occurred.
         }
     }
 
@@ -513,11 +512,11 @@ contract TokenizedDerivative is ERC20 {
         }
 
         int totalAuthorizedNav = currentNav.add(int(additionalAuthorizedNav));
-        int reqMargin = _getRequiredEthMargin(provider, totalAuthorizedNav);
+        int requiredMargin = _getRequiredEthMargin(provider, totalAuthorizedNav);
         int providerBalance = provider.balance;
 
-        if (reqMargin > providerBalance) {
-            // Not enough margin to maintain additionalAuthorizedNav
+        if (requiredMargin > providerBalance) {
+            // Not enough margin to maintain additionalAuthorizedNav.
             int navCap = providerBalance.mul(1 ether).div(int(provider.marginRequirement));
             assert(navCap > currentNav);
             additionalAuthorizedNav = uint(navCap.sub(currentNav));
@@ -539,50 +538,52 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function _computeNav(int oraclePrice, uint currentTime) private returns (int navNew) {
-        int underlyingReturn = returnCalculator.computeReturn(underlyingPrice, oraclePrice);
-        int tokenReturn = underlyingReturn.sub(int(fixedFeePerSecond.mul(currentTime.sub(lastRemarginTime))));
-        int newTokenPrice = 0;
-        if (tokenReturn > 0) {
-            newTokenPrice = _takePercentage(tokenPrice, uint(tokenReturn));
-        }
-        navNew = int(totalSupply()).mul(newTokenPrice).div(1 ether);
-        assert(navNew >= 0);
-        prevUnderlyingPrice = underlyingPrice;
-        underlyingPrice = oraclePrice;
-        prevTokenPrice = tokenPrice;
-        tokenPrice = newTokenPrice;
+    function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
+        // Shift `last` -> `prev` and `latest` -> `last` (except lastTokenPrice, which this method calculates).
+        prevUnderlyingPrice = lastUnderlyingPrice;
+        lastUnderlyingPrice = latestUnderlyingPrice;
+        prevTokenPrice = lastTokenPrice;
         prevRemarginTime = lastRemarginTime;
-        lastRemarginTime = currentTime;
+        lastRemarginTime = latestTime;
+
+        (navNew, lastTokenPrice) = _updateNavAndPrice();
     }
 
     // TODO(mrice32): make "old state" and "new state" a storage argument to combine this and computeNav.
-    function _recomputeNav(int oraclePrice, uint currentTime) private returns (int navNew) {
-        assert(lastRemarginTime == currentTime);
-        int underlyingReturn = returnCalculator.computeReturn(prevUnderlyingPrice, oraclePrice);
-        int tokenReturn = underlyingReturn.sub(int(fixedFeePerSecond.mul(currentTime.sub(prevRemarginTime))));
-        int newTokenPrice = 0;
+    function _recomputeNav(int oraclePrice, uint recomputeTime) private returns (int navNew) {
+        // We're updating `last` based on what the Oracle has told us.
+        // TODO(ptare): Add ability for the Oracle to correct the time as well.
+        assert(lastRemarginTime == recomputeTime);
+        lastUnderlyingPrice = oraclePrice;
+
+        (navNew, lastTokenPrice) = _updateNavAndPrice();
+    }
+
+    // Calculates the nav and newTokenPrice based on the return from (`prev`, `last`).
+    function _updateNavAndPrice() private view returns (int navNew, int newTokenPrice) {
+        int underlyingReturn = returnCalculator.computeReturn(prevUnderlyingPrice, lastUnderlyingPrice);
+        int tokenReturn = underlyingReturn.sub(int(fixedFeePerSecond.mul(lastRemarginTime.sub(prevRemarginTime))));
+        newTokenPrice = 0;
         if (tokenReturn > 0) {
             newTokenPrice = _takePercentage(prevTokenPrice, uint(tokenReturn));
         }
         navNew = int(totalSupply()).mul(newTokenPrice).div(1 ether);
         assert(navNew >= 0);
-        underlyingPrice = oraclePrice;
-        tokenPrice = newTokenPrice;
-        lastRemarginTime = currentTime;
     }
 
-    function _initialNav(int oraclePrice, uint currentTime, uint startingPrice) private returns (int navNew) {
-        int unitNav = int(startingPrice);
-        lastRemarginTime = currentTime;
-        prevRemarginTime = currentTime;
-        tokenPrice = unitNav;
-        prevTokenPrice = unitNav;
-        underlyingPrice = oraclePrice;
-        prevUnderlyingPrice = oraclePrice;
-        navNew = int(totalSupply()).mul(unitNav).div(1 ether);
-        assert(navNew >= 0);
-    }
+    function _computeInitialNav(int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
+        private
+        returns (int navNew) {
+            int unitNav = int(startingTokenPrice);
+            lastRemarginTime = latestTime;
+            prevRemarginTime = latestTime;
+            lastTokenPrice = unitNav;
+            prevTokenPrice = unitNav;
+            lastUnderlyingPrice = latestUnderlyingPrice;
+            prevUnderlyingPrice = latestUnderlyingPrice;
+            navNew = int(totalSupply()).mul(unitNav).div(1 ether);
+            assert(navNew >= 0);
+        }
 
     function _takePercentage(uint value, uint percentage) private pure returns (uint result) {
         return value.mul(percentage).div(1 ether);

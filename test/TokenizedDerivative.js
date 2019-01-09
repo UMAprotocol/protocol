@@ -1,10 +1,10 @@
 const { didContractThrow } = require("./utils/DidContractThrow.js");
 
-const TokenizedDerivative = artifacts.require("TokenizedDerivative");
-const Registry = artifacts.require("Registry");
-const Oracle = artifacts.require("OracleMock");
-const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const NoLeverage = artifacts.require("NoLeverage");
+const Oracle = artifacts.require("OracleMock");
+const Registry = artifacts.require("Registry");
+const TokenizedDerivative = artifacts.require("TokenizedDerivative");
+const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const BigNumber = require("bignumber.js");
 
 contract("TokenizedDerivative", function(accounts) {
