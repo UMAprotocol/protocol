@@ -584,20 +584,20 @@ contract("TokenizedDerivative", function(accounts) {
 
   it("Unsupported product", async function() {
     let unsupportedProduct = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupported"));
-      assert(
-          didContractThrow(tokenizedDerivativeCreator.createTokenizedDerivative(
-              provider,
-              investor,
-              web3.utils.toWei("0.05", "ether"),
-              web3.utils.toWei("0.05", "ether"),
-              web3.utils.toWei("0.1", "ether"),
-              unsupportedProduct,
-              web3.utils.toWei("0.01", "ether"),
-              web3.utils.toWei("0.05", "ether"),
-              noLeverageCalculator.address,
-              web3.utils.toWei("1", "ether"),
-              0,
-              { from: provider }))
-      );
+    assert(
+        didContractThrow(tokenizedDerivativeCreator.createTokenizedDerivative(
+            provider,
+            investor,
+            web3.utils.toWei("0.05", "ether"),
+            web3.utils.toWei("0.05", "ether"),
+            web3.utils.toWei("0.1", "ether"),
+            unsupportedProduct,
+            web3.utils.toWei("0.01", "ether"),
+            web3.utils.toWei("0.05", "ether"),
+            noLeverageCalculator.address,
+            web3.utils.toWei("1", "ether"),
+            0,
+            { from: provider }))
+    );
   });
 });
