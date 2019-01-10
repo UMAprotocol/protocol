@@ -530,6 +530,34 @@ contract("TokenizedDerivative", function(accounts) {
     assert.equal(contractBalance.toString(), "0");
   });
 
+  it("Live -> Create -> Create fails on expiry", async function() {
+    // A new TokenizedDerivative must be deployed before the start of each test case.
+    // One time step until expiry.
+    await deployNewTokenizedDerivative(60);
+
+    // Provider initializes contract
+    await derivativeContract.deposit({ from: provider, value: web3.utils.toWei("0.4", "ether") });
+    await derivativeContract.authorizeTokens(web3.utils.toWei("1", "ether"), {
+      from: provider,
+      value: web3.utils.toWei("0.1", "ether")
+    });
+    await derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether") });
+
+    // Authorize some tokens.
+    await derivativeContract.authorizeTokens(web3.utils.toWei("2", "ether"), {
+      from: provider,
+      value: web3.utils.toWei("0.1", "ether")
+    });
+
+    // Push time forward, so that the contract will expire when remargin is called.
+    await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
+
+    // Tokens cannot be created because the contract has expired.
+    assert(
+        didContractThrow(derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether") }))
+    );
+  });
+
   it("Unsupported product", async function() {
     let unsupportedProduct = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupported"));
     assert(

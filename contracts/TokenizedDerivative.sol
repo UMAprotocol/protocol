@@ -224,8 +224,8 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function createTokens(bool exact) external payable onlyInvestor {
+        // Verify that remargining didn't push the contract into expiry or default.
         require(state == State.Live);
-
         remargin();
 
         uint authorizedNav = additionalAuthorizedNav;
