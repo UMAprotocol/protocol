@@ -10,6 +10,8 @@ pragma solidity ^0.5.0;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./OracleInterface.sol";
 import "./ContractCreator.sol";
+import "./PriceFeedInterface.sol";
+import "./V2OracleInterface.sol";
 
 
 contract Derivative {
@@ -58,13 +60,15 @@ contract Derivative {
     // Financial information
     int public defaultPenalty;
     int public requiredMargin;
-    string public product;
+    bytes32 public product;
     uint public notional;
 
     // Other addresses/contracts
     ContractParty public maker;
     ContractParty public taker;
     OracleInterface public oracle;
+    V2OracleInterface public v2Oracle;
+    PriceFeedInterface public priceFeed;
 
     State public state = State.Prefunded;
     uint public endTime;
@@ -76,14 +80,20 @@ contract Derivative {
         address payable _makerAddress,
         address payable _takerAddress,
         address _oracleAddress,
+        address _v2OracleAddress,
+        address _priceFeedAddress,
         int _defaultPenalty,
         int _requiredMargin,
         uint expiry,
-        string memory _product,
+        bytes32 _product,
         uint _notional
     ) public payable {
         // Address information
         oracle = OracleInterface(_oracleAddress);
+        v2Oracle = V2OracleInterface(_v2OracleAddress);
+        priceFeed = PriceFeedInterface(_priceFeedAddress);
+        require(v2Oracle.isSymbolSupported(_product));
+        require(priceFeed.isSymbolSupported(_product));
         // TODO: Think about who is sending the `msg.value`
         require(_makerAddress != _takerAddress);
         maker = ContractParty(_makerAddress, 0, false);
@@ -361,15 +371,19 @@ contract SimpleDerivative is Derivative {
         address payable _ownerAddress,
         address payable _counterpartyAddress,
         address _oracleAddress,
+        address _v2OracleAddress,
+        address _priceFeedAddress,
         int _defaultPenalty,
         int _requiredMargin,
         uint expiry,
-        string memory product,
+        bytes32 product,
         uint notional
     ) public payable Derivative(
         _ownerAddress,
         _counterpartyAddress,
         _oracleAddress,
+        _v2OracleAddress,
+        _priceFeedAddress,
         _defaultPenalty,
         _requiredMargin,
         expiry,
@@ -389,16 +403,17 @@ contract SimpleDerivative is Derivative {
 
 
 contract DerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _oracleAddress)
+    constructor(address registryAddress, address _oracleAddress, address _v2OracleAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(registryAddress, _oracleAddress,
+                        _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
     function createDerivative(
         address payable counterparty,
         int defaultPenalty,
         int requiredMargin,
         uint expiry,
-        string calldata product,
+        bytes32 product,
         uint notional
     )
         external
@@ -412,6 +427,8 @@ contract DerivativeCreator is ContractCreator {
             counterparty,
             msg.sender,
             oracleAddress,
+            v2OracleAddress,
+            priceFeedAddress,
             defaultPenalty,
             requiredMargin,
             expiry,

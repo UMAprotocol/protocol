@@ -5,12 +5,17 @@ const Registry = artifacts.require("Registry");
 const Oracle = artifacts.require("OracleMock");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const NoLeverage = artifacts.require("NoLeverage");
+const ManualPriceFeed = artifacts.require("ManualPriceFeed");
+const CentralizedOracle = artifacts.require("CentralizedOracle");
 const BigNumber = require("bignumber.js");
 
 contract("TokenizedDerivative", function(accounts) {
+  let productSymbolBytes;
   let derivativeContract;
   let deployedRegistry;
   let deployedOracle;
+  let deployedCentralizedOracle;
+  let deployedManualPriceFeed;
   let tokenizedDerivativeCreator;
   let noLeverageCalculator;
 
@@ -34,10 +39,11 @@ contract("TokenizedDerivative", function(accounts) {
     // Note: it is assumed that each deployment starts with the verified and unverified feeds aligned.
     // To make the tests more realistic, the unverified feed is bumped by one step to ensure it is slightly ahead.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
+    let startTime = (await deployedOracle.latestUnverifiedPrice())[0];
 
     let expiry = 0;
     if (expiryDelay != undefined) {
-      expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(expiryDelay);
+      expiry = startTime.addn(expiryDelay);
     }
 
     await tokenizedDerivativeCreator.createTokenizedDerivative(
@@ -46,7 +52,7 @@ contract("TokenizedDerivative", function(accounts) {
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.1", "ether"),
-      "ETH/USD",
+      productSymbolBytes,
       web3.utils.toWei("0.01", "ether"),
       web3.utils.toWei("0.05", "ether"),
       noLeverageCalculator.address,
@@ -64,11 +70,18 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   before(async function() {
+    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
+    deployedCentralizedOracle = await CentralizedOracle.deployed();
+    deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     noLeverageCalculator = await NoLeverage.deployed();
+
+    // Make sure the Oracle and PriceFeed support the underlying product.
+    await deployedCentralizedOracle.addSupportedSymbol(productSymbolBytes);
+    await deployedManualPriceFeed.pushLatestPrice(productSymbolBytes, 100, web3.utils.toWei("1", "ether"));
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
@@ -567,5 +580,24 @@ contract("TokenizedDerivative", function(accounts) {
 
     contractBalance = web3.utils.toBN(await web3.eth.getBalance(derivativeContract.address));
     assert.equal(contractBalance.toString(), "0");
+  });
+
+  it("Unsupported product", async function() {
+    let unsupportedProduct = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupported"));
+    assert(
+        didContractThrow(tokenizedDerivativeCreator.createTokenizedDerivative(
+            provider,
+            investor,
+            web3.utils.toWei("0.05", "ether"),
+            web3.utils.toWei("0.05", "ether"),
+            web3.utils.toWei("0.1", "ether"),
+            unsupportedProduct,
+            web3.utils.toWei("0.01", "ether"),
+            web3.utils.toWei("0.05", "ether"),
+            noLeverageCalculator.address,
+            web3.utils.toWei("1", "ether"),
+            0,
+            { from: provider }))
+    );
   });
 });
