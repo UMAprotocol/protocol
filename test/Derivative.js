@@ -3,9 +3,12 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 const Derivative = artifacts.require("Derivative");
 const Registry = artifacts.require("Registry");
 const Oracle = artifacts.require("OracleMock");
+const ManualPriceFeed = artifacts.require("ManualPriceFeed");
+const CentralizedOracle = artifacts.require("CentralizedOracle");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
 
 contract("Derivative", function(accounts) {
+  let productSymbolBytes;
   let derivativeContract;
   let deployedRegistry;
   let deployedOracle;
@@ -16,10 +19,16 @@ contract("Derivative", function(accounts) {
   const makerAddress = accounts[2];
 
   before(async function() {
+    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
+    deployedCentralizedOracle = await CentralizedOracle.deployed();
+    deployedManualPriceFeed = await ManualPriceFeed.deployed();
     deployedDerivativeCreator = await DerivativeCreator.deployed();
+
+    deployedCentralizedOracle.addSupportedSymbol(productSymbolBytes);
+    deployedManualPriceFeed.pushLatestPrice(productSymbolBytes, 100, web3.utils.toWei("0", "ether"));
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0", "ether"), { from: ownerAddress });
@@ -39,7 +48,7 @@ contract("Derivative", function(accounts) {
       web3.utils.toWei("0.05", "ether"),
       web3.utils.toWei("0.1", "ether"),
       expiry.toString(),
-      "ETH/USD",
+      productSymbolBytes,
       web3.utils.toWei("1", "ether"),
       { from: takerAddress, value: web3.utils.toWei("1", "ether") }
     );
@@ -335,5 +344,19 @@ contract("Derivative", function(accounts) {
     await derivativeContract.withdraw(web3.utils.toWei("0.04", "ether"), { from: takerAddress });
     takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.utils.toWei("0", "ether"));
+  });
+
+  it("Unsupported product", async function() {
+    let unsupportedProduct = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupported"));
+    assert(
+        didContractThrow(deployedDerivativeCreator.createDerivative(
+            makerAddress,
+            web3.utils.toWei("0.05", "ether"),
+            web3.utils.toWei("0.1", "ether"),
+            0,
+            unsupportedProduct,
+            web3.utils.toWei("1", "ether"),
+            { from: takerAddress, value: web3.utils.toWei("1", "ether") }))
+    );
   });
 });

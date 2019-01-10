@@ -7,8 +7,10 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./OracleInterface.sol";
 import "./ContractCreator.sol";
+import "./OracleInterface.sol";
+import "./PriceFeedInterface.sol";
+import "./V2OracleInterface.sol";
 
 
 contract ReturnCalculator {
@@ -88,12 +90,14 @@ contract TokenizedDerivative is ERC20 {
 
     // Financial information
     uint public defaultPenalty; // Percentage of nav*10^18
-    string public product;
+    bytes32 public product;
 
     // Other addresses/contracts
     ContractParty public provider;
     ContractParty public investor;
     OracleInterface public oracle;
+    V2OracleInterface public v2Oracle;
+    PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
 
     State public state;
@@ -152,9 +156,11 @@ contract TokenizedDerivative is ERC20 {
         address payable _providerAddress,
         address payable _investorAddress,
         address _oracleAddress,
+        address _v2OracleAddress,
+        address _priceFeedAddress,
         uint _defaultPenalty, // Percentage of nav*10^18
         uint _providerRequiredMargin, // Percentage of nav*10^18
-        string memory _product,
+        bytes32 _product,
         uint _fixedYearlyFee, // Percentage of nav * 10^18
         uint _disputeDeposit, // Percentage of nav * 10^18
         address _returnCalculator,
@@ -167,14 +173,18 @@ contract TokenizedDerivative is ERC20 {
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
-        uint maxTokenMagDiff = 10**9;
-        require(_startingTokenPrice >= uint(1 ether).div(maxTokenMagDiff));
-        require(_startingTokenPrice <= uint(1 ether).mul(maxTokenMagDiff));
+        require(_startingTokenPrice >= uint(1 ether).div(10**9));
+        require(_startingTokenPrice <= uint(1 ether).mul(10**9));
 
         // Address information
         oracle = OracleInterface(_oracleAddress);
-        provider = ContractParty(_providerAddress, 0, false, _providerRequiredMargin);
+        v2Oracle = V2OracleInterface(_v2OracleAddress);
+        priceFeed = PriceFeedInterface(_priceFeedAddress);
+        // Verify that the price feed and oracle support the given product.
+        require(v2Oracle.isSymbolSupported(_product));
+        require(priceFeed.isSymbolSupported(_product));
 
+        provider = ContractParty(_providerAddress, 0, false, _providerRequiredMargin);
         // Note: the investor is required to have 100% margin at all times.
         investor = ContractParty(_investorAddress, 0, false, 1 ether);
 
@@ -596,16 +606,17 @@ contract TokenizedDerivative is ERC20 {
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _oracleAddress)
+    constructor(address registryAddress, address _oracleAddress, address _v2OracleAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(registryAddress, _oracleAddress,
+                        _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
     function createTokenizedDerivative(
         address payable provider,
         address payable investor,
         uint defaultPenalty,
         uint providerRequiredMargin,
-        string calldata product,
+        bytes32 product,
         uint fixedYearlyFee,
         uint disputeDeposit,
         address returnCalculator,
@@ -619,6 +630,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             provider,
             investor,
             oracleAddress,
+            v2OracleAddress,
+            priceFeedAddress,
             defaultPenalty,
             providerRequiredMargin,
             product,
