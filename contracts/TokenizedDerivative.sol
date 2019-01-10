@@ -215,10 +215,10 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function authorizeTokens(uint newAuthorizedNavInWei) external payable onlyProvider {
-        require(state == State.Live);
-
         deposit();
         remargin();
+
+        require(state == State.Live);
 
         additionalAuthorizedNav = additionalAuthorizedNav.add(newAuthorizedNavInWei);
         require(!_reduceAuthorizedTokens(nav));
