@@ -111,13 +111,12 @@ contract TokenizedDerivative is ERC20 {
         uint time;
     }
 
-    // The NAV of the contract always reflects the transition from (`prev`, `last`).
-    // In the case of a remargin, a `latest` price is retrieved from the price feed, and we shift `last` -> `prev` and
-    // `latest` -> `last` (and then recompute).
-    // In the case of a dispute, `last` might change (which is why we have to hold on to `prev`).
-    // Could also rename these to (`prev`, `current`), with the feed providing `updated`.
+    // The NAV of the contract always reflects the transition from (`prev`, `current`).
+    // In the case of a remargin, a `latest` price is retrieved from the price feed, and we shift `current` -> `prev`
+    // and `latest` -> `current` (and then recompute).
+    // In the case of a dispute, `current` might change (which is why we have to hold on to `prev`).
     TokenState public prevTokenState;
-    TokenState public lastTokenState;
+    TokenState public currentTokenState;
 
     int public nav;  // Net asset value is measured in Wei
 
@@ -226,9 +225,10 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function createTokens(bool exact) external payable onlyInvestor {
+        remargin();
+
         // Verify that remargining didn't push the contract into expiry or default.
         require(state == State.Live);
-        remargin();
 
         uint authorizedNav = additionalAuthorizedNav;
         require(authorizedNav > 0, "Contract is not authorized to provide any tokens");
@@ -246,9 +246,9 @@ contract TokenizedDerivative is ERC20 {
         additionalAuthorizedNav = authorizedNav.sub(navToPurchase);
         investor.balance = investor.balance.add(int(navToPurchase));
 
-        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), lastTokenState.tokenPrice)));
+        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), currentTokenState.tokenPrice)));
 
-        nav = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
+        nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
 
         if (refund != 0) {
             msg.sender.transfer(refund);
@@ -278,7 +278,7 @@ contract TokenizedDerivative is ERC20 {
         uint tokenValue = _takePercentage(uint(investorBalance), tokenPercentage);
 
         investor.balance = investor.balance.sub(int(tokenValue));
-        nav = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
+        nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
 
         msg.sender.transfer(tokenValue);
     }
@@ -295,7 +295,7 @@ contract TokenizedDerivative is ERC20 {
         uint refund = msg.value - requiredDeposit;
 
         state = State.Disputed;
-        endTime = lastTokenState.time;
+        endTime = currentTokenState.time;
         disputeInfo.disputedNav = nav;
         disputeInfo.disputer = msg.sender;
         disputeInfo.deposit = requiredDeposit;
@@ -551,17 +551,17 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
-        prevTokenState = lastTokenState;
-        lastTokenState = _computeNewTokenState(lastTokenState, latestUnderlyingPrice, latestTime);
-        navNew = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
+        prevTokenState = currentTokenState;
+        currentTokenState = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
+        navNew = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
     }
 
     function _recomputeNav(int oraclePrice, uint recomputeTime) private returns (int navNew) {
         // We're updating `last` based on what the Oracle has told us.
         // TODO(ptare): Add ability for the Oracle to correct the time as well.
-        assert(lastTokenState.time == recomputeTime);
-        lastTokenState = _computeNewTokenState(prevTokenState, oraclePrice, recomputeTime);
-        navNew = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
+        assert(currentTokenState.time == recomputeTime);
+        currentTokenState = _computeNewTokenState(prevTokenState, oraclePrice, recomputeTime);
+        navNew = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
     }
 
     function _computeInitialNav(int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
@@ -569,7 +569,7 @@ contract TokenizedDerivative is ERC20 {
         returns (int navNew) {
             int unitNav = int(startingTokenPrice);
             prevTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
-            lastTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
+            currentTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
             navNew = _computeNavFromTokenPrice(unitNav);
         }
 
