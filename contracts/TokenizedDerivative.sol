@@ -104,18 +104,20 @@ contract TokenizedDerivative is ERC20 {
     uint public endTime;
     uint public disputeDeposit;
 
+    // The state of the token at a particular time. The state gets updated on remargin.
+    struct TokenState {
+        int underlyingPrice;
+        int tokenPrice;
+        uint time;
+    }
+
     // The NAV of the contract always reflects the transition from (`prev`, `last`).
     // In the case of a remargin, a `latest` price is retrieved from the price feed, and we shift `last` -> `prev` and
     // `latest` -> `last` (and then recompute).
     // In the case of a dispute, `last` might change (which is why we have to hold on to `prev`).
     // Could also rename these to (`prev`, `current`), with the feed providing `updated`.
-    int public prevUnderlyingPrice;
-    int public prevTokenPrice;
-    uint public prevRemarginTime;
-
-    int public lastUnderlyingPrice;
-    uint public lastRemarginTime;
-    int public lastTokenPrice;
+    TokenState public prevTokenState;
+    TokenState public lastTokenState;
 
     int public nav;  // Net asset value is measured in Wei
 
@@ -244,9 +246,9 @@ contract TokenizedDerivative is ERC20 {
         additionalAuthorizedNav = authorizedNav.sub(navToPurchase);
         investor.balance = investor.balance.add(int(navToPurchase));
 
-        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), lastTokenPrice)));
+        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), lastTokenState.tokenPrice)));
 
-        nav = int(totalSupply()).mul(lastTokenPrice).div(1 ether);
+        nav = int(totalSupply()).mul(lastTokenState.tokenPrice).div(1 ether);
 
         if (refund != 0) {
             msg.sender.transfer(refund);
@@ -276,7 +278,7 @@ contract TokenizedDerivative is ERC20 {
         uint tokenValue = _takePercentage(uint(investorBalance), tokenPercentage);
 
         investor.balance = investor.balance.sub(int(tokenValue));
-        nav = int(totalSupply()).mul(lastTokenPrice).div(1 ether);
+        nav = int(totalSupply()).mul(lastTokenState.tokenPrice).div(1 ether);
 
         msg.sender.transfer(tokenValue);
     }
@@ -293,7 +295,7 @@ contract TokenizedDerivative is ERC20 {
         uint refund = msg.value - requiredDeposit;
 
         state = State.Disputed;
-        endTime = lastRemarginTime;
+        endTime = lastTokenState.time;
         disputeInfo.disputedNav = nav;
         disputeInfo.disputer = msg.sender;
         disputeInfo.deposit = requiredDeposit;
@@ -549,48 +551,41 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
-        // Shift `last` -> `prev` and `latest` -> `last` (except lastTokenPrice, which this method calculates).
-        prevUnderlyingPrice = lastUnderlyingPrice;
-        lastUnderlyingPrice = latestUnderlyingPrice;
-        prevTokenPrice = lastTokenPrice;
-        prevRemarginTime = lastRemarginTime;
-        lastRemarginTime = latestTime;
-
-        (navNew, lastTokenPrice) = _computePrevToLastTransition();
+        prevTokenState = lastTokenState;
+        (navNew, lastTokenState) = _computeNewTokenState(lastTokenState, latestUnderlyingPrice, latestTime);
     }
 
-    // TODO(mrice32): make "old state" and "new state" a storage argument to combine this and computeNav.
     function _recomputeNav(int oraclePrice, uint recomputeTime) private returns (int navNew) {
         // We're updating `last` based on what the Oracle has told us.
         // TODO(ptare): Add ability for the Oracle to correct the time as well.
-        assert(lastRemarginTime == recomputeTime);
-        lastUnderlyingPrice = oraclePrice;
-
-        (navNew, lastTokenPrice) = _computePrevToLastTransition();
+        assert(lastTokenState.time == recomputeTime);
+        (navNew, lastTokenState) = _computeNewTokenState(prevTokenState, oraclePrice, recomputeTime);
     }
 
-    // Calculates the nav and newTokenPrice based on the return from (`prev`, `last`).
-    function _computePrevToLastTransition() private view returns (int navNew, int newTokenPrice) {
-        int underlyingReturn = returnCalculator.computeReturn(prevUnderlyingPrice, lastUnderlyingPrice);
-        int tokenReturn = underlyingReturn.sub(int(fixedFeePerSecond.mul(lastRemarginTime.sub(prevRemarginTime))));
-        newTokenPrice = 0;
-        if (tokenReturn > 0) {
-            newTokenPrice = _takePercentage(prevTokenPrice, uint(tokenReturn));
+    function _computeNewTokenState(
+        TokenState storage beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
+        private
+        view
+        returns (int navNew, TokenState memory newTokenState) {
+            int underlyingReturn = returnCalculator.computeReturn(
+                beginningTokenState.underlyingPrice, latestUnderlyingPrice);
+            int tokenReturn = underlyingReturn.sub(
+                int(fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time))));
+            int newTokenPrice = 0;
+            if (tokenReturn > 0) {
+                newTokenPrice = _takePercentage(prevTokenState.tokenPrice, uint(tokenReturn));
+            }
+            navNew = int(totalSupply()).mul(newTokenPrice).div(1 ether);
+            assert(navNew >= 0);
+            newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
         }
-        navNew = int(totalSupply()).mul(newTokenPrice).div(1 ether);
-        assert(navNew >= 0);
-    }
 
     function _computeInitialNav(int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
         private
         returns (int navNew) {
             int unitNav = int(startingTokenPrice);
-            lastRemarginTime = latestTime;
-            prevRemarginTime = latestTime;
-            lastTokenPrice = unitNav;
-            prevTokenPrice = unitNav;
-            lastUnderlyingPrice = latestUnderlyingPrice;
-            prevUnderlyingPrice = latestUnderlyingPrice;
+            prevTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
+            lastTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
             navNew = int(totalSupply()).mul(unitNav).div(1 ether);
             assert(navNew >= 0);
         }
