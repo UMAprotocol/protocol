@@ -92,7 +92,7 @@ module.exports = function(deployer, network, accounts) {
         return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
       })
       .then(() => {
-        return deployer.deploy(ManualPriceFeed);
+        return deployer.deploy(ManualPriceFeed, enableControllableTiming(network));
       })
       .then(manualPriceFeed => {
         priceFeedAddress = manualPriceFeed.address;

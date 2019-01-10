@@ -69,7 +69,6 @@ contract Derivative {
     OracleInterface public oracle;
 
     State public state = State.Prefunded;
-    uint public startTime;
     uint public endTime;
     uint public lastRemarginTime;
 
