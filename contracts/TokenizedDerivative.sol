@@ -431,13 +431,14 @@ contract TokenizedDerivative is ERC20 {
     function _whoAmI(address sender)
         internal
         view
-        returns (ContractParty storage senderParty, ContractParty storage otherParty) {
-            bool senderIsProvider = (sender == provider.accountAddress);
-            bool senderIsInvestor = (sender == investor.accountAddress);
-            require(senderIsProvider || senderIsInvestor); // At least one should be true
+        returns (ContractParty storage senderParty, ContractParty storage otherParty)
+    {
+        bool senderIsProvider = (sender == provider.accountAddress);
+        bool senderIsInvestor = (sender == investor.accountAddress);
+        require(senderIsProvider || senderIsInvestor); // At least one should be true
 
-            return senderIsProvider ? (provider, investor) : (investor, provider);
-        }
+        return senderIsProvider ? (provider, investor) : (investor, provider);
+    }
 
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
