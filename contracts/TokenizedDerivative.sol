@@ -248,7 +248,7 @@ contract TokenizedDerivative is ERC20 {
 
         _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), lastTokenState.tokenPrice)));
 
-        nav = int(totalSupply()).mul(lastTokenState.tokenPrice).div(1 ether);
+        nav = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
 
         if (refund != 0) {
             msg.sender.transfer(refund);
@@ -278,7 +278,7 @@ contract TokenizedDerivative is ERC20 {
         uint tokenValue = _takePercentage(uint(investorBalance), tokenPercentage);
 
         investor.balance = investor.balance.sub(int(tokenValue));
-        nav = int(totalSupply()).mul(lastTokenState.tokenPrice).div(1 ether);
+        nav = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
 
         msg.sender.transfer(tokenValue);
     }
@@ -552,21 +552,32 @@ contract TokenizedDerivative is ERC20 {
 
     function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
         prevTokenState = lastTokenState;
-        (navNew, lastTokenState) = _computeNewTokenState(lastTokenState, latestUnderlyingPrice, latestTime);
+        lastTokenState = _computeNewTokenState(lastTokenState, latestUnderlyingPrice, latestTime);
+        navNew = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
     }
 
     function _recomputeNav(int oraclePrice, uint recomputeTime) private returns (int navNew) {
         // We're updating `last` based on what the Oracle has told us.
         // TODO(ptare): Add ability for the Oracle to correct the time as well.
         assert(lastTokenState.time == recomputeTime);
-        (navNew, lastTokenState) = _computeNewTokenState(prevTokenState, oraclePrice, recomputeTime);
+        lastTokenState = _computeNewTokenState(prevTokenState, oraclePrice, recomputeTime);
+        navNew = _computeNavFromTokenPrice(lastTokenState.tokenPrice);
     }
+
+    function _computeInitialNav(int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
+        private
+        returns (int navNew) {
+            int unitNav = int(startingTokenPrice);
+            prevTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
+            lastTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
+            navNew = _computeNavFromTokenPrice(unitNav);
+        }
 
     function _computeNewTokenState(
         TokenState storage beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
         private
         view
-        returns (int navNew, TokenState memory newTokenState) {
+        returns (TokenState memory newTokenState) {
             int underlyingReturn = returnCalculator.computeReturn(
                 beginningTokenState.underlyingPrice, latestUnderlyingPrice);
             int tokenReturn = underlyingReturn.sub(
@@ -575,20 +586,13 @@ contract TokenizedDerivative is ERC20 {
             if (tokenReturn > 0) {
                 newTokenPrice = _takePercentage(prevTokenState.tokenPrice, uint(tokenReturn));
             }
-            navNew = int(totalSupply()).mul(newTokenPrice).div(1 ether);
-            assert(navNew >= 0);
             newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
         }
 
-    function _computeInitialNav(int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
-        private
-        returns (int navNew) {
-            int unitNav = int(startingTokenPrice);
-            prevTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
-            lastTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
-            navNew = int(totalSupply()).mul(unitNav).div(1 ether);
-            assert(navNew >= 0);
-        }
+    function _computeNavFromTokenPrice(int tokenPrice) private view returns (int navNew) {
+        navNew = int(totalSupply()).mul(tokenPrice).div(1 ether);
+        assert(navNew >= 0);
+    }
 
     function _takePercentage(uint value, uint percentage) private pure returns (uint result) {
         return value.mul(percentage).div(1 ether);
