@@ -191,8 +191,11 @@ contract TokenizedDerivative is ERC20 {
         oracle = OracleInterface(_oracleAddress);
         v2Oracle = V2OracleInterface(_v2OracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
-        provider = ContractParty(_providerAddress, 0, false, _providerRequiredMargin);
+        // Verify that the price feed and oracle support the given product.
+        require(v2Oracle.isSymbolSupported(_product));
+        require(priceFeed.isSymbolSupported(_product));
 
+        provider = ContractParty(_providerAddress, 0, false, _providerRequiredMargin);
         // Note: the investor is required to have 100% margin at all times.
         investor = ContractParty(_investorAddress, 0, false, 1 ether);
 
@@ -687,10 +690,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
             expiry
         );
 
-        V2OracleInterface v2Oracle = V2OracleInterface(v2OracleAddress);
-        require(v2Oracle.isSymbolSupported(product));
-        PriceFeedInterface priceFeed = PriceFeedInterface(priceFeedAddress);
-        require(priceFeed.isSymbolSupported(product));
         _registerNewContract(provider, investor, address(derivative));
 
         return address(derivative);
