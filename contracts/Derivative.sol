@@ -67,6 +67,8 @@ contract Derivative {
     ContractParty public maker;
     ContractParty public taker;
     OracleInterface public oracle;
+    V2OracleInterface public v2Oracle;
+    PriceFeedInterface public priceFeed;
 
     State public state = State.Prefunded;
     uint public endTime;
@@ -78,6 +80,8 @@ contract Derivative {
         address payable _makerAddress,
         address payable _takerAddress,
         address _oracleAddress,
+        address _v2OracleAddress,
+        address _priceFeedAddress,
         int _defaultPenalty,
         int _requiredMargin,
         uint expiry,
@@ -86,6 +90,10 @@ contract Derivative {
     ) public payable {
         // Address information
         oracle = OracleInterface(_oracleAddress);
+        v2Oracle = V2OracleInterface(_v2OracleAddress);
+        priceFeed = PriceFeedInterface(_priceFeedAddress);
+        require(v2Oracle.isSymbolSupported(_product));
+        require(priceFeed.isSymbolSupported(_product));
         // TODO: Think about who is sending the `msg.value`
         require(_makerAddress != _takerAddress);
         maker = ContractParty(_makerAddress, 0, false);
@@ -363,6 +371,8 @@ contract SimpleDerivative is Derivative {
         address payable _ownerAddress,
         address payable _counterpartyAddress,
         address _oracleAddress,
+        address _v2OracleAddress,
+        address _priceFeedAddress,
         int _defaultPenalty,
         int _requiredMargin,
         uint expiry,
@@ -372,6 +382,8 @@ contract SimpleDerivative is Derivative {
         _ownerAddress,
         _counterpartyAddress,
         _oracleAddress,
+        _v2OracleAddress,
+        _priceFeedAddress,
         _defaultPenalty,
         _requiredMargin,
         expiry,
@@ -415,6 +427,8 @@ contract DerivativeCreator is ContractCreator {
             counterparty,
             msg.sender,
             oracleAddress,
+            v2OracleAddress,
+            priceFeedAddress,
             defaultPenalty,
             requiredMargin,
             expiry,
@@ -422,10 +436,6 @@ contract DerivativeCreator is ContractCreator {
             notional
         );
 
-        V2OracleInterface v2Oracle = V2OracleInterface(v2OracleAddress);
-        require(v2Oracle.isSymbolSupported(product));
-        PriceFeedInterface priceFeed = PriceFeedInterface(priceFeedAddress);
-        require(priceFeed.isSymbolSupported(product));
         _registerNewContract(msg.sender, counterparty, address(derivative));
 
         return address(derivative);

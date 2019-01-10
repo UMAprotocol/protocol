@@ -345,4 +345,18 @@ contract("Derivative", function(accounts) {
     takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.utils.toWei("0", "ether"));
   });
+
+  it("Unsupported product", async function() {
+    let unsupportedProduct = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupported"));
+    assert(
+        didContractThrow(deployedDerivativeCreator.createDerivative(
+            makerAddress,
+            web3.utils.toWei("0.05", "ether"),
+            web3.utils.toWei("0.1", "ether"),
+            0,
+            unsupportedProduct,
+            web3.utils.toWei("1", "ether"),
+            { from: takerAddress, value: web3.utils.toWei("1", "ether") }))
+    );
+  });
 });
