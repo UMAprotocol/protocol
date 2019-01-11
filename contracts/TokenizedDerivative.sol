@@ -95,7 +95,6 @@ contract TokenizedDerivative is ERC20 {
     // Other addresses/contracts
     ContractParty public provider;
     ContractParty public investor;
-    OracleInterface public oracle;
     V2OracleInterface public v2Oracle;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
@@ -156,7 +155,6 @@ contract TokenizedDerivative is ERC20 {
     constructor(
         address payable _providerAddress,
         address payable _investorAddress,
-        address _oracleAddress,
         address _v2OracleAddress,
         address _priceFeedAddress,
         uint _defaultPenalty, // Percentage of nav*10^18
@@ -178,7 +176,6 @@ contract TokenizedDerivative is ERC20 {
         require(_startingTokenPrice <= uint(1 ether).mul(10**9));
 
         // Address information
-        oracle = OracleInterface(_oracleAddress);
         v2Oracle = V2OracleInterface(_v2OracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
         // Verify that the price feed and oracle support the given product.
@@ -198,7 +195,7 @@ contract TokenizedDerivative is ERC20 {
         disputeDeposit = _disputeDeposit;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint latestTime, int latestUnderlyingPrice) = oracle.latestUnverifiedPrice();
+        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
         require(latestTime != 0);
 
         // Set end time to max value of uint to implement no expiry.
@@ -301,6 +298,8 @@ contract TokenizedDerivative is ERC20 {
         disputeInfo.deposit = requiredDeposit;
 
         msg.sender.transfer(refund);
+
+        _requestOraclePrice(endTime);
     }
 
     function settle() external {
@@ -383,17 +382,29 @@ contract TokenizedDerivative is ERC20 {
         require(state == State.Live);
 
         // Checks whether contract has ended.
-        (uint latestTime, int latestPrice) = oracle.latestUnverifiedPrice();
+        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
         require(latestTime != 0);
         if (latestTime >= endTime) {
-            (latestTime, latestPrice) = oracle.unverifiedPrice(endTime);
             state = State.Expired;
+            prevTokenState = currentTokenState;
+            // We don't have these prices yet. We have no idea what the price was, exactly at endTime, so we can't set
+            // these prices, or update the nav, or do anything.
+            currentTokenState.time = endTime;
+            currentTokenState.underlyingPrice = 0;
+            currentTokenState.tokenPrice = 0;
+
+            _requestOraclePrice(endTime);
+            return;
         }
 
         // Update nav of contract.
         int newNav = _computeNav(latestPrice, latestTime);
-        _remargin(newNav, latestTime);
+        bool inDefault = _remargin(newNav, latestTime);
         _reduceAuthorizedTokens(newNav);
+
+        if (inDefault) {
+            _requestOraclePrice(endTime);
+        }
     }
 
     // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in
@@ -466,17 +477,16 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _settleAgreedPrice() internal {
-        (uint currentTime,) = oracle.latestUnverifiedPrice();
+        (uint currentTime, ) = priceFeed.latestPrice(product);
         require(currentTime >= endTime);
-        (, int oraclePrice) = oracle.unverifiedPrice(endTime);
+        int agreedPrice = currentTokenState.underlyingPrice;
 
-        _settle(oraclePrice);
+        _settle(agreedPrice);
     }
 
     function _settleVerifiedPrice() internal {
-        (uint currentTime,) = oracle.latestVerifiedPrice();
-        require(currentTime >= endTime);
-        (, int oraclePrice) = oracle.verifiedPrice(endTime);
+        (uint timeForPrice, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
+        require(timeForPrice == endTime);
 
         _settle(oraclePrice);
     }
@@ -485,7 +495,7 @@ contract TokenizedDerivative is ERC20 {
     // The internal remargin method allows certain calls into the contract to
     // automatically remargin to non-current NAV values (time of expiry, last
     // agreed upon price, etc).
-    function _remargin(int navNew, uint latestTime) internal {
+    function _remargin(int navNew, uint latestTime) internal returns (bool inDefault) {
         // Save the current NAV in case it's required to compute the default penalty.
         int previousNav = nav;
 
@@ -493,7 +503,7 @@ contract TokenizedDerivative is ERC20 {
         _updateBalances(navNew);
 
         // Make sure contract has not moved into default.
-        (bool inDefault, , ) = whoDefaults();
+        (inDefault, , ) = whoDefaults();
         if (inDefault) {
             state = State.Defaulted;
             navAtDefault = previousNav;
@@ -574,6 +584,14 @@ contract TokenizedDerivative is ERC20 {
             navNew = _computeNavFromTokenPrice(unitNav);
         }
 
+    function _requestOraclePrice(uint requestedTime) private {
+        (uint time, , ) = v2Oracle.getPrice(product, requestedTime);
+        if (time == requestedTime) {
+            // The Oracle price is already available, settle the contract right away.
+            this.settle();
+        }
+    }
+
     function _computeNewTokenState(
         TokenState storage beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
         private
@@ -629,7 +647,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
         TokenizedDerivative derivative = new TokenizedDerivative(
             provider,
             investor,
-            oracleAddress,
             v2OracleAddress,
             priceFeedAddress,
             defaultPenalty,
