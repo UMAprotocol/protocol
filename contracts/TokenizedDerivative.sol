@@ -182,7 +182,7 @@ contract TokenizedDerivative is ERC20 {
         v2Oracle = V2OracleInterface(_v2OracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
         // Verify that the price feed and oracle support the given product.
-        require(v2Oracle.isSymbolSupported(_product));
+        require(v2Oracle.isProductSupported(_product));
         require(priceFeed.isProductSupported(_product));
 
         provider = ContractParty(_providerAddress, 0, false, _providerRequiredMargin);
