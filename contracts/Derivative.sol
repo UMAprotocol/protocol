@@ -93,7 +93,7 @@ contract Derivative {
         v2Oracle = V2OracleInterface(_v2OracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
         require(v2Oracle.isSymbolSupported(_product));
-        require(priceFeed.isSymbolSupported(_product));
+        require(priceFeed.isProductSupported(_product));
         // TODO: Think about who is sending the `msg.value`
         require(_makerAddress != _takerAddress);
         maker = ContractParty(_makerAddress, 0, false);
