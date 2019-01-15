@@ -550,6 +550,10 @@ contract("TokenizedDerivative", function(accounts) {
     let state = await derivativeContract.state();
     assert.equal(state.toString(), "2");
 
+    // Confirming prices isn't allowed on expiry.
+    assert(
+        didContractThrow(derivativeContract.confirmPrice({ from: investor }))
+    );
     // Oracle price does not match the price feed price.
     await deployedCentralizedOracle.pushPrice(productSymbolBytes, endTime, web3.utils.toWei("1", "ether"));
 

@@ -297,24 +297,9 @@ contract TokenizedDerivative is ERC20 {
         disputeInfo.disputer = msg.sender;
         disputeInfo.deposit = requiredDeposit;
 
-        msg.sender.transfer(refund);
-
         _requestOraclePrice(endTime);
-    }
 
-    function settle() external {
-        State startingState = state;
-        require(startingState == State.Disputed || startingState == State.Expired || startingState == State.Defaulted);
-        _settleVerifiedPrice();
-        if (startingState == State.Disputed) {
-            (ContractParty storage disputer, ContractParty storage notDisputer) = _whoAmI(disputeInfo.disputer);
-            int depositValue = int(disputeInfo.deposit);
-            if (nav == disputeInfo.disputedNav) {
-                disputer.balance = disputer.balance.add(depositValue);
-            } else {
-                notDisputer.balance = notDisputer.balance.add(depositValue);
-            }
-        }
+        msg.sender.transfer(refund);
     }
 
     function withdraw(uint amount) external payable onlyProvider {
@@ -347,9 +332,24 @@ contract TokenizedDerivative is ERC20 {
         provider.accountAddress.transfer(amount);
     }
 
+    function settle() public {
+        State startingState = state;
+        require(startingState == State.Disputed || startingState == State.Expired || startingState == State.Defaulted);
+        _settleVerifiedPrice();
+        if (startingState == State.Disputed) {
+            (ContractParty storage disputer, ContractParty storage notDisputer) = _whoAmI(disputeInfo.disputer);
+            int depositValue = int(disputeInfo.deposit);
+            if (nav == disputeInfo.disputedNav) {
+                disputer.balance = disputer.balance.add(depositValue);
+            } else {
+                notDisputer.balance = notDisputer.balance.add(depositValue);
+            }
+        }
+    }
+
     function confirmPrice() public onlyContractParties {
-        // Right now, only dispute if in a pre-settlement state.
-        require(state == State.Expired || state == State.Defaulted);
+        // Right now, only confirming prices in the defaulted state.
+        require(state == State.Defaulted);
 
         if (msg.sender == provider.accountAddress) {
             provider.hasConfirmedPrice = true;
@@ -390,8 +390,6 @@ contract TokenizedDerivative is ERC20 {
             // We don't have these prices yet. We have no idea what the price was, exactly at endTime, so we can't set
             // these prices, or update the nav, or do anything.
             currentTokenState.time = endTime;
-            currentTokenState.underlyingPrice = 0;
-            currentTokenState.tokenPrice = 0;
 
             _requestOraclePrice(endTime);
             return;
@@ -477,8 +475,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _settleAgreedPrice() internal {
-        (uint currentTime, ) = priceFeed.latestPrice(product);
-        require(currentTime >= endTime);
+        require(currentTokenState.time >= endTime);
         int agreedPrice = currentTokenState.underlyingPrice;
 
         _settle(agreedPrice);
@@ -486,7 +483,7 @@ contract TokenizedDerivative is ERC20 {
 
     function _settleVerifiedPrice() internal {
         (uint timeForPrice, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
-        require(timeForPrice == endTime);
+        require(timeForPrice != 0);
 
         _settle(oraclePrice);
     }
@@ -586,9 +583,9 @@ contract TokenizedDerivative is ERC20 {
 
     function _requestOraclePrice(uint requestedTime) private {
         (uint time, , ) = v2Oracle.getPrice(product, requestedTime);
-        if (time == requestedTime) {
+        if (time != 0) {
             // The Oracle price is already available, settle the contract right away.
-            this.settle();
+            settle();
         }
     }
 
