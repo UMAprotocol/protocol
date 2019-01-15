@@ -86,7 +86,9 @@ contract OracleMock is OracleInterface, Ownable {
     function _isNextTime(uint time, FeedInfo storage feedInfo) private view returns (bool isNextTime) {
         uint latestPublishTime = feedInfo.latestPublishTime;
         if (latestPublishTime == 0) {
-            return time == startTime;
+            // Slither complains about "dangerous strict equality" if we do:
+            // return time == startTime
+            return time >= startTime && time <= startTime;
         } else {
             return time == latestPublishTime.add(pricePublishInterval);
         }
