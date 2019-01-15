@@ -376,8 +376,8 @@ contract SimpleDerivative is Derivative {
         int _defaultPenalty,
         int _requiredMargin,
         uint expiry,
-        bytes32 product,
-        uint notional
+        bytes32 _product,
+        uint _notional
     ) public payable Derivative(
         _ownerAddress,
         _counterpartyAddress,
@@ -387,8 +387,8 @@ contract SimpleDerivative is Derivative {
         _defaultPenalty,
         _requiredMargin,
         expiry,
-        product,
-        notional) {} // solhint-disable-line no-empty-blocks
+        _product,
+        _notional) {} // solhint-disable-line no-empty-blocks
 
     function computeNpv(int oraclePrice, uint _notional) public view returns (int npvNew) {
         // This could be more complex, but in our case, just return the oracle value.

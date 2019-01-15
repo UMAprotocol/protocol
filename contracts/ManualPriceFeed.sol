@@ -32,7 +32,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable, Testable {
     // this bound will probably work reasonably well in both directions.
     uint constant private BLOCK_TIMESTAMP_TOLERANCE = 900;
 
-    constructor(bool isTest) public Testable(isTest) {} // solhint-disable-line no-empty-blocks
+    constructor(bool _isTest) public Testable(_isTest) {} // solhint-disable-line no-empty-blocks
 
     // Adds a new price to the series for a given symbol. The pushed publishTime must be later than the last time pushed
     // so far.

@@ -210,7 +210,7 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
 
     PeriodTiming[5] private periodTimings;
 
-    constructor(string memory _product, uint _priceInterval, bool isTest) public Testable(isTest) {
+    constructor(string memory _product, uint _priceInterval, bool _isTest) public Testable(_isTest) {
         _mint(msg.sender, 10000);
         product = _product;
         priceInterval = _priceInterval;
@@ -318,8 +318,8 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
     }
 
     function getCurrentPeriodType() external view returns (string memory periodType) {
-        uint currentTime = getCurrentTime();
-        return _getStringPeriodType(_getPeriodType(_getStartOfPeriod(currentTime), currentTime));
+        uint time = getCurrentTime();
+        return _getStringPeriodType(_getPeriodType(_getStartOfPeriod(time), time));
     }
 
     function getProduct() external view returns (string memory _product) {
@@ -503,14 +503,14 @@ contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
         nextStartOffset = periodTiming.endOffset;
     }
 
-    function _getPeriodType(uint votePeriodStartTime, uint currentTime)
+    function _getPeriodType(uint votePeriodStartTime, uint time)
         private
         view
         returns (VotePeriod.PeriodType periodType)
     {
         for (uint i = 0; i < periodTimings.length; i = i.add(1)) {
-            if (periodTimings[i].startOffset.add(votePeriodStartTime) <= currentTime
-                && currentTime < periodTimings[i].endOffset.add(votePeriodStartTime)) {
+            if (periodTimings[i].startOffset.add(votePeriodStartTime) <= time
+                && time < periodTimings[i].endOffset.add(votePeriodStartTime)) {
                 periodType = periodTimings[i].state;
                 if ((periodType == VotePeriod.PeriodType.RunoffCommit
                     || periodType == VotePeriod.PeriodType.RunoffReveal)

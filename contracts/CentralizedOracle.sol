@@ -53,7 +53,7 @@ contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    constructor(bool isTest) public Testable(isTest) {} // solhint-disable-line no-empty-blocks
+    constructor(bool _isTest) public Testable(_isTest) {} // solhint-disable-line no-empty-blocks
 
     // Gets the price if available, else enqueues a request (if a request isn't already present).
     function getPrice(bytes32 symbol, uint time) external returns (uint timeForPrice, int price, uint verifiedTime) {
