@@ -387,10 +387,8 @@ contract TokenizedDerivative is ERC20 {
         if (latestTime >= endTime) {
             state = State.Expired;
             prevTokenState = currentTokenState;
-            // We don't have these prices yet. We have no idea what the price was, exactly at endTime, so we can't set
-            // these prices, or update the nav, or do anything.
-            currentTokenState.time = endTime;
-
+            // We have no idea what the price was, exactly at endTime, so we can't set
+            // currentTokenState, or update the nav, or do anything.
             _requestOraclePrice(endTime);
             return;
         }
@@ -475,7 +473,6 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _settleAgreedPrice() internal {
-        require(currentTokenState.time >= endTime);
         int agreedPrice = currentTokenState.underlyingPrice;
 
         _settle(agreedPrice);
@@ -567,7 +564,7 @@ contract TokenizedDerivative is ERC20 {
     function _recomputeNav(int oraclePrice, uint recomputeTime) private returns (int navNew) {
         // We're updating `last` based on what the Oracle has told us.
         // TODO(ptare): Add ability for the Oracle to correct the time as well.
-        assert(currentTokenState.time == recomputeTime);
+        assert(endTime == recomputeTime);
         currentTokenState = _computeNewTokenState(prevTokenState, oraclePrice, recomputeTime);
         navNew = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
     }
