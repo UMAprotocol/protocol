@@ -2,7 +2,6 @@ const MockOracle = artifacts.require("OracleMock");
 const BigNumber = require("bignumber.js");
 const fetch = require("node-fetch");
 
-
 const getJson = async url => {
   try {
     const response = await fetch(url);
@@ -22,7 +21,10 @@ async function publishPrices(oracle, time, num, denom) {
 
     if (denom) {
       let denomInWei = web3.utils.toWei(denom.toString(), "ether");
-      exchangeRate = BigNumber(web3.utils.toWei(numInWei, "ether")).div(BigNumber(denomInWei)).integerValue(BigNumber.ROUND_FLOOR).toString();
+      exchangeRate = BigNumber(web3.utils.toWei(numInWei, "ether"))
+        .div(BigNumber(denomInWei))
+        .integerValue(BigNumber.ROUND_FLOOR)
+        .toString();
     } else {
       exchangeRate = numInWei;
     }
@@ -52,10 +54,10 @@ async function getContractAndNextPublishTime(address, delay) {
 }
 
 async function getCoinbasePrice(asset) {
-  let url = 'https://api.coinbase.com/v2/prices/' + asset + '/spot';
+  let url = "https://api.coinbase.com/v2/prices/" + asset + "/spot";
   let jsonOutput = await getJson(url);
   if (!jsonOutput) {
-    console.log(url + ' query failed.');
+    console.log(url + " query failed.");
     return;
   }
   console.log(jsonOutput.data.amount);
@@ -63,14 +65,14 @@ async function getCoinbasePrice(asset) {
 }
 
 async function getAlphaVantageQuote(asset) {
-  let url = 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=41EUIBN9FKJW9FQM&symbol=' + asset;
+  let url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=41EUIBN9FKJW9FQM&symbol=" + asset;
   let jsonOutput = await getJson(url);
   if (!jsonOutput) {
-    console.log(url + ' query failed.');
+    console.log(url + " query failed.");
     return;
   }
 
-  return jsonOutput['Global Quote']['05. price'];
+  return jsonOutput["Global Quote"]["05. price"];
 }
 
 async function publishFeed(feed) {
@@ -81,8 +83,6 @@ async function publishFeed(feed) {
 
     const currentTime = Math.round(Date.now() / 1000);
     if (currentTime >= nextPublishTime) {
-
-
       // Get the numerator price.
       const { assetName: numAssetName, priceFunction: numPriceFunction } = numerator;
       let numPrice = await numPriceFunction(numAssetName);
@@ -103,10 +103,7 @@ async function publishFeed(feed) {
 
       // Publish prices to the oracle.
       await publishPrices(oracle, nextPublishTime.toString(), numPrice, denomPrice);
-
     }
-
-
   } catch (error) {
     console.log(error);
   }
@@ -114,7 +111,6 @@ async function publishFeed(feed) {
 
 async function runExport() {
   try {
-
     let bitcoinEthFeed = {
       feedDelay: 900,
       oracleAddress: "0x9024e1dA0726670594e1d7E60D2e30D9e597c297",
@@ -126,20 +122,17 @@ async function runExport() {
         priceFunction: getCoinbasePrice,
         assetName: "ETH-USD"
       }
-    }
+    };
 
     let priceFeeds = [bitcoinEthFeed];
 
     for (let i = 0; i < priceFeeds.length; i++) {
       await publishFeed(priceFeeds[i]);
     }
-
   } catch (error) {
     console.log(error);
   }
 }
-
-
 
 module.exports = async function(callback) {
   await runExport();
