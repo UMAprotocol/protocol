@@ -310,75 +310,66 @@ contract("TokenizedDerivative", function(accounts) {
     // A new TokenizedDerivative must be deployed before the start of each test case.
     await deployNewTokenizedDerivative();
 
-    // Provider initializes the contract.
+    // Provider initializes contract.
     await derivativeContract.authorizeTokens(web3.utils.toWei("1", "ether"), {
       from: provider,
       value: web3.utils.toWei("0.2", "ether")
     });
     await derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether") });
 
+    // Verify initial state, nav, and balances.
+    const initialNav = await derivativeContract.nav();
+    let investorStruct = await derivativeContract.investor();
+    let providerStruct = await derivativeContract.provider();
+    const initialInvestorBalance = investorStruct[1];
+    const initialProviderBalance = providerStruct[1];
+    assert.equal(initialNav.toString(), web3.utils.toWei("1", "ether"));
+    assert.equal(initialInvestorBalance.toString(), web3.utils.toBN(web3.utils.toWei("1", "ether")));
+    assert.equal(initialProviderBalance.toString(), web3.utils.toBN(web3.utils.toWei("0.2", "ether")));
+    let state = await derivativeContract.state();
+    assert.equal(state.toString(), "0");
+
     // The price increases, forcing the provider into default.
     const navPreDefault = await derivativeContract.nav();
     await pushPrice(web3.utils.toWei("1.1", "ether"));
     const defaultTime = (await deployedManualPriceFeed.latestPrice(productSymbolBytes))[0];
+    await derivativeContract.remargin();
 
-    // Remargin to the new price, and verify that the contract is pushed into default.
-    await derivativeContract.remargin({ from: investor });
-    assert.equal((await derivativeContract.state()).toString(), "3");
-
-    const timeBasedFees = BigNumber(web3.utils.fromWei(feesPerInterval)).times(BigNumber(navPreDefault));
-
-    // Verify NAV and balances after default but before settlement. These should reflect the price feed price, and no
-    // default penalty should be charged yet.
-    const expectedNavPostDefault = computeNewNav(
-      navPreDefault,
-      web3.utils.toBN(web3.utils.toWei("1.1", "ether")),
-      feesPerInterval
-    );
-    let expectedInvestorAccountBalanceWithoutFees = BigNumber(web3.utils.toWei("1.1", "ether"));
-    let expectedProviderAccountBalanceWithoutFees = BigNumber(web3.utils.toWei("0.1", "ether"));
-    const actualNavPostDefault = await derivativeContract.nav();
-    let investorStruct = await derivativeContract.investor();
-    let providerStruct = await derivativeContract.provider();
-    assert.equal(actualNavPostDefault.toString(), expectedNavPostDefault.toString());
-    assert.equal(
-      investorStruct[1].toString(),
-      expectedInvestorAccountBalanceWithoutFees.minus(timeBasedFees).toString()
-    );
-    assert.equal(
-      providerStruct[1].toString(),
-      expectedProviderAccountBalanceWithoutFees.plus(timeBasedFees).toString()
-    );
-
-    // Nobody confirms anything, just wait for the Oracle. This is a different price from the price feed.
-    // In fact, the provider isn't in default with this new price, but the contract still terminates.
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, defaultTime, web3.utils.toWei("1.05", "ether"));
-
-    // The contract should be settled.
-    await derivativeContract.settle();
+    // Verify nav and balances. The default penalty shouldn't be charged yet.
     state = await derivativeContract.state();
-    assert.equal(state.toString(), "4");
-
-    // Verify NAV and balances at settlement. No default penalty should be paid.
-    const expectedNavAtSettle = computeNewNav(
-      navPreDefault,
-      web3.utils.toBN(web3.utils.toWei("1.05", "ether")),
-      feesPerInterval
-    );
-    expectedInvestorAccountBalanceWithoutFees = BigNumber(web3.utils.toWei("1.05", "ether"));
-    expectedProviderAccountBalanceWithoutFees = BigNumber(web3.utils.toWei("0.15", "ether"));
-    const actualNavAtSettle = await derivativeContract.nav();
+    assert.equal(state.toString(), "3");
+    let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
+    const expectedDefaultNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
+    let changeInNav = expectedDefaultNav.sub(initialNav);
+    actualNav = await derivativeContract.nav();
+    expectedInvestorAccountBalance = initialInvestorBalance.add(changeInNav);
+    expectedProviderAccountBalance = initialProviderBalance.sub(changeInNav);
     investorStruct = await derivativeContract.investor();
     providerStruct = await derivativeContract.provider();
-    assert.equal(actualNavAtSettle.toString(), expectedNavAtSettle.toString());
-    assert.equal(
-      investorStruct[1].toString(),
-      expectedInvestorAccountBalanceWithoutFees.minus(timeBasedFees).toString()
-    );
-    assert.equal(
-      providerStruct[1].toString(),
-      expectedProviderAccountBalanceWithoutFees.plus(timeBasedFees).toString()
-    );
+    assert.equal(actualNav.toString(), expectedDefaultNav.toString());
+    assert.equal(investorStruct[1].toString(), expectedInvestorAccountBalance.toString());
+    assert.equal(providerStruct[1].toString(), expectedProviderAccountBalance.toString());
+
+    // Provide the Oracle price and call settle. The Oracle price is different from the price feed price, and the
+    // provider is no longer in default.
+    await deployedCentralizedOracle.pushPrice(productSymbolBytes, defaultTime, web3.utils.toWei("1.05", "ether"));
+    await derivativeContract.settle();
+
+    // Verify nav and balances at settlement, no default penalty. Whatever the price feed said before is effectively
+    // ignored.
+    state = await derivativeContract.state();
+    assert.equal(state.toString(), "4");
+    priceReturn = web3.utils.toBN(web3.utils.toWei("1.05", "ether"));
+    const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
+    changeInNav = expectedSettlementNav.sub(initialNav);
+    actualNav = await derivativeContract.nav();
+    expectedInvestorAccountBalance = initialInvestorBalance.add(changeInNav);
+    expectedProviderAccountBalance = initialProviderBalance.sub(changeInNav);
+    investorStruct = await derivativeContract.investor();
+    providerStruct = await derivativeContract.provider();
+    assert.equal(actualNav.toString(), expectedSettlementNav.toString());
+    assert.equal(investorStruct[1].toString(), expectedInvestorAccountBalance.toString());
+    assert.equal(providerStruct[1].toString(), expectedProviderAccountBalance.toString());
   });
 
   it("Live -> Default -> Settled (oracle) [price available]", async function() {
@@ -391,6 +382,16 @@ contract("TokenizedDerivative", function(accounts) {
       value: web3.utils.toWei("0.2", "ether")
     });
     await derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether") });
+
+    // Verify initial state, nav, and balances.
+    const initialNav = await derivativeContract.nav();
+    let investorStruct = await derivativeContract.investor();
+    let providerStruct = await derivativeContract.provider();
+    assert.equal(initialNav.toString(), web3.utils.toWei("1", "ether"));
+    assert.equal(investorStruct[1].toString(), web3.utils.toBN(web3.utils.toWei("1", "ether")));
+    assert.equal(providerStruct[1].toString(), web3.utils.toBN(web3.utils.toWei("0.2", "ether")));
+    let state = await derivativeContract.state();
+    assert.equal(state.toString(), "0");
 
     // The price increases, forcing the provider into default.
     const navPreDefault = await derivativeContract.nav();
@@ -405,34 +406,19 @@ contract("TokenizedDerivative", function(accounts) {
     await derivativeContract.remargin({ from: investor });
     assert.equal((await derivativeContract.state()).toString(), "4");
 
-    // Verify NAV and balances at settlement. A default penalty should be paid.
-    const timeBasedFees = BigNumber(web3.utils.fromWei(feesPerInterval)).times(BigNumber(navPreDefault));
-    const defaultPenalty = computeExpectedPenalty(navPreDefault, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
-    const expectedNavPostDefault = computeNewNav(
-      navPreDefault,
-      web3.utils.toBN(web3.utils.toWei("1.1", "ether")),
-      feesPerInterval
-    );
-    const expectedInvestorAccountBalanceWithoutFees = BigNumber(web3.utils.toWei("1.1", "ether"));
-    const expectedProviderAccountBalanceWithoutFees = BigNumber(web3.utils.toWei("0.1", "ether"));
-    const actualNavPostDefault = await derivativeContract.nav();
-    const investorStruct = await derivativeContract.investor();
-    const providerStruct = await derivativeContract.provider();
-    assert.equal(actualNavPostDefault.toString(), expectedNavPostDefault.toString());
-    assert.equal(
-      investorStruct[1].toString(),
-      expectedInvestorAccountBalanceWithoutFees
-        .minus(timeBasedFees)
-        .plus(defaultPenalty)
-        .toString()
-    );
-    assert.equal(
-      providerStruct[1].toString(),
-      expectedProviderAccountBalanceWithoutFees
-        .plus(timeBasedFees)
-        .minus(defaultPenalty)
-        .toString()
-    );
+    // Verify nav and balances at settlement, including default penalty.
+    const defaultPenalty = computeExpectedPenalty(initialNav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
+    const priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
+    const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
+    let changeInNav = expectedSettlementNav.sub(initialNav);
+    actualNav = await derivativeContract.nav();
+    expectedInvestorAccountBalance = investorStruct[1].add(changeInNav).add(defaultPenalty);
+    expectedProviderAccountBalance = providerStruct[1].sub(changeInNav).sub(defaultPenalty);
+    investorStruct = await derivativeContract.investor();
+    providerStruct = await derivativeContract.provider();
+    assert.equal(actualNav.toString(), expectedSettlementNav.toString());
+    assert.equal(investorStruct[1].toString(), expectedInvestorAccountBalance.toString());
+    assert.equal(providerStruct[1].toString(), expectedProviderAccountBalance.toString());
   });
 
   it("Live -> Dispute (correctly) [price available] -> Settled", async function() {
