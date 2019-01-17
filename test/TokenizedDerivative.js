@@ -10,7 +10,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const BigNumber = require("bignumber.js");
 
 contract("TokenizedDerivative", function(accounts) {
-  let productSymbolBytes;
+  let identifierBytes;
   let derivativeContract;
   let deployedRegistry;
   let deployedCentralizedOracle;
@@ -43,12 +43,12 @@ contract("TokenizedDerivative", function(accounts) {
   const pushPrice = async price => {
     const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + priceFeedUpdatesInterval;
     await deployedManualPriceFeed.setCurrentTime(latestTime);
-    await deployedManualPriceFeed.pushLatestPrice(productSymbolBytes, latestTime, price);
+    await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
   };
 
   const deployNewTokenizedDerivative = async expiryDelay => {
     await pushPrice(web3.utils.toWei("1", "ether"));
-    const startTime = (await deployedManualPriceFeed.latestPrice(productSymbolBytes))[0];
+    const startTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
 
     let expiry = 0;
     if (expiryDelay != undefined) {
@@ -60,7 +60,7 @@ contract("TokenizedDerivative", function(accounts) {
       investor,
       web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
       web3.utils.toWei("0.1", "ether") /*_providerRequiredMargin*/,
-      productSymbolBytes,
+      identifierBytes,
       web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
       web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
       noLeverageCalculator.address /*_returnCalculator*/,
@@ -81,7 +81,7 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   before(async function() {
-    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
+    identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedCentralizedOracle = await CentralizedOracle.deployed();
@@ -90,7 +90,7 @@ contract("TokenizedDerivative", function(accounts) {
     noLeverageCalculator = await NoLeverage.deployed();
 
     // Make sure the Oracle and PriceFeed support the underlying product.
-    await deployedCentralizedOracle.addSupportedSymbol(productSymbolBytes);
+    await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
     await deployedManualPriceFeed.setCurrentTime(1000);
     await pushPrice(web3.utils.toWei("1", "ether"));
   });
@@ -332,7 +332,7 @@ contract("TokenizedDerivative", function(accounts) {
     // The price increases, forcing the provider into default.
     const navPreDefault = await derivativeContract.nav();
     await pushPrice(web3.utils.toWei("1.1", "ether"));
-    const defaultTime = (await deployedManualPriceFeed.latestPrice(productSymbolBytes))[0];
+    const defaultTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
     await derivativeContract.remargin();
 
     // Verify nav and balances. The default penalty shouldn't be charged yet.
@@ -352,7 +352,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Provide the Oracle price and call settle. The Oracle price is different from the price feed price, and the
     // provider is no longer in default.
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, defaultTime, web3.utils.toWei("1.05", "ether"));
+    await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.05", "ether"));
     await derivativeContract.settle();
 
     // Verify nav and balances at settlement, no default penalty. Whatever the price feed said before is effectively
@@ -396,11 +396,11 @@ contract("TokenizedDerivative", function(accounts) {
     // The price increases, forcing the provider into default.
     const navPreDefault = await derivativeContract.nav();
     await pushPrice(web3.utils.toWei("1.1", "ether"));
-    const defaultTime = (await deployedManualPriceFeed.latestPrice(productSymbolBytes))[0];
+    const defaultTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
 
     // The Oracle price is already available.
-    await deployedCentralizedOracle.getPrice(productSymbolBytes, defaultTime);
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, defaultTime, web3.utils.toWei("1.1", "ether"));
+    await deployedCentralizedOracle.getPrice(identifierBytes, defaultTime);
+    await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.1", "ether"));
 
     // Remargin to the new price, which should immediately settle the contract.
     await derivativeContract.remargin({ from: investor });
@@ -434,10 +434,10 @@ contract("TokenizedDerivative", function(accounts) {
     await derivativeContract.createTokens(true, { from: investor, value: web3.utils.toWei("1", "ether") });
 
     let nav = await derivativeContract.nav();
-    const disputeTime = (await deployedManualPriceFeed.latestPrice(productSymbolBytes))[0];
+    const disputeTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
     // Provide oracle price for the disputed time.
-    await deployedCentralizedOracle.getPrice(productSymbolBytes, disputeTime);
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, disputeTime, web3.utils.toWei("0.9", "ether"));
+    await deployedCentralizedOracle.getPrice(identifierBytes, disputeTime);
+    await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("0.9", "ether"));
 
     // Pushing these prices doesn't remargin the contract, so it doesn't affect what we dispute.
     await pushPrice(web3.utils.toWei("1.1", "ether"));
@@ -491,7 +491,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     let nav = await derivativeContract.nav();
 
-    const disputeTime = (await deployedManualPriceFeed.latestPrice(productSymbolBytes))[0];
+    const disputeTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
     // Dispute the current price.
     let disputeFee = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
     await derivativeContract.dispute({ from: investor, value: disputeFee.toString() });
@@ -499,7 +499,7 @@ contract("TokenizedDerivative", function(accounts) {
     assert.equal(state.toString(), "1");
 
     // Provide the Oracle price.
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, disputeTime, web3.utils.toWei("1", "ether"));
+    await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
 
     // Settle with the Oracle price.
     let presettlementNav = await derivativeContract.nav();
@@ -566,7 +566,7 @@ contract("TokenizedDerivative", function(accounts) {
     assert(didContractThrow(derivativeContract.dispute()));
 
     // Then the Oracle price should be provided, which settles the contract.
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
+    await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
     await derivativeContract.settle();
     state = await derivativeContract.state();
     assert.equal(state.toString(), "4");
@@ -611,8 +611,8 @@ contract("TokenizedDerivative", function(accounts) {
     // Push the contract to expiry, and provide Oracle price beforehand.
     await pushPrice(web3.utils.toWei("100", "ether"));
     const expirationTime = await deployedManualPriceFeed.getCurrentTime();
-    await deployedCentralizedOracle.getPrice(productSymbolBytes, expirationTime);
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
+    await deployedCentralizedOracle.getPrice(identifierBytes, expirationTime);
+    await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
 
     // Contract should go straight to settled.
     await derivativeContract.remargin({ from: provider });
@@ -701,7 +701,7 @@ contract("TokenizedDerivative", function(accounts) {
     // Contract should go to EXPIRED, and then on settle(), go to SETTLED.
     state = await derivativeContract.state();
     assert.equal(state.toString(), "2");
-    await deployedCentralizedOracle.pushPrice(productSymbolBytes, expirationTime, web3.utils.toWei("1.089", "ether"));
+    await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.089", "ether"));
     await derivativeContract.settle();
     state = await derivativeContract.state();
     assert.equal(state.toString(), "4");

@@ -22,7 +22,7 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable, Testable {
         int price;
     }
 
-    // Mapping from symbol to the latest price for that symbol.
+    // Mapping from identifier to the latest price for that identifier.
     mapping(bytes32 => PriceTick) private prices;
 
     // Ethereum timestamp tolerance.
@@ -34,27 +34,27 @@ contract ManualPriceFeed is PriceFeedInterface, Ownable, Testable {
 
     constructor(bool _isTest) public Testable(_isTest) {} // solhint-disable-line no-empty-blocks
 
-    // Adds a new price to the series for a given symbol. The pushed publishTime must be later than the last time pushed
-    // so far.
-    function pushLatestPrice(bytes32 symbol, uint publishTime, int newPrice) external onlyOwner {
+    // Adds a new price to the series for a given identifier. The pushed publishTime must be later than the last time
+    // pushed so far.
+    function pushLatestPrice(bytes32 identifier, uint publishTime, int newPrice) external onlyOwner {
         require(publishTime <= getCurrentTime().add(BLOCK_TIMESTAMP_TOLERANCE));
-        require(publishTime > prices[symbol].timestamp);
-        prices[symbol] = PriceTick(publishTime, newPrice);
-        emit PriceUpdated(symbol, publishTime, newPrice);
+        require(publishTime > prices[identifier].timestamp);
+        prices[identifier] = PriceTick(publishTime, newPrice);
+        emit PriceUpdated(identifier, publishTime, newPrice);
     }
 
-    // Whether this feed has ever published any prices for this symbol.
-    function isSymbolSupported(bytes32 symbol) external view returns (bool isSupported) {
-        isSupported = _isSymbolSupported(symbol);
+    // Whether this feed has ever published any prices for this identifier.
+    function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported) {
+        isSupported = _isIdentifierSupported(identifier);
     }
 
-    function latestPrice(bytes32 symbol) external view returns (uint publishTime, int price) {
-        require(_isSymbolSupported(symbol));
-        publishTime = prices[symbol].timestamp;
-        price = prices[symbol].price;
+    function latestPrice(bytes32 identifier) external view returns (uint publishTime, int price) {
+        require(_isIdentifierSupported(identifier));
+        publishTime = prices[identifier].timestamp;
+        price = prices[identifier].price;
     }
 
-    function _isSymbolSupported(bytes32 symbol) private view returns (bool isSupported) {
-        isSupported = prices[symbol].timestamp > 0;
+    function _isIdentifierSupported(bytes32 identifier) private view returns (bool isSupported) {
+        isSupported = prices[identifier].timestamp > 0;
     }
 }

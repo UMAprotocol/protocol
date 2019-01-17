@@ -1,10 +1,6 @@
-var MockOracle = artifacts.require("OracleMock");
+const MockOracle = artifacts.require("OracleMock");
 const BigNumber = require("bignumber.js");
 const fetch = require("node-fetch");
-
-const delay = 900;
-var publishingPrice = false;
-
 
 const getJson = async url => {
   try {
@@ -17,68 +13,126 @@ const getJson = async url => {
   }
 };
 
-async function publishPrices(btcPx, ethPx, oracle, time) {
-  publishingPrice = true;
+async function publishPrices(oracle, time, num, denom) {
   try {
-    var ownerAccount = (await web3.eth.getAccounts())[0];
     console.log("Publishing New Price");
-    var btcInWei = web3.utils.toWei(btcPx.toString(), "ether");
-    var ethInWei = web3.utils.toWei(ethPx.toString(), "ether");
+    let numInWei = web3.utils.toWei(num.toString(), "ether");
+    let exchangeRate;
 
+    if (denom) {
+      let denomInWei = web3.utils.toWei(denom.toString(), "ether");
+      exchangeRate = BigNumber(web3.utils.toWei(numInWei, "ether"))
+        .div(BigNumber(denomInWei))
+        .integerValue(BigNumber.ROUND_FLOOR)
+        .toString();
+    } else {
+      exchangeRate = numInWei;
+    }
 
-    var decimalExchangeRateString = BigNumber(web3.utils.toWei(btcInWei, "ether")).div(BigNumber(ethInWei)).integerValue(BigNumber.ROUND_FLOOR).toString();
-    var exchangeRate = BigNumber(decimalExchangeRateString).integerValue(BigNumber.ROUND_FLOOR).toString();
-    var transactionResponse = await oracle.addUnverifiedPriceForTime(time, exchangeRate, { from: ownerAccount, gas: 6720000 });
+    await oracle.addUnverifiedPriceForTime(time, exchangeRate, { gas: 6720000 });
 
     console.log("Publish verified. Time: " + time + " Exchange rate: " + exchangeRate);
   } catch (error) {
     console.log(error);
   }
-  publishingPrice = false;
 }
 
-async function runExport() {
+async function getContractAndNextPublishTime(address, delay) {
+  let oracle = await MockOracle.at(address);
+  let lastPublishTime = Number((await oracle.latestUnverifiedPrice())[0]);
+  let nextPublishTime;
+  if (lastPublishTime == 0) {
+    nextPublishTime = await oracle.startTime();
+  } else {
+    nextPublishTime = lastPublishTime + delay;
+  }
+
+  return {
+    oracle: oracle,
+    nextPublishTime: nextPublishTime
+  };
+}
+
+async function getCoinbasePrice(asset) {
+  let url = "https://api.coinbase.com/v2/prices/" + asset + "/spot";
+  let jsonOutput = await getJson(url);
+  if (!jsonOutput) {
+    console.log(url + " query failed.");
+    return;
+  }
+  console.log(jsonOutput.data.amount);
+  return jsonOutput.data.amount;
+}
+
+async function getAlphaVantageQuote(asset) {
+  let url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=41EUIBN9FKJW9FQM&symbol=" + asset;
+  let jsonOutput = await getJson(url);
+  if (!jsonOutput) {
+    console.log(url + " query failed.");
+    return;
+  }
+
+  return jsonOutput["Global Quote"]["05. price"];
+}
+
+async function publishFeed(feed) {
   try {
-    var oracle = await MockOracle.deployed();
-    var priceTime = await oracle.latestUnverifiedPrice();
+    const { feedDelay, oracleAddress, numerator } = feed;
 
-    var nextPublishTime;
-    var contractTime = Number(priceTime[0].toString());
-    if (contractTime == 0) {
-      nextPublishTime = await oracle.startTime();
-    } else {
-      nextPublishTime = contractTime + delay;
-    }
+    const { oracle, nextPublishTime } = await getContractAndNextPublishTime(oracleAddress, feedDelay);
 
-    var dateUtc = Math.round(Date.now() / 1000);
-    if (!publishingPrice && dateUtc >= nextPublishTime) {
-
-      var btcUsdJson = await getJson('https://api.coinbase.com/v2/prices/BTC-USD/spot');
-      if (!btcUsdJson) {
-        console.log("Couldn't get BTC price.");
+    const currentTime = Math.round(Date.now() / 1000);
+    if (currentTime >= nextPublishTime) {
+      // Get the numerator price.
+      const { assetName: numAssetName, priceFunction: numPriceFunction } = numerator;
+      let numPrice = await numPriceFunction(numAssetName);
+      if (!numPrice) {
         return;
       }
 
-      var btcUsd = btcUsdJson.data.amount;
-
-      var ethUsdJson = await getJson('https://api.coinbase.com/v2/prices/ETH-USD/spot');
-
-      if (!ethUsdJson) {
-        console.log("Couldn't get ETH price.");
-        return;
+      // Leave denominator as undefined if there is no denominator (the publish function handles that case).
+      let denomPrice;
+      if ("denominator" in feed) {
+        // Get the denominator price.
+        const { assetName: denomAssetName, priceFunction: denomPriceFunction } = feed.denominator;
+        denomPrice = await denomPriceFunction(denomAssetName);
+        if (!denomPrice) {
+          return;
+        }
       }
 
-      var ethUsd = ethUsdJson.data.amount;
-
-      await publishPrices(btcUsd, ethUsd, oracle, nextPublishTime.toString());
-
+      // Publish prices to the oracle.
+      await publishPrices(oracle, nextPublishTime.toString(), numPrice, denomPrice);
     }
   } catch (error) {
     console.log(error);
   }
 }
 
+async function runExport() {
+  try {
+    let bitcoinEthFeed = {
+      feedDelay: 900,
+      oracleAddress: "0x9024e1dA0726670594e1d7E60D2e30D9e597c297",
+      numerator: {
+        priceFunction: getCoinbasePrice,
+        assetName: "BTC-USD"
+      },
+      denominator: {
+        priceFunction: getCoinbasePrice,
+        assetName: "ETH-USD"
+      }
+    };
 
+    let priceFeeds = [bitcoinEthFeed];
+
+    for (let i = 0; i < priceFeeds.length; i++) {
+      await publishFeed(priceFeeds[i]);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 module.exports = async function(callback) {
   await runExport();
