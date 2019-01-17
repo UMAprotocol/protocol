@@ -486,9 +486,8 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _receiveErc20Tokens(IERC20 erc20) private returns (uint amount) {
-        uint allowance = erc20.allowance(msg.sender, address(this));
-        require(erc20.transferFrom(msg.sender, address(this), allowance));
-        return allowance;
+        amount = erc20.allowance(msg.sender, address(this));
+        require(erc20.transferFrom(msg.sender, address(this), amount));
     } 
 
     function _computeNewTokenState(
