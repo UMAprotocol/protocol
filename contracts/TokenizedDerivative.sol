@@ -95,7 +95,7 @@ contract TokenizedDerivative is ERC20 {
     int public longBalance;
 
     // Other addresses/contracts
-    address payable public sponsor;
+    address public sponsor;
     address public admin;
     V2OracleInterface public v2Oracle;
     PriceFeedInterface public priceFeed;
@@ -149,7 +149,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     constructor(
-        address payable _sponsorAddress,
+        address _sponsorAddress,
         address _adminAddress,
         address _v2OracleAddress,
         address _priceFeedAddress,
@@ -307,7 +307,6 @@ contract TokenizedDerivative is ERC20 {
         if (startingState == State.Disputed) {
             int depositValue = int(disputeInfo.deposit);
             if (nav != disputeInfo.disputedNav) {
-                // DO NOT MERGE: this seems backwards...?
                 shortBalance = shortBalance.add(depositValue);
             } else {
                 longBalance = longBalance.add(depositValue);
@@ -527,7 +526,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
                         _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
     function createTokenizedDerivative(
-        address payable sponsor,
+        address sponsor,
         address admin,
         uint defaultPenalty,
         uint requiredMargin,
