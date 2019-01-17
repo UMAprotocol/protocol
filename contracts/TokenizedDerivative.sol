@@ -77,7 +77,6 @@ contract TokenizedDerivative is ERC20 {
         Settled
     }
 
-
     // Note: these variables are to give ERC20 consumers information about the token.
     string public constant name = "2x Levered Bitcoin-Ether"; // solhint-disable-line const-name-snakecase
     string public constant symbol = "2XBCE"; // solhint-disable-line const-name-snakecase
@@ -429,7 +428,11 @@ contract TokenizedDerivative is ERC20 {
         shortBalance = shortBalance.sub(longDiff);
     }
 
-    function _satisfiesMarginRequirement(int balance, int currentNav) internal view returns (bool doesSatisfyRequirement) {
+    function _satisfiesMarginRequirement(int balance, int currentNav)
+        internal
+        view
+        returns (bool doesSatisfyRequirement) 
+    {
         return _getRequiredEthMargin(currentNav) <= balance;
     }
 
