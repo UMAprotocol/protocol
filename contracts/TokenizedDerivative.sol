@@ -223,6 +223,8 @@ contract TokenizedDerivative is ERC20 {
         require(_satisfiesMarginRequirement(shortBalance, nav));
     }
 
+    function depositAndCreateTokens(uint newTokenNav)
+
     function redeemTokens() external {
         require((msg.sender == sponsor && state == State.Live) || state == State.Settled);
 
