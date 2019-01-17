@@ -91,8 +91,8 @@ contract TokenizedDerivative is ERC20 {
     bytes32 public product;
 
     // Balances
-    int shortBalance;
-    int longBalance;
+    int public shortBalance;
+    int public longBalance;
 
     // Other addresses/contracts
     address payable public sponsor;
@@ -165,6 +165,7 @@ contract TokenizedDerivative is ERC20 {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _requiredMargin);
         require(_requiredMargin <= 1 ether);
+        marginRequirement = _requiredMargin;
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
@@ -257,7 +258,7 @@ contract TokenizedDerivative is ERC20 {
         uint requiredDeposit = uint(_takePercentage(nav, disputeDeposit));
 
         require(msg.value >= requiredDeposit);
-        uint refund = msg.value - requiredDeposit;
+        uint refund = msg.value.sub(requiredDeposit);
 
         state = State.Disputed;
         endTime = currentTokenState.time;
@@ -270,13 +271,13 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function withdraw(uint amount) external payable onlySponsor {
-        // Make sure either in Live or Settled.
-        require(state == State.Live || state == State.Settled);
-
         // Remargin before allowing a withdrawal, but only if in the live state.
         if (state == State.Live) {
             remargin();
         }
+
+        // Make sure either in Live or Settled after any necessary remargin.
+        require(state == State.Live || state == State.Settled);
 
         // If the contract has been settled or is in prefunded state then can
         // withdraw up to full balance. If the contract is in live state then
@@ -305,7 +306,7 @@ contract TokenizedDerivative is ERC20 {
         _settleVerifiedPrice();
         if (startingState == State.Disputed) {
             int depositValue = int(disputeInfo.deposit);
-            if (nav == disputeInfo.disputedNav) {
+            if (nav != disputeInfo.disputedNav) {
                 // DO NOT MERGE: this seems backwards...?
                 shortBalance = shortBalance.add(depositValue);
             } else {
@@ -371,7 +372,7 @@ contract TokenizedDerivative is ERC20 {
         // Remargin at whatever price we're using (verified or unverified).
         _updateBalances(_recomputeNav(price, endTime));
 
-        bool inDefault = _satisfiesMarginRequirement(shortBalance, nav);
+        bool inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
 
         if (inDefault) {
             int expectedDefaultPenalty = _getDefaultPenaltyEth();
@@ -411,7 +412,7 @@ contract TokenizedDerivative is ERC20 {
         _updateBalances(navNew);
 
         // Make sure contract has not moved into default.
-        inDefault = _satisfiesMarginRequirement(shortBalance, nav);
+        inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
         if (inDefault) {
             state = State.Defaulted;
             navAtDefault = previousNav;
