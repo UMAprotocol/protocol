@@ -61,6 +61,9 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
     throw "No numerator price";
   }
   const numInWei = web3.utils.toWei(numeratorPrice.toString(), "ether");
+  if (web3.utils.toBN(numInWei).isZero()) {
+    throw util.format("Got zero price for [%s]", numeratorConfig);
+  }
 
   // If no denominator is specified, then the exchange rate is the numerator. An example would be SPY denominated in
   // USD.
@@ -72,7 +75,11 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
   if (!denominatorPrice) {
     throw "No denominator price";
   }
-  const exchangeRate = BigNumber(web3.utils.toWei(numInWei, "ether"))
+  const denomInWei = web3.utils.toWei(numInWei, "ether");
+  if (web3.utils.toBN(denomInWei).isZero()) {
+    throw util.format("Got zero price for [%s]", denominatorConfig);
+  }
+  const exchangeRate = BigNumber(denomInWei)
     .div(BigNumber(web3.utils.toWei(denominatorPrice.toString(), "ether")))
     .integerValue(BigNumber.ROUND_FLOOR)
     .toString();
