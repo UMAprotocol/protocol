@@ -212,7 +212,9 @@ contract Derivative {
 
         require(currentTime != 0);
         if (currentTime >= endTime) {
-            (, oraclePrice) = oracle.unverifiedPrice(endTime);
+            (uint time, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
+            // We can't compute NPV without the Oracle price. This is bizarre though.
+            require(time != 0);
         }
 
         return computeNpv(oraclePrice, notional);
@@ -237,8 +239,13 @@ contract Derivative {
         (uint currentTime, int oraclePrice) = priceFeed.latestPrice(product);
         require(currentTime != 0);
         if (currentTime >= endTime) {
-            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
             state = State.Expired;
+            // (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
+            (uint time, oraclePrice, ) = v2Oracle.getPrice(product, endTime);
+            if (time != 0) {
+                settle();
+            }
+            return;
         }
 
         lastRemarginTime = currentTime;
@@ -358,6 +365,7 @@ contract Derivative {
     }
 
     function _requiredAccountBalanceOnRemargin(ContractParty storage party) internal view returns (int balance) {
+        // TODO: WHY DOES THIS USE endTime!?!?
         (, int oraclePrice) = oracle.unverifiedPrice(endTime);
         int makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice, notional));
 
