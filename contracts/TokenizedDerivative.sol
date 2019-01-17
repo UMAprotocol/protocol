@@ -232,7 +232,7 @@ contract TokenizedDerivative is ERC20 {
 
         uint initialSupply = totalSupply();
 
-        uint numTokens = _receiveErc20Tokens(this);
+        uint numTokens = _pullAllAuthorizedTokens(this);
         require(numTokens > 0);
         _burn(address(this), numTokens);
 
@@ -269,7 +269,7 @@ contract TokenizedDerivative is ERC20 {
         msg.sender.transfer(refund);
     }
 
-    function withdraw(uint amount) external payable onlySponsor {
+    function withdraw(uint amount) external onlySponsor {
         // Remargin before allowing a withdrawal, but only if in the live state.
         if (state == State.Live) {
             remargin();
@@ -485,7 +485,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function _receiveErc20Tokens(IERC20 erc20) private returns (uint amount) {
+    function _pullAllAuthorizedTokens(IERC20 erc20) private returns (uint amount) {
         amount = erc20.allowance(msg.sender, address(this));
         require(erc20.transferFrom(msg.sender, address(this), amount));
     } 

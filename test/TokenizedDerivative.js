@@ -248,6 +248,11 @@ contract("TokenizedDerivative", function(accounts) {
     // Only the sponsor can confirm.
     assert(await didContractThrow(derivativeContract.confirmPrice({ from: admin })));
 
+    // Verify that the sponsor cannot withdraw before settlement.
+    assert(
+      await didContractThrow(derivativeContract.withdraw(sponsorBalancePostRemargin.toString(), { from: sponsor }))
+    );
+
     // Verify that after the sponsor confirms, the state is moved to settled.
     await derivativeContract.confirmPrice({ from: sponsor });
 
