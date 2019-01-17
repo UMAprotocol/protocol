@@ -108,7 +108,8 @@ contract Derivative {
         notional = _notional;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (, int oraclePrice) = oracle.latestUnverifiedPrice();
+        // (, int oraclePrice) = oracle.latestUnverifiedPrice();
+        (, int oraclePrice) = priceFeed.latestPrice(_product);
         npv = initialNpv(oraclePrice, notional);
     }
 
@@ -206,7 +207,9 @@ contract Derivative {
 
     function npvIfRemarginedImmediately() external view returns (int immediateNpv) {
         // Checks whether contract has ended
-        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
+        // (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
+        (uint currentTime, int oraclePrice) = priceFeed.latestPrice(product);
+
         require(currentTime != 0);
         if (currentTime >= endTime) {
             (, oraclePrice) = oracle.unverifiedPrice(endTime);
@@ -230,7 +233,8 @@ contract Derivative {
         require(state == State.Live);
 
         // Checks whether contract has ended
-        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
+        // (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
+        (uint currentTime, int oraclePrice) = priceFeed.latestPrice(product);
         require(currentTime != 0);
         if (currentTime >= endTime) {
             (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
@@ -299,17 +303,19 @@ contract Derivative {
     }
 
     function _settleAgreedPrice() internal {
-        (uint currentTime,) = oracle.latestUnverifiedPrice();
+        // (uint currentTime,) = oracle.latestUnverifiedPrice();
+        (uint currentTime, int oraclePrice) = priceFeed.latestPrice(product);
         require(currentTime >= endTime);
-        (, int oraclePrice) = oracle.unverifiedPrice(endTime);
+        // (, int oraclePrice) = oracle.unverifiedPrice(endTime);
 
         _settle(oraclePrice);
     }
 
     function _settleVerifiedPrice() internal {
-        (uint currentTime,) = oracle.latestVerifiedPrice();
+        // (uint currentTime,) = oracle.latestVerifiedPrice();
+        (uint currentTime, int oraclePrice) = priceFeed.latestPrice(product);
         require(currentTime >= endTime);
-        (, int oraclePrice) = oracle.verifiedPrice(endTime);
+        // (, int oraclePrice) = oracle.verifiedPrice(endTime);
 
         _settle(oraclePrice);
     }
@@ -329,7 +335,8 @@ contract Derivative {
         (inDefault, defaulter, notDefaulter) = whoDefaults();
         if (inDefault) {
             state = State.Defaulted;
-            (endTime,) = oracle.latestUnverifiedPrice(); // Change end time to moment when default occurred
+            // (endTime,) = oracle.latestUnverifiedPrice(); // Change end time to moment when default occurred
+            (endTime, ) = priceFeed.latestPrice(product); // Change end time to moment when default occurred
         }
     }
 

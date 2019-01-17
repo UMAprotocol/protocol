@@ -18,6 +18,14 @@ contract("Derivative", function(accounts) {
   const takerAddress = accounts[1];
   const makerAddress = accounts[2];
 
+  const priceFeedUpdatesInterval = 60;
+
+  const pushPrice = async price => {
+    const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + priceFeedUpdatesInterval;
+    await deployedManualPriceFeed.setCurrentTime(latestTime);
+    await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
+  }
+
   before(async function() {
     identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
