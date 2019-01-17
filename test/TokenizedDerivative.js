@@ -10,7 +10,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const BigNumber = require("bignumber.js");
 
 contract("TokenizedDerivative", function(accounts) {
-  let productSymbolBytes;
+  let identifierBytes;
   let derivativeContract;
   let deployedRegistry;
   let deployedOracle;
@@ -51,7 +51,7 @@ contract("TokenizedDerivative", function(accounts) {
       investor,
       web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
       web3.utils.toWei("0.1", "ether") /*_providerRequiredMargin*/,
-      productSymbolBytes,
+      identifierBytes,
       web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
       web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
       noLeverageCalculator.address /*_returnCalculator*/,
@@ -69,7 +69,7 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   before(async function() {
-    productSymbolBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
+    identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedOracle = await Oracle.deployed();
@@ -79,8 +79,8 @@ contract("TokenizedDerivative", function(accounts) {
     noLeverageCalculator = await NoLeverage.deployed();
 
     // Make sure the Oracle and PriceFeed support the underlying product.
-    await deployedCentralizedOracle.addSupportedSymbol(productSymbolBytes);
-    await deployedManualPriceFeed.pushLatestPrice(productSymbolBytes, 100, web3.utils.toWei("1", "ether"));
+    await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
+    await deployedManualPriceFeed.pushLatestPrice(identifierBytes, 100, web3.utils.toWei("1", "ether"));
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("1", "ether"), { from: ownerAddress });
