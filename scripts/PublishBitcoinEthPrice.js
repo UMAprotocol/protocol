@@ -54,40 +54,39 @@ async function publishPrice(manualPriceFeed, identifierBytes, publishTime, excha
   await manualPriceFeed.pushLatestPrice(identifierBytes, publishTime, exchangeRate);
 }
 
+async function getNonZeroPriceInWei(assetConfig) {
+  const price = await assetConfig.priceFetchFunction(assetConfig.assetName);
+  if (!price) {
+    throw util.format("No price for [%s]", assetConfig);
+  }
+  const priceInWei = web3.utils.toWei(price.toString(), "ether");
+  if (web3.utils.toBN(priceInWei).isZero()) {
+    throw util.format("Got zero price for [%s]", assetConfig);
+  }
+  return priceInWei;
+}
+
 // Gets the exchange rate or throws.
 async function getExchangeRate(numeratorConfig, denominatorConfig) {
-  const numeratorPrice = await numeratorConfig.priceFetchFunction(numeratorConfig.assetName);
-  if (!numeratorPrice) {
-    throw "No numerator price";
-  }
-  const numInWei = web3.utils.toWei(numeratorPrice.toString(), "ether");
-  if (web3.utils.toBN(numInWei).isZero()) {
-    throw util.format("Got zero price for [%s]", numeratorConfig);
-  }
-
+  const numInWei = await getNonZeroPriceInWei(numeratorConfig);
   // If no denominator is specified, then the exchange rate is the numerator. An example would be SPY denominated in
   // USD.
   if (!denominatorConfig) {
-    console.log(util.format("No denominator. numerator [%s], exchangeRate (in Wei) [%s]", numerator, numInWei));
+    console.log(util.format("No denominator. Exchange rate (in Wei) [%s]", numInWei));
     return numInWei;
   }
-  const denominatorPrice = await denominatorConfig.priceFetchFunction(denominatorConfig.assetName);
-  if (!denominatorPrice) {
-    throw "No denominator price";
-  }
-  const denomInWei = web3.utils.toWei(numInWei, "ether");
-  if (web3.utils.toBN(denomInWei).isZero()) {
-    throw util.format("Got zero price for [%s]", denominatorConfig);
-  }
-  const exchangeRate = BigNumber(denomInWei)
-    .div(BigNumber(web3.utils.toWei(denominatorPrice.toString(), "ether")))
-    .integerValue(BigNumber.ROUND_FLOOR)
-    .toString();
+  const denomInWei = await getNonZeroPriceInWei(denominatorConfig);
+  const exchangeRate = web3.utils.toWei(
+    BigNumber(numInWei)
+      .div(BigNumber(denomInWei))
+      .integerValue(BigNumber.ROUND_FLOOR)
+      .toString()
+  );
   console.log(
     util.format(
-      "Dividing numerator [%s] / denominator [%s] = exchange rate [%s]",
-      numeratorPrice,
-      denominatorPrice,
+      "Dividing numerator [%s] / denominator [%s] = exchange rate (in Wei) [%s]",
+      numInWei,
+      denomInWei,
       exchangeRate
     )
   );
@@ -122,9 +121,19 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
         currentTime
       )
     );
+  } else {
+    console.log(
+      util.format(
+        "Publishing because lastPublishTime [%s] + publishInterval [%s] <= currentTime [%s]",
+        lastPublishTime,
+        publishInterval,
+        currentTime
+      )
+    );
   }
   return {
     shouldPublish: shouldPublish,
+    // This should really be current time, because that's the time the price is at?
     publishTime: nextPublishTime
   };
 }
