@@ -186,7 +186,7 @@ contract("TokenizedDerivative", function(accounts) {
     await derivativeContract.remargin({ from: sponsor });
 
     // Ensure that a remargin with no new price works appropriately and doesn't create any balance issues.
-    await derivativeContract.remargin({ from: sponsor });
+    await derivativeContract.remargin({ from: admin });
 
     // Check new nav after price change.
     nav = await derivativeContract.nav();
