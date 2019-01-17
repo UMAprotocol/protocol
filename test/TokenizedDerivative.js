@@ -115,10 +115,13 @@ contract("TokenizedDerivative", function(accounts) {
     assert.equal(contractSponsor, sponsor);
     assert.equal(contractAdmin, admin);
 
-    // Ensure the balance of the sponsor is 0 ETH (as is deposited in beforeEach()).
-    assert.equal(sponsorStruct[1].toString(), web3.utils.toWei("0", "ether"));
+    let longBalance = await derivativeContract.longBalance();
+    let shortBalance = await derivativeContract.shortBalance();
 
-    // Check that the deposit function correctly credits the sponsor account.
+    // Ensure the short balance is 0 ETH (as is deposited in beforeEach()).
+    assert.equal(shortBalance.toString(), web3.utils.toWei("0", "ether"));
+
+    // Check that the deposit function correctly credits the short account.
     await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.2", "ether") });
     sponsorStruct = await derivativeContract.sponsor();
     assert.equal(sponsorStruct[1].toString(), web3.utils.toWei("0.2", "ether"));
