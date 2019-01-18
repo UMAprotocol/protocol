@@ -30,19 +30,18 @@ contract Derivative {
         Live,
 
         // One of the parties has disputed the price feed. The contract is frozen until the dispute is resolved.
-        // Possible state transitions: Defaulted, Settled.
+        // Possible state transitions: Settled.
         Disputed,
 
-        // The contract has passed its expiration and the final remargin has occurred. It is still possible to dispute
-        // the settlement price.
-        // Possible state transitions: Disputed, Settled.
+        // The contract has passed its expiration and the final remargin has occurred. The contract is waiting for the
+        // Oracle price to become available, and as such, it is not possible to dispute.
+        // Possible state transitions: Settled.
         Expired,
 
-        // One party failed to keep their margin above the required margin, so the contract has gone into default. If
-        // the price is undisputed then the defaulting party will be required to pay a default penalty, but, if
-        // disputed, contract becomes disputed and penalty will only be paid if verified price confirms default. If both
-        // parties agree the contract is in default then becomes settled
-        // Possible state transitions: Disputed, Settled
+        // One party failed to keep their margin above the required margin, so the contract has gone into default.
+        // If both parties agree the contract is in default then becomes settled. Otherwise, call settle() after an
+        // Oracle price is available.
+        // Possible state transitions: Settled
         Defaulted,
 
         // The final remargin has occured, and all parties have agreed on the settlement price. Account balances can be
@@ -66,7 +65,6 @@ contract Derivative {
     // Other addresses/contracts
     ContractParty public maker;
     ContractParty public taker;
-    OracleInterface public oracle;
     V2OracleInterface public v2Oracle;
     PriceFeedInterface public priceFeed;
 
@@ -80,7 +78,6 @@ contract Derivative {
     constructor(
         address payable _makerAddress,
         address payable _takerAddress,
-        address _oracleAddress,
         address _v2OracleAddress,
         address _priceFeedAddress,
         int _defaultPenalty,
@@ -90,7 +87,6 @@ contract Derivative {
         uint _notional
     ) public payable {
         // Address information
-        oracle = OracleInterface(_oracleAddress);
         v2Oracle = V2OracleInterface(_v2OracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
         require(v2Oracle.isIdentifierSupported(_product));
@@ -109,7 +105,6 @@ contract Derivative {
         notional = _notional;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        // (, int oraclePrice) = oracle.latestUnverifiedPrice();
         (, int oraclePrice) = priceFeed.latestPrice(_product);
         npv = initialNpv(oraclePrice, notional);
     }
@@ -278,7 +273,7 @@ contract Derivative {
     }
 
     function _requestOraclePrice() internal {
-        (uint oracleTime, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
+        (uint oracleTime, , ) = v2Oracle.getPrice(product, endTime);
         // If the Oracle price is already available, settle the contract immediately with that price.
         if (oracleTime != 0) {
             settle();
@@ -369,7 +364,6 @@ contract SimpleDerivative is Derivative {
     constructor(
         address payable _ownerAddress,
         address payable _counterpartyAddress,
-        address _oracleAddress,
         address _v2OracleAddress,
         address _priceFeedAddress,
         int _defaultPenalty,
@@ -380,7 +374,6 @@ contract SimpleDerivative is Derivative {
     ) public payable Derivative(
         _ownerAddress,
         _counterpartyAddress,
-        _oracleAddress,
         _v2OracleAddress,
         _priceFeedAddress,
         _defaultPenalty,
@@ -425,7 +418,6 @@ contract DerivativeCreator is ContractCreator {
         SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
             counterparty,
             msg.sender,
-            oracleAddress,
             v2OracleAddress,
             priceFeedAddress,
             defaultPenalty,
