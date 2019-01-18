@@ -1,134 +1,201 @@
-const MockOracle = artifacts.require("OracleMock");
 const BigNumber = require("bignumber.js");
+const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const fetch = require("node-fetch");
+const util = require("util");
 
+// Gets JSON from a URL or throws.
 const getJson = async url => {
-  try {
-    const response = await fetch(url);
-    const json = await response.json();
-    return json;
-  } catch (error) {
-    console.log(error);
-    return;
+  const response = await fetch(url);
+  const json = await response.json();
+  if (!json) {
+    throw util.format("Query [%s] failed to get JSON", url);
   }
+  return json;
 };
 
-async function publishPrices(oracle, time, num, denom) {
-  try {
-    console.log("Publishing New Price");
-    let numInWei = web3.utils.toWei(num.toString(), "ether");
-    let exchangeRate;
-
-    if (denom) {
-      let denomInWei = web3.utils.toWei(denom.toString(), "ether");
-      exchangeRate = BigNumber(web3.utils.toWei(numInWei, "ether"))
-        .div(BigNumber(denomInWei))
-        .integerValue(BigNumber.ROUND_FLOOR)
-        .toString();
-    } else {
-      exchangeRate = numInWei;
-    }
-
-    await oracle.addUnverifiedPriceForTime(time, exchangeRate, { gas: 6720000 });
-
-    console.log("Publish verified. Time: " + time + " Exchange rate: " + exchangeRate);
-  } catch (error) {
-    console.log(error);
+// Gets the Coinbase price for an asset or throws.
+async function getCoinbasePrice(asset) {
+  const url = "https://api.coinbase.com/v2/prices/" + asset + "/spot";
+  console.log(util.format("Querying Coinbase with [%s]", url));
+  const jsonOutput = await getJson(url);
+  console.log(util.format("Coinbase response [%s]", JSON.stringify(jsonOutput)));
+  const price = jsonOutput.data.amount;
+  if (!price) {
+    throw "Failed to get valid price out of JSON response";
   }
+  console.log(util.format("Retrieved price [%s] from Coinbase for asset [%s]", price, asset));
+  return price;
 }
 
-async function getContractAndNextPublishTime(address, delay) {
-  let oracle = await MockOracle.at(address);
-  let lastPublishTime = Number((await oracle.latestUnverifiedPrice())[0]);
-  let nextPublishTime;
-  if (lastPublishTime == 0) {
-    nextPublishTime = await oracle.startTime();
-  } else {
-    nextPublishTime = lastPublishTime + delay;
+// Gets the AlphaVantage price for an asset or throws.
+async function getAlphaVantageQuote(asset) {
+  const url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=41EUIBN9FKJW9FQM&symbol=" + asset;
+  console.log(util.format("Querying AlphaVantage with [%s]", url));
+  const jsonOutput = await getJson(url);
+  console.log(util.format("AlphaVantage response [%s]", JSON.stringify(jsonOutput)));
+  const price = jsonOutput["Global Quote"]["05. price"];
+  if (!price) {
+    throw "Failed to get valid price out of JSON response";
+  }
+  console.log(util.format("Retrieved price [%s] from Coinbase for asset [%s]", price, asset));
+  return price;
+}
+
+// Pushes a price to a manual price feed.
+async function publishPrice(manualPriceFeed, identifierBytes, publishTime, exchangeRate) {
+  console.log(
+    util.format(
+      "Publishing identifierBytes [%s] publishTime [%s] exchangeRate (in Wei) [%s]",
+      identifierBytes,
+      publishTime,
+      exchangeRate
+    )
+  );
+  await manualPriceFeed.pushLatestPrice(identifierBytes, publishTime, exchangeRate);
+}
+
+async function getNonZeroPriceInWei(assetConfig) {
+  const price = await assetConfig.priceFetchFunction(assetConfig.assetName);
+  if (!price) {
+    throw util.format("No price for [%s]", assetConfig);
+  }
+  const priceInWei = web3.utils.toWei(price.toString(), "ether");
+  if (web3.utils.toBN(priceInWei).isZero()) {
+    throw util.format("Got zero price for [%s]", assetConfig);
+  }
+  return priceInWei;
+}
+
+// Gets the exchange rate or throws.
+async function getExchangeRate(numeratorConfig, denominatorConfig) {
+  const numInWei = await getNonZeroPriceInWei(numeratorConfig);
+  // If no denominator is specified, then the exchange rate is the numerator. An example would be SPY denominated in
+  // USD.
+  if (!denominatorConfig) {
+    console.log(util.format("No denominator. Exchange rate (in Wei) [%s]", numInWei));
+    return numInWei;
+  }
+  const denomInWei = await getNonZeroPriceInWei(denominatorConfig);
+  const exchangeRate = web3.utils.toWei(
+    BigNumber(numInWei)
+      .div(BigNumber(denomInWei))
+      .integerValue(BigNumber.ROUND_FLOOR)
+      .toString()
+  );
+  console.log(
+    util.format(
+      "Dividing numerator [%s] / denominator [%s] = exchange rate (in Wei) [%s]",
+      numInWei,
+      denomInWei,
+      exchangeRate
+    )
+  );
+  return exchangeRate;
+}
+
+// Returns {shouldPublish, publishTime} for an identifier.
+async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterval) {
+  const isIdentifierSupported = await manualPriceFeed.isIdentifierSupported(identifierBytes);
+  const currentTime = web3.utils.toBN(Math.round(Date.now() / 1000));
+  // If the identifier is not supported (i.e., we have never published a price for it), then we should always publish at
+  // the current time.
+  if (!isIdentifierSupported) {
+    console.log(
+      util.format("IdentifierBytes [%s] is currently unsupported, so publishing a new price", identifierBytes)
+    );
+    return {
+      shouldPublish: true,
+      publishTime: currentTime
+    };
   }
 
+  const lastPublishTime = (await manualPriceFeed.latestPrice(identifierBytes))[0];
+  const nextPublishTime = lastPublishTime.addn(publishInterval);
+  const shouldPublish = currentTime.gte(nextPublishTime);
+  if (!shouldPublish) {
+    console.log(
+      util.format(
+        "Not publishing because lastPublishTime [%s] + publishInterval [%s] > currentTime [%s]",
+        lastPublishTime,
+        publishInterval,
+        currentTime
+      )
+    );
+  } else {
+    console.log(
+      util.format(
+        "Publishing because lastPublishTime [%s] + publishInterval [%s] <= currentTime [%s]",
+        lastPublishTime,
+        publishInterval,
+        currentTime
+      )
+    );
+  }
   return {
-    oracle: oracle,
-    nextPublishTime: nextPublishTime
+    shouldPublish: shouldPublish,
+    // This should really be current time, because that's the time the price is at?
+    publishTime: nextPublishTime
   };
 }
 
-async function getCoinbasePrice(asset) {
-  let url = "https://api.coinbase.com/v2/prices/" + asset + "/spot";
-  let jsonOutput = await getJson(url);
-  if (!jsonOutput) {
-    console.log(url + " query failed.");
-    return;
+async function initializeTestFeed(manualPriceFeed) {
+  // The contract ManualPriceFeed has a check that we aren't publishing for times too far into the future, so in test
+  // mode, we need to set currentTime to ~now.
+  if (await manualPriceFeed.isTest()) {
+    await manualPriceFeed.setCurrentTime(Math.round(Date.now() / 1000));
   }
-  console.log(jsonOutput.data.amount);
-  return jsonOutput.data.amount;
-}
-
-async function getAlphaVantageQuote(asset) {
-  let url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=41EUIBN9FKJW9FQM&symbol=" + asset;
-  let jsonOutput = await getJson(url);
-  if (!jsonOutput) {
-    console.log(url + " query failed.");
-    return;
-  }
-
-  return jsonOutput["Global Quote"]["05. price"];
 }
 
 async function publishFeed(feed) {
-  try {
-    const { feedDelay, oracleAddress, numerator } = feed;
+  const manualPriceFeed = await ManualPriceFeed.at(feed.priceFeedAddress);
+  const identifierBytes = web3.utils.fromAscii(feed.identifier);
 
-    const { oracle, nextPublishTime } = await getContractAndNextPublishTime(oracleAddress, feedDelay);
-
-    const currentTime = Math.round(Date.now() / 1000);
-    if (currentTime >= nextPublishTime) {
-      // Get the numerator price.
-      const { assetName: numAssetName, priceFunction: numPriceFunction } = numerator;
-      let numPrice = await numPriceFunction(numAssetName);
-      if (!numPrice) {
-        return;
-      }
-
-      // Leave denominator as undefined if there is no denominator (the publish function handles that case).
-      let denomPrice;
-      if ("denominator" in feed) {
-        // Get the denominator price.
-        const { assetName: denomAssetName, priceFunction: denomPriceFunction } = feed.denominator;
-        denomPrice = await denomPriceFunction(denomAssetName);
-        if (!denomPrice) {
-          return;
-        }
-      }
-
-      // Publish prices to the oracle.
-      await publishPrices(oracle, nextPublishTime.toString(), numPrice, denomPrice);
-    }
-  } catch (error) {
-    console.log(error);
+  await initializeTestFeed(manualPriceFeed); // Or we could do this once in the beginning.
+  const { shouldPublish, publishTime } = await getWhenToPublish(manualPriceFeed, identifierBytes, feed.publishInterval);
+  if (shouldPublish) {
+    const exchangeRate = await getExchangeRate(feed.numerator, feed.denominator);
+    await publishPrice(manualPriceFeed, identifierBytes, publishTime, exchangeRate);
+  } else {
+    console.log("Not publishing this run!");
   }
 }
 
 async function runExport() {
+  // Wrap all the functionality in a try/catch, so that this function never throws.
   try {
-    let bitcoinEthFeed = {
-      feedDelay: 900,
-      oracleAddress: "0x9024e1dA0726670594e1d7E60D2e30D9e597c297",
+    const manualPriceFeedAddress = "0x58201524a2565a95338997963a309f916981aD85";
+    const bitcoinEthFeed = {
+      identifier: "BTC/ETH",
+      priceFeedAddress: manualPriceFeedAddress,
+      publishInterval: 900, // 15 minutes.
       numerator: {
-        priceFunction: getCoinbasePrice,
+        priceFetchFunction: getCoinbasePrice,
         assetName: "BTC-USD"
       },
       denominator: {
-        priceFunction: getCoinbasePrice,
+        priceFetchFunction: getCoinbasePrice,
         assetName: "ETH-USD"
       }
     };
+    const priceFeeds = [bitcoinEthFeed];
 
-    let priceFeeds = [bitcoinEthFeed];
-
-    for (let i = 0; i < priceFeeds.length; i++) {
-      await publishFeed(priceFeeds[i]);
+    for (const priceFeed of priceFeeds) {
+      // Wrap each feed in a try/catch, so that a failure in one feed doesn't stop all the others from publishing.
+      try {
+        console.log(
+          util.format(
+            "Publishing price feed for [%s], with config [%s]",
+            priceFeed.identifier,
+            JSON.stringify(priceFeed)
+          )
+        );
+        await publishFeed(priceFeed);
+        console.log("Done publishing for one feed.\n\n");
+      } catch (error) {
+        console.log(error);
+      }
     }
+    console.log("Done publishing for all feeds");
   } catch (error) {
     console.log(error);
   }
