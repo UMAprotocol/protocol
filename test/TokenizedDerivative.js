@@ -731,22 +731,142 @@ contract("TokenizedDerivative", function(accounts) {
     );
   });
 
-  it("Unsupported product", async function() {
-    let unsupportedProduct = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupported"));
+  it("Constructor assertions", async function() {
+    // Product unsupported by the Oracle.
+    const productUnsupportedByOracle = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByOracle"));
+    const time = 100000;
+    await deployedManualPriceFeed.setCurrentTime(time);
+    await deployedManualPriceFeed.pushLatestPrice(productUnsupportedByOracle, time, web3.utils.toWei("1", "ether"));
     assert(
-      didContractThrow(
+      await didContractThrow(
         tokenizedDerivativeCreator.createTokenizedDerivative(
           sponsor,
           admin,
-          web3.utils.toWei("0.05", "ether"),
-          web3.utils.toWei("0.05", "ether"),
-          web3.utils.toWei("0.1", "ether"),
-          unsupportedProduct,
-          web3.utils.toWei("0.01", "ether"),
-          web3.utils.toWei("0.05", "ether"),
-          noLeverageCalculator.address,
-          web3.utils.toWei("1", "ether"),
-          0,
+          web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
+          web3.utils.toWei("0.1", "ether") /*_requiredMargin*/,
+          productUnsupportedByOracle,
+          web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+          web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+          noLeverageCalculator.address /*_returnCalculator*/,
+          web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
+          "0",
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Product unsupported by price feed.
+    const productUnsupportedByPriceFeed = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByFeed"));
+    await deployedCentralizedOracle.addSupportedIdentifier(productUnsupportedByPriceFeed);
+    assert(
+      await didContractThrow(
+        tokenizedDerivativeCreator.createTokenizedDerivative(
+          sponsor,
+          admin,
+          web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
+          web3.utils.toWei("0.1", "ether") /*_requiredMargin*/,
+          productUnsupportedByPriceFeed,
+          web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+          web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+          noLeverageCalculator.address /*_returnCalculator*/,
+          web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
+          "0",
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Default penalty above margin requirement.
+    assert(
+      await didContractThrow(
+        tokenizedDerivativeCreator.createTokenizedDerivative(
+          sponsor,
+          admin,
+          web3.utils.toWei("0.5", "ether") /*_defaultPenalty*/,
+          web3.utils.toWei("0.1", "ether") /*_requiredMargin*/,
+          identifierBytes,
+          web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+          web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+          noLeverageCalculator.address /*_returnCalculator*/,
+          web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
+          "0",
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Margin requirement above 100%.
+    assert(
+      await didContractThrow(
+        tokenizedDerivativeCreator.createTokenizedDerivative(
+          sponsor,
+          admin,
+          web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
+          web3.utils.toWei("2", "ether") /*_requiredMargin*/,
+          identifierBytes,
+          web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+          web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+          noLeverageCalculator.address /*_returnCalculator*/,
+          web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
+          "0",
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Starting token price too high.
+    assert(
+      await didContractThrow(
+        tokenizedDerivativeCreator.createTokenizedDerivative(
+          sponsor,
+          admin,
+          web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
+          web3.utils.toWei("0.1", "ether") /*_requiredMargin*/,
+          identifierBytes,
+          web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+          web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+          noLeverageCalculator.address /*_returnCalculator*/,
+          web3.utils.toWei("2000000000", "ether") /*_startingTokenPrice*/,
+          "0",
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Starting token price too low.
+    assert(
+      await didContractThrow(
+        tokenizedDerivativeCreator.createTokenizedDerivative(
+          sponsor,
+          admin,
+          web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
+          web3.utils.toWei("0.1", "ether") /*_requiredMargin*/,
+          identifierBytes,
+          web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+          web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+          noLeverageCalculator.address /*_returnCalculator*/,
+          web3.utils.toWei("1", "picoether") /*_startingTokenPrice*/,
+          "0",
+          { from: sponsor }
+        )
+      )
+    );
+
+    // Expiry time before current time.
+    const currentTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
+    assert(
+      await didContractThrow(
+        tokenizedDerivativeCreator.createTokenizedDerivative(
+          sponsor,
+          admin,
+          web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
+          web3.utils.toWei("0.1", "ether") /*_requiredMargin*/,
+          identifierBytes,
+          web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+          web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+          noLeverageCalculator.address /*_returnCalculator*/,
+          web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
+          web3.utils.toBN(currentTime).subn(1).toString(),
           { from: sponsor }
         )
       )
