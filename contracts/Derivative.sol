@@ -436,7 +436,8 @@ contract DerivativeCreator is ContractCreator {
             notional
         );
 
-        _registerNewContract(msg.sender, counterparty, address(derivative));
+        _registerContract(msg.sender, address(derivative));
+        _registerContract(counterparty, address(derivative));
 
         return address(derivative);
     }
