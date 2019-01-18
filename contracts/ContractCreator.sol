@@ -17,7 +17,7 @@ contract ContractCreator {
         priceFeedAddress = _priceFeedAddress;
     }
 
-    function _registerNewContract(address firstParty, address secondParty, address contractToRegister) internal {
-        registry.registerContract(firstParty, secondParty, contractToRegister);
+    function _registerContract(address party, address contractToRegister) internal {
+        registry.registerContract(party, contractToRegister);
     }
 }

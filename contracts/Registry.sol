@@ -17,13 +17,9 @@ contract Registry is Ownable {
         contractCreators[contractCreator] = false;
     }
 
-    function registerContract(address firstParty, address secondParty, address contractToRegister) external {
+    function registerContract(address party, address contractToRegister) external {
         require(contractCreators[msg.sender]);
-        _register(firstParty, contractToRegister);
-
-        if (secondParty != firstParty) {
-            _register(secondParty, contractToRegister);
-        }
+        _register(party, contractToRegister);
     }
 
     function getNumRegisteredContractsBySender() external view returns (uint number) {
