@@ -371,7 +371,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _getRequiredEthMargin(int currentNav)
-        internal
+        private
         view
         returns (int requiredEthMargin)
     {
@@ -380,7 +380,7 @@ contract TokenizedDerivative is ERC20 {
 
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
-    function _settle(int price) internal {
+    function _settle(int price) private {
 
         // Remargin at whatever price we're using (verified or unverified).
         _updateBalances(_recomputeNav(price, endTime));
@@ -400,13 +400,13 @@ contract TokenizedDerivative is ERC20 {
         state = State.Settled;
     }
 
-    function _settleAgreedPrice() internal {
+    function _settleAgreedPrice() private {
         int agreedPrice = currentTokenState.underlyingPrice;
 
         _settle(agreedPrice);
     }
 
-    function _settleVerifiedPrice() internal {
+    function _settleVerifiedPrice() private {
         (uint timeForPrice, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
         require(timeForPrice != 0);
 
@@ -417,7 +417,7 @@ contract TokenizedDerivative is ERC20 {
     // The internal remargin method allows certain calls into the contract to
     // automatically remargin to non-current NAV values (time of expiry, last
     // agreed upon price, etc).
-    function _remargin(int navNew, uint latestTime) internal returns (bool inDefault) {
+    function _remargin(int navNew, uint latestTime) private returns (bool inDefault) {
         // Save the current NAV in case it's required to compute the default penalty.
         int previousNav = nav;
 
@@ -433,7 +433,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function _updateBalances(int navNew) internal {
+    function _updateBalances(int navNew) private {
         // Compute difference -- Add the difference to owner and subtract
         // from counterparty. Then update nav state variable.
         int longDiff = _getLongNavDiff(navNew);
@@ -444,7 +444,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _satisfiesMarginRequirement(int balance, int currentNav)
-        internal
+        private
         view
         returns (bool doesSatisfyRequirement) 
     {
@@ -453,15 +453,15 @@ contract TokenizedDerivative is ERC20 {
 
     // Gets the change in balance for the long side.
     // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
-    function _getLongNavDiff(int navNew) internal view returns (int longNavDiff) {
+    function _getLongNavDiff(int navNew) private view returns (int longNavDiff) {
         return navNew.sub(nav);
     }
 
-    function _getDefaultPenaltyEth() internal view returns (int penalty) {
+    function _getDefaultPenaltyEth() private view returns (int penalty) {
         return _takePercentage(navAtDefault, defaultPenalty);
     }
 
-    function _tokensFromNav(int currentNav, int unitNav) internal pure returns (int numTokens) {
+    function _tokensFromNav(int currentNav, int unitNav) private pure returns (int numTokens) {
         if (unitNav <= 0) {
             return 0;
         } else {

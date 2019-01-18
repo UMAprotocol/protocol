@@ -299,7 +299,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative();
 
     // Sponsor initializes contract.
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.2", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.2", "ether")
+    });
 
     // Verify initial state, nav, and balances.
     const initialNav = await derivativeContract.nav();
@@ -361,7 +364,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative();
 
     // Sponsor initializes contract.
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.2", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.2", "ether")
+    });
 
     // Verify initial state, nav, and balances.
     const initialNav = await derivativeContract.nav();
@@ -406,7 +412,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative();
 
     // Sponsor initializes contract
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.2", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.2", "ether")
+    });
 
     let nav = await derivativeContract.nav();
     const disputeTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
@@ -457,7 +466,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative();
 
     // Sponsor initializes contract
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.5", "ether")
+    });
 
     let nav = await derivativeContract.nav();
 
@@ -505,7 +517,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
 
     // Sponsor initializes contract
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.5", "ether")
+    });
 
     // Verify initial state.
     const initialNav = await derivativeContract.nav();
@@ -555,7 +570,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
 
     // Sponsor initializes contract
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.5", "ether")
+    });
 
     // Verify initial state.
     const initialNav = await derivativeContract.nav();
@@ -598,7 +616,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval * 3);
 
     // Sponsor initializes contract
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.5", "ether")
+    });
 
     // Verify initial nav and balances. No time based fees have been assessed yet.
     let expectedNav = web3.utils.toBN(web3.utils.toWei("1", "ether"));
@@ -680,24 +701,34 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
 
     // Sponsor initializes contract
-    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.6", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+      from: sponsor,
+      value: web3.utils.toWei("1.6", "ether")
+    });
 
     // Push time forward, so that the contract will expire when remargin is called.
     await pushPrice(web3.utils.toWei("1", "ether"));
 
     // Tokens cannot be created because the contract has expired.
-    assert(await didContractThrow(derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") })));
+    assert(
+      await didContractThrow(derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") }))
+    );
   });
 
   it("DepositAndCreateTokens failure", async function() {
+    // A new TokenizedDerivative must be deployed before the start of each test case.
+    // One time step until expiry.
+    await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
 
-      // A new TokenizedDerivative must be deployed before the start of each test case.
-      // One time step until expiry.
-      await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
-
-      // Token creation should fail because the sponsor doesn't supply enough margin.
-      assert(await didContractThrow(derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.05", "ether") })));
-
+    // Token creation should fail because the sponsor doesn't supply enough margin.
+    assert(
+      await didContractThrow(
+        derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), {
+          from: sponsor,
+          value: web3.utils.toWei("1.05", "ether")
+        })
+      )
+    );
   });
 
   it("Unsupported product", async function() {
