@@ -8,7 +8,6 @@
 pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./OracleInterface.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
 import "./V2OracleInterface.sol";

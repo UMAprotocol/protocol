@@ -17,7 +17,6 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./Testable.sol";
 import "./Derivative.sol";
 import "./VoteInterface.sol";
-import "./OracleInterface.sol";
 
 
 library Poll {
@@ -177,7 +176,7 @@ library VotePeriod {
 }
 
 
-contract VoteCoin is ERC20, VoteInterface, OracleInterface, Testable {
+contract VoteCoin is ERC20, VoteInterface, Testable {
     using VotePeriod for VotePeriod.Data;
     using Poll for Poll.Data;
     using PriceTime for PriceTime.Data[];

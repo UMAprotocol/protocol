@@ -9,7 +9,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ContractCreator.sol";
-import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./V2OracleInterface.sol";
 
