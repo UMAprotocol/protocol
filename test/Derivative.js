@@ -36,20 +36,23 @@ contract("Derivative", function(accounts) {
     deployedDerivativeCreator = await DerivativeCreator.deployed();
 
     deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
-    deployedManualPriceFeed.pushLatestPrice(identifierBytes, 100, web3.utils.toWei("0", "ether"));
+    deployedManualPriceFeed.setCurrentTime(100);
+    // deployedManualPriceFeed.pushLatestPrice(identifierBytes, 100, web3.utils.toWei("0", "ether"));
 
     // Set two unverified prices to get the unverified feed slightly ahead of the verified feed.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0", "ether"), { from: ownerAddress });
+    await pushPrice(web3.utils.toWei("0", "ether"));
     await deployedOracle.addVerifiedPrice(web3.utils.toWei("0", "ether"), { from: ownerAddress });
   });
 
   beforeEach(async () => {
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0", "ether"), { from: ownerAddress });
+    await pushPrice(web3.utils.toWei("0", "ether"));
 
     // Create a quick expiry for testing purposes. It is set to the current unverified feed time plus 2 oracle time
     // steps. Note: Make sure all tests end with same number of unverified/verified prices then this function will
     // add one additional unverified price
-    const expiry = (await deployedOracle.latestUnverifiedPrice())[0].addn(120);
+    const expiry = (await deployedManualPriceFeed.getCurrentTime()).addn(120);
 
     await deployedDerivativeCreator.createDerivative(
       makerAddress,
@@ -117,6 +120,7 @@ contract("Derivative", function(accounts) {
 
     // Change the price to -0.5 ETH.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("-0.5", "ether"), { from: ownerAddress });
+    await pushPrice(web3.utils.toWei("-0.5", "ether"));
 
     // Right now, oracle price decreases hurt the taker and help the maker, which means the amount the taker needs in
     // their account to survive the a -0.5 remargin is 0.6 (0.1 normal requirement + 0.5 price change).
@@ -142,24 +146,14 @@ contract("Derivative", function(accounts) {
     let takerBalance = (await derivativeContract.taker())[1];
     assert.equal(takerBalance.toString(), web3.utils.toWei("0.5", "ether"));
 
-    // Move the verified feed past expiration, but ensure the price stays at the expiry rather than moving to the
-    // current.
+    // Push the contract to expiry. We can't compute NPV anymore.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("-0.5", "ether"), { from: ownerAddress });
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("-0.6", "ether"), { from: ownerAddress });
-    expectedNpv = await derivativeContract.npvIfRemarginedImmediately();
+    await pushPrice(web3.utils.toWei("-0.5", "ether"));
+    const expirationTime = await deployedManualPriceFeed.getCurrentTime();
     await derivativeContract.remargin({ from: takerAddress });
-    newNpv = await derivativeContract.npv();
-    assert.equal(newNpv.toString(), web3.utils.toWei("-0.5", "ether"));
-    assert.equal(expectedNpv.toString(), newNpv.toString());
 
     // Check that the state is expiry.
-    state = await derivativeContract.state();
-    assert.equal(state.toString(), "3");
-
-    // One party confirms the unverified price.
-    await derivativeContract.confirmPrice({ from: makerAddress });
-
-    // Check that the state is still expiry since both have not confirmed.
     state = await derivativeContract.state();
     assert.equal(state.toString(), "3");
 
@@ -168,8 +162,19 @@ contract("Derivative", function(accounts) {
       await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.6", "ether"), { from: makerAddress }))
     );
 
-    // Settle the contract now that both parties have confirmed.
-    await derivativeContract.confirmPrice({ from: takerAddress });
+    // Confirming is not allowed on an expired contract.
+    assert(
+        await didContractThrow(derivativeContract.confirmPrice({ from: takerAddress }))
+    );
+
+    // Make sure that prices pushed past expiry won't affect the contract.
+    await pushPrice(web3.utils.toWei("-0.6", "ether"));
+
+    // Provide an Oracle price for the expiry time.
+    await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("-0.5", "ether"));
+
+    // Settle the contract.
+    await derivativeContract.settle();
     state = await derivativeContract.state();
     assert.equal(state.toString(), "5");
 
@@ -203,6 +208,7 @@ contract("Derivative", function(accounts) {
 
     // Change the price to -0.01 ETH to send the maker into default.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0.01", "ether"), { from: ownerAddress });
+    await pushPrice(web3.utils.toWei("0.01", "ether"));
 
     // Since the price is moving toward the maker, the required balance to survive the remargin is 0.
     let makerRequiredBalance = await derivativeContract.requiredAccountBalanceOnRemargin({ from: makerAddress });
@@ -258,6 +264,8 @@ contract("Derivative", function(accounts) {
 
     // Change the price to 0.16 ETH to send the taker into default.
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("-0.91", "ether"), { from: ownerAddress });
+    await pushPrice(web3.utils.toWei("-0.91", "ether"));
+    const defaultTime = await deployedManualPriceFeed.getCurrentTime();
     await deployedOracle.addVerifiedPrice(web3.utils.toWei("0.0", "ether"), { from: ownerAddress });
     await derivativeContract.remargin({ from: makerAddress });
 
@@ -282,7 +290,8 @@ contract("Derivative", function(accounts) {
     assert.equal(state.toString(), "4");
 
     // Verify the price that caused default and have taker call settle
-    await deployedOracle.addVerifiedPrice(web3.utils.toWei("-0.91", "ether"), { from: ownerAddress });
+    // await deployedOracle.addVerifiedPrice(web3.utils.toWei("-0.91", "ether"), { from: ownerAddress });
+    await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("-0.91", "ether"));
     await derivativeContract.settle({ from: takerAddress });
     state = await derivativeContract.state();
     assert.equal(state.toString(), "5");
@@ -296,7 +305,7 @@ contract("Derivative", function(accounts) {
     assert.equal(takerBalance.toString(), web3.utils.toWei("0", "ether"));
   });
 
-  it("Pre -> Live -> Default (m) -> Dispute -> V price default (t) -> No Confirm -> Settled", async function() {
+  it("Pre -> Live -> Default (m) ->  No Confirm -> Settled", async function() {
     let state = await derivativeContract.state();
     assert.equal(state.toString(), "0");
 
@@ -308,20 +317,15 @@ contract("Derivative", function(accounts) {
     // Change the price to 0.91 ETH to send the maker into default.
     await deployedOracle.addVerifiedPrice(web3.utils.toWei("0.0", "ether"), { from: ownerAddress });
     await deployedOracle.addUnverifiedPrice(web3.utils.toWei("0.91", "ether"), { from: ownerAddress });
+    await pushPrice(web3.utils.toWei("0.91", "ether"));
+    const defaultTime = await deployedManualPriceFeed.getCurrentTime();
     await derivativeContract.remargin({ from: makerAddress });
 
     // Check that the state is default.
     state = await derivativeContract.state();
     assert.equal(state.toString(), "4");
 
-    // Maker disputes price
-    await derivativeContract.dispute({ from: makerAddress });
-
-    // Check that the state is disputed
-    state = await derivativeContract.state();
-    assert.equal(state.toString(), "2");
-
-    // Attempt to withdraw while in dispute (even if the withdrawal amount is below the amount that will be left after
+    // Attempt to withdraw while in default (even if the withdrawal amount is below the amount that will be left after
     // settlement). Should throw.
     assert(
       await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.03", "ether"), { from: makerAddress }))
@@ -330,15 +334,15 @@ contract("Derivative", function(accounts) {
       await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.5", "ether"), { from: takerAddress }))
     );
 
-    // Can't settle because not a recent enough verified price
+    // Can't settle because no Oracle price yet.
     assert(await didContractThrow(derivativeContract.settle({ from: takerAddress })));
 
-    // Verify price that is -1 * unverified price so that taker will now be in default
-    await deployedOracle.addVerifiedPrice(web3.utils.toWei("-0.91", "ether"), { from: ownerAddress });
+    // Push Oracle price that is -1 * price feed price so that taker will now be in default
+    await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("-0.91", "ether"));
 
-    // Check that the state is still in dispute since not confirmed or settled yet
+    // Check that the state is still in default since not confirmed or settled yet
     state = await derivativeContract.state();
-    assert.equal(state.toString(), "2");
+    assert.equal(state.toString(), "4");
 
     // Call settle
     await derivativeContract.settle({ from: makerAddress });
