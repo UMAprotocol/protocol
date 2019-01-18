@@ -1,6 +1,5 @@
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
-const OracleMock = artifacts.require("OracleMock");
 const Registry = artifacts.require("Registry");
 const Vote = artifacts.require("VoteCoin");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
@@ -42,21 +41,11 @@ module.exports = function(deployer, network, accounts) {
   if (isDerivativeDemo(network)) {
     deployer
       .then(() => {
-        return deployer.deploy(OracleMock, true, "900", { from: accounts[0], value: 0 });
-      })
-      .then(() => {
-        return OracleMock.deployed();
-      })
-      .then(oracleMock => {
-        oracleAddress = oracleMock.address;
-        return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
-      })
-      .then(() => {
         return Registry.deployed();
       })
       .then(deployedRegistry => {
         registry = deployedRegistry;
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, v2OracleAddress, priceFeedAddress, {
+        return deployer.deploy(TokenizedDerivativeCreator, registry.address, v2OracleAddress, priceFeedAddress, {
           from: accounts[0],
           value: 0
         });
@@ -82,16 +71,6 @@ module.exports = function(deployer, network, accounts) {
         });
       })
       .then(() => {
-        return deployer.deploy(OracleMock, false, "60", { from: accounts[0], value: 0 });
-      })
-      .then(() => {
-        return OracleMock.deployed();
-      })
-      .then(oracleMock => {
-        oracleAddress = oracleMock.address;
-        return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
-      })
-      .then(() => {
         return deployer.deploy(ManualPriceFeed, enableControllableTiming(network));
       })
       .then(manualPriceFeed => {
@@ -110,7 +89,7 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(deployedRegistry => {
         registry = deployedRegistry;
-        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, v2OracleAddress, priceFeedAddress);
+        return deployer.deploy(DerivativeCreator, registry.address, v2OracleAddress, priceFeedAddress);
       })
       .then(() => {
         return DerivativeCreator.deployed();
@@ -119,7 +98,7 @@ module.exports = function(deployer, network, accounts) {
         return registry.addContractCreator(derivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, v2OracleAddress, priceFeedAddress);
+        return deployer.deploy(TokenizedDerivativeCreator, registry.address, v2OracleAddress, priceFeedAddress);
       })
       .then(() => {
         return TokenizedDerivativeCreator.deployed();
@@ -144,16 +123,12 @@ module.exports = function(deployer, network, accounts) {
       .then(() => {
         return Vote.deployed();
       })
-      .then(oracle => {
-        oracleAddress = oracle.address;
-        return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
-      })
       .then(() => {
         return Registry.deployed();
       })
       .then(deployedRegistry => {
         registry = deployedRegistry;
-        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, v2OracleAddress, priceFeedAddress);
+        return deployer.deploy(DerivativeCreator, registry.address, v2OracleAddress, priceFeedAddress);
       })
       .then(() => {
         return DerivativeCreator.deployed();
@@ -162,7 +137,7 @@ module.exports = function(deployer, network, accounts) {
         return registry.addContractCreator(derivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, v2OracleAddress, priceFeedAddress);
+        return deployer.deploy(TokenizedDerivativeCreator, registry.address, v2OracleAddress, priceFeedAddress);
       })
       .then(() => {
         return TokenizedDerivativeCreator.deployed();
