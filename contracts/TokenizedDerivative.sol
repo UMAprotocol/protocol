@@ -206,24 +206,19 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function createTokens() external payable onlySponsor {
-        remargin();
-
-        // Verify that remargining didn't push the contract into expiry or default.
-        require(state == State.Live);
-
-        uint navToPurchase = msg.value;
-
-        longBalance = longBalance.add(int(navToPurchase));
-
-        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), currentTokenState.tokenPrice)));
-
-        nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
-
-        // Make sure this still satisfies the margin requirement.
-        require(_satisfiesMarginRequirement(shortBalance, nav));
+        _createTokens(msg.value);
     }
 
-    function depositAndCreateTokens(uint newTokenNav)
+    function depositAndCreateTokens(uint newTokenNav) external payable onlySponsor {
+        // Subtract newTokenNav from amount sent.
+        uint depositAmount = msg.value.sub(newTokenNav);
+
+        // Deposit additional margin into the short account.
+        _deposit(depositAmount);
+
+        // Create new newTokenNav worth of tokens.
+        _createTokens(newTokenNav);
+    }
 
     function redeemTokens() external {
         require((msg.sender == sponsor && state == State.Live) || state == State.Settled);
@@ -325,11 +320,7 @@ contract TokenizedDerivative is ERC20 {
 
     function deposit() public payable onlySponsor {
         // Only allow the sponsor to deposit margin.
-
-        // Make sure that one of participants is sending the deposit and that
-        // we are in a "depositable" state.
-        require(state == State.Live);
-        shortBalance = shortBalance.add(int(msg.value));
+        _deposit(msg.value);
     }
 
     function remargin() public onlySponsorOrAdmin {
@@ -355,6 +346,28 @@ contract TokenizedDerivative is ERC20 {
         if (inDefault) {
             _requestOraclePrice(endTime);
         }
+    }
+
+    function _createTokens(uint navToPurchase) private {
+        remargin();
+
+        // Verify that remargining didn't push the contract into expiry or default.
+        require(state == State.Live);
+
+        longBalance = longBalance.add(int(navToPurchase));
+
+        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), currentTokenState.tokenPrice)));
+
+        nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
+
+        // Make sure this still satisfies the margin requirement.
+        require(_satisfiesMarginRequirement(shortBalance, nav));
+    }
+
+    function _deposit(uint value) private {
+        // Make sure that we are in a "depositable" state.
+        require(state == State.Live);
+        shortBalance = shortBalance.add(int(value));
     }
 
     function _getRequiredEthMargin(int currentNav)

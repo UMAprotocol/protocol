@@ -237,13 +237,13 @@ contract("TokenizedDerivative", function(accounts) {
     let expectedNavChange = expectedNav.sub(nav);
     state = await derivativeContract.state();
     nav = await derivativeContract.nav();
-    let initialProviderBalance = shortBalance;
+    let initialSponsorBalance = shortBalance;
     shortBalance = await derivativeContract.shortBalance();
     let sponsorBalancePostRemargin = shortBalance;
 
     assert.equal(state.toString(), "3");
     assert.equal(nav.toString(), expectedNav.toString());
-    assert.equal(initialProviderBalance.sub(sponsorBalancePostRemargin).toString(), expectedNavChange.toString());
+    assert.equal(initialSponsorBalance.sub(sponsorBalancePostRemargin).toString(), expectedNavChange.toString());
 
     // Only the sponsor can confirm.
     assert(await didContractThrow(derivativeContract.confirmPrice({ from: admin })));
@@ -298,19 +298,18 @@ contract("TokenizedDerivative", function(accounts) {
     // A new TokenizedDerivative must be deployed before the start of each test case.
     await deployNewTokenizedDerivative();
 
-    // Provider initializes contract.
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.2", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    // Sponsor initializes contract.
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.2", "ether") });
 
     // Verify initial state, nav, and balances.
     const initialNav = await derivativeContract.nav();
     let longBalance = await derivativeContract.longBalance();
     let shortBalance = await derivativeContract.shortBalance();
     const initialInvestorBalance = longBalance;
-    const initialProviderBalance = shortBalance;
+    const initialSponsorBalance = shortBalance;
     assert.equal(initialNav.toString(), web3.utils.toWei("1", "ether"));
     assert.equal(initialInvestorBalance.toString(), web3.utils.toBN(web3.utils.toWei("1", "ether")));
-    assert.equal(initialProviderBalance.toString(), web3.utils.toBN(web3.utils.toWei("0.2", "ether")));
+    assert.equal(initialSponsorBalance.toString(), web3.utils.toBN(web3.utils.toWei("0.2", "ether")));
     let state = await derivativeContract.state();
     assert.equal(state.toString(), "0");
 
@@ -328,12 +327,12 @@ contract("TokenizedDerivative", function(accounts) {
     let changeInNav = expectedDefaultNav.sub(initialNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = initialInvestorBalance.add(changeInNav);
-    expectedProviderAccountBalance = initialProviderBalance.sub(changeInNav);
+    expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedDefaultNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
 
     // Provide the Oracle price and call settle. The Oracle price is different from the price feed price, and the
     // sponsor is no longer in default.
@@ -349,21 +348,20 @@ contract("TokenizedDerivative", function(accounts) {
     changeInNav = expectedSettlementNav.sub(initialNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = initialInvestorBalance.add(changeInNav);
-    expectedProviderAccountBalance = initialProviderBalance.sub(changeInNav);
+    expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedSettlementNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
   });
 
   it("Live -> Default -> Settled (oracle) [price available]", async function() {
     // A new TokenizedDerivative must be deployed before the start of each test case.
     await deployNewTokenizedDerivative();
 
-    // Provider initializes contract.
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.2", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    // Sponsor initializes contract.
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.2", "ether") });
 
     // Verify initial state, nav, and balances.
     const initialNav = await derivativeContract.nav();
@@ -395,21 +393,20 @@ contract("TokenizedDerivative", function(accounts) {
     let changeInNav = expectedSettlementNav.sub(initialNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = longBalance.add(changeInNav).add(defaultPenalty);
-    expectedProviderAccountBalance = shortBalance.sub(changeInNav).sub(defaultPenalty);
+    expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(defaultPenalty);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedSettlementNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
   });
 
   it("Live -> Dispute (correctly) [price available] -> Settled", async function() {
     // A new TokenizedDerivative must be deployed before the start of each test case.
     await deployNewTokenizedDerivative();
 
-    // Provider initializes contract
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.5", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    // Sponsor initializes contract
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.2", "ether") });
 
     let nav = await derivativeContract.nav();
     const disputeTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
@@ -422,7 +419,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Dispute the price.
     const presettlementNav = await derivativeContract.nav();
-    const presettlementProviderBalance = await derivativeContract.shortBalance();
+    const presettlementSponsorBalance = await derivativeContract.shortBalance();
 
     const disputeFee = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
     await derivativeContract.dispute({ from: sponsor, value: disputeFee.toString() });
@@ -440,7 +437,7 @@ contract("TokenizedDerivative", function(accounts) {
     const navDiff = nav.sub(presettlementNav);
     assert.equal(
       shortBalance.toString(),
-      presettlementProviderBalance
+      presettlementSponsorBalance
         .sub(navDiff)
         .add(disputeFee)
         .toString()
@@ -459,9 +456,8 @@ contract("TokenizedDerivative", function(accounts) {
     // A new TokenizedDerivative must be deployed before the start of each test case.
     await deployNewTokenizedDerivative();
 
-    // Provider initializes contract
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.5", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    // Sponsor initializes contract
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
 
     let nav = await derivativeContract.nav();
 
@@ -477,11 +473,11 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Settle with the Oracle price.
     let presettlementNav = await derivativeContract.nav();
-    let presettlementProviderBalance = await derivativeContract.shortBalance();
+    let presettlementSponsorBalance = await derivativeContract.shortBalance();
     await derivativeContract.settle({ from: thirdParty });
 
     // Verify that you can't call dispute once the contract is settled.
-    assert(didContractThrow(derivativeContract.dispute()));
+    assert(await didContractThrow(derivativeContract.dispute()));
 
     nav = await derivativeContract.nav();
     let shortBalance = await derivativeContract.shortBalance();
@@ -491,7 +487,7 @@ contract("TokenizedDerivative", function(accounts) {
     assert.equal(presettlementNav.toString(), nav.toString());
     assert.equal(longBalance.toString(), nav.add(disputeFee).toString());
 
-    // Provider should have the exact same amount of ETH that they deposited.
+    // Sponsor should have the exact same amount of ETH that they deposited.
     assert.equal(shortBalance.toString(), web3.utils.toWei("0.5", "ether"));
 
     // Redeem tokens and withdraw money.
@@ -508,9 +504,8 @@ contract("TokenizedDerivative", function(accounts) {
     // One time step until expiry.
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
 
-    // Provider initializes contract
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.5", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    // Sponsor initializes contract
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
 
     // Verify initial state.
     const initialNav = await derivativeContract.nav();
@@ -532,7 +527,7 @@ contract("TokenizedDerivative", function(accounts) {
     assert.equal(state.toString(), "2");
 
     // Verify that you can't call settle before the Oracle provides a price.
-    assert(didContractThrow(derivativeContract.dispute()));
+    assert(await didContractThrow(derivativeContract.dispute()));
 
     // Then the Oracle price should be provided, which settles the contract.
     await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
@@ -546,12 +541,12 @@ contract("TokenizedDerivative", function(accounts) {
     let changeInNav = expectedSettlementNav.sub(initialNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = longBalance.add(changeInNav);
-    expectedProviderAccountBalance = shortBalance.sub(changeInNav);
+    expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedSettlementNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
   });
 
   it("Live -> Expired -> Settled (oracle price) [price available]", async function() {
@@ -559,9 +554,8 @@ contract("TokenizedDerivative", function(accounts) {
     // One time step until expiry.
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
 
-    // Provider initializes contract
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.5", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    // Sponsor initializes contract
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
 
     // Verify initial state.
     const initialNav = await derivativeContract.nav();
@@ -590,12 +584,12 @@ contract("TokenizedDerivative", function(accounts) {
     let changeInNav = expectedSettlementNav.sub(initialNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = longBalance.add(changeInNav);
-    expectedProviderAccountBalance = shortBalance.sub(changeInNav);
+    expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedSettlementNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
   });
 
   it("Live -> Remargin -> Remargin -> Expired -> Settled (oracle price)", async function() {
@@ -603,9 +597,8 @@ contract("TokenizedDerivative", function(accounts) {
     // Three time steps until expiry.
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval * 3);
 
-    // Provider initializes contract
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.5", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    // Sponsor initializes contract
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.5", "ether") });
 
     // Verify initial nav and balances. No time based fees have been assessed yet.
     let expectedNav = web3.utils.toBN(web3.utils.toWei("1", "ether"));
@@ -628,12 +621,12 @@ contract("TokenizedDerivative", function(accounts) {
     let changeInNav = expectedNav.sub(actualNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = longBalance.add(changeInNav);
-    expectedProviderAccountBalance = shortBalance.sub(changeInNav);
+    expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
 
     // Move the price another 10% up.
     await pushPrice(web3.utils.toWei("1.21", "ether"));
@@ -647,12 +640,12 @@ contract("TokenizedDerivative", function(accounts) {
     changeInNav = expectedNav.sub(actualNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = longBalance.add(changeInNav);
-    expectedProviderAccountBalance = shortBalance.sub(changeInNav);
+    expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
 
     // Now push to contract into expiry, moving down by 10% (which isn't the same as reversing the previous move).
     await pushPrice(web3.utils.toWei("1.089", "ether"));
@@ -673,12 +666,12 @@ contract("TokenizedDerivative", function(accounts) {
     changeInNav = expectedNav.sub(actualNav);
     actualNav = await derivativeContract.nav();
     expectedInvestorAccountBalance = longBalance.add(changeInNav);
-    expectedProviderAccountBalance = shortBalance.sub(changeInNav);
+    expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
     longBalance = await derivativeContract.longBalance();
     shortBalance = await derivativeContract.shortBalance();
     assert.equal(actualNav.toString(), expectedNav.toString());
     assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
-    assert.equal(shortBalance.toString(), expectedProviderAccountBalance.toString());
+    assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
   });
 
   it("Live -> Create -> Create fails on expiry", async function() {
@@ -687,14 +680,24 @@ contract("TokenizedDerivative", function(accounts) {
     await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
 
     // Sponsor initializes contract
-    await derivativeContract.deposit({ from: sponsor, value: web3.utils.toWei("0.6", "ether") });
-    await derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") });
+    await derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.6", "ether") });
 
     // Push time forward, so that the contract will expire when remargin is called.
     await pushPrice(web3.utils.toWei("1", "ether"));
 
     // Tokens cannot be created because the contract has expired.
-    assert(didContractThrow(derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") })));
+    assert(await didContractThrow(derivativeContract.createTokens({ from: sponsor, value: web3.utils.toWei("1", "ether") })));
+  });
+
+  it("DepositAndCreateTokens failure", async function() {
+
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      // One time step until expiry.
+      await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
+
+      // Token creation should fail because the sponsor doesn't supply enough margin.
+      assert(await didContractThrow(derivativeContract.depositAndCreateTokens(web3.utils.toWei("1", "ether"), { from: sponsor, value: web3.utils.toWei("1.05", "ether") })));
+
   });
 
   it("Unsupported product", async function() {
