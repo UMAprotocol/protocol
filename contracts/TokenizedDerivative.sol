@@ -100,6 +100,7 @@ contract TokenizedDerivative is ERC20 {
     V2OracleInterface public v2Oracle;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
+    IERC20 public marginCurrency;
 
     State public state;
     uint public endTime;
@@ -160,12 +161,15 @@ contract TokenizedDerivative is ERC20 {
         uint _disputeDeposit, // Percentage of nav * 10^18
         address _returnCalculator,
         uint _startingTokenPrice,
-        uint expiry
+        uint expiry,
+        address _marginCurrency
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _requiredMargin);
         require(_requiredMargin <= 1 ether);
         marginRequirement = _requiredMargin;
+
+        marginCurrency = IERC20(_marginCurrency);
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
@@ -207,12 +211,13 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function createTokens() external payable onlySponsor {
-        _createTokens(msg.value);
+        _createTokens(_pullSentMargin());
     }
 
     function depositAndCreateTokens(uint newTokenNav) external payable onlySponsor {
         // Subtract newTokenNav from amount sent.
-        uint depositAmount = msg.value.sub(newTokenNav);
+        uint sentAmount = _pullSentMargin();
+        uint depositAmount = sentAmount.sub(newTokenNav);
 
         // Deposit additional margin into the short account.
         _deposit(depositAmount);
@@ -243,7 +248,7 @@ contract TokenizedDerivative is ERC20 {
         longBalance = longBalance.sub(int(tokenValue));
         nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
 
-        msg.sender.transfer(tokenValue);
+        _sendMargin(msg.sender, tokenValue);
     }
 
     function dispute() external payable onlySponsor {
@@ -254,8 +259,10 @@ contract TokenizedDerivative is ERC20 {
 
         uint requiredDeposit = uint(_takePercentage(nav, disputeDeposit));
 
-        require(msg.value >= requiredDeposit);
-        uint refund = msg.value.sub(requiredDeposit);
+        uint sentAmount = _pullSentMargin();
+
+        require(sentAmount >= requiredDeposit);
+        uint refund = sentAmount.sub(requiredDeposit);
 
         state = State.Disputed;
         endTime = currentTokenState.time;
@@ -264,7 +271,7 @@ contract TokenizedDerivative is ERC20 {
 
         _requestOraclePrice(endTime);
 
-        msg.sender.transfer(refund);
+        _sendMargin(msg.sender, refund);
     }
 
     function withdraw(uint amount) external onlySponsor {
@@ -294,7 +301,7 @@ contract TokenizedDerivative is ERC20 {
         // function can not be called multiple times while waiting for transfer
         // to return.
         shortBalance = shortBalance.sub(int(amount));
-        msg.sender.transfer(amount);
+        _sendMargin(msg.sender, amount);
     }
 
     function settle() public {
@@ -321,7 +328,7 @@ contract TokenizedDerivative is ERC20 {
 
     function deposit() public payable onlySponsor {
         // Only allow the sponsor to deposit margin.
-        _deposit(msg.value);
+        _deposit(_pullSentMargin());
     }
 
     function remargin() public onlySponsorOrAdmin {
@@ -369,6 +376,24 @@ contract TokenizedDerivative is ERC20 {
         // Make sure that we are in a "depositable" state.
         require(state == State.Live);
         shortBalance = shortBalance.add(int(value));
+    }
+
+    function _pullSentMargin() private returns (uint amount) {
+        if (address(marginCurrency) == address(0x0)) {
+            return msg.value;
+        } else {
+            // If we expect an ERC20 token, no ETH should be sent.
+            require(msg.value == 0);
+            return _pullAllAuthorizedTokens(marginCurrency);
+        }
+    }
+
+    function _sendMargin(address payable recipient, uint amount) private {
+        if (address(marginCurrency) == address(0x0)) {
+            recipient.transfer(amount);
+        } else {
+            marginCurrency.transfer(recipient, amount);
+        }
     }
 
     function _getRequiredEthMargin(int currentNav)
@@ -553,7 +578,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint disputeDeposit,
         address returnCalculator,
         uint startingTokenPrice,
-        uint expiry
+        uint expiry,
+        address marginCurrency
     )
         external
         returns (address derivativeAddress)
@@ -570,7 +596,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             disputeDeposit,
             returnCalculator,
             startingTokenPrice,
-            expiry
+            expiry,
+            marginCurrency
         );
 
         _registerContract(sponsor, address(derivative));
