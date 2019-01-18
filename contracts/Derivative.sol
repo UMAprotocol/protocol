@@ -30,19 +30,18 @@ contract Derivative {
         Live,
 
         // One of the parties has disputed the price feed. The contract is frozen until the dispute is resolved.
-        // Possible state transitions: Defaulted, Settled.
+        // Possible state transitions: Settled.
         Disputed,
 
-        // The contract has passed its expiration and the final remargin has occurred. It is still possible to dispute
-        // the settlement price.
-        // Possible state transitions: Disputed, Settled.
+        // The contract has passed its expiration and the final remargin has occurred. The contract is waiting for the
+        // Oracle price to become available, and as such, it is not possible to dispute.
+        // Possible state transitions: Settled.
         Expired,
 
-        // One party failed to keep their margin above the required margin, so the contract has gone into default. If
-        // the price is undisputed then the defaulting party will be required to pay a default penalty, but, if
-        // disputed, contract becomes disputed and penalty will only be paid if verified price confirms default. If both
-        // parties agree the contract is in default then becomes settled
-        // Possible state transitions: Disputed, Settled
+        // One party failed to keep their margin above the required margin, so the contract has gone into default.
+        // If both parties agree the contract is in default then becomes settled. Otherwise, call settle() after an
+        // Oracle price is available.
+        // Possible state transitions: Settled
         Defaulted,
 
         // The final remargin has occured, and all parties have agreed on the settlement price. Account balances can be
@@ -66,20 +65,19 @@ contract Derivative {
     // Other addresses/contracts
     ContractParty public maker;
     ContractParty public taker;
-    OracleInterface public oracle;
     V2OracleInterface public v2Oracle;
     PriceFeedInterface public priceFeed;
 
     State public state = State.Prefunded;
     uint public endTime;
     uint public lastRemarginTime;
+    int public defaultPrice;
 
     int public npv;  // Net present value is measured in Wei
 
     constructor(
         address payable _makerAddress,
         address payable _takerAddress,
-        address _oracleAddress,
         address _v2OracleAddress,
         address _priceFeedAddress,
         int _defaultPenalty,
@@ -89,7 +87,6 @@ contract Derivative {
         uint _notional
     ) public payable {
         // Address information
-        oracle = OracleInterface(_oracleAddress);
         v2Oracle = V2OracleInterface(_v2OracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
         require(v2Oracle.isIdentifierSupported(_product));
@@ -108,13 +105,14 @@ contract Derivative {
         notional = _notional;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (, int oraclePrice) = oracle.latestUnverifiedPrice();
+        (, int oraclePrice) = priceFeed.latestPrice(_product);
         npv = initialNpv(oraclePrice, notional);
     }
 
     function confirmPrice() external {
-        // Right now, only dispute if in a pre-settlement state
-        require(state == State.Expired || state == State.Defaulted || state == State.Disputed);
+        // Right now, can only confirm when in the Defaulted state. At expiry and during disputes, the Oracle is invoked
+        // and settle() should be used instead.
+        require(state == State.Defaulted);
 
         // Figure out who is who
         (ContractParty storage confirmer, ContractParty storage other) = _whoAmI(msg.sender);
@@ -152,18 +150,12 @@ contract Derivative {
 
         require(
             // TODO: We need to add the dispute bond logic
-            state == State.Live ||
-            state == State.Expired ||
-            state == State.Defaulted,
-            "Contract must be Live/Expired/Defaulted to dispute"
+            state == State.Live,
+            "Contract must be Live to dispute"
         );
         state = State.Disputed;
         endTime = lastRemarginTime;
-    }
-
-    function settle() external {
-        require(state == State.Disputed || state == State.Expired || state == State.Defaulted);
-        _settleVerifiedPrice();
+        _requestOraclePrice();
     }
 
     function withdraw(uint amount) external payable {
@@ -206,13 +198,19 @@ contract Derivative {
 
     function npvIfRemarginedImmediately() external view returns (int immediateNpv) {
         // Checks whether contract has ended
-        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
-        require(currentTime != 0);
-        if (currentTime >= endTime) {
-            (, oraclePrice) = oracle.unverifiedPrice(endTime);
-        }
+        (uint currentTime, int price) = priceFeed.latestPrice(product);
 
-        return computeNpv(oraclePrice, notional);
+        require(currentTime != 0);
+        // If the contract has expired, we don't have a price exactly for expiry, and we can't kick off an Oracle
+        // request from this `view` function.
+        require(currentTime < endTime);
+
+        return computeNpv(price, notional);
+    }
+
+    function settle() public {
+        require(state == State.Disputed || state == State.Expired || state == State.Defaulted);
+        _settleVerifiedPrice();
     }
 
     // Concrete contracts should inherit from this contract and then should only need to implement a
@@ -230,17 +228,28 @@ contract Derivative {
         require(state == State.Live);
 
         // Checks whether contract has ended
-        (uint currentTime, int oraclePrice) = oracle.latestUnverifiedPrice();
+        (uint currentTime, int price) = priceFeed.latestPrice(product);
         require(currentTime != 0);
         if (currentTime >= endTime) {
-            (currentTime, oraclePrice) = oracle.unverifiedPrice(endTime);
             state = State.Expired;
+            _requestOraclePrice();
         }
-
         lastRemarginTime = currentTime;
 
         // Update npv of contract
-        return  _remargin(computeNpv(oraclePrice, notional));
+        _updateBalances(computeNpv(price, notional));
+
+        // Make sure contract has not moved into default
+        bool inDefault;
+        address defaulter;
+        address notDefaulter;
+        (inDefault, defaulter, notDefaulter) = whoDefaults();
+        if (inDefault) {
+            state = State.Defaulted;
+            endTime = currentTime; // Change end time to moment when default occurred
+            defaultPrice = price;
+            _requestOraclePrice();
+        }
     }
 
     // TODO: Think about a cleaner way to do this -- It's ugly because we're leveraging the "ContractParty" struct in
@@ -263,6 +272,14 @@ contract Derivative {
         return (inDefault, defaulter, notDefaulter);
     }
 
+    function _requestOraclePrice() internal {
+        (uint oracleTime, , ) = v2Oracle.getPrice(product, endTime);
+        // If the Oracle price is already available, settle the contract immediately with that price.
+        if (oracleTime != 0) {
+            settle();
+        }
+    }
+
     function _isDefault(ContractParty storage party) internal view returns (bool) {
         return party.balance < requiredMargin;
     }
@@ -279,8 +296,8 @@ contract Derivative {
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settle(int price) internal {
 
-        // Remargin at whatever price we're using (verified or unverified)
-        _remargin(computeNpv(price, notional));
+        // Update balances at whatever price we're using (verified or unverified)
+        _updateBalances(computeNpv(price, notional));
 
         // Check whether goes into default
         (bool inDefault, address _defaulter, ) = whoDefaults();
@@ -299,38 +316,13 @@ contract Derivative {
     }
 
     function _settleAgreedPrice() internal {
-        (uint currentTime,) = oracle.latestUnverifiedPrice();
-        require(currentTime >= endTime);
-        (, int oraclePrice) = oracle.unverifiedPrice(endTime);
-
-        _settle(oraclePrice);
+        _settle(defaultPrice);
     }
 
     function _settleVerifiedPrice() internal {
-        (uint currentTime,) = oracle.latestVerifiedPrice();
-        require(currentTime >= endTime);
-        (, int oraclePrice) = oracle.verifiedPrice(endTime);
-
+        (uint oracleTime, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
+        require(oracleTime != 0);
         _settle(oraclePrice);
-    }
-
-    // Remargins the account based on a provided NPV value.
-    // The internal remargin method allows certain calls into the contract to
-    // automatically remargin to non-current NPV values (time of expiry, last
-    // agreed upon price, etc).
-    function _remargin(int npvNew) internal {
-        // Update the balances of contract
-        _updateBalances(npvNew);
-
-        // Make sure contract has not moved into default
-        bool inDefault;
-        address defaulter;
-        address notDefaulter;
-        (inDefault, defaulter, notDefaulter) = whoDefaults();
-        if (inDefault) {
-            state = State.Defaulted;
-            (endTime,) = oracle.latestUnverifiedPrice(); // Change end time to moment when default occurred
-        }
     }
 
     function _updateBalances(int npvNew) internal {
@@ -351,8 +343,10 @@ contract Derivative {
     }
 
     function _requiredAccountBalanceOnRemargin(ContractParty storage party) internal view returns (int balance) {
-        (, int oraclePrice) = oracle.unverifiedPrice(endTime);
-        int makerDiff = _getMakerNpvDiff(computeNpv(oraclePrice, notional));
+        (uint time, int price) = priceFeed.latestPrice(product);
+        // TODO(ptare): Loosen this requirement.
+        require(time <= endTime);
+        int makerDiff = _getMakerNpvDiff(computeNpv(price, notional));
 
         if (party.accountAddress == maker.accountAddress) {
             balance = requiredMargin.sub(makerDiff);
@@ -370,7 +364,6 @@ contract SimpleDerivative is Derivative {
     constructor(
         address payable _ownerAddress,
         address payable _counterpartyAddress,
-        address _oracleAddress,
         address _v2OracleAddress,
         address _priceFeedAddress,
         int _defaultPenalty,
@@ -381,7 +374,6 @@ contract SimpleDerivative is Derivative {
     ) public payable Derivative(
         _ownerAddress,
         _counterpartyAddress,
-        _oracleAddress,
         _v2OracleAddress,
         _priceFeedAddress,
         _defaultPenalty,
@@ -426,7 +418,6 @@ contract DerivativeCreator is ContractCreator {
         SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
             counterparty,
             msg.sender,
-            oracleAddress,
             v2OracleAddress,
             priceFeedAddress,
             defaultPenalty,
