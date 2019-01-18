@@ -6,6 +6,7 @@
 pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ContractCreator.sol";
@@ -19,7 +20,7 @@ contract ReturnCalculator {
 
 
 contract Leveraged2x is ReturnCalculator {
-    using SafeMath for int;
+    using SignedSafeMath for int;
 
     function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
         // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
@@ -35,7 +36,7 @@ contract Leveraged2x is ReturnCalculator {
 
 
 contract NoLeverage is ReturnCalculator {
-    using SafeMath for int;
+    using SignedSafeMath for int;
 
     function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
         return newOraclePrice.mul(1 ether).div(oldOraclePrice);
@@ -46,7 +47,7 @@ contract NoLeverage is ReturnCalculator {
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
 contract TokenizedDerivative is ERC20 {
     using SafeMath for uint;
-    using SafeMath for int;
+    using SignedSafeMath for int;
 
     enum State {
         // The contract is funded, the required margin has been provided by both parties, and remargining is happening

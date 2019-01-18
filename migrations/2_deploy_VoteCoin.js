@@ -1,7 +1,6 @@
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
-const Vote = artifacts.require("VoteCoin");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const Leveraged2x = artifacts.require("Leveraged2x");
@@ -65,12 +64,6 @@ module.exports = function(deployer, network, accounts) {
   } else if (shouldUseMockOracle(network)) {
     deployer
       .then(() => {
-        return deployer.deploy(Vote, "BTC/USD", "86400", enableControllableTiming(network), {
-          from: accounts[0],
-          value: 0
-        });
-      })
-      .then(() => {
         return deployer.deploy(ManualPriceFeed, enableControllableTiming(network));
       })
       .then(manualPriceFeed => {
@@ -114,15 +107,6 @@ module.exports = function(deployer, network, accounts) {
       });
   } else {
     deployer
-      .then(() => {
-        return deployer.deploy(Vote, "BTC/USD", "86400", enableControllableTiming(network), {
-          from: accounts[0],
-          value: 0
-        });
-      })
-      .then(() => {
-        return Vote.deployed();
-      })
       .then(() => {
         return Registry.deployed();
       })

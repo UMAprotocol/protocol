@@ -8,6 +8,7 @@
 pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
 import "./V2OracleInterface.sol";
@@ -15,7 +16,7 @@ import "./V2OracleInterface.sol";
 
 contract Derivative {
     using SafeMath for uint;
-    using SafeMath for int;
+    using SignedSafeMath for int;
 
     enum State {
         // Both parties have not yet provided the initial margin - they can freely deposit and withdraw, and no
