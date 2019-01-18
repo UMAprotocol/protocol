@@ -18,7 +18,7 @@
     "bignumber.js": "^8.0.1",
     "ganache-cli": "^6.1.8",
     "node-fetch": "^2.3.0",
-    "openzeppelin-solidity": "2.1.2",
+    "openzeppelin-solidity": "2.1.1",
     "truffle": "^5.0.0",
     "truffle-contract": "^4.0.0",
     "truffle-hdwallet-provider": "^1.0.0-web3one.5",
