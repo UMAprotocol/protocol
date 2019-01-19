@@ -794,9 +794,10 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Constructor assertions"), async function() {
       // Product unsupported by the Oracle.
       const productUnsupportedByOracle = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByOracle"));
-      const time = 100000;
+      const time = (await deployedManualPriceFeed.getCurrentTime()).addn(100000);
       await deployedManualPriceFeed.setCurrentTime(time);
       await deployedManualPriceFeed.pushLatestPrice(productUnsupportedByOracle, time, web3.utils.toWei("1", "ether"));
+
       assert(
         await didContractThrow(
           tokenizedDerivativeCreator.createTokenizedDerivative(
@@ -814,7 +815,7 @@ contract("TokenizedDerivative", function(accounts) {
             { from: sponsor }
           )
         )
-      );      
+      );
 
       // Product unsupported by price feed.
       const productUnsupportedByPriceFeed = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByFeed"));
