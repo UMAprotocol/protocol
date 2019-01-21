@@ -10,9 +10,16 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 // This interface allows derivative contracts to pay fees for their use of the system.
 interface StoreInterface {
-    function computeFees(uint startTime, uint endTime, uint pfc) external view returns (uint feeAmount);
 
+    // Pays fees in ETH to the store. To be used by contracts whose margin currency is ETH.
     function payFees() external payable;
 
-    function payFeesErc20(IERC20 erc20) external; 
+    // Pays fees in the margin currency, erc20A, to the store. To be used if the margin currency is an ERC20 token
+    // rather than ETC. All approved tokens are transfered.
+    function payFeesErc20(address erc20A) external; 
+
+    // Computes the fees that a contract should pay for a period. `pfc` is the "profit from corruption", or the maximum
+    // amount of margin currency that a token sponsor could extract from the contract through corrupting the price feed
+    // in their favor.
+    function computeFees(uint startTime, uint endTime, uint pfc) external view returns (uint feeAmount);
 }
