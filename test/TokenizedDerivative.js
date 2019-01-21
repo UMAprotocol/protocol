@@ -3,7 +3,6 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const NoLeverage = artifacts.require("NoLeverage");
-const Oracle = artifacts.require("OracleMock");
 const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");

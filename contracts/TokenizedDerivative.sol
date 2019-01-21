@@ -10,7 +10,6 @@ import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ContractCreator.sol";
-import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./V2OracleInterface.sol";
 
@@ -538,10 +537,9 @@ contract TokenizedDerivative is ERC20 {
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _oracleAddress, address _v2OracleAddress, address _priceFeedAddress)
+    constructor(address registryAddress, address _v2OracleAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress,
-                        _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(registryAddress, _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
     function createTokenizedDerivative(
         address sponsor,
