@@ -78,6 +78,9 @@ module.exports = function(deployer, network, accounts) {
         return CentralizedOracle.deployed();
       })
       .then(() => {
+        return deployer.deploy(Registry, v2OracleAddress, { from: accounts[0], value: 0 });
+      })
+      .then(() => {
         return Registry.deployed();
       })
       .then(deployedRegistry => {
