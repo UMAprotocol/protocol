@@ -27,7 +27,7 @@ contract CentralizedStore is StoreInterface, Ownable {
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
 
-    // Withdraws ETC from the store.
+    // Withdraws ETH from the store.
     function withdraw(uint amount) external onlyOwner {
         msg.sender.transfer(amount);
     }
