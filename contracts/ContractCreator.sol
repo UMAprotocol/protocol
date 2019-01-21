@@ -5,12 +5,12 @@ import "./Registry.sol";
 
 contract ContractCreator {
     Registry internal registry;
-    address internal v2OracleAddress;
+    address internal oracleAddress;
     address internal priceFeedAddress;
 
-    constructor(address registryAddress, address _v2OracleAddress, address _priceFeedAddress) public {
+    constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress) public {
         registry = Registry(registryAddress);
-        v2OracleAddress = _v2OracleAddress;
+        oracleAddress = _oracleAddress;
         priceFeedAddress = _priceFeedAddress;
     }
 
