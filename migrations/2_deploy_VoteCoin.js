@@ -1,4 +1,5 @@
 const CentralizedOracle = artifacts.require("CentralizedOracle");
+const CentralizedStore = artifacts.require("CentralizedStore");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
@@ -107,6 +108,12 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(() => {
         return NoLeverage.deployed();
+      })
+      .then(() => {
+        return deployer.deploy(CentralizedStore);
+      })
+      .then(() => {
+        return CentralizedStore.deployed();
       });
   } else {
     deployer
