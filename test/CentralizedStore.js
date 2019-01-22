@@ -20,37 +20,37 @@ contract("CentralizedStore", function(accounts) {
 
   it("Compute fees", async function() {
     // Set a convenient fee for this test case of 10%.
-    await centralizedStore.setFixedFeePerSecond(web3.utils.toWei("0.1", "ether"));
+    await centralizedStore.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"));
 
     // One second time interval, 2 ether PFC. Expected fee is 0.1*2*1 = 0.2 ether.
-    let fees = await centralizedStore.computeFees(100, 101, web3.utils.toWei("2", "ether"));
+    let fees = await centralizedStore.computeOracleFees(100, 101, web3.utils.toWei("2", "ether"));
     assert.equal(fees.toString(), web3.utils.toWei("0.2", "ether"));
 
     // Ten second time interval, 2 ether PFC. Expected fee is 0.1*2*10 = 2 ether.
-    fees = await centralizedStore.computeFees(100, 110, web3.utils.toWei("2", "ether"));
+    fees = await centralizedStore.computeOracleFees(100, 110, web3.utils.toWei("2", "ether"));
     assert.equal(fees.toString(), web3.utils.toWei("2", "ether"));
 
     // Change fee to 20%.
-    await centralizedStore.setFixedFeePerSecond(web3.utils.toWei("0.2", "ether"));
+    await centralizedStore.setFixedOracleFeePerSecond(web3.utils.toWei("0.2", "ether"));
 
     // One second time interval, 2 ether PFC. Expected fee is 0.2*2*1 = 0.4 ether.
-    fees = await centralizedStore.computeFees(100, 101, web3.utils.toWei("2", "ether"));
+    fees = await centralizedStore.computeOracleFees(100, 101, web3.utils.toWei("2", "ether"));
     assert.equal(fees.toString(), web3.utils.toWei("0.4", "ether"));
 
     // Ten second time interval, 2 ether PFC. Expected fee is 0.2*2*10 = 4 ether.
-    fees = await centralizedStore.computeFees(100, 110, web3.utils.toWei("2", "ether"));
+    fees = await centralizedStore.computeOracleFees(100, 110, web3.utils.toWei("2", "ether"));
     assert.equal(fees.toString(), web3.utils.toWei("4", "ether"));
 
     // Disallow endTime < startTime.
-    assert(await didContractThrow(centralizedStore.computeFees(2, 1, 10)));
+    assert(await didContractThrow(centralizedStore.computeOracleFees(2, 1, 10)));
 
     // Disallow setting fees higher than 100%.
-    assert(await didContractThrow(centralizedStore.setFixedFeePerSecond(web3.utils.toWei("1", "ether"))));
+    assert(await didContractThrow(centralizedStore.setFixedOracleFeePerSecond(web3.utils.toWei("1", "ether"))));
 
     // Only owner can set fees.
     assert(
       await didContractThrow(
-        centralizedStore.setFixedFeePerSecond(web3.utils.toWei("0.1", "ether"), { from: derivative })
+        centralizedStore.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"), { from: derivative })
       )
     );
   });
@@ -62,16 +62,18 @@ contract("CentralizedStore", function(accounts) {
 
     // Can't pay a fee of 0 ether.
     assert(
-      await didContractThrow(centralizedStore.payFees({ from: derivative, value: web3.utils.toWei("0", "ether") }))
+      await didContractThrow(
+        centralizedStore.payOracleFees({ from: derivative, value: web3.utils.toWei("0", "ether") })
+      )
     );
 
     // Send 1 ether to the contract and verify balance.
-    await centralizedStore.payFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
+    await centralizedStore.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
     balance = await web3.eth.getBalance(CentralizedStore.address);
     assert.equal(balance.toString(), web3.utils.toWei("1", "ether"));
 
     // Send a further 2 ether to the contract and verify balance.
-    await centralizedStore.payFees({ from: derivative, value: web3.utils.toWei("2", "ether") });
+    await centralizedStore.payOracleFees({ from: derivative, value: web3.utils.toWei("2", "ether") });
     balance = await web3.eth.getBalance(CentralizedStore.address);
     assert.equal(balance.toString(), web3.utils.toWei("3", "ether"));
 
@@ -111,7 +113,7 @@ contract("CentralizedStore", function(accounts) {
 
     // Pay 10 of the first margin token to the CentralizedStore and verify balances.
     await firstMarginToken.approve(centralizedStore.address, web3.utils.toWei("10", "ether"), { from: derivative });
-    await centralizedStore.payFeesErc20(firstMarginToken.address, { from: derivative });
+    await centralizedStore.payOracleFeesErc20(firstMarginToken.address, { from: derivative });
     firstTokenBalanceInStore = await firstMarginToken.balanceOf(centralizedStore.address);
     firstTokenBalanceInDerivative = await firstMarginToken.balanceOf(derivative);
     assert.equal(firstTokenBalanceInStore.toString(), web3.utils.toWei("10", "ether"));
@@ -119,7 +121,7 @@ contract("CentralizedStore", function(accounts) {
 
     // Pay 20 of the second margin token to the CentralizedStore and verify balances.
     await secondMarginToken.approve(centralizedStore.address, web3.utils.toWei("20", "ether"), { from: derivative });
-    await centralizedStore.payFeesErc20(secondMarginToken.address, { from: derivative });
+    await centralizedStore.payOracleFeesErc20(secondMarginToken.address, { from: derivative });
     secondTokenBalanceInStore = await secondMarginToken.balanceOf(centralizedStore.address);
     secondTokenBalanceInDerivative = await secondMarginToken.balanceOf(derivative);
     assert.equal(secondTokenBalanceInStore.toString(), web3.utils.toWei("20", "ether"));

@@ -10,18 +10,18 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./StoreInterface.sol";
 
 
-// An implementation of StoreInterface that can accept fees in ETH or any arbitrary ERC20 token.
+// An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
 contract CentralizedStore is StoreInterface, Ownable {
 
     using SafeMath for uint;
 
-    uint private fixedFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% fee.
+    uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
 
-    function payFees() external payable {
+    function payOracleFees() external payable {
         require(msg.value > 0);
     }
 
-    function payFeesErc20(address erc20Address) external {
+    function payOracleFeesErc20(address erc20Address) external {
         IERC20 erc20 = IERC20(erc20Address);
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
@@ -40,15 +40,15 @@ contract CentralizedStore is StoreInterface, Ownable {
         require(erc20.transfer(msg.sender, amount));
     }
 
-    // Sets a new fee per second.
-    function setFixedFeePerSecond(uint newFee) external onlyOwner {
-        // Fees at or over 100% don't make sense.
-        require(newFee < 1 ether);
-        fixedFeePerSecond = newFee;
+    // Sets a new Oracle fee per second.
+    function setFixedOracleFeePerSecond(uint newOracleFee) external onlyOwner {
+        // Oracle fees at or over 100% don't make sense.
+        require(newOracleFee < 1 ether);
+        fixedOracleFeePerSecond = newOracleFee;
     }
 
-    function computeFees(uint startTime, uint endTime, uint pfc) external view returns (uint feeAmount) {
+    function computeOracleFees(uint startTime, uint endTime, uint pfc) external view returns (uint oracleFeeAmount) {
         uint timeRange = endTime.sub(startTime);
-        return pfc.mul(fixedFeePerSecond).mul(timeRange).div(1 ether);
+        return pfc.mul(fixedOracleFeePerSecond).mul(timeRange).div(1 ether);
     }
 }
