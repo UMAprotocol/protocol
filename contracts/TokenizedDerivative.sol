@@ -387,7 +387,8 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function _sendMargin(uint amount) private {
+    // TODO(mrice32): remove onlySponsor because it's only required to pacify slither.
+    function _sendMargin(uint amount) private onlySponsor {
         if (address(marginCurrency) == address(0x0)) {
             msg.sender.transfer(amount);
         } else {
