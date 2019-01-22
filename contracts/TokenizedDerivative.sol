@@ -50,29 +50,33 @@ contract TokenizedDerivative is ERC20 {
     using SignedSafeMath for int;
 
     enum State {
-        // The contract is funded, the required margin has been provided by both parties, and remargining is happening
-        // on demand. Parties are only able to withdraw down to the required margin.
+        // The contract is active, and tokens can be created and redeemed. Margin can be added and withdrawn (as long as
+        // it exceeds required levels). Remargining is allowed. Created contracts immediately begin in this state.
         // Possible state transitions: Disputed, Expired, Defaulted.
         Live,
 
-        // One of the parties has disputed the price feed. The contract is frozen until the dispute is resolved.
-        // Possible state transitions: Defaulted, Settled.
+        // Disputed, Expired, and Defaulted are Frozen states. In a Frozen state, the contract is frozen in time
+        // awaiting a resolution by the Oracle. No tokens can be created or redeemed. Margin cannot be withdrawn. The
+        // resolution of these states moves the contract to the Settled state. Remargining is not allowed.
+
+        // The sponsor has disputed the price feed output. If the dispute is valid (i.e., the NAV calculated from the
+        // Oracle price differs from the NAV calculated from the price feed), the dispute fee is added to the short
+        // account. Otherwise, the dispute fee is added to the long margin account.
+        // Possible state transitions: Settled.
         Disputed,
 
-        // The contract has passed its expiration and the final remargin has occurred. It is still possible to dispute
-        // the settlement price.
-        // Possible state transitions: Disputed, Settled.
+        // Contract expiration has been reached.
+        // Possible state transitions: Settled.
         Expired,
 
-        // One party failed to keep their margin above the required margin, so the contract has gone into default. If
-        // the price is undisputed then the defaulting party will be required to pay a default penalty, but, if
-        // disputed, contract becomes disputed and penalty will only be paid if verified price confirms default. If both
-        // parties agree the contract is in default then becomes settled
-        // Possible state transitions: Disputed, Settled
+        // The short margin account is below its margin requirement. The sponsor can choose to confirm the default and
+        // move to Settle without waiting for the Oracle. Default penalties will be assessed when the contract moves to
+        // Settled.
+        // Possible state transitions: Settled.
         Defaulted,
 
-        // The final remargin has occured, and all parties have agreed on the settlement price. Account balances can be
-        // fully withdrawn.
+        // Token price is fixed. Tokens can be redeemed by anyone. All short margin can be withdrawn. Tokens can't be
+        // created, and contract can't remargin.
         // Possible state transitions: None.
         Settled
     }
