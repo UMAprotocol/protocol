@@ -1,7 +1,7 @@
 /*
   CentralizedOracle implementation.
 
-  Implementation of V2OracleInterface that allows the owner to provide verified prices.
+  Implementation of OracleInterface that allows the owner to provide verified prices.
 */
 pragma solidity ^0.5.0;
 
@@ -9,12 +9,12 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./V2OracleInterface.sol";
+import "./OracleInterface.sol";
 import "./Testable.sol";
 
 
 // Implements an oracle that allows the owner to push prices for queries that have been made.
-contract CentralizedOracle is V2OracleInterface, Ownable, Testable {
+contract CentralizedOracle is OracleInterface, Ownable, Testable {
     using SafeMath for uint;
 
     // This contract doesn't implement the voting routine, and naively indicates that all requested prices will be
