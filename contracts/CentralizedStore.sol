@@ -29,8 +29,6 @@ contract CentralizedStore is StoreInterface, Ownable {
 
     // Withdraws ETH from the store.
     function withdraw(uint amount) external onlyOwner {
-        // Slither prohibits `msg.sender.transfer(amount)` as a dangerous transfer.
-        require(owner() == msg.sender);
         msg.sender.transfer(amount);
     }
 
