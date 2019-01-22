@@ -1,27 +1,23 @@
 /*
   OracleInterface contract.
-  The interface that contracts use to query verified and unverified price feeds.
+  The interface that contracts use to query a verified, trusted price.
 */
 pragma solidity ^0.5.0;
 
 
-// This interface allows contracts to query verified and unverified prices from the VoteToken.
+// This interface allows contracts to query a verified, trusted price.
 interface OracleInterface {
-    // Gets the latest price-time pair at which an unverified price was published. `publishTime` will be 0 and `price`
-    // should be ignored if no unverified prices have been published.
-    function latestUnverifiedPrice() external view returns (uint publishTime, int price);
+    // Returns an Oracle-verified price for identifier if available, otherwise returns `timeForPrice`=0 and a
+    // `verifiedTime` that corresponds to the next voting period after which a verified price will be available. If no
+    // verified price will ever be available, returns `verifiedTime`=first Ethereum time.
+    function getPrice(bytes32 identifier, uint time) external returns (uint timeForPrice, int price, uint verifiedTime);
 
-    // Gets the latest price-time pair at which a verified price was published. `publishTime` will be 0 and `price`
-    // should be ignored if no verified prices have been published.
-    function latestVerifiedPrice() external view returns (uint publishTime, int price);
+    // Returns whether the Oracle provides verified prices for the given identifier.
+    function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported);
 
-    // Gets the price-time pair that an unverified price was published that is nearest to `time` without being greater
-    // than `time`. `publishTime` will be 0 and `price` should be ignored if no unverified prices had been published
-    // before `publishTime`.
-    function unverifiedPrice(uint time) external view returns (uint publishTime, int price);
+    // An event fired when a request for a (identifier, time) pair is made.
+    event VerifiedPriceRequested(bytes32 indexed identifier, uint indexed time);
 
-    // Gets the price-time pair that a verified price was published that is nearest to `time` without being greater
-    // than `time`. `publishTime` will be 0 and `price` should be ignored if no verified prices had been published
-    // before `publishTime`.
-    function verifiedPrice(uint time) external view returns (uint publishTime, int price);
+    // An event fired when a verified price is available for a (identifier, time) pair.
+    event VerifiedPriceAvailable(bytes32 indexed identifier, uint indexed time, int price);
 }
