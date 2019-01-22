@@ -226,7 +226,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function redeemTokens() external {
-        require((msg.sender == sponsor && state == State.Live) || (state == State.Settled && balanceOf(msg.sender) != 0));
+        require((msg.sender == sponsor && state == State.Live) || state == State.Settled);
 
         if (state == State.Live) {
             remargin();
