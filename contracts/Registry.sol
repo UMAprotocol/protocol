@@ -7,7 +7,37 @@ contract Registry is Ownable {
     mapping(address => address[]) private registeredContracts;
     mapping(address => bool) private contractCreators;
 
+
+    struct RegisteredDerivative {
+        address creator;
+        address derivative;
+    };
+
+    RegisteredDerivative[] registeredDerivatives;
+
     event Register(address indexed party, address indexed derivative);
+
+
+    // v1 required methods below:
+    function isDerivativeRegistered(address derivative) external view returns (bool isRegistred) {
+
+    }
+
+    function getRegisteredDerivatives(address party) external view returns (Derivative[] memory derivatives) {
+
+    }
+
+    function getAllRegisteredDerivatives() external view returns (Derivative[] memory derivatives) {
+
+    }
+
+    function isDerivativeCreatorAuthorized(address derivativeCreator) external view returns (bool isAuthorized) {
+
+    }
+
+    function registerDerivative(address[] calldata counterparties, address derivativeAddress) external {
+
+    }
 
     function addContractCreator(address contractCreator) external onlyOwner {
         contractCreators[contractCreator] = true;
@@ -16,6 +46,12 @@ contract Registry is Ownable {
     function removeContractCreator(address contractCreator) external onlyOwner {
         contractCreators[contractCreator] = false;
     }
+
+
+
+    // Old methods
+
+
 
     function registerContract(address party, address contractToRegister) external {
         require(contractCreators[msg.sender]);
