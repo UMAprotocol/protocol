@@ -341,14 +341,19 @@ contract TokenizedDerivative is ERC20 {
         // Checks whether contract has ended.
         (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
         require(latestTime != 0);
+        if (latestTime == currentTokenState.time) {
+            return;
+        }
         if (latestTime >= endTime) {
             state = State.Expired;
             prevTokenState = currentTokenState;
+            _payOracleFees(nav, prevTokenState.time, endTime);
             // We have no idea what the price was, exactly at endTime, so we can't set
             // currentTokenState, or update the nav, or do anything.
             _requestOraclePrice(endTime);
             return;
         }
+        _payOracleFees(nav, currentTokenState.time, latestTime);
 
         // Update nav of contract.
         int newNav = _computeNav(latestPrice, latestTime);
@@ -356,6 +361,19 @@ contract TokenizedDerivative is ERC20 {
 
         if (inDefault) {
             _requestOraclePrice(endTime);
+        }
+    }
+
+    function _payOracleFees(int lastTokenNav, uint lastTimeOracleFeesPaid, uint currentTime) private {
+        // WHAT IS `lastTokenNav` < 0?
+        uint feeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        shortBalance = shortBalance.sub(int(feeAmount));
+        if (address(marginCurrency) == address(0x0)) {
+            // NEED TO CHECK FOR ERRORS HERE? DEFAULT THE CONTRACT??
+            store.payOracleFees.value(feeAmount)();
+        } else {
+            marginCurrency.approve(address(store), feeAmount);
+            store.payOracleFeesErc20(address(marginCurrency));
         }
     }
 
