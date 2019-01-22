@@ -1,81 +1,84 @@
 pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+
+pragma experimental ABIEncoderV2;
 
 
 contract Registry is Ownable {
-    mapping(address => address[]) private registeredContracts;
-    mapping(address => bool) private contractCreators;
 
+    using SafeMath for uint;
 
     struct RegisteredDerivative {
-        address creator;
-        address derivative;
-    };
+        address derivativeAddress;
+        address contractCreator;
+    }
 
-    RegisteredDerivative[] registeredDerivatives;
+    struct Pointer {
+        bool valid;
+        uint128 index;
+        mapping(address => bool) parties;
+    }
 
-    event Register(address indexed party, address indexed derivative);
+    mapping(address => bool) private derivativeCreators;
+    mapping(address => Pointer) private derivativePointers;
+    RegisteredDerivative[] private registeredDerivatives;
 
-
-    // v1 required methods below:
+    modifier onlyApprovedDerivativeCreator {
+        require(derivativeCreators[msg.sender]);
+        _;
+    }
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistred) {
-
+        return derivativePointers[derivative].valid;
     }
 
-    function getRegisteredDerivatives(address party) external view returns (Derivative[] memory derivatives) {
-
+    function getRegisteredDerivatives(address party) external view returns (RegisteredDerivative[] memory derivatives) {
+        derivatives = new RegisteredDerivative[](registeredDerivatives.length);
+        for (uint i = 0; i < registeredDerivatives.length; i = i.add(1)) {
+            RegisteredDerivative storage derivative = registeredDerivatives[i];
+            if (derivativePointers[derivative.derivativeAddress].parties[party]) {
+                derivatives[i] = derivative;
+            }
+        }
     }
 
-    function getAllRegisteredDerivatives() external view returns (Derivative[] memory derivatives) {
-
+    function getAllRegisteredDerivatives() external view returns (RegisteredDerivative[] memory derivatives) {
+        return registeredDerivatives;
     }
 
     function isDerivativeCreatorAuthorized(address derivativeCreator) external view returns (bool isAuthorized) {
-
+        return derivativeCreators[derivativeCreator];
     }
 
-    function registerDerivative(address[] calldata counterparties, address derivativeAddress) external {
-
+    function registerDerivative(address[] calldata counterparties, address derivativeAddress) external onlyApprovedDerivativeCreator {
+        registeredDerivatives.push(RegisteredDerivative(derivativeAddress, msg.sender));
+        // No length check necessary because we should never hit that many derivatives.
+        uint128 idx = uint128(registeredDerivatives.length.sub(1));
+        Pointer storage pointer = derivativePointers[derivativeAddress] = Pointer(true, idx);
+        pointer.valid = true;
+        pointer.index = idx;
+        for (uint i = 0; i < counterparties.length; i = i.add(1)) {
+            pointer.parties[counterparties[i]] = true;
+        }
     }
 
-    function addContractCreator(address contractCreator) external onlyOwner {
-        contractCreators[contractCreator] = true;
+    function addDerivativeCreator(address derivativeCreator) external onlyOwner {
+        derivativeCreators[derivativeCreator] = true;
     }
 
-    function removeContractCreator(address contractCreator) external onlyOwner {
-        contractCreators[contractCreator] = false;
+    function removeDerivativeCreator(address derivativeCreator) external onlyOwner {
+        derivativeCreators[derivativeCreator] = false;
     }
 
-
-
-    // Old methods
-
-
-
-    function registerContract(address party, address contractToRegister) external {
-        require(contractCreators[msg.sender]);
-        _register(party, contractToRegister);
-    }
-
-    function getNumRegisteredContractsBySender() external view returns (uint number) {
-        return getNumRegisteredContracts(msg.sender);
-    }
-
-    function getRegisteredContractBySender(uint index) external view returns (address contractAddress) {
-        return getRegisteredContract(index, msg.sender);
-    }
-
-    function getNumRegisteredContracts(address party) public view returns (uint number) {
-        return registeredContracts[party].length;
-    }
-
-    function getRegisteredContract(uint index, address party) public view returns (address contractAddress) {
-        return registeredContracts[party][index];
-    }
-
-    function _register(address party, address contractToRegister) internal {
-        registeredContracts[party].push(contractToRegister);
-        emit Register(party, contractToRegister);
+    function unregisterDerivative(address derivativeAddress) external {
+        require(msg.sender == owner() || msg.sender == derivativeAddress);
+        Pointer storage pointer = derivativePointers[derivativeAddress];
+        require(pointer.valid);
+        RegisteredDerivative storage slotToSwap = registeredDerivatives[pointer.index];
+        uint newLength = registeredDerivatives.length.sub(1);
+        slotToSwap = registeredDerivatives[newLength];
+        registeredDerivatives.length = newLength;
+        delete derivativePointers[derivativeAddress];
     }
 }
