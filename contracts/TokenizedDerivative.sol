@@ -248,7 +248,7 @@ contract TokenizedDerivative is ERC20 {
         longBalance = longBalance.sub(int(tokenValue));
         nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
 
-        _sendMargin(msg.sender, tokenValue);
+        _sendMargin(tokenValue);
     }
 
     function dispute() external payable onlySponsor {
@@ -271,7 +271,7 @@ contract TokenizedDerivative is ERC20 {
 
         _requestOraclePrice(endTime);
 
-        _sendMargin(msg.sender, refund);
+        _sendMargin(refund);
     }
 
     function withdraw(uint amount) external onlySponsor {
@@ -301,7 +301,7 @@ contract TokenizedDerivative is ERC20 {
         // function can not be called multiple times while waiting for transfer
         // to return.
         shortBalance = shortBalance.sub(int(amount));
-        _sendMargin(msg.sender, amount);
+        _sendMargin(amount);
     }
 
     function settle() public {
@@ -388,11 +388,11 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function _sendMargin(address payable recipient, uint amount) private {
+    function _sendMargin(uint amount) private {
         if (address(marginCurrency) == address(0x0)) {
-            recipient.transfer(amount);
+            msg.sender.transfer(amount);
         } else {
-            require(marginCurrency.transfer(recipient, amount));
+            require(marginCurrency.transfer(msg.sender, amount));
         }
     }
 
