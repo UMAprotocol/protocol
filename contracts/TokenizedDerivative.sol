@@ -11,7 +11,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
-import "./V2OracleInterface.sol";
+import "./OracleInterface.sol";
 
 
 contract ReturnCalculator {
@@ -96,9 +96,10 @@ contract TokenizedDerivative is ERC20 {
     // Other addresses/contracts
     address public sponsor;
     address public admin;
-    V2OracleInterface public v2Oracle;
+    OracleInterface public oracle;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
+    IERC20 public marginCurrency;
 
     State public state;
     uint public endTime;
@@ -150,7 +151,7 @@ contract TokenizedDerivative is ERC20 {
     constructor(
         address _sponsorAddress,
         address _adminAddress,
-        address _v2OracleAddress,
+        address _oracleAddress,
         address _priceFeedAddress,
         uint _defaultPenalty, // Percentage of nav*10^18
         uint _requiredMargin, // Percentage of nav*10^18
@@ -159,12 +160,15 @@ contract TokenizedDerivative is ERC20 {
         uint _disputeDeposit, // Percentage of nav * 10^18
         address _returnCalculator,
         uint _startingTokenPrice,
-        uint expiry
+        uint expiry,
+        address _marginCurrency
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _requiredMargin);
         require(_requiredMargin <= 1 ether);
         marginRequirement = _requiredMargin;
+
+        marginCurrency = IERC20(_marginCurrency);
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
@@ -172,10 +176,10 @@ contract TokenizedDerivative is ERC20 {
         require(_startingTokenPrice <= uint(1 ether).mul(10**9));
 
         // Address information
-        v2Oracle = V2OracleInterface(_v2OracleAddress);
+        oracle = OracleInterface(_oracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
         // Verify that the price feed and oracle support the given product.
-        require(v2Oracle.isIdentifierSupported(_product));
+        require(oracle.isIdentifierSupported(_product));
         require(priceFeed.isIdentifierSupported(_product));
 
         sponsor = _sponsorAddress;
@@ -206,12 +210,13 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function createTokens() external payable onlySponsor {
-        _createTokens(msg.value);
+        _createTokens(_pullSentMargin());
     }
 
     function depositAndCreateTokens(uint newTokenNav) external payable onlySponsor {
         // Subtract newTokenNav from amount sent.
-        uint depositAmount = msg.value.sub(newTokenNav);
+        uint sentAmount = _pullSentMargin();
+        uint depositAmount = sentAmount.sub(newTokenNav);
 
         // Deposit additional margin into the short account.
         _deposit(depositAmount);
@@ -242,7 +247,7 @@ contract TokenizedDerivative is ERC20 {
         longBalance = longBalance.sub(int(tokenValue));
         nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
 
-        msg.sender.transfer(tokenValue);
+        _sendMargin(tokenValue);
     }
 
     function dispute() external payable onlySponsor {
@@ -253,8 +258,10 @@ contract TokenizedDerivative is ERC20 {
 
         uint requiredDeposit = uint(_takePercentage(nav, disputeDeposit));
 
-        require(msg.value >= requiredDeposit);
-        uint refund = msg.value.sub(requiredDeposit);
+        uint sentAmount = _pullSentMargin();
+
+        require(sentAmount >= requiredDeposit);
+        uint refund = sentAmount.sub(requiredDeposit);
 
         state = State.Disputed;
         endTime = currentTokenState.time;
@@ -263,7 +270,7 @@ contract TokenizedDerivative is ERC20 {
 
         _requestOraclePrice(endTime);
 
-        msg.sender.transfer(refund);
+        _sendMargin(refund);
     }
 
     function withdraw(uint amount) external onlySponsor {
@@ -293,7 +300,7 @@ contract TokenizedDerivative is ERC20 {
         // function can not be called multiple times while waiting for transfer
         // to return.
         shortBalance = shortBalance.sub(int(amount));
-        msg.sender.transfer(amount);
+        _sendMargin(amount);
     }
 
     function settle() public {
@@ -320,7 +327,7 @@ contract TokenizedDerivative is ERC20 {
 
     function deposit() public payable onlySponsor {
         // Only allow the sponsor to deposit margin.
-        _deposit(msg.value);
+        _deposit(_pullSentMargin());
     }
 
     function remargin() public onlySponsorOrAdmin {
@@ -370,6 +377,24 @@ contract TokenizedDerivative is ERC20 {
         shortBalance = shortBalance.add(int(value));
     }
 
+    function _pullSentMargin() private returns (uint amount) {
+        if (address(marginCurrency) == address(0x0)) {
+            return msg.value;
+        } else {
+            // If we expect an ERC20 token, no ETH should be sent.
+            require(msg.value == 0);
+            return _pullAllAuthorizedTokens(marginCurrency);
+        }
+    }
+
+    function _sendMargin(uint amount) private {
+        if (address(marginCurrency) == address(0x0)) {
+            msg.sender.transfer(amount);
+        } else {
+            require(marginCurrency.transfer(msg.sender, amount));
+        }
+    }
+
     function _getRequiredEthMargin(int currentNav)
         private
         view
@@ -407,7 +432,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _settleVerifiedPrice() private {
-        (uint timeForPrice, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
+        (uint timeForPrice, int oraclePrice, ) = oracle.getPrice(product, endTime);
         require(timeForPrice != 0);
 
         _settle(oraclePrice);
@@ -493,7 +518,7 @@ contract TokenizedDerivative is ERC20 {
         }
 
     function _requestOraclePrice(uint requestedTime) private {
-        (uint time, , ) = v2Oracle.getPrice(product, requestedTime);
+        (uint time, , ) = oracle.getPrice(product, requestedTime);
         if (time != 0) {
             // The Oracle price is already available, settle the contract right away.
             settle();
@@ -537,9 +562,9 @@ contract TokenizedDerivative is ERC20 {
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _v2OracleAddress, address _priceFeedAddress)
+    constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
     function createTokenizedDerivative(
         address sponsor,
@@ -551,7 +576,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint disputeDeposit,
         address returnCalculator,
         uint startingTokenPrice,
-        uint expiry
+        uint expiry,
+        address marginCurrency
     )
         external
         returns (address derivativeAddress)
@@ -559,7 +585,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         TokenizedDerivative derivative = new TokenizedDerivative(
             sponsor,
             admin,
-            v2OracleAddress,
+            oracleAddress,
             priceFeedAddress,
             defaultPenalty,
             requiredMargin,
@@ -568,7 +594,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             disputeDeposit,
             returnCalculator,
             startingTokenPrice,
-            expiry
+            expiry,
+            marginCurrency
         );
 
         _registerContract(sponsor, address(derivative));
