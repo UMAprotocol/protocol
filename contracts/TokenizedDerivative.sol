@@ -226,7 +226,7 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function redeemTokens() external {
-        require((msg.sender == sponsor && state == State.Live) || state == State.Settled);
+        require((msg.sender == sponsor && state == State.Live) || (state == State.Settled && balanceOf(msg.sender) != 0));
 
         if (state == State.Live) {
             remargin();
@@ -387,8 +387,7 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    // TODO(mrice32): remove onlySponsor because it's only required to pacify slither.
-    function _sendMargin(uint amount) private onlySponsor {
+    function _sendMargin(uint amount) private {
         if (address(marginCurrency) == address(0x0)) {
             msg.sender.transfer(amount);
         } else {
