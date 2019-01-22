@@ -392,7 +392,7 @@ contract TokenizedDerivative is ERC20 {
         if (address(marginCurrency) == address(0x0)) {
             recipient.transfer(amount);
         } else {
-            marginCurrency.transfer(recipient, amount);
+            require(marginCurrency.transfer(recipient, amount));
         }
     }
 
