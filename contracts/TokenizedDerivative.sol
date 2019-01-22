@@ -12,6 +12,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
 import "./OracleInterface.sol";
+import "./StoreInterface.sol";
 
 
 contract ReturnCalculator {
@@ -97,6 +98,7 @@ contract TokenizedDerivative is ERC20 {
     address public sponsor;
     address public admin;
     OracleInterface public oracle;
+    StoreInterface public store;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
     IERC20 public marginCurrency;
@@ -161,7 +163,8 @@ contract TokenizedDerivative is ERC20 {
         address _returnCalculator,
         uint _startingTokenPrice,
         uint expiry,
-        address _marginCurrency
+        address _marginCurrency,
+        address _storeAddress
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _requiredMargin);
@@ -177,6 +180,7 @@ contract TokenizedDerivative is ERC20 {
 
         // Address information
         oracle = OracleInterface(_oracleAddress);
+        store = StoreInterface(_storeAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
         // Verify that the price feed and oracle support the given product.
         require(oracle.isIdentifierSupported(_product));
@@ -562,9 +566,15 @@ contract TokenizedDerivative is ERC20 {
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress)
+
+    address private storeAddress;
+
+    constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress)
+    {
+        storeAddress = _storeAddress;
+    }
 
     function createTokenizedDerivative(
         address sponsor,
@@ -595,7 +605,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             returnCalculator,
             startingTokenPrice,
             expiry,
-            marginCurrency
+            marginCurrency,
+            storeAddress
         );
 
         _registerContract(sponsor, address(derivative));

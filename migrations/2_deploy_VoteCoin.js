@@ -35,6 +35,7 @@ const shouldUseMockOracle = network => {
 
 module.exports = function(deployer, network, accounts) {
   let oracleAddress;
+  let storeAddress;
   let priceFeedAddress;
   let registry;
   if (isDerivativeDemo(network)) {
@@ -78,6 +79,13 @@ module.exports = function(deployer, network, accounts) {
         return CentralizedOracle.deployed();
       })
       .then(() => {
+        return deployer.deploy(CentralizedStore, enableControllableTiming(network));
+      })
+      .then(centralizedStore => {
+        storeAddress = centralizedStore.address;
+        return CentralizedStore.deployed();
+      })
+      .then(() => {
         return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
       })
       .then(() => {
@@ -94,7 +102,13 @@ module.exports = function(deployer, network, accounts) {
         return registry.addContractCreator(derivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, priceFeedAddress);
+        return deployer.deploy(
+          TokenizedDerivativeCreator,
+          registry.address,
+          oracleAddress,
+          storeAddress,
+          priceFeedAddress
+        );
       })
       .then(() => {
         return TokenizedDerivativeCreator.deployed();
@@ -107,12 +121,6 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(() => {
         return NoLeverage.deployed();
-      })
-      .then(() => {
-        return deployer.deploy(CentralizedStore);
-      })
-      .then(() => {
-        return CentralizedStore.deployed();
       });
   } else {
     deployer
@@ -130,7 +138,13 @@ module.exports = function(deployer, network, accounts) {
         return registry.addContractCreator(derivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, priceFeedAddress);
+        return deployer.deploy(
+          TokenizedDerivativeCreator,
+          registry.address,
+          oracleAddress,
+          storeAddress,
+          priceFeedAddress
+        );
       })
       .then(() => {
         return TokenizedDerivativeCreator.deployed();
