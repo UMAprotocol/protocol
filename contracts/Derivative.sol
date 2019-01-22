@@ -11,7 +11,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
-import "./V2OracleInterface.sol";
+import "./OracleInterface.sol";
 
 
 contract Derivative {
@@ -65,7 +65,7 @@ contract Derivative {
     // Other addresses/contracts
     ContractParty public maker;
     ContractParty public taker;
-    V2OracleInterface public v2Oracle;
+    OracleInterface public oracle;
     PriceFeedInterface public priceFeed;
 
     State public state = State.Prefunded;
@@ -78,7 +78,7 @@ contract Derivative {
     constructor(
         address payable _makerAddress,
         address payable _takerAddress,
-        address _v2OracleAddress,
+        address _oracleAddress,
         address _priceFeedAddress,
         int _defaultPenalty,
         int _requiredMargin,
@@ -87,9 +87,9 @@ contract Derivative {
         uint _notional
     ) public payable {
         // Address information
-        v2Oracle = V2OracleInterface(_v2OracleAddress);
+        oracle = OracleInterface(_oracleAddress);
         priceFeed = PriceFeedInterface(_priceFeedAddress);
-        require(v2Oracle.isIdentifierSupported(_product));
+        require(oracle.isIdentifierSupported(_product));
         require(priceFeed.isIdentifierSupported(_product));
         // TODO: Think about who is sending the `msg.value`
         require(_makerAddress != _takerAddress);
@@ -273,7 +273,7 @@ contract Derivative {
     }
 
     function _requestOraclePrice() internal {
-        (uint oracleTime, , ) = v2Oracle.getPrice(product, endTime);
+        (uint oracleTime, , ) = oracle.getPrice(product, endTime);
         // If the Oracle price is already available, settle the contract immediately with that price.
         if (oracleTime != 0) {
             settle();
@@ -320,7 +320,7 @@ contract Derivative {
     }
 
     function _settleVerifiedPrice() internal {
-        (uint oracleTime, int oraclePrice, ) = v2Oracle.getPrice(product, endTime);
+        (uint oracleTime, int oraclePrice, ) = oracle.getPrice(product, endTime);
         require(oracleTime != 0);
         _settle(oraclePrice);
     }
@@ -364,7 +364,7 @@ contract SimpleDerivative is Derivative {
     constructor(
         address payable _ownerAddress,
         address payable _counterpartyAddress,
-        address _v2OracleAddress,
+        address _oracleAddress,
         address _priceFeedAddress,
         int _defaultPenalty,
         int _requiredMargin,
@@ -374,7 +374,7 @@ contract SimpleDerivative is Derivative {
     ) public payable Derivative(
         _ownerAddress,
         _counterpartyAddress,
-        _v2OracleAddress,
+        _oracleAddress,
         _priceFeedAddress,
         _defaultPenalty,
         _requiredMargin,
@@ -395,9 +395,9 @@ contract SimpleDerivative is Derivative {
 
 
 contract DerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _v2OracleAddress, address _priceFeedAddress)
+    constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _v2OracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
     function createDerivative(
         address payable counterparty,
@@ -417,7 +417,7 @@ contract DerivativeCreator is ContractCreator {
         SimpleDerivative derivative = (new SimpleDerivative).value(msg.value)(
             counterparty,
             msg.sender,
-            v2OracleAddress,
+            oracleAddress,
             priceFeedAddress,
             defaultPenalty,
             requiredMargin,
