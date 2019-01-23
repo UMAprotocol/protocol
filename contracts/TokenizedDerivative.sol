@@ -371,6 +371,9 @@ contract TokenizedDerivative is ERC20 {
 
     function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
         uint feeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        if (feeAmount == 0) {
+            return;
+        }
         shortBalance = shortBalance.sub(int(feeAmount));
         // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
         // contract.

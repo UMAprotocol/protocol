@@ -792,13 +792,13 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
     });
 
-    it(annotateTitle("Remargin fails with zero Oracle fee"), async function() {
+    it(annotateTitle("Remargin with zero Oracle fee"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative(priceFeedUpdatesInterval * 3);
 
+      // A contract with 0 NAV can still call remargin().
       await pushPrice(web3.utils.toWei("1.089", "ether"));
-      // No funds in the contract, don't allow remargins.
-      assert(await didContractThrow(derivativeContract.remargin({ from: sponsor })));
+      await derivativeContract.remargin({ from: sponsor });
     });
 
     it(annotateTitle("Live -> Create -> Create fails on expiry"), async function() {
