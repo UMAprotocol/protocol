@@ -341,6 +341,10 @@ contract TokenizedDerivative is ERC20 {
         // Checks whether contract has ended.
         (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
         require(latestTime != 0);
+        if (latestTime <= currentTokenState.time) {
+            // If the price feed hasn't advanced, remargining should be a no-op.
+            return;
+        }
         if (latestTime >= endTime) {
             state = State.Expired;
             prevTokenState = currentTokenState;
