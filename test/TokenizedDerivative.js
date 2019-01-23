@@ -14,6 +14,7 @@ const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 
 const BigNumber = require("bignumber.js");
+const truffleAssert = require("truffle-assertions");
 
 contract("TokenizedDerivative", function(accounts) {
   let identifierBytes;
@@ -179,12 +180,18 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), web3.utils.toWei("0", "ether"));
 
       // Check that the deposit function correctly credits the short account.
-      await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.3", "ether")));
+      let result = await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.3", "ether")));
+      truffleAssert.eventEmitted(result, "Deposited", ev => {
+        return ev.amount.toString() === web3.utils.toWei("0.3", "ether");
+      });
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(shortBalance.toString(), web3.utils.toWei("0.3", "ether"));
 
       // Check that the withdraw function correctly withdraws from the sponsor account.
-      await derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor });
+      result = await derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor });
+      truffleAssert.eventEmitted(result, "Withdrawal", ev => {
+        return ev.amount.toString() === web3.utils.toWei("0.1", "ether");
+      });
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(shortBalance.toString(), web3.utils.toWei("0.2", "ether"));
 
@@ -202,7 +209,13 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Succeeds because exact is true and requested NAV (1 ETH) would not cause the short account to go below its
       // margin requirement.
-      await derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("1", "ether")));
+      result = await derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("1", "ether")));
+      truffleAssert.eventEmitted(result, "TokensCreated", ev => {
+        return (
+          ev.newTokenNav.toString() === web3.utils.toWei("1", "ether") &&
+          ev.numTokensCreated.toString() === web3.utils.toWei("1", "ether")
+        );
+      });
 
       let sponsorTokenBalance = await derivativeContract.balanceOf(sponsor);
       longBalance = await derivativeContract.longBalance();
@@ -242,7 +255,10 @@ contract("TokenizedDerivative", function(accounts) {
       let expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval);
 
       // Remargin to the new price.
-      await derivativeContract.remargin({ from: sponsor });
+      result = await derivativeContract.remargin({ from: sponsor });
+      truffleAssert.eventEmitted(result, "NavUpdated", ev => {
+        return ev.newNav.toString() === expectedNav.toString();
+      });
       const expectedLastRemarginTime = await deployedManualPriceFeed.getCurrentTime();
       let lastRemarginTime = (await derivativeContract.currentTokenState()).time;
       const expectedPreviousRemarginTime = (await derivativeContract.prevTokenState()).time;
@@ -270,7 +286,10 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Attempt redemption of half of the tokens.
       await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      result = await derivativeContract.redeemTokens({ from: sponsor });
+      truffleAssert.eventEmitted(result, "TokensRedeemed", ev => {
+        return ev.numTokensRedeemed.toString() === web3.utils.toWei("1", "ether");
+      });
 
       nav = await derivativeContract.nav();
 
@@ -293,13 +312,19 @@ contract("TokenizedDerivative", function(accounts) {
       // Force the sponsor into default by further increasing the unverified price.
       shortBalance = await derivativeContract.shortBalance();
       await pushPrice(web3.utils.toWei("2.6", "ether"));
-      await derivativeContract.remargin({ from: sponsor });
+      const defaultTime = await deployedManualPriceFeed.getCurrentTime();
+      result = await derivativeContract.remargin({ from: sponsor });
 
       // Add an unverified price to ensure that post-default the contract ceases updating.
       await pushPrice(web3.utils.toWei("10.0", "ether"));
 
       // Compute the expected new NAV and compare.
       expectedNav = computeNewNav(nav, web3.utils.toBN(web3.utils.toWei("1.3", "ether")), feesPerInterval);
+      truffleAssert.eventEmitted(result, "Default", ev => {
+        return (
+          ev.defaultNav.toString() === expectedNav.toString() && ev.defaultTime.toString() === defaultTime.toString()
+        );
+      });
       let expectedPenalty = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
 
       let expectedNavChange = expectedNav.sub(nav);
@@ -322,7 +347,8 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Verify that after the sponsor confirms, the state is moved to settled.
-      await derivativeContract.confirmPrice({ from: sponsor });
+      result = await derivativeContract.confirmPrice({ from: sponsor });
+      truffleAssert.eventEmitted(result, "Settled");
 
       state = await derivativeContract.state();
       assert.equal(state.toString(), "4");
@@ -499,7 +525,10 @@ contract("TokenizedDerivative", function(accounts) {
       const presettlementSponsorBalance = await derivativeContract.shortBalance();
 
       const disputeFee = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
-      await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
+      let result = await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
+      truffleAssert.eventEmitted(result, "Disputed", ev => {
+        return ev.navDisputed.toString() === nav.toString() && ev.timeDisputed.toString() === disputeTime.toString();
+      });
 
       // Auto-settles with the Oracle price.
       assert.equal((await derivativeContract.state()).toString(), "4");
@@ -605,7 +634,10 @@ contract("TokenizedDerivative", function(accounts) {
       const expirationTime = await deployedManualPriceFeed.getCurrentTime();
 
       // Contract should go to expired.
-      await derivativeContract.remargin({ from: sponsor });
+      let result = await derivativeContract.remargin({ from: sponsor });
+      truffleAssert.eventEmitted(result, "Expired", ev => {
+        return ev.expiryTime.toString() === expirationTime.toString();
+      });
       state = await derivativeContract.state();
       assert.equal(state.toString(), "2");
 
@@ -614,13 +646,19 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Then the Oracle price should be provided, which settles the contract.
       await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
-      await derivativeContract.settle();
+      result = await derivativeContract.settle();
       state = await derivativeContract.state();
       assert.equal(state.toString(), "4");
 
       // Verify nav and balances at settlement.
       let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
+      truffleAssert.eventEmitted(result, "Settled", ev => {
+        return (
+          ev.finalNav.toString() === expectedSettlementNav.toString() &&
+          ev.settleTime.toString() === expirationTime.toString()
+        );
+      });
       let changeInNav = expectedSettlementNav.sub(initialNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = longBalance.add(changeInNav);

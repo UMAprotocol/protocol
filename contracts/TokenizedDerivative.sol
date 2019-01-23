@@ -251,6 +251,7 @@ contract TokenizedDerivative is ERC20 {
         longBalance = longBalance.sub(int(tokenValue));
         nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
 
+        emit TokensRedeemed(symbol, tokenValue, numTokens);
         _sendMargin(tokenValue);
     }
 
@@ -272,6 +273,7 @@ contract TokenizedDerivative is ERC20 {
         disputeInfo.disputedNav = nav;
         disputeInfo.deposit = requiredDeposit;
 
+        emit Disputed(symbol, currentTokenState.time, disputeInfo.disputedNav);
         _requestOraclePrice(endTime);
 
         _sendMargin(refund);
@@ -304,6 +306,7 @@ contract TokenizedDerivative is ERC20 {
         // function can not be called multiple times while waiting for transfer
         // to return.
         shortBalance = shortBalance.sub(int(amount));
+        emit Withdrawal(symbol, amount);
         _sendMargin(amount);
     }
 
@@ -348,6 +351,7 @@ contract TokenizedDerivative is ERC20 {
         if (latestTime >= endTime) {
             state = State.Expired;
             prevTokenState = currentTokenState;
+            emit Expired(symbol, endTime);
             // We have no idea what the price was, exactly at endTime, so we can't set
             // currentTokenState, or update the nav, or do anything.
             _requestOraclePrice(endTime);
@@ -359,6 +363,7 @@ contract TokenizedDerivative is ERC20 {
         bool inDefault = _remargin(newNav, latestTime);
 
         if (inDefault) {
+            emit Default(symbol, endTime, nav);
             _requestOraclePrice(endTime);
         }
     }
@@ -371,9 +376,11 @@ contract TokenizedDerivative is ERC20 {
 
         longBalance = longBalance.add(int(navToPurchase));
 
-        _mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), currentTokenState.tokenPrice)));
+        uint numTokensCreated = uint(_tokensFromNav(int(navToPurchase), currentTokenState.tokenPrice));
+        _mint(msg.sender, numTokensCreated);
 
         nav = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
+        emit TokensCreated(symbol, nav, numTokensCreated);
 
         // Make sure this still satisfies the margin requirement.
         require(_satisfiesMarginRequirement(shortBalance, nav));
@@ -383,6 +390,7 @@ contract TokenizedDerivative is ERC20 {
         // Make sure that we are in a "depositable" state.
         require(state == State.Live);
         shortBalance = shortBalance.add(int(value));
+        emit Deposited(symbol, value);
     }
 
     function _pullSentMargin() private returns (uint amount) {
@@ -431,6 +439,7 @@ contract TokenizedDerivative is ERC20 {
         }
 
         state = State.Settled;
+        emit Settled(symbol, endTime, nav);
     }
 
     function _settleAgreedPrice() private {
@@ -506,6 +515,7 @@ contract TokenizedDerivative is ERC20 {
         prevTokenState = currentTokenState;
         currentTokenState = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
         navNew = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
+        emit NavUpdated(symbol, navNew, currentTokenState.tokenPrice);
     }
 
     function _recomputeNav(int oraclePrice, uint recomputeTime) private returns (int navNew) {
@@ -514,6 +524,7 @@ contract TokenizedDerivative is ERC20 {
         assert(endTime == recomputeTime);
         currentTokenState = _computeNewTokenState(prevTokenState, oraclePrice, recomputeTime);
         navNew = _computeNavFromTokenPrice(currentTokenState.tokenPrice);
+        emit NavUpdated(symbol, navNew, currentTokenState.tokenPrice);
     }
 
     function _computeInitialNav(int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
@@ -523,6 +534,7 @@ contract TokenizedDerivative is ERC20 {
             prevTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
             currentTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
             navNew = _computeNavFromTokenPrice(unitNav);
+            emit NavUpdated(symbol, navNew, currentTokenState.tokenPrice);
         }
 
     function _requestOraclePrice(uint requestedTime) private {
@@ -566,6 +578,25 @@ contract TokenizedDerivative is ERC20 {
     function _takePercentage(int value, uint percentage) private pure returns (int result) {
         return value.mul(int(percentage)).div(1 ether);
     }
+
+    // An event emitted when the NAV of the contract changes.
+    event NavUpdated(string indexed symbol, int newNav, int newTokenPrice);
+    // An event emitted when the contract enters the Default state on a remargin.
+    event Default(string indexed symbol, uint defaultTime, int defaultNav);
+    // An event emitted when the contract settles.
+    event Settled(string indexed symbol, uint settleTime, int finalNav);
+    // An event emitted when the contract expires.
+    event Expired(string indexed symbol, uint expiryTime);
+    // An event emitted when the contract's NAV is disputed by the sponsor.
+    event Disputed(string indexed symbol, uint timeDisputed, int navDisputed);
+    // An event emitted when tokens are created.
+    event TokensCreated(string indexed symbol, int newTokenNav, uint numTokensCreated);
+    // An event emitted when tokens are redeemed.
+    event TokensRedeemed(string indexed symbol, uint navRedeemed, uint numTokensRedeemed);
+    // An event emitted when margin currency is deposited.
+    event Deposited(string indexed symbol, uint amount);
+    // An event emitted when margin currency is withdrawn.
+    event Withdrawal(string indexed symbol, uint amount);
 }
 
 
