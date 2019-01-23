@@ -243,9 +243,18 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Remargin to the new price.
       await derivativeContract.remargin({ from: sponsor });
+      const expectedLastRemarginTime = await deployedManualPriceFeed.getCurrentTime();
+      let lastRemarginTime = (await derivativeContract.currentTokenState()).time;
+      const expectedPreviousRemarginTime = (await derivativeContract.prevTokenState()).time;
+      assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
 
       // Ensure that a remargin with no new price works appropriately and doesn't create any balance issues.
+      // The prevTokenState also shouldn't get blown away.
       await derivativeContract.remargin({ from: admin });
+      lastRemarginTime = (await derivativeContract.currentTokenState()).time;
+      let previousRemarginTime = (await derivativeContract.prevTokenState()).time;
+      assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
+      assert.equal(previousRemarginTime.toString(), expectedPreviousRemarginTime.toString());
 
       // Check new nav after price change.
       nav = await derivativeContract.nav();
