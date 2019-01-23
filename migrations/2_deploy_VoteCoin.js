@@ -93,7 +93,7 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(deployedRegistry => {
         registry = deployedRegistry;
-        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, priceFeedAddress);
+        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, storeAddress, priceFeedAddress);
       })
       .then(() => {
         return DerivativeCreator.deployed();

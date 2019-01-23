@@ -377,7 +377,6 @@ contract TokenizedDerivative is ERC20 {
         if (address(marginCurrency) == address(0x0)) {
             store.payOracleFees.value(feeAmount)();
         } else {
-            require(feeAmount > 0);
             require(marginCurrency.approve(address(store), feeAmount));
             store.payOracleFeesErc20(address(marginCurrency));
         }
@@ -591,13 +590,11 @@ contract TokenizedDerivative is ERC20 {
 
 contract TokenizedDerivativeCreator is ContractCreator {
 
-    address private storeAddress;
-
     constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {
-            storeAddress = _storeAddress;
-        }
+        ContractCreator(
+            registryAddress, _oracleAddress, _storeAddress, _priceFeedAddress) { // solhint-disable-line no-empty-blocks
+        } 
 
     function createTokenizedDerivative(
         address sponsor,
