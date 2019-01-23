@@ -249,6 +249,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
 
       // Ensure that a remargin with no new price works appropriately and doesn't create any balance issues.
+      // The prevTokenState also shouldn't get blown away.
       await derivativeContract.remargin({ from: admin });
       lastRemarginTime = (await derivativeContract.currentTokenState()).time;
       let previousRemarginTime = (await derivativeContract.prevTokenState()).time;
