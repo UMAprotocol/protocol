@@ -121,12 +121,6 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(() => {
         return NoLeverage.deployed();
-      })
-      .then(() => {
-        return deployer.deploy(CentralizedStore);
-      })
-      .then(() => {
-        return CentralizedStore.deployed();
       });
   } else {
     deployer
