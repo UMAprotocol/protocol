@@ -352,13 +352,13 @@ contract TokenizedDerivative is ERC20 {
         if (latestTime >= endTime) {
             state = State.Expired;
             prevTokenState = currentTokenState;
-            _payOracleFees(nav, prevTokenState.time, endTime);
+            _payOracleFees(currentTokenState.time, endTime, nav);
             // We have no idea what the price was, exactly at endTime, so we can't set
             // currentTokenState, or update the nav, or do anything.
             _requestOraclePrice(endTime);
             return;
         }
-        _payOracleFees(nav, currentTokenState.time, latestTime);
+        _payOracleFees(currentTokenState.time, latestTime, nav);
 
         // Update nav of contract.
         int newNav = _computeNav(latestPrice, latestTime);
@@ -369,15 +369,16 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function _payOracleFees(int lastTokenNav, uint lastTimeOracleFeesPaid, uint currentTime) private {
-        // WHAT IS `lastTokenNav` < 0?
+    function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
         uint feeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
         shortBalance = shortBalance.sub(int(feeAmount));
+        // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
+        // contract.
         if (address(marginCurrency) == address(0x0)) {
-            // NEED TO CHECK FOR ERRORS HERE? DEFAULT THE CONTRACT??
             store.payOracleFees.value(feeAmount)();
         } else {
-            marginCurrency.approve(address(store), feeAmount);
+            require(feeAmount > 0);
+            require(marginCurrency.approve(address(store), feeAmount));
             store.payOracleFeesErc20(address(marginCurrency));
         }
     }
@@ -594,10 +595,9 @@ contract TokenizedDerivativeCreator is ContractCreator {
 
     constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress)
-    {
-        storeAddress = _storeAddress;
-    }
+        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {
+            storeAddress = _storeAddress;
+        }
 
     function createTokenizedDerivative(
         address sponsor,
