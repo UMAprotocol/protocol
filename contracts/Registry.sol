@@ -63,8 +63,7 @@ contract Registry is RegistryInterface, Ownable {
         registeredDerivatives.push(RegisteredDerivative(derivativeAddress, msg.sender));
         
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
-        uint128 idx = uint128(registeredDerivatives.length.sub(1));
-        pointer.index = idx;
+        pointer.index = uint128(registeredDerivatives.length.sub(1));
 
         // Set up PartiesMap for this derivative.
         PartiesMap storage partiesMap = derivativesToParties[derivativeAddress];
@@ -135,8 +134,8 @@ contract Registry is RegistryInterface, Ownable {
 
         // Copy the temp array to the return array that is set to the correct size.
         derivatives = new RegisteredDerivative[](outputIndex);
-        for (uint i = 0; i < outputIndex; i = i.add(1)) {
-            derivatives[i] = tmpDerivativeArray[i];
+        for (uint j = 0; j < outputIndex; j = j.add(1)) {
+            derivatives[j] = tmpDerivativeArray[j];
         }
     }
 
