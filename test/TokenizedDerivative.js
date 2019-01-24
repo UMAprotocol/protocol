@@ -778,7 +778,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Can withdraw 0.3.
       await derivativeContract.withdraw(web3.utils.toWei("0.3", "ether"), { from: sponsor });
 
-      // Now that 0.3 is withdrawn, cannot withdraw 0.1 because it would go above the 0.03 remaining limit.
+      // Move time forward a small amount to ensure the throttle isn't reset by small time movements.
+      pushPrice(web3.utils.toWei("0.1", "ether"));
+
+      // Now that 0.3 is withdrawn, cannot withdraw 0.1 because it would go above the 0.03 remaining limit for the
+      // current 24 hour period.
       assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor })));
 
       // Manually push feed forward by 1 day.
