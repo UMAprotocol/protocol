@@ -187,6 +187,8 @@ contract("TokenizedDerivative", function(accounts) {
 
       let longBalance = await derivativeContract.longBalance();
       let shortBalance = await derivativeContract.shortBalance();
+      const initialStoreBalance = await getMarginBalance(deployedCentralizedStore.address);
+      let totalOracleFeesPaid = web3.utils.toBN(web3.utils.toWei("0", "ether"));
 
       // Ensure the short balance is 0 ETH (as is deposited in beforeEach()).
       assert.equal(shortBalance.toString(), web3.utils.toWei("0", "ether"));
@@ -255,7 +257,9 @@ contract("TokenizedDerivative", function(accounts) {
       let expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval);
 
       // Remargin to the new price.
+      expectedOracleFee = computeExpectedOracleFees(await derivativeContract.nav());
       await derivativeContract.remargin({ from: sponsor });
+      totalOracleFeesPaid = totalOracleFeesPaid.add(expectedOracleFee);
       const expectedLastRemarginTime = await deployedManualPriceFeed.getCurrentTime();
       let lastRemarginTime = (await derivativeContract.currentTokenState()).time;
       const expectedPreviousRemarginTime = (await derivativeContract.prevTokenState()).time;
@@ -306,7 +310,9 @@ contract("TokenizedDerivative", function(accounts) {
       // Force the sponsor into default by further increasing the unverified price.
       shortBalance = await derivativeContract.shortBalance();
       await pushPrice(web3.utils.toWei("2.6", "ether"));
+      expectedOracleFee = computeExpectedOracleFees(await derivativeContract.nav());
       await derivativeContract.remargin({ from: sponsor });
+      totalOracleFeesPaid = totalOracleFeesPaid.add(expectedOracleFee);
 
       // Add an unverified price to ensure that post-default the contract ceases updating.
       await pushPrice(web3.utils.toWei("10.0", "ether"));
@@ -316,7 +322,6 @@ contract("TokenizedDerivative", function(accounts) {
       let expectedPenalty = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
 
       let expectedNavChange = expectedNav.sub(nav);
-      const expectedOracleFee = computeExpectedOracleFees(nav);
       state = await derivativeContract.state();
       nav = await derivativeContract.nav();
       let initialSponsorBalance = shortBalance;
@@ -378,6 +383,10 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Contract should be empty.
       assert.equal(newContractBalance.toString(), "0");
+
+      const finalStoreBalance = await getMarginBalance(deployedCentralizedStore.address);
+      const oracleFeesPaidToStore = finalStoreBalance.sub(initialStoreBalance);
+      assert.equal(oracleFeesPaidToStore.toString(), totalOracleFeesPaid.toString());
     });
 
     it(annotateTitle("Live -> Default -> Settled (oracle)"), async function() {
