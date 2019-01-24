@@ -809,13 +809,17 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(initialApDelegate, "0x0000000000000000000000000000000000000000");
 
       // AP Delegate cannot call depositAndCreate because it has not been set yet.
-      assert(await didContractThrow(derivativeContract.depositAndCreateTokens(
-        web3.utils.toWei("1", "ether"),
-        await getMarginParams(web3.utils.toWei("1.5", "ether"), apDelegate)
-      )));
+      assert(
+        await didContractThrow(
+          derivativeContract.depositAndCreateTokens(
+            web3.utils.toWei("1", "ether"),
+            await getMarginParams(web3.utils.toWei("1.5", "ether"), apDelegate)
+          )
+        )
+      );
 
       // Only the token sponsor can set the AP Delegate.
-      assert(await didContractThrow(derivativeContract.setApDelegate(apDelegate, { from: thirdParty })))
+      assert(await didContractThrow(derivativeContract.setApDelegate(apDelegate, { from: thirdParty })));
 
       // Set the AP delegate.
       await derivativeContract.setApDelegate(apDelegate, { from: sponsor });
@@ -827,25 +831,35 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // AP Delegate can call createTokens.
-      await derivativeContract.createTokens(
-        await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate)
-      );
+      await derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate));
 
       // AP Delegate can call redeemTokens.
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1.1", "ether"), { from: apDelegate });
+      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1.1", "ether"), {
+        from: apDelegate
+      });
       await derivativeContract.redeemTokens({ from: apDelegate });
 
-      assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: apDelegate })));
-      assert(await didContractThrow(derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate))));
+      assert(
+        await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: apDelegate }))
+      );
+      assert(
+        await didContractThrow(
+          derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate))
+        )
+      );
 
       // Reset AP Delegate to a random address.
       await derivativeContract.setApDelegate(web3.utils.randomHex(20), { from: sponsor });
 
       // Previous AP Delegate cannot call depositAndCreateTokens now that it has been changed.
-      assert(await didContractThrow(derivativeContract.depositAndCreateTokens(
-        web3.utils.toWei("1", "ether"),
-        await getMarginParams(web3.utils.toWei("1.5", "ether"), apDelegate)
-      )));
+      assert(
+        await didContractThrow(
+          derivativeContract.depositAndCreateTokens(
+            web3.utils.toWei("1", "ether"),
+            await getMarginParams(web3.utils.toWei("1.5", "ether"), apDelegate)
+          )
+        )
+      );
     });
 
     it(annotateTitle("Constructor assertions"), async function() {
