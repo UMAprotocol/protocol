@@ -29,7 +29,7 @@ interface RegistryInterface {
 
     // Returns whether the derivative has been registered with the registry (and is therefore an authorized participant
     // in the UMA system).
-    function isDerivativeRegistered(address derivative) external view returns (bool isRegistred);
+    function isDerivativeRegistered(address derivative) external view returns (bool isRegistered);
 
     // Returns a list of all derivatives that are associated with a particular party.
     function getRegisteredDerivatives(address party) external view returns (RegisteredDerivative[] memory derivatives);

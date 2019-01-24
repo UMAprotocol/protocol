@@ -111,7 +111,7 @@ contract Registry is RegistryInterface, Ownable {
         delete derivativesToParties[derivativeAddress];
     }
 
-    function isDerivativeRegistered(address derivative) external view returns (bool isRegistred) {
+    function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
         return derivativePointers[derivative].valid == PointerValidity.Valid;
     }
 
