@@ -91,6 +91,7 @@ contract TokenizedDerivative is ERC20 {
     uint public marginRequirement; // Percentage of nav*10^18
     uint public disputeDeposit; // Percentage of nav*10^18
     uint public fixedFeePerSecond; // Percentage of nav*10^18
+    uint public withdrawLimit; // Percentage of shortBalance*10^18
     bytes32 public product;
 
     // Balances
@@ -100,6 +101,7 @@ contract TokenizedDerivative is ERC20 {
     // Other addresses/contracts
     address public sponsor;
     address public admin;
+    address public apDelegate;
     OracleInterface public oracle;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
@@ -135,7 +137,15 @@ contract TokenizedDerivative is ERC20 {
     // Only valid if in the midst of a Default.
     int public navAtDefault;
 
-    uint public constant SECONDS_PER_YEAR = 31536000;
+    uint private constant SECONDS_PER_YEAR = 31536000;
+    uint private constant SECONDS_PER_DAY = 86400;
+
+    struct WithdrawThrottle {
+        uint startTime;
+        uint remainingWithdrawal;
+    }
+
+    WithdrawThrottle public withdrawThrottle;
 
     modifier onlySponsor {
         require(msg.sender == sponsor);
@@ -152,6 +162,11 @@ contract TokenizedDerivative is ERC20 {
         _;
     }
 
+    modifier onlySponsorOrApDelegate {
+        require(msg.sender == sponsor || msg.sender == apDelegate);
+        _;
+    }
+
     constructor(
         address _sponsorAddress,
         address _adminAddress,
@@ -165,7 +180,8 @@ contract TokenizedDerivative is ERC20 {
         address _returnCalculator,
         uint _startingTokenPrice,
         uint expiry,
-        address _marginCurrency
+        address _marginCurrency,
+        uint _withdrawLimit // Percentage of shortBalance * 10^18
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _requiredMargin);
@@ -211,13 +227,16 @@ contract TokenizedDerivative is ERC20 {
         nav = _computeInitialNav(latestUnderlyingPrice, latestTime, _startingTokenPrice);
 
         state = State.Live;
+
+        require(_withdrawLimit < 1 ether);
+        withdrawLimit = _withdrawLimit;
     }
 
-    function createTokens() external payable onlySponsor {
+    function createTokens() external payable onlySponsorOrApDelegate {
         _createTokens(_pullSentMargin());
     }
 
-    function depositAndCreateTokens(uint newTokenNav) external payable onlySponsor {
+    function depositAndCreateTokens(uint newTokenNav) external payable onlySponsorOrApDelegate {
         // Subtract newTokenNav from amount sent.
         uint sentAmount = _pullSentMargin();
         uint depositAmount = sentAmount.sub(newTokenNav);
@@ -230,10 +249,11 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function redeemTokens() external {
-        require((msg.sender == sponsor && state == State.Live) || state == State.Settled);
+        require(state == State.Live || state == State.Settled);
 
         if (state == State.Live) {
-            remargin();
+            require(msg.sender == sponsor || msg.sender == apDelegate);
+            _remargin();
         }
 
         uint initialSupply = totalSupply();
@@ -280,7 +300,7 @@ contract TokenizedDerivative is ERC20 {
     function withdraw(uint amount) external onlySponsor {
         // Remargin before allowing a withdrawal, but only if in the live state.
         if (state == State.Live) {
-            remargin();
+            _remargin();
         }
 
         // Make sure either in Live or Settled after any necessary remargin.
@@ -290,9 +310,28 @@ contract TokenizedDerivative is ERC20 {
         // withdraw up to full balance. If the contract is in live state then
         // must leave at least `requiredMargin`. Not allowed to withdraw in
         // other states.
-        int withdrawableAmount = (state == State.Settled) ?
-            shortBalance :
-            shortBalance.sub(_getRequiredEthMargin(nav));
+        int withdrawableAmount;
+        if (state == State.Settled) {
+            withdrawableAmount = shortBalance;
+        } else {
+            // Update throttling snapshot and verify that this withdrawal doesn't go past the throttle limit.
+            uint currentTime = currentTokenState.time;
+            if (withdrawThrottle.startTime <= currentTime.sub(SECONDS_PER_DAY)) {
+                // We've passed the previous withdrawThrottle window. Start new one.
+                withdrawThrottle.startTime = currentTime;
+                withdrawThrottle.remainingWithdrawal = _takePercentage(uint(shortBalance), withdrawLimit);
+            }
+
+            int marginMaxWithdraw = shortBalance.sub(_getRequiredEthMargin(nav));
+            int throttleMaxWithdraw = int(withdrawThrottle.remainingWithdrawal);
+
+            // Take the smallest of the two withdrawal limits.
+            withdrawableAmount = throttleMaxWithdraw < marginMaxWithdraw ? throttleMaxWithdraw : marginMaxWithdraw;
+
+            // Note: this line alone implicitly ensures the withdrawal throttle is not violated, but the above
+            // ternary is more explicit.
+            withdrawThrottle.remainingWithdrawal = withdrawThrottle.remainingWithdrawal.sub(amount);
+        }
 
         // Can only withdraw the allowed amount.
         require(
@@ -305,6 +344,22 @@ contract TokenizedDerivative is ERC20 {
         // to return.
         shortBalance = shortBalance.sub(int(amount));
         _sendMargin(amount);
+    }
+
+    function remargin() external onlySponsorOrAdmin {
+        _remargin();
+    }
+
+    function confirmPrice() external onlySponsor {
+        // Right now, only confirming prices in the defaulted state.
+        require(state == State.Defaulted);
+
+        // Remargin on agreed upon price.
+        _settleAgreedPrice();
+    }
+
+    function setApDelegate(address _apDelegate) external onlySponsor {
+        apDelegate = _apDelegate;
     }
 
     function settle() public {
@@ -321,50 +376,13 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function confirmPrice() public onlySponsor {
-        // Right now, only confirming prices in the defaulted state.
-        require(state == State.Defaulted);
-
-        // Remargin on agreed upon price.
-        _settleAgreedPrice();
-    }
-
     function deposit() public payable onlySponsor {
         // Only allow the sponsor to deposit margin.
         _deposit(_pullSentMargin());
     }
 
-    function remargin() public onlySponsorOrAdmin {
-        // If the state is not live, remargining does not make sense.
-        require(state == State.Live);
-
-        // Checks whether contract has ended.
-        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
-        if (latestTime <= currentTokenState.time) {
-            // If the price feed hasn't advanced, remargining should be a no-op.
-            return;
-        }
-        if (latestTime >= endTime) {
-            state = State.Expired;
-            prevTokenState = currentTokenState;
-            // We have no idea what the price was, exactly at endTime, so we can't set
-            // currentTokenState, or update the nav, or do anything.
-            _requestOraclePrice(endTime);
-            return;
-        }
-
-        // Update nav of contract.
-        int newNav = _computeNav(latestPrice, latestTime);
-        bool inDefault = _remargin(newNav, latestTime);
-
-        if (inDefault) {
-            _requestOraclePrice(endTime);
-        }
-    }
-
     function _createTokens(uint navToPurchase) private {
-        remargin();
+        _remargin();
 
         // Verify that remargining didn't push the contract into expiry or default.
         require(state == State.Live);
@@ -446,11 +464,31 @@ contract TokenizedDerivative is ERC20 {
         _settle(oraclePrice);
     }
 
-    // Remargins the account based on a provided NAV value.
-    // The internal remargin method allows certain calls into the contract to
-    // automatically remargin to non-current NAV values (time of expiry, last
-    // agreed upon price, etc).
-    function _remargin(int navNew, uint latestTime) private returns (bool inDefault) {
+    // _remargin() allows other functions to call remargin internally without satisfying permission checks for
+    // remargin().
+    function _remargin() private {
+        // If the state is not live, remargining does not make sense.
+        require(state == State.Live);
+
+        // Checks whether contract has ended.
+        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
+        require(latestTime != 0);
+        if (latestTime <= currentTokenState.time) {
+            // If the price feed hasn't advanced, remargining should be a no-op.
+            return;
+        }
+        if (latestTime >= endTime) {
+            state = State.Expired;
+            prevTokenState = currentTokenState;
+            // We have no idea what the price was, exactly at endTime, so we can't set
+            // currentTokenState, or update the nav, or do anything.
+            _requestOraclePrice(endTime);
+            return;
+        }
+
+        // Update nav of contract.
+        int navNew = _computeNav(latestPrice, latestTime);
+        
         // Save the current NAV in case it's required to compute the default penalty.
         int previousNav = nav;
 
@@ -458,11 +496,15 @@ contract TokenizedDerivative is ERC20 {
         _updateBalances(navNew);
 
         // Make sure contract has not moved into default.
-        inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
+        bool inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
         if (inDefault) {
             state = State.Defaulted;
             navAtDefault = previousNav;
             endTime = latestTime; // Change end time to moment when default occurred.
+        }
+
+        if (inDefault) {
+            _requestOraclePrice(endTime);
         }
     }
 
@@ -585,7 +627,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         address returnCalculator,
         uint startingTokenPrice,
         uint expiry,
-        address marginCurrency
+        address marginCurrency,
+        uint withdrawLimit // Percentage of shortBalance * 10^18
     )
         external
         returns (address derivativeAddress)
@@ -603,7 +646,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             returnCalculator,
             startingTokenPrice,
             expiry,
-            marginCurrency
+            marginCurrency,
+            withdrawLimit
         );
 
         address[] memory parties = new address[](1);
