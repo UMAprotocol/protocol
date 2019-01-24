@@ -14,7 +14,7 @@ contract ContractCreator {
         priceFeedAddress = _priceFeedAddress;
     }
 
-    function _registerContract(address party, address contractToRegister) internal {
-        registry.registerContract(party, contractToRegister);
+    function _registerContract(address[] memory parties, address contractToRegister) internal {
+        registry.registerDerivative(parties, contractToRegister);
     }
 }

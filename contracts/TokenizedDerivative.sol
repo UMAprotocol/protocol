@@ -650,7 +650,10 @@ contract TokenizedDerivativeCreator is ContractCreator {
             withdrawLimit
         );
 
-        _registerContract(sponsor, address(derivative));
+        address[] memory parties = new address[](1);
+        parties[0] = sponsor;
+
+        _registerContract(parties, address(derivative));
 
         return address(derivative);
     }

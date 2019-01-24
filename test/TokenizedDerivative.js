@@ -111,11 +111,8 @@ contract("TokenizedDerivative", function(accounts) {
         { from: sponsor }
       );
 
-      const numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: sponsor });
-      const derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
-        numRegisteredContracts.subn(1).toString(),
-        { from: sponsor }
-      );
+      const derivativeArray = await deployedRegistry.getRegisteredDerivatives(sponsor);
+      const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
       derivativeContract = await TokenizedDerivative.at(derivativeAddress);
 
       const feesPerSecond = await derivativeContract.fixedFeePerSecond();
