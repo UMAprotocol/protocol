@@ -4,8 +4,7 @@ const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
-const Leveraged2x = artifacts.require("Leveraged2x");
-const NoLeverage = artifacts.require("NoLeverage");
+const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 
 const enableControllableTiming = network => {
   return (
@@ -56,10 +55,10 @@ module.exports = function(deployer, network, accounts) {
         return registry.addContractCreator(tokenizedDerivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(Leveraged2x);
+        return deployer.deploy(LeveragedReturnCalculator, 2);
       })
       .then(() => {
-        return Leveraged2x.deployed();
+        return LeveragedReturnCalculator.deployed();
       });
   } else if (shouldUseMockOracle(network)) {
     deployer
@@ -103,10 +102,10 @@ module.exports = function(deployer, network, accounts) {
         return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(NoLeverage);
+        return deployer.deploy(LeveragedReturnCalculator, 1);
       })
       .then(() => {
-        return NoLeverage.deployed();
+        return LeveragedReturnCalculator.deployed();
       })
       .then(() => {
         return deployer.deploy(CentralizedStore);
@@ -139,10 +138,10 @@ module.exports = function(deployer, network, accounts) {
         return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(NoLeverage);
+        return deployer.deploy(LeveragedReturnCalculator, 1);
       })
       .then(() => {
-        return NoLeverage.deployed();
+        return LeveragedReturnCalculator.deployed();
       });
   }
 };

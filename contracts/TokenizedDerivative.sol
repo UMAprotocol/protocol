@@ -5,43 +5,15 @@
 */
 pragma solidity ^0.5.0;
 
+import "./ContractCreator.sol";
+import "./OracleInterface.sol";
+import "./PriceFeedInterface.sol";
+import "./ReturnCalculatorInterface.sol";
+
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "./ContractCreator.sol";
-import "./PriceFeedInterface.sol";
-import "./OracleInterface.sol";
-
-
-contract ReturnCalculator {
-    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn);
-}
-
-
-contract Leveraged2x is ReturnCalculator {
-    using SignedSafeMath for int;
-
-    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
-        // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
-        int underlyingAssetReturn = newOraclePrice.mul(1 ether).div(oldOraclePrice);
-
-        // Compute the RoR of the underlying asset and multiply by 2 to add the leverage.
-        int leveragedRor = underlyingAssetReturn.sub(1 ether).mul(2);
-
-        // Add 1 (ether) to the leveraged RoR to get the return.
-        return leveragedRor.add(1 ether);
-    }
-}
-
-
-contract NoLeverage is ReturnCalculator {
-    using SignedSafeMath for int;
-
-    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
-        return newOraclePrice.mul(1 ether).div(oldOraclePrice);
-    }
-}
 
 
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
@@ -104,7 +76,7 @@ contract TokenizedDerivative is ERC20 {
     address public apDelegate;
     OracleInterface public oracle;
     PriceFeedInterface public priceFeed;
-    ReturnCalculator public returnCalculator;
+    ReturnCalculatorInterface public returnCalculator;
     IERC20 public marginCurrency;
 
     State public state;
@@ -204,7 +176,7 @@ contract TokenizedDerivative is ERC20 {
 
         sponsor = _sponsorAddress;
         admin = _adminAddress;
-        returnCalculator = ReturnCalculator(_returnCalculator);
+        returnCalculator = ReturnCalculatorInterface(_returnCalculator);
 
         // Contract parameters.
         defaultPenalty = _defaultPenalty;
