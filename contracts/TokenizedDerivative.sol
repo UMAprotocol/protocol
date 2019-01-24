@@ -101,6 +101,7 @@ contract TokenizedDerivative is ERC20 {
     // Other addresses/contracts
     address public sponsor;
     address public admin;
+    address public apDelegate;
     OracleInterface public oracle;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
@@ -158,6 +159,11 @@ contract TokenizedDerivative is ERC20 {
 
     modifier onlySponsorOrAdmin {
         require(msg.sender == sponsor || msg.sender == admin);
+        _;
+    }
+
+    modifier onlySponsorOrApDelegate {
+        require(msg.sender == sponsor || msg.sender == apDelegate);
         _;
     }
 
@@ -226,11 +232,11 @@ contract TokenizedDerivative is ERC20 {
         withdrawLimit = _withdrawLimit;
     }
 
-    function createTokens() external payable onlySponsor {
+    function createTokens() external payable onlySponsorOrApDelegate {
         _createTokens(_pullSentMargin());
     }
 
-    function depositAndCreateTokens(uint newTokenNav) external payable onlySponsor {
+    function depositAndCreateTokens(uint newTokenNav) external payable onlySponsorOrApDelegate {
         // Subtract newTokenNav from amount sent.
         uint sentAmount = _pullSentMargin();
         uint depositAmount = sentAmount.sub(newTokenNav);
@@ -243,10 +249,11 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function redeemTokens() external {
-        require((msg.sender == sponsor && state == State.Live) || state == State.Settled);
+        require(state == State.Live || state == State.Settled);
 
         if (state == State.Live) {
-            remargin();
+            require(msg.sender == sponsor || msg.sender == apDelegate);
+            _remargin();
         }
 
         uint initialSupply = totalSupply();
@@ -293,7 +300,7 @@ contract TokenizedDerivative is ERC20 {
     function withdraw(uint amount) external onlySponsor {
         // Remargin before allowing a withdrawal, but only if in the live state.
         if (state == State.Live) {
-            remargin();
+            _remargin();
         }
 
         // Make sure either in Live or Settled after any necessary remargin.
@@ -339,6 +346,22 @@ contract TokenizedDerivative is ERC20 {
         _sendMargin(amount);
     }
 
+    function remargin() external onlySponsorOrAdmin {
+        _remargin();
+    }
+
+    function confirmPrice() external onlySponsor {
+        // Right now, only confirming prices in the defaulted state.
+        require(state == State.Defaulted);
+
+        // Remargin on agreed upon price.
+        _settleAgreedPrice();
+    }
+
+    function setApDelegate(address _apDelegate) external onlySponsor {
+        apDelegate = _apDelegate;
+    }
+
     function settle() public {
         State startingState = state;
         require(startingState == State.Disputed || startingState == State.Expired || startingState == State.Defaulted);
@@ -353,50 +376,13 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function confirmPrice() public onlySponsor {
-        // Right now, only confirming prices in the defaulted state.
-        require(state == State.Defaulted);
-
-        // Remargin on agreed upon price.
-        _settleAgreedPrice();
-    }
-
     function deposit() public payable onlySponsor {
         // Only allow the sponsor to deposit margin.
         _deposit(_pullSentMargin());
     }
 
-    function remargin() public onlySponsorOrAdmin {
-        // If the state is not live, remargining does not make sense.
-        require(state == State.Live);
-
-        // Checks whether contract has ended.
-        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
-        if (latestTime <= currentTokenState.time) {
-            // If the price feed hasn't advanced, remargining should be a no-op.
-            return;
-        }
-        if (latestTime >= endTime) {
-            state = State.Expired;
-            prevTokenState = currentTokenState;
-            // We have no idea what the price was, exactly at endTime, so we can't set
-            // currentTokenState, or update the nav, or do anything.
-            _requestOraclePrice(endTime);
-            return;
-        }
-
-        // Update nav of contract.
-        int newNav = _computeNav(latestPrice, latestTime);
-        bool inDefault = _remargin(newNav, latestTime);
-
-        if (inDefault) {
-            _requestOraclePrice(endTime);
-        }
-    }
-
     function _createTokens(uint navToPurchase) private {
-        remargin();
+        _remargin();
 
         // Verify that remargining didn't push the contract into expiry or default.
         require(state == State.Live);
@@ -478,11 +464,31 @@ contract TokenizedDerivative is ERC20 {
         _settle(oraclePrice);
     }
 
-    // Remargins the account based on a provided NAV value.
-    // The internal remargin method allows certain calls into the contract to
-    // automatically remargin to non-current NAV values (time of expiry, last
-    // agreed upon price, etc).
-    function _remargin(int navNew, uint latestTime) private returns (bool inDefault) {
+    // _remargin() allows other functions to call remargin internally without satisfying permission checks for
+    // remargin().
+    function _remargin() private {
+        // If the state is not live, remargining does not make sense.
+        require(state == State.Live);
+
+        // Checks whether contract has ended.
+        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
+        require(latestTime != 0);
+        if (latestTime <= currentTokenState.time) {
+            // If the price feed hasn't advanced, remargining should be a no-op.
+            return;
+        }
+        if (latestTime >= endTime) {
+            state = State.Expired;
+            prevTokenState = currentTokenState;
+            // We have no idea what the price was, exactly at endTime, so we can't set
+            // currentTokenState, or update the nav, or do anything.
+            _requestOraclePrice(endTime);
+            return;
+        }
+
+        // Update nav of contract.
+        int navNew = _computeNav(latestPrice, latestTime);
+        
         // Save the current NAV in case it's required to compute the default penalty.
         int previousNav = nav;
 
@@ -490,11 +496,15 @@ contract TokenizedDerivative is ERC20 {
         _updateBalances(navNew);
 
         // Make sure contract has not moved into default.
-        inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
+        bool inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
         if (inDefault) {
             state = State.Defaulted;
             navAtDefault = previousNav;
             endTime = latestTime; // Change end time to moment when default occurred.
+        }
+
+        if (inDefault) {
+            _requestOraclePrice(endTime);
         }
     }
 
