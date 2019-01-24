@@ -50,7 +50,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Make sure the Oracle and PriceFeed support the underlying product.
     await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
-    await deployedManualPriceFeed.setCurrentTime(1000);
+    await deployedManualPriceFeed.setCurrentTime(100000);
     await pushPrice(web3.utils.toWei("1", "ether"));
   });
 
@@ -103,8 +103,9 @@ contract("TokenizedDerivative", function(accounts) {
         web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
         noLeverageCalculator.address /*_returnCalculator*/,
         web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
-        expiry.toString(),
-        marginTokenAddress(),
+        expiry.toString() /*expiry*/,
+        marginTokenAddress() /*_marginCurrency*/,
+        web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
         { from: sponsor }
       );
 
@@ -179,12 +180,12 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), web3.utils.toWei("0", "ether"));
 
       // Check that the deposit function correctly credits the short account.
-      await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.3", "ether")));
+      await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.21", "ether")));
       shortBalance = await derivativeContract.shortBalance();
-      assert.equal(shortBalance.toString(), web3.utils.toWei("0.3", "ether"));
+      assert.equal(shortBalance.toString(), web3.utils.toWei("0.21", "ether"));
 
       // Check that the withdraw function correctly withdraws from the sponsor account.
-      await derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor });
+      await derivativeContract.withdraw(web3.utils.toWei("0.01", "ether"), { from: sponsor });
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(shortBalance.toString(), web3.utils.toWei("0.2", "ether"));
 
@@ -339,8 +340,8 @@ contract("TokenizedDerivative", function(accounts) {
       newContractBalance = await getContractBalance();
       assert.equal(initialContractBalance.sub(newContractBalance).toString(), sponsorBalancePostSettlement.toString());
 
-      // Investor should never be able to use the withdraw function.
-      assert(await didContractThrow(derivativeContract.withdraw(longBalance.toString(), { from: sponsor })));
+      // A third party should never be able to use the withdraw function.
+      assert(await didContractThrow(derivativeContract.withdraw(longBalance.toString(), { from: thirdParty })));
 
       // Tokens should be able to be transferred post-settlement. Anyone should be able to redeem them for the frozen price.
       let remainingBalance = await derivativeContract.balanceOf(sponsor);
@@ -763,6 +764,36 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
     });
 
+    it(annotateTitle("Withdraw throttling"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      // Three time steps until expiry.
+      await deployNewTokenizedDerivative();
+
+      // Deposit 1 ETH with 0 contract NAV to allow the only limiting factor on withdrawals to be the throttling.
+      await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("1", "ether")));
+
+      // Cannot withdraw > 33% (or 0.33).
+      assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.4", "ether"), { from: sponsor })));
+
+      // Can withdraw 0.3.
+      await derivativeContract.withdraw(web3.utils.toWei("0.3", "ether"), { from: sponsor });
+
+      // Move time forward a small amount to ensure the throttle isn't reset by small time movements.
+      pushPrice(web3.utils.toWei("0.1", "ether"));
+
+      // Now that 0.3 is withdrawn, cannot withdraw 0.1 because it would go above the 0.03 remaining limit for the
+      // current 24 hour period.
+      assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor })));
+
+      // Manually push feed forward by 1 day.
+      const newTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + 864000;
+      await deployedManualPriceFeed.setCurrentTime(newTime);
+      await deployedManualPriceFeed.pushLatestPrice(identifierBytes, newTime, web3.utils.toWei("1", "ether"));
+
+      // Now that 24 hours has passed, the limit has been reset, so 0.1 should be withdrawable.
+      await derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor });
+    });
+
     it(annotateTitle("Live -> Create -> Create fails on expiry"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
@@ -820,6 +851,7 @@ contract("TokenizedDerivative", function(accounts) {
             web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
             "0",
             marginTokenAddress(),
+            web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
             { from: sponsor }
           )
         )
@@ -842,6 +874,7 @@ contract("TokenizedDerivative", function(accounts) {
             web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
             "0",
             marginTokenAddress(),
+            web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
             { from: sponsor }
           )
         )
@@ -862,6 +895,7 @@ contract("TokenizedDerivative", function(accounts) {
             web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
             "0",
             marginTokenAddress(),
+            web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
             { from: sponsor }
           )
         )
@@ -882,6 +916,7 @@ contract("TokenizedDerivative", function(accounts) {
             web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
             "0",
             marginTokenAddress(),
+            web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
             { from: sponsor }
           )
         )
@@ -902,6 +937,7 @@ contract("TokenizedDerivative", function(accounts) {
             web3.utils.toWei("2000000000", "ether") /*_startingTokenPrice*/,
             "0",
             marginTokenAddress(),
+            web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
             { from: sponsor }
           )
         )
@@ -922,6 +958,7 @@ contract("TokenizedDerivative", function(accounts) {
             web3.utils.toWei("1", "picoether") /*_startingTokenPrice*/,
             "0",
             marginTokenAddress(),
+            web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
             { from: sponsor }
           )
         )
@@ -946,6 +983,28 @@ contract("TokenizedDerivative", function(accounts) {
               .subn(1)
               .toString(),
             marginTokenAddress(),
+            web3.utils.toWei("0.33", "ether") /*_withdrawLimit*/,
+            { from: sponsor }
+          )
+        )
+      );
+
+      // Withdraw limit is too high.
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(
+            sponsor,
+            admin,
+            web3.utils.toWei("0.05", "ether") /*_defaultPenalty*/,
+            web3.utils.toWei("0.1", "ether") /*_requiredMargin*/,
+            identifierBytes,
+            web3.utils.toWei("0.01", "ether") /*_fixedYearlyFee*/,
+            web3.utils.toWei("0.05", "ether") /*_disputeDeposit*/,
+            noLeverageCalculator.address /*_returnCalculator*/,
+            web3.utils.toWei("1", "ether") /*_startingTokenPrice*/,
+            "0",
+            marginTokenAddress(),
+            web3.utils.toWei("1", "ether") /*_withdrawLimit*/,
             { from: sponsor }
           )
         )

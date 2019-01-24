@@ -91,6 +91,7 @@ contract TokenizedDerivative is ERC20 {
     uint public marginRequirement; // Percentage of nav*10^18
     uint public disputeDeposit; // Percentage of nav*10^18
     uint public fixedFeePerSecond; // Percentage of nav*10^18
+    uint public withdrawLimit; // Percentage of shortBalance*10^18
     bytes32 public product;
 
     // Balances
@@ -135,7 +136,15 @@ contract TokenizedDerivative is ERC20 {
     // Only valid if in the midst of a Default.
     int public navAtDefault;
 
-    uint public constant SECONDS_PER_YEAR = 31536000;
+    uint private constant SECONDS_PER_YEAR = 31536000;
+    uint private constant SECONDS_PER_DAY = 86400;
+
+    struct WithdrawThrottle {
+        uint startTime;
+        uint remainingWithdrawal;
+    }
+
+    WithdrawThrottle public withdrawThrottle;
 
     modifier onlySponsor {
         require(msg.sender == sponsor);
@@ -165,7 +174,8 @@ contract TokenizedDerivative is ERC20 {
         address _returnCalculator,
         uint _startingTokenPrice,
         uint expiry,
-        address _marginCurrency
+        address _marginCurrency,
+        uint _withdrawLimit // Percentage of shortBalance * 10^18
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(_defaultPenalty <= _requiredMargin);
@@ -211,6 +221,9 @@ contract TokenizedDerivative is ERC20 {
         nav = _computeInitialNav(latestUnderlyingPrice, latestTime, _startingTokenPrice);
 
         state = State.Live;
+
+        require(_withdrawLimit < 1 ether);
+        withdrawLimit = _withdrawLimit;
     }
 
     function createTokens() external payable onlySponsor {
@@ -290,9 +303,28 @@ contract TokenizedDerivative is ERC20 {
         // withdraw up to full balance. If the contract is in live state then
         // must leave at least `requiredMargin`. Not allowed to withdraw in
         // other states.
-        int withdrawableAmount = (state == State.Settled) ?
-            shortBalance :
-            shortBalance.sub(_getRequiredEthMargin(nav));
+        int withdrawableAmount;
+        if (state == State.Settled) {
+            withdrawableAmount = shortBalance;
+        } else {
+            // Update throttling snapshot and verify that this withdrawal doesn't go past the throttle limit.
+            uint currentTime = currentTokenState.time;
+            if (withdrawThrottle.startTime <= currentTime.sub(SECONDS_PER_DAY)) {
+                // We've passed the previous withdrawThrottle window. Start new one.
+                withdrawThrottle.startTime = currentTime;
+                withdrawThrottle.remainingWithdrawal = _takePercentage(uint(shortBalance), withdrawLimit);
+            }
+
+            int marginMaxWithdraw = shortBalance.sub(_getRequiredEthMargin(nav));
+            int throttleMaxWithdraw = int(withdrawThrottle.remainingWithdrawal);
+
+            // Take the smallest of the two withdrawal limits.
+            withdrawableAmount = throttleMaxWithdraw < marginMaxWithdraw ? throttleMaxWithdraw : marginMaxWithdraw;
+
+            // Note: this line alone implicitly ensures the withdrawal throttle is not violated, but the above
+            // ternary is more explicit.
+            withdrawThrottle.remainingWithdrawal = withdrawThrottle.remainingWithdrawal.sub(amount);
+        }
 
         // Can only withdraw the allowed amount.
         require(
@@ -585,7 +617,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         address returnCalculator,
         uint startingTokenPrice,
         uint expiry,
-        address marginCurrency
+        address marginCurrency,
+        uint withdrawLimit // Percentage of shortBalance * 10^18
     )
         external
         returns (address derivativeAddress)
@@ -603,7 +636,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
             returnCalculator,
             startingTokenPrice,
             expiry,
-            marginCurrency
+            marginCurrency,
+            withdrawLimit
         );
 
         _registerContract(sponsor, address(derivative));
