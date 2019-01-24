@@ -5,6 +5,8 @@
 */
 pragma solidity ^0.5.0;
 
+pragma experimental ABIEncoderV2;
+
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -40,6 +42,25 @@ contract NoLeverage is ReturnCalculator {
 
     function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
         return newOraclePrice.mul(1 ether).div(oldOraclePrice);
+    }
+}
+
+library TokenizedDerivativeParams {
+    struct ConstructorParams {
+        address sponsor;
+        address admin;
+        address oracle;
+        address priceFeed;
+        uint defaultPenalty; // Percentage of nav*10^18
+        uint requiredMargin; // Percentage of nav*10^18
+        bytes32 product;
+        uint fixedYearlyFee; // Percentage of nav * 10^18
+        uint disputeDeposit; // Percentage of nav * 10^18
+        address returnCalculator;
+        uint startingTokenPrice;
+        uint expiry;
+        address marginCurrency;
+        uint withdrawLimit; // Percentage of shortBalance * 10^18
     }
 }
 
@@ -168,68 +189,55 @@ contract TokenizedDerivative is ERC20 {
     }
 
     constructor(
-        address _sponsorAddress,
-        address _adminAddress,
-        address _oracleAddress,
-        address _priceFeedAddress,
-        uint _defaultPenalty, // Percentage of nav*10^18
-        uint _requiredMargin, // Percentage of nav*10^18
-        bytes32 _product,
-        uint _fixedYearlyFee, // Percentage of nav * 10^18
-        uint _disputeDeposit, // Percentage of nav * 10^18
-        address _returnCalculator,
-        uint _startingTokenPrice,
-        uint expiry,
-        address _marginCurrency,
-        uint _withdrawLimit // Percentage of shortBalance * 10^18
+        TokenizedDerivativeParams.ConstructorParams memory params
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
-        require(_defaultPenalty <= _requiredMargin);
-        require(_requiredMargin <= 1 ether);
-        marginRequirement = _requiredMargin;
+        require(params.defaultPenalty <= params.requiredMargin);
+        require(params.requiredMargin <= 1 ether);
+        marginRequirement = params.requiredMargin;
 
-        marginCurrency = IERC20(_marginCurrency);
+        marginCurrency = IERC20(params.marginCurrency);
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
-        require(_startingTokenPrice >= uint(1 ether).div(10**9));
-        require(_startingTokenPrice <= uint(1 ether).mul(10**9));
+        require(params.startingTokenPrice >= uint(1 ether).div(10**9));
+        require(params.startingTokenPrice <= uint(1 ether).mul(10**9));
 
         // Address information
-        oracle = OracleInterface(_oracleAddress);
-        priceFeed = PriceFeedInterface(_priceFeedAddress);
+        oracle = OracleInterface(params.oracle);
+        priceFeed = PriceFeedInterface(params.priceFeed);
         // Verify that the price feed and oracle support the given product.
-        require(oracle.isIdentifierSupported(_product));
-        require(priceFeed.isIdentifierSupported(_product));
+        require(oracle.isIdentifierSupported(params.product));
+        require(priceFeed.isIdentifierSupported(params.product));
 
-        sponsor = _sponsorAddress;
-        admin = _adminAddress;
-        returnCalculator = ReturnCalculator(_returnCalculator);
+        sponsor = params.sponsor;
+        admin = params.admin;
+        returnCalculator = ReturnCalculator(params.returnCalculator);
 
         // Contract parameters.
-        defaultPenalty = _defaultPenalty;
-        product = _product;
-        fixedFeePerSecond = _fixedYearlyFee.div(SECONDS_PER_YEAR);
-        disputeDeposit = _disputeDeposit;
+        defaultPenalty = params.defaultPenalty;
+        product = params.product;
+        fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
+        disputeDeposit = params.disputeDeposit;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
         require(latestTime != 0);
 
         // Set end time to max value of uint to implement no expiry.
-        if (expiry == 0) {
+        if (params.expiry == 0) {
             endTime = ~uint(0);
         } else {
-            require(expiry >= latestTime);
-            endTime = expiry;
+            require(params.expiry >= latestTime);
+            endTime = params.expiry;
         }
 
-        nav = _computeInitialNav(latestUnderlyingPrice, latestTime, _startingTokenPrice);
+        nav = _computeInitialNav(latestUnderlyingPrice, latestTime, params.startingTokenPrice);
 
         state = State.Live;
 
-        require(_withdrawLimit < 1 ether);
-        withdrawLimit = _withdrawLimit;
+        require(params.withdrawLimit < 1 ether);
+        withdrawLimit = params.withdrawLimit;
     }
 
     function createTokens() external payable onlySponsorOrApDelegate {
@@ -612,49 +620,61 @@ contract TokenizedDerivative is ERC20 {
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
+    struct Params {
+        address sponsor;
+        address admin;
+        uint defaultPenalty; // Percentage of nav*10^18
+        uint requiredMargin; // Percentage of nav*10^18
+        bytes32 product;
+        uint fixedYearlyFee; // Percentage of nav * 10^18
+        uint disputeDeposit; // Percentage of nav * 10^18
+        address returnCalculator;
+        uint startingTokenPrice;
+        uint expiry;
+        address marginCurrency;
+        uint withdrawLimit; // Percentage of shortBalance * 10^18
+    }
+
+
     constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress)
         public
         ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
-    function createTokenizedDerivative(
-        address sponsor,
-        address admin,
-        uint defaultPenalty,
-        uint requiredMargin,
-        bytes32 product,
-        uint fixedYearlyFee,
-        uint disputeDeposit,
-        address returnCalculator,
-        uint startingTokenPrice,
-        uint expiry,
-        address marginCurrency,
-        uint withdrawLimit // Percentage of shortBalance * 10^18
-    )
-        external
+    function createTokenizedDerivative(Params memory params)
+        public
         returns (address derivativeAddress)
     {
-        TokenizedDerivative derivative = new TokenizedDerivative(
-            sponsor,
-            admin,
-            oracleAddress,
-            priceFeedAddress,
-            defaultPenalty,
-            requiredMargin,
-            product,
-            fixedYearlyFee,
-            disputeDeposit,
-            returnCalculator,
-            startingTokenPrice,
-            expiry,
-            marginCurrency,
-            withdrawLimit
-        );
+        TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params));
 
         address[] memory parties = new address[](1);
-        parties[0] = sponsor;
+        parties[0] = params.sponsor;
 
         _registerContract(parties, address(derivative));
 
         return address(derivative);
+    }
+
+    function _convertParams(Params memory params)
+        private
+        view
+        returns (TokenizedDerivativeParams.ConstructorParams memory constructorParams)
+    {
+        // Copy externally provided variables.
+        constructorParams.sponsor = params.sponsor;
+        constructorParams.admin = params.admin;
+        constructorParams.defaultPenalty = params.defaultPenalty;
+        constructorParams.requiredMargin = params.requiredMargin;
+        constructorParams.product = params.product;
+        constructorParams.fixedYearlyFee = params.fixedYearlyFee;
+        constructorParams.disputeDeposit = params.disputeDeposit;
+        constructorParams.returnCalculator = params.returnCalculator;
+        constructorParams.startingTokenPrice = params.startingTokenPrice;
+        constructorParams.expiry = params.expiry;
+        constructorParams.marginCurrency = params.marginCurrency;
+        constructorParams.withdrawLimit = params.withdrawLimit;
+
+        // Copy internal variables.
+        constructorParams.priceFeed = priceFeedAddress;
+        constructorParams.oracle = oracleAddress;
     }
 }
