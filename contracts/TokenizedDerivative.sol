@@ -77,9 +77,9 @@ contract TokenizedDerivative is ERC20 {
         // Possible state transitions: Disputed, Expired, Defaulted.
         Live,
 
-        // Disputed, Expired, and Defaulted are Frozen states. In a Frozen state, the contract is frozen in time
-        // awaiting a resolution by the Oracle. No tokens can be created or redeemed. Margin cannot be withdrawn. The
-        // resolution of these states moves the contract to the Settled state. Remargining is not allowed.
+        // Disputed, Expired, Defaulted, and Emergency are Frozen states. In a Frozen state, the contract is frozen in
+        // time awaiting a resolution by the Oracle. No tokens can be created or redeemed. Margin cannot be withdrawn.
+        // The resolution of these states moves the contract to the Settled state. Remargining is not allowed.
 
         // The sponsor has disputed the price feed output. If the dispute is valid (i.e., the NAV calculated from the
         // Oracle price differs from the NAV calculated from the price feed), the dispute fee is added to the short
@@ -96,6 +96,10 @@ contract TokenizedDerivative is ERC20 {
         // Settled.
         // Possible state transitions: Settled.
         Defaulted,
+
+        // UMA has manually triggered a shutdown of the account.
+        // Possible state transitions: Settled.
+        Emergency,
 
         // Token price is fixed. Tokens can be redeemed by anyone. All short margin can be withdrawn. Tokens can't be
         // created, and contract can't remargin.
@@ -371,9 +375,18 @@ contract TokenizedDerivative is ERC20 {
         apDelegate = _apDelegate;
     }
 
+    // Moves the contract into the Emergency state, where it waits on an Oracle price for the most recent remargin time.
+    function emergencyShutdown() external onlyAdmin {
+        require(state == State.Live);
+        state = State.Emergency;
+        endTime = currentTokenState.time;
+        _requestOraclePrice(endTime);
+    }
+
     function settle() public {
         State startingState = state;
-        require(startingState == State.Disputed || startingState == State.Expired || startingState == State.Defaulted);
+        require(startingState == State.Disputed || startingState == State.Expired
+                || startingState == State.Defaulted || startingState == State.Emergency);
         _settleVerifiedPrice();
         if (startingState == State.Disputed) {
             int depositValue = int(disputeInfo.deposit);

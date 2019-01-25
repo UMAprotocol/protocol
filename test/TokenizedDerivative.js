@@ -314,6 +314,9 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(nav.toString(), expectedNav.toString());
       assert.equal(initialSponsorBalance.sub(sponsorBalancePostRemargin).toString(), expectedNavChange.toString());
 
+      // Can't call emergency shutdown while in default.
+      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
+
       // Only the sponsor can confirm.
       assert(await didContractThrow(derivativeContract.confirmPrice({ from: admin })));
 
@@ -326,7 +329,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.confirmPrice({ from: sponsor });
 
       state = await derivativeContract.state();
-      assert.equal(state.toString(), "4");
+      assert.equal(state.toString(), "5");
 
       // Now that the contract is settled, verify that all parties can extract their tokens/balances.
       shortBalance = await derivativeContract.shortBalance();
@@ -414,7 +417,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify nav and balances at settlement, no default penalty. Whatever the price feed said before is effectively
       // ignored.
       state = await derivativeContract.state();
-      assert.equal(state.toString(), "4");
+      assert.equal(state.toString(), "5");
       priceReturn = web3.utils.toBN(web3.utils.toWei("1.05", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       changeInNav = expectedSettlementNav.sub(initialNav);
@@ -459,7 +462,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Remargin to the new price, which should immediately settle the contract.
       await derivativeContract.remargin({ from: sponsor });
-      assert.equal((await derivativeContract.state()).toString(), "4");
+      assert.equal((await derivativeContract.state()).toString(), "5");
 
       // Verify nav and balances at settlement, including default penalty.
       const defaultPenalty = computeExpectedPenalty(initialNav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
@@ -503,7 +506,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
 
       // Auto-settles with the Oracle price.
-      assert.equal((await derivativeContract.state()).toString(), "4");
+      assert.equal((await derivativeContract.state()).toString(), "5");
       nav = await derivativeContract.nav();
 
       const shortBalance = await derivativeContract.shortBalance();
@@ -548,6 +551,9 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
       state = await derivativeContract.state();
       assert.equal(state.toString(), "1");
+
+      // Can't call emergency shutdown while expired.
+      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
 
       // Provide the Oracle price.
       await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
@@ -617,7 +623,7 @@ contract("TokenizedDerivative", function(accounts) {
       await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
       await derivativeContract.settle();
       state = await derivativeContract.state();
-      assert.equal(state.toString(), "4");
+      assert.equal(state.toString(), "5");
 
       // Verify nav and balances at settlement.
       let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
@@ -663,7 +669,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Contract should go straight to settled.
       await derivativeContract.remargin({ from: sponsor });
       state = await derivativeContract.state();
-      assert.equal(state.toString(), "4");
+      assert.equal(state.toString(), "5");
 
       // Verify nav and balances at settlement.
       let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
@@ -748,7 +754,7 @@ contract("TokenizedDerivative", function(accounts) {
       await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.089", "ether"));
       await derivativeContract.settle();
       state = await derivativeContract.state();
-      assert.equal(state.toString(), "4");
+      assert.equal(state.toString(), "5");
 
       // Verify NAV and balances at expiry.
       priceReturn = web3.utils.toBN(web3.utils.toWei("0.9", "ether"));
@@ -792,6 +798,63 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Now that 24 hours has passed, the limit has been reset, so 0.1 should be withdrawable.
       await derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor });
+    });
+
+    it(annotateTitle("Live -> Remargin -> Emergency shutdown"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative();
+
+      // Sponsor initializes contract
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1.6", "ether"))
+      );
+      let state = await derivativeContract.state();
+      assert.equal(state.toString(), "0");
+
+      let actualNav = await derivativeContract.nav();
+      let longBalance = await derivativeContract.longBalance();
+      let shortBalance = await derivativeContract.shortBalance();
+
+      // Remargin the contract.
+      await pushPrice(web3.utils.toWei("1", "ether"));
+      const lastRemarginTime = await deployedManualPriceFeed.getCurrentTime();
+      await derivativeContract.remargin({ from: sponsor });
+      state = await derivativeContract.state();
+      assert.equal(state.toString(), "0");
+
+      // Sponsor cannot call emergencyShutdown().
+      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: sponsor })));
+
+      // Admin calls emergency shutdown.
+      await derivativeContract.emergencyShutdown({ from: admin });
+      state = await derivativeContract.state();
+      assert.equal(state.toString(), "4");
+
+      // Can't call emergency shutdown while already in emergency shutdown.
+      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
+
+      // Provide Oracle price and call settle().
+      await deployedCentralizedOracle.pushPrice(identifierBytes, lastRemarginTime, web3.utils.toWei("1.3", "ether"));
+      await derivativeContract.settle();
+      state = await derivativeContract.state();
+      assert.equal(state.toString(), "5");
+
+      // Verify that balances and NAV reflect the Oracle price.
+      const priceReturn = web3.utils.toBN(web3.utils.toWei("1.3", "ether"));
+      const expectedNav = computeNewNav(actualNav, priceReturn, feesPerInterval);
+      const changeInNav = expectedNav.sub(actualNav);
+      actualNav = await derivativeContract.nav();
+      const expectedInvestorAccountBalance = longBalance.add(changeInNav);
+      const expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
+      longBalance = await derivativeContract.longBalance();
+      shortBalance = await derivativeContract.shortBalance();
+      assert.equal(actualNav.toString(), expectedNav.toString());
+      assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
+      assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
+
+      // Can't call emergency shutdown in the Settled state.
+      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
     });
 
     it(annotateTitle("Live -> Create -> Create fails on expiry"), async function() {
