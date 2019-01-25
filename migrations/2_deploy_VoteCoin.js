@@ -67,10 +67,10 @@ module.exports = function(deployer, network, accounts) {
         return deployer.deploy(Registry);
       })
       .then(deployedRegistry => {
+        registry = deployedRegistry;
         return Registry.deployed();
       })
-      .then(deployedRegistry => {
-        registry = deployedRegistry;
+      .then(() => {
         return deployer.deploy(ManualPriceFeed, enableControllableTiming(network));
       })
       .then(manualPriceFeed => {
