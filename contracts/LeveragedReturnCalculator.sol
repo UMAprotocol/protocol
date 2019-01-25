@@ -36,6 +36,9 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface {
         // Compute the RoR of the underlying asset and multiply by leverage to get the modified return.
         int leveragedRor = underlyingAssetReturn.sub(1 ether).mul(leverage);
 
+
+        // If oldPrice is < 0, we need to flip the sign to keep returns positively correlated with leverage * price
+        // diffs.
         if (oldPrice < 0) {
             leveragedRor = leveragedRor.mul(-1);
         }
