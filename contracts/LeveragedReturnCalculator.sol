@@ -1,7 +1,7 @@
 /*
   Leveraged Return Calculator. 
 
-  Implements a return calculator that applies leverage to the input prices
+  Implements a return calculator that applies leverage to the input prices.
 */
 pragma solidity ^0.5.0;
 

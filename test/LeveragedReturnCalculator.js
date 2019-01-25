@@ -1,7 +1,4 @@
-const { didContractThrow } = require("./utils/DidContractThrow.js");
-
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
-const BigNumber = require("bignumber.js");
 
 contract("LeveragedReturnCalculator", function(accounts) {
   // A deployed instance of the LeveragedReturnCalculator.
