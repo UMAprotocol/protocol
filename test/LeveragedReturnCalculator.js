@@ -44,7 +44,7 @@ contract("LeveragedReturnCalculator", function(accounts) {
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
     );
-    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("2", "ether"));
+    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("0", "ether"));
   });
 
   it("Leverage >1", async function() {
@@ -90,7 +90,7 @@ contract("LeveragedReturnCalculator", function(accounts) {
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
     );
-    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("3", "ether"));
+    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("-1", "ether"));
   });
 
   it("Leverage <0", async function() {
@@ -136,7 +136,7 @@ contract("LeveragedReturnCalculator", function(accounts) {
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
     );
-    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("0", "ether"));
+    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("2", "ether"));
   });
 
   it("Leverage <-1", async function() {
@@ -182,6 +182,6 @@ contract("LeveragedReturnCalculator", function(accounts) {
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
     );
-    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("-1", "ether"));
+    assert.equal(allNegativeInputs.toString(), web3.utils.toWei("3", "ether"));
   });
 });
