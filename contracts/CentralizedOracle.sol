@@ -10,6 +10,7 @@ pragma experimental ABIEncoderV2;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./OracleInterface.sol";
+import "./RegistryInterface.sol";
 import "./Testable.sol";
 
 
@@ -53,7 +54,12 @@ contract CentralizedOracle is OracleInterface, Ownable, Testable {
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    constructor(bool _isTest) public Testable(_isTest) {} // solhint-disable-line no-empty-blocks
+    // Registry to verify that a derivative is approved to use the Oracle.
+    RegistryInterface private registry;
+
+    constructor(address _registry, bool _isTest) public Testable(_isTest) {
+        registry = RegistryInterface(_registry);
+    }
 
     // Gets the price if available, else enqueues a request (if a request isn't already present).
     function getPrice(bytes32 identifier, uint time)
@@ -61,7 +67,10 @@ contract CentralizedOracle is OracleInterface, Ownable, Testable {
         returns (uint timeForPrice, int price, uint verifiedTime)
     {
         require(supportedIdentifiers[identifier]);
-        // TODO(ptare): Add verification via the registry for the caller.
+
+        // Ensure that the caller has been registered with the Oracle before processing the request.
+        require(registry.isDerivativeRegistered(msg.sender));
+
         Price storage lookup = verifiedPrices[identifier][time];
         if (lookup.isAvailable) {
             // We already have a price, return it.
