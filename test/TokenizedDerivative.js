@@ -1,6 +1,7 @@
 const { didContractThrow } = require("./utils/DidContractThrow.js");
 
 const CentralizedOracle = artifacts.require("CentralizedOracle");
+const CentralizedStore = artifacts.require("CentralizedStore");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const NoLeverage = artifacts.require("NoLeverage");
 const Registry = artifacts.require("Registry");
@@ -20,6 +21,7 @@ contract("TokenizedDerivative", function(accounts) {
   let derivativeContract;
   let deployedRegistry;
   let deployedCentralizedOracle;
+  let deployedCentralizedStore;
   let deployedManualPriceFeed;
   let tokenizedDerivativeCreator;
   let noLeverageCalculator;
@@ -36,11 +38,14 @@ contract("TokenizedDerivative", function(accounts) {
   const priceFeedUpdatesInterval = 60;
   let feesPerInterval;
 
+  const oracleFeePerSecond = web3.utils.toBN(web3.utils.toWei("0.0001", "ether"));
+
   before(async function() {
     identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
     deployedCentralizedOracle = await CentralizedOracle.deployed();
+    deployedCentralizedStore = await CentralizedStore.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     noLeverageCalculator = await NoLeverage.deployed();
@@ -54,6 +59,9 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
     await deployedManualPriceFeed.setCurrentTime(100000);
     await pushPrice(web3.utils.toWei("1", "ether"));
+
+    // Set an Oracle fee.
+    await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
   });
 
   const computeNewNav = (previousNav, priceReturn, fees) => {
@@ -65,6 +73,11 @@ contract("TokenizedDerivative", function(accounts) {
 
   const computeExpectedPenalty = (navToPenalize, penaltyPercentage) => {
     return web3.utils.toBN(web3.utils.fromWei(navToPenalize.mul(penaltyPercentage), "ether"));
+  };
+
+  const computeExpectedOracleFees = startingNav => {
+    const oracleFeeRatio = oracleFeePerSecond.mul(web3.utils.toBN(priceFeedUpdatesInterval));
+    return startingNav.mul(oracleFeeRatio).div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
   };
 
   // Pushes a price to the ManualPriceFeed, incrementing time by `priceFeedUpdatesInterval`.
@@ -175,6 +188,8 @@ contract("TokenizedDerivative", function(accounts) {
 
       let longBalance = await derivativeContract.longBalance();
       let shortBalance = await derivativeContract.shortBalance();
+      const initialStoreBalance = await getMarginBalance(deployedCentralizedStore.address);
+      let totalOracleFeesPaid = web3.utils.toBN(web3.utils.toWei("0", "ether"));
 
       // Ensure the short balance is 0 ETH (as is deposited in beforeEach()).
       assert.equal(shortBalance.toString(), web3.utils.toWei("0", "ether"));
@@ -243,7 +258,9 @@ contract("TokenizedDerivative", function(accounts) {
       let expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval);
 
       // Remargin to the new price.
+      expectedOracleFee = computeExpectedOracleFees(await derivativeContract.nav());
       await derivativeContract.remargin({ from: sponsor });
+      totalOracleFeesPaid = totalOracleFeesPaid.add(expectedOracleFee);
       const expectedLastRemarginTime = await deployedManualPriceFeed.getCurrentTime();
       let lastRemarginTime = (await derivativeContract.currentTokenState()).time;
       const expectedPreviousRemarginTime = (await derivativeContract.prevTokenState()).time;
@@ -294,7 +311,9 @@ contract("TokenizedDerivative", function(accounts) {
       // Force the sponsor into default by further increasing the unverified price.
       shortBalance = await derivativeContract.shortBalance();
       await pushPrice(web3.utils.toWei("2.6", "ether"));
+      expectedOracleFee = computeExpectedOracleFees(await derivativeContract.nav());
       await derivativeContract.remargin({ from: sponsor });
+      totalOracleFeesPaid = totalOracleFeesPaid.add(expectedOracleFee);
 
       // Add an unverified price to ensure that post-default the contract ceases updating.
       await pushPrice(web3.utils.toWei("10.0", "ether"));
@@ -312,7 +331,11 @@ contract("TokenizedDerivative", function(accounts) {
 
       assert.equal(state.toString(), "3");
       assert.equal(nav.toString(), expectedNav.toString());
-      assert.equal(initialSponsorBalance.sub(sponsorBalancePostRemargin).toString(), expectedNavChange.toString());
+      // The sponsor's balance decreases, and we have to add the Oracle fee to the amount of decrease.
+      assert.equal(
+        initialSponsorBalance.sub(sponsorBalancePostRemargin).toString(),
+        expectedNavChange.add(expectedOracleFee).toString()
+      );
 
       // Can't call emergency shutdown while in default.
       assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
@@ -364,6 +387,10 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Contract should be empty.
       assert.equal(newContractBalance.toString(), "0");
+
+      const finalStoreBalance = await getMarginBalance(deployedCentralizedStore.address);
+      const oracleFeesPaidToStore = finalStoreBalance.sub(initialStoreBalance);
+      assert.equal(oracleFeesPaidToStore.toString(), totalOracleFeesPaid.toString());
     });
 
     it(annotateTitle("Live -> Default -> Settled (oracle)"), async function() {
@@ -400,9 +427,10 @@ contract("TokenizedDerivative", function(accounts) {
       let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
       const expectedDefaultNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       let changeInNav = expectedDefaultNav.sub(initialNav);
+      const expectedOracleFee = computeExpectedOracleFees(initialNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = initialInvestorBalance.add(changeInNav);
-      expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav);
+      expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedDefaultNav.toString());
@@ -423,7 +451,7 @@ contract("TokenizedDerivative", function(accounts) {
       changeInNav = expectedSettlementNav.sub(initialNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = initialInvestorBalance.add(changeInNav);
-      expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav);
+      expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
@@ -465,13 +493,17 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal((await derivativeContract.state()).toString(), "5");
 
       // Verify nav and balances at settlement, including default penalty.
+      const expectedOracleFee = computeExpectedOracleFees(initialNav);
       const defaultPenalty = computeExpectedPenalty(initialNav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
       const priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       let changeInNav = expectedSettlementNav.sub(initialNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = longBalance.add(changeInNav).add(defaultPenalty);
-      expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(defaultPenalty);
+      expectedSponsorAccountBalance = shortBalance
+        .sub(changeInNav)
+        .sub(defaultPenalty)
+        .sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
@@ -513,6 +545,7 @@ contract("TokenizedDerivative", function(accounts) {
       const longBalance = await derivativeContract.longBalance();
 
       // Verify that the dispute fee went to the counterparty and that the NAV changed.
+      // No Oracle fee needs to be deducted, because the contract is never remargined.
       assert.notEqual(presettlementNav.toString(), nav.toString());
       assert.equal(longBalance.toString(), nav.toString());
       const navDiff = nav.sub(presettlementNav);
@@ -628,10 +661,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify nav and balances at settlement.
       let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
+      const expectedOracleFee = computeExpectedOracleFees(initialNav);
       let changeInNav = expectedSettlementNav.sub(initialNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = longBalance.add(changeInNav);
-      expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
+      expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
@@ -674,10 +708,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify nav and balances at settlement.
       let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
+      const expectedOracleFee = computeExpectedOracleFees(initialNav);
       let changeInNav = expectedSettlementNav.sub(initialNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = longBalance.add(changeInNav);
-      expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
+      expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
@@ -714,10 +749,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify nav and balances.
       let priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
       expectedNav = computeNewNav(actualNav, priceReturn, feesPerInterval);
+      let expectedOracleFee = computeExpectedOracleFees(actualNav);
       let changeInNav = expectedNav.sub(actualNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = longBalance.add(changeInNav);
-      expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
+      expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedNav.toString());
@@ -733,10 +769,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify nav and balance.
       priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
       expectedNav = computeNewNav(actualNav, priceReturn, feesPerInterval);
+      expectedOracleFee = computeExpectedOracleFees(actualNav);
       changeInNav = expectedNav.sub(actualNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = longBalance.add(changeInNav);
-      expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
+      expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedNav.toString());
@@ -759,15 +796,58 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify NAV and balances at expiry.
       priceReturn = web3.utils.toBN(web3.utils.toWei("0.9", "ether"));
       expectedNav = computeNewNav(actualNav, priceReturn, feesPerInterval);
+      expectedOracleFee = computeExpectedOracleFees(actualNav);
       changeInNav = expectedNav.sub(actualNav);
       actualNav = await derivativeContract.nav();
       expectedInvestorAccountBalance = longBalance.add(changeInNav);
-      expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
+      expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedNav.toString());
       assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
+    });
+
+    it(annotateTitle("Remargin with zero Oracle fee"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative(priceFeedUpdatesInterval * 3);
+
+      // A contract with 0 NAV can still call remargin().
+      await pushPrice(web3.utils.toWei("1.089", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+    });
+
+    it(annotateTitle("Remargin with Oracle fee > short balance"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative();
+
+      const initialStoreBalance = web3.utils.toBN(await getMarginBalance(deployedCentralizedStore.address));
+
+      // Sponsor initializes contract
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1.5", "ether"))
+      );
+
+      // Set an absurdly high Oracle fee that will wipe out the short balance when charged.
+      const oracleFeePerSecond2 = web3.utils.toBN(web3.utils.toWei("0.9", "ether"));
+      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond2);
+      const shortBalance = await derivativeContract.shortBalance();
+
+      // Remargin at the next interval.
+      await pushPrice(web3.utils.toWei("1", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      // The contract should go into default due to the Oracle fee.
+      state = await derivativeContract.state();
+      assert.equal(state.toString(), "3");
+
+      // Verify that the entire short balance got paid to the Oracle.
+      const finalStoreBalance = web3.utils.toBN(await getMarginBalance(deployedCentralizedStore.address));
+      assert.equal(finalStoreBalance.sub(initialStoreBalance).toString(), shortBalance.toString());
+
+      // Clean up: reset the Oracle fee.
+      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
     });
 
     it(annotateTitle("Withdraw throttling"), async function() {

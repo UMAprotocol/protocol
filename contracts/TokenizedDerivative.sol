@@ -14,6 +14,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
 import "./OracleInterface.sol";
+import "./StoreInterface.sol";
 
 
 contract ReturnCalculator {
@@ -51,6 +52,7 @@ library TokenizedDerivativeParams {
         address sponsor;
         address admin;
         address oracle;
+        address store;
         address priceFeed;
         uint defaultPenalty; // Percentage of nav * 10^18
         uint requiredMargin; // Percentage of nav * 10^18
@@ -129,6 +131,7 @@ contract TokenizedDerivative is ERC20 {
     address public admin;
     address public apDelegate;
     OracleInterface public oracle;
+    StoreInterface public store;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
     IERC20 public marginCurrency;
@@ -210,6 +213,7 @@ contract TokenizedDerivative is ERC20 {
 
         // Address information
         oracle = OracleInterface(params.oracle);
+        store = StoreInterface(params.store);
         priceFeed = PriceFeedInterface(params.priceFeed);
         // Verify that the price feed and oracle support the given product.
         require(oracle.isIdentifierSupported(params.product));
@@ -403,6 +407,23 @@ contract TokenizedDerivative is ERC20 {
         _deposit(_pullSentMargin());
     }
 
+    function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
+        uint expectedFeeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
+        if (feeAmount == 0) {
+            return;
+        }
+        shortBalance = shortBalance.sub(int(feeAmount));
+        // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
+        // contract.
+        if (address(marginCurrency) == address(0x0)) {
+            store.payOracleFees.value(feeAmount)();
+        } else {
+            require(marginCurrency.approve(address(store), feeAmount));
+            store.payOracleFeesErc20(address(marginCurrency));
+        }
+    }
+
     function _createTokens(uint navToPurchase) private {
         _remargin();
 
@@ -502,11 +523,13 @@ contract TokenizedDerivative is ERC20 {
         if (latestTime >= endTime) {
             state = State.Expired;
             prevTokenState = currentTokenState;
+            _payOracleFees(currentTokenState.time, endTime, nav);
             // We have no idea what the price was, exactly at endTime, so we can't set
             // currentTokenState, or update the nav, or do anything.
             _requestOraclePrice(endTime);
             return;
         }
+        _payOracleFees(currentTokenState.time, latestTime, nav);
 
         // Update nav of contract.
         int navNew = _computeNav(latestPrice, latestTime);
@@ -650,9 +673,11 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint withdrawLimit; // Percentage of shortBalance * 10^18
     }
 
-    constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress)
+    constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
         public
-        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
+        ContractCreator(
+            registryAddress, _oracleAddress, _storeAddress, _priceFeedAddress) { // solhint-disable-line no-empty-blocks
+        } 
 
     function createTokenizedDerivative(Params memory params)
         public
@@ -691,5 +716,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
         // Copy internal variables.
         constructorParams.priceFeed = priceFeedAddress;
         constructorParams.oracle = oracleAddress;
+        constructorParams.store = storeAddress;
     }
 }
