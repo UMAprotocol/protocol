@@ -93,13 +93,6 @@ module.exports = function(deployer, network, accounts) {
         return CentralizedStore.deployed();
       })
       .then(() => {
-        return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
-      })
-      .then(() => {
-        return Registry.deployed();
-      })
-      .then(deployedRegistry => {
-        registry = deployedRegistry;
         return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, storeAddress, priceFeedAddress);
       })
       .then(() => {
