@@ -815,6 +815,8 @@ contract("TokenizedDerivative", function(accounts) {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
 
+      const initialStoreBalance = web3.utils.toBN(await getMarginBalance(deployedCentralizedStore.address));
+
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
         web3.utils.toWei("1", "ether"),
@@ -824,6 +826,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Set an absurdly high Oracle fee that will wipe out the short balance when charged.
       const oracleFeePerSecond2 = web3.utils.toBN(web3.utils.toWei("0.9", "ether"));
       await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond2);
+      const shortBalance = await derivativeContract.shortBalance();
 
       // Remargin at the next interval.
       await pushPrice(web3.utils.toWei("1", "ether"));
@@ -833,6 +836,11 @@ contract("TokenizedDerivative", function(accounts) {
       state = await derivativeContract.state();
       assert.equal(state.toString(), "3");
 
+      // Verify that the entire short balance got paid to the Oracle.
+      const finalStoreBalance = web3.utils.toBN(await getMarginBalance(deployedCentralizedStore.address));
+      assert.equal(finalStoreBalance.sub(initialStoreBalance).toString(), shortBalance.toString());
+
+      // Clean up: reset the Oracle fee.
       await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
     });
 
