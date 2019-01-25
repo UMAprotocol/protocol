@@ -24,6 +24,11 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface {
     }
 
     function computeReturn(int oldPrice, int newPrice) external view returns (int assetReturn) {
+        if (oldPrice == 0) {
+            // To avoid a divide-by-zero, just return 0 instead of hitting an exception.
+            return 0;
+        }
+
         // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
         int underlyingAssetReturn = newPrice.mul(1 ether).div(oldPrice);
 
