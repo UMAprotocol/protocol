@@ -35,6 +35,7 @@ const shouldUseMockOracle = network => {
 
 module.exports = function(deployer, network, accounts) {
   let oracleAddress;
+  let storeAddress;
   let priceFeedAddress;
   let registry;
   if (isDerivativeDemo(network)) {
@@ -78,6 +79,13 @@ module.exports = function(deployer, network, accounts) {
         return CentralizedOracle.deployed();
       })
       .then(() => {
+        return deployer.deploy(CentralizedStore, enableControllableTiming(network));
+      })
+      .then(centralizedStore => {
+        storeAddress = centralizedStore.address;
+        return CentralizedStore.deployed();
+      })
+      .then(() => {
         return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
       })
       .then(() => {
@@ -85,34 +93,34 @@ module.exports = function(deployer, network, accounts) {
       })
       .then(deployedRegistry => {
         registry = deployedRegistry;
-        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, priceFeedAddress);
+        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, storeAddress, priceFeedAddress);
       })
       .then(() => {
         return DerivativeCreator.deployed();
       })
       .then(derivativeCreator => {
-        return registry.addContractCreator(derivativeCreator.address);
+        return registry.addDerivativeCreator(derivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, priceFeedAddress);
+        return deployer.deploy(
+          TokenizedDerivativeCreator,
+          registry.address,
+          oracleAddress,
+          storeAddress,
+          priceFeedAddress
+        );
       })
       .then(() => {
         return TokenizedDerivativeCreator.deployed();
       })
       .then(tokenizedDerivativeCreator => {
-        return registry.addContractCreator(tokenizedDerivativeCreator.address);
+        return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
       })
       .then(() => {
         return deployer.deploy(NoLeverage);
       })
       .then(() => {
         return NoLeverage.deployed();
-      })
-      .then(() => {
-        return deployer.deploy(CentralizedStore);
-      })
-      .then(() => {
-        return CentralizedStore.deployed();
       });
   } else {
     deployer
@@ -127,16 +135,22 @@ module.exports = function(deployer, network, accounts) {
         return DerivativeCreator.deployed();
       })
       .then(derivativeCreator => {
-        return registry.addContractCreator(derivativeCreator.address);
+        return registry.addDerivativeCreator(derivativeCreator.address);
       })
       .then(() => {
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, priceFeedAddress);
+        return deployer.deploy(
+          TokenizedDerivativeCreator,
+          registry.address,
+          oracleAddress,
+          storeAddress,
+          priceFeedAddress
+        );
       })
       .then(() => {
         return TokenizedDerivativeCreator.deployed();
       })
       .then(tokenizedDerivativeCreator => {
-        return registry.addContractCreator(tokenizedDerivativeCreator.address);
+        return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
       })
       .then(() => {
         return deployer.deploy(NoLeverage);

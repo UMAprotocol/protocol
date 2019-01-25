@@ -58,11 +58,8 @@ contract("Derivative", function(accounts) {
       { from: takerAddress, value: web3.utils.toWei("1", "ether") }
     );
 
-    const numRegisteredContracts = await deployedRegistry.getNumRegisteredContractsBySender({ from: takerAddress });
-    const derivativeAddress = await deployedRegistry.getRegisteredContractBySender(
-      numRegisteredContracts.subn(1).toString(),
-      { from: takerAddress }
-    );
+    const derivativeArray = await deployedRegistry.getRegisteredDerivatives(takerAddress);
+    const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
     derivativeContract = await Derivative.at(derivativeAddress);
   });
 

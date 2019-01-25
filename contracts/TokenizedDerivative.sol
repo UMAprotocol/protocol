@@ -5,6 +5,8 @@
 */
 pragma solidity ^0.5.0;
 
+pragma experimental ABIEncoderV2;
+
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
@@ -12,6 +14,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
 import "./OracleInterface.sol";
+import "./StoreInterface.sol";
 
 
 contract ReturnCalculator {
@@ -44,6 +47,27 @@ contract NoLeverage is ReturnCalculator {
 }
 
 
+library TokenizedDerivativeParams {
+    struct ConstructorParams {
+        address sponsor;
+        address admin;
+        address oracle;
+        address store;
+        address priceFeed;
+        uint defaultPenalty; // Percentage of nav * 10^18
+        uint requiredMargin; // Percentage of nav * 10^18
+        bytes32 product;
+        uint fixedYearlyFee; // Percentage of nav * 10^18
+        uint disputeDeposit; // Percentage of nav * 10^18
+        address returnCalculator;
+        uint startingTokenPrice;
+        uint expiry;
+        address marginCurrency;
+        uint withdrawLimit; // Percentage of shortBalance * 10^18
+    }
+}
+
+
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
 contract TokenizedDerivative is ERC20 {
     using SafeMath for uint;
@@ -55,9 +79,9 @@ contract TokenizedDerivative is ERC20 {
         // Possible state transitions: Disputed, Expired, Defaulted.
         Live,
 
-        // Disputed, Expired, and Defaulted are Frozen states. In a Frozen state, the contract is frozen in time
-        // awaiting a resolution by the Oracle. No tokens can be created or redeemed. Margin cannot be withdrawn. The
-        // resolution of these states moves the contract to the Settled state. Remargining is not allowed.
+        // Disputed, Expired, Defaulted, and Emergency are Frozen states. In a Frozen state, the contract is frozen in
+        // time awaiting a resolution by the Oracle. No tokens can be created or redeemed. Margin cannot be withdrawn.
+        // The resolution of these states moves the contract to the Settled state. Remargining is not allowed.
 
         // The sponsor has disputed the price feed output. If the dispute is valid (i.e., the NAV calculated from the
         // Oracle price differs from the NAV calculated from the price feed), the dispute fee is added to the short
@@ -75,6 +99,10 @@ contract TokenizedDerivative is ERC20 {
         // Possible state transitions: Settled.
         Defaulted,
 
+        // UMA has manually triggered a shutdown of the account.
+        // Possible state transitions: Settled.
+        Emergency,
+
         // Token price is fixed. Tokens can be redeemed by anyone. All short margin can be withdrawn. Tokens can't be
         // created, and contract can't remargin.
         // Possible state transitions: None.
@@ -91,6 +119,7 @@ contract TokenizedDerivative is ERC20 {
     uint public marginRequirement; // Percentage of nav*10^18
     uint public disputeDeposit; // Percentage of nav*10^18
     uint public fixedFeePerSecond; // Percentage of nav*10^18
+    uint public withdrawLimit; // Percentage of shortBalance*10^18
     bytes32 public product;
 
     // Balances
@@ -100,7 +129,9 @@ contract TokenizedDerivative is ERC20 {
     // Other addresses/contracts
     address public sponsor;
     address public admin;
+    address public apDelegate;
     OracleInterface public oracle;
+    StoreInterface public store;
     PriceFeedInterface public priceFeed;
     ReturnCalculator public returnCalculator;
     IERC20 public marginCurrency;
@@ -135,7 +166,15 @@ contract TokenizedDerivative is ERC20 {
     // Only valid if in the midst of a Default.
     int public navAtDefault;
 
-    uint public constant SECONDS_PER_YEAR = 31536000;
+    uint private constant SECONDS_PER_YEAR = 31536000;
+    uint private constant SECONDS_PER_DAY = 86400;
+
+    struct WithdrawThrottle {
+        uint startTime;
+        uint remainingWithdrawal;
+    }
+
+    WithdrawThrottle public withdrawThrottle;
 
     modifier onlySponsor {
         require(msg.sender == sponsor);
@@ -152,72 +191,69 @@ contract TokenizedDerivative is ERC20 {
         _;
     }
 
+    modifier onlySponsorOrApDelegate {
+        require(msg.sender == sponsor || msg.sender == apDelegate);
+        _;
+    }
+
     constructor(
-        address _sponsorAddress,
-        address _adminAddress,
-        address _oracleAddress,
-        address _priceFeedAddress,
-        uint _defaultPenalty, // Percentage of nav*10^18
-        uint _requiredMargin, // Percentage of nav*10^18
-        bytes32 _product,
-        uint _fixedYearlyFee, // Percentage of nav * 10^18
-        uint _disputeDeposit, // Percentage of nav * 10^18
-        address _returnCalculator,
-        uint _startingTokenPrice,
-        uint expiry,
-        address _marginCurrency
+        TokenizedDerivativeParams.ConstructorParams memory params
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
-        require(_defaultPenalty <= _requiredMargin);
-        require(_requiredMargin <= 1 ether);
-        marginRequirement = _requiredMargin;
+        require(params.defaultPenalty <= params.requiredMargin);
+        require(params.requiredMargin <= 1 ether);
+        marginRequirement = params.requiredMargin;
 
-        marginCurrency = IERC20(_marginCurrency);
+        marginCurrency = IERC20(params.marginCurrency);
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
-        require(_startingTokenPrice >= uint(1 ether).div(10**9));
-        require(_startingTokenPrice <= uint(1 ether).mul(10**9));
+        require(params.startingTokenPrice >= uint(1 ether).div(10**9));
+        require(params.startingTokenPrice <= uint(1 ether).mul(10**9));
 
         // Address information
-        oracle = OracleInterface(_oracleAddress);
-        priceFeed = PriceFeedInterface(_priceFeedAddress);
+        oracle = OracleInterface(params.oracle);
+        store = StoreInterface(params.store);
+        priceFeed = PriceFeedInterface(params.priceFeed);
         // Verify that the price feed and oracle support the given product.
-        require(oracle.isIdentifierSupported(_product));
-        require(priceFeed.isIdentifierSupported(_product));
+        require(oracle.isIdentifierSupported(params.product));
+        require(priceFeed.isIdentifierSupported(params.product));
 
-        sponsor = _sponsorAddress;
-        admin = _adminAddress;
-        returnCalculator = ReturnCalculator(_returnCalculator);
+        sponsor = params.sponsor;
+        admin = params.admin;
+        returnCalculator = ReturnCalculator(params.returnCalculator);
 
         // Contract parameters.
-        defaultPenalty = _defaultPenalty;
-        product = _product;
-        fixedFeePerSecond = _fixedYearlyFee.div(SECONDS_PER_YEAR);
-        disputeDeposit = _disputeDeposit;
+        defaultPenalty = params.defaultPenalty;
+        product = params.product;
+        fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
+        disputeDeposit = params.disputeDeposit;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
         require(latestTime != 0);
 
         // Set end time to max value of uint to implement no expiry.
-        if (expiry == 0) {
+        if (params.expiry == 0) {
             endTime = ~uint(0);
         } else {
-            require(expiry >= latestTime);
-            endTime = expiry;
+            require(params.expiry >= latestTime);
+            endTime = params.expiry;
         }
 
-        nav = _computeInitialNav(latestUnderlyingPrice, latestTime, _startingTokenPrice);
+        nav = _computeInitialNav(latestUnderlyingPrice, latestTime, params.startingTokenPrice);
 
         state = State.Live;
+
+        require(params.withdrawLimit < 1 ether);
+        withdrawLimit = params.withdrawLimit;
     }
 
-    function createTokens() external payable onlySponsor {
+    function createTokens() external payable onlySponsorOrApDelegate {
         _createTokens(_pullSentMargin());
     }
 
-    function depositAndCreateTokens(uint newTokenNav) external payable onlySponsor {
+    function depositAndCreateTokens(uint newTokenNav) external payable onlySponsorOrApDelegate {
         // Subtract newTokenNav from amount sent.
         uint sentAmount = _pullSentMargin();
         uint depositAmount = sentAmount.sub(newTokenNav);
@@ -230,10 +266,11 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function redeemTokens() external {
-        require((msg.sender == sponsor && state == State.Live) || state == State.Settled);
+        require(state == State.Live || state == State.Settled);
 
         if (state == State.Live) {
-            remargin();
+            require(msg.sender == sponsor || msg.sender == apDelegate);
+            _remargin();
         }
 
         uint initialSupply = totalSupply();
@@ -282,7 +319,7 @@ contract TokenizedDerivative is ERC20 {
     function withdraw(uint amount) external onlySponsor {
         // Remargin before allowing a withdrawal, but only if in the live state.
         if (state == State.Live) {
-            remargin();
+            _remargin();
         }
 
         // Make sure either in Live or Settled after any necessary remargin.
@@ -292,9 +329,28 @@ contract TokenizedDerivative is ERC20 {
         // withdraw up to full balance. If the contract is in live state then
         // must leave at least `requiredMargin`. Not allowed to withdraw in
         // other states.
-        int withdrawableAmount = (state == State.Settled) ?
-            shortBalance :
-            shortBalance.sub(_getRequiredEthMargin(nav));
+        int withdrawableAmount;
+        if (state == State.Settled) {
+            withdrawableAmount = shortBalance;
+        } else {
+            // Update throttling snapshot and verify that this withdrawal doesn't go past the throttle limit.
+            uint currentTime = currentTokenState.time;
+            if (withdrawThrottle.startTime <= currentTime.sub(SECONDS_PER_DAY)) {
+                // We've passed the previous withdrawThrottle window. Start new one.
+                withdrawThrottle.startTime = currentTime;
+                withdrawThrottle.remainingWithdrawal = _takePercentage(uint(shortBalance), withdrawLimit);
+            }
+
+            int marginMaxWithdraw = shortBalance.sub(_getRequiredEthMargin(nav));
+            int throttleMaxWithdraw = int(withdrawThrottle.remainingWithdrawal);
+
+            // Take the smallest of the two withdrawal limits.
+            withdrawableAmount = throttleMaxWithdraw < marginMaxWithdraw ? throttleMaxWithdraw : marginMaxWithdraw;
+
+            // Note: this line alone implicitly ensures the withdrawal throttle is not violated, but the above
+            // ternary is more explicit.
+            withdrawThrottle.remainingWithdrawal = withdrawThrottle.remainingWithdrawal.sub(amount);
+        }
 
         // Can only withdraw the allowed amount.
         require(
@@ -310,9 +366,34 @@ contract TokenizedDerivative is ERC20 {
         _sendMargin(amount);
     }
 
+    function remargin() external onlySponsorOrAdmin {
+        _remargin();
+    }
+
+    function confirmPrice() external onlySponsor {
+        // Right now, only confirming prices in the defaulted state.
+        require(state == State.Defaulted);
+
+        // Remargin on agreed upon price.
+        _settleAgreedPrice();
+    }
+
+    function setApDelegate(address _apDelegate) external onlySponsor {
+        apDelegate = _apDelegate;
+    }
+
+    // Moves the contract into the Emergency state, where it waits on an Oracle price for the most recent remargin time.
+    function emergencyShutdown() external onlyAdmin {
+        require(state == State.Live);
+        state = State.Emergency;
+        endTime = currentTokenState.time;
+        _requestOraclePrice(endTime);
+    }
+
     function settle() public {
         State startingState = state;
-        require(startingState == State.Disputed || startingState == State.Expired || startingState == State.Defaulted);
+        require(startingState == State.Disputed || startingState == State.Expired
+                || startingState == State.Defaulted || startingState == State.Emergency);
         _settleVerifiedPrice();
         if (startingState == State.Disputed) {
             int depositValue = int(disputeInfo.deposit);
@@ -324,52 +405,30 @@ contract TokenizedDerivative is ERC20 {
         }
     }
 
-    function confirmPrice() public onlySponsor {
-        // Right now, only confirming prices in the defaulted state.
-        require(state == State.Defaulted);
-
-        // Remargin on agreed upon price.
-        _settleAgreedPrice();
-    }
-
     function deposit() public payable onlySponsor {
         // Only allow the sponsor to deposit margin.
         _deposit(_pullSentMargin());
     }
 
-    function remargin() public onlySponsorOrAdmin {
-        // If the state is not live, remargining does not make sense.
-        require(state == State.Live);
-
-        // Checks whether contract has ended.
-        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
-        if (latestTime <= currentTokenState.time) {
-            // If the price feed hasn't advanced, remargining should be a no-op.
+    function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
+        uint expectedFeeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
+        if (feeAmount == 0) {
             return;
         }
-        if (latestTime >= endTime) {
-            state = State.Expired;
-            prevTokenState = currentTokenState;
-            emit Expired(symbol, endTime);
-            // We have no idea what the price was, exactly at endTime, so we can't set
-            // currentTokenState, or update the nav, or do anything.
-            _requestOraclePrice(endTime);
-            return;
-        }
-
-        // Update nav of contract.
-        int newNav = _computeNav(latestPrice, latestTime);
-        bool inDefault = _remargin(newNav, latestTime);
-
-        if (inDefault) {
-            emit Default(symbol, endTime, nav);
-            _requestOraclePrice(endTime);
+        shortBalance = shortBalance.sub(int(feeAmount));
+        // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
+        // contract.
+        if (address(marginCurrency) == address(0x0)) {
+            store.payOracleFees.value(feeAmount)();
+        } else {
+            require(marginCurrency.approve(address(store), feeAmount));
+            store.payOracleFeesErc20(address(marginCurrency));
         }
     }
 
     function _createTokens(uint navToPurchase) private {
-        remargin();
+        _remargin();
 
         // Verify that remargining didn't push the contract into expiry or default.
         require(state == State.Live);
@@ -455,11 +514,34 @@ contract TokenizedDerivative is ERC20 {
         _settle(oraclePrice);
     }
 
-    // Remargins the account based on a provided NAV value.
-    // The internal remargin method allows certain calls into the contract to
-    // automatically remargin to non-current NAV values (time of expiry, last
-    // agreed upon price, etc).
-    function _remargin(int navNew, uint latestTime) private returns (bool inDefault) {
+    // _remargin() allows other functions to call remargin internally without satisfying permission checks for
+    // remargin().
+    function _remargin() private {
+        // If the state is not live, remargining does not make sense.
+        require(state == State.Live);
+
+        // Checks whether contract has ended.
+        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
+        require(latestTime != 0);
+        if (latestTime <= currentTokenState.time) {
+            // If the price feed hasn't advanced, remargining should be a no-op.
+            return;
+        }
+        if (latestTime >= endTime) {
+            state = State.Expired;
+            prevTokenState = currentTokenState;
+            emit Expired(symbol, endTime);
+            _payOracleFees(currentTokenState.time, endTime, nav);
+            // We have no idea what the price was, exactly at endTime, so we can't set
+            // currentTokenState, or update the nav, or do anything.
+            _requestOraclePrice(endTime);
+            return;
+        }
+        _payOracleFees(currentTokenState.time, latestTime, nav);
+
+        // Update nav of contract.
+        int navNew = _computeNav(latestPrice, latestTime);
+        
         // Save the current NAV in case it's required to compute the default penalty.
         int previousNav = nav;
 
@@ -467,11 +549,16 @@ contract TokenizedDerivative is ERC20 {
         _updateBalances(navNew);
 
         // Make sure contract has not moved into default.
-        inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
+        bool inDefault = !_satisfiesMarginRequirement(shortBalance, nav);
         if (inDefault) {
             state = State.Defaulted;
             navAtDefault = previousNav;
             endTime = latestTime; // Change end time to moment when default occurred.
+            emit Default(symbol, endTime, nav);
+        }
+
+        if (inDefault) {
+            _requestOraclePrice(endTime);
         }
     }
 
@@ -580,65 +667,86 @@ contract TokenizedDerivative is ERC20 {
     }
 
     // An event emitted when the NAV of the contract changes.
-    event NavUpdated(string indexed symbol, int newNav, int newTokenPrice);
+    event NavUpdated(string symbol, int newNav, int newTokenPrice);
     // An event emitted when the contract enters the Default state on a remargin.
-    event Default(string indexed symbol, uint defaultTime, int defaultNav);
+    event Default(string symbol, uint defaultTime, int defaultNav);
     // An event emitted when the contract settles.
-    event Settled(string indexed symbol, uint settleTime, int finalNav);
+    event Settled(string symbol, uint settleTime, int finalNav);
     // An event emitted when the contract expires.
-    event Expired(string indexed symbol, uint expiryTime);
+    event Expired(string symbol, uint expiryTime);
     // An event emitted when the contract's NAV is disputed by the sponsor.
-    event Disputed(string indexed symbol, uint timeDisputed, int navDisputed);
+    event Disputed(string symbol, uint timeDisputed, int navDisputed);
     // An event emitted when tokens are created.
-    event TokensCreated(string indexed symbol, int newTokenNav, uint numTokensCreated);
+    event TokensCreated(string symbol, int newTokenNav, uint numTokensCreated);
     // An event emitted when tokens are redeemed.
-    event TokensRedeemed(string indexed symbol, uint navRedeemed, uint numTokensRedeemed);
+    event TokensRedeemed(string symbol, uint navRedeemed, uint numTokensRedeemed);
     // An event emitted when margin currency is deposited.
-    event Deposited(string indexed symbol, uint amount);
+    event Deposited(string symbol, uint amount);
     // An event emitted when margin currency is withdrawn.
-    event Withdrawal(string indexed symbol, uint amount);
+    event Withdrawal(string symbol, uint amount);
 }
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
-    constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress)
-        public
-        ContractCreator(registryAddress, _oracleAddress, _priceFeedAddress) {} // solhint-disable-line no-empty-blocks
 
-    function createTokenizedDerivative(
-        address sponsor,
-        address admin,
-        uint defaultPenalty,
-        uint requiredMargin,
-        bytes32 product,
-        uint fixedYearlyFee,
-        uint disputeDeposit,
-        address returnCalculator,
-        uint startingTokenPrice,
-        uint expiry,
-        address marginCurrency
-    )
-        external
+    struct Params {
+        address sponsor;
+        address admin;
+        uint defaultPenalty; // Percentage of nav * 10^18
+        uint requiredMargin; // Percentage of nav * 10^18
+        bytes32 product;
+        uint fixedYearlyFee; // Percentage of nav * 10^18
+        uint disputeDeposit; // Percentage of nav * 10^18
+        address returnCalculator;
+        uint startingTokenPrice;
+        uint expiry;
+        address marginCurrency;
+        uint withdrawLimit; // Percentage of shortBalance * 10^18
+    }
+
+    constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
+        public
+        ContractCreator(
+            registryAddress, _oracleAddress, _storeAddress, _priceFeedAddress) { // solhint-disable-line no-empty-blocks
+        } 
+
+    function createTokenizedDerivative(Params memory params)
+        public
         returns (address derivativeAddress)
     {
-        TokenizedDerivative derivative = new TokenizedDerivative(
-            sponsor,
-            admin,
-            oracleAddress,
-            priceFeedAddress,
-            defaultPenalty,
-            requiredMargin,
-            product,
-            fixedYearlyFee,
-            disputeDeposit,
-            returnCalculator,
-            startingTokenPrice,
-            expiry,
-            marginCurrency
-        );
+        TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params));
 
-        _registerContract(sponsor, address(derivative));
+        address[] memory parties = new address[](1);
+        parties[0] = params.sponsor;
+
+        _registerContract(parties, address(derivative));
 
         return address(derivative);
+    }
+
+    // Converts createTokenizedDerivative params to TokenizedDerivative constructor params.
+    function _convertParams(Params memory params)
+        private
+        view
+        returns (TokenizedDerivativeParams.ConstructorParams memory constructorParams)
+    {
+        // Copy externally provided variables.
+        constructorParams.sponsor = params.sponsor;
+        constructorParams.admin = params.admin;
+        constructorParams.defaultPenalty = params.defaultPenalty;
+        constructorParams.requiredMargin = params.requiredMargin;
+        constructorParams.product = params.product;
+        constructorParams.fixedYearlyFee = params.fixedYearlyFee;
+        constructorParams.disputeDeposit = params.disputeDeposit;
+        constructorParams.returnCalculator = params.returnCalculator;
+        constructorParams.startingTokenPrice = params.startingTokenPrice;
+        constructorParams.expiry = params.expiry;
+        constructorParams.marginCurrency = params.marginCurrency;
+        constructorParams.withdrawLimit = params.withdrawLimit;
+
+        // Copy internal variables.
+        constructorParams.priceFeed = priceFeedAddress;
+        constructorParams.oracle = oracleAddress;
+        constructorParams.store = storeAddress;
     }
 }
