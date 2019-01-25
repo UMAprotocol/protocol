@@ -45,14 +45,15 @@ contract NoLeverage is ReturnCalculator {
     }
 }
 
+
 library TokenizedDerivativeParams {
     struct ConstructorParams {
         address sponsor;
         address admin;
         address oracle;
         address priceFeed;
-        uint defaultPenalty; // Percentage of nav*10^18
-        uint requiredMargin; // Percentage of nav*10^18
+        uint defaultPenalty; // Percentage of nav * 10^18
+        uint requiredMargin; // Percentage of nav * 10^18
         bytes32 product;
         uint fixedYearlyFee; // Percentage of nav * 10^18
         uint disputeDeposit; // Percentage of nav * 10^18
@@ -620,11 +621,12 @@ contract TokenizedDerivative is ERC20 {
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
+
     struct Params {
         address sponsor;
         address admin;
-        uint defaultPenalty; // Percentage of nav*10^18
-        uint requiredMargin; // Percentage of nav*10^18
+        uint defaultPenalty; // Percentage of nav * 10^18
+        uint requiredMargin; // Percentage of nav * 10^18
         bytes32 product;
         uint fixedYearlyFee; // Percentage of nav * 10^18
         uint disputeDeposit; // Percentage of nav * 10^18
@@ -634,7 +636,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
         address marginCurrency;
         uint withdrawLimit; // Percentage of shortBalance * 10^18
     }
-
 
     constructor(address registryAddress, address _oracleAddress, address _priceFeedAddress)
         public
@@ -654,6 +655,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         return address(derivative);
     }
 
+    // Converts createTokenizedDerivative params to TokenizedDerivative constructor params.
     function _convertParams(Params memory params)
         private
         view
