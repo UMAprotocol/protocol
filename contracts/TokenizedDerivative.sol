@@ -395,7 +395,8 @@ contract TokenizedDerivative is ERC20 {
     }
 
     function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
-        uint feeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        uint expectedFeeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
         if (feeAmount == 0) {
             return;
         }

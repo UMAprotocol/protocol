@@ -811,6 +811,31 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.remargin({ from: sponsor });
     });
 
+    it(annotateTitle("Remargin with Oracle fee > short balance"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative();
+
+      // Sponsor initializes contract
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1.5", "ether"))
+      );
+
+      // Set an absurdly high Oracle fee that will wipe out the short balance when charged.
+      const oracleFeePerSecond2 = web3.utils.toBN(web3.utils.toWei("0.9", "ether"));
+      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond2);
+
+      // Remargin at the next interval.
+      await pushPrice(web3.utils.toWei("1", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      // The contract should go into default due to the Oracle fee.
+      state = await derivativeContract.state();
+      assert.equal(state.toString(), "3");
+
+      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+    });
+
     it(annotateTitle("Withdraw throttling"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // Three time steps until expiry.
