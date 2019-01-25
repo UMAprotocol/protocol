@@ -1,5 +1,5 @@
 /*
-  Leveraged Return Calculator. 
+  Leveraged Return Calculator.
 
   Implements a return calculator that applies leverage to the input prices.
 */
