@@ -387,6 +387,7 @@ contract TokenizedDerivative is ERC20 {
         require(state == State.Live);
         state = State.Emergency;
         endTime = currentTokenState.time;
+        emit EmergencyShutdownTransition(symbol, endTime);
         _requestOraclePrice(endTime);
     }
 
@@ -676,6 +677,8 @@ contract TokenizedDerivative is ERC20 {
     event Expired(string symbol, uint expiryTime);
     // An event emitted when the contract's NAV is disputed by the sponsor.
     event Disputed(string symbol, uint timeDisputed, int navDisputed);
+    // An event emitted when the contract enters emergency shutdown.
+    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
     // An event emitted when tokens are created.
     event TokensCreated(string symbol, int newTokenNav, uint numTokensCreated);
     // An event emitted when tokens are redeemed.

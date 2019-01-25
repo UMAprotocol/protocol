@@ -945,7 +945,10 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: sponsor })));
 
       // Admin calls emergency shutdown.
-      await derivativeContract.emergencyShutdown({ from: admin });
+      let result = await derivativeContract.emergencyShutdown({ from: admin });
+      truffleAssert.eventEmitted(result, "EmergencyShutdownTransition", ev => {
+        return ev.shutdownTime.toString() === lastRemarginTime.toString();
+      });
       state = await derivativeContract.state();
       assert.equal(state.toString(), "4");
 
