@@ -24,6 +24,7 @@ contract CentralizedStore is StoreInterface, Ownable {
     function payOracleFeesErc20(address erc20Address) external {
         IERC20 erc20 = IERC20(erc20Address);
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
+        require(authorizedAmount > 0);
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
 
