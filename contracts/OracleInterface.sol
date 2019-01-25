@@ -7,11 +7,16 @@ pragma solidity ^0.5.0;
 
 // This interface allows contracts to query a verified, trusted price.
 interface OracleInterface {
-    // Returns an Oracle-verified price for identifier if available, otherwise returns `timeForPrice`=0 and a
-    // `verifiedTime` that corresponds to the next voting period after which a verified price will be available. If no
-    // verified price will ever be available, returns `verifiedTime`=first Ethereum time. Only contracts registered
-    // in the Registry are authorized to call this method.
-    function getPrice(bytes32 identifier, uint time) external returns (uint timeForPrice, int price, uint verifiedTime);
+    // Requests the Oracle price for an identifier at a time. Returns the time at which a price will be available.
+    // Returns 0 is the price is available now, and returns 2^256-1 if the price will never be available.  Reverts if
+    // the Oracle doesn't support this identifier. Only contracts registered in the Registry are authorized to call this
+    // method.
+    function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime);
+
+    // Returns the Oracle price for identifier at a time. Reverts if the Oracle doesn't support this identifier or if
+    // the Oracle doesn't have a price for this time. Only contracts registered in the Registry are authorized to call
+    // this method.
+    function getPrice(bytes32 identifier, uint time) external view returns (int price);
 
     // Returns whether the Oracle provides verified prices for the given identifier.
     function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported);
