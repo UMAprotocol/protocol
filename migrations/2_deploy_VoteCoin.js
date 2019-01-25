@@ -99,7 +99,7 @@ module.exports = function(deployer, network, accounts) {
         return DerivativeCreator.deployed();
       })
       .then(derivativeCreator => {
-        return registry.addContractCreator(derivativeCreator.address);
+        return registry.addDerivativeCreator(derivativeCreator.address);
       })
       .then(() => {
         return deployer.deploy(
@@ -114,7 +114,7 @@ module.exports = function(deployer, network, accounts) {
         return TokenizedDerivativeCreator.deployed();
       })
       .then(tokenizedDerivativeCreator => {
-        return registry.addContractCreator(tokenizedDerivativeCreator.address);
+        return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
       })
       .then(() => {
         return deployer.deploy(NoLeverage);
@@ -135,7 +135,7 @@ module.exports = function(deployer, network, accounts) {
         return DerivativeCreator.deployed();
       })
       .then(derivativeCreator => {
-        return registry.addContractCreator(derivativeCreator.address);
+        return registry.addDerivativeCreator(derivativeCreator.address);
       })
       .then(() => {
         return deployer.deploy(
@@ -150,7 +150,7 @@ module.exports = function(deployer, network, accounts) {
         return TokenizedDerivativeCreator.deployed();
       })
       .then(tokenizedDerivativeCreator => {
-        return registry.addContractCreator(tokenizedDerivativeCreator.address);
+        return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
       })
       .then(() => {
         return deployer.deploy(NoLeverage);
