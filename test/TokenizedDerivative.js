@@ -924,9 +924,10 @@ contract("TokenizedDerivative", function(accounts) {
       const priceReturn = web3.utils.toBN(web3.utils.toWei("1.3", "ether"));
       const expectedNav = computeNewNav(actualNav, priceReturn, feesPerInterval);
       const changeInNav = expectedNav.sub(actualNav);
+      const expectedOracleFee = computeExpectedOracleFees(actualNav);
       actualNav = await derivativeContract.nav();
       const expectedInvestorAccountBalance = longBalance.add(changeInNav);
-      const expectedSponsorAccountBalance = shortBalance.sub(changeInNav);
+      const expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = await derivativeContract.longBalance();
       shortBalance = await derivativeContract.shortBalance();
       assert.equal(actualNav.toString(), expectedNav.toString());
