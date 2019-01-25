@@ -8,6 +8,7 @@ pragma solidity ^0.5.0;
 import "./ReturnCalculatorInterface.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 
+
 contract LeveragedReturnCalculator is ReturnCalculatorInterface {
     using SignedSafeMath for int;
 
@@ -17,7 +18,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface {
     // 2 -> 2x levered long
     // -1 -> unlevered short
     // -2 -> 2x levered short
-    int leverage;
+    int public leverage;
 
     constructor(int _leverage) public {
         leverage = _leverage;
