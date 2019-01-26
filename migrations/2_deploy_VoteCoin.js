@@ -13,150 +13,46 @@ const enableControllableTiming = network => {
     network === "develop" ||
     network === "development" ||
     network === "ci" ||
-    network === "coverage" ||
-    network === "app"
+    network === "coverage"
   );
 };
 
-const isDerivativeDemo = network => {
-  return network == "derivative_demo" || network == "derivative_demo_ropsten" || network == "derivative_demo_mainnet";
-};
+const deployAndGet = async (deployer, contractType, ...args) => {
+  await deployer.deploy(contractType, ...args);
+  return await contractType.deployed();
+}
 
-const shouldUseMockOracle = network => {
-  return (
-    network === "test" ||
-    network === "ci" ||
-    network === "coverage" ||
-    network == "derivative_demo" ||
-    network == "derivative_demo_ropsten" ||
-    network == "derivative_demo_mainnet"
+module.exports = async function(deployer, network, accounts) {
+  const controllableTiming = enableControllableTiming(network);
+
+  // Deploy single-instantiation (singleton) contracts.
+  const registry = await deployAndGet(deployer, Registry);
+  const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, controllableTiming);
+  const manualPriceFeed = await deployAndGet(deployer, ManualPriceFeed, controllableTiming);
+  const centralizedStore = await deployAndGet(deployer, CentralizedStore, controllableTiming);
+
+  // Deploy derivative creators.
+  const derivativeCreator = await deployAndGet(deployer, 
+    DerivativeCreator,
+    registry.address,
+    centralizedOracle.address,
+    centralizedStore.address,
+    manualPriceFeed.address
   );
-};
+  const tokenizedDerivativeCreator = await deployAndGet(deployer, 
+    TokenizedDerivativeCreator,
+    registry.address,
+    centralizedOracle.address,
+    centralizedStore.address,
+    manualPriceFeed.address
+  );
 
-module.exports = function(deployer, network, accounts) {
-  let oracleAddress;
-  let storeAddress;
-  let priceFeedAddress;
-  let registry;
-  if (isDerivativeDemo(network)) {
-    deployer
-      .then(() => {
-        return Registry.deployed();
-      })
-      .then(deployedRegistry => {
-        registry = deployedRegistry;
-        return deployer.deploy(TokenizedDerivativeCreator, registry.address, oracleAddress, priceFeedAddress, {
-          from: accounts[0],
-          value: 0
-        });
-      })
-      .then(() => {
-        return TokenizedDerivativeCreator.deployed();
-      })
-      .then(tokenizedDerivativeCreator => {
-        return registry.addContractCreator(tokenizedDerivativeCreator.address);
-      })
-      .then(() => {
-        return deployer.deploy(Leveraged2x);
-      })
-      .then(() => {
-        return Leveraged2x.deployed();
-      });
-  } else if (shouldUseMockOracle(network)) {
-    deployer
-      .then(() => {
-        return deployer.deploy(ManualPriceFeed, enableControllableTiming(network));
-      })
-      .then(manualPriceFeed => {
-        priceFeedAddress = manualPriceFeed.address;
-        return ManualPriceFeed.deployed();
-      })
-      .then(() => {
-        return deployer.deploy(CentralizedOracle, enableControllableTiming(network));
-      })
-      .then(centralizedOracle => {
-        oracleAddress = centralizedOracle.address;
-        return CentralizedOracle.deployed();
-      })
-      .then(() => {
-        return deployer.deploy(CentralizedStore, enableControllableTiming(network));
-      })
-      .then(centralizedStore => {
-        storeAddress = centralizedStore.address;
-        return CentralizedStore.deployed();
-      })
-      .then(() => {
-        return deployer.deploy(Registry, oracleAddress, { from: accounts[0], value: 0 });
-      })
-      .then(() => {
-        return Registry.deployed();
-      })
-      .then(deployedRegistry => {
-        registry = deployedRegistry;
-        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, storeAddress, priceFeedAddress);
-      })
-      .then(() => {
-        return DerivativeCreator.deployed();
-      })
-      .then(derivativeCreator => {
-        return registry.addDerivativeCreator(derivativeCreator.address);
-      })
-      .then(() => {
-        return deployer.deploy(
-          TokenizedDerivativeCreator,
-          registry.address,
-          oracleAddress,
-          storeAddress,
-          priceFeedAddress
-        );
-      })
-      .then(() => {
-        return TokenizedDerivativeCreator.deployed();
-      })
-      .then(tokenizedDerivativeCreator => {
-        return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
-      })
-      .then(() => {
-        return deployer.deploy(NoLeverage);
-      })
-      .then(() => {
-        return NoLeverage.deployed();
-      });
-  } else {
-    deployer
-      .then(() => {
-        return Registry.deployed();
-      })
-      .then(deployedRegistry => {
-        registry = deployedRegistry;
-        return deployer.deploy(DerivativeCreator, registry.address, oracleAddress, priceFeedAddress);
-      })
-      .then(() => {
-        return DerivativeCreator.deployed();
-      })
-      .then(derivativeCreator => {
-        return registry.addDerivativeCreator(derivativeCreator.address);
-      })
-      .then(() => {
-        return deployer.deploy(
-          TokenizedDerivativeCreator,
-          registry.address,
-          oracleAddress,
-          storeAddress,
-          priceFeedAddress
-        );
-      })
-      .then(() => {
-        return TokenizedDerivativeCreator.deployed();
-      })
-      .then(tokenizedDerivativeCreator => {
-        return registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
-      })
-      .then(() => {
-        return deployer.deploy(NoLeverage);
-      })
-      .then(() => {
-        return NoLeverage.deployed();
-      });
-  }
+  // Deploy return calculators.
+  // Note: we don't use deployAndGet() here because we don't need the addresses elsewhere.
+  await deployer.deploy(NoLeverage);
+  await deployer.deploy(Leveraged2x);
+
+  // Add creator contracts to the registry.
+  await registry.addDerivativeCreator(derivativeCreator.address);
+  await registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
 };
