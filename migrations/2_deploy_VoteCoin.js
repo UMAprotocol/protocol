@@ -20,7 +20,7 @@ const enableControllableTiming = network => {
 const deployAndGet = async (deployer, contractType, ...args) => {
   await deployer.deploy(contractType, ...args);
   return await contractType.deployed();
-}
+};
 
 module.exports = async function(deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
@@ -32,14 +32,16 @@ module.exports = async function(deployer, network, accounts) {
   const centralizedStore = await deployAndGet(deployer, CentralizedStore, controllableTiming);
 
   // Deploy derivative creators.
-  const derivativeCreator = await deployAndGet(deployer, 
+  const derivativeCreator = await deployAndGet(
+    deployer,
     DerivativeCreator,
     registry.address,
     centralizedOracle.address,
     centralizedStore.address,
     manualPriceFeed.address
   );
-  const tokenizedDerivativeCreator = await deployAndGet(deployer, 
+  const tokenizedDerivativeCreator = await deployAndGet(
+    deployer,
     TokenizedDerivativeCreator,
     registry.address,
     centralizedOracle.address,
