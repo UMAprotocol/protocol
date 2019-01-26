@@ -1,8 +1,7 @@
-const HDWalletProvider = require('truffle-hdwallet-provider')
-const mnemonic = (process.env.MNEMONIC
+const HDWalletProvider = require("truffle-hdwallet-provider");
+const mnemonic = process.env.MNEMONIC
   ? process.env.MNEMONIC
-  : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat");
-
+  : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
 
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
@@ -46,16 +45,16 @@ module.exports = {
       gas: 6720000
     },
     derivative_demo_ropsten: {
-      provider: new HDWalletProvider(mnemonic, 'https://ropsten.infura.io/v3/38504d9908d94d93a7692eaa900da084', 0, 2),
-      network_id: '*',
+      provider: new HDWalletProvider(mnemonic, "https://ropsten.infura.io/v3/38504d9908d94d93a7692eaa900da084", 0, 2),
+      network_id: "*",
       gas: 6720000,
-      gasPrice: 20000000000,
+      gasPrice: 20000000000
     },
     derivative_demo_mainnet: {
-      provider: new HDWalletProvider(mnemonic, 'https://mainnet.infura.io/v3/38504d9908d94d93a7692eaa900da084', 0, 2),
-      network_id: '*',
+      provider: new HDWalletProvider(mnemonic, "https://mainnet.infura.io/v3/38504d9908d94d93a7692eaa900da084", 0, 2),
+      network_id: "*",
       gas: 6720000,
-      gasPrice: 20000000000,
+      gasPrice: 20000000000
     }
   }
 };
