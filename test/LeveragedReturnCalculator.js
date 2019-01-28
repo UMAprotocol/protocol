@@ -32,14 +32,14 @@ contract("LeveragedReturnCalculator", function(accounts) {
     );
     assert.equal(zeroStartingPrice.toString(), "0");
 
-    // Sign flip on price causes a negative return.
+    // Loss of 2x the value -> -100% return.
     const negativeReturn = await returnCalculator.computeReturn(
       web3.utils.toWei("1", "ether"),
       web3.utils.toWei("-1", "ether")
     );
     assert.equal(negativeReturn.toString(), web3.utils.toWei("-1", "ether"));
 
-    // Increase in magnitude causes a positive return.
+    // Decrease in value causes a negative return.
     const allNegativeInputs = await returnCalculator.computeReturn(
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
@@ -85,7 +85,7 @@ contract("LeveragedReturnCalculator", function(accounts) {
     );
     assert.equal(negativeReturn.toString(), web3.utils.toWei("-3", "ether"));
 
-    // Increase in magnitude causes a 2x positive return on the difference.
+    // Decrease in value causes a 2x negative return on the difference.
     const allNegativeInputs = await returnCalculator.computeReturn(
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
@@ -131,7 +131,7 @@ contract("LeveragedReturnCalculator", function(accounts) {
     );
     assert.equal(negativeReturn.toString(), web3.utils.toWei("3", "ether"));
 
-    // Increase in magnitude causes a negative return on the difference for a short.
+    // Decrease in value causes a positive return for a short.
     const allNegativeInputs = await returnCalculator.computeReturn(
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
@@ -177,7 +177,7 @@ contract("LeveragedReturnCalculator", function(accounts) {
     );
     assert.equal(negativeReturn.toString(), web3.utils.toWei("5", "ether"));
 
-    // Increase in magnitude causes a 2x negative return on the difference for a short.
+    // Decrease in value causes a 2x negative return for a short.
     const allNegativeInputs = await returnCalculator.computeReturn(
       web3.utils.toWei("-1", "ether"),
       web3.utils.toWei("-2", "ether")
