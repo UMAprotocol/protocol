@@ -33,8 +33,8 @@ contract("TokenizedDerivative", function(accounts) {
   const thirdParty = accounts[3];
   const apDelegate = accounts[4];
 
-  const name = "2x Levered Bitcoin-Ether";
-  const symbol = "2XBCE";
+  const name = "1x Bitcoin-Ether";
+  const symbol = "BTCETH";
 
   // The ManualPriceFeed can support prices at arbitrary intervals, but for convenience, we send updates at this
   // interval.
