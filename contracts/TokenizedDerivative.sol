@@ -83,8 +83,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     }
 
     // Note: these variables are to give ERC20 consumers information about the token.
-    string public constant name = "2x Levered Bitcoin-Ether"; // solhint-disable-line const-name-snakecase
-    string public constant symbol = "2XBCE"; // solhint-disable-line const-name-snakecase
+    string public name;
+    string public symbol;
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     // Fixed contract parameters.
@@ -169,8 +169,12 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _;
     }
 
+    // TODO(ptare): Adding name and symbol to ConstructorParams causes the transaction to always revert without a useful
+    // error message. Need to investigate this issue more.
     constructor(
-        TokenizedDerivativeParams.ConstructorParams memory params
+        TokenizedDerivativeParams.ConstructorParams memory params,
+        string memory _name,
+        string memory _symbol
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(params.defaultPenalty <= params.requiredMargin);
@@ -201,6 +205,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         product = params.product;
         fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
         disputeDeposit = params.disputeDeposit;
+        name = _name;
+        symbol = _symbol;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
@@ -644,6 +650,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint expiry;
         address marginCurrency;
         uint withdrawLimit; // Percentage of shortBalance * 10^18
+        string name;
+        string symbol;
     }
 
     constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
@@ -656,7 +664,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         public
         returns (address derivativeAddress)
     {
-        TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params));
+        TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params), params.name, params.symbol);
 
         address[] memory parties = new address[](1);
         parties[0] = params.sponsor;
