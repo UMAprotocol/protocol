@@ -2,7 +2,7 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
-const NoLeverage = artifacts.require("NoLeverage");
+const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
@@ -171,7 +171,7 @@ contract("CentralizedOracle", function(accounts) {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Admin"));
     const manualPriceFeed = await ManualPriceFeed.deployed();
     const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
-    const noLeverageCalculator = await NoLeverage.deployed();
+    const noLeverageCalculator = await LeveragedReturnCalculator.deployed();
 
     await centralizedOracle.addSupportedIdentifier(identifierBytes);
     await manualPriceFeed.setCurrentTime(500);
