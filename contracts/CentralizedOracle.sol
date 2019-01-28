@@ -9,6 +9,7 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./AdminInterface.sol";
 import "./OracleInterface.sol";
 import "./Testable.sol";
 
@@ -101,6 +102,18 @@ contract CentralizedOracle is OracleInterface, Ownable, Testable {
     // Adds the provided identifier as a supported identifier.
     function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
         supportedIdentifiers[identifier] = true;
+    }
+
+    // Calls emergencyShutdown() on the provided derivative.
+    function callEmergencyShutdown(address derivative) external onlyOwner {
+        AdminInterface admin = AdminInterface(derivative);
+        admin.emergencyShutdown();
+    }
+
+    // Calls remargin() on the provided derivative.
+    function callRemargin(address derivative) external onlyOwner {
+        AdminInterface admin = AdminInterface(derivative);
+        admin.remargin();
     }
 
     // Gets the queries that still need verified prices.

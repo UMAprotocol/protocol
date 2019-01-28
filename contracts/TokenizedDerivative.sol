@@ -7,6 +7,7 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./AdminInterface.sol";
 import "./ContractCreator.sol";
 import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
@@ -41,7 +42,7 @@ library TokenizedDerivativeParams {
 
 
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
-contract TokenizedDerivative is ERC20 {
+contract TokenizedDerivative is ERC20, AdminInterface {
     using SafeMath for uint;
     using SignedSafeMath for int;
 
