@@ -7,45 +7,17 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./AdminInterface.sol";
+import "./ContractCreator.sol";
+import "./OracleInterface.sol";
+import "./PriceFeedInterface.sol";
+import "./ReturnCalculatorInterface.sol";
+import "./StoreInterface.sol";
+
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "./AdminInterface.sol";
-import "./ContractCreator.sol";
-import "./PriceFeedInterface.sol";
-import "./OracleInterface.sol";
-import "./StoreInterface.sol";
-
-
-contract ReturnCalculator {
-    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn);
-}
-
-
-contract Leveraged2x is ReturnCalculator {
-    using SignedSafeMath for int;
-
-    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
-        // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
-        int underlyingAssetReturn = newOraclePrice.mul(1 ether).div(oldOraclePrice);
-
-        // Compute the RoR of the underlying asset and multiply by 2 to add the leverage.
-        int leveragedRor = underlyingAssetReturn.sub(1 ether).mul(2);
-
-        // Add 1 (ether) to the leveraged RoR to get the return.
-        return leveragedRor.add(1 ether);
-    }
-}
-
-
-contract NoLeverage is ReturnCalculator {
-    using SignedSafeMath for int;
-
-    function computeReturn(int oldOraclePrice, int newOraclePrice) external view returns (int assetReturn) {
-        return newOraclePrice.mul(1 ether).div(oldOraclePrice);
-    }
-}
 
 
 library TokenizedDerivativeParams {
@@ -134,7 +106,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     OracleInterface public oracle;
     StoreInterface public store;
     PriceFeedInterface public priceFeed;
-    ReturnCalculator public returnCalculator;
+    ReturnCalculatorInterface public returnCalculator;
     IERC20 public marginCurrency;
 
     State public state;
@@ -222,7 +194,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
 
         sponsor = params.sponsor;
         admin = params.admin;
-        returnCalculator = ReturnCalculator(params.returnCalculator);
+        returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
 
         // Contract parameters.
         defaultPenalty = params.defaultPenalty;
@@ -502,9 +474,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     }
 
     function _settleVerifiedPrice() private {
-        (uint timeForPrice, int oraclePrice, ) = oracle.getPrice(product, endTime);
-        require(timeForPrice != 0);
-
+        int oraclePrice = oracle.getPrice(product, endTime);
         _settle(oraclePrice);
     }
 
@@ -614,8 +584,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         }
 
     function _requestOraclePrice(uint requestedTime) private {
-        (uint time, , ) = oracle.getPrice(product, requestedTime);
-        if (time != 0) {
+        uint expectedTime = oracle.requestPrice(product, requestedTime);
+        if (expectedTime == 0) {
             // The Oracle price is already available, settle the contract right away.
             settle();
         }
@@ -631,13 +601,15 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         private
         view
         returns (TokenState memory newTokenState) {
+
             int underlyingReturn = returnCalculator.computeReturn(
                 beginningTokenState.underlyingPrice, latestUnderlyingPrice);
             int tokenReturn = underlyingReturn.sub(
                 int(fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time))));
+            int tokenMultiplier = tokenReturn.add(1 ether);
             int newTokenPrice = 0;
-            if (tokenReturn > 0) {
-                newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, uint(tokenReturn));
+            if (tokenMultiplier > 0) {
+                newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, uint(tokenMultiplier));
             }
             newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
         }

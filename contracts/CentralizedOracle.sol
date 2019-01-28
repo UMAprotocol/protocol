@@ -62,29 +62,24 @@ contract CentralizedOracle is OracleInterface, Ownable, Testable {
         registry = RegistryInterface(_registry);
     }
 
-    // Gets the price if available, else enqueues a request (if a request isn't already present).
-    function getPrice(bytes32 identifier, uint time)
-        external
-        returns (uint timeForPrice, int price, uint verifiedTime)
-    {
-        require(supportedIdentifiers[identifier]);
-
+    // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
+    function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
         // Ensure that the caller has been registered with the Oracle before processing the request.
         require(registry.isDerivativeRegistered(msg.sender));
-
+        require(supportedIdentifiers[identifier]);
         Price storage lookup = verifiedPrices[identifier][time];
         if (lookup.isAvailable) {
-            // We already have a price, return it.
-            return (time, lookup.price, lookup.verifiedTime);
+            // We already have a price, return 0 to indicate that.
+            return 0;
         } else if (queryIndices[identifier][time].isValid) {
             // We already have a pending query, don't need to do anything.
-            return (0, 0, getCurrentTime().add(SECONDS_IN_WEEK));
+            return getCurrentTime().add(SECONDS_IN_WEEK);
         } else {
             // New query, enqueue it for review.
             queryIndices[identifier][time] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(identifier, time));
             emit VerifiedPriceRequested(identifier, time);
-            return (0, 0, getCurrentTime().add(SECONDS_IN_WEEK));
+            return getCurrentTime().add(SECONDS_IN_WEEK);
         }
     }
 
@@ -123,6 +118,16 @@ contract CentralizedOracle is OracleInterface, Ownable, Testable {
     function callRemargin(address derivative) external onlyOwner {
         AdminInterface admin = AdminInterface(derivative);
         admin.remargin();
+    }
+
+    // Gets a price that has already been resolved.
+    function getPrice(bytes32 identifier, uint time) external view returns (int price) {
+        // Ensure that the caller has been registered with the Oracle before processing the request.
+        require(registry.isDerivativeRegistered(msg.sender));
+        require(supportedIdentifiers[identifier]);
+        Price storage lookup = verifiedPrices[identifier][time];
+        require(lookup.isAvailable);
+        return lookup.price;
     }
 
     // Gets the queries that still need verified prices.

@@ -279,9 +279,9 @@ contract Derivative is AdminInterface {
     }
 
     function _requestOraclePrice() internal {
-        (uint oracleTime, , ) = oracle.getPrice(product, endTime);
+        uint expectedTime = oracle.requestPrice(product, endTime);
         // If the Oracle price is already available, settle the contract immediately with that price.
-        if (oracleTime != 0) {
+        if (expectedTime == 0) {
             settle();
         }
     }
@@ -326,8 +326,7 @@ contract Derivative is AdminInterface {
     }
 
     function _settleVerifiedPrice() internal {
-        (uint oracleTime, int oraclePrice, ) = oracle.getPrice(product, endTime);
-        require(oracleTime != 0);
+        int oraclePrice = oracle.getPrice(product, endTime);
         _settle(oraclePrice);
     }
 
