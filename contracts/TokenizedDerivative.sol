@@ -11,6 +11,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "./AdminInterface.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
 import "./OracleInterface.sol";
@@ -69,7 +70,7 @@ library TokenizedDerivativeParams {
 
 
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
-contract TokenizedDerivative is ERC20 {
+contract TokenizedDerivative is ERC20, AdminInterface {
     using SafeMath for uint;
     using SignedSafeMath for int;
 

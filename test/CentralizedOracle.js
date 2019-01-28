@@ -1,7 +1,11 @@
 const { didContractThrow } = require("./utils/DidContractThrow.js");
 
 const CentralizedOracle = artifacts.require("CentralizedOracle");
+const ManualPriceFeed = artifacts.require("ManualPriceFeed");
+const NoLeverage = artifacts.require("NoLeverage");
 const Registry = artifacts.require("Registry");
+const TokenizedDerivative = artifacts.require("TokenizedDerivative");
+const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const BigNumber = require("bignumber.js");
 
 contract("CentralizedOracle", function(accounts) {
@@ -167,6 +171,54 @@ contract("CentralizedOracle", function(accounts) {
     // No pending queries.
     pendingQueries = await centralizedOracle.getPendingQueries();
     assert.equal(pendingQueries.length, 0);
+  });
+
+  it("Admin", async function() {
+    // Initialize a TokenizedDerivative for this test case.
+    const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Admin"));
+    const manualPriceFeed = await ManualPriceFeed.deployed();
+    const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
+    const noLeverageCalculator = await NoLeverage.deployed();
+
+    await centralizedOracle.addSupportedIdentifier(identifierBytes);
+    await manualPriceFeed.setCurrentTime(500);
+    await manualPriceFeed.pushLatestPrice(identifierBytes, 450, web3.utils.toWei("1", "ether"));
+
+    const constructorParams = {
+      sponsor: owner,
+      admin: centralizedOracle.address,
+      defaultPenalty: web3.utils.toWei("0.05", "ether"),
+      requiredMargin: web3.utils.toWei("0.1", "ether"),
+      product: identifierBytes,
+      fixedYearlyFee: web3.utils.toWei("0.01", "ether"),
+      disputeDeposit: web3.utils.toWei("0.05", "ether"),
+      returnCalculator: noLeverageCalculator.address,
+      startingTokenPrice: web3.utils.toWei("1", "ether"),
+      expiry: "0",
+      marginCurrency: "0x0000000000000000000000000000000000000000",
+      withdrawLimit: web3.utils.toWei("0.33", "ether")
+    };
+    await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: owner });
+    const deployedRegistry = await Registry.deployed();
+    const derivativeArray = await deployedRegistry.getRegisteredDerivatives(owner);
+    const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
+    const derivativeContract = await TokenizedDerivative.at(derivativeAddress);
+
+    assert.equal(await derivativeContract.state(), "0");
+    assert.equal((await derivativeContract.currentTokenState()).time, "450");
+
+    // Only the owner of the Oracle can use these methods.
+    assert(await didContractThrow(centralizedOracle.callEmergencyShutdown(derivativeContract, { from: rando })));
+    assert(await didContractThrow(centralizedOracle.callRemargin(derivativeContract, { from: rando })));
+
+    // Verify that the Oracle passes on remargin() to the derivative.
+    await manualPriceFeed.pushLatestPrice(identifierBytes, 475, web3.utils.toWei("1", "ether"));
+    await centralizedOracle.callRemargin(derivativeAddress);
+    assert.equal((await derivativeContract.currentTokenState()).time, "475");
+
+    // Verify that the Oracle passes on emergencyShutdown() to the derivative.
+    await centralizedOracle.callEmergencyShutdown(derivativeAddress);
+    assert.equal(await derivativeContract.state(), "4");
   });
 
   it("Non owner", async function() {
