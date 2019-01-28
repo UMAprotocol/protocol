@@ -9,7 +9,8 @@ pragma solidity ^0.5.0;
 interface OracleInterface {
     // Returns an Oracle-verified price for identifier if available, otherwise returns `timeForPrice`=0 and a
     // `verifiedTime` that corresponds to the next voting period after which a verified price will be available. If no
-    // verified price will ever be available, returns `verifiedTime`=first Ethereum time.
+    // verified price will ever be available, returns `verifiedTime`=first Ethereum time. Only contracts registered
+    // in the Registry are authorized to call this method.
     function getPrice(bytes32 identifier, uint time) external returns (uint timeForPrice, int price, uint verifiedTime);
 
     // Returns whether the Oracle provides verified prices for the given identifier.
