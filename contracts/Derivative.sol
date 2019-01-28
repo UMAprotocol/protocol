@@ -9,12 +9,13 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
+import "./AdminInterface.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
 import "./OracleInterface.sol";
 
 
-contract Derivative {
+contract Derivative is AdminInterface {
     using SafeMath for uint;
     using SignedSafeMath for int;
 
@@ -188,6 +189,11 @@ contract Derivative {
         // to return
         withdrawer.balance = withdrawer.balance.sub(int(amount));
         withdrawer.accountAddress.transfer(amount);
+    }
+
+    function emergencyShutdown() external {
+        // This contract doesn't support emergencyShutdown().
+        revert();
     }
 
     function requiredAccountBalanceOnRemargin() external view returns (int balance) {
