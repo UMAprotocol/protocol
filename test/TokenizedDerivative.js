@@ -3,7 +3,7 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const CentralizedStore = artifacts.require("CentralizedStore");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
-const NoLeverage = artifacts.require("NoLeverage");
+const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
@@ -48,7 +48,7 @@ contract("TokenizedDerivative", function(accounts) {
     deployedCentralizedStore = await CentralizedStore.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
-    noLeverageCalculator = await NoLeverage.deployed();
+    noLeverageCalculator = await LeveragedReturnCalculator.deployed();
 
     // Create an arbitrary ERC20 margin token.
     marginToken = await ERC20Mintable.new({ from: sponsor });

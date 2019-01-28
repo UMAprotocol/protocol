@@ -4,8 +4,7 @@ const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
-const Leveraged2x = artifacts.require("Leveraged2x");
-const NoLeverage = artifacts.require("NoLeverage");
+const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 
 const enableControllableTiming = network => {
   return (
@@ -49,10 +48,9 @@ module.exports = async function(deployer, network, accounts) {
     manualPriceFeed.address
   );
 
-  // Deploy return calculators.
-  // Note: we don't use deployAndGet() here because we don't need the addresses elsewhere.
-  await deployer.deploy(NoLeverage);
-  await deployer.deploy(Leveraged2x);
+  // Deploy return calculator.
+  // Note: we don't use deployAndGet() here because we don't need the address elsewhere.
+  await deployer.deploy(LeveragedReturnCalculator, 1);
 
   // Add creator contracts to the registry.
   await registry.addDerivativeCreator(derivativeCreator.address);
