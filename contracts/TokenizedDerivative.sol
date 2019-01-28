@@ -197,6 +197,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _;
     }
 
+    // TODO(ptare): Adding name and symbol to ConstructorParams causes the transaction to always revert without a useful
+    // error message. Need to investigate this issue more.
     constructor(
         TokenizedDerivativeParams.ConstructorParams memory params,
         string memory _name,
