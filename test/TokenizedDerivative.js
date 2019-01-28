@@ -33,6 +33,9 @@ contract("TokenizedDerivative", function(accounts) {
   const thirdParty = accounts[3];
   const apDelegate = accounts[4];
 
+  const name = "2x Levered Bitcoin-Ether";
+  const symbol = "2XBCE";
+
   // The ManualPriceFeed can support prices at arbitrary intervals, but for convenience, we send updates at this
   // interval.
   const priceFeedUpdatesInterval = 60;
@@ -125,7 +128,9 @@ contract("TokenizedDerivative", function(accounts) {
         startingTokenPrice: web3.utils.toWei("1", "ether"),
         expiry: expiry.toString(),
         marginCurrency: marginTokenAddress(),
-        withdrawLimit: web3.utils.toWei("0.33", "ether")
+        withdrawLimit: web3.utils.toWei("0.33", "ether"),
+        name: name,
+        symbol: symbol
       };
 
       await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: sponsor });
@@ -174,6 +179,9 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Default -> Settled (confirmed)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
+
+      assert.equal(await derivativeContract.name(), name);
+      assert.equal(await derivativeContract.symbol(), symbol);
 
       let state = await derivativeContract.state();
       let tokensOutstanding = await derivativeContract.totalSupply();
@@ -1053,7 +1061,10 @@ contract("TokenizedDerivative", function(accounts) {
         startingTokenPrice: web3.utils.toWei("1", "ether"),
         expiry: "0",
         marginCurrency: marginTokenAddress(),
-        withdrawLimit: web3.utils.toWei("0.33", "ether")
+        withdrawLimit: web3.utils.toWei("0.33", "ether"),
+        // name: web3.utils.utf8ToHex("2x Levered Bitcoin-Ether"),
+        name: "2x Levered Bitcoin-Ether",
+        symbol: web3.utils.utf8ToHex("2XBCE")
       };
 
       // Verify that the defaults work.
