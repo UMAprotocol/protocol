@@ -560,6 +560,16 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         }
     }
 
+    function calcNAV() external view returns (int navNew) {
+        require(state == State.Live);
+
+        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
+        require(latestTime != 0);
+        require(latestTime < endTime);
+        TokenState memory a = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
+        navNew = _computeNavFromTokenPrice(a.tokenPrice);
+    }
+
     function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
         prevTokenState = currentTokenState;
         currentTokenState = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
@@ -609,7 +619,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
             int tokenMultiplier = tokenReturn.add(1 ether);
             int newTokenPrice = 0;
             if (tokenMultiplier > 0) {
-                newTokenPrice = _takePercentage(prevTokenState.tokenPrice, uint(tokenMultiplier));
+                newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, uint(tokenMultiplier));
             }
             newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
         }
