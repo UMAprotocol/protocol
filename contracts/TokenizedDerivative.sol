@@ -233,8 +233,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         product = params.product;
         fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
         disputeDeposit = params.disputeDeposit;
-        symbol = _symbol;
         name = _name;
+        symbol = _symbol;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
