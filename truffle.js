@@ -33,12 +33,6 @@ module.exports = {
       network_id: "*",
       gas: 6720000
     },
-    app: {
-      host: "35.211.70.170",
-      port: 63202,
-      network_id: "*",
-      gas: 6720000
-    },
     derivative_demo: {
       host: "127.0.0.1",
       port: 9545,
