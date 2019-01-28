@@ -474,9 +474,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     }
 
     function _settleVerifiedPrice() private {
-        (uint timeForPrice, int oraclePrice, ) = oracle.getPrice(product, endTime);
-        require(timeForPrice != 0);
-
+        int oraclePrice = oracle.getPrice(product, endTime);
         _settle(oraclePrice);
     }
 
@@ -586,8 +584,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         }
 
     function _requestOraclePrice(uint requestedTime) private {
-        (uint time, , ) = oracle.getPrice(product, requestedTime);
-        if (time != 0) {
+        uint expectedTime = oracle.requestPrice(product, requestedTime);
+        if (expectedTime == 0) {
             // The Oracle price is already available, settle the contract right away.
             settle();
         }

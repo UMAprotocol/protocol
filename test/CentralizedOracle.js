@@ -41,25 +41,25 @@ contract("CentralizedOracle", function(accounts) {
     let pendingQueries = await centralizedOracle.getPendingQueries();
     assert.equal(pendingQueries.length, 0);
 
-    // Enqueue the request for a price, and verify that `timeForPrice`=0.
+    // Enqueue the request for a price.
     let currentTime = 100;
     await centralizedOracle.setCurrentTime(currentTime);
-    let getPriceResult = await centralizedOracle.getPrice.call(identifierBytes, firstTime);
-    await centralizedOracle.getPrice(identifierBytes, firstTime);
-    assert.equal(getPriceResult.timeForPrice, 0);
-    assert.equal(getPriceResult.verifiedTime, currentTime + oraclePriceDelay);
+    let expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, firstTime);
+    await centralizedOracle.requestPrice(identifierBytes, firstTime);
+    assert.equal(expectedTime, currentTime + oraclePriceDelay);
 
-    // Check that the query is pending.
+    // Check that the query is pending. Trying to get the price should revert.
     pendingQueries = await centralizedOracle.getPendingQueries();
     assert.equal(pendingQueries.length, 1);
+    assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, firstTime)));
 
-    // Enqueue the second request for a price, and verify that `timeForPrice`=0.
+    // Enqueue the second request for a price.
     currentTime = 5000;
     await centralizedOracle.setCurrentTime(currentTime);
-    getPriceResult = await centralizedOracle.getPrice.call(identifierBytes, secondTime);
-    await centralizedOracle.getPrice(identifierBytes, secondTime);
-    assert.equal(getPriceResult.timeForPrice, 0);
-    assert.equal(getPriceResult.verifiedTime, currentTime + oraclePriceDelay);
+    expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, secondTime);
+    await centralizedOracle.requestPrice(identifierBytes, secondTime);
+    assert.equal(expectedTime, currentTime + oraclePriceDelay);
+    assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, secondTime)));
 
     // Check that both queries are pending.
     pendingQueries = await centralizedOracle.getPendingQueries();
@@ -70,12 +70,11 @@ contract("CentralizedOracle", function(accounts) {
     await centralizedOracle.setCurrentTime(firstPricePushTime);
     await centralizedOracle.pushPrice(identifierBytes, firstTime, price);
 
-    // Get first price.
-    getPriceResult = await centralizedOracle.getPrice.call(identifierBytes, firstTime);
-    await centralizedOracle.getPrice(identifierBytes, firstTime);
-    assert.equal(getPriceResult.timeForPrice, firstTime);
-    assert.equal(getPriceResult.price, price);
-    assert.equal(getPriceResult.verifiedTime, firstPricePushTime);
+    // Get first price, and verify that `requestPrice` indicates that the price is available.
+    expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, firstTime);
+    assert.equal(expectedTime, 0);
+    let oraclePrice = await centralizedOracle.getPrice(identifierBytes, firstTime);
+    assert.equal(oraclePrice, price);
 
     // Check that the second query is pending.
     pendingQueries = await centralizedOracle.getPendingQueries();
@@ -87,18 +86,16 @@ contract("CentralizedOracle", function(accounts) {
     await centralizedOracle.pushPrice(identifierBytes, secondTime, price);
 
     // Get second price.
-    getPriceResult = await centralizedOracle.getPrice.call(identifierBytes, secondTime);
-    await centralizedOracle.getPrice(identifierBytes, secondTime);
-    assert.equal(getPriceResult.timeForPrice, secondTime);
-    assert.equal(getPriceResult.price, price);
-    assert.equal(getPriceResult.verifiedTime, secondPricePushTime);
+    expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, secondTime);
+    assert.equal(expectedTime, 0);
+    oraclePrice = await centralizedOracle.getPrice(identifierBytes, secondTime);
+    assert.equal(oraclePrice, price);
 
     // Get the first price again, just to double check.
-    getPriceResult = await centralizedOracle.getPrice.call(identifierBytes, firstTime);
-    await centralizedOracle.getPrice(identifierBytes, firstTime);
-    assert.equal(getPriceResult.timeForPrice, firstTime);
-    assert.equal(getPriceResult.price, price);
-    assert.equal(getPriceResult.verifiedTime, firstPricePushTime);
+    expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, firstTime);
+    assert.equal(expectedTime, 0);
+    oraclePrice = await centralizedOracle.getPrice(identifierBytes, firstTime);
+    assert.equal(oraclePrice, price);
   });
 
   it("Enqueue queries (two identifiers) > Push > Requery > Push > Requery", async function() {
@@ -118,41 +115,43 @@ contract("CentralizedOracle", function(accounts) {
     let pendingQueries = await centralizedOracle.getPendingQueries();
     assert.equal(pendingQueries.length, 0);
 
-    // Enqueue the request for a price, and verify that `timeForPrice`=0.
-    let getPriceResult = await centralizedOracle.getPrice.call(firstIdentifierBytes, firstTime);
-    await centralizedOracle.getPrice(firstIdentifierBytes, firstTime);
-    assert.equal(getPriceResult.timeForPrice, 0);
+    // Enqueue the request for a price.
+    let currentTime = 100;
+    await centralizedOracle.setCurrentTime(currentTime);
+    let expectedTime = await centralizedOracle.requestPrice.call(firstIdentifierBytes, firstTime);
+    await centralizedOracle.requestPrice(firstIdentifierBytes, firstTime);
+    assert.equal(expectedTime, currentTime + oraclePriceDelay);
 
     // Check that the query is pending
     pendingQueries = await centralizedOracle.getPendingQueries();
     assert.equal(pendingQueries.length, 1);
     assert.equal(pendingQueries[0].time, firstTime);
 
-    // Enqueue a second request for a price, and verify that `timeForPrice`=0.
-    getPriceResult = await centralizedOracle.getPrice.call(secondIdentifierBytes, secondTime);
-    await centralizedOracle.getPrice(secondIdentifierBytes, secondTime);
-    assert.equal(getPriceResult.timeForPrice, 0);
+    // Enqueue a second request for a price.
+    expectedTime = await centralizedOracle.requestPrice.call(secondIdentifierBytes, secondTime);
+    await centralizedOracle.requestPrice(secondIdentifierBytes, secondTime);
+    assert.equal(expectedTime, currentTime + oraclePriceDelay);
 
     // Check that both queries are pending.
     pendingQueries = await centralizedOracle.getPendingQueries();
     assert.equal(pendingQueries.length, 2);
 
     // Prices are still not available, until a price is pushed.
-    getPriceResult = await centralizedOracle.getPrice.call(firstIdentifierBytes, firstTime);
-    await centralizedOracle.getPrice(firstIdentifierBytes, firstTime);
-    assert.equal(getPriceResult.timeForPrice, 0);
-    getPriceResult = await centralizedOracle.getPrice.call(secondIdentifierBytes, secondTime);
-    await centralizedOracle.getPrice(secondIdentifierBytes, secondTime);
-    assert.equal(getPriceResult.timeForPrice, 0);
+    expectedTime = await centralizedOracle.requestPrice.call(firstIdentifierBytes, firstTime);
+    await centralizedOracle.requestPrice(firstIdentifierBytes, firstTime);
+    assert.equal(expectedTime, currentTime + oraclePriceDelay);
+    expectedTime = await centralizedOracle.requestPrice.call(secondIdentifierBytes, secondTime);
+    await centralizedOracle.requestPrice(secondIdentifierBytes, secondTime);
+    assert.equal(expectedTime, currentTime + oraclePriceDelay);
 
     // Push a price for the second identifier.
     await centralizedOracle.pushPrice(secondIdentifierBytes, secondTime, secondPrice);
 
     // Price should now be available.
-    getPriceResult = await centralizedOracle.getPrice.call(secondIdentifierBytes, secondTime);
-    await centralizedOracle.getPrice(secondIdentifierBytes, secondTime);
-    assert.equal(getPriceResult.timeForPrice, secondTime);
-    assert.equal(getPriceResult.price, secondPrice);
+    expectedTime = await centralizedOracle.requestPrice.call(secondIdentifierBytes, secondTime);
+    assert.equal(expectedTime, 0);
+    let oraclePrice = await centralizedOracle.getPrice(secondIdentifierBytes, secondTime);
+    assert.equal(oraclePrice, secondPrice);
 
     // First request is still pending.
     pendingQueries = await centralizedOracle.getPendingQueries();
@@ -163,10 +162,10 @@ contract("CentralizedOracle", function(accounts) {
     await centralizedOracle.pushPrice(firstIdentifierBytes, firstTime, firstPrice);
 
     // Price should now be available.
-    getPriceResult = await centralizedOracle.getPrice.call(firstIdentifierBytes, firstTime);
-    await centralizedOracle.getPrice(firstIdentifierBytes, firstTime);
-    assert.equal(getPriceResult.timeForPrice, firstTime);
-    assert.equal(getPriceResult.price, firstPrice);
+    expectedTime = await centralizedOracle.requestPrice.call(firstIdentifierBytes, firstTime);
+    assert.equal(expectedTime, 0);
+    oraclePrice = await centralizedOracle.getPrice(firstIdentifierBytes, firstTime);
+    assert.equal(oraclePrice, firstPrice);
 
     // No pending queries.
     pendingQueries = await centralizedOracle.getPendingQueries();
@@ -246,7 +245,7 @@ contract("CentralizedOracle", function(accounts) {
 
   it("Unsupported product", async function() {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Unsupported"));
-    assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, 10)));
+    assert(await didContractThrow(centralizedOracle.requestPrice(identifierBytes, 10)));
   });
 
   it("Unregistered Derivative", async function() {
@@ -256,12 +255,12 @@ contract("CentralizedOracle", function(accounts) {
     await centralizedOracle.addSupportedIdentifier(identifierBytes);
 
     // Unregisterd derivatives cannot request prices.
-    assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, 10, { from: rando })));
+    assert(await didContractThrow(centralizedOracle.requestPrice(identifierBytes, 10, { from: rando })));
 
     // Register the derivative with the registry.
     await registry.registerDerivative([], rando, { from: creator });
 
     // Now that the derivative is registered, the price request should work.
-    await centralizedOracle.getPrice(identifierBytes, 10, { from: rando });
+    await centralizedOracle.requestPrice(identifierBytes, 10, { from: rando });
   });
 });
