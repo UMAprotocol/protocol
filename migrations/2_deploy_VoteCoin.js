@@ -26,7 +26,7 @@ module.exports = async function(deployer, network, accounts) {
 
   // Deploy single-instantiation (singleton) contracts.
   const registry = await deployAndGet(deployer, Registry);
-  const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, controllableTiming);
+  const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, registry.address, controllableTiming);
   const manualPriceFeed = await deployAndGet(deployer, ManualPriceFeed, controllableTiming);
   const centralizedStore = await deployAndGet(deployer, CentralizedStore, controllableTiming);
 

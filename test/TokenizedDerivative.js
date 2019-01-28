@@ -60,6 +60,11 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedManualPriceFeed.setCurrentTime(100000);
     await pushPrice(web3.utils.toWei("1", "ether"));
 
+    // Add the owner to the list of registered derivatives so it's allowed to query oracle prices.
+    let creator = accounts[5];
+    await deployedRegistry.addDerivativeCreator(creator);
+    await deployedRegistry.registerDerivative([], ownerAddress, { from: creator });
+
     // Set an Oracle fee.
     await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
   });

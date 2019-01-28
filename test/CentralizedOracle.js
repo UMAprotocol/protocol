@@ -11,14 +11,21 @@ const BigNumber = require("bignumber.js");
 contract("CentralizedOracle", function(accounts) {
   // A deployed instance of the CentralizedOracle contract, ready for testing.
   let centralizedOracle;
+  let registry;
 
   const owner = accounts[0];
   const rando = accounts[1];
+  const creator = accounts[2];
 
   const oraclePriceDelay = 60 * 60 * 24 * 7;
 
   before(async function() {
     centralizedOracle = await CentralizedOracle.deployed();
+
+    // Add creator and register owner as an approved derivative.
+    registry = await Registry.deployed();
+    await registry.addDerivativeCreator(creator, { from: owner });
+    await registry.registerDerivative([], owner, { from: creator });
   });
 
   it("Enqueue queries (two times) > Push > Requery > Push > Request", async function() {
@@ -223,9 +230,6 @@ contract("CentralizedOracle", function(accounts) {
     // Configure the oracle to support the identifiers used in this test, as an owner.
     await centralizedOracle.addSupportedIdentifier(identifierBytes);
 
-    // Request the price, which any contract can do (for now).
-    await centralizedOracle.getPrice(identifierBytes, 10, { from: rando });
-
     // Non-owners can't push prices.
     assert(await didContractThrow(centralizedOracle.pushPrice(identifierBytes, 10, 10, { from: rando })));
   });
@@ -243,5 +247,21 @@ contract("CentralizedOracle", function(accounts) {
   it("Unsupported product", async function() {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Unsupported"));
     assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, 10)));
+  });
+
+  it("Unregistered Derivative", async function() {
+    const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Unregistered"));
+
+    // Configure the oracle to support the identifiers used in this test, as an owner.
+    await centralizedOracle.addSupportedIdentifier(identifierBytes);
+
+    // Unregisterd derivatives cannot request prices.
+    assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, 10, { from: rando })));
+
+    // Register the derivative with the registry.
+    await registry.registerDerivative([], rando, { from: creator });
+
+    // Now that the derivative is registered, the price request should work.
+    await centralizedOracle.getPrice(identifierBytes, 10, { from: rando });
   });
 });
