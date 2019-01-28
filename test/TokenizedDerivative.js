@@ -1062,9 +1062,8 @@ contract("TokenizedDerivative", function(accounts) {
         expiry: "0",
         marginCurrency: marginTokenAddress(),
         withdrawLimit: web3.utils.toWei("0.33", "ether"),
-        // name: web3.utils.utf8ToHex("2x Levered Bitcoin-Ether"),
-        name: "2x Levered Bitcoin-Ether",
-        symbol: web3.utils.utf8ToHex("2XBCE")
+        name: "1x coin",
+        symbol: web3.utils.utf8ToHex("BTCETH")
       };
 
       // Verify that the defaults work.
