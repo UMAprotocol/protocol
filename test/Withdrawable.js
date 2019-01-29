@@ -10,8 +10,6 @@ const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 
 contract("Withdrawable", function(accounts) {
-  // A deployed instance of the CentralizedOracle contract, ready for testing.
-  let withdrawable;
   let token;
 
   const owner = accounts[0];
@@ -19,8 +17,8 @@ contract("Withdrawable", function(accounts) {
 
   before(async function() {
     // Add creator and register owner as an approved derivative.
-    token = await ERC20Mintable.new();
-    await token.mint(rando, web3.utils.toWei("100", "ether"));
+    token = await ERC20Mintable.new({ from: owner });
+    await token.mint(rando, web3.utils.toWei("100", "ether"), {from:owner});
   });
 
   it("Withdraw ERC20", async function() {
@@ -57,15 +55,14 @@ contract("Withdrawable", function(accounts) {
     const withdrawable = await Withdrawable.at(store.address);
 
     // Should only withdraw 0.5 tokens.
-    let startingBalance = web3.utils.toBN(await web3.eth.getBalance(address));
+    let startingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
     await withdrawable.withdraw(web3.utils.toWei("0.5", "ether"));
-    let endingBalance = web3.utils.toBN(await web3.eth.getBalance(address));
-    assert.equal(startingBalance.add(web3.utils.toBN(web3.utils.toWei("0.5", "ether"))).toString(), endingBalance.toString());
+    let endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
+    assert.equal(startingBalance.sub(web3.utils.toBN(web3.utils.toWei("0.5", "ether"))).toString(), endingBalance.toString());
 
     // Withdraw remaining balance.
-    startingBalance = web3.utils.toBN(await web3.eth.getBalance(address));
     await withdrawable.withdraw(web3.utils.toWei("1", "ether"));
-    endingBalance = web3.utils.toBN(await web3.eth.getBalance(address));
-    assert.equal(startingBalance.add(web3.utils.toBN(web3.utils.toWei("1", "ether"))).toString(), endingBalance.toString());
+    endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
+    assert.equal(endingBalance.toString(), "0");
   });
 });
