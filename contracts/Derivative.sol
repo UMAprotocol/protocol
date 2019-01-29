@@ -9,6 +9,7 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./AdminInterface.sol";
 import "./ContractCreator.sol";
 import "./PriceFeedInterface.sol";
@@ -277,6 +278,17 @@ contract Derivative is AdminInterface {
 
         return (inDefault, defaulter, notDefaulter);
     }
+
+    function withdrawUnexpectedErc20(address erc20Address, uint amount) external {
+        // Either party can withdraw unexpected ERC20 tokens.
+        require(msg.sender == maker.accountAddress || msg.sender == taker.accountAddress);
+        IERC20 erc20 = IERC20(erc20Address);
+
+        // Any ERC20 token is withdrawable since the margin currency is always ETH.
+        require(erc20.transfer(msg.sender, amount));
+    }
+
+    // TODO(mrice32): add withdrawUnexpectedEth that allows parties to withdraw ETH that is unaccounted for.
 
     function _requestOraclePrice() internal {
         uint expectedTime = oracle.requestPrice(product, endTime);

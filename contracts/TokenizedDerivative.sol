@@ -16,6 +16,7 @@ import "./StoreInterface.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
@@ -378,6 +379,23 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     function deposit() public payable onlySponsor {
         // Only allow the sponsor to deposit margin.
         _deposit(_pullSentMargin());
+    }
+
+    function withdrawUnexpectedErc20(address erc20Address, uint amount) external onlySponsor {
+        // TODO(mrice32): allow sponsor to withdraw margin currency that is unaccounted for.
+
+        // Sponsor cannot withdraw the margin currency arbitrarily.
+        // Note: contract should not hold any of itself, so that balance IS withdrawable.
+        require(erc20Address != address(marginCurrency));
+        IERC20 erc20 = IERC20(erc20Address);
+        require(erc20.transfer(msg.sender, amount));
+    }
+
+    function withdrawUnexpectedEth(uint amount) external onlySponsor {
+        // This method can only be used if the margin currency is not ETH.
+        // TODO(mrice32): allow sponsor to withdraw margin currency that is unaccounted for.
+        require(address(marginCurrency) != address(0x0));
+        msg.sender.transfer(amount);
     }
 
     function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {

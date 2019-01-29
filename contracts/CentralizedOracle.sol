@@ -13,10 +13,11 @@ import "./AdminInterface.sol";
 import "./OracleInterface.sol";
 import "./RegistryInterface.sol";
 import "./Testable.sol";
+import "./Withdrawable.sol";
 
 
 // Implements an oracle that allows the owner to push prices for queries that have been made.
-contract CentralizedOracle is OracleInterface, Ownable, Testable {
+contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
     using SafeMath for uint;
 
     // This contract doesn't implement the voting routine, and naively indicates that all requested prices will be
