@@ -615,7 +615,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
             int tokenMultiplier = tokenReturn.add(1 ether);
             int newTokenPrice = 0;
             if (tokenMultiplier > 0) {
-                newTokenPrice = _takePercentage(prevTokenState.tokenPrice, uint(tokenMultiplier));
+                newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, uint(tokenMultiplier));
             }
             newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
         }
