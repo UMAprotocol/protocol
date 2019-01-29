@@ -360,6 +360,42 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _requestOraclePrice(endTime);
     }
 
+    // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
+    function calcNAV() external view returns (int navNew) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            currentTokenState, latestUnderlyingPrice, latestTime);
+        navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
+    }
+
+    // Returns the expected value of each the outstanding tokens of the contract using the latest available Price Feed
+    // price.
+    function calcTokenValue() external view returns (int newTokenValue) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            currentTokenState, latestUnderlyingPrice, latestTime);
+        newTokenValue = predictedTokenState.tokenPrice;
+    }
+
+    // Returns the expected balance of the short margin account using the latest available Price Feed price.
+    function calcShortMarginBalance() external view returns (int newShortMarginBalance) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            currentTokenState, latestUnderlyingPrice, latestTime);
+        int navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
+        int longDiff = _getLongNavDiff(navNew);
+
+        uint feeAmount = _computeExpectedOracleFees(currentTokenState.time, latestTime, nav);
+
+        newShortMarginBalance = shortBalance.sub(longDiff).sub(int(feeAmount));
+    }
+
     function settle() public {
         State startingState = state;
         require(startingState == State.Disputed || startingState == State.Expired
@@ -381,8 +417,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     }
 
     function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
-        uint expectedFeeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
-        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
+        uint feeAmount = _computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime, lastTokenNav);
         if (feeAmount == 0) {
             return;
         }
@@ -395,6 +430,15 @@ contract TokenizedDerivative is ERC20, AdminInterface {
             require(marginCurrency.approve(address(store), feeAmount));
             store.payOracleFeesErc20(address(marginCurrency));
         }
+    }
+
+    function _computeExpectedOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav)
+        private
+        view
+        returns (uint feeAmount)
+    {
+        uint expectedFeeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        return (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
     }
 
     function _createTokens(uint navToPurchase) private {
@@ -484,9 +528,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         // If the state is not live, remargining does not make sense.
         require(state == State.Live);
 
+        (uint latestTime, int latestPrice) = _getLatestPrice();
         // Checks whether contract has ended.
-        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
         if (latestTime <= currentTokenState.time) {
             // If the price feed hasn't advanced, remargining should be a no-op.
             return;
@@ -560,68 +603,13 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         }
     }
 
-    function calcNAV() external view returns (int navNew) {
+    function _getLatestPrice() private view returns (uint latestTime, int latestUnderlyingPrice) {
+        // If not live, then we should be using the Oracle not the price feed.
         require(state == State.Live);
 
-        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
+        (latestTime, latestUnderlyingPrice) = priceFeed.latestPrice(product);
         require(latestTime != 0);
-        require(latestTime < endTime);
-        TokenState memory a = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
-        navNew = _computeNavFromTokenPrice(a.tokenPrice);
     }
-
-    function calcTokenValue() external view returns (int newTokenValue) {
-        require(state == State.Live);
-
-        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
-        require(latestTime < endTime);
-        TokenState memory a = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
-        newTokenValue = a.tokenPrice;
-    }
-
-    function calcShortMarginBalance() public view returns (int newShortMarginBalance) {
-        // Basic checks.
-        require(state == State.Live);
-        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
-        require(latestTime < endTime);
-
-        // Compute new NAV.
-        TokenState memory a = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
-        int navNew = _computeNavFromTokenPrice(a.tokenPrice);
-
-        // Oracle fees.
-        uint expectedFeeAmount = store.computeOracleFees(currentTokenState.time, latestTime, uint(nav));
-        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
-
-        int longDiff = _getLongNavDiff(navNew);
-        newShortMarginBalance = shortBalance.sub(longDiff).sub(int(feeAmount));
-    }
-
-    /*
-    function calcExcessMargin() external view returns (int newExcessMargin) {
-        // Basic checks.
-        require(state == State.Live);
-        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
-        require(latestTime < endTime);
-
-        // Compute new NAV.
-        TokenState memory a = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
-        int navNew = _computeNavFromTokenPrice(a.tokenPrice);
-
-        // Oracle fees.
-        uint expectedFeeAmount = store.computeOracleFees(currentTokenState.time, latestTime, uint(navNew));
-        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
-
-        int longDiff = _getLongNavDiff(navNew);
-        int newShortMarginBalance = shortBalance.sub(longDiff).sub(int(feeAmount));
-
-        int requiredEthMargin = _getRequiredEthMargin(navNew);
-        newExcessMargin = newShortMarginBalance.sub(requiredEthMargin);
-    }
-   */
 
     function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
         prevTokenState = currentTokenState;
