@@ -195,7 +195,9 @@ contract("CentralizedOracle", function(accounts) {
       startingTokenPrice: web3.utils.toWei("1", "ether"),
       expiry: "0",
       marginCurrency: "0x0000000000000000000000000000000000000000",
-      withdrawLimit: web3.utils.toWei("0.33", "ether")
+      withdrawLimit: web3.utils.toWei("0.33", "ether"),
+      name: "1x coin",
+      symbol: "BTCETH"
     };
     await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: owner });
     const deployedRegistry = await Registry.deployed();
