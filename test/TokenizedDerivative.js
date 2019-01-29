@@ -324,7 +324,6 @@ contract("TokenizedDerivative", function(accounts) {
       // Force the sponsor into default by further increasing the unverified price.
       shortBalance = await derivativeContract.shortBalance();
       await pushPrice(web3.utils.toWei("2.6", "ether"));
-
       expectedOracleFee = computeExpectedOracleFees(await derivativeContract.nav());
       await derivativeContract.remargin({ from: sponsor });
       totalOracleFeesPaid = totalOracleFeesPaid.add(expectedOracleFee);
