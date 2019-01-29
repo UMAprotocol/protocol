@@ -85,6 +85,12 @@ contract("TokenizedDerivative", function(accounts) {
     return startingNav.mul(oracleFeeRatio).div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
   };
 
+  const computeExpectedSponsorFees = (startingNav, feesPerInterval) => {
+      const retVal = BigNumber(web3.utils.fromWei(feesPerInterval.mul(startingNav), "ether"));
+    const flooredRetVal = retVal.integerValue(BigNumber.ROUND_FLOOR);
+    return web3.utils.toBN(flooredRetVal);
+  };
+
   // Pushes a price to the ManualPriceFeed, incrementing time by `priceFeedUpdatesInterval`.
   const pushPrice = async price => {
     const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + priceFeedUpdatesInterval;
@@ -171,6 +177,61 @@ contract("TokenizedDerivative", function(accounts) {
     };
 
     // Test cases.
+    it(annotateTitle("Asset value estimation methods"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative();
+
+      // Sponsor initializes contract.
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1.5", "ether"))
+      );
+
+      // Verify initial state, nav, and balances.
+      let nav = await derivativeContract.nav();
+      let longBalance = await derivativeContract.longBalance();
+      let shortBalance = await derivativeContract.shortBalance();
+      let state = await derivativeContract.state();
+      assert.equal(nav.toString(), web3.utils.toWei("1", "ether"));
+      assert.equal(longBalance.toString(), web3.utils.toBN(web3.utils.toWei("1", "ether")));
+      assert.equal(shortBalance.toString(), web3.utils.toBN(web3.utils.toWei("0.5", "ether")));
+      assert.equal(state.toString(), "0");
+
+      // The estimation methods should line up.
+      let calcNav = await derivativeContract.calcNAV();
+      let calcTokenValue = await derivativeContract.calcTokenValue();
+      let calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      assert.equal(calcNav.toString(), web3.utils.toWei("1", "ether"));
+      assert.equal(calcTokenValue.toString(), web3.utils.toWei("1", "ether"));
+      assert.equal(calcShortMarginBalance.toString(), web3.utils.toWei("0.5", "ether"));
+
+      // Change the price but don't remargin (yet).
+      await pushPrice(web3.utils.toWei("1.1", "ether"));
+
+      // The estimation methods should provide the values after remargining.
+      let expectedOracleFee = computeExpectedOracleFees(nav);
+      let expectedReturnWithoutFees = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
+      let expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval);
+      let changeInNav = expectedNav.sub(nav);
+      let expectedShortBalance = shortBalance.sub(expectedOracleFee).sub(changeInNav);
+      calcNav = await derivativeContract.calcNAV();
+      calcTokenValue = await derivativeContract.calcTokenValue();
+      calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      assert.equal(calcNav.toString(), expectedNav);
+      assert.equal(calcTokenValue.toString(), expectedNav);
+      assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
+
+      // Remargin and double check estimation methods.
+      await derivativeContract.remargin({ from: sponsor});
+      calcNav = await derivativeContract.calcNAV();
+      calcTokenValue = await derivativeContract.calcTokenValue();
+      calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      assert.equal(calcNav.toString(), expectedNav);
+      assert.equal(calcTokenValue.toString(), expectedNav);
+      assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
+    });
+
+      /*
     it(annotateTitle("Live -> Default -> Settled (confirmed)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
@@ -406,7 +467,6 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(oracleFeesPaidToStore.toString(), totalOracleFeesPaid.toString());
     });
 
-      /*
     it(annotateTitle("Live -> Default -> Settled (oracle)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();

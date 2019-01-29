@@ -580,6 +580,49 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         newTokenValue = a.tokenPrice;
     }
 
+    function calcShortMarginBalance() public view returns (int newShortMarginBalance) {
+        // Basic checks.
+        require(state == State.Live);
+        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
+        require(latestTime != 0);
+        require(latestTime < endTime);
+
+        // Compute new NAV.
+        TokenState memory a = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
+        int navNew = _computeNavFromTokenPrice(a.tokenPrice);
+
+        // Oracle fees.
+        uint expectedFeeAmount = store.computeOracleFees(currentTokenState.time, latestTime, uint(nav));
+        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
+
+        int longDiff = _getLongNavDiff(navNew);
+        newShortMarginBalance = shortBalance.sub(longDiff).sub(int(feeAmount));
+    }
+
+    /*
+    function calcExcessMargin() external view returns (int newExcessMargin) {
+        // Basic checks.
+        require(state == State.Live);
+        (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
+        require(latestTime != 0);
+        require(latestTime < endTime);
+
+        // Compute new NAV.
+        TokenState memory a = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
+        int navNew = _computeNavFromTokenPrice(a.tokenPrice);
+
+        // Oracle fees.
+        uint expectedFeeAmount = store.computeOracleFees(currentTokenState.time, latestTime, uint(navNew));
+        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
+
+        int longDiff = _getLongNavDiff(navNew);
+        int newShortMarginBalance = shortBalance.sub(longDiff).sub(int(feeAmount));
+
+        int requiredEthMargin = _getRequiredEthMargin(navNew);
+        newExcessMargin = newShortMarginBalance.sub(requiredEthMargin);
+    }
+   */
+
     function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
         prevTokenState = currentTokenState;
         currentTokenState = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
