@@ -83,8 +83,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     }
 
     // Note: these variables are to give ERC20 consumers information about the token.
-    string public constant name = "2x Levered Bitcoin-Ether"; // solhint-disable-line const-name-snakecase
-    string public constant symbol = "2XBCE"; // solhint-disable-line const-name-snakecase
+    string public name;
+    string public symbol;
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     // Fixed contract parameters.
@@ -169,8 +169,12 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _;
     }
 
+    // TODO(ptare): Adding name and symbol to ConstructorParams causes the transaction to always revert without a useful
+    // error message. Need to investigate this issue more.
     constructor(
-        TokenizedDerivativeParams.ConstructorParams memory params
+        TokenizedDerivativeParams.ConstructorParams memory params,
+        string memory _name,
+        string memory _symbol
     ) public payable {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(params.defaultPenalty <= params.requiredMargin);
@@ -201,6 +205,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         product = params.product;
         fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
         disputeDeposit = params.disputeDeposit;
+        name = _name;
+        symbol = _symbol;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = priceFeed.latestPrice(product);
@@ -360,6 +366,42 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _requestOraclePrice(endTime);
     }
 
+    // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
+    function calcNAV() external view returns (int navNew) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            currentTokenState, latestUnderlyingPrice, latestTime);
+        navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
+    }
+
+    // Returns the expected value of each the outstanding tokens of the contract using the latest available Price Feed
+    // price.
+    function calcTokenValue() external view returns (int newTokenValue) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            currentTokenState, latestUnderlyingPrice, latestTime);
+        newTokenValue = predictedTokenState.tokenPrice;
+    }
+
+    // Returns the expected balance of the short margin account using the latest available Price Feed price.
+    function calcShortMarginBalance() external view returns (int newShortMarginBalance) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            currentTokenState, latestUnderlyingPrice, latestTime);
+        int navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
+        int longDiff = _getLongNavDiff(navNew);
+
+        uint feeAmount = _computeExpectedOracleFees(currentTokenState.time, latestTime, nav);
+
+        newShortMarginBalance = shortBalance.sub(longDiff).sub(int(feeAmount));
+    }
+
     function settle() public {
         State startingState = state;
         require(startingState == State.Disputed || startingState == State.Expired
@@ -381,8 +423,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
     }
 
     function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
-        uint expectedFeeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
-        uint feeAmount = (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
+        uint feeAmount = _computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime, lastTokenNav);
         if (feeAmount == 0) {
             return;
         }
@@ -395,6 +436,15 @@ contract TokenizedDerivative is ERC20, AdminInterface {
             require(marginCurrency.approve(address(store), feeAmount));
             store.payOracleFeesErc20(address(marginCurrency));
         }
+    }
+
+    function _computeExpectedOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav)
+        private
+        view
+        returns (uint feeAmount)
+    {
+        uint expectedFeeAmount = store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        return (uint(shortBalance) < expectedFeeAmount) ? uint(shortBalance) : expectedFeeAmount;
     }
 
     function _createTokens(uint navToPurchase) private {
@@ -484,9 +534,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         // If the state is not live, remargining does not make sense.
         require(state == State.Live);
 
+        (uint latestTime, int latestPrice) = _getLatestPrice();
         // Checks whether contract has ended.
-        (uint latestTime, int latestPrice) = priceFeed.latestPrice(product);
-        require(latestTime != 0);
         if (latestTime <= currentTokenState.time) {
             // If the price feed hasn't advanced, remargining should be a no-op.
             return;
@@ -560,6 +609,14 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         }
     }
 
+    function _getLatestPrice() private view returns (uint latestTime, int latestUnderlyingPrice) {
+        // If not live, then we should be using the Oracle not the price feed.
+        require(state == State.Live);
+
+        (latestTime, latestUnderlyingPrice) = priceFeed.latestPrice(product);
+        require(latestTime != 0);
+    }
+
     function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
         prevTokenState = currentTokenState;
         currentTokenState = _computeNewTokenState(currentTokenState, latestUnderlyingPrice, latestTime);
@@ -609,7 +666,7 @@ contract TokenizedDerivative is ERC20, AdminInterface {
             int tokenMultiplier = tokenReturn.add(1 ether);
             int newTokenPrice = 0;
             if (tokenMultiplier > 0) {
-                newTokenPrice = _takePercentage(prevTokenState.tokenPrice, uint(tokenMultiplier));
+                newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, uint(tokenMultiplier));
             }
             newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
         }
@@ -644,6 +701,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         uint expiry;
         address marginCurrency;
         uint withdrawLimit; // Percentage of shortBalance * 10^18
+        string name;
+        string symbol;
     }
 
     constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
@@ -656,7 +715,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         public
         returns (address derivativeAddress)
     {
-        TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params));
+        TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params), params.name, params.symbol);
 
         address[] memory parties = new address[](1);
         parties[0] = params.sponsor;
