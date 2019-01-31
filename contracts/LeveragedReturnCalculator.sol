@@ -21,6 +21,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface {
     int public leverage;
 
     constructor(int _leverage) public {
+        require(_leverage != 0);
         leverage = _leverage;
     }
 
