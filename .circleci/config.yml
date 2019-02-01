@@ -51,6 +51,17 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - sec-toolbox-deps-{{ checksum "package.json" }}
+            - sec-toolbox-deps-
+      - run:
+          name: Install Dependencies
+          command: npm install --quiet
+      - save_cache:
+          key: sec-toolbox-deps-{{ checksum "package.json" }}
+          paths:
+            - node_modules
       - run:
           name: Slither
           command: ./ci/run_slither.sh
