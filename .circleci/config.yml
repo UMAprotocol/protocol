@@ -102,9 +102,7 @@ workflows:
       - lint:
           requires:
             - checkout_and_install
-      - slither:
-          requires:
-            - checkout_and_install
+      - slither
       - test:
           requires:
             - checkout_and_install
