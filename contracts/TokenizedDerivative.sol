@@ -41,19 +41,8 @@ library TokenizedDerivativeParams {
 }
 
 
-// TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
-contract TokenizedDerivative is ERC20, AdminInterface {
-    using SafeMath for uint;
-    using SignedSafeMath for int;
-
-    // Note: these variables are to give ERC20 consumers information about the token.
-    string public name;
-    string public symbol;
-    uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
-    uint private constant SECONDS_PER_YEAR = 31536000;
-    uint private constant SECONDS_PER_DAY = 86400;
-
-    enum State {
+library TokenizedDerivativeStorage {
+        enum State {
         // The contract is active, and tokens can be created and redeemed. Margin can be added and withdrawn (as long as
         // it exceeds required levels). Remargining is allowed. Created contracts immediately begin in this state.
         // Possible state transitions: Disputed, Expired, Defaulted.
@@ -156,8 +145,258 @@ contract TokenizedDerivative is ERC20, AdminInterface {
 
         WithdrawThrottle withdrawThrottle;
     }
+}
 
-    Storage public derivativeStorage;
+library Remarginer {
+    using Remarginer for TokenizedDerivativeStorage.Storage;
+
+    // _remargin() allows other functions to call remargin internally without satisfying permission checks for
+    // remargin().
+    function _remargin(TokenizedDerivativeStorage storage derivativeStorage) public {
+        // If the state is not live, remargining does not make sense.
+        require(derivativeStorage.state == State.Live);
+
+        (uint latestTime, int latestPrice) = _getLatestPrice();
+        // Checks whether contract has ended.
+        if (latestTime <= derivativeStorage.currentTokenState.time) {
+            // If the price feed hasn't advanced, remargining should be a no-op.
+            return;
+        }
+        if (latestTime >= derivativeStorage.endTime) {
+            derivativeStorage.state = State.Expired;
+            derivativeStorage.prevTokenState = derivativeStorage.currentTokenState;
+            uint feeAmount = _deductOracleFees(derivativeStorage.currentTokenState.time, derivativeStorage.endTime, derivativeStorage.nav);
+
+            // We have no idea what the price was, exactly at derivativeStorage.endTime, so we can't set
+            // derivativeStorage.currentTokenState, or update the nav, or do anything.
+            _requestOraclePrice(derivativeStorage.endTime);
+            _payOracleFees(feeAmount);
+            return;
+        }
+        uint feeAmount = _deductOracleFees(derivativeStorage.currentTokenState.time, latestTime, derivativeStorage.nav);
+
+        // Update nav of contract.
+        int navNew = _computeNav(latestPrice, latestTime);
+        
+        // Save the current NAV in case it's required to compute the default penalty.
+        int previousNav = derivativeStorage.nav;
+
+        // Update the balances of the contract.
+        _updateBalances(navNew);
+
+        // Make sure contract has not moved into default.
+        bool inDefault = !_satisfiesMarginRequirement(derivativeStorage.shortBalance, derivativeStorage.nav);
+        if (inDefault) {
+            derivativeStorage.state = State.Defaulted;
+            derivativeStorage.navAtDefault = previousNav;
+            derivativeStorage.endTime = latestTime; // Change end time to moment when default occurred.
+        }
+
+        if (inDefault) {
+            _requestOraclePrice(derivativeStorage.endTime);
+        }
+
+        _payOracleFees(feeAmount);
+    }
+
+    // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
+    function _calcNAV(TokenizedDerivativeStorage storage derivativeStorage) external view returns (int navNew) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < derivativeStorage.endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            derivativeStorage.currentTokenState, latestUnderlyingPrice, latestTime);
+        navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
+    }
+
+    // Returns the expected value of each the outstanding tokens of the contract using the latest available Price Feed
+    // price.
+    function _calcTokenValue(TokenizedDerivativeStorage storage derivativeStorage) external view returns (int newTokenValue) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < derivativeStorage.endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            derivativeStorage.currentTokenState, latestUnderlyingPrice, latestTime);
+        newTokenValue = predictedTokenState.tokenPrice;
+    }
+
+    // Returns the expected balance of the short margin account using the latest available Price Feed price.
+    function _calcShortMarginBalance(TokenizedDerivativeStorage storage derivativeStorage) external view returns (int newShortMarginBalance) {
+        (uint latestTime, int latestUnderlyingPrice) = _getLatestPrice();
+        require(latestTime < derivativeStorage.endTime);
+
+        TokenState memory predictedTokenState = _computeNewTokenState(
+            derivativeStorage.currentTokenState, latestUnderlyingPrice, latestTime);
+        int navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
+        int longDiff = _getLongNavDiff(navNew);
+
+        uint feeAmount = _computeExpectedOracleFees(derivativeStorage.currentTokenState.time, latestTime, derivativeStorage.nav);
+
+        newShortMarginBalance = derivativeStorage.shortBalance.sub(longDiff).sub(int(feeAmount));
+    }
+
+    // Deducts the fees from the margin account.
+    function _deductOracleFees(TokenizedDerivativeStorage storage derivativeStorage, uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private returns (uint feeAmount) {
+        feeAmount = _computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime, lastTokenNav);
+        derivativeStorage.shortBalance = derivativeStorage.shortBalance.sub(int(feeAmount));
+        // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
+        // contract.
+    }
+
+    // Pays out the fees to the Oracle.
+    function _payOracleFees(TokenizedDerivativeStorage storage derivativeStorage, uint feeAmount) private {
+        if (feeAmount == 0) {
+            return;
+        }
+
+        if (address(derivativeStorage.externalAddresses.marginCurrency) == address(0x0)) {
+            derivativeStorage.externalAddresses.store.payOracleFees.value(feeAmount)();
+        } else {
+            require(derivativeStorage.externalAddresses.marginCurrency.approve(address(derivativeStorage.externalAddresses.store), feeAmount));
+            derivativeStorage.externalAddresses.store.payOracleFeesErc20(address(derivativeStorage.externalAddresses.marginCurrency));
+        }
+    }
+
+    function _computeExpectedOracleFees(TokenizedDerivativeStorage storage derivativeStorage, uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav)
+        private
+        view
+        returns (uint feeAmount)
+    {
+        uint expectedFeeAmount = derivativeStorage.externalAddresses.store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        return (uint(derivativeStorage.shortBalance) < expectedFeeAmount) ? uint(derivativeStorage.shortBalance) : expectedFeeAmount;
+    }
+
+    function _computeNewTokenState(TokenizedDerivativeStorage storage derivativeStorage,
+        TokenState storage beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
+        private
+        view
+        returns (TokenState memory newTokenState)
+    {
+
+            int underlyingReturn = derivativeStorage.externalAddresses.returnCalculator.computeReturn(
+                beginningTokenState.underlyingPrice, latestUnderlyingPrice);
+            int tokenReturn = underlyingReturn.sub(
+                int(derivativeStorage.fixedParameters.fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time))));
+            int tokenMultiplier = tokenReturn.add(1 ether);
+            int newTokenPrice = 0;
+            if (tokenMultiplier > 0) {
+                newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, uint(tokenMultiplier));
+            }
+            newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
+    }
+
+    function _satisfiesMarginRequirement(TokenizedDerivativeStorage storage derivativeStorage, int balance, int currentNav)
+        private
+        view
+        returns (bool doesSatisfyRequirement) 
+    {
+        return derivativeStorage._getRequiredEthMargin(currentNav) <= balance;
+    }
+
+    function _takePercentage(uint value, uint percentage) private pure returns (uint result) {
+        return value.mul(percentage).div(1 ether);
+    }
+
+    function _takePercentage(int value, uint percentage) private pure returns (int result) {
+        return value.mul(int(percentage)).div(1 ether);
+    }
+
+    function _requestOraclePrice(TokenizedDerivativeStorage storage derivativeStorage, uint requestedTime) private {
+        uint expectedTime = derivativeStorage.externalAddresses.oracle.requestPrice(derivativeStorage.fixedParameters.product, requestedTime);
+        if (expectedTime == 0) {
+            // The Oracle price is already available, settle the contract right away.
+            settle();
+        }
+    }
+
+    function _getLatestPrice(TokenizedDerivativeStorage storage derivativeStorage) private view returns (uint latestTime, int latestUnderlyingPrice) {
+        // If not live, then we should be using the Oracle not the price feed.
+        require(derivativeStorage.state == State.Live);
+
+        (latestTime, latestUnderlyingPrice) = derivativeStorage.externalAddresses.priceFeed.latestPrice(derivativeStorage.fixedParameters.product);
+        require(latestTime != 0);
+    }
+
+    function _computeNav(TokenizedDerivativeStorage storage derivativeStorage, int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
+        derivativeStorage.prevTokenState = derivativeStorage.currentTokenState;
+        derivativeStorage.currentTokenState = derivativeStorage._computeNewTokenState(derivativeStorage.currentTokenState, latestUnderlyingPrice, latestTime);
+        navNew = derivativeStorage._computeNavFromTokenPrice(derivativeStorage.currentTokenState.tokenPrice);
+    }
+
+    function _recomputeNav(TokenizedDerivativeStorage storage derivativeStorage, int oraclePrice, uint recomputeTime) private returns (int navNew) {
+        // We're updating `last` based on what the Oracle has told us.
+        // TODO(ptare): Add ability for the Oracle to correct the time as well.
+        assert(derivativeStorage.endTime == recomputeTime);
+        derivativeStorage.currentTokenState = derivativeStorage._computeNewTokenState(derivativeStorage.prevTokenState, oraclePrice, recomputeTime);
+        navNew = derivativeStorage._computeNavFromTokenPrice(derivativeStorage.currentTokenState.tokenPrice);
+    }
+
+    // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
+    // of the settlement logic including assessing penalties and then moves the state to `Settled`.
+    function _settle(TokenizedDerivativeStorage storage derivativeStorage, int price) private {
+
+        // Remargin at whatever price we're using (verified or unverified).
+        derivativeStorage._updateBalances(derivativeStorage._recomputeNav(price, derivativeStorage.endTime));
+
+        bool inDefault = !derivativeStorage._satisfiesMarginRequirement(derivativeStorage.shortBalance, derivativeStorage.nav);
+
+        if (inDefault) {
+            int expectedDefaultPenalty = derivativeStorage._getDefaultPenaltyEth();
+            int penalty = (derivativeStorage.shortBalance < expectedDefaultPenalty) ?
+                derivativeStorage.shortBalance :
+                expectedDefaultPenalty;
+
+            derivativeStorage.shortBalance = derivativeStorage.shortBalance.sub(penalty);
+            derivativeStorage.longBalance = derivativeStorage.longBalance.add(penalty);
+        }
+
+        derivativeStorage.state = State.Settled;
+    }
+
+    function _updateBalances(TokenizedDerivativeStorage storage derivativeStorage, int navNew) private {
+        // Compute difference -- Add the difference to owner and subtract
+        // from counterparty. Then update nav state variable.
+        int longDiff = derivativeStorage._getLongNavDiff(navNew);
+        derivativeStorage.nav = navNew;
+
+        derivativeStorage.longBalance = derivativeStorage.longBalance.add(longDiff);
+        derivativeStorage.shortBalance = derivativeStorage.shortBalance.sub(longDiff);
+    }
+
+    // Gets the change in balance for the long side.
+    // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
+    function _getLongNavDiff(TokenizedDerivativeStorage storage derivativeStorage, int navNew) private view returns (int longNavDiff) {
+        return navNew.sub(derivativeStorage.nav);
+    }
+
+    function _getDefaultPenaltyEth(TokenizedDerivativeStorage storage derivativeStorage) private view returns (int penalty) {
+        return _takePercentage(derivativeStorage.navAtDefault, derivativeStorage.fixedParameters.defaultPenalty);
+    }
+
+    function _getRequiredEthMargin(TokenizedDerivativeStorage storage derivativeStorage, int currentNav)
+        private
+        view
+        returns (int requiredEthMargin)
+    {
+        return _takePercentage(currentNav, derivativeStorage.fixedParameters.marginRequirement);
+    }
+}
+
+
+// TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
+contract TokenizedDerivative is ERC20, AdminInterface {
+    using SafeMath for uint;
+    using SignedSafeMath for int;
+    using Remarginer for TokenizedDerivativeStorage.Storage;
+
+    // Note: these variables are to give ERC20 consumers information about the token.
+    string public name;
+    string public symbol;
+    uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
+    uint private constant SECONDS_PER_YEAR = 31536000;
+    uint private constant SECONDS_PER_DAY = 86400;
+
+    TokenizedDerivativeStorage.Storage public derivativeStorage;
 
     modifier onlySponsor {
         require(msg.sender == derivativeStorage.externalAddresses.sponsor);
@@ -432,37 +671,6 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _deposit(_pullSentMargin());
     }
 
-    // Deducts the fees from the margin account.
-    function _deductOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private returns (uint feeAmount) {
-        feeAmount = _computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime, lastTokenNav);
-        derivativeStorage.shortBalance = derivativeStorage.shortBalance.sub(int(feeAmount));
-        // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
-        // contract.
-    }
-
-    // Pays out the fees to the Oracle.
-    function _payOracleFees(uint feeAmount) private {
-        if (feeAmount == 0) {
-            return;
-        }
-
-        if (address(derivativeStorage.externalAddresses.marginCurrency) == address(0x0)) {
-            derivativeStorage.externalAddresses.store.payOracleFees.value(feeAmount)();
-        } else {
-            require(derivativeStorage.externalAddresses.marginCurrency.approve(address(derivativeStorage.externalAddresses.store), feeAmount));
-            derivativeStorage.externalAddresses.store.payOracleFeesErc20(address(derivativeStorage.externalAddresses.marginCurrency));
-        }
-    }
-
-    function _computeExpectedOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav)
-        private
-        view
-        returns (uint feeAmount)
-    {
-        uint expectedFeeAmount = derivativeStorage.externalAddresses.store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
-        return (uint(derivativeStorage.shortBalance) < expectedFeeAmount) ? uint(derivativeStorage.shortBalance) : expectedFeeAmount;
-    }
-
     function _createTokens(uint navToPurchase) private {
         _remargin();
 
@@ -503,36 +711,6 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         }
     }
 
-    function _getRequiredEthMargin(int currentNav)
-        private
-        view
-        returns (int requiredEthMargin)
-    {
-        return _takePercentage(currentNav, derivativeStorage.fixedParameters.marginRequirement);
-    }
-
-    // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
-    // of the settlement logic including assessing penalties and then moves the state to `Settled`.
-    function _settle(int price) private {
-
-        // Remargin at whatever price we're using (verified or unverified).
-        _updateBalances(_recomputeNav(price, derivativeStorage.endTime));
-
-        bool inDefault = !_satisfiesMarginRequirement(derivativeStorage.shortBalance, derivativeStorage.nav);
-
-        if (inDefault) {
-            int expectedDefaultPenalty = _getDefaultPenaltyEth();
-            int penalty = (derivativeStorage.shortBalance < expectedDefaultPenalty) ?
-                derivativeStorage.shortBalance :
-                expectedDefaultPenalty;
-
-            derivativeStorage.shortBalance = derivativeStorage.shortBalance.sub(penalty);
-            derivativeStorage.longBalance = derivativeStorage.longBalance.add(penalty);
-        }
-
-        derivativeStorage.state = State.Settled;
-    }
-
     function _settleAgreedPrice() private {
         int agreedPrice = derivativeStorage.currentTokenState.underlyingPrice;
 
@@ -544,83 +722,6 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _settle(oraclePrice);
     }
 
-    // _remargin() allows other functions to call remargin internally without satisfying permission checks for
-    // remargin().
-    function _remargin() private {
-        // If the state is not live, remargining does not make sense.
-        require(derivativeStorage.state == State.Live);
-
-        (uint latestTime, int latestPrice) = _getLatestPrice();
-        // Checks whether contract has ended.
-        if (latestTime <= derivativeStorage.currentTokenState.time) {
-            // If the price feed hasn't advanced, remargining should be a no-op.
-            return;
-        }
-        if (latestTime >= derivativeStorage.endTime) {
-            derivativeStorage.state = State.Expired;
-            derivativeStorage.prevTokenState = derivativeStorage.currentTokenState;
-            uint feeAmount = _deductOracleFees(derivativeStorage.currentTokenState.time, derivativeStorage.endTime, derivativeStorage.nav);
-
-            // We have no idea what the price was, exactly at derivativeStorage.endTime, so we can't set
-            // derivativeStorage.currentTokenState, or update the nav, or do anything.
-            _requestOraclePrice(derivativeStorage.endTime);
-            _payOracleFees(feeAmount);
-            return;
-        }
-        uint feeAmount = _deductOracleFees(derivativeStorage.currentTokenState.time, latestTime, derivativeStorage.nav);
-
-        // Update nav of contract.
-        int navNew = _computeNav(latestPrice, latestTime);
-        
-        // Save the current NAV in case it's required to compute the default penalty.
-        int previousNav = derivativeStorage.nav;
-
-        // Update the balances of the contract.
-        _updateBalances(navNew);
-
-        // Make sure contract has not moved into default.
-        bool inDefault = !_satisfiesMarginRequirement(derivativeStorage.shortBalance, derivativeStorage.nav);
-        if (inDefault) {
-            derivativeStorage.state = State.Defaulted;
-            derivativeStorage.navAtDefault = previousNav;
-            derivativeStorage.endTime = latestTime; // Change end time to moment when default occurred.
-        }
-
-        if (inDefault) {
-            _requestOraclePrice(derivativeStorage.endTime);
-        }
-
-        _payOracleFees(feeAmount);
-    }
-
-    function _updateBalances(int navNew) private {
-        // Compute difference -- Add the difference to owner and subtract
-        // from counterparty. Then update nav state variable.
-        int longDiff = _getLongNavDiff(navNew);
-        derivativeStorage.nav = navNew;
-
-        derivativeStorage.longBalance = derivativeStorage.longBalance.add(longDiff);
-        derivativeStorage.shortBalance = derivativeStorage.shortBalance.sub(longDiff);
-    }
-
-    function _satisfiesMarginRequirement(int balance, int currentNav)
-        private
-        view
-        returns (bool doesSatisfyRequirement) 
-    {
-        return _getRequiredEthMargin(currentNav) <= balance;
-    }
-
-    // Gets the change in balance for the long side.
-    // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
-    function _getLongNavDiff(int navNew) private view returns (int longNavDiff) {
-        return navNew.sub(derivativeStorage.nav);
-    }
-
-    function _getDefaultPenaltyEth() private view returns (int penalty) {
-        return _takePercentage(derivativeStorage.navAtDefault, derivativeStorage.fixedParameters.defaultPenalty);
-    }
-
     function _tokensFromNav(int currentNav, int unitNav) private pure returns (int numTokens) {
         if (unitNav <= 0) {
             return 0;
@@ -629,79 +730,24 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         }
     }
 
-    function _getLatestPrice() private view returns (uint latestTime, int latestUnderlyingPrice) {
-        // If not live, then we should be using the Oracle not the price feed.
-        require(derivativeStorage.state == State.Live);
-
-        (latestTime, latestUnderlyingPrice) = derivativeStorage.externalAddresses.priceFeed.latestPrice(derivativeStorage.fixedParameters.product);
-        require(latestTime != 0);
-    }
-
-    function _computeNav(int latestUnderlyingPrice, uint latestTime) private returns (int navNew) {
-        derivativeStorage.prevTokenState = derivativeStorage.currentTokenState;
-        derivativeStorage.currentTokenState = _computeNewTokenState(derivativeStorage.currentTokenState, latestUnderlyingPrice, latestTime);
-        navNew = _computeNavFromTokenPrice(derivativeStorage.currentTokenState.tokenPrice);
-    }
-
-    function _recomputeNav(int oraclePrice, uint recomputeTime) private returns (int navNew) {
-        // We're updating `last` based on what the Oracle has told us.
-        // TODO(ptare): Add ability for the Oracle to correct the time as well.
-        assert(derivativeStorage.endTime == recomputeTime);
-        derivativeStorage.currentTokenState = _computeNewTokenState(derivativeStorage.prevTokenState, oraclePrice, recomputeTime);
-        navNew = _computeNavFromTokenPrice(derivativeStorage.currentTokenState.tokenPrice);
-    }
-
     function _computeInitialNav(int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
         private
-        returns (int navNew) {
+        returns (int navNew) 
+    {
             int unitNav = int(startingTokenPrice);
             derivativeStorage.prevTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
             derivativeStorage.currentTokenState = TokenState(latestUnderlyingPrice, unitNav, latestTime);
             navNew = _computeNavFromTokenPrice(unitNav);
-        }
-
-    function _requestOraclePrice(uint requestedTime) private {
-        uint expectedTime = derivativeStorage.externalAddresses.oracle.requestPrice(derivativeStorage.fixedParameters.product, requestedTime);
-        if (expectedTime == 0) {
-            // The Oracle price is already available, settle the contract right away.
-            settle();
-        }
     }
 
     function _pullAllAuthorizedTokens(IERC20 erc20) private returns (uint amount) {
         amount = erc20.allowance(msg.sender, address(this));
         require(erc20.transferFrom(msg.sender, address(this), amount));
-    } 
-
-    function _computeNewTokenState(
-        TokenState storage beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
-        private
-        view
-        returns (TokenState memory newTokenState) {
-
-            int underlyingReturn = derivativeStorage.externalAddresses.returnCalculator.computeReturn(
-                beginningTokenState.underlyingPrice, latestUnderlyingPrice);
-            int tokenReturn = underlyingReturn.sub(
-                int(derivativeStorage.fixedParameters.fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time))));
-            int tokenMultiplier = tokenReturn.add(1 ether);
-            int newTokenPrice = 0;
-            if (tokenMultiplier > 0) {
-                newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, uint(tokenMultiplier));
-            }
-            newTokenState = TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
-        }
+    }
 
     function _computeNavFromTokenPrice(int tokenPrice) private view returns (int navNew) {
         navNew = int(totalSupply()).mul(tokenPrice).div(1 ether);
         assert(navNew >= 0);
-    }
-
-    function _takePercentage(uint value, uint percentage) private pure returns (uint result) {
-        return value.mul(percentage).div(1 ether);
-    }
-
-    function _takePercentage(int value, uint percentage) private pure returns (int result) {
-        return value.mul(int(percentage)).div(1 ether);
     }
 }
 
