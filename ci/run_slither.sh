@@ -28,4 +28,4 @@ sudo rm -rf slither
 
 cd ~/protocol
 npx truffle compile
-python3.6 -m slither --truffle-version=latest --exclude=naming-convention,solc-version,pragma,external-function,reentrancy-benign,reentrancy-no-eth,arbitrary-send .
+python3.6 -m slither --truffle-version=latest --exclude=naming-convention,solc-version,pragma,external-function,reentrancy-benign,reentrancy-no-eth,arbitrary-send,reentrancy-eth .
