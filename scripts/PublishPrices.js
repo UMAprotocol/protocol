@@ -3,6 +3,9 @@ const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const fetch = require("node-fetch");
 const util = require("util");
 
+// NOTE: Key restricted to 5 calls per minute, 500 calls per day.
+const alphaVantageKey = "41EUIBN9FKJW9FQM";
+
 // Gets JSON from a URL or throws.
 const getJson = async url => {
   const response = await fetch(url);
@@ -26,9 +29,6 @@ async function getCoinbasePrice(asset) {
   console.log(`Retrieved price [${price}] from Coinbase for asset [${asset}]`);
   return price;
 }
-
-// NOTE: Key restricted to 5 calls per minute, 500 calls per day.
-const alphaVantageKey = "41EUIBN9FKJW9FQM";
 
 // Gets the AlphaVantage price for an asset or throws.
 async function getAlphaVantageQuote(asset) {
@@ -186,6 +186,7 @@ function getPriceFeeds(priceFeedAddress) {
 async function runExport() {
   // Wrap all the functionality in a try/catch, so that this function never throws.
   try {
+    // Usage: `truffle exec scripts/PublishPrices.js <ManualPriceFeed address> --network <network>`
     if (process.argv.length < 5) {
       console.error("Not enough arguments. Include ManualPriceFeed's contract address.");
       return
