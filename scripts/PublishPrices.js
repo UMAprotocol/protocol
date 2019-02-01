@@ -3,19 +3,22 @@ const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const fetch = require("node-fetch");
 const util = require("util");
 
+// NOTE: Key restricted to 5 calls per minute, 500 calls per day.
+const alphaVantageKey = "41EUIBN9FKJW9FQM";
+
 // Gets JSON from a URL or throws.
 const getJson = async url => {
   const response = await fetch(url);
   const json = await response.json();
   if (!json) {
-    throw util.format("Query [%s] failed to get JSON", url);
+    throw `Query [${url}] failed to get JSON`;
   }
   return json;
 };
 
 // Gets the Coinbase price for an asset or throws.
 async function getCoinbasePrice(asset) {
-  const url = "https://api.coinbase.com/v2/prices/" + asset + "/spot";
+  const url = `https://api.coinbase.com/v2/prices/${asset}/spot`;
   console.log(util.format("Querying Coinbase with [%s]", url));
   const jsonOutput = await getJson(url);
   console.log(util.format("Coinbase response [%s]", JSON.stringify(jsonOutput)));
@@ -23,45 +26,52 @@ async function getCoinbasePrice(asset) {
   if (!price) {
     throw "Failed to get valid price out of JSON response";
   }
-  console.log(util.format("Retrieved price [%s] from Coinbase for asset [%s]", price, asset));
+  console.log(`Retrieved price [${price}] from Coinbase for asset [${asset}]`);
   return price;
 }
 
 // Gets the AlphaVantage price for an asset or throws.
 async function getAlphaVantageQuote(asset) {
-  const url = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=41EUIBN9FKJW9FQM&symbol=" + asset;
-  console.log(util.format("Querying AlphaVantage with [%s]", url));
+  const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=${alphaVantageKey}&symbol=${asset}`;
+  console.log(`Querying AlphaVantage with [${url}]`);
   const jsonOutput = await getJson(url);
-  console.log(util.format("AlphaVantage response [%s]", JSON.stringify(jsonOutput)));
+  console.log(`AlphaVantage response [${JSON.stringify(jsonOutput)}]`);
   const price = jsonOutput["Global Quote"]["05. price"];
   if (!price) {
     throw "Failed to get valid price out of JSON response";
   }
-  console.log(util.format("Retrieved price [%s] from Coinbase for asset [%s]", price, asset));
+  console.log(`Retrieved quote [${price}] from AlphaVantage for asset [${asset}]`);
   return price;
+}
+
+// Gets the AlphaVantage rate for a currency against USD.
+async function getAlphaVantageCurrencyRate(asset) {
+  const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${asset}&to_currency=USD&apikey=${alphaVantageKey}`;
+  console.log(`Querying AlphaVantage with [${url}]`);
+  const jsonOutput = await getJson(url);
+  console.log(`AlphaVantage response [${JSON.stringify(jsonOutput)}]`);
+  const rate = jsonOutput["Realtime Currency Exchange Rate"]["5. Exchange Rate"];
+  if (!rate) {
+    throw "Failed to get valid price out of JSON response";
+  }
+  console.log(`Retrieved rate [${rate}] from Coinbase for asset [${asset}]`);
+  return rate;
 }
 
 // Pushes a price to a manual price feed.
 async function publishPrice(manualPriceFeed, identifierBytes, publishTime, exchangeRate) {
-  console.log(
-    util.format(
-      "Publishing identifierBytes [%s] publishTime [%s] exchangeRate (in Wei) [%s]",
-      identifierBytes,
-      publishTime,
-      exchangeRate
-    )
-  );
+  console.log(`Publishing identifierBytes [${identifierBytes}] publishTime [${publishTime}] exchangeRate (in Wei) [${exchangeRate}]`);
   await manualPriceFeed.pushLatestPrice(identifierBytes, publishTime, exchangeRate);
 }
 
 async function getNonZeroPriceInWei(assetConfig) {
   const price = await assetConfig.priceFetchFunction(assetConfig.assetName);
   if (!price) {
-    throw util.format("No price for [%s]", assetConfig);
+    throw `No price for [${assetConfig}]`;
   }
   const priceInWei = web3.utils.toWei(price.toString(), "ether");
   if (web3.utils.toBN(priceInWei).isZero()) {
-    throw util.format("Got zero price for [%s]", assetConfig);
+    throw `Got zero price for [${assetConfig}]`;
   }
   return priceInWei;
 }
@@ -72,7 +82,7 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
   // If no denominator is specified, then the exchange rate is the numerator. An example would be SPY denominated in
   // USD.
   if (!denominatorConfig) {
-    console.log(util.format("No denominator. Exchange rate (in Wei) [%s]", numInWei));
+    console.log(`No denominator. Exchange rate (in Wei) [${numInWei}]`);
     return numInWei;
   }
   const denomInWei = await getNonZeroPriceInWei(denominatorConfig);
@@ -82,14 +92,7 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
       .integerValue(BigNumber.ROUND_FLOOR)
       .toString()
   );
-  console.log(
-    util.format(
-      "Dividing numerator [%s] / denominator [%s] = exchange rate (in Wei) [%s]",
-      numInWei,
-      denomInWei,
-      exchangeRate
-    )
-  );
+  console.log(`Dividing numerator [${numInWei}] / denominator [${denomInWei}] = exchange rate (in Wei) [${exchangeRate}]`);
   return exchangeRate;
 }
 
@@ -100,9 +103,7 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
   // If the identifier is not supported (i.e., we have never published a price for it), then we should always publish at
   // the current time.
   if (!isIdentifierSupported) {
-    console.log(
-      util.format("IdentifierBytes [%s] is currently unsupported, so publishing a new price", identifierBytes)
-    );
+    console.log(`IdentifierBytes [${identifierBytes}] is currently unsupported, so publishing a new price`);
     return {
       shouldPublish: true,
       publishTime: currentTime
@@ -113,23 +114,9 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
   const nextPublishTime = lastPublishTime.addn(publishInterval);
   const shouldPublish = currentTime.gte(nextPublishTime);
   if (!shouldPublish) {
-    console.log(
-      util.format(
-        "Not publishing because lastPublishTime [%s] + publishInterval [%s] > currentTime [%s]",
-        lastPublishTime,
-        publishInterval,
-        currentTime
-      )
-    );
+    console.log(`Not publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] > currentTime [${currentTime}]`);
   } else {
-    console.log(
-      util.format(
-        "Publishing because lastPublishTime [%s] + publishInterval [%s] <= currentTime [%s]",
-        lastPublishTime,
-        publishInterval,
-        currentTime
-      )
-    );
+    console.log(`Publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] <= currentTime [${currentTime}]`);
   }
   return {
     shouldPublish: shouldPublish,
@@ -160,35 +147,63 @@ async function publishFeed(feed) {
   }
 }
 
+function getPriceFeeds(priceFeedAddress) {
+  return [{
+    identifier: "BTC/ETH",
+    priceFeedAddress: priceFeedAddress,
+    publishInterval: 900, // 15 minutes.
+    numerator: {
+      priceFetchFunction: getCoinbasePrice,
+      assetName: "BTC-USD"
+    },
+    denominator: {
+      priceFetchFunction: getCoinbasePrice,
+      assetName: "ETH-USD"
+    }
+  }, {
+    identifier: "SPY/ETH",
+    priceFeedAddress: priceFeedAddress,
+    publishInterval: 900,
+    numerator: {
+      priceFetchFunction: getAlphaVantageQuote,
+      assetName: "SPY"
+    },
+    denominator: {
+      priceFetchFunction: getAlphaVantageCurrencyRate,
+      assetName: "ETH"
+    }
+  }, {
+    identifier: "CNH/USD",
+    priceFeedAddress: priceFeedAddress,
+    publishInterval: 900,
+    numerator: {
+      priceFetchFunction: getAlphaVantageCurrencyRate,
+      assetName: "CNH"
+    }
+  }];
+}
+
 async function runExport() {
   // Wrap all the functionality in a try/catch, so that this function never throws.
   try {
-    const manualPriceFeedAddress = "0x58201524a2565a95338997963a309f916981aD85";
-    const bitcoinEthFeed = {
-      identifier: "BTC/ETH",
-      priceFeedAddress: manualPriceFeedAddress,
-      publishInterval: 900, // 15 minutes.
-      numerator: {
-        priceFetchFunction: getCoinbasePrice,
-        assetName: "BTC-USD"
-      },
-      denominator: {
-        priceFetchFunction: getCoinbasePrice,
-        assetName: "ETH-USD"
-      }
-    };
-    const priceFeeds = [bitcoinEthFeed];
+    // Usage: `truffle exec scripts/PublishPrices.js <ManualPriceFeed address> --network <network>`
+    if (process.argv.length < 5) {
+      console.error("Not enough arguments. Include ManualPriceFeed's contract address.");
+      return
+    }
 
-    for (const priceFeed of priceFeeds) {
+    // Get the price feed contract's hash from the command line.
+    const manualPriceFeedAddress = process.argv[4];
+    if (manualPriceFeedAddress.substring(0,2) != "0x" || manualPriceFeedAddress.length != 42) {
+      console.error("ManualPriceFeed's contract address missing. Exiting...");
+      return
+    }
+
+    // Get the list of price feeds to submit
+    for (const priceFeed of getPriceFeeds(manualPriceFeedAddress)) {
       // Wrap each feed in a try/catch, so that a failure in one feed doesn't stop all the others from publishing.
       try {
-        console.log(
-          util.format(
-            "Publishing price feed for [%s], with config [%s]",
-            priceFeed.identifier,
-            JSON.stringify(priceFeed)
-          )
-        );
+        console.log(`Publishing price feed for [${priceFeed.identifier}], with config [${JSON.stringify(priceFeed)}]`);
         await publishFeed(priceFeed);
         console.log("Done publishing for one feed.\n\n");
       } catch (error) {

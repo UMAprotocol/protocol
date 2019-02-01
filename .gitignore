@@ -4,4 +4,4 @@ bridge.log
 package-lock.json
 coverage/*
 coverage.json
-
+out.log
