@@ -60,7 +60,9 @@ async function getAlphaVantageCurrencyRate(asset) {
 
 // Pushes a price to a manual price feed.
 async function publishPrice(manualPriceFeed, identifierBytes, publishTime, exchangeRate) {
-  console.log(`Publishing identifierBytes [${identifierBytes}] publishTime [${publishTime}] exchangeRate (in Wei) [${exchangeRate}]`);
+  console.log(
+    `Publishing identifierBytes [${identifierBytes}] publishTime [${publishTime}] exchangeRate (in Wei) [${exchangeRate}]`
+  );
   await manualPriceFeed.pushLatestPrice(identifierBytes, publishTime, exchangeRate);
 }
 
@@ -92,7 +94,9 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
       .integerValue(BigNumber.ROUND_FLOOR)
       .toString()
   );
-  console.log(`Dividing numerator [${numInWei}] / denominator [${denomInWei}] = exchange rate (in Wei) [${exchangeRate}]`);
+  console.log(
+    `Dividing numerator [${numInWei}] / denominator [${denomInWei}] = exchange rate (in Wei) [${exchangeRate}]`
+  );
   return exchangeRate;
 }
 
@@ -114,9 +118,13 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
   const nextPublishTime = lastPublishTime.addn(publishInterval);
   const shouldPublish = currentTime.gte(nextPublishTime);
   if (!shouldPublish) {
-    console.log(`Not publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] > currentTime [${currentTime}]`);
+    console.log(
+      `Not publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] > currentTime [${currentTime}]`
+    );
   } else {
-    console.log(`Publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] <= currentTime [${currentTime}]`);
+    console.log(
+      `Publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] <= currentTime [${currentTime}]`
+    );
   }
   return {
     shouldPublish: shouldPublish,
@@ -148,39 +156,43 @@ async function publishFeed(feed) {
 }
 
 function getPriceFeeds(priceFeedAddress) {
-  return [{
-    identifier: "BTC/ETH",
-    priceFeedAddress: priceFeedAddress,
-    publishInterval: 900, // 15 minutes.
-    numerator: {
-      priceFetchFunction: getCoinbasePrice,
-      assetName: "BTC-USD"
+  return [
+    {
+      identifier: "BTC/ETH",
+      priceFeedAddress: priceFeedAddress,
+      publishInterval: 900, // 15 minutes.
+      numerator: {
+        priceFetchFunction: getCoinbasePrice,
+        assetName: "BTC-USD"
+      },
+      denominator: {
+        priceFetchFunction: getCoinbasePrice,
+        assetName: "ETH-USD"
+      }
     },
-    denominator: {
-      priceFetchFunction: getCoinbasePrice,
-      assetName: "ETH-USD"
-    }
-  }, {
-    identifier: "SPY/ETH",
-    priceFeedAddress: priceFeedAddress,
-    publishInterval: 900,
-    numerator: {
-      priceFetchFunction: getAlphaVantageQuote,
-      assetName: "SPY"
+    {
+      identifier: "SPY/ETH",
+      priceFeedAddress: priceFeedAddress,
+      publishInterval: 900,
+      numerator: {
+        priceFetchFunction: getAlphaVantageQuote,
+        assetName: "SPY"
+      },
+      denominator: {
+        priceFetchFunction: getAlphaVantageCurrencyRate,
+        assetName: "ETH"
+      }
     },
-    denominator: {
-      priceFetchFunction: getAlphaVantageCurrencyRate,
-      assetName: "ETH"
+    {
+      identifier: "CNH/USD",
+      priceFeedAddress: priceFeedAddress,
+      publishInterval: 900,
+      numerator: {
+        priceFetchFunction: getAlphaVantageCurrencyRate,
+        assetName: "CNH"
+      }
     }
-  }, {
-    identifier: "CNH/USD",
-    priceFeedAddress: priceFeedAddress,
-    publishInterval: 900,
-    numerator: {
-      priceFetchFunction: getAlphaVantageCurrencyRate,
-      assetName: "CNH"
-    }
-  }];
+  ];
 }
 
 async function runExport() {
@@ -189,14 +201,14 @@ async function runExport() {
     // Usage: `truffle exec scripts/PublishPrices.js <ManualPriceFeed address> --network <network>`
     if (process.argv.length < 5) {
       console.error("Not enough arguments. Include ManualPriceFeed's contract address.");
-      return
+      return;
     }
 
     // Get the price feed contract's hash from the command line.
     const manualPriceFeedAddress = process.argv[4];
-    if (manualPriceFeedAddress.substring(0,2) != "0x" || manualPriceFeedAddress.length != 42) {
+    if (manualPriceFeedAddress.substring(0, 2) != "0x" || manualPriceFeedAddress.length != 42) {
       console.error("ManualPriceFeed's contract address missing. Exiting...");
-      return
+      return;
     }
 
     // Get the list of price feeds to submit
