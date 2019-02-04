@@ -4,6 +4,7 @@ const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
 const DerivativeCreator = artifacts.require("DerivativeCreator");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
+const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 
 const enableControllableTiming = network => {
@@ -39,6 +40,10 @@ module.exports = async function(deployer, network, accounts) {
     centralizedStore.address,
     manualPriceFeed.address
   );
+
+  // TokenizedDerivativeCreator requires the TokenizedDerivativeUtils library to be deployed first.
+  await deployer.deploy(TokenizedDerivativeUtils);
+  await deployer.link(TokenizedDerivativeUtils, TokenizedDerivativeCreator);
   const tokenizedDerivativeCreator = await deployAndGet(
     deployer,
     TokenizedDerivativeCreator,
