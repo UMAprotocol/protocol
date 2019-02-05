@@ -271,7 +271,10 @@ library TokenizedDerivativeUtils {
     }
 
     function _dispute(TDS.Storage storage s) external onlySponsor(s) {
-        require(s.state == TDS.State.Live);
+        require(
+            s.state == TDS.State.Live,
+            "Contract must be Live to dispute"
+        );
 
         uint requiredDeposit = uint(_takePercentage(s.nav, s.fixedParameters.disputeDeposit));
 
@@ -327,7 +330,10 @@ library TokenizedDerivativeUtils {
         }
 
         // Can only withdraw the allowed amount.
-        require(withdrawableAmount >= int(amount));
+        require(
+            withdrawableAmount >= int(amount),
+            "Attempting to withdraw more than allowed"
+        );
 
         // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
