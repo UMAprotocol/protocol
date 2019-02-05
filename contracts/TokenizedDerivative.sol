@@ -729,7 +729,7 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
         string memory _name,
         string memory _symbol
     ) public {
-        // Set token params.
+        // Set token properties.
         name = _name;
         symbol = _symbol;
 
