@@ -28,16 +28,16 @@ library TokenizedDerivativeParams {
         address oracle;
         address store;
         address priceFeed;
-        uint  defaultPenalty; // Percentage of nav * 10^18
+        uint defaultPenalty; // Percentage of nav * 10^18
         uint requiredMargin; // Percentage of nav * 10^18
         bytes32 product;
         uint fixedYearlyFee; // Percentage of nav * 10^18
-        uint  disputeDeposit; // Percentage of nav * 10^18
+        uint disputeDeposit; // Percentage of nav * 10^18
         address returnCalculator;
         uint startingTokenPrice;
         uint expiry;
         address marginCurrency;
-        uint  withdrawLimit; // Percentage of derivativeStorage.shortBalance * 10^18
+        uint withdrawLimit; // Percentage of derivativeStorage.shortBalance * 10^18
     }
 }
 
