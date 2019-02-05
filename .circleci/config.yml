@@ -127,6 +127,10 @@ jobs:
       - run:
           name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
+      - store_artifacts:
+          path: ./coverage
+          destination: coverage
+
 
 workflows:
   version: 2
