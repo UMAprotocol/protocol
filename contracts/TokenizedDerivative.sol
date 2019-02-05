@@ -153,7 +153,8 @@ library TokenizedDerivativeUtils {
     using SafeMath for uint;
     using SignedSafeMath for int;
 
-    uint constant private SECONDS_PER_DAY = 86400;
+    uint private constant SECONDS_PER_DAY = 86400;
+    uint private constant SECONDS_PER_YEAR = 31536000;
 
     modifier onlySponsor(TDS.Storage storage s) {
         require(msg.sender == s.externalAddresses.sponsor);
@@ -173,6 +174,60 @@ library TokenizedDerivativeUtils {
     modifier onlySponsorOrApDelegate(TDS.Storage storage s) {
         require(msg.sender == s.externalAddresses.sponsor || msg.sender == s.externalAddresses.apDelegate);
         _;
+    }
+
+    // Contract initializer. Should only be called at construction.
+    // Note: Must be a public function because structs cannot be passed as calldata (required data type for external
+    // functions).
+    function _initialize(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) public {
+        // The default penalty must be less than the required margin, which must be less than the NAV.
+        require(params.defaultPenalty <= params.requiredMargin);
+        require(params.requiredMargin <= 1 ether);
+        s.fixedParameters.marginRequirement = params.requiredMargin;
+
+        s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
+        
+        // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
+        // rounding or overflow errors.
+        require(params.startingTokenPrice >= uint(1 ether).div(10**9));
+        require(params.startingTokenPrice <= uint(1 ether).mul(10**9));
+
+        // Address information
+        s.externalAddresses.oracle = OracleInterface(params.oracle);
+        s.externalAddresses.store = StoreInterface(params.store);
+        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
+        // Verify that the price feed and s.externalAddresses.oracle support the given s.fixedParameters.product.
+        require(s.externalAddresses.oracle.isIdentifierSupported(params.product));
+        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
+
+        s.externalAddresses.sponsor = params.sponsor;
+        s.externalAddresses.admin = params.admin;
+        s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
+
+        // Contract parameters.
+        s.fixedParameters.defaultPenalty = params.defaultPenalty;
+        s.fixedParameters.product = params.product;
+        s.fixedParameters.fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
+        s.fixedParameters.disputeDeposit = params.disputeDeposit;
+
+        // TODO(mrice32): we should have an ideal start time rather than blindly polling.
+        (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
+        require(latestTime != 0);
+
+        // Set end time to max value of uint to implement no expiry.
+        if (params.expiry == 0) {
+            s.endTime = ~uint(0);
+        } else {
+            require(params.expiry >= latestTime);
+            s.endTime = params.expiry;
+        }
+
+        s.nav = s._computeInitialNav(latestUnderlyingPrice, latestTime, params.startingTokenPrice);
+
+        s.state = TDS.State.Live;
+
+        require(params.withdrawLimit < 1 ether);
+        s.fixedParameters.withdrawLimit = params.withdrawLimit;
     }
 
     function _depositAndCreateTokens(TDS.Storage storage s, uint newTokenNav) external onlySponsorOrApDelegate(s) {
@@ -357,7 +412,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _computeInitialNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
-        external
+        internal
         returns (int navNew)
     {
         int unitNav = int(startingTokenPrice);
@@ -496,7 +551,6 @@ library TokenizedDerivativeUtils {
         view
         returns (TDS.TokenState memory newTokenState)
     {
-
             int underlyingReturn = s.externalAddresses.returnCalculator.computeReturn(
                 beginningTokenState.underlyingPrice, latestUnderlyingPrice);
             int tokenReturn = underlyingReturn.sub(
@@ -665,7 +719,6 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     string public name;
     string public symbol;
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
-    uint private constant SECONDS_PER_YEAR = 31536000;
 
     TDS.Storage public derivativeStorage;
 
@@ -675,57 +728,13 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
         TokenizedDerivativeParams.ConstructorParams memory params,
         string memory _name,
         string memory _symbol
-    ) public payable {
-        // The default penalty must be less than the required margin, which must be less than the NAV.
-        require(params.defaultPenalty <= params.requiredMargin);
-        require(params.requiredMargin <= 1 ether);
-        derivativeStorage.fixedParameters.marginRequirement = params.requiredMargin;
-
-        derivativeStorage.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
-        
-        // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
-        // rounding or overflow errors.
-        require(params.startingTokenPrice >= uint(1 ether).div(10**9));
-        require(params.startingTokenPrice <= uint(1 ether).mul(10**9));
-
-        // Address information
-        derivativeStorage.externalAddresses.oracle = OracleInterface(params.oracle);
-        derivativeStorage.externalAddresses.store = StoreInterface(params.store);
-        derivativeStorage.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
-        // Verify that the price feed and derivativeStorage.externalAddresses.oracle support the given derivativeStorage.fixedParameters.product.
-        require(derivativeStorage.externalAddresses.oracle.isIdentifierSupported(params.product));
-        require(derivativeStorage.externalAddresses.priceFeed.isIdentifierSupported(params.product));
-
-        derivativeStorage.externalAddresses.sponsor = params.sponsor;
-        derivativeStorage.externalAddresses.admin = params.admin;
-        derivativeStorage.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
-
-        // Contract parameters.
-        derivativeStorage.fixedParameters.defaultPenalty = params.defaultPenalty;
-        derivativeStorage.fixedParameters.product = params.product;
-        derivativeStorage.fixedParameters.fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
-        derivativeStorage.fixedParameters.disputeDeposit = params.disputeDeposit;
+    ) public {
+        // Set token params.
         name = _name;
         symbol = _symbol;
 
-        // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint latestTime, int latestUnderlyingPrice) = derivativeStorage.externalAddresses.priceFeed.latestPrice(derivativeStorage.fixedParameters.product);
-        require(latestTime != 0);
-
-        // Set end time to max value of uint to implement no expiry.
-        if (params.expiry == 0) {
-            derivativeStorage.endTime = ~uint(0);
-        } else {
-            require(params.expiry >= latestTime);
-            derivativeStorage.endTime = params.expiry;
-        }
-
-        derivativeStorage.nav = derivativeStorage._computeInitialNav(latestUnderlyingPrice, latestTime, params.startingTokenPrice);
-
-        derivativeStorage.state = TDS.State.Live;
-
-        require(params.withdrawLimit < 1 ether);
-        derivativeStorage.fixedParameters.withdrawLimit = params.withdrawLimit;
+        // Initialize the contract.
+        derivativeStorage._initialize(params);
     }
 
     function createTokens() external payable {
