@@ -9,10 +9,11 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./PriceFeedInterface.sol";
 import "./Testable.sol";
+import "./Withdrawable.sol";
 
 
 // Implementation of PriceFeedInterface with the ability to push prices.
-contract ManualPriceFeed is PriceFeedInterface, Ownable, Testable {
+contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
 
     using SafeMath for uint;
 

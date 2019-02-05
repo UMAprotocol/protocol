@@ -3,7 +3,7 @@ pragma solidity ^0.5.0;
 import "./Registry.sol";
 
 
-contract ContractCreator {
+contract ContractCreator is Withdrawable {
     Registry internal registry;
     address internal oracleAddress;
     address internal storeAddress;

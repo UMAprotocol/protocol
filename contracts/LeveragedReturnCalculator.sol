@@ -6,10 +6,11 @@
 pragma solidity ^0.5.0;
 
 import "./ReturnCalculatorInterface.sol";
+import "./Withdrawable.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 
 
-contract LeveragedReturnCalculator is ReturnCalculatorInterface {
+contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     using SignedSafeMath for int;
 
     // Leverage value. Negative values return the leveraged short return.

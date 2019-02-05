@@ -1,6 +1,7 @@
 pragma solidity ^0.5.0;
 
 import "./RegistryInterface.sol";
+import "./Withdrawable.sol";
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -8,7 +9,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 pragma experimental ABIEncoderV2;
 
 
-contract Registry is RegistryInterface, Ownable {
+contract Registry is RegistryInterface, Withdrawable {
 
     using SafeMath for uint;
 

@@ -6,12 +6,12 @@
 pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./StoreInterface.sol";
+import "./Withdrawable.sol";
 
 
 // An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
-contract CentralizedStore is StoreInterface, Ownable {
+contract CentralizedStore is StoreInterface, Withdrawable {
 
     using SafeMath for uint;
 
@@ -26,17 +26,6 @@ contract CentralizedStore is StoreInterface, Ownable {
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(authorizedAmount > 0);
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
-    }
-
-    // Withdraws ETH from the store.
-    function withdraw(uint amount) external onlyOwner {
-        msg.sender.transfer(amount);
-    }
-
-    // Withdraws ERC20 tokens from the store.
-    function withdrawErc20(address erc20Address, uint amount) external onlyOwner {
-        IERC20 erc20 = IERC20(erc20Address);
-        require(erc20.transfer(msg.sender, amount));
     }
 
     // Sets a new Oracle fee per second.
