@@ -205,8 +205,8 @@ contract("CentralizedOracle", function(accounts) {
     const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
     const derivativeContract = await TokenizedDerivative.at(derivativeAddress);
 
-    assert.equal(await derivativeContract.state(), "0");
-    assert.equal((await derivativeContract.currentTokenState()).time, "450");
+    assert.equal((await derivativeContract.derivativeStorage()).state, "0");
+    assert.equal((await derivativeContract.derivativeStorage()).currentTokenState.time, "450");
 
     // Only the owner of the Oracle can use these methods.
     assert(await didContractThrow(centralizedOracle.callEmergencyShutdown(derivativeContract, { from: rando })));
@@ -215,11 +215,11 @@ contract("CentralizedOracle", function(accounts) {
     // Verify that the Oracle passes on remargin() to the derivative.
     await manualPriceFeed.pushLatestPrice(identifierBytes, 475, web3.utils.toWei("1", "ether"));
     await centralizedOracle.callRemargin(derivativeAddress);
-    assert.equal((await derivativeContract.currentTokenState()).time, "475");
+    assert.equal((await derivativeContract.derivativeStorage()).currentTokenState.time, "475");
 
     // Verify that the Oracle passes on emergencyShutdown() to the derivative.
     await centralizedOracle.callEmergencyShutdown(derivativeAddress);
-    assert.equal(await derivativeContract.state(), "4");
+    assert.equal((await derivativeContract.derivativeStorage()).state, "4");
   });
 
   it("Non owner", async function() {
