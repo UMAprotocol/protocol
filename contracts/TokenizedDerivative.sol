@@ -271,10 +271,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _dispute(TDS.Storage storage s) external onlySponsor(s) {
-        require(
-            s.state == TDS.State.Live,
-            "Contract must be Live to dispute"
-        );
+        require(s.state == TDS.State.Live);
 
         uint requiredDeposit = uint(_takePercentage(s.nav, s.fixedParameters.disputeDeposit));
 
@@ -330,10 +327,7 @@ library TokenizedDerivativeUtils {
         }
 
         // Can only withdraw the allowed amount.
-        require(
-            withdrawableAmount >= int(amount),
-            "Attempting to withdraw more than allowed"
-        );
+        require(withdrawableAmount >= int(amount));
 
         // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
@@ -711,8 +705,6 @@ library TokenizedDerivativeUtils {
 
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
 contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
-    using SafeMath for uint;
-    using SignedSafeMath for int;
     using TokenizedDerivativeUtils for TDS.Storage;
 
     // Note: these variables are to give ERC20 consumers information about the token.
