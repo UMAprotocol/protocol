@@ -422,14 +422,20 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         _deposit(_pullSentMargin());
     }
 
-    function _payOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private {
-        uint feeAmount = _computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime, lastTokenNav);
-        if (feeAmount == 0) {
-            return;
-        }
+    // Deducts the fees from the margin account.
+    function _deductOracleFees(uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) private returns (uint feeAmount) {
+        feeAmount = _computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime, lastTokenNav);
         shortBalance = shortBalance.sub(int(feeAmount));
         // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
         // contract.
+    }
+
+    // Pays out the fees to the Oracle.
+    function _payOracleFees(uint feeAmount) private {
+        if (feeAmount == 0) {
+            return;
+        }
+
         if (address(marginCurrency) == address(0x0)) {
             store.payOracleFees.value(feeAmount)();
         } else {
@@ -543,13 +549,15 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         if (latestTime >= endTime) {
             state = State.Expired;
             prevTokenState = currentTokenState;
-            _payOracleFees(currentTokenState.time, endTime, nav);
+            uint feeAmount = _deductOracleFees(currentTokenState.time, endTime, nav);
+
             // We have no idea what the price was, exactly at endTime, so we can't set
             // currentTokenState, or update the nav, or do anything.
             _requestOraclePrice(endTime);
+            _payOracleFees(feeAmount);
             return;
         }
-        _payOracleFees(currentTokenState.time, latestTime, nav);
+        uint feeAmount = _deductOracleFees(currentTokenState.time, latestTime, nav);
 
         // Update nav of contract.
         int navNew = _computeNav(latestPrice, latestTime);
@@ -571,6 +579,8 @@ contract TokenizedDerivative is ERC20, AdminInterface {
         if (inDefault) {
             _requestOraclePrice(endTime);
         }
+
+        _payOracleFees(feeAmount);
     }
 
     function _updateBalances(int navNew) private {

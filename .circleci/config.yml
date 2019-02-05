@@ -47,20 +47,24 @@ jobs:
           command: $(npm bin)/solhint --max-warnings=1 contracts/**/*.sol
   slither:
     docker:
-      - image: circleci/node:latest
+      - image: trailofbits/eth-security-toolbox
     working_directory: ~/protocol
     steps:
+      - checkout
       - restore_cache:
-          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: python-build
+          keys:
+            - sec-toolbox-deps-{{ checksum "package.json" }}
+            - sec-toolbox-deps-
+      - run:
+          name: Install Dependencies
+          command: npm install --quiet
+      - save_cache:
+          key: sec-toolbox-deps-{{ checksum "package.json" }}
+          paths:
+            - node_modules
       - run:
           name: Slither
           command: ./ci/run_slither.sh
-      - save_cache:
-          key: python-build
-          paths:
-            - ~/Python-3.6.3
   test:
     docker:
       - image: circleci/node:latest
@@ -89,12 +93,40 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - coverage-dependency-cache-{{ checksum "package.json" }}
+            - coverage-dependency-cache-
       - run:
           name: Install Dependencies
           command: apk add make git python g++ curl && npm install --quiet
+      - save_cache:
+          key: coverage-dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - node_modules
       - run:
           name: Run coverage
           command: npm run coverage
+  echidna:
+    docker:
+      - image: trailofbits/eth-security-toolbox
+    working_directory: ~/protocol
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - echidna-dependency-cache-{{ checksum "package.json" }}
+            - echidna-dependency-cache-
+      - run:
+          name: Install Dependencies
+          command: npm install --quiet
+      - save_cache:
+          key: echidna-dependency-cache-{{ checksum "package.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run Echidna Tests
+          command: ./ci/run_echidna_tests.sh
 
 workflows:
   version: 2
@@ -104,19 +136,14 @@ workflows:
       - build:
           requires:
             - checkout_and_install
-            - lint
-            - slither
       - lint:
           requires:
             - checkout_and_install
-      - slither:
-          requires:
-            - checkout_and_install
+      - slither
       - test:
           requires:
-            - checkout_and_install
             - build
+      - echidna
       - coverage:
           requires:
-            - checkout_and_install
             - test

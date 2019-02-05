@@ -1,0 +1,12 @@
+# See https://github.com/trailofbits/echidna for explanation of config params.
+
+# Arguments to solc
+solcArgs: "openzeppelin-solidity/=/home/ethsec/protocol/node_modules/openzeppelin-solidity/ --allow-paths=/home/ethsec/protocol/contracts/"
+epochs: 2
+testLimit: 10000
+# Note: this test only needs sequences of length 1 because it's just testing the in/out of a single, stateless
+# function. Other, stateful contracts' tests will likely need this to be 10+.
+range: 1
+shrinkLimit: 1000
+prefix: echidna_
+returnType: Success
