@@ -311,7 +311,7 @@ library TokenizedDerivativeUtils {
         s._settleInternal();
     }
 
-    function _createTokens(TDS.Storage storage s) external {
+    function _createTokens(TDS.Storage storage s) external onlySponsorOrApDelegate(s) {
         s._createTokensInternal(s._pullSentMargin());
     }
 
