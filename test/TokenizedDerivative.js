@@ -124,16 +124,18 @@ contract("TokenizedDerivative", function(accounts) {
       let constructorParams = {
         sponsor: sponsor,
         admin: admin,
-        defaultPenalty: web3.utils.toWei("0.05", "ether"),
-        requiredMargin: web3.utils.toWei("0.1", "ether"),
+        defaultPenalty: web3.utils.toWei("0.5", "ether"),
+        supportedMove: web3.utils.toWei("0.1", "ether"),
         product: identifierBytes,
         fixedYearlyFee: web3.utils.toWei("0.01", "ether"),
-        disputeDeposit: web3.utils.toWei("0.05", "ether"),
+        disputeDeposit: web3.utils.toWei("0.5", "ether"),
         returnCalculator: noLeverageCalculator.address,
         startingTokenPrice: web3.utils.toWei("1", "ether"),
         expiry: expiry.toString(),
         marginCurrency: marginTokenAddress(),
         withdrawLimit: web3.utils.toWei("0.33", "ether"),
+        returnType: "1", // Compound
+        startingUnderlyingPrice: "0", // Use price feed
         name: name,
         symbol: symbol
       };
@@ -232,19 +234,30 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Fails because there is not enough short margin for 3 ETH of tokens.
       assert(
-        await didContractThrow(derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("3", "ether"))))
+        await didContractThrow(
+          derivativeContract.createTokens(
+            web3.utils.toWei("3", "ether"),
+            await getMarginParams(web3.utils.toWei("3", "ether"))
+          )
+        )
       );
 
       // Fails because the admin is not allowed to create tokens.
       assert(
         await didContractThrow(
-          derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("1", "ether"), admin))
+          derivativeContract.createTokens(
+            web3.utils.toWei("1", "ether"),
+            await getMarginParams(web3.utils.toWei("1", "ether"), admin)
+          )
         )
       );
 
       // Succeeds because exact is true and requested NAV (1 ETH) would not cause the short account to go below its
       // margin requirement.
-      result = await derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("1", "ether")));
+      result = await derivativeContract.createTokens(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1", "ether"))
+      );
       truffleAssert.eventEmitted(result, "TokensCreated", ev => {
         return ev.numTokensCreated.toString() === web3.utils.toWei("1", "ether");
       });
@@ -258,7 +271,10 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(nav.toString(), web3.utils.toWei("1", "ether"));
 
       // Succeeds because there is enough margin to support an additional 1 ETH of NAV.
-      await derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("1", "ether")));
+      await derivativeContract.createTokens(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1", "ether"))
+      );
 
       sponsorTokenBalance = await derivativeContract.balanceOf(sponsor);
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
@@ -1209,7 +1225,10 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // AP Delegate can call createTokens.
-      await derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate));
+      await derivativeContract.createTokens(
+        web3.utils.toWei("0.1", "ether"),
+        await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate)
+      );
 
       // AP Delegate can call redeemTokens.
       await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1.1", "ether"), {
@@ -1244,16 +1263,18 @@ contract("TokenizedDerivative", function(accounts) {
       const defaultConstructorParams = {
         sponsor: sponsor,
         admin: admin,
-        defaultPenalty: web3.utils.toWei("0.05", "ether"),
-        requiredMargin: web3.utils.toWei("0.1", "ether"),
+        defaultPenalty: web3.utils.toWei("0.5", "ether"),
+        supportedMove: web3.utils.toWei("0.1", "ether"),
         product: identifierBytes,
         fixedYearlyFee: web3.utils.toWei("0.01", "ether"),
-        disputeDeposit: web3.utils.toWei("0.05", "ether"),
+        disputeDeposit: web3.utils.toWei("0.5", "ether"),
         returnCalculator: noLeverageCalculator.address,
         startingTokenPrice: web3.utils.toWei("1", "ether"),
         expiry: "0",
         marginCurrency: marginTokenAddress(),
         withdrawLimit: web3.utils.toWei("0.33", "ether"),
+        returnType: "1", // Compound
+        startingUnderlyingPrice: "0", // Use price feed
         name: "1x coin",
         symbol: web3.utils.utf8ToHex("BTCETH")
       };
@@ -1288,22 +1309,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Default penalty above margin requirement.
       const defaultPenaltyAboveMrParams = {
         ...defaultConstructorParams,
-        defaultPenalty: web3.utils.toWei("0.5", "ether")
+        defaultPenalty: web3.utils.toWei("1.1", "ether")
       };
       assert(
         await didContractThrow(
           tokenizedDerivativeCreator.createTokenizedDerivative(defaultPenaltyAboveMrParams, { from: sponsor })
-        )
-      );
-
-      // Margin requirement above 100%.
-      const requiredMarginTooHighParams = {
-        ...defaultConstructorParams,
-        requiredMargin: web3.utils.toWei("2", "ether")
-      };
-      assert(
-        await didContractThrow(
-          tokenizedDerivativeCreator.createTokenizedDerivative(requiredMarginTooHighParams, { from: sponsor })
         )
       );
 

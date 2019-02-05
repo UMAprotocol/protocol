@@ -19,11 +19,11 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     // 2 -> 2x levered long
     // -1 -> unlevered short
     // -2 -> 2x levered short
-    int public leverage;
+    int private leverageMultiplier;
 
-    constructor(int _leverage) public {
-        require(_leverage != 0);
-        leverage = _leverage;
+    constructor(int _leverageMultiplier) public {
+        require(_leverageMultiplier != 0);
+        leverageMultiplier = _leverageMultiplier;
     }
 
     function computeReturn(int oldPrice, int newPrice) external view returns (int assetReturn) {
@@ -35,14 +35,18 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
         int underlyingAssetReturn = newPrice.mul(1 ether).div(oldPrice);
 
-        // Compute the RoR of the underlying asset and multiply by leverage to get the modified return.
-        assetReturn = underlyingAssetReturn.sub(1 ether).mul(leverage);
+        // Compute the RoR of the underlying asset and multiply by leverageMultiplier to get the modified return.
+        assetReturn = underlyingAssetReturn.sub(1 ether).mul(leverageMultiplier);
 
 
-        // If oldPrice is < 0, we need to flip the sign to keep returns positively correlated with leverage * price
-        // diffs.
+        // If oldPrice is < 0, we need to flip the sign to keep returns positively correlated with
+        // leverageMultiplier * price diffs.
         if (oldPrice < 0) {
             assetReturn = assetReturn.mul(-1);
         }
+    }
+
+    function leverage() external view returns (int _leverage) {
+        return leverageMultiplier;
     }
 }

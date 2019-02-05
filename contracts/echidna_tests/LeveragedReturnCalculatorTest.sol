@@ -13,7 +13,7 @@ contract LeveragedReturnCalculatorTest is LeveragedReturnCalculator {
     int private returnOutput;
 
     // solhint-disable-next-line no-empty-blocks
-    constructor(int _leverage) public LeveragedReturnCalculator(_leverage) {}
+    constructor(int _leverageMultiplier) public LeveragedReturnCalculator(_leverageMultiplier) {}
 
     function storeReturn(int oldPrice, int newPrice) external {
         int assetReturn = this.computeReturn(oldPrice, newPrice);
@@ -29,14 +29,14 @@ contract LeveragedReturnCalculatorTest is LeveragedReturnCalculator {
             return returnOutput == 0;
         }
 
-        if (leverage >= 1) {
+        if (this.leverage() >= 1) {
             // Positive leverage means that the price difference should be in the same direction as the return.
             if (newPriceInput >= oldPriceInput) {
                 return returnOutput >= 0;
             } else {
                 return returnOutput < 0;
             }
-        } else if (leverage <= -1) {
+        } else if (this.leverage() <= -1) {
             // Negative leverage means the price difference should be in the opposite direction of the return.
             if (newPriceInput >= oldPriceInput) {
                 return returnOutput <= 0;
