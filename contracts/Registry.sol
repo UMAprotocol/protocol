@@ -29,7 +29,7 @@ contract Registry is RegistryInterface, Withdrawable {
     }
 
     // Maps from derivative address to a pointer that refers to that RegisteredDerivative in registeredDerivatives.
-    mapping(address => Pointer) private derivativePointers; 
+    mapping(address => Pointer) private derivativePointers;
 
     // Note: this must be stored outside of the RegisteredDerivative because mappings cannot be deleted and copied
     // like normal data. This could be stored in the Pointer struct, but storing it there would muddy the purpose
@@ -62,7 +62,7 @@ contract Registry is RegistryInterface, Withdrawable {
         pointer.valid = PointerValidity.Valid;
 
         registeredDerivatives.push(RegisteredDerivative(derivativeAddress, msg.sender));
-        
+
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
         pointer.index = uint128(registeredDerivatives.length.sub(1));
 

@@ -139,7 +139,9 @@ contract("TokenizedDerivative", function(accounts) {
       const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
       derivativeContract = await TokenizedDerivative.at(derivativeAddress);
 
-      const feesPerSecond = web3.utils.toBN((await derivativeContract.derivativeStorage()).fixedParameters.fixedFeePerSecond);
+      const feesPerSecond = web3.utils.toBN(
+        (await derivativeContract.derivativeStorage()).fixedParameters.fixedFeePerSecond
+      );
       feesPerInterval = feesPerSecond.muln(priceFeedUpdatesInterval);
     };
 
@@ -569,7 +571,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Remargin to the new price, which should immediately settle the contract.
       await derivativeContract.remargin({ from: sponsor });
-      assert.equal(((await derivativeContract.derivativeStorage()).state).toString(), "5");
+      assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "5");
 
       // Verify nav and balances at settlement, including default penalty.
       const expectedOracleFee = computeExpectedOracleFees(initialNav);
@@ -617,7 +619,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
 
       // Auto-settles with the Oracle price.
-      assert.equal(((await derivativeContract.derivativeStorage()).state).toString(), "5");
+      assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "5");
       nav = (await derivativeContract.derivativeStorage()).nav;
 
       const shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
