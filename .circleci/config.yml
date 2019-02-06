@@ -128,7 +128,7 @@ jobs:
           name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
       - store_artifacts:
-          path: ./coverage
+          path: coverage
           destination: coverage
 
 
