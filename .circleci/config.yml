@@ -99,7 +99,7 @@ jobs:
             - coverage-dependency-cache-
       - run:
           name: Install Dependencies
-          command: apk add make git python g++ curl && npm install --quiet
+          command: apk add make git python g++ curl && apk add --update ca-certificates openssl && update-ca-certificates && npm install --quiet
       - save_cache:
           key: coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
@@ -116,6 +116,9 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
+      - run:
+          name: Update Certificates
+          command: sudo update-ca-certificates
       - restore_cache:
           keys:
             - echidna-dependency-cache-{{ checksum "package.json" }}
