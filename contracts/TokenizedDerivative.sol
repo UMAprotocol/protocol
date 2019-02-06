@@ -398,12 +398,23 @@ library TokenizedDerivativeUtils {
 
     // Returns the expected balance of the short margin account using the latest available Price Feed price.
     function _calcShortMarginBalance(TDS.Storage storage s) external view returns (int newShortMarginBalance) {
+        (, newShortMarginBalance) = _calcNewNavAndBalance(s);
+    }
+
+    function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
+        (int navNew, int newShortMarginBalance) = _calcNewNavAndBalance(s);
+        int requiredMargin = s._getRequiredEthMargin(navNew);
+        return newShortMarginBalance.sub(requiredMargin);
+    }
+
+    function _calcNewNavAndBalance(TDS.Storage storage s) internal view returns (int navNew, int newShortMarginBalance)
+    {
         (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
         require(latestTime < s.endTime);
 
         TDS.TokenState memory predictedTokenState = s._computeNewTokenState(
             s.currentTokenState, latestUnderlyingPrice, latestTime);
-        int navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
+        navNew = _computeNavFromTokenPrice(predictedTokenState.tokenPrice);
         int longDiff = s._getLongNavDiff(navNew);
 
         uint feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime, s.nav);
@@ -786,6 +797,12 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     // Returns the expected balance of the short margin account using the latest available Price Feed price.
     function calcShortMarginBalance() external view returns (int newShortMarginBalance) {
         return derivativeStorage._calcShortMarginBalance();
+    }
+
+    // Returns the expected short margin in excess of the margin requirement using the latest available Price Feed
+    // price.  Value will be negative if the short margin is expected to be below the margin requirement.
+    function calcExcessMargin() external view returns (int excessMargin) {
+        return derivativeStorage._calcExcessMargin();
     }
 
     function settle() public {
