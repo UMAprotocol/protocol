@@ -148,6 +148,4 @@ workflows:
           requires:
             - build
       - echidna
-      - coverage:
-          requires:
-            - test
+      - coverage
