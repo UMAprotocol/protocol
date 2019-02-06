@@ -93,13 +93,16 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
+      - run:
+          name: Install System Packages
+          command: apk update && apk add make git python g++ curl ca-certificates openssl && update-ca-certificates
       - restore_cache:
           keys:
             - coverage-dependency-cache-{{ checksum "package.json" }}
             - coverage-dependency-cache-
       - run:
           name: Install Dependencies
-          command: apk add make git python g++ curl && npm install --quiet
+          command: npm install --quiet
       - save_cache:
           key: coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
@@ -107,6 +110,9 @@ jobs:
       - run:
           name: Run coverage
           command: npm run coverage
+      - store_artifacts:
+          path: coverage
+          destination: coverage
   echidna:
     docker:
       - image: trailofbits/eth-security-toolbox
@@ -144,6 +150,4 @@ workflows:
           requires:
             - build
       - echidna
-      - coverage:
-          requires:
-            - test
+      - coverage
