@@ -119,9 +119,6 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
-      - run:
-          name: Update Certificates
-          command: sudo update-ca-certificates
       - restore_cache:
           keys:
             - echidna-dependency-cache-{{ checksum "package.json" }}
