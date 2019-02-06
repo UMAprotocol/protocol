@@ -93,13 +93,16 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
+      - run:
+          name: Install System Packages
+          command: apk update && apk add make git python g++ curl ca-certificates openssl && update-ca-certificates
       - restore_cache:
           keys:
             - coverage-dependency-cache-{{ checksum "package.json" }}
             - coverage-dependency-cache-
       - run:
           name: Install Dependencies
-          command: apk update && apk add make git python g++ curl ca-certificates openssl && update-ca-certificates && npm install --quiet
+          command: npm install --quiet
       - save_cache:
           key: coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
