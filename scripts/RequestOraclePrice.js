@@ -19,6 +19,13 @@ async function registerDerivative(registryAddress) {
   }
 }
 
+// Note: This script initiates a price request to CentralizedOracle.
+// Its primary purpose is test setup for `scripts/PushOraclePrice.js`
+// This script executes the following steps:
+//   1. Registers the migration deployer's address as a Derivative Creator.
+//   2. Registers the deployer's address as a derivative.
+//   3. Adds the specified identifier with the CentralizedOracle.
+//   4. Requests a price at the specified time.
 async function run() {
   try {
     // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time>
