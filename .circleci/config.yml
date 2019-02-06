@@ -99,7 +99,7 @@ jobs:
             - coverage-dependency-cache-
       - run:
           name: Install Dependencies
-          command: apk add make git python g++ curl && apk add --update ca-certificates openssl && update-ca-certificates && npm install --quiet
+          command: apk update && apk add make git python g++ curl ca-certificates openssl && update-ca-certificates && npm install --quiet
       - save_cache:
           key: coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
