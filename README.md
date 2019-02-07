@@ -72,7 +72,7 @@ $(npm bin)/solhint contracts/**/*.sol
 ```
 
 ### Running Prettier JS Formatter
-To run prettier, run the following command:
+To run prettier over the `.js` files in the repo, run:
 ```
 npm run prettier
 ```
