@@ -31,7 +31,7 @@ async function run() {
     // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time>
     // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
     if (process.argv.length < 8) {
-      console.error("Not enough arguments. Must include <CentralizedOracle address>, <identifier>, and <time>");
+      console.error("Not enough arguments. Must include <Registry address>, <CentralizedOracle address>, <identifier>, and <time>");
       return;
     }
 
@@ -47,7 +47,7 @@ async function run() {
       return;
     }
 
-    registerDerivative(registryAddress);
+    await registerDerivative(registryAddress);
 
     const identifier = process.argv[6];
     const identifierInBytes = web3.utils.fromAscii(identifier);
