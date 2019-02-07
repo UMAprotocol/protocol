@@ -1,11 +1,10 @@
-const PushOraclePrice = require("../../scripts/PushOraclePrice.js")
-const RequestOraclePrice = require("./RequestOraclePrice.js")
+const PushOraclePrice = require("../../scripts/PushOraclePrice.js");
+const RequestOraclePrice = require("./RequestOraclePrice.js");
 
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const Registry = artifacts.require("Registry");
 
 contract("scripts/PushOraclePrice.js", function(accounts) {
-
   let registry;
   let centralizedOracle;
   const deployer = accounts[0];

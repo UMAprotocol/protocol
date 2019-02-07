@@ -53,7 +53,9 @@ const runRequestOraclePrice = async function(callback) {
   // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
   if (process.argv.length < 8) {
-    console.error("Not enough arguments. Must include <Registry address>, <CentralizedOracle address>, <identifier>, and <time>");
+    console.error(
+      "Not enough arguments. Must include <Registry address>, <CentralizedOracle address>, <identifier>, and <time>"
+    );
     return;
   }
 
@@ -74,7 +76,7 @@ const runRequestOraclePrice = async function(callback) {
 
   await run(registryAddress, oracleAddress, identifier, timeInSeconds);
   callback();
-}
+};
 
 runRequestOraclePrice.run = run;
 

@@ -39,7 +39,7 @@ const runPushOraclePrice = async function(callback) {
 
   await run(oracleAddress, identifier, timeInSeconds, price);
   callback();
-}
+};
 
 runPushOraclePrice.run = run;
 
