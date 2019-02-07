@@ -1,90 +1,85 @@
-# InitialContract
+# UMA Protocol
 
-## Prototype
+## Deployment
 
-How to run:
+Initial Setup:
 
 1. Install nodejs and npm
-1. Run `npm install -g truffle`
 1. Run `npm install`
-1. Run `truffle develop`. Pay attention to the line `Mnemonic: ...` that is printed after the private keys, we will use this later.
-1. Make sure you have metamask or mist configured in your browswer and connected to truffle developer chain. This requires:
-    - Installation
-    - Configure a Custom RPC that points to url http://127.0.0.1:9545
-    - Sign in using mnemonic printed out near the top of the `truffle develop` output. To do this (with metamask) you click "Import account using seed phrase", on popup enter mnemonic and create a pasword.
-1. In truffle console run `compile --reset`
-1. Also in truffle console run `migrate --reset`
-1. In different shell run `npx ethereum-bridge -a 9 -H 127.0.0.1 -p 9545 --dev`
-    - When this finishes, look for
-    ```
-    Please add this line to your contract constructor:
+1. Run `$(npm bin)/truffle compile` to compile the contracts.
+<br>
 
-    OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
-    ```
-    Make sure the address inside `OraclizeAddrResolverI` matches the line of code in `contracts/Vote.sol`
-1. Run `VoteCoin.deployed().then(function(instance){instance.updatePrice()})` to start fetching prices.
-1. In another shell `npm run dev`
-1. Open browser and go to address indicated by `npm run serve` (usually http://localhost:8080)
-Contains some code for a first pass at a derivatives contract
+Deployment and Testing in Ganache:
+
+1. Install the [Ganache UI](https://truffleframework.com/ganache). You can also use
+[ganache-cli](https://github.com/trufflesuite/ganache-cli) if you prefer to use the command line.
+1. Run ganache on localhost port `9545` (use the above links for instructions on how to do this).
+1. To deploy to ganache, run `$(npm bin)/truffle migrate --reset --network test`.
+1. To interact with the contracts you've deployed, run `$(npm bin)/truffle console --network test`. This will open a
+node console with all contracts loaded along with a web3 instance connected to your ganache instance.
+<br>
+
+Mainnet/Testnet Deployment:
+
+1. Load your wallet mnemonic into your environment as such:
+```
+export MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
+```
+2. Ensure your wallet has enough ETH to pay for the deployment (can take up to 0.4 ETH with the default gas settings).
+3. Tune the default gas price in `truffle.js` (currently set to `20 Gwei`) to your liking.
+4. Run the following command to start a fresh deployment to mainnet:
+```
+$(npm bin)/truffle migrate --reset --network mainnet
+```
+If you'd like to deploy to the Ropsten testnet instead, run the following command:
+```
+$(npm bin)/truffle migrate --reset --network ropsten
+```
+5. To interact with the contracts you've deployed, run:
+```
+$(npm bin)/truffle console --network <mainnet_or_ropsten>
+```
+This will open a node console with all contracts loaded along with a web3 instance connected to the network and
+preloaded with your private keys (loads the first two private keys for your mnemonic by default).
+<br>
+<br>
+
+Upload Prices to the `ManualPriceFeed`:
+
+After deploying the contracts to your network of choice, you can upload prices to the `ManualPriceFeed` contract for
+use by any derivatives that you choose to deploy. The script defaults to publishing `BTC/ETH`, `SPY/ETH`, and `CNH/USD`
+every 15 minutes. You can run this script using the following command:
+```
+./publishPrices.sh <ManualPriceFeed contract address> <network>
+```
+
 
 ## Developer Information and Tools
 
 ### Solhint - Solidity Linter
 Find more information about solhint [here](https://protofire.github.io/solhint/). There are plugins available to see solhint errors inline in many IDEs.
 
-- To install:
-```
-npm install -g solhint
-```
+- Make sure you've run `npm install`.
 - To run over all contracts under `contracts/`:
 ```
-solhint contracts/**/*.sol
+$(npm bin)/solhint contracts/**/*.sol
+```
+
+### Running Prettier JS Formatter
+To run prettier, run the following command:
+```
+npm run prettier
 ```
 
 ## Coverage
 We use the [solidity-coverage](https://github.com/sc-forks/solidity-coverage) package to generate our coverage reports.
 These can be generated manually by developers. There are no regression tests or published reports. CircleCI does
-generate a coverage report automatically, but currently that generation is only used to ensure that it continues
-to work and for a small amount of information available in the console output of the coverage generation about total
-lines covered. To run the coverage report, run:
+generate a coverage report automatically, but if you'd like to generate it locally, run:
 ```
 npm run coverage
 ```
-The full report can be viewed by opening the `coverage/index.html` in a browser.
+The full report can be viewed by opening the `coverage/index.html` file in a browser.
 
 ## Style Guide
 
 See [STYLE.md](STYLE.md).
-
-## Release Process
-
-TODO(mrice32): add to this as new release needs come up.
-
-1. Create a new branch for the release.
-1. Remove `package-lock.json` from `.gitignore`.
-1. Run `rm -rf node_modules && npm install`.
-1. Run `git add package-lock.json`.
-1. Commit and push this branch.
-1. Open a PR to merge this release branch into master.
-
-## Links
-
-https://medium.com/@olxc/ethereum-and-smart-contracts-basics-e5c84838b19
-
-http://solidity.readthedocs.io/en/develop/index.html
-
-https://karl.tech/learning-solidity-part-2-voting/
-
-https://media.consensys.net/time-sure-does-fly-ed4518792679
-
-Read article below (and other things by Alex Evans):
-
-https://medium.com/blockchannel/a-crash-course-in-mechanism-design-for-cryptoeconomic-applications-a9f06ab6a976
-
-https://blockgeeks.com/guides/proof-of-work-vs-proof-of-stake/
-https://cryptologie.net/article/424/writing-a-dapp-for-the-ethereum-block-chain/
-https://medium.com/@mvmurthy/full-stack-hello-world-voting-ethereum-dapp-tutorial-part-1-40d2d0d807c2
-https://electronjs.org/docs/tutorial/first-app
-https://medium.com/metax-publication/a-walkthrough-of-plcr-voting-in-solidity-92420bd5b87c
-https://blog.colony.io/towards-better-ethereum-voting-protocols-7e54cb5a0119
-https://github.com/stonecoldpat/anonymousvoting
