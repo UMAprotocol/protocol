@@ -4,9 +4,6 @@ const RequestOraclePrice = require("./RequestOraclePrice.js")
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const Registry = artifacts.require("Registry");
 
-
-
-
 contract("scripts/PushOraclePrice.js", function(accounts) {
 
   let registry;
