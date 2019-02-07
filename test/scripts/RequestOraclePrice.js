@@ -78,6 +78,7 @@ const runRequestOraclePrice = async function(callback) {
   callback();
 };
 
+// Attach this function to the exported function
+// in order to allow the script to be executed through both truffle and a test runner.
 runRequestOraclePrice.run = run;
-
 module.exports = runRequestOraclePrice;
