@@ -398,11 +398,11 @@ library TokenizedDerivativeUtils {
 
     // Returns the expected balance of the short margin account using the latest available Price Feed price.
     function _calcShortMarginBalance(TDS.Storage storage s) external view returns (int newShortMarginBalance) {
-        (, newShortMarginBalance) = _calcNewNavAndBalance(s);
+        (, newShortMarginBalance) = s._calcNewNavAndBalance();
     }
 
     function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
-        (int navNew, int newShortMarginBalance) = _calcNewNavAndBalance(s);
+        (int navNew, int newShortMarginBalance) = s._calcNewNavAndBalance();
         int requiredMargin = s._getRequiredEthMargin(navNew);
         return newShortMarginBalance.sub(requiredMargin);
     }

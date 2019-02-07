@@ -490,10 +490,13 @@ contract("TokenizedDerivative", function(accounts) {
 
       expectedOracleFee = computeExpectedOracleFees(nav);
       expectedReturnWithoutFees = web3.utils.toBN(web3.utils.toWei("1.3", "ether"));
-      // TODO(ptare): Due to a rounding difference, the computed NAV is off by 1 wei. Figure out why this happens.
-      expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval).sub(
-        web3.utils.toBN(web3.utils.toWei("1", "wei"))
-      );
+      // The NAV computed by the test and by the contract is off by 1 wei. This happens because the contract computes
+      // token price first (with rounding) and then multiplies by token supply to get the NAV. These tests compute the
+      // new NAV directly (with rounding) and then divide by token supply to get the token price.
+      // It's somewhat better to compute NAV directly in these tests so that the test code isn't just a duplicate of the
+      // contract code, but it does mean that some computations could be off by small amounts due to the rounding.
+      expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval).sub(web3.utils.toBN("1"));
+
       changeInNav = expectedNav.sub(nav);
       expectedShortBalance = shortBalance.sub(expectedOracleFee).sub(changeInNav);
       expectedMarginRequirement = computeExpectedMarginRequirement(
