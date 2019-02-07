@@ -5,7 +5,7 @@ pragma solidity ^0.5.0;
 // TODO(ptare): Delete this contract once we have a manticore test running for a real contract.
 contract MetaCoin {
     uint256[] metadata;
-    bool public shouldBeAlwaysFalse;
+    bool public constant shouldBeAlwaysFalse = false;
 
     function setMetadata(uint256 key, uint256 value) public {
         // Setting a large uint for key can end up overwriting the storage for the unrelated variable
