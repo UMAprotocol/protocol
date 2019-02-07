@@ -79,6 +79,10 @@ contract("TokenizedDerivative", function(accounts) {
     return web3.utils.toBN(flooredRetVal);
   };
 
+  const computeExpectedMarginRequirement = (nav, marginRequirementPercentage) => {
+    return nav.mul(marginRequirementPercentage).div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
+  };
+
   const computeExpectedPenalty = (navToPenalize, penaltyPercentage) => {
     return web3.utils.toBN(web3.utils.fromWei(navToPenalize.mul(penaltyPercentage), "ether"));
   };
@@ -139,7 +143,9 @@ contract("TokenizedDerivative", function(accounts) {
       const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
       derivativeContract = await TokenizedDerivative.at(derivativeAddress);
 
-      const feesPerSecond = web3.utils.toBN((await derivativeContract.derivativeStorage()).fixedParameters.fixedFeePerSecond);
+      const feesPerSecond = web3.utils.toBN(
+        (await derivativeContract.derivativeStorage()).fixedParameters.fixedFeePerSecond
+      );
       feesPerInterval = feesPerSecond.muln(priceFeedUpdatesInterval);
     };
 
@@ -344,11 +350,6 @@ contract("TokenizedDerivative", function(accounts) {
 
       assert.equal(state.toString(), "3");
 
-      // Can't call calc* methods on a defaulted contract.
-      assert(await didContractThrow(derivativeContract.calcNAV()));
-      assert(await didContractThrow(derivativeContract.calcTokenValue()));
-      assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
-
       assert.equal(nav.toString(), expectedNav.toString());
       // The sponsor's balance decreases, and we have to add the Oracle fee to the amount of decrease.
       assert.equal(
@@ -436,9 +437,11 @@ contract("TokenizedDerivative", function(accounts) {
       let calcNav = await derivativeContract.calcNAV();
       let calcTokenValue = await derivativeContract.calcTokenValue();
       let calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      let calcExcessMargin = await derivativeContract.calcExcessMargin();
       assert.equal(calcNav.toString(), web3.utils.toWei("2", "ether"));
       assert.equal(calcTokenValue.toString(), web3.utils.toWei("1", "ether"));
       assert.equal(calcShortMarginBalance.toString(), web3.utils.toWei("1", "ether"));
+      assert.equal(calcExcessMargin.toString(), web3.utils.toWei("0.8", "ether"));
 
       // Change the price but don't remargin (yet).
       await pushPrice(web3.utils.toWei("1.1", "ether"));
@@ -449,23 +452,83 @@ contract("TokenizedDerivative", function(accounts) {
       let expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval);
       let changeInNav = expectedNav.sub(nav);
       let expectedShortBalance = shortBalance.sub(expectedOracleFee).sub(changeInNav);
+      let expectedMarginRequirement = computeExpectedMarginRequirement(
+        expectedNav,
+        web3.utils.toBN(web3.utils.toWei("0.1", "ether"))
+      );
       calcNav = await derivativeContract.calcNAV();
       calcTokenValue = await derivativeContract.calcTokenValue();
       calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      calcExcessMargin = await derivativeContract.calcExcessMargin();
       assert.equal(calcNav.toString(), expectedNav);
       // There are 2 tokens outstading, so each token's value is 1/2 the NAV.
       assert.equal(calcTokenValue.toString(), expectedNav.divn(2).toString());
       assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
+      assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
 
       // Remargin and double check estimation methods.
       await derivativeContract.remargin({ from: sponsor });
       calcNav = await derivativeContract.calcNAV();
       calcTokenValue = await derivativeContract.calcTokenValue();
       calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      calcExcessMargin = await derivativeContract.calcExcessMargin();
+      nav = (await derivativeContract.derivativeStorage()).nav;
+      let tokenValue = (await derivativeContract.derivativeStorage()).currentTokenState.tokenPrice;
+      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
       assert.equal(calcNav.toString(), expectedNav);
+      assert.equal(nav.toString(), expectedNav);
       // There are 2 tokens outstading, so each token's value is 1/2 the NAV.
       assert.equal(calcTokenValue.toString(), expectedNav.divn(2));
+      assert.equal(tokenValue.toString(), expectedNav.divn(2));
       assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
+      assert.equal(shortBalance.toString(), expectedShortBalance.toString());
+      assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
+
+      // Increase the price to push the provider into default (but don't remargin). This price tests the case where
+      // calcExcessMargin() returns a negative value.
+      await pushPrice(web3.utils.toWei("1.43", "ether"));
+
+      expectedOracleFee = computeExpectedOracleFees(nav);
+      expectedReturnWithoutFees = web3.utils.toBN(web3.utils.toWei("1.3", "ether"));
+      // The NAV computed by the test and by the contract is off by 1 wei. This happens because the contract computes
+      // token price first (with rounding) and then multiplies by token supply to get the NAV. These tests compute the
+      // new NAV directly (with rounding) and then divide by token supply to get the token price.
+      // It's somewhat better to compute NAV directly in these tests so that the test code isn't just a duplicate of the
+      // contract code, but it does mean that some computations could be off by small amounts due to the rounding.
+      expectedNav = computeNewNav(nav, expectedReturnWithoutFees, feesPerInterval).sub(web3.utils.toBN("1"));
+
+      changeInNav = expectedNav.sub(nav);
+      expectedShortBalance = shortBalance.sub(expectedOracleFee).sub(changeInNav);
+      expectedMarginRequirement = computeExpectedMarginRequirement(
+        expectedNav,
+        web3.utils.toBN(web3.utils.toWei("0.1", "ether"))
+      );
+      calcNav = await derivativeContract.calcNAV();
+      calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      calcExcessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(calcNav.toString(), expectedNav.toString());
+      assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
+      assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
+
+      // Remargin into default.
+      await derivativeContract.remargin({ from: sponsor });
+
+      // Verify that the "off by 1 wei" affects both the updates and the calc* methods. I.e., it's a difference between
+      // the contract code and this JS test, not between the remargin() and calc* methods on the contract.
+      nav = (await derivativeContract.derivativeStorage()).nav;
+      tokenValue = (await derivativeContract.derivativeStorage()).currentTokenState.tokenPrice;
+      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      state = (await derivativeContract.derivativeStorage()).state;
+      assert(state.toString(), "3");
+      assert.equal(nav.toString(), expectedNav);
+      assert.equal(tokenValue.toString(), expectedNav.divn(2));
+      assert.equal(shortBalance.toString(), expectedShortBalance.toString());
+
+      // Can't call calc* methods on a defaulted contract.
+      assert(await didContractThrow(derivativeContract.calcNAV()));
+      assert(await didContractThrow(derivativeContract.calcTokenValue()));
+      assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
+      assert(await didContractThrow(derivativeContract.calcExcessMargin()));
     });
 
     it(annotateTitle("Live -> Default -> Settled (oracle)"), async function() {
@@ -525,6 +588,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcNAV()));
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
+      assert(await didContractThrow(derivativeContract.calcExcessMargin()));
       priceReturn = web3.utils.toBN(web3.utils.toWei("1.05", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       changeInNav = expectedSettlementNav.sub(initialNav);
@@ -569,7 +633,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Remargin to the new price, which should immediately settle the contract.
       await derivativeContract.remargin({ from: sponsor });
-      assert.equal(((await derivativeContract.derivativeStorage()).state).toString(), "5");
+      assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "5");
 
       // Verify nav and balances at settlement, including default penalty.
       const expectedOracleFee = computeExpectedOracleFees(initialNav);
@@ -617,7 +681,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
 
       // Auto-settles with the Oracle price.
-      assert.equal(((await derivativeContract.derivativeStorage()).state).toString(), "5");
+      assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "5");
       nav = (await derivativeContract.derivativeStorage()).nav;
 
       const shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
@@ -668,6 +732,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcNAV()));
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
+      assert(await didContractThrow(derivativeContract.calcExcessMargin()));
 
       // Can't call emergency shutdown while expired.
       assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
@@ -732,6 +797,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcNAV()));
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
+      assert(await didContractThrow(derivativeContract.calcExcessMargin()));
 
       // Contract should go to expired.
       await derivativeContract.remargin({ from: sponsor });
@@ -742,6 +808,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcNAV()));
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
+      assert(await didContractThrow(derivativeContract.calcExcessMargin()));
 
       // Verify that you can't call settle before the Oracle provides a price.
       assert(await didContractThrow(derivativeContract.dispute()));
