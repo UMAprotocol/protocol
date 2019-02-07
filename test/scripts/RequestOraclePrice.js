@@ -1,6 +1,5 @@
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const Registry = artifacts.require("Registry");
-const commandlineUtil = require("./CommandlineUtil");
 
 async function getDeployAddress() {
   const accounts = await web3.eth.getAccounts();
@@ -26,32 +25,11 @@ async function registerDerivative(registryAddress) {
 //   2. Registers the deployer's address as a derivative.
 //   3. Adds the specified identifier with the CentralizedOracle.
 //   4. Requests a price at the specified time.
-async function run() {
+async function run(registryAddress, oracleAddress, identifier, timeInSeconds) {
   try {
-    // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time>
-    // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
-    if (process.argv.length < 8) {
-      console.error("Not enough arguments. Must include <Registry address>, <CentralizedOracle address>, <identifier>, and <time>");
-      return;
-    }
-
-    const registryAddress = process.argv[4];
-    if (!commandlineUtil.validateAddress(registryAddress)) {
-      console.error("Registry's contract address missing. Exiting...");
-      return;
-    }
-
-    const oracleAddress = process.argv[5];
-    if (!commandlineUtil.validateAddress(oracleAddress)) {
-      console.error("CentralizedOracle's contract address missing. Exiting...");
-      return;
-    }
-
     await registerDerivative(registryAddress);
 
-    const identifier = process.argv[6];
     const identifierInBytes = web3.utils.fromAscii(identifier);
-    const timeInSeconds = parseInt(process.argv[7], 10);
     const timeInBN = web3.utils.toBN(timeInSeconds);
     const time = new Date(timeInSeconds * 10e2);
 
@@ -71,7 +49,33 @@ async function run() {
   }
 }
 
-module.exports = async function(callback) {
-  await run();
+const runRequestOraclePrice = async function(callback) {
+  // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time>
+  // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
+  if (process.argv.length < 8) {
+    console.error("Not enough arguments. Must include <Registry address>, <CentralizedOracle address>, <identifier>, and <time>");
+    return;
+  }
+
+  const registryAddress = process.argv[4];
+  if (registryAddress.substring(0, 2) != "0x" || registryAddress.length != 42) {
+    console.error("Registry's contract address missing. Exiting...");
+    return;
+  }
+
+  const oracleAddress = process.argv[5];
+  if (oracleAddress.substring(0, 2) != "0x" || oracleAddress.length != 42) {
+    console.error("CentralizedOracle's contract address missing. Exiting...");
+    return;
+  }
+
+  const identifier = process.argv[6];
+  const timeInSeconds = parseInt(process.argv[7], 10);
+
+  await run(registryAddress, oracleAddress, identifier, timeInSeconds);
   callback();
-};
+}
+
+runRequestOraclePrice.run = run;
+
+module.exports = runRequestOraclePrice;
