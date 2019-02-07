@@ -62,15 +62,15 @@ contract Registry is RegistryInterface, Withdrawable {
         pointer.valid = PointerValidity.Valid;
 
         registeredDerivatives.push(RegisteredDerivative(derivativeAddress, msg.sender));
-        
-        // No length check necessary because we should never hit (2^127 - 1) derivatives.
-        pointer.index = uint128(registeredDerivatives.length.sub(1));
+        // 
+        // // No length check necessary because we should never hit (2^127 - 1) derivatives.
+        // pointer.index = uint128(registeredDerivatives.length.sub(1));
 
-        // Set up PartiesMap for this derivative.
-        PartiesMap storage partiesMap = derivativesToParties[derivativeAddress];
-        for (uint i = 0; i < parties.length; i = i.add(1)) {
-            partiesMap.parties[parties[i]] = true;
-        }
+        // // Set up PartiesMap for this derivative.
+        // PartiesMap storage partiesMap = derivativesToParties[derivativeAddress];
+        // for (uint i = 0; i < parties.length; i = i.add(1)) {
+        //     partiesMap.parties[parties[i]] = true;
+        // }
     }
 
     function addDerivativeCreator(address derivativeCreator) external onlyOwner {
@@ -112,7 +112,7 @@ contract Registry is RegistryInterface, Withdrawable {
         delete derivativesToParties[derivativeAddress];
     }
 
-    function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
+    function isDerivativeRegistered(address derivative) external returns (bool isRegistered) {
         return derivativePointers[derivative].valid == PointerValidity.Valid;
     }
 
