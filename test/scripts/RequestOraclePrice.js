@@ -50,7 +50,7 @@ async function run(registryAddress, oracleAddress, identifier, timeInSeconds) {
 }
 
 const runRequestOraclePrice = async function(callback) {
-  // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time>
+  // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time> --network <network>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
   if (process.argv.length < 8) {
     console.error(

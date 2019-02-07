@@ -28,6 +28,6 @@ contract("scripts/PushOraclePrice.js", function(accounts) {
     const timeInBN = web3.utils.toBN(time);
     const pushedPrice = await centralizedOracle.getPrice(identifierInBytes, timeInBN);
 
-    assert.ok(pushedPrice.toNumber() == price);
+    assert.equal(pushedPrice.toNumber(), price, `Expected price ${price}, got ${pushedPrice.toNumber()}`);
   });
 });

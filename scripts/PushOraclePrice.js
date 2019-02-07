@@ -20,7 +20,7 @@ async function run(oracleAddress, identifier, timeInSeconds, price) {
 }
 
 const runPushOraclePrice = async function(callback) {
-  // Usage: truffle exec scripts/PushOraclePrice.js <CentralizedOracle address> <identifier> <time> <price>
+  // Usage: truffle exec scripts/PushOraclePrice.js <CentralizedOracle address> <identifier> <time> <price> --network <network>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
   if (process.argv.length < 8) {
     console.error("Not enough arguments. Must include <CentralizedOracle address>, <identifier>, <time> and <price>");
