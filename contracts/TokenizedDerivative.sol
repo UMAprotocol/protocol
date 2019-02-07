@@ -105,6 +105,7 @@ library TDS {
         uint fixedFeePerSecond; // Percentage of nav*10^18
         uint withdrawLimit; // Percentage of derivativeStorage.shortBalance*10^18
         bytes32 product;
+        string symbol;
     }
 
     struct ExternalAddresses {
@@ -179,7 +180,8 @@ library TokenizedDerivativeUtils {
     // Contract initializer. Should only be called at construction.
     // Note: Must be a public function because structs cannot be passed as calldata (required data type for external
     // functions).
-    function _initialize(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) public {
+    function _initialize(
+        TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params, string memory symbol) public {
         // The default penalty must be less than the required margin, which must be less than the NAV.
         require(params.defaultPenalty <= params.requiredMargin);
         require(params.requiredMargin <= 1 ether);
@@ -228,6 +230,8 @@ library TokenizedDerivativeUtils {
 
         require(params.withdrawLimit < 1 ether);
         s.fixedParameters.withdrawLimit = params.withdrawLimit;
+
+        s.fixedParameters.symbol = symbol;
     }
 
     function _depositAndCreateTokens(TDS.Storage storage s, uint newTokenNav) external onlySponsorOrApDelegate(s) {
@@ -257,6 +261,7 @@ library TokenizedDerivativeUtils {
         uint numTokens = _pullAllAuthorizedTokens(thisErc20Token);
         require(numTokens > 0);
         thisErc20Token.burn(numTokens);
+        emit TokensRedeemed(s.fixedParameters.symbol, numTokens);
 
         // Value of the tokens is just the percentage of all the tokens multiplied by the balance of the investor
         // margin account.
@@ -287,6 +292,7 @@ library TokenizedDerivativeUtils {
         s.endTime = s.currentTokenState.time;
         s.disputeInfo.disputedNav = s.nav;
         s.disputeInfo.deposit = requiredDeposit;
+        emit Disputed(s.fixedParameters.symbol, s.endTime, s.nav);
 
         s._requestOraclePrice(s.endTime);
 
@@ -339,6 +345,7 @@ library TokenizedDerivativeUtils {
         // function can not be called multiple times while waiting for transfer
         // to return.
         s.shortBalance = s.shortBalance.sub(int(amount));
+        emit Withdrawal(s.fixedParameters.symbol, amount);
         s._sendMargin(amount);
     }
 
@@ -359,6 +366,7 @@ library TokenizedDerivativeUtils {
         require(s.state == TDS.State.Live);
         s.state = TDS.State.Emergency;
         s.endTime = s.currentTokenState.time;
+        emit EmergencyShutdownTransition(s.fixedParameters.symbol, s.endTime);
         s._requestOraclePrice(s.endTime);
     }
 
@@ -452,6 +460,7 @@ library TokenizedDerivativeUtils {
         if (latestTime >= s.endTime) {
             s.state = TDS.State.Expired;
             s.prevTokenState = s.currentTokenState;
+            emit Expired(s.fixedParameters.symbol, s.endTime);
             uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime, s.nav);
 
             // We have no idea what the price was, exactly at s.endTime, so we can't set
@@ -477,6 +486,7 @@ library TokenizedDerivativeUtils {
             s.state = TDS.State.Defaulted;
             s.navAtDefault = previousNav;
             s.endTime = latestTime; // Change end time to moment when default occurred.
+            emit Default(s.fixedParameters.symbol, latestTime, s.nav);
         }
 
         if (inDefault) {
@@ -496,7 +506,9 @@ library TokenizedDerivativeUtils {
 
         ExpandedIERC20 thisErc20Token = ExpandedIERC20(address(this));
 
-        thisErc20Token.mint(msg.sender, uint(_tokensFromNav(int(navToPurchase), s.currentTokenState.tokenPrice)));
+        uint numTokensCreated = uint(_tokensFromNav(int(navToPurchase), s.currentTokenState.tokenPrice));
+        thisErc20Token.mint(msg.sender, numTokensCreated);
+        emit TokensCreated(s.fixedParameters.symbol, numTokensCreated);
 
         s.nav = _computeNavFromTokenPrice(s.currentTokenState.tokenPrice);
 
@@ -508,6 +520,7 @@ library TokenizedDerivativeUtils {
         // Make sure that we are in a "depositable" state.
         require(s.state == TDS.State.Live);
         s.shortBalance = s.shortBalance.add(int(value));
+        emit Deposited(s.fixedParameters.symbol, value);
     }
 
     function _settleInternal(TDS.Storage storage s) internal {
@@ -602,6 +615,7 @@ library TokenizedDerivativeUtils {
         s.prevTokenState = s.currentTokenState;
         s.currentTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
         navNew = _computeNavFromTokenPrice(s.currentTokenState.tokenPrice);
+        emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
     function _recomputeNav(TDS.Storage storage s, int oraclePrice, uint recomputeTime) internal returns (int navNew) {
@@ -610,6 +624,7 @@ library TokenizedDerivativeUtils {
         assert(s.endTime == recomputeTime);
         s.currentTokenState = s._computeNewTokenState(s.prevTokenState, oraclePrice, recomputeTime);
         navNew = _computeNavFromTokenPrice(s.currentTokenState.tokenPrice);
+        emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
@@ -632,6 +647,7 @@ library TokenizedDerivativeUtils {
         }
 
         s.state = TDS.State.Settled;
+        emit Settled(s.fixedParameters.symbol, s.endTime, s.nav);
     }
 
     function _updateBalances(TDS.Storage storage s, int navNew) internal {
@@ -717,6 +733,29 @@ library TokenizedDerivativeUtils {
     function _takePercentage(int value, uint percentage) private pure returns (int result) {
         return value.mul(int(percentage)).div(1 ether);
     }
+
+    // Note that we can't have the symbol parameter be `indexed` due to:
+    // TypeError: Indexed reference types cannot yet be used with ABIEncoderV2.
+    // An event emitted when the NAV of the contract changes.
+    event NavUpdated(string symbol, int newNav, int newTokenPrice);
+    // An event emitted when the contract enters the Default state on a remargin.
+    event Default(string symbol, uint defaultTime, int defaultNav);
+    // An event emitted when the contract settles.
+    event Settled(string symbol, uint settleTime, int finalNav);
+    // An event emitted when the contract expires.
+    event Expired(string symbol, uint expiryTime);
+    // An event emitted when the contract's NAV is disputed by the sponsor.
+    event Disputed(string symbol, uint timeDisputed, int navDisputed);
+    // An event emitted when the contract enters emergency shutdown.
+    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
+    // An event emitted when tokens are created.
+    event TokensCreated(string symbol, uint numTokensCreated);
+    // An event emitted when tokens are redeemed.
+    event TokensRedeemed(string symbol, uint numTokensRedeemed);
+    // An event emitted when margin currency is deposited.
+    event Deposited(string symbol, uint amount);
+    // An event emitted when margin currency is withdrawn.
+    event Withdrawal(string symbol, uint amount);
 }
 
 
@@ -743,7 +782,7 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
         symbol = _symbol;
 
         // Initialize the contract.
-        derivativeStorage._initialize(params);
+        derivativeStorage._initialize(params, _symbol);
     }
 
     function createTokens() external payable {
@@ -829,6 +868,19 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     function mint(address to, uint256 value) external onlyThis {
         _mint(to, value);
     }
+
+    // These events are actually emitted by TokenizedDerivativeUtils, but we unfortunately have to define the events
+    // here as well.
+    event NavUpdated(string symbol, int newNav, int newTokenPrice);
+    event Default(string symbol, uint defaultTime, int defaultNav);
+    event Settled(string symbol, uint settleTime, int finalNav);
+    event Expired(string symbol, uint expiryTime);
+    event Disputed(string symbol, uint timeDisputed, int navDisputed);
+    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
+    event TokensCreated(string symbol, uint numTokensCreated);
+    event TokensRedeemed(string symbol, uint numTokensRedeemed);
+    event Deposited(string symbol, uint amount);
+    event Withdrawal(string symbol, uint amount);
 }
 
 
