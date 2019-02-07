@@ -32,19 +32,13 @@ module.exports = {
       network_id: "*",
       gas: 6720000
     },
-    derivative_demo: {
-      host: "127.0.0.1",
-      port: 9545,
-      network_id: "*",
-      gas: 6720000
-    },
-    derivative_demo_ropsten: {
+    ropsten: {
       provider: new HDWalletProvider(mnemonic, "https://ropsten.infura.io/v3/38504d9908d94d93a7692eaa900da084", 0, 2),
       network_id: "*",
       gas: 6720000,
       gasPrice: 20000000000
     },
-    derivative_demo_mainnet: {
+    mainnet: {
       provider: new HDWalletProvider(mnemonic, "https://mainnet.infura.io/v3/38504d9908d94d93a7692eaa900da084", 0, 2),
       network_id: "*",
       gas: 6720000,
