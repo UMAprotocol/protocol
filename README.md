@@ -2,14 +2,13 @@
 
 ## Deployment
 
-Initial Setup:
+### Initial Setup
 
 1. Install nodejs and npm
 1. Run `npm install`
 1. Run `$(npm bin)/truffle compile` to compile the contracts.
-<br>
 
-Deployment and Testing in Ganache:
+### Deployment and Testing in Ganache
 
 1. Install the [Ganache UI](https://truffleframework.com/ganache). You can also use
 [ganache-cli](https://github.com/trufflesuite/ganache-cli) if you prefer to use the command line.
@@ -17,9 +16,8 @@ Deployment and Testing in Ganache:
 1. To deploy to ganache, run `$(npm bin)/truffle migrate --reset --network test`.
 1. To interact with the contracts you've deployed, run `$(npm bin)/truffle console --network test`. This will open a
 node console with all contracts loaded along with a web3 instance connected to your ganache instance.
-<br>
 
-Mainnet/Testnet Deployment:
+### Mainnet/Testnet Deployment
 
 1. Load your wallet mnemonic into your environment as such:
 ```
@@ -41,10 +39,8 @@ $(npm bin)/truffle console --network <mainnet_or_ropsten>
 ```
 This will open a node console with all contracts loaded along with a web3 instance connected to the network and
 preloaded with your private keys (loads the first two private keys for your mnemonic by default).
-<br>
-<br>
 
-Upload Prices to the `ManualPriceFeed`:
+### Upload Prices to the `ManualPriceFeed`
 
 After deploying the contracts to your network of choice, you can upload prices to the `ManualPriceFeed` contract for
 use by any derivatives that you choose to deploy. The script defaults to publishing `BTC/ETH`, `SPY/ETH`, and `CNH/USD`
@@ -52,7 +48,6 @@ every 15 minutes. You can run this script using the following command:
 ```
 ./publishPrices.sh <ManualPriceFeed contract address> <network>
 ```
-
 
 ## Developer Information and Tools
 
