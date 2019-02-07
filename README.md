@@ -13,9 +13,20 @@
 1. Install the [Ganache UI](https://truffleframework.com/ganache). You can also use
 [ganache-cli](https://github.com/trufflesuite/ganache-cli) if you prefer to use the command line.
 1. Run ganache on localhost port `9545` (use the above links for instructions on how to do this).
-1. To deploy to ganache, run `$(npm bin)/truffle migrate --reset --network test`.
-1. To interact with the contracts you've deployed, run `$(npm bin)/truffle console --network test`. This will open a
-node console with all contracts loaded along with a web3 instance connected to your ganache instance.
+1. To deploy to ganache, run:
+```
+$(npm bin)/truffle migrate --reset --network test
+```
+1. To interact with the contracts you've deployed, run:
+```
+$(npm bin)/truffle console --network test
+```
+This will open a node console with all contracts loaded along with a web3 instance connected to your ganache instance.
+
+1. To run the automated tests, run:
+```
+$(npm bin)/truffle test
+```
 
 ### Mainnet/Testnet Deployment
 
