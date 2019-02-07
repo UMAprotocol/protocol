@@ -112,16 +112,11 @@ contract("TokenizedDerivative", function(accounts) {
       return testVariant.useErc20 ? marginToken.address : "0x0000000000000000000000000000000000000000";
     };
 
-    const deployNewTokenizedDerivative = async expiryDelay => {
+    const deployNewTokenizedDerivative = async (overrideConstructorParams = {}) => {
       await pushPrice(web3.utils.toWei("1", "ether"));
       const startTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
 
-      let expiry = 0;
-      if (expiryDelay != undefined) {
-        expiry = startTime.addn(expiryDelay);
-      }
-
-      let constructorParams = {
+      let defaultConstructorParams = {
         sponsor: sponsor,
         admin: admin,
         defaultPenalty: web3.utils.toWei("0.5", "ether"),
@@ -139,6 +134,8 @@ contract("TokenizedDerivative", function(accounts) {
         name: name,
         symbol: symbol
       };
+
+      let constructorParams = {...defaultConstructorParams, ...overrideConstructorParams};
 
       await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: sponsor });
 
@@ -819,7 +816,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Expired -> Settled (oracle price)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
+      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -894,7 +891,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Expired -> Settled (oracle price) [price available]"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
+      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -941,7 +938,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Remargin -> Remargin -> Expired -> Settled (oracle price)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // Three time steps until expiry.
-      await deployNewTokenizedDerivative(priceFeedUpdatesInterval * 3);
+      await deployNewTokenizedDerivative({expiry:(priceFeedUpdatesInterval * 3)});
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -1028,7 +1025,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     it(annotateTitle("Remargin with zero Oracle fee"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
-      await deployNewTokenizedDerivative(priceFeedUpdatesInterval * 3);
+      await deployNewTokenizedDerivative({expiry:(priceFeedUpdatesInterval * 3)});
 
       // A contract with 0 NAV can still call remargin().
       await pushPrice(web3.utils.toWei("1.089", "ether"));
@@ -1162,7 +1159,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Create -> Create fails on expiry"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
+      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -1182,7 +1179,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("DepositAndCreateTokens failure"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative(priceFeedUpdatesInterval);
+      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
 
       // Token creation should fail because the sponsor doesn't supply enough margin.
       assert(

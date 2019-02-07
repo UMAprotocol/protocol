@@ -447,7 +447,7 @@ library TokenizedDerivativeUtils {
 
     function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
         (int navNew, int newShortMarginBalance) = s._calcNewNavAndBalance();
-        int requiredMargin = s._getRequiredEthMargin(navNew);
+        int requiredMargin = s._getRequiredEthMargin();
         return newShortMarginBalance.sub(requiredMargin);
     }
 
