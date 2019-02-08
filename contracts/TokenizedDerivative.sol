@@ -292,7 +292,7 @@ library TokenizedDerivativeUtils {
 
         ExpandedIERC20 thisErc20Token = ExpandedIERC20(address(this));
 
-        uint initialSupply = thisErc20Token.totalSupply();
+        uint initialSupply = _totalSupply();
         require(initialSupply > 0);
 
         uint numTokens = _pullAllAuthorizedTokens(thisErc20Token);
@@ -307,6 +307,7 @@ library TokenizedDerivativeUtils {
         uint tokenMargin = _takePercentage(uint(s.longBalance), tokenPercentage);
 
         s.longBalance = s.longBalance.sub(int(tokenMargin));
+        assert(s.longBalance >= 0);
         s.nav = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
 
         s._sendMargin(tokenMargin);
