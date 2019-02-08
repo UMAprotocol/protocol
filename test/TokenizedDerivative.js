@@ -114,7 +114,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     const deployNewTokenizedDerivative = async (overrideConstructorParams = {}) => {
       await pushPrice(web3.utils.toWei("1", "ether"));
-      const startTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0]; 
+      const startTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
 
       let defaultConstructorParams = {
         sponsor: sponsor,
@@ -135,7 +135,7 @@ contract("TokenizedDerivative", function(accounts) {
         symbol: symbol
       };
 
-      let constructorParams = {...defaultConstructorParams, ...overrideConstructorParams};
+      let constructorParams = { ...defaultConstructorParams, ...overrideConstructorParams };
 
       // The provided expiry is described as a delay from the current time. To get the expiry in absolute terms, it
       // must be offset from the current time.
@@ -822,7 +822,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Expired -> Settled (oracle price)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
+      await deployNewTokenizedDerivative({ expiry: priceFeedUpdatesInterval });
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -897,7 +897,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Expired -> Settled (oracle price) [price available]"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
+      await deployNewTokenizedDerivative({ expiry: priceFeedUpdatesInterval });
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -944,7 +944,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Remargin -> Remargin -> Expired -> Settled (oracle price)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // Three time steps until expiry.
-      await deployNewTokenizedDerivative({expiry:(priceFeedUpdatesInterval * 3)});
+      await deployNewTokenizedDerivative({ expiry: priceFeedUpdatesInterval * 3 });
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -1031,7 +1031,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     it(annotateTitle("Remargin with zero Oracle fee"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
-      await deployNewTokenizedDerivative({expiry:(priceFeedUpdatesInterval * 3)});
+      await deployNewTokenizedDerivative({ expiry: priceFeedUpdatesInterval * 3 });
 
       // A contract with 0 NAV can still call remargin().
       await pushPrice(web3.utils.toWei("1.089", "ether"));
@@ -1165,7 +1165,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Create -> Create fails on expiry"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
+      await deployNewTokenizedDerivative({ expiry: priceFeedUpdatesInterval });
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -1185,7 +1185,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("DepositAndCreateTokens failure"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // One time step until expiry.
-      await deployNewTokenizedDerivative({expiry:priceFeedUpdatesInterval});
+      await deployNewTokenizedDerivative({ expiry: priceFeedUpdatesInterval });
 
       // Token creation should fail because the sponsor doesn't supply enough margin.
       assert(
@@ -1268,11 +1268,11 @@ contract("TokenizedDerivative", function(accounts) {
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
-        returnType:"0",
-        fixedYearlyFee:"0",
-        returnCalculator:levered2x.address,
-        startingTokenPrice:web3.utils.toWei("0.5"),
-        startingUnderlyingPrice:web3.utils.toWei("2")
+        returnType: "0",
+        fixedYearlyFee: "0",
+        returnCalculator: levered2x.address,
+        startingTokenPrice: web3.utils.toWei("0.5"),
+        startingUnderlyingPrice: web3.utils.toWei("2")
       });
 
       let state = (await derivativeContract.derivativeStorage()).state;
@@ -1302,7 +1302,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Underlying Price -> 1.5
       await pushPrice(web3.utils.toWei("1.5", "ether"));
-      await derivativeContract.remargin({from: sponsor});
+      await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
       //     = 2 * 0.5 * (1 + 2 * ((1 - 1.5) / 2))
@@ -1322,7 +1322,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Underlying Price -> 2
       await pushPrice(web3.utils.toWei("2", "ether"));
-      await derivativeContract.remargin({from:sponsor});
+      await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
       //     = 2 * 0.5 * (1 + 2 * ((2 - 2) / 2))
@@ -1340,18 +1340,17 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
     });
 
-
     it(annotateTitle("Basic Compound NAV"), async function() {
       // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
       const levered2x = await LeveragedReturnCalculator.new(2);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
-        returnType:"1",
-        fixedYearlyFee:"0",
-        returnCalculator:levered2x.address,
-        startingTokenPrice:web3.utils.toWei("0.5"),
-        startingUnderlyingPrice:web3.utils.toWei("2")
+        returnType: "1",
+        fixedYearlyFee: "0",
+        returnCalculator: levered2x.address,
+        startingTokenPrice: web3.utils.toWei("0.5"),
+        startingUnderlyingPrice: web3.utils.toWei("2")
       });
 
       // Sponsor initializes contract
@@ -1362,7 +1361,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Underlying Price -> 1.5
       await pushPrice(web3.utils.toWei("1.5", "ether"));
-      await derivativeContract.remargin({from: sponsor});
+      await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
       //     = 2 * 0.5 * (1 + 2 * ((1 - 1.5) / 2))
@@ -1382,7 +1381,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Underlying Price -> 2
       await pushPrice(web3.utils.toWei("2", "ether"));
-      await derivativeContract.remargin({from:sponsor});
+      await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
       //     = 2 * 0.25 * (1 + 2 * ((2 - 1.5) / 1.5))
@@ -1395,19 +1394,29 @@ contract("TokenizedDerivative", function(accounts) {
       const six = BigNumber(6);
       const one = BigNumber(1);
       // Note: as mentioned elsewhere, because of the intermediate values in the fixed point solidity math, we
-      // occassionally see 1 wei rounding errors. The .minus(one) is to compensate for this rounding error. 
-      assert.equal(nav.toString(), five.times(oneEth).div(six).integerValue(BigNumber.ROUND_FLOOR).minus(one).toString());
+      // occassionally see 1 wei rounding errors. The .minus(one) is to compensate for this rounding error.
+      assert.equal(
+        nav.toString(),
+        five
+          .times(oneEth)
+          .div(six)
+          .integerValue(BigNumber.ROUND_FLOOR)
+          .minus(one)
+          .toString()
+      );
 
       // Margin requirement = quantity * tokenPrice * |leverage| * supportedMove
       //                    = 2 * 5/12 * 2 * 0.1
       //                    = 5/30
       //                    = 1/6
-      expectedMarginRequirement = oneEth.div(six).integerValue(BigNumber.ROUND_FLOOR).toString();
+      expectedMarginRequirement = oneEth
+        .div(six)
+        .integerValue(BigNumber.ROUND_FLOOR)
+        .toString();
       shortBalance = await derivativeContract.calcShortMarginBalance();
       excessMargin = await derivativeContract.calcExcessMargin();
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
     });
-
 
     it(annotateTitle("Constructor assertions"), async function() {
       const defaultConstructorParams = {
