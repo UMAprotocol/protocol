@@ -19,7 +19,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     // 2 -> 2x levered long
     // -1 -> unlevered short
     // -2 -> 2x levered short
-    int private leverageMultiplier;
+    int internal leverageMultiplier;
 
     constructor(int _leverageMultiplier) public {
         require(_leverageMultiplier != 0);

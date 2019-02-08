@@ -34,7 +34,7 @@ library TokenizedDerivativeParams {
         address store;
         address priceFeed;
         uint defaultPenalty; // Percentage of margin requirement * 10^18
-        uint supportedMove; // Expected percentage move that the long is protected against.
+        uint supportedMove; // Expected percentage move in the underlying price that the long is protected against.
         bytes32 product;
         uint fixedYearlyFee; // Percentage of nav * 10^18
         uint disputeDeposit; // Percentage of margin requirement * 10^18
@@ -144,7 +144,7 @@ library TDS {
         // In the case of a remargin, a `latest` price is retrieved from the price feed, and we shift `current` -> `prev`
         // and `latest` -> `current` (and then recompute).
         // In the case of a dispute, `current` might change (which is why we have to hold on to `prev`).
-        TokenState prevTokenState;
+        TokenState referenceTokenState;
         TokenState currentTokenState;
 
         int nav;  // Net asset value is measured in Wei
@@ -287,6 +287,7 @@ library TokenizedDerivativeUtils {
         if (s.state == TDS.State.Live) {
             require(msg.sender == s.externalAddresses.sponsor || msg.sender == s.externalAddresses.apDelegate);
             s._remarginInternal();
+            require(s.state == TDS.State.Live);
         }
 
         ExpandedIERC20 thisErc20Token = ExpandedIERC20(address(this));
@@ -469,7 +470,7 @@ library TokenizedDerivativeUtils {
         returns (int navNew)
     {
         int unitNav = int(startingTokenPrice);
-        s.prevTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
+        s.referenceTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
         s.currentTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
         // Starting NAV is always 0 in the TokenizedDerivative case.
         navNew = 0;
@@ -492,12 +493,12 @@ library TokenizedDerivativeUtils {
             return;
         }
 
-        // Save the penalty using the current sate in case it needs to be used.
+        // Save the penalty using the current state in case it needs to be used.
         int potentialPenaltyAmount = s._computeDefaultPenalty();
 
         if (latestTime >= s.endTime) {
             s.state = TDS.State.Expired;
-            s.prevTokenState = s.currentTokenState;
+            s.referenceTokenState = s.currentTokenState;
             emit Expired(s.fixedParameters.symbol, s.endTime);
             uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime, s.nav);
 
@@ -671,7 +672,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _computeCompoundNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime) internal returns (int navNew) {
-        s.prevTokenState = s.currentTokenState;
+        s.referenceTokenState = s.currentTokenState;
         s.currentTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
         navNew = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
@@ -679,8 +680,8 @@ library TokenizedDerivativeUtils {
 
     function _computeLinearNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime) internal returns (int navNew) {
         // Only update the time - don't update the prices becuase all price changes are relative to the initial price.
-        s.prevTokenState.time = s.currentTokenState.time;
-        s.currentTokenState = s._computeNewTokenState(s.prevTokenState, latestUnderlyingPrice, latestTime);
+        s.referenceTokenState.time = s.currentTokenState.time;
+        s.currentTokenState = s._computeNewTokenState(s.referenceTokenState, latestUnderlyingPrice, latestTime);
         navNew = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
@@ -688,7 +689,7 @@ library TokenizedDerivativeUtils {
     function _recomputeNav(TDS.Storage storage s, int oraclePrice, uint recomputeTime) internal returns (int navNew) {
         // We're updating `last` based on what the Oracle has told us.
         assert(s.endTime == recomputeTime);
-        s.currentTokenState = s._computeNewTokenState(s.prevTokenState, oraclePrice, recomputeTime);
+        s.currentTokenState = s._computeNewTokenState(s.referenceTokenState, oraclePrice, recomputeTime);
         navNew = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
