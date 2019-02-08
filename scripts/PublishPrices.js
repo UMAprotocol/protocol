@@ -2,6 +2,7 @@ const BigNumber = require("bignumber.js");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const fetch = require("node-fetch");
 const util = require("util");
+const commandlineUtil = require("./CommandlineUtil");
 
 // NOTE: Key restricted to 5 calls per minute, 500 calls per day.
 const alphaVantageKey = "41EUIBN9FKJW9FQM";
@@ -206,7 +207,7 @@ async function runExport() {
 
     // Get the price feed contract's hash from the command line.
     const manualPriceFeedAddress = process.argv[4];
-    if (manualPriceFeedAddress.substring(0, 2) != "0x" || manualPriceFeedAddress.length != 42) {
+    if (!commandlineUtil.validateAddress(manualPriceFeedAddress)) {
       console.error("ManualPriceFeed's contract address missing. Exiting...");
       return;
     }
