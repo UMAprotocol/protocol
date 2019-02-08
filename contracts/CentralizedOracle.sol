@@ -52,7 +52,7 @@ contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
     mapping(bytes32 => mapping(uint => Price)) private verifiedPrices;
 
     // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
-    // Is there a generalize this data structure?
+    // Can we generalize this data structure?
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
@@ -92,7 +92,7 @@ contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
         QueryIndex storage queryIndex = queryIndices[identifier][time];
         require(queryIndex.isValid, "Can't push prices that haven't been requested");
         // Delete from the array. Instead of shifting the queries over, replace the contents of `indexToReplace` with
-        // the the contents of the last index (unless it is the last index).
+        // the contents of the last index (unless it is the last index).
         uint indexToReplace = queryIndex.index;
         delete queryIndices[identifier][time];
         uint lastIndex = requestedPrices.length.sub(1);
