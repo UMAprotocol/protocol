@@ -317,7 +317,7 @@ library TokenizedDerivativeUtils {
             "Contract must be Live to dispute"
         );
 
-        uint requiredDeposit = uint(_takePercentage(s._getRequiredEthMargin(), s.fixedParameters.disputeDeposit));
+        uint requiredDeposit = uint(_takePercentage(s._getRequiredEthMargin(s.currentTokenState), s.fixedParameters.disputeDeposit));
 
         uint sentAmount = s._pullSentMargin();
 
@@ -360,7 +360,7 @@ library TokenizedDerivativeUtils {
                 s.withdrawThrottle.remainingWithdrawal = _takePercentage(uint(s.shortBalance), s.fixedParameters.withdrawLimit);
             }
 
-            int marginMaxWithdraw = s.shortBalance.sub(s._getRequiredEthMargin());
+            int marginMaxWithdraw = s.shortBalance.sub(s._getRequiredEthMargin(s.currentTokenState));
             int throttleMaxWithdraw = int(s.withdrawThrottle.remainingWithdrawal);
 
             // Take the smallest of the two withdrawal limits.
@@ -421,45 +421,42 @@ library TokenizedDerivativeUtils {
 
     // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
     function _calcNAV(TDS.Storage storage s) external view returns (int navNew) {
-        (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
-        require(latestTime < s.endTime);
-
-        TDS.TokenState memory predictedTokenState = s._computeNewTokenState(
-            s.currentTokenState, latestUnderlyingPrice, latestTime);
-        navNew = _computeNavForTokens(predictedTokenState.tokenPrice, _totalSupply());
+        (TDS.TokenState memory newTokenState, ) = s._calcNewTokenStateAndBalance();
+        navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
     }
 
     // Returns the expected value of each the outstanding tokens of the contract using the latest available Price Feed
     // price.
     function _calcTokenValue(TDS.Storage storage s) external view returns (int newTokenValue) {
-        (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
-        require(latestTime < s.endTime);
-
-        TDS.TokenState memory predictedTokenState = s._computeNewTokenState(
-            s.currentTokenState, latestUnderlyingPrice, latestTime);
-        newTokenValue = predictedTokenState.tokenPrice;
+        (TDS.TokenState memory newTokenState,) = s._calcNewTokenStateAndBalance();
+        newTokenValue = newTokenState.tokenPrice;
     }
 
     // Returns the expected balance of the short margin account using the latest available Price Feed price.
     function _calcShortMarginBalance(TDS.Storage storage s) external view returns (int newShortMarginBalance) {
-        (, newShortMarginBalance) = s._calcNewNavAndBalance();
+        (, newShortMarginBalance) = s._calcNewTokenStateAndBalance();
     }
 
     function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
-        (int navNew, int newShortMarginBalance) = s._calcNewNavAndBalance();
-        int requiredMargin = s._getRequiredEthMargin();
+        (TDS.TokenState memory newTokenState, int newShortMarginBalance) = s._calcNewTokenStateAndBalance();
+        int requiredMargin = s._getRequiredEthMargin(newTokenState);
         return newShortMarginBalance.sub(requiredMargin);
     }
 
-    function _calcNewNavAndBalance(TDS.Storage storage s) internal view returns (int navNew, int newShortMarginBalance)
+    function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
     {
         (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
-        require(latestTime < s.endTime);
+        require(latestTime <= s.endTime);
 
-        TDS.TokenState memory predictedTokenState = s._computeNewTokenState(
+        if (latestTime <= s.currentTokenState.time) {
+            // If the time hasn't advanced since the last remargin, short circuit and return the most recently computed values.
+            return (s.currentTokenState, s.shortBalance);
+        }
+
+        newTokenState = s._computeNewTokenState(
             s.currentTokenState, latestUnderlyingPrice, latestTime);
 
-        navNew = _computeNavForTokens(predictedTokenState.tokenPrice, _totalSupply());
+        int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
         int longDiff = s._getLongDiff(navNew);
 
         uint feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime, s.nav);
@@ -645,7 +642,7 @@ library TokenizedDerivativeUtils {
         view
         returns (bool doesSatisfyRequirement) 
     {
-        return s._getRequiredEthMargin() <= balance;
+        return s._getRequiredEthMargin(s.currentTokenState) <= balance;
     }
 
     function _requestOraclePrice(TDS.Storage storage s, uint requestedTime) internal {
@@ -683,7 +680,7 @@ library TokenizedDerivativeUtils {
     function _computeLinearNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime) internal returns (int navNew) {
         // Only update the time - don't update the prices becuase all price changes are relative to the initial price.
         s.prevTokenState.time = s.currentTokenState.time;
-        s.currentTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
+        s.currentTokenState = s._computeNewTokenState(s.prevTokenState, latestUnderlyingPrice, latestTime);
         navNew = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
@@ -747,10 +744,10 @@ library TokenizedDerivativeUtils {
     }
 
     function _computeDefaultPenalty(TDS.Storage storage s) internal view returns (int penalty) {
-        return _takePercentage(s._getRequiredEthMargin(), s.fixedParameters.defaultPenalty);
+        return _takePercentage(s._getRequiredEthMargin(s.currentTokenState), s.fixedParameters.defaultPenalty);
     }
 
-    function _getRequiredEthMargin(TDS.Storage storage s)
+    function _getRequiredEthMargin(TDS.Storage storage s, TDS.TokenState memory tokenState)
         internal
         view
         returns (int requiredMargin)
@@ -761,9 +758,10 @@ library TokenizedDerivativeUtils {
         int effectiveNotional;
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
             int effectiveUnitsOfUnderlying = int(_totalSupply().mul(s.fixedParameters.initialTokenUnderlyingRatio).div(1 ether)).mul(leverageMagnitude);
-            effectiveNotional = effectiveUnitsOfUnderlying.mul(s.currentTokenState.underlyingPrice).div(1 ether);
+            effectiveNotional = effectiveUnitsOfUnderlying.mul(tokenState.underlyingPrice).div(1 ether);
         } else {
-            effectiveNotional = s.nav.mul(leverageMagnitude);
+            int currentNav = _computeNavForTokens(tokenState.tokenPrice, _totalSupply());
+            effectiveNotional = currentNav.mul(leverageMagnitude);
         }
 
         requiredMargin = _takePercentage(effectiveNotional, s.fixedParameters.supportedMove);
