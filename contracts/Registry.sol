@@ -62,7 +62,6 @@ contract Registry is RegistryInterface, Withdrawable {
         pointer.valid = PointerValidity.Valid;
 
         registeredDerivatives.push(RegisteredDerivative(derivativeAddress, msg.sender));
-        
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
         pointer.index = uint128(registeredDerivatives.length.sub(1));
 

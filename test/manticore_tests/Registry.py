@@ -117,9 +117,11 @@ if isRegisteredInAnyState(derivativeToRegister):
 
 # Now register a new derivative symbolically. We want to maintain the invariant that derivativeToRegister can't ever get
 # re-registered.
-# The make_symbolic_address function does *not* do what we want, because it only uses known addresses.
+# The make_symbolic_address function does *not* do what we want, because it only uses known addresses. Instead, we use
+# make_symbolic_value directly to make a 160 bit integer.
 derivativeAddress = m.make_symbolic_value(nbits=160, name='symbolicDerivativeAddress')
-# The following command never exits :(
+# The following command never exits :(, so we can't actually write this test. But if we could, the assertion would be
+# that isRegisteredInAnyState(derivativeToRegister) is still False.
 # contract_account.registerDerivative([10], derivativeAddress, caller=derivative_creator)
 
 print('Tests passed')
