@@ -319,7 +319,7 @@ library TokenizedDerivativeUtils {
             "Contract must be Live to dispute"
         );
 
-        uint requiredDeposit = uint(_takePercentage(s._getRequiredEthMargin(s.currentTokenState), s.fixedParameters.disputeDeposit));
+        uint requiredDeposit = uint(_takePercentage(s._getRequiredMargin(s.currentTokenState), s.fixedParameters.disputeDeposit));
 
         uint sentAmount = s._pullSentMargin();
 
@@ -362,7 +362,7 @@ library TokenizedDerivativeUtils {
                 s.withdrawThrottle.remainingWithdrawal = _takePercentage(uint(s.shortBalance), s.fixedParameters.withdrawLimit);
             }
 
-            int marginMaxWithdraw = s.shortBalance.sub(s._getRequiredEthMargin(s.currentTokenState));
+            int marginMaxWithdraw = s.shortBalance.sub(s._getRequiredMargin(s.currentTokenState));
             int throttleMaxWithdraw = int(s.withdrawThrottle.remainingWithdrawal);
 
             // Take the smallest of the two withdrawal limits.
@@ -441,7 +441,7 @@ library TokenizedDerivativeUtils {
 
     function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
         (TDS.TokenState memory newTokenState, int newShortMarginBalance) = s._calcNewTokenStateAndBalance();
-        int requiredMargin = s._getRequiredEthMargin(newTokenState);
+        int requiredMargin = s._getRequiredMargin(newTokenState);
         return newShortMarginBalance.sub(requiredMargin);
     }
 
@@ -644,7 +644,7 @@ library TokenizedDerivativeUtils {
         view
         returns (bool doesSatisfyRequirement) 
     {
-        return s._getRequiredEthMargin(s.currentTokenState) <= balance;
+        return s._getRequiredMargin(s.currentTokenState) <= balance;
     }
 
     function _requestOraclePrice(TDS.Storage storage s, uint requestedTime) internal {
@@ -705,7 +705,7 @@ library TokenizedDerivativeUtils {
         bool inDefault = !s._satisfiesMarginRequirement(s.shortBalance);
 
         if (inDefault) {
-            int expectedDefaultPenalty = s._getDefaultPenaltyEth();
+            int expectedDefaultPenalty = s._getDefaultPenalty();
             int penalty = (s.shortBalance < expectedDefaultPenalty) ?
                 s.shortBalance :
                 expectedDefaultPenalty;
@@ -741,15 +741,15 @@ library TokenizedDerivativeUtils {
         longDiff = newLongBalance.sub(s.longBalance);
     }
 
-    function _getDefaultPenaltyEth(TDS.Storage storage s) internal view returns (int penalty) {
+    function _getDefaultPenalty(TDS.Storage storage s) internal view returns (int penalty) {
         return s.defaultPenaltyAmount;
     }
 
     function _computeDefaultPenalty(TDS.Storage storage s) internal view returns (int penalty) {
-        return _takePercentage(s._getRequiredEthMargin(s.currentTokenState), s.fixedParameters.defaultPenalty);
+        return _takePercentage(s._getRequiredMargin(s.currentTokenState), s.fixedParameters.defaultPenalty);
     }
 
-    function _getRequiredEthMargin(TDS.Storage storage s, TDS.TokenState memory tokenState)
+    function _getRequiredMargin(TDS.Storage storage s, TDS.TokenState memory tokenState)
         internal
         view
         returns (int requiredMargin)
