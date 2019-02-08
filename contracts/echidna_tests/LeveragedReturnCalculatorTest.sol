@@ -29,14 +29,16 @@ contract LeveragedReturnCalculatorTest is LeveragedReturnCalculator {
             return returnOutput == 0;
         }
 
-        if (this.leverage() >= 1) {
+        LeveragedReturnCalculatorInterface thisReturnCalculator = LeveragedReturnCalculatorInterface(address(this));
+
+        if (thisReturnCalculator.leverage() >= 1) {
             // Positive leverage means that the price difference should be in the same direction as the return.
             if (newPriceInput >= oldPriceInput) {
                 return returnOutput >= 0;
             } else {
                 return returnOutput < 0;
             }
-        } else if (this.leverage() <= -1) {
+        } else if (thisReturnCalculator.leverage() <= -1) {
             // Negative leverage means the price difference should be in the opposite direction of the return.
             if (newPriceInput >= oldPriceInput) {
                 return returnOutput <= 0;
