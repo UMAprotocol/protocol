@@ -455,13 +455,17 @@ library TokenizedDerivativeUtils {
             return (s.currentTokenState, s.shortBalance);
         }
 
-        newTokenState = s._computeNewTokenState(
-            s.currentTokenState, latestUnderlyingPrice, latestTime);
+        if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
+            newTokenState = s._computeNewTokenState(s.referenceTokenState, latestUnderlyingPrice, latestTime);
+        } else {
+            assert(s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound);
+            newTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
+        }
 
         int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
         int longDiff = s._getLongDiff(navNew);
 
-        uint feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime, s.nav);
+        uint feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime);
 
         newShortMarginBalance = s.shortBalance.sub(longDiff).sub(int(feeAmount));
     }
@@ -501,7 +505,7 @@ library TokenizedDerivativeUtils {
             s.state = TDS.State.Expired;
             s.referenceTokenState = s.currentTokenState;
             emit Expired(s.fixedParameters.symbol, s.endTime);
-            uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime, s.nav);
+            uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime);
 
             // We have no idea what the price was, exactly at s.endTime, so we can't set
             // s.currentTokenState, or update the nav, or do anything.
@@ -509,7 +513,7 @@ library TokenizedDerivativeUtils {
             s._payOracleFees(feeAmount);
             return;
         }
-        uint feeAmount = s._deductOracleFees(s.currentTokenState.time, latestTime, s.nav);
+        uint feeAmount = s._deductOracleFees(s.currentTokenState.time, latestTime);
 
         // Update nav of contract.
         int navNew = s._computeNav(latestPrice, latestTime);
@@ -523,11 +527,8 @@ library TokenizedDerivativeUtils {
             s.state = TDS.State.Defaulted;
             s.defaultPenaltyAmount = potentialPenaltyAmount;
             s.endTime = latestTime; // Change end time to moment when default occurred.
+            s._requestOraclePrice(latestTime);
             emit Default(s.fixedParameters.symbol, latestTime, s.nav);
-        }
-
-        if (inDefault) {
-            s._requestOraclePrice(s.endTime);
         }
 
         s._payOracleFees(feeAmount);
@@ -560,9 +561,7 @@ library TokenizedDerivativeUtils {
         // Make sure this still satisfies the margin requirement.
         require(s._satisfiesMarginRequirement(s.shortBalance));
 
-        if (refund != 0) {
-            s._sendMargin(refund);
-        }
+        s._sendMargin(refund);
     }
 
     function _depositInternal(TDS.Storage storage s, uint value) internal {
@@ -588,8 +587,8 @@ library TokenizedDerivativeUtils {
     }
 
     // Deducts the fees from the margin account.
-    function _deductOracleFees(TDS.Storage storage s, uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav) internal returns (uint feeAmount) {
-        feeAmount = s._computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime, lastTokenNav);
+    function _deductOracleFees(TDS.Storage storage s, uint lastTimeOracleFeesPaid, uint currentTime) internal returns (uint feeAmount) {
+        feeAmount = s._computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime);
         s.shortBalance = s.shortBalance.sub(int(feeAmount));
         // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
         // contract.
@@ -609,12 +608,18 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeExpectedOracleFees(TDS.Storage storage s, uint lastTimeOracleFeesPaid, uint currentTime, int lastTokenNav)
+    function _computeExpectedOracleFees(TDS.Storage storage s, uint lastTimeOracleFeesPaid, uint currentTime)
         internal
         view
         returns (uint feeAmount)
     {
-        uint expectedFeeAmount = s.externalAddresses.store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(lastTokenNav));
+        // The profit from corruption is set as the max(longBalance, shortBalance).
+        int pfc = s.longBalance > s.shortBalance ? s.longBalance : s.shortBalance;
+        assert(pfc >= 0);
+        uint expectedFeeAmount = s.externalAddresses.store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(pfc));
+
+        // Ensure the fee returned can actually be paid by the short margin account.
+        assert(s.shortBalance > 0);
         return (uint(s.shortBalance) < expectedFeeAmount) ? uint(s.shortBalance) : expectedFeeAmount;
     }
 
@@ -780,6 +785,11 @@ library TokenizedDerivativeUtils {
     }
 
     function _sendMargin(TDS.Storage storage s, uint amount) internal {
+        // There's no point in attempting a send if there's nothing to send.
+        if (amount == 0) {
+            return;
+        }
+
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
             msg.sender.transfer(amount);
         } else {
@@ -800,7 +810,11 @@ library TokenizedDerivativeUtils {
 
     function _pullAllAuthorizedTokens(IERC20 erc20) private returns (uint amount) {
         amount = erc20.allowance(msg.sender, address(this));
-        require(erc20.transferFrom(msg.sender, address(this), amount));
+
+        // If nothing was authorized, there's no point in calling a transfer.
+        if (amount > 0) {
+            require(erc20.transferFrom(msg.sender, address(this), amount));
+        }
     }
 
     function _computeNavForTokens(int tokenPrice, uint numTokens) private pure returns (int navNew) {
