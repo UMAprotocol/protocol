@@ -843,7 +843,6 @@ contract("TokenizedDerivative", function(accounts) {
       // Push the contract past expiry and provide Oracle price beforehand.
       await pushPrice(web3.utils.toWei("100", "ether"));
       const expirationTime = await deployedManualPriceFeed.getCurrentTime();
-      await pushPrice(web3.utils.toWei("100", "ether"));
 
       // Can't call calc* methods on a contract that will expire on remargin, even if it hasn't remargined yet.
       assert(await didContractThrow(derivativeContract.calcNAV()));

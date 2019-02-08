@@ -446,7 +446,7 @@ library TokenizedDerivativeUtils {
     function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
     {
         (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
-        require(latestTime <= s.endTime);
+        require(latestTime < s.endTime);
 
         if (latestTime <= s.currentTokenState.time) {
             // If the time hasn't advanced since the last remargin, short circuit and return the most recently computed values.
