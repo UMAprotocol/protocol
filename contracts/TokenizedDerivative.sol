@@ -820,6 +820,8 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
         derivativeStorage._acceptPriceAndSettle();
     }
 
+    // Assigns an address to be the contract's Delegate AP. Replaces previous value. Set to 0x0 to indicate there is no
+    // Delegate AP.
     function setApDelegate(address apDelegate) external {
         derivativeStorage._setApDelegate(apDelegate);
     }
