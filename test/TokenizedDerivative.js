@@ -314,14 +314,14 @@ contract("TokenizedDerivative", function(accounts) {
       totalOracleFeesPaid = totalOracleFeesPaid.add(expectedOracleFee);
       const expectedLastRemarginTime = await deployedManualPriceFeed.getCurrentTime();
       let lastRemarginTime = (await derivativeContract.derivativeStorage()).currentTokenState.time;
-      const expectedPreviousRemarginTime = (await derivativeContract.derivativeStorage()).prevTokenState.time;
+      const expectedPreviousRemarginTime = (await derivativeContract.derivativeStorage()).referenceTokenState.time;
       assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
 
       // Ensure that a remargin with no new price works appropriately and doesn't create any balance issues.
       // The prevTokenState also shouldn't get blown away.
       await derivativeContract.remargin({ from: admin });
       lastRemarginTime = (await derivativeContract.derivativeStorage()).currentTokenState.time;
-      let previousRemarginTime = (await derivativeContract.derivativeStorage()).prevTokenState.time;
+      let previousRemarginTime = (await derivativeContract.derivativeStorage()).referenceTokenState.time;
       assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
       assert.equal(previousRemarginTime.toString(), expectedPreviousRemarginTime.toString());
 
@@ -1416,6 +1416,98 @@ contract("TokenizedDerivative", function(accounts) {
       shortBalance = await derivativeContract.calcShortMarginBalance();
       excessMargin = await derivativeContract.calcExcessMargin();
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+    });
+
+    it(annotateTitle("Linear NAV"), async function() {
+      // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
+      const levered2x = await LeveragedReturnCalculator.new(2);
+
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative({
+        returnType: "0",
+        fixedYearlyFee: "0",
+        returnCalculator: levered2x.address,
+        startingTokenPrice: web3.utils.toWei("0.5"),
+        startingUnderlyingPrice: web3.utils.toWei("2")
+      });
+
+      let state = (await derivativeContract.derivativeStorage()).state;
+      let tokensOutstanding = await derivativeContract.totalSupply();
+      let nav = (await derivativeContract.derivativeStorage()).nav;
+
+      assert.equal(state.toString(), "0");
+      assert.equal(tokensOutstanding.toString(), "0");
+      assert.equal(nav.toString(), "0");
+
+      let longBalance = (await derivativeContract.derivativeStorage()).longBalance;
+      let shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+
+      // Ensure the short balance is 0 ETH (as is deposited in beforeEach()).
+      assert.equal(shortBalance.toString(), web3.utils.toWei("0", "ether"));
+      assert.equal(longBalance.toString(), web3.utils.toWei("0", "ether"));
+
+      // The margin requirement should start at 0.
+      let excessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(excessMargin.toString(), "0");
+
+      // Sponsor initializes contract
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("2", "ether"),
+        await getMarginParams(web3.utils.toWei("3", "ether"))
+      );
+
+      // Underlying Price -> 1.5
+      await pushPrice(web3.utils.toWei("1.5", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
+      //     = 2 * 0.5 * (1 + 2 * ((1 - 1.5) / 2))
+      //     = 1 * (1 + 2 * (-1/4))
+      //     = 1 * 0.5
+      //     = 0.5
+      nav = await derivativeContract.calcNAV();
+      assert.equal(nav.toString(), web3.utils.toWei("0.5", "ether"));
+
+      // Margin requirement = quantity * |leverage| * startingTokenPrice / startingUnderlyingPrice * currentUnderlyingPrice * supportedMove
+      //                    = 2 * 2 * 0.5 / 2 * 1.5 * 0.1
+      //                    = 0.15
+      let expectedMarginRequirement = web3.utils.toBN(web3.utils.toWei("0.15", "ether"));
+      shortBalance = await derivativeContract.calcShortMarginBalance();
+      excessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+
+      // Underlying Price -> 2
+      await pushPrice(web3.utils.toWei("2", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
+      //     = 2 * 0.5 * (1 + 2 * ((2 - 2) / 2))
+      //     = 1 * 1
+      //     = 1
+      nav = await derivativeContract.calcNAV();
+      assert.equal(nav.toString(), web3.utils.toWei("1", "ether"));
+
+      // Margin requirement = quantity * |leverage| * startingTokenPrice / startingUnderlyingPrice * currentUnderlyingPrice * supportedMove
+      //                    = 2 * 2 * 0.5 / 2 * 2 * 0.1
+      //                    = 0.2
+      expectedMarginRequirement = web3.utils.toBN(web3.utils.toWei("0.2", "ether"));
+      shortBalance = await derivativeContract.calcShortMarginBalance();
+      excessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+    });
+
+    it(annotateTitle("Linear NAV Negative Price"), async function() {
+      // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
+      const levered2x = await LeveragedReturnCalculator.new(2);
+
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative({
+        returnType: "0",
+        fixedYearlyFee: "0",
+        returnCalculator: levered2x.address,
+        startingTokenPrice: web3.utils.toWei("0.5"),
+        startingUnderlyingPrice: web3.utils.toWei("2")
+      });
     });
 
     it(annotateTitle("Constructor assertions"), async function() {
