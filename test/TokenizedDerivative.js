@@ -402,7 +402,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
 
       // Only the sponsor can confirm.
-      assert(await didContractThrow(derivativeContract.confirmPrice({ from: admin })));
+      assert(await didContractThrow(derivativeContract.acceptPriceAndSettle({ from: admin })));
 
       // Verify that the sponsor cannot withdraw before settlement.
       assert(
@@ -410,7 +410,7 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Verify that after the sponsor confirms, the state is moved to settled.
-      result = await derivativeContract.confirmPrice({ from: sponsor });
+      result = await derivativeContract.acceptPriceAndSettle({ from: sponsor });
       truffleAssert.eventEmitted(result, "Settled");
 
       state = (await derivativeContract.derivativeStorage()).state;

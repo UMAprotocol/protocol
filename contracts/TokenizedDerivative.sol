@@ -387,7 +387,7 @@ library TokenizedDerivativeUtils {
         s._sendMargin(amount);
     }
 
-    function _confirmPrice(TDS.Storage storage s) external onlySponsor(s) {
+    function _acceptPriceAndSettle(TDS.Storage storage s) external onlySponsor(s) {
         // Right now, only confirming prices in the defaulted state.
         require(s.state == TDS.State.Defaulted);
 
@@ -860,8 +860,6 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 
     TDS.Storage public derivativeStorage;
 
-    // TODO(ptare): Adding name and symbol to ConstructorParams causes the transaction to always revert without a useful
-    // error message. Need to investigate this issue more.
     constructor(
         TokenizedDerivativeParams.ConstructorParams memory params,
         string memory _name,
@@ -875,34 +873,46 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
         derivativeStorage._initialize(params, _symbol);
     }
 
+    // Creates tokens with sent margin and returns additional margin.
     function createTokens(uint tokensToPurchase) external payable {
         derivativeStorage._createTokens(tokensToPurchase);
     }
 
+    // Creates tokens with sent margin and deposits additional margin in short account.
     function depositAndCreateTokens(uint newTokenNav) external payable {
         derivativeStorage._depositAndCreateTokens(newTokenNav);
     }
 
+    // Redeems tokens for margin currency.
     function redeemTokens() external {
         derivativeStorage._redeemTokens();
     }
 
+    // Triggers a price dispute for the most recent remargin time.
     function dispute() external payable {
         derivativeStorage._dispute();
     }
 
+    // Withdraws `amount` from short margin account.
     function withdraw(uint amount) external {
         derivativeStorage._withdraw(amount);
     }
 
+    // Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between long and
+    // short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
     function remargin() external {
         derivativeStorage._remargin();
     }
 
-    function confirmPrice() external {
-        derivativeStorage._confirmPrice();
+    // Forgo the Oracle verified price and settle the contract with last remargin price. This method is only callable on
+    // contracts in the `Defaulted` state, and the default penalty is always transferred from the short to the long
+    // account.
+    function acceptPriceAndSettle() external {
+        derivativeStorage._acceptPriceAndSettle();
     }
 
+    // Assigns an address to be the contract's Delegate AP. Replaces previous value. Set to 0x0 to indicate there is no
+    // Delegate AP.
     function setApDelegate(address apDelegate) external {
         derivativeStorage._setApDelegate(apDelegate);
     }
@@ -934,10 +944,14 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
         return derivativeStorage._calcExcessMargin();
     }
 
+    // When an Oracle price becomes available, performs a final remargin, assesses any penalties, and moves the contract
+    // into the `Settled` state.
     function settle() public {
         derivativeStorage._settle();
     }
 
+    // Adds the margin sent along with the call (or in the case of an ERC20 margin currency, authorized before the call)
+    // to the short account.
     function deposit() public payable {
         derivativeStorage._deposit();
     }
