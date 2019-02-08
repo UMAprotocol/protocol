@@ -187,7 +187,7 @@ contract("CentralizedOracle", function(accounts) {
       sponsor: owner,
       admin: centralizedOracle.address,
       defaultPenalty: web3.utils.toWei("0.05", "ether"),
-      requiredMargin: web3.utils.toWei("0.1", "ether"),
+      supportedMove: web3.utils.toWei("0.1", "ether"),
       product: identifierBytes,
       fixedYearlyFee: web3.utils.toWei("0.01", "ether"),
       disputeDeposit: web3.utils.toWei("0.05", "ether"),
@@ -196,6 +196,8 @@ contract("CentralizedOracle", function(accounts) {
       expiry: "0",
       marginCurrency: "0x0000000000000000000000000000000000000000",
       withdrawLimit: web3.utils.toWei("0.33", "ether"),
+      startingUnderlyingPrice: "0",
+      returnType: "1", // Compound
       name: "1x coin",
       symbol: "BTCETH"
     };
