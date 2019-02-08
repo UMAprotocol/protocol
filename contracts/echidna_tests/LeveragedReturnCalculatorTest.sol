@@ -29,7 +29,7 @@ contract LeveragedReturnCalculatorTest is LeveragedReturnCalculator {
             return returnOutput == 0;
         }
 
-        LeveragedReturnCalculatorInterface thisReturnCalculator = LeveragedReturnCalculatorInterface(address(this));
+        ReturnCalculatorInterface thisReturnCalculator = ReturnCalculatorInterface(address(this));
 
         if (thisReturnCalculator.leverage() >= 1) {
             // Positive leverage means that the price difference should be in the same direction as the return.
