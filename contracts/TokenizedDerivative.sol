@@ -505,7 +505,8 @@ library TokenizedDerivativeUtils {
             s.state = TDS.State.Expired;
 
             // Applies the same update a second time to effectively move the current state to the reference state.
-            s._computeNav(s.currentTokenState.underlyingPrice, s.currentTokenState.time);
+            int recomputedNav = s._computeNav(s.currentTokenState.underlyingPrice, s.currentTokenState.time);
+            assert(recomputedNav == s.nav);
 
             uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime);
 
