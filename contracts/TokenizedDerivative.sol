@@ -614,12 +614,12 @@ library TokenizedDerivativeUtils {
         returns (uint feeAmount)
     {
         // The profit from corruption is set as the max(longBalance, shortBalance).
-        int pfc = s.longBalance > s.shortBalance ? s.longBalance : s.shortBalance;
+        int pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
         assert(pfc >= 0);
         uint expectedFeeAmount = s.externalAddresses.store.computeOracleFees(lastTimeOracleFeesPaid, currentTime, uint(pfc));
 
         // Ensure the fee returned can actually be paid by the short margin account.
-        assert(s.shortBalance > 0);
+        assert(s.shortBalance >= 0);
         return (uint(s.shortBalance) < expectedFeeAmount) ? uint(s.shortBalance) : expectedFeeAmount;
     }
 
