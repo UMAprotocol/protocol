@@ -1525,13 +1525,20 @@ contract("TokenizedDerivative", function(accounts) {
       // Ensure the price can rebound from a negative value.
       // Underlying Price -> 2
       await pushPrice(web3.utils.toWei("2", "ether"));
+
+      // Calculate calcNav pre-remargin to ensure it uses the linear NAV function.
+      let calcNav = await derivativeContract.calcNav();
+
       await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
       //     = 2 * 0.5 * (1 + 2 * ((2 - 2) / 2))
       //     = 1 * 1
       //     = 1
-      nav = await derivativeContract.calcNAV();
+      nav = (await derivativeContract.storage()).nav;
+
+      // Ensure calcNav accurately predicted the correct NAV change.
+      assert.equal(calcNav.toString(), nav.toString());
       assert.equal(nav.toString(), web3.utils.toWei("1", "ether"));
 
       // Margin requirement = quantity * |leverage| * startingTokenPrice / startingUnderlyingPrice * currentUnderlyingPrice * supportedMove
