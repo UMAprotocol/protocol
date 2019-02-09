@@ -1268,7 +1268,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
-        returnType: "0",
+        returnType: "0", // Linear
         fixedYearlyFee: "0",
         returnCalculator: levered2x.address,
         startingTokenPrice: web3.utils.toWei("0.5"),
@@ -1346,7 +1346,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
-        returnType: "1",
+        returnType: "1", // Compound
         fixedYearlyFee: "0",
         returnCalculator: levered2x.address,
         startingTokenPrice: web3.utils.toWei("0.5"),
@@ -1393,6 +1393,7 @@ contract("TokenizedDerivative", function(accounts) {
       const five = BigNumber(5);
       const six = BigNumber(6);
       const one = BigNumber(1);
+
       // Note: as mentioned elsewhere, because of the intermediate values in the fixed point solidity math, we
       // occassionally see 1 wei rounding errors. The .minus(one) is to compensate for this rounding error.
       assert.equal(
@@ -1424,7 +1425,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
-        returnType: "0",
+        returnType: "0", // Linear
         fixedYearlyFee: "0",
         returnCalculator: levered2x.address,
         startingTokenPrice: web3.utils.toWei("0.5"),
@@ -1527,7 +1528,7 @@ contract("TokenizedDerivative", function(accounts) {
       await pushPrice(web3.utils.toWei("2", "ether"));
 
       // Calculate calcNav pre-remargin to ensure it uses the linear NAV function.
-      let calcNav = await derivativeContract.calcNav();
+      let calcNav = await derivativeContract.calcNAV();
 
       await derivativeContract.remargin({ from: sponsor });
 
@@ -1535,7 +1536,7 @@ contract("TokenizedDerivative", function(accounts) {
       //     = 2 * 0.5 * (1 + 2 * ((2 - 2) / 2))
       //     = 1 * 1
       //     = 1
-      nav = (await derivativeContract.storage()).nav;
+      nav = (await derivativeContract.derivativeStorage()).nav;
 
       // Ensure calcNav accurately predicted the correct NAV change.
       assert.equal(calcNav.toString(), nav.toString());
@@ -1545,6 +1546,138 @@ contract("TokenizedDerivative", function(accounts) {
       //                    = 2 * 2 * 0.5 / 2 * 2 * 0.1
       //                    = 0.2
       expectedMarginRequirement = web3.utils.toBN(web3.utils.toWei("0.2", "ether"));
+      shortBalance = await derivativeContract.calcShortMarginBalance();
+      excessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+    });
+
+    it(annotateTitle("Compound NAV - Zero Token Price"), async function() {
+      // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
+      const levered2x = await LeveragedReturnCalculator.new(2);
+
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative({
+        returnType: "1", // Compound
+        fixedYearlyFee: "0",
+        returnCalculator: levered2x.address,
+        startingTokenPrice: web3.utils.toWei("0.5"),
+        startingUnderlyingPrice: web3.utils.toWei("2")
+      });
+
+      // Sponsor initializes contract
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("2", "ether"),
+        await getMarginParams(web3.utils.toWei("3", "ether"))
+      );
+
+      // Underlying Price -> 0.5
+      await pushPrice(web3.utils.toWei("0.5", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
+      //     = 2 * 0.5 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 1 * (1 + 2 * (-3/4))
+      //     = 1 * -0.5
+      //     = -0.5 -> 0 becuase compound NAV bottoms out at 0.
+      nav = await derivativeContract.calcNAV();
+      assert.equal(nav.toString(), web3.utils.toWei("0", "ether"));
+
+      // Margin requirement = quantity * tokenPrice * |leverage| * supportedMove
+      //                    = 2 * 0 * 2 * 0.1
+      //                    = 0
+      let expectedMarginRequirement = web3.utils.toBN(web3.utils.toWei("0", "ether"));
+      shortBalance = await derivativeContract.calcShortMarginBalance();
+      excessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+
+      let storage = await derivativeContract.derivativeStorage();
+      let contractBalance = await getContractBalance();
+
+      // The long account should be completely drained and the short account should have all the margin in the contract.
+      assert.equal(storage.longBalance.toString(), "0");
+      assert.equal(storage.shortBalance.toString(), contractBalance.toString());
+
+      // Redeem half of the tokens.
+      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: sponsor });
+      await derivativeContract.redeemTokens({ from: sponsor });
+
+      // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
+      //     = 1 * 0.5 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 0.5 * (1 + 2 * (-3/4))
+      //     = 0.5 * -0.5
+      //     = -0.25 -> 0 becuase compound NAV bottoms out at 0.
+      nav = await derivativeContract.calcNAV();
+      assert.equal(nav.toString(), web3.utils.toWei("0", "ether"));
+
+      // Margin requirement = quantity * tokenPrice * |leverage| * supportedMove
+      //                    = 1 * 0 * 2 * 0.1
+      //                    = 0
+      expectedMarginRequirement = web3.utils.toBN(web3.utils.toWei("0", "ether"));
+      shortBalance = await derivativeContract.calcShortMarginBalance();
+      excessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+
+      // Get updated storage and balance.
+      storage = await derivativeContract.derivativeStorage();
+      let newContractBalance = await getContractBalance();
+
+      // The contract balance shouldn't have changed during the token redemption call.
+      assert.equal(newContractBalance.toString(), contractBalance.toString());
+
+      // Balances should still be exactly the same as they were before.
+      assert.equal(storage.longBalance.toString(), "0");
+      assert.equal(storage.shortBalance.toString(), newContractBalance.toString());
+
+      // Total supply should be 1 token.
+      let totalSupply = await derivativeContract.totalSupply();
+      assert.equal(totalSupply.toString(), web3.utils.toWei("1", "ether"));
+
+      // Should be able to create tokens without sending any margin, since the token price is negative.
+      await derivativeContract.createTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
+
+      // Total supply should be 2 tokens after creation.
+      totalSupply = await derivativeContract.totalSupply();
+      assert.equal(totalSupply.toString(), web3.utils.toWei("2", "ether"));
+
+      // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
+      //     = 2 * 0 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 0 * (1 + 2 * (-3/4))
+      //     = 0 * -0.5
+      //     = 0
+      nav = await derivativeContract.calcNAV();
+      assert.equal(nav.toString(), web3.utils.toWei("0", "ether"));
+
+      // Margin requirement = quantity * tokenPrice * |leverage| * supportedMove
+      //                    = 2 * 0 * 0.5 / 2 * 0.5 * 0.1
+      //                    = 0
+      expectedMarginRequirement = web3.utils.toBN(web3.utils.toWei("0", "ether"));
+      shortBalance = await derivativeContract.calcShortMarginBalance();
+      excessMargin = await derivativeContract.calcExcessMargin();
+      assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+
+      // Ensure the price cannot rebound from a negative value.
+      // Underlying Price -> 2
+      await pushPrice(web3.utils.toWei("2", "ether"));
+
+      // Calculate calcNav pre-remargin to ensure it uses the compound NAV function.
+      let calcNav = await derivativeContract.calcNAV();
+
+      await derivativeContract.remargin({ from: sponsor });
+
+      // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
+      //     = 2 * 0 * (1 + 2 * ((2 - 2) / 2))
+      //     = 0 * 1
+      //     = 0
+      nav = (await derivativeContract.derivativeStorage()).nav;
+
+      // Ensure calcNav accurately predicted the correct NAV change.
+      assert.equal(calcNav.toString(), nav.toString());
+      assert.equal(nav.toString(), web3.utils.toWei("0", "ether"));
+
+      // Margin requirement = quantity * tokenPrice * |leverage| * supportedMove
+      //                    = 2 * 0 * 2 * 0.1
+      //                    = 0
+      expectedMarginRequirement = web3.utils.toBN(web3.utils.toWei("0", "ether"));
       shortBalance = await derivativeContract.calcShortMarginBalance();
       excessMargin = await derivativeContract.calcExcessMargin();
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
