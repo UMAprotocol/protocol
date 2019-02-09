@@ -330,6 +330,9 @@ library TokenizedDerivativeUtils {
         s.endTime = s.currentTokenState.time;
         s.disputeInfo.disputedNav = s.nav;
         s.disputeInfo.deposit = requiredDeposit;
+
+        // Store the default penalty in case the dispute pushes the sponsor into default.
+        s.defaultPenaltyAmount = s._computeDefaultPenalty();
         emit Disputed(s.fixedParameters.symbol, s.endTime, s.nav);
 
         s._requestOraclePrice(s.endTime);
@@ -502,6 +505,9 @@ library TokenizedDerivativeUtils {
             s.referenceTokenState = s.currentTokenState;
             emit Expired(s.fixedParameters.symbol, s.endTime);
             uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime, s.nav);
+
+            // Save the precomputed default penalty in case the expiry price pushes the sponsor into default.
+            s.defaultPenaltyAmount = potentialPenaltyAmount;
 
             // We have no idea what the price was, exactly at s.endTime, so we can't set
             // s.currentTokenState, or update the nav, or do anything.
