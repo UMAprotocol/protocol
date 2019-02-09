@@ -503,14 +503,17 @@ library TokenizedDerivativeUtils {
 
         if (latestTime >= s.endTime) {
             s.state = TDS.State.Expired;
-            s.referenceTokenState = s.currentTokenState;
-            emit Expired(s.fixedParameters.symbol, s.endTime);
+
+            // Applies the same update a second time to effectively move the current state to the reference state.
+            s._computeNav(s.currentTokenState.underlyingPrice, s.currentTokenState.time);
+
             uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime);
 
             // We have no idea what the price was, exactly at s.endTime, so we can't set
             // s.currentTokenState, or update the nav, or do anything.
             s._requestOraclePrice(s.endTime);
             s._payOracleFees(feeAmount);
+            emit Expired(s.fixedParameters.symbol, s.endTime);
             return;
         }
         uint feeAmount = s._deductOracleFees(s.currentTokenState.time, latestTime);
