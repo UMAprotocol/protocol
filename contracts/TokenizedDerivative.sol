@@ -151,7 +151,7 @@ library TDS {
 
         Dispute disputeInfo;
 
-        // Only valid if in the midst of a Default.
+        // Only populated once the coontract enters a frozen state.
         int defaultPenaltyAmount;
 
         WithdrawThrottle withdrawThrottle;
@@ -1000,7 +1000,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         address sponsor;
         address admin;
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
-        uint supportedMove; // Expected percentage move that the long is protected against.
+        uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
         bytes32 product;
         uint fixedYearlyFee; // Percentage of nav * 10^18
         uint disputeDeposit; // Percentage of mergin requirement * 10^18
