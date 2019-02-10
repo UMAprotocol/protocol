@@ -1164,7 +1164,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     it(annotateTitle("Live -> Expiry -> Settled (Default)"), async function() {
       // Deploy TokenizedDerivative with 0 fee to make computations simpler.
-      await deployNewTokenizedDerivative({fixedYearlyFee: "0", expiry: priceFeedUpdatesInterval});
+      await deployNewTokenizedDerivative({ fixedYearlyFee: "0", expiry: priceFeedUpdatesInterval });
 
       // Set oracle fee to 0 for ease of computing expected penalties.
       await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
@@ -1204,7 +1204,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     it(annotateTitle("Live -> Dispute -> Settled (Default)"), async function() {
       // Deploy TokenizedDerivative with 0 fee to make computations simpler.
-      await deployNewTokenizedDerivative({fixedYearlyFee: "0"});
+      await deployNewTokenizedDerivative({ fixedYearlyFee: "0" });
 
       // Set oracle fee to 0 for ease of computing expected penalties.
       await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
