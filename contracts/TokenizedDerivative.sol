@@ -152,7 +152,7 @@ library TDS {
 
         Dispute disputeInfo;
 
-        // Only valid if in the midst of a Default.
+        // Only populated once the contract enters a frozen state.
         int defaultPenaltyAmount;
 
         WithdrawThrottle withdrawThrottle;
@@ -331,6 +331,9 @@ library TokenizedDerivativeUtils {
         s.endTime = s.currentTokenState.time;
         s.disputeInfo.disputedNav = s.nav;
         s.disputeInfo.deposit = requiredDeposit;
+
+        // Store the default penalty in case the dispute pushes the sponsor into default.
+        s.defaultPenaltyAmount = s._computeDefaultPenalty();
         emit Disputed(s.fixedParameters.symbol, s.endTime, s.nav);
 
         s._requestOraclePrice(s.endTime);
@@ -405,6 +408,7 @@ library TokenizedDerivativeUtils {
         require(s.state == TDS.State.Live);
         s.state = TDS.State.Emergency;
         s.endTime = s.currentTokenState.time;
+        s.defaultPenaltyAmount = s._computeDefaultPenalty();
         emit EmergencyShutdownTransition(s.fixedParameters.symbol, s.endTime);
         s._requestOraclePrice(s.endTime);
     }
@@ -482,6 +486,19 @@ library TokenizedDerivativeUtils {
         s._remarginInternal();
     }
 
+    function _withdrawUnexpectedErc20(TDS.Storage storage s, address erc20Address, uint amount) external onlySponsor(s) {
+        if(address(s.externalAddresses.marginCurrency) == erc20Address) {
+            uint currentBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
+            int totalBalances = s.shortBalance.add(s.longBalance);
+            assert(totalBalances >= 0);
+            uint withdrawableAmount = currentBalance.sub(uint(totalBalances)).sub(s.disputeInfo.deposit);
+            require(withdrawableAmount >= amount);
+        }
+
+        IERC20 erc20 = IERC20(erc20Address);
+        require(erc20.transfer(msg.sender, amount));
+    }
+
     // _remarginInternal() allows other functions to call remargin internally without satisfying permission checks for
     // _remargin().
     function _remarginInternal(TDS.Storage storage s) internal {
@@ -503,6 +520,9 @@ library TokenizedDerivativeUtils {
             s.referenceTokenState = s.currentTokenState;
             emit Expired(s.fixedParameters.symbol, s.endTime);
             uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime, s.nav);
+
+            // Save the precomputed default penalty in case the expiry price pushes the sponsor into default.
+            s.defaultPenaltyAmount = potentialPenaltyAmount;
 
             // We have no idea what the price was, exactly at s.endTime, so we can't set
             // s.currentTokenState, or update the nav, or do anything.
@@ -947,14 +967,19 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 
     // When an Oracle price becomes available, performs a final remargin, assesses any penalties, and moves the contract
     // into the `Settled` state.
-    function settle() public {
+    function settle() external {
         derivativeStorage._settle();
     }
 
     // Adds the margin sent along with the call (or in the case of an ERC20 margin currency, authorized before the call)
     // to the short account.
-    function deposit() public payable {
+    function deposit() external payable {
         derivativeStorage._deposit();
+    }
+
+    // Allows the sponsor to withdraw any ERC20 balance that is not the margin token.
+    function withdrawUnexpectedErc20(address erc20Address, uint amount) external {
+        derivativeStorage._withdrawUnexpectedErc20(erc20Address, amount);
     }
 
     // ExpandedIERC20 methods.
@@ -992,7 +1017,7 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 contract TokenizedDerivativeCreator is ContractCreator {
     struct Params {
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
-        uint supportedMove; // Expected percentage move that the long is protected against.
+        uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
         bytes32 product;
         uint fixedYearlyFee; // Percentage of nav * 10^18
         uint disputeDeposit; // Percentage of mergin requirement * 10^18
