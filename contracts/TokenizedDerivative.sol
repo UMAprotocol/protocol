@@ -485,6 +485,19 @@ library TokenizedDerivativeUtils {
         s._remarginInternal();
     }
 
+    function _withdrawUnexpectedErc20(TDS.Storage storage s, address erc20Address, uint amount) external onlySponsor(s) {
+        if(address(s.externalAddresses.marginCurrency) == erc20Address) {
+            uint currentBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
+            int totalBalances = s.shortBalance.add(s.longBalance);
+            assert(totalBalances >= 0);
+            uint withdrawableAmount = currentBalance.sub(uint(totalBalances)).sub(s.disputeInfo.deposit);
+            require(withdrawableAmount >= amount);
+        }
+
+        IERC20 erc20 = IERC20(erc20Address);
+        require(erc20.transfer(msg.sender, amount));
+    }
+
     // _remarginInternal() allows other functions to call remargin internally without satisfying permission checks for
     // _remargin().
     function _remarginInternal(TDS.Storage storage s) internal {
@@ -953,14 +966,19 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 
     // When an Oracle price becomes available, performs a final remargin, assesses any penalties, and moves the contract
     // into the `Settled` state.
-    function settle() public {
+    function settle() external {
         derivativeStorage._settle();
     }
 
     // Adds the margin sent along with the call (or in the case of an ERC20 margin currency, authorized before the call)
     // to the short account.
-    function deposit() public payable {
+    function deposit() external payable {
         derivativeStorage._deposit();
+    }
+
+    // Allows the sponsor to withdraw any ERC20 balance that is not the margin token.
+    function withdrawUnexpectedErc20(address erc20Address, uint amount) external {
+        derivativeStorage._withdrawUnexpectedErc20(erc20Address, amount);
     }
 
     // ExpandedIERC20 methods.

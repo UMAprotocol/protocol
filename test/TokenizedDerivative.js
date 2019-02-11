@@ -1540,6 +1540,84 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
     });
 
+    it(annotateTitle("Withdraw unexpected ERC20"), async function() {
+      // Deploy TokenizedDerivative with 0 fee to make computations simpler.
+      await deployNewTokenizedDerivative();
+
+      // Sponsor initializes contract
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("0.5", "ether"),
+        await getMarginParams(web3.utils.toWei("1.075", "ether"))
+      );
+
+      // Transfer 0.5 tokens of the margin currency to the derivative address.
+      // Note: this tests when the ERC20 token is the margin currency and when it isn't because this test is also
+      // run with ETH as the margin currency.
+      await marginToken.transfer(derivativeContract.address, web3.utils.toWei("0.5", "ether"), { from: sponsor });
+
+      // Tranfer some of the derivative contract's tokens back to ensure they can be withdrawn.
+      await derivativeContract.transfer(derivativeContract.address, web3.utils.toWei("0.25", "ether"), {
+        from: sponsor
+      });
+
+      // Push a new price and remargin.
+      await pushPrice(web3.utils.toWei("1", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      // Attempt to withdraw more tokens than erroneously transferred.
+      assert(
+        await didContractThrow(
+          derivativeContract.withdrawUnexpectedErc20(marginToken.address, web3.utils.toWei("0.51", "ether"), {
+            from: sponsor
+          })
+        )
+      );
+
+      // Partially withdraw the erroneous tokens pre-dispute.
+      await derivativeContract.withdrawUnexpectedErc20(marginToken.address, web3.utils.toWei("0.1", "ether"), {
+        from: sponsor
+      });
+
+      // Dispute the new price.
+      await derivativeContract.dispute(await getMarginParams(web3.utils.toWei("0.025", "ether")));
+
+      // Resolve it to a defaulting price.
+      const disputeTime = (await derivativeContract.derivativeStorage()).currentTokenState.time.toString();
+
+      // Attempt to withdraw more than was transferred in.
+      assert(
+        await didContractThrow(
+          derivativeContract.withdrawUnexpectedErc20(marginToken.address, web3.utils.toWei("0.41", "ether"), {
+            from: sponsor
+          })
+        )
+      );
+      assert(
+        await didContractThrow(
+          derivativeContract.withdrawUnexpectedErc20(derivativeContract.address, web3.utils.toWei("0.26", "ether"), {
+            from: sponsor
+          })
+        )
+      );
+
+      // Attempt to withdraw from a non-sponsor address.
+      assert(
+        await didContractThrow(
+          derivativeContract.withdrawUnexpectedErc20(marginToken.address, web3.utils.toWei("0.4", "ether"), {
+            from: thirdParty
+          })
+        )
+      );
+
+      // Withdraw the tokens that were erroneously deposited.
+      await derivativeContract.withdrawUnexpectedErc20(marginToken.address, web3.utils.toWei("0.4", "ether"), {
+        from: sponsor
+      });
+      await derivativeContract.withdrawUnexpectedErc20(derivativeContract.address, web3.utils.toWei("0.25", "ether"), {
+        from: sponsor
+      });
+    });
+
     it(annotateTitle("Constructor assertions"), async function() {
       const defaultConstructorParams = {
         sponsor: sponsor,
