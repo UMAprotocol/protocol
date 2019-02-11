@@ -151,7 +151,7 @@ library TDS {
 
         Dispute disputeInfo;
 
-        // Only valid if in the midst of a Default.
+        // Only populated once the contract enters a frozen state.
         int defaultPenaltyAmount;
 
         WithdrawThrottle withdrawThrottle;
@@ -330,6 +330,9 @@ library TokenizedDerivativeUtils {
         s.endTime = s.currentTokenState.time;
         s.disputeInfo.disputedNav = s.nav;
         s.disputeInfo.deposit = requiredDeposit;
+
+        // Store the default penalty in case the dispute pushes the sponsor into default.
+        s.defaultPenaltyAmount = s._computeDefaultPenalty();
         emit Disputed(s.fixedParameters.symbol, s.endTime, s.nav);
 
         s._requestOraclePrice(s.endTime);
@@ -404,6 +407,7 @@ library TokenizedDerivativeUtils {
         require(s.state == TDS.State.Live);
         s.state = TDS.State.Emergency;
         s.endTime = s.currentTokenState.time;
+        s.defaultPenaltyAmount = s._computeDefaultPenalty();
         emit EmergencyShutdownTransition(s.fixedParameters.symbol, s.endTime);
         s._requestOraclePrice(s.endTime);
     }
@@ -502,6 +506,9 @@ library TokenizedDerivativeUtils {
             s.referenceTokenState = s.currentTokenState;
             emit Expired(s.fixedParameters.symbol, s.endTime);
             uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime, s.nav);
+
+            // Save the precomputed default penalty in case the expiry price pushes the sponsor into default.
+            s.defaultPenaltyAmount = potentialPenaltyAmount;
 
             // We have no idea what the price was, exactly at s.endTime, so we can't set
             // s.currentTokenState, or update the nav, or do anything.
@@ -994,7 +1001,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         address sponsor;
         address admin;
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
-        uint supportedMove; // Expected percentage move that the long is protected against.
+        uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
         bytes32 product;
         uint fixedYearlyFee; // Percentage of nav * 10^18
         uint disputeDeposit; // Percentage of mergin requirement * 10^18
