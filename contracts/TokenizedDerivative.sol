@@ -407,6 +407,7 @@ library TokenizedDerivativeUtils {
         require(s.state == TDS.State.Live);
         s.state = TDS.State.Emergency;
         s.endTime = s.currentTokenState.time;
+        s.defaultPenaltyAmount = s._computeDefaultPenalty();
         emit EmergencyShutdownTransition(s.fixedParameters.symbol, s.endTime);
         s._requestOraclePrice(s.endTime);
     }

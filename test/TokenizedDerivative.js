@@ -1169,7 +1169,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Set oracle fee to 0 for ease of computing expected penalties.
       await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
 
-      // Sponsor initializes contract
+      // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
         web3.utils.toWei("0.5", "ether"),
         await getMarginParams(web3.utils.toWei("1.075", "ether"))
@@ -1202,6 +1202,47 @@ contract("TokenizedDerivative", function(accounts) {
       await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
     });
 
+    it(annotateTitle("Live -> EmergencyShutdown -> Settled (Default)"), async function() {
+      // Deploy TokenizedDerivative with 0 fee to make computations simpler.
+      await deployNewTokenizedDerivative({ fixedYearlyFee: "0" });
+
+      // Set oracle fee to 0 for ease of computing expected penalties.
+      await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
+
+      // Sponsor initializes contract.
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("0.5", "ether"),
+        await getMarginParams(web3.utils.toWei("1.075", "ether"))
+      );
+
+      // Push a new price and emergency shut down the contract.
+      await pushPrice(web3.utils.toWei("1", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+      await derivativeContract.emergencyShutdown({ from: admin });
+
+      // Resolve it to a defaulting price.
+      const shutdownTime = (await deployedManualPriceFeed.getCurrentTime()).toString();
+      await deployedCentralizedOracle.pushPrice(identifierBytes, shutdownTime, web3.utils.toWei("2", "ether"));
+      await derivativeContract.settle({ from: sponsor });
+
+      // This resolution should leave 0.075 left in the short margin account with a margin requirement of 0.1.
+      // Therefore a default penalty of 0.025 should be charged to the short margin account leaving 0.05 in the short
+      // margin account.
+      // The long account should get the final nav of 1 and a 0.025 default penalty leaving a final balance of 1.025.
+      const storage = await derivativeContract.derivativeStorage();
+      assert.equal(storage.shortBalance.toString(), web3.utils.toWei("0.05"));
+      assert.equal(storage.longBalance.toString(), web3.utils.toWei("1.025"));
+
+      // Make sure the balances are withdrawable.
+      await derivativeContract.withdraw(web3.utils.toWei("0.05"), { from: sponsor });
+      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("0.5", "ether"), { from: sponsor });
+      await derivativeContract.redeemTokens({ from: sponsor });
+      assert.equal((await getContractBalance()).toString(), "0");
+
+      // Reset Oracle fee.
+      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+    });
+
     it(annotateTitle("Live -> Dispute -> Settled (Default)"), async function() {
       // Deploy TokenizedDerivative with 0 fee to make computations simpler.
       await deployNewTokenizedDerivative({ fixedYearlyFee: "0" });
@@ -1209,7 +1250,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Set oracle fee to 0 for ease of computing expected penalties.
       await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
 
-      // Sponsor initializes contract
+      // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
         web3.utils.toWei("0.5", "ether"),
         await getMarginParams(web3.utils.toWei("1.075", "ether"))
