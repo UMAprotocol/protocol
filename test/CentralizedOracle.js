@@ -14,8 +14,9 @@ contract("CentralizedOracle", function(accounts) {
   let registry;
 
   const owner = accounts[0];
-  const rando = accounts[1];
-  const creator = accounts[2];
+  const sponsor = accounts[1];
+  const rando = accounts[2];
+  const creator = accounts[3];
 
   const oraclePriceDelay = 60 * 60 * 24 * 7;
 
@@ -184,8 +185,7 @@ contract("CentralizedOracle", function(accounts) {
     await manualPriceFeed.pushLatestPrice(identifierBytes, 450, web3.utils.toWei("1", "ether"));
 
     const constructorParams = {
-      sponsor: owner,
-      admin: centralizedOracle.address,
+      sponsor: sponsor,
       defaultPenalty: web3.utils.toWei("0.05", "ether"),
       supportedMove: web3.utils.toWei("0.1", "ether"),
       product: identifierBytes,
@@ -201,9 +201,10 @@ contract("CentralizedOracle", function(accounts) {
       name: "1x coin",
       symbol: "BTCETH"
     };
-    await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: owner });
+
+    await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: sponsor });
     const deployedRegistry = await Registry.deployed();
-    const derivativeArray = await deployedRegistry.getRegisteredDerivatives(owner);
+    const derivativeArray = await deployedRegistry.getRegisteredDerivatives(sponsor);
     const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
     const derivativeContract = await TokenizedDerivative.at(derivativeAddress);
 

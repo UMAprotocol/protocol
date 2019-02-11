@@ -6,6 +6,7 @@ const DerivativeCreator = artifacts.require("DerivativeCreator");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 const enableControllableTiming = network => {
   return (
@@ -30,8 +31,9 @@ module.exports = async function(deployer, network, accounts) {
   const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, registry.address, controllableTiming);
   const manualPriceFeed = await deployAndGet(deployer, ManualPriceFeed, controllableTiming);
   const centralizedStore = await deployAndGet(deployer, CentralizedStore, controllableTiming);
+  const returnCalculator = await deployAndGet(deployer, LeveragedReturnCalculator, 1);
 
-  // Deploy derivative creators.
+  // Deploy derivative creator.
   const derivativeCreator = await deployAndGet(
     deployer,
     DerivativeCreator,
@@ -40,6 +42,18 @@ module.exports = async function(deployer, network, accounts) {
     centralizedStore.address,
     manualPriceFeed.address
   );
+
+  // Deploy sponsor whitelist and add second account to it.
+  const sponsorWhitelist = await deployAndGet(deployer, AddressWhitelist);
+  await sponsorWhitelist.addToWhitelist(accounts[1]);
+
+  // Deploy return calculator whitelist and add the 1x return calculator to it.
+  const returnCalculatorWhitelist = await deployAndGet(deployer, AddressWhitelist);
+  await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address);
+
+  // Deploy margin currency whitelist and add ETH to it.
+  const marginCurrencyWhitelist = await deployAndGet(deployer, AddressWhitelist);
+  await marginCurrencyWhitelist.addToWhitelist("0x0000000000000000000000000000000000000000");
 
   // TokenizedDerivativeCreator requires the TokenizedDerivativeUtils library to be deployed first.
   await deployer.deploy(TokenizedDerivativeUtils);
@@ -50,12 +64,11 @@ module.exports = async function(deployer, network, accounts) {
     registry.address,
     centralizedOracle.address,
     centralizedStore.address,
-    manualPriceFeed.address
+    manualPriceFeed.address,
+    sponsorWhitelist.address,
+    returnCalculatorWhitelist.address,
+    marginCurrencyWhitelist.address
   );
-
-  // Deploy return calculator.
-  // Note: we don't use deployAndGet() here because we don't need the address elsewhere.
-  await deployer.deploy(LeveragedReturnCalculator, 1);
 
   // Add creator contracts to the registry.
   await registry.addDerivativeCreator(derivativeCreator.address);

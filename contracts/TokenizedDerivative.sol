@@ -8,6 +8,7 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "./AdminInterface.sol";
+import "./AddressWhitelist.sol";
 import "./ContractCreator.sol";
 import "./ExpandedIERC20.sol";
 import "./OracleInterface.sol";
@@ -1043,10 +1044,7 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 
 
 contract TokenizedDerivativeCreator is ContractCreator {
-
     struct Params {
-        address sponsor;
-        address admin;
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
         uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
         bytes32 product;
@@ -1063,11 +1061,26 @@ contract TokenizedDerivativeCreator is ContractCreator {
         string symbol;
     }
 
-    constructor(address registryAddress, address _oracleAddress, address _storeAddress, address _priceFeedAddress)
+    AddressWhitelist public sponsorWhitelist;
+    AddressWhitelist public returnCalculatorWhitelist;
+    AddressWhitelist public marginCurrencyWhitelist;
+
+    constructor(
+        address registryAddress,
+        address _oracleAddress,
+        address _storeAddress,
+        address _priceFeedAddress,
+        address _sponsorWhitelist,
+        address _returnCalculatorWhitelist,
+        address _marginCurrencyWhitelist
+    )
         public
-        ContractCreator(
-            registryAddress, _oracleAddress, _storeAddress, _priceFeedAddress) { // solhint-disable-line no-empty-blocks
-        } 
+        ContractCreator(registryAddress, _oracleAddress, _storeAddress, _priceFeedAddress)
+    {
+        sponsorWhitelist = AddressWhitelist(_sponsorWhitelist);
+        returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
+        marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
+    }
 
     function createTokenizedDerivative(Params memory params)
         public
@@ -1076,7 +1089,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params), params.name, params.symbol);
 
         address[] memory parties = new address[](1);
-        parties[0] = params.sponsor;
+        parties[0] = msg.sender;
 
         _registerContract(parties, address(derivative));
 
@@ -1089,18 +1102,23 @@ contract TokenizedDerivativeCreator is ContractCreator {
         view
         returns (TokenizedDerivativeParams.ConstructorParams memory constructorParams)
     {
-        // Copy externally provided variables.
-        constructorParams.sponsor = params.sponsor;
-        constructorParams.admin = params.admin;
+        // Copy and verify externally provided variables.
+        require(sponsorWhitelist.isOnWhitelist(msg.sender));
+        constructorParams.sponsor = msg.sender;
+
+        require(returnCalculatorWhitelist.isOnWhitelist(params.returnCalculator));
+        constructorParams.returnCalculator = params.returnCalculator;
+
+        require(marginCurrencyWhitelist.isOnWhitelist(params.marginCurrency));
+        constructorParams.marginCurrency = params.marginCurrency;
+
         constructorParams.defaultPenalty = params.defaultPenalty;
         constructorParams.supportedMove = params.supportedMove;
         constructorParams.product = params.product;
         constructorParams.fixedYearlyFee = params.fixedYearlyFee;
         constructorParams.disputeDeposit = params.disputeDeposit;
-        constructorParams.returnCalculator = params.returnCalculator;
         constructorParams.startingTokenPrice = params.startingTokenPrice;
         constructorParams.expiry = params.expiry;
-        constructorParams.marginCurrency = params.marginCurrency;
         constructorParams.withdrawLimit = params.withdrawLimit;
         constructorParams.returnType = params.returnType;
         constructorParams.startingUnderlyingPrice = params.startingUnderlyingPrice;
@@ -1109,5 +1127,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
         constructorParams.priceFeed = priceFeedAddress;
         constructorParams.oracle = oracleAddress;
         constructorParams.store = storeAddress;
+        constructorParams.admin = oracleAddress;
     }
 }

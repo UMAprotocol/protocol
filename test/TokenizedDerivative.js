@@ -7,6 +7,7 @@ const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator")
 const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 // Pull in contracts from dependencies.
 const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
@@ -27,12 +28,12 @@ contract("TokenizedDerivative", function(accounts) {
   let tokenizedDerivativeCreator;
   let noLeverageCalculator;
   let marginToken;
+  let returnCalculatorWhitelist;
 
-  const ownerAddress = accounts[0];
+  const owner = accounts[0];
   const sponsor = accounts[1];
-  const admin = accounts[2];
-  const thirdParty = accounts[3];
-  const apDelegate = accounts[4];
+  const thirdParty = accounts[2];
+  const apDelegate = accounts[3];
 
   const name = "1x Bitcoin-Ether";
   const symbol = "BTCETH";
@@ -58,6 +59,11 @@ contract("TokenizedDerivative", function(accounts) {
     marginToken = await ERC20Mintable.new({ from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     await marginToken.mint(apDelegate, web3.utils.toWei("100", "ether"), { from: sponsor });
+    let marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());
+    marginCurrencyWhitelist.addToWhitelist(marginToken.address);
+
+    // Set return calculator whitelist for later use.
+    returnCalculatorWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.returnCalculatorWhitelist());
 
     // Make sure the Oracle and PriceFeed support the underlying product.
     await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
@@ -67,7 +73,7 @@ contract("TokenizedDerivative", function(accounts) {
     // Add the owner to the list of registered derivatives so it's allowed to query oracle prices.
     let creator = accounts[5];
     await deployedRegistry.addDerivativeCreator(creator);
-    await deployedRegistry.registerDerivative([], ownerAddress, { from: creator });
+    await deployedRegistry.registerDerivative([], owner, { from: creator });
 
     // Set an Oracle fee.
     await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
@@ -119,7 +125,6 @@ contract("TokenizedDerivative", function(accounts) {
 
       let defaultConstructorParams = {
         sponsor: sponsor,
-        admin: admin,
         defaultPenalty: web3.utils.toWei("0.5", "ether"),
         supportedMove: web3.utils.toWei("0.1", "ether"),
         product: identifierBytes,
@@ -210,7 +215,7 @@ contract("TokenizedDerivative", function(accounts) {
       let contractAdmin = (await derivativeContract.derivativeStorage()).externalAddresses.admin;
 
       assert.equal(contractSponsor, sponsor);
-      assert.equal(contractAdmin, admin);
+      assert.equal(contractAdmin, deployedCentralizedOracle.address);
 
       let longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       let shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
@@ -242,16 +247,6 @@ contract("TokenizedDerivative", function(accounts) {
           derivativeContract.createTokens(
             web3.utils.toWei("3", "ether"),
             await getMarginParams(web3.utils.toWei("3", "ether"))
-          )
-        )
-      );
-
-      // Fails because the admin is not allowed to create tokens.
-      assert(
-        await didContractThrow(
-          derivativeContract.createTokens(
-            web3.utils.toWei("1", "ether"),
-            await getMarginParams(web3.utils.toWei("1", "ether"), admin)
           )
         )
       );
@@ -321,7 +316,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Ensure that a remargin with no new price works appropriately and doesn't create any balance issues.
       // The prevTokenState also shouldn't get blown away.
-      await derivativeContract.remargin({ from: admin });
+      await deployedCentralizedOracle.callRemargin(derivativeContract.address, { from: owner });
       lastRemarginTime = (await derivativeContract.derivativeStorage()).currentTokenState.time;
       let previousRemarginTime = (await derivativeContract.derivativeStorage()).referenceTokenState.time;
       assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
@@ -402,10 +397,14 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Can't call emergency shutdown while in default.
-      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
 
       // Only the sponsor can confirm.
-      assert(await didContractThrow(derivativeContract.acceptPriceAndSettle({ from: admin })));
+      assert(await didContractThrow(derivativeContract.acceptPriceAndSettle({ from: thirdParty })));
 
       // Verify that the sponsor cannot withdraw before settlement.
       assert(
@@ -787,7 +786,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
 
       // Can't call emergency shutdown while expired.
-      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
 
       // Provide the Oracle price.
       await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
@@ -1140,15 +1143,22 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: sponsor })));
 
       // Admin calls emergency shutdown.
-      let result = await derivativeContract.emergencyShutdown({ from: admin });
-      truffleAssert.eventEmitted(result, "EmergencyShutdownTransition", ev => {
-        return ev.shutdownTime.toString() === lastRemarginTime.toString();
-      });
+      await deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner });
+
+      // TODO: add back this test once we determine how to listen for indirect events (not declared within the called contract).
+      // truffleAssert.eventEmitted(result, "EmergencyShutdownTransition", ev => {
+      //   return ev.shutdownTime.toString() === lastRemarginTime.toString();
+      // });
+
       state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "4");
 
       // Can't call emergency shutdown while already in emergency shutdown.
-      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
 
       // Provide Oracle price and call settle().
       await deployedCentralizedOracle.pushPrice(identifierBytes, lastRemarginTime, web3.utils.toWei("1.3", "ether"));
@@ -1171,7 +1181,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
 
       // Can't call emergency shutdown in the Settled state.
-      assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: admin })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
     });
 
     it(annotateTitle("Live -> Expiry -> Settled (Default)"), async function() {
@@ -1230,7 +1244,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Push a new price and emergency shut down the contract.
       await pushPrice(web3.utils.toWei("1", "ether"));
       await derivativeContract.remargin({ from: sponsor });
-      await derivativeContract.emergencyShutdown({ from: admin });
+      await deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner });
 
       // Resolve it to a defaulting price.
       const shutdownTime = (await deployedManualPriceFeed.getCurrentTime()).toString();
@@ -1399,6 +1413,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Basic Linear NAV"), async function() {
       // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
       const levered2x = await LeveragedReturnCalculator.new(2);
+      await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
@@ -1477,6 +1492,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Basic Compound NAV"), async function() {
       // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
       const levered2x = await LeveragedReturnCalculator.new(2);
+      await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
@@ -1556,6 +1572,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Linear NAV - Negative Token Price"), async function() {
       // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
       const levered2x = await LeveragedReturnCalculator.new(2);
+      await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
@@ -1691,6 +1708,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Compound NAV - Zero Token Price"), async function() {
       // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
       const levered2x = await LeveragedReturnCalculator.new(2);
+      await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
@@ -1901,7 +1919,6 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Constructor assertions"), async function() {
       const defaultConstructorParams = {
         sponsor: sponsor,
-        admin: admin,
         defaultPenalty: web3.utils.toWei("0.5", "ether"),
         supportedMove: web3.utils.toWei("0.1", "ether"),
         product: identifierBytes,
@@ -1998,6 +2015,35 @@ contract("TokenizedDerivative", function(accounts) {
       assert(
         await didContractThrow(
           tokenizedDerivativeCreator.createTokenizedDerivative(withdrawLimitTooHighParams, { from: sponsor })
+        )
+      );
+
+      // Unapproved sponsor.
+      const unapprovedSponsorParams = defaultConstructorParams;
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(unapprovedSponsorParams, { from: thirdParty })
+        )
+      );
+
+      // Unapproved returnCalculator.
+      const unapprovedReturnCalculator = await LeveragedReturnCalculator.new(1);
+      const unapprovedReturnCalculatorParams = {
+        ...defaultConstructorParams,
+        returnCalculator: unapprovedReturnCalculator.address
+      };
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(unapprovedReturnCalculatorParams, { from: sponsor })
+        )
+      );
+
+      // Unapproved margin currency.
+      const unapprovedCurrency = await ERC20Mintable.new({ from: sponsor });
+      const unapprovedCurrencyParams = { ...defaultConstructorParams, marginCurrency: unapprovedCurrency.address };
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(unapprovedCurrencyParams, { from: sponsor })
         )
       );
     });
