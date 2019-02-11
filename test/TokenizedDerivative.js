@@ -1572,6 +1572,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Linear NAV - Negative Token Price"), async function() {
       // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
       const levered2x = await LeveragedReturnCalculator.new(2);
+      await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
@@ -1707,6 +1708,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Compound NAV - Zero Token Price"), async function() {
       // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
       const levered2x = await LeveragedReturnCalculator.new(2);
+      await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
