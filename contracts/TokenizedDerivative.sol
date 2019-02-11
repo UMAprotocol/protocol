@@ -167,7 +167,6 @@ library TokenizedDerivativeUtils {
     uint private constant SECONDS_PER_YEAR = 31536000;
     uint private constant INT_MAX = 2**255 - 1;
 
-
     modifier onlySponsor(TDS.Storage storage s) {
         require(msg.sender == s.externalAddresses.sponsor);
         _;
