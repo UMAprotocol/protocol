@@ -1455,7 +1455,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
-      //     = 2 * 0.5 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 2 * 0.5 * (1 + 2 * ((0.5 - 2) / 2))
       //     = 1 * (1 + 2 * (-3/4))
       //     = 1 * -0.5
       //     = -0.5
@@ -1482,7 +1482,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.redeemTokens({ from: sponsor });
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
-      //     = 1 * 0.5 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 1 * 0.5 * (1 + 2 * ((0.5 - 2) / 2))
       //     = 0.5 * (1 + 2 * (-3/4))
       //     = 0.5 * -0.5
       //     = -0.25
@@ -1512,6 +1512,9 @@ contract("TokenizedDerivative", function(accounts) {
       let totalSupply = await derivativeContract.totalSupply();
       assert.equal(totalSupply.toString(), web3.utils.toWei("1", "ether"));
 
+      // Ensure token creation is still limited by the margin requirement.
+      assert(await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("125", "ether"), { from: sponsor })));
+
       // Should be able to create tokens without sending any margin, since the token price is negative.
       await derivativeContract.createTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
 
@@ -1520,7 +1523,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(totalSupply.toString(), web3.utils.toWei("2", "ether"));
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
-      //     = 2 * 0.5 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 2 * 0.5 * (1 + 2 * ((0.5 - 2) / 2))
       //     = 1 * (1 + 2 * (-3/4))
       //     = 1 * -0.5
       //     = -0.5
@@ -1587,7 +1590,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
-      //     = 2 * 0.5 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 2 * 0.5 * (1 + 2 * ((0.5 - 2) / 2))
       //     = 1 * (1 + 2 * (-3/4))
       //     = 1 * -0.5
       //     = -0.5 -> 0 becuase compound NAV bottoms out at 0.
@@ -1614,7 +1617,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.redeemTokens({ from: sponsor });
 
       // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
-      //     = 1 * 0.5 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 1 * 0.5 * (1 + 2 * ((0.5 - 2) / 2))
       //     = 0.5 * (1 + 2 * (-3/4))
       //     = 0.5 * -0.5
       //     = -0.25 -> 0 becuase compound NAV bottoms out at 0.
@@ -1652,7 +1655,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(totalSupply.toString(), web3.utils.toWei("2", "ether"));
 
       // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
-      //     = 2 * 0 * (1 + 2 * ((2 - 0.5) / 2))
+      //     = 2 * 0 * (1 + 2 * ((0.5 - 2) / 2))
       //     = 0 * (1 + 2 * (-3/4))
       //     = 0 * -0.5
       //     = 0
