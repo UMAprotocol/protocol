@@ -1232,7 +1232,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Push a new price and emergency shut down the contract.
       await pushPrice(web3.utils.toWei("1", "ether"));
       await derivativeContract.remargin({ from: sponsor });
-      await derivativeContract.emergencyShutdown({ from: admin });
+      await deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner });
 
       // Resolve it to a defaulting price.
       const shutdownTime = (await deployedManualPriceFeed.getCurrentTime()).toString();
