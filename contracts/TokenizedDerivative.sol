@@ -991,7 +991,6 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 
 contract TokenizedDerivativeCreator is ContractCreator {
     struct Params {
-        address sponsor;
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
         uint supportedMove; // Expected percentage move that the long is protected against.
         bytes32 product;
@@ -1036,7 +1035,7 @@ contract TokenizedDerivativeCreator is ContractCreator {
         TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params), params.name, params.symbol);
 
         address[] memory parties = new address[](1);
-        parties[0] = params.sponsor;
+        parties[0] = msg.sender;
 
         _registerContract(parties, address(derivative));
 
@@ -1050,8 +1049,8 @@ contract TokenizedDerivativeCreator is ContractCreator {
         returns (TokenizedDerivativeParams.ConstructorParams memory constructorParams)
     {
         // Copy and verify externally provided variables.
-        require(sponsorWhitelist.isOnWhitelist(params.sponsor));
-        constructorParams.sponsor = params.sponsor;
+        require(sponsorWhitelist.isOnWhitelist(msg.sender));
+        constructorParams.sponsor = msg.sender;
 
         require(returnCalculatorWhitelist.isOnWhitelist(params.returnCalculator));
         constructorParams.returnCalculator = params.returnCalculator;
