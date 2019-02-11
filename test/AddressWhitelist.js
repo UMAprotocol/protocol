@@ -2,7 +2,7 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 
-contract("Whitelist", function(accounts) {
+contract("AddressWhitelist", function(accounts) {
   const owner = accounts[0];
   const rando = accounts[1];
 

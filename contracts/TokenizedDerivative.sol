@@ -8,7 +8,7 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "./AdminInterface.sol";
-import "./Whitelist.sol";
+import "./AddressWhitelist.sol";
 import "./ContractCreator.sol";
 import "./ExpandedIERC20.sol";
 import "./OracleInterface.sol";
