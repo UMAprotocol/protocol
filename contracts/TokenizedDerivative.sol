@@ -151,7 +151,7 @@ library TDS {
 
         Dispute disputeInfo;
 
-        // Only populated once the coontract enters a frozen state.
+        // Only populated once the contract enters a frozen state.
         int defaultPenaltyAmount;
 
         WithdrawThrottle withdrawThrottle;
