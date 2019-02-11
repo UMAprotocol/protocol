@@ -394,7 +394,11 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Can't call emergency shutdown while in default.
-      assert(await didContractThrow(deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
 
       // Only the sponsor can confirm.
       assert(await didContractThrow(derivativeContract.acceptPriceAndSettle({ from: thirdParty })));
@@ -778,7 +782,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
 
       // Can't call emergency shutdown while expired.
-      assert(await didContractThrow(deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
 
       // Provide the Oracle price.
       await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
@@ -1134,7 +1142,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(state.toString(), "4");
 
       // Can't call emergency shutdown while already in emergency shutdown.
-      assert(await didContractThrow(deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
 
       // Provide Oracle price and call settle().
       await deployedCentralizedOracle.pushPrice(identifierBytes, lastRemarginTime, web3.utils.toWei("1.3", "ether"));
@@ -1157,7 +1169,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
 
       // Can't call emergency shutdown in the Settled state.
-      assert(await didContractThrow(deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })));
+      assert(
+        await didContractThrow(
+          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
+        )
+      );
     });
 
     it(annotateTitle("Live -> Create -> Create fails on expiry"), async function() {
@@ -1530,7 +1546,10 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Unapproved returnCalculator.
       const unapprovedReturnCalculator = await LeveragedReturnCalculator.new(1);
-      const unapprovedReturnCalculatorParams = { ...defaultConstructorParams, returnCalculator: unapprovedReturnCalculator.address };
+      const unapprovedReturnCalculatorParams = {
+        ...defaultConstructorParams,
+        returnCalculator: unapprovedReturnCalculator.address
+      };
       assert(
         await didContractThrow(
           tokenizedDerivativeCreator.createTokenizedDerivative(unapprovedReturnCalculatorParams, { from: sponsor })

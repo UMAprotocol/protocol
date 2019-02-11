@@ -47,7 +47,7 @@ contract("Whitelist", function(accounts) {
 
     // Owner can add to the whitelist.
     await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
-    await addressWhitelist.addToWhitelist(contractToRemove, {from: owner });
+    await addressWhitelist.addToWhitelist(contractToRemove, { from: owner });
 
     // Remove contractToRemove
     await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
