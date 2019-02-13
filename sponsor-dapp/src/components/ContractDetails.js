@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
-import ContractFinancialsTable from './ContractFinancialsTable.js';
-import ContractParameters from './ContractParameters.js';
+import React, { Component } from "react";
+import ContractFinancialsTable from "./ContractFinancialsTable.js";
+import ContractParameters from "./ContractParameters.js";
 
 class ContractDetails extends Component {
   render() {
@@ -35,10 +35,11 @@ class ContractDetails extends Component {
 
     return (
       <div>
-        <ContractParameters parameters={contractParameters}>
-        </ContractParameters>
-        <ContractFinancialsTable lastRemargin={lastRemarginContractFinancials} estimatedCurrent={estimatedCurrentContractFinancials}>
-        </ContractFinancialsTable>
+        <ContractParameters parameters={contractParameters} />
+        <ContractFinancialsTable
+          lastRemargin={lastRemarginContractFinancials}
+          estimatedCurrent={estimatedCurrentContractFinancials}
+        />
       </div>
     );
   }
