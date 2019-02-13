@@ -35,7 +35,7 @@ class App extends Component {
             Contract Details
           </DialogTitle>
           <DialogContent>
-            <ContractDetails></ContractDetails>
+            <ContractDetails />
           </DialogContent>
         </Dialog>
       </div>
