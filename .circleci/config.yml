@@ -203,7 +203,9 @@ workflows:
             - build
       - echidna
       - coverage
-      - sponsor_dapp_test
+      - sponsor_dapp_test:
+          requires:
+            - checkout_and_install
       - sponsor_dapp_build:
           requires:
             - sponsor_dapp_test
