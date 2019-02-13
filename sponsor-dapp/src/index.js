@@ -6,8 +6,6 @@ import App from "./App";
 import drizzleOptions from "./drizzleOptions";
 
 // Setup drizzle.
-console.log(drizzleOptions);
-
 const drizzleStore = generateStore(drizzleOptions);
 const drizzle = new Drizzle(drizzleOptions, drizzleStore);
 
