@@ -3,14 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@material-ui/core": "^3.9.2",
     "drizzle": "1.3.0",
     "drizzle-react": "^1.2.0",
     "drizzle-react-components": "^1.2.1",
     "prettier": "^1.16.4",
-    "@material-ui/core": "^3.9.2",
     "react": "^16.8.1",
     "react-dom": "^16.8.1",
-    "react-scripts": "2.1.5"
+    "react-scripts": "2.1.5",
+    "web3": "1.0.0-beta.37"
   },
   "scripts": {
     "start": "react-scripts start",
