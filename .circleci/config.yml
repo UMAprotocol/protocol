@@ -133,6 +133,56 @@ jobs:
       - run:
           name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
+  sponsor_dapp_test:
+    docker:
+      - image: circleci/node:latest
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 6720000 -p 9545
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Deploy Contracts
+          command: $(npm bin)/truffle migrate --reset --network test
+      - save_cache:
+          key: sponsor-dapp-deployment-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - build
+      - restore_cache:
+          keys: 
+            - sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+            - sponsor-dapp-dep-cache-
+      - run:
+          name: Install Dependencies
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm install
+      - save_cache:
+          key: sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+          paths:
+            - sponsor-dapp/node_modules
+      - run:
+          name: Test DApp
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm test
+  sponsor_dapp_build:
+    docker:
+      - image: circleci/node:latest
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 6720000 -p 9545
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: sponsor-dapp-deployment-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+      - run:
+          name: Build DApp
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm build
+      - store_artifacts:
+          path: ~/protocol/sponsor-dapp/build
+          destination: build
 
 workflows:
   version: 2
