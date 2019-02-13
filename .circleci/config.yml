@@ -164,6 +164,10 @@ jobs:
           paths:
             - sponsor-dapp/node_modules
       - run:
+          name: Link Contracts
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm run link-contracts
+      - run:
           name: Test DApp
           working_directory: ~/protocol/sponsor-dapp
           command: CI=true npm test
@@ -178,6 +182,10 @@ jobs:
           key: sponsor-dapp-deployment-{{ .Environment.CIRCLE_SHA1 }}
       - restore_cache:
           key: sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+      - run:
+          name: Link Contracts
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm run link-contracts
       - run:
           name: Build DApp
           working_directory: ~/protocol/sponsor-dapp
