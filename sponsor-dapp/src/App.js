@@ -1,9 +1,9 @@
-import React from "react";
+import React, { Component } from "react";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
 import DerivativeList from "./DerivativeList.js";
 
-class App extends React.Component {
+class App extends Component {
   render() {
     return (
       <DrizzleContext.Provider drizzle={this.props.drizzle}>

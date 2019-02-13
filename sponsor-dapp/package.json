@@ -7,6 +7,7 @@
     "drizzle-react": "^1.2.0",
     "drizzle-react-components": "^1.2.1",
     "prettier": "^1.16.4",
+    "@material-ui/core": "^3.9.2",
     "react": "^16.8.1",
     "react-dom": "^16.8.1",
     "react-scripts": "2.1.5"
