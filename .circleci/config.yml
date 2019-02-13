@@ -164,7 +164,7 @@ jobs:
       - run:
           name: Test DApp
           working_directory: ~/protocol/sponsor-dapp
-          command: npm test
+          command: CI=true npm test
   sponsor_dapp_build:
     docker:
       - image: circleci/node:latest
