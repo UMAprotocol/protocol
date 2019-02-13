@@ -4,15 +4,22 @@
   "private": true,
   "dependencies": {
     "@material-ui/core": "^3.9.2",
+    "drizzle": "1.3.0",
+    "drizzle-react": "^1.2.0",
+    "drizzle-react-components": "^1.2.1",
+    "prettier": "^1.16.4",
     "react": "^16.8.1",
     "react-dom": "^16.8.1",
-    "react-scripts": "2.1.5"
+    "react-scripts": "2.1.5",
+    "web3": "1.0.0-beta.37"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "link-contracts": "ln -s ../../build/contracts src/contracts",
+    "prettier": "prettier --write 'src/**/*.js'"
   },
   "eslintConfig": {
     "extends": "react-app"
