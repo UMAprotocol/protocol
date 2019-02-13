@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import ContractFinancialsTable from './ContractFinancialsTable.js';
+import ContractParameters from './ContractParameters.js';
 
 class ContractDetails extends Component {
   render() {
@@ -22,8 +23,20 @@ class ContractDetails extends Component {
     estimatedCurrentContractFinancials.tokenSupply = "0";
     estimatedCurrentContractFinancials.yourTokens = "0";
 
+    const contractParameters = {
+      contractAddress: '0x12345',
+      creatorAddress: '0x67890',
+      creationTime: '2018-12-10 T13:45:30',
+      expiryTime: '2018-12-30 T17:00:00',
+      priceFeedAddress: '0x54321',
+      marginCurrency: 'Dai (0x09876)',
+      returnCalculator: '2x (0x23456)'
+    };
+
     return (
-      <div className="ContractDetails">
+      <div>
+        <ContractParameters parameters={contractParameters}>
+        </ContractParameters>
         <ContractFinancialsTable lastRemargin={lastRemarginContractFinancials} estimatedCurrent={estimatedCurrentContractFinancials}>
         </ContractFinancialsTable>
       </div>
