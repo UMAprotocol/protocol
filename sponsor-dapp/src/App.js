@@ -1,12 +1,25 @@
-import React, { Component } from 'react';
-import './App.css';
+import React from "react";
+import { DrizzleContext } from "drizzle-react";
+import "./App.css";
+import DerivativeList from "./DerivativeList.js";
 
-class App extends Component {
+class App extends React.Component {
   render() {
     return (
-      <div className="App">
-        Sponsor DApp
-      </div>
+      <DrizzleContext.Provider drizzle={this.props.drizzle}>
+        <DrizzleContext.Consumer>
+          {drizzleContext => {
+            const { drizzle, initialized, drizzleState } = drizzleContext;
+
+            // If drizzle hasn't gotten any state, don't load the application.
+            if (!initialized) {
+              return "Loading...";
+            }
+
+            return <DerivativeList drizzle={drizzle} drizzleState={drizzleState} />;
+          }}
+        </DrizzleContext.Consumer>
+      </DrizzleContext.Provider>
     );
   }
 }
