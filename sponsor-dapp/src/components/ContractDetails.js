@@ -9,7 +9,6 @@ class ContractDetails extends Component {
       assetPrice: "$33",
       tokenPrice: "217 Dai/token",
       totalHoldings: "0",
-      totalHoldings: "0",
       longMargin: "0",
       shortMargin: "0",
       tokenSupply: "0",
