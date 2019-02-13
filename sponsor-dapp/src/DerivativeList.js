@@ -10,6 +10,8 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
 
+import ContractDetails from "./components/ContractDetails.js";
+
 class DerivativeList extends React.Component {
   state = { dataKey: null, open: false };
 
@@ -80,7 +82,9 @@ class DerivativeList extends React.Component {
         Sponsor DApp
         <Dialog open={this.state.open} onClose={this.handleModalClose} aria-labelledby="contract-details">
           <DialogTitle>Contract Details</DialogTitle>
-          <DialogContent>Contents of modal</DialogContent>
+          <DialogContent>
+            <ContractDetails />
+          </DialogContent>
         </Dialog>
         <Paper align="center">
           <Table align="center">
