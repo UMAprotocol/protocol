@@ -4,6 +4,7 @@ import Dialog from '@material-ui/core/Dialog';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import './App.css';
+import ContractDetails from './components/ContractDetails.js';
 
 class App extends Component {
   state = {
@@ -34,7 +35,7 @@ class App extends Component {
             Contract Details
           </DialogTitle>
           <DialogContent>
-            Contents of modal
+            <ContractDetails />
           </DialogContent>
         </Dialog>
       </div>
