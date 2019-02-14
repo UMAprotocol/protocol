@@ -3,20 +3,15 @@ import Button from "@material-ui/core/Button";
 import Dialog from "@material-ui/core/Dialog";
 import DialogContent from "@material-ui/core/DialogContent";
 import DialogTitle from "@material-ui/core/DialogTitle";
-import Table from "@material-ui/core/Table";
-import TableBody from "@material-ui/core/TableBody";
-import TableCell from "@material-ui/core/TableCell";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import Paper from "@material-ui/core/Paper";
+import DerivativeListTable from "./DerivativeListTable.js";
 
-import ContractDetails from "./components/ContractDetails.js";
-import CreateContractModal from "./components/CreateContractModal";
+import ContractDetails from "./ContractDetails.js";
+import CreateContractModal from "./CreateContractModal";
 
 class DerivativeList extends React.Component {
   state = { dataKey: null, open: false, openCreateContract: false };
 
-  handleModalOpen = () => {
+  handleModalOpen = (address, e) => {
     this.setState({ open: true });
   };
 
@@ -28,7 +23,7 @@ class DerivativeList extends React.Component {
     this.setState({ openCreateContract: true });
   };
 
-  handleCreateModalClose = value => {
+  handleCreateModalClose = () => {
     this.setState({ openCreateContract: false });
   };
 
@@ -55,7 +50,7 @@ class DerivativeList extends React.Component {
     }
   }
 
-  getTableData() {
+  getDerivativesData() {
     const { Registry } = this.props.drizzleState.contracts;
     const { TokenizedDerivativeCreator } = this.props.drizzle.contracts;
 
@@ -64,16 +59,16 @@ class DerivativeList extends React.Component {
     // Get the number of contracts currently in the registry.
     const derivatives = [dummyDerivative, ...Registry.getAllRegisteredDerivatives[this.state.dataKey].value];
 
-    let data = [];
+    let derivativesData = [];
     for (let i = 0; i < derivatives.length; i++) {
       const derivative = derivatives[i];
-      data.push({
+      derivativesData.push({
         type: this.getDerivativeType(derivative.derivativeCreator),
         address: derivative.derivativeAddress,
         id: i + 1
       });
     }
-    return data;
+    return derivativesData;
   }
 
   render() {
@@ -84,7 +79,7 @@ class DerivativeList extends React.Component {
       return <span>Fetching...</span>;
     }
 
-    const data = this.getTableData();
+    const derivatives = this.getDerivativesData();
 
     return (
       <div className="DerivativeList">
@@ -96,29 +91,10 @@ class DerivativeList extends React.Component {
           </DialogContent>
         </Dialog>
         <CreateContractModal open={this.state.openCreateContract} onClose={this.handleCreateModalClose} />
-        <Paper align="center">
-          <Table align="center">
-            <TableHead>
-              <TableRow>
-                <TableCell padding="dense">Type</TableCell>
-                <TableCell padding="dense">Address</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data.map(n => {
-                return (
-                  <TableRow key={n.id}>
-                    <TableCell padding="dense">{n.type}</TableCell>
-                    <TableCell padding="dense">
-                      <Button onClick={this.handleModalOpen}>Open details for {n.address}</Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-          <Button variant="contained" color="primary" onClick={this.handleCreateModalOpen}>Create New Token Contract</Button>
-        </Paper>
+        <DerivativeListTable derivatives={derivatives} buttonPushFn={this.handleModalOpen} />
+        <Button variant="contained" color="primary" onClick={this.handleCreateModalOpen}>
+          Create New Token Contract
+        </Button>
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
-import DerivativeList from "./DerivativeList.js";
+import DerivativeList from "./components/DerivativeList.js";
 
 class App extends Component {
   render() {
