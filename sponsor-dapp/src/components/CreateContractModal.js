@@ -33,9 +33,9 @@ class CreateContractModal extends React.Component {
   };
 
   render() {
-    const { classes, ...other } = this.props;
+    const { classes } = this.props;
     return (
-      <Dialog {...other}>
+      <Dialog open={this.props.open} onClose={this.props.onClose}>
         <DialogTitle>Create New Token Contract</DialogTitle>
         <DialogContent>
           <form className={classes.root} autoComplete="off">
