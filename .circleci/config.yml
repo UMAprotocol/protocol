@@ -189,18 +189,18 @@ workflows:
   build_and_test:
     jobs:
       - checkout_and_install
+      - coverage
+      - slither
+      - echidna
       - build:
           requires:
             - checkout_and_install
       - lint:
           requires:
             - checkout_and_install
-      - slither
       - test:
           requires:
             - build
-      - echidna
-      - coverage
       - sponsor_dapp_test:
           requires:
             - build
