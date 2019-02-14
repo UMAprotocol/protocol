@@ -30,7 +30,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Compile contracts
-          command: npm install && $(npm bin)/truffle compile
+          command: $(npm bin)/truffle compile
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -121,33 +121,89 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - echidna-dependency-cache-{{ checksum "package.json" }}
-            - echidna-dependency-cache-
+            - sec-toolbox-deps-{{ checksum "package.json" }}
+            - sec-toolbox-deps-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: echidna-dependency-cache-{{ checksum "package.json" }}
+          key: sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
           name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
+  sponsor_dapp_test:
+    docker:
+      - image: circleci/node:latest
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 6720000 -p 9545
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Deploy Contracts
+          command: $(npm bin)/truffle migrate --reset --network test
+      - restore_cache:
+          keys: 
+            - sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+            - sponsor-dapp-dep-cache-
+      - run:
+          name: Install Dependencies
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm install
+      - save_cache:
+          key: sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+          paths:
+            - sponsor-dapp/node_modules
+      - run:
+          name: Link Contracts
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm run link-contracts
+      - save_cache:
+          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/protocol
+      - run:
+          name: Test DApp
+          working_directory: ~/protocol/sponsor-dapp
+          command: CI=true npm test
+  sponsor_dapp_build:
+    docker:
+      - image: circleci/node:latest
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Build DApp
+          working_directory: ~/protocol/sponsor-dapp
+          command: npm run build
+      - store_artifacts:
+          path: ~/protocol/sponsor-dapp/build
+          destination: build
 
 workflows:
   version: 2
   build_and_test:
     jobs:
       - checkout_and_install
+      - coverage
+      - slither
+      - echidna
       - build:
           requires:
             - checkout_and_install
       - lint:
           requires:
             - checkout_and_install
-      - slither
       - test:
           requires:
             - build
-      - echidna
-      - coverage
+      - sponsor_dapp_test:
+          requires:
+            - build
+      - sponsor_dapp_build:
+          requires:
+            - sponsor_dapp_test
