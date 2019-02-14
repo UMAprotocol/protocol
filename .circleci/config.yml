@@ -203,7 +203,7 @@ workflows:
       - coverage
       - sponsor_dapp_test:
           requires:
-            - checkout_and_install
+            - build
       - sponsor_dapp_build:
           requires:
             - sponsor_dapp_test
