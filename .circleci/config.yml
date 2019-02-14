@@ -179,7 +179,7 @@ jobs:
       - run:
           name: Build DApp
           working_directory: ~/protocol/sponsor-dapp
-          command: npm build
+          command: npm run build
       - store_artifacts:
           path: ~/protocol/sponsor-dapp/build
           destination: build
