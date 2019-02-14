@@ -11,9 +11,10 @@ import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
 
 import ContractDetails from "./components/ContractDetails.js";
+import CreateContractModal from "./components/CreateContractModal";
 
 class DerivativeList extends React.Component {
-  state = { dataKey: null, open: false, openModalContractAddress: null };
+  state = { dataKey: null, open: false, openModalContractAddress: null, openCreateContract: false };
 
   handleModalOpen = (address, e) => {
     this.setState({ open: true, openModalContractAddress: address });
@@ -21,6 +22,14 @@ class DerivativeList extends React.Component {
 
   handleModalClose = () => {
     this.setState({ open: false });
+  };
+
+  handleCreateModalOpen = () => {
+    this.setState({ openCreateContract: true });
+  };
+
+  handleCreateModalClose = value => {
+    this.setState({ openCreateContract: false });
   };
 
   componentDidMount() {
@@ -90,6 +99,7 @@ class DerivativeList extends React.Component {
             />
           </DialogContent>
         </Dialog>
+        <CreateContractModal open={this.state.openCreateContract} onClose={this.handleCreateModalClose} />
         <Paper align="center">
           <Table align="center">
             <TableHead>
@@ -111,6 +121,7 @@ class DerivativeList extends React.Component {
               })}
             </TableBody>
           </Table>
+          <Button variant="contained" color="primary" onClick={this.handleCreateModalOpen}>Create New Token Contract</Button>
         </Paper>
       </div>
     );
