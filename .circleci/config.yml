@@ -141,16 +141,10 @@ jobs:
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Deploy Contracts
           command: $(npm bin)/truffle migrate --reset --network test
-      - save_cache:
-          key: sponsor-dapp-deployment-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - build
       - restore_cache:
           keys: 
             - sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
@@ -167,6 +161,10 @@ jobs:
           name: Link Contracts
           working_directory: ~/protocol/sponsor-dapp
           command: npm run link-contracts
+      - save_cache:
+          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/protocol
       - run:
           name: Test DApp
           working_directory: ~/protocol/sponsor-dapp
@@ -174,18 +172,10 @@ jobs:
   sponsor_dapp_build:
     docker:
       - image: circleci/node:latest
-      - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 6720000 -p 9545
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: sponsor-dapp-deployment-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
-          key: sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
-      - run:
-          name: Link Contracts
-          working_directory: ~/protocol/sponsor-dapp
-          command: npm run link-contracts
+          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Build DApp
           working_directory: ~/protocol/sponsor-dapp
