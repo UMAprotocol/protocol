@@ -13,9 +13,10 @@ import Paper from "@material-ui/core/Paper";
 import ContractDetails from "./components/ContractDetails.js";
 
 class DerivativeList extends React.Component {
-  state = { dataKey: null, open: false };
+  state = { dataKey: null, open: false, openModalContractAddress: null };
 
-  handleModalOpen = () => {
+  handleModalOpen = (address, e) => {
+    this.setState({ openModalContractAddress: address });
     this.setState({ open: true });
   };
 
@@ -83,7 +84,11 @@ class DerivativeList extends React.Component {
         <Dialog open={this.state.open} onClose={this.handleModalClose} aria-labelledby="contract-details">
           <DialogTitle>Contract Details</DialogTitle>
           <DialogContent>
-            <ContractDetails />
+            <ContractDetails
+              contractAddress={this.state.openModalContractAddress}
+              drizzle={this.props.drizzle}
+              drizzleState={this.props.drizzleState}
+            />
           </DialogContent>
         </Dialog>
         <Paper align="center">
@@ -100,7 +105,7 @@ class DerivativeList extends React.Component {
                   <TableRow key={n.id}>
                     <TableCell padding="dense">{n.type}</TableCell>
                     <TableCell padding="dense">
-                      <Button onClick={this.handleModalOpen}>Open details for {n.address}</Button>
+                      <Button onClick={e => this.handleModalOpen(n.address, e)}>Open details for {n.address}</Button>
                     </TableCell>
                   </TableRow>
                 );
