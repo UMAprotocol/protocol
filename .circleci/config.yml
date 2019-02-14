@@ -121,13 +121,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - echidna-dependency-cache-{{ checksum "package.json" }}
-            - echidna-dependency-cache-
+            - sec-toolbox-deps-{{ checksum "package.json" }}
+            - sec-toolbox-deps-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: echidna-dependency-cache-{{ checksum "package.json" }}
+          key: sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
