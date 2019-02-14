@@ -10,8 +10,6 @@ class ContractDetails extends Component {
     // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
     // contracts without colliding.
     const contractKey = this.props.contractAddress;
-    // Keep contractKey in this component's state so that `render()` can access it.
-    this.setState({ contractKey: this.props.contractAddress });
     const contractConfig = {
       contractName: this.props.contractAddress,
       web3Contract: new this.props.drizzle.web3.eth.Contract(TokenizedDerivative.abi, this.props.contractAddress)
@@ -19,7 +17,9 @@ class ContractDetails extends Component {
     this.props.drizzle.addContract(contractConfig);
 
     const derivativeStorageDataKey = this.props.drizzle.contracts[contractKey].methods.derivativeStorage.cacheCall();
-    this.setState({ derivativeStorageDataKey });
+
+    // Keep contractKey and derivativeStorageDataKey in this component's state so that `render()` can access them.
+    this.setState({ derivativeStorageDataKey, contractKey: this.props.contractAddress });
   }
 
   render() {

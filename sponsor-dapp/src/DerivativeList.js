@@ -16,8 +16,7 @@ class DerivativeList extends React.Component {
   state = { dataKey: null, open: false, openModalContractAddress: null };
 
   handleModalOpen = (address, e) => {
-    this.setState({ openModalContractAddress: address });
-    this.setState({ open: true });
+    this.setState({ open: true, openModalContractAddress: address });
   };
 
   handleModalClose = () => {
