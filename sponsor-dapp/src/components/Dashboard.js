@@ -11,7 +11,7 @@ import CreateContractModal from "./CreateContractModal";
 class Dashboard extends React.Component {
   state = { contractDetailsOpen: false, openModalContractAddress: null, createContractOpen: false };
 
-  handleDetailsModalOpen = (address) => {
+  handleDetailsModalOpen = address => {
     this.setState({ contractDetailsOpen: true, openModalContractAddress: address });
   };
 
@@ -31,7 +31,11 @@ class Dashboard extends React.Component {
     return (
       <div className="Dashboard">
         Sponsor DApp
-        <Dialog open={this.state.contractDetailsOpen} onClose={this.handleDetailsModalClose} aria-labelledby="contract-details">
+        <Dialog
+          open={this.state.contractDetailsOpen}
+          onClose={this.handleDetailsModalClose}
+          aria-labelledby="contract-details"
+        >
           <DialogTitle>Contract Details</DialogTitle>
           <DialogContent>
             <ContractDetails
