@@ -1,4 +1,5 @@
 import React from "react";
+import { withStyles } from "@material-ui/core/styles";
 import Button from "@material-ui/core/Button";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
@@ -7,9 +8,22 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
 
-const DerivativeListTable = ({ derivatives, buttonPushFn }) => (
-  <Paper align="center">
-    <Table align="center">
+const styles = theme => ({
+  root: {
+    width: "100%",
+    overflowX: "auto"
+  },
+  table: {
+    minWidth: 700
+  },
+  button: {
+    margin: theme.spacing.unit
+  }
+});
+
+const DerivativeListTable = ({ derivatives, buttonPushFn, classes }) => (
+  <Paper align="center" className={classes.root}>
+    <Table align="center" className={classes.table}>
       <TableHead>
         <TableRow>
           <TableCell padding="dense">Address</TableCell>
@@ -26,7 +40,14 @@ const DerivativeListTable = ({ derivatives, buttonPushFn }) => (
           return (
             <TableRow key={n.id}>
               <TableCell padding="dense">
-                <Button onClick={e => buttonPushFn(n.address, e)}>Open details for {n.address}</Button>
+                <Button
+                  onClick={e => buttonPushFn(n.address, e)}
+                  className={classes.button}
+                  variant="outlined"
+                  color="primary"
+                >
+                  {n.address}
+                </Button>
               </TableCell>
               <TableCell padding="dense">{n.tokenName}</TableCell>
               <TableCell padding="dense">{n.symbol}</TableCell>
@@ -42,4 +63,4 @@ const DerivativeListTable = ({ derivatives, buttonPushFn }) => (
   </Paper>
 );
 
-export default DerivativeListTable;
+export default withStyles(styles)(DerivativeListTable);
