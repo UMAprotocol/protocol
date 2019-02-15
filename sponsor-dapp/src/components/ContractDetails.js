@@ -6,7 +6,7 @@ import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 class ContractDetails extends Component {
   state = { derivativeStorageDataKey: null, totalSupplyDataKey: null, nameDataKey: null, contractKey: null };
 
-  componentWillMount() {
+  componentDidMount() {
     // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
     // contracts without colliding.
     const contractKey = this.props.contractAddress;
