@@ -9,39 +9,43 @@ import ContractDetails from "./ContractDetails.js";
 import CreateContractModal from "./CreateContractModal";
 
 class Dashboard extends React.Component {
-  state = { open: false, openCreateContract: false };
+  state = { contractDetailsOpen: false, openModalContractAddress: null, createContractOpen: false };
 
-  handleModalOpen = (address, e) => {
-    this.setState({ open: true });
+  handleDetailsModalOpen = (address) => {
+    this.setState({ contractDetailsOpen: true, openModalContractAddress: address });
   };
 
-  handleModalClose = () => {
-    this.setState({ open: false });
+  handleDetailsModalClose = () => {
+    this.setState({ contractDetailsOpen: false });
   };
 
   handleCreateModalOpen = () => {
-    this.setState({ openCreateContract: true });
+    this.setState({ createContractOpen: true });
   };
 
   handleCreateModalClose = () => {
-    this.setState({ openCreateContract: false });
+    this.setState({ createContractOpen: false });
   };
 
   render() {
     return (
       <div className="Dashboard">
         Sponsor DApp
-        <Dialog open={this.state.open} onClose={this.handleModalClose} aria-labelledby="contract-details">
+        <Dialog open={this.state.contractDetailsOpen} onClose={this.handleDetailsModalClose} aria-labelledby="contract-details">
           <DialogTitle>Contract Details</DialogTitle>
           <DialogContent>
-            <ContractDetails />
+            <ContractDetails
+              contractAddress={this.state.openModalContractAddress}
+              drizzle={this.props.drizzle}
+              drizzleState={this.props.drizzleState}
+            />
           </DialogContent>
         </Dialog>
-        <CreateContractModal open={this.state.openCreateContract} onClose={this.handleCreateModalClose} />
+        <CreateContractModal open={this.state.createContractOpen} onClose={this.handleCreateModalClose} />
         <DerivativeList
           drizzle={this.props.drizzle}
           drizzleState={this.props.drizzleState}
-          buttonPushFn={this.handleModalOpen}
+          buttonPushFn={this.handleDetailsModalOpen}
         />
         <Button variant="contained" color="primary" onClick={this.handleCreateModalOpen}>
           Create New Token Contract
