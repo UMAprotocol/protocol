@@ -68,8 +68,9 @@ class ContractDetails extends Component {
       totalHoldings: "0",
       longMargin: "0",
       shortMargin: "0",
-      tokenSupply: "0",
-      yourTokens: "0"
+      // These values don't change on remargins.
+      tokenSupply: totalSupply,
+      yourTokens: "UNKNOWN"
     };
     // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
     const sentinelMarginCurrency = "0x0000000000000000000000000000000000000000";
