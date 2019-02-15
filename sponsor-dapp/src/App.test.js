@@ -70,3 +70,6 @@ it("renders CreateContractModal without crashing", () => {
   ReactDOM.render(addDrizzleProviderWrapper(getCreateContractModal), div);
   ReactDOM.unmountComponentAtNode(div);
 });
+
+// TODO: add ContractDetails component test
+
