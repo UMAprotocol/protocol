@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
-import DerivativeList from "./DerivativeList.js";
+import Dashboard from "./components/Dashboard.js";
 
 class App extends Component {
   render() {
@@ -16,7 +16,7 @@ class App extends Component {
               return "Loading...";
             }
 
-            return <DerivativeList drizzle={drizzle} drizzleState={drizzleState} />;
+            return <Dashboard drizzle={drizzle} drizzleState={drizzleState} />;
           }}
         </DrizzleContext.Consumer>
       </DrizzleContext.Provider>
