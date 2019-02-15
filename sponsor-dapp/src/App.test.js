@@ -7,7 +7,7 @@ import App from "./App";
 import drizzleOptions from "./drizzleOptions";
 import Dashboard from "./components/Dashboard.js";
 import DerivativeList from "./components/DerivativeList.js";
-import CreateContractModal from "./components/CreateContractModal.js"
+import CreateContractModal from "./components/CreateContractModal.js";
 
 it("renders App without crashing", () => {
   // Setup drizzle.
@@ -72,4 +72,3 @@ it("renders CreateContractModal without crashing", () => {
 });
 
 // TODO: add ContractDetails component test
-
