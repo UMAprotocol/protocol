@@ -33,7 +33,7 @@ class DerivativeList extends React.Component {
 
     const dummyDerivative = { derivativeAddress: "0x0", derivativeCreator: TokenizedDerivativeCreator.address };
 
-    // Get the number of contracts currently in the registry.
+    // Get the contracts currently in the registry.
     const derivatives = [dummyDerivative, ...Registry.getAllRegisteredDerivatives[this.state.dataKey].value];
 
     let derivativesData = [];
