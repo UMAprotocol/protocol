@@ -1,31 +1,8 @@
 import React from "react";
-import Button from "@material-ui/core/Button";
-import Dialog from "@material-ui/core/Dialog";
-import DialogContent from "@material-ui/core/DialogContent";
-import DialogTitle from "@material-ui/core/DialogTitle";
 import DerivativeListTable from "./DerivativeListTable.js";
 
-import ContractDetails from "./ContractDetails.js";
-import CreateContractModal from "./CreateContractModal";
-
 class DerivativeList extends React.Component {
-  state = { dataKey: null, open: false, openCreateContract: false };
-
-  handleModalOpen = (address, e) => {
-    this.setState({ open: true });
-  };
-
-  handleModalClose = () => {
-    this.setState({ open: false });
-  };
-
-  handleCreateModalOpen = () => {
-    this.setState({ openCreateContract: true });
-  };
-
-  handleCreateModalClose = () => {
-    this.setState({ openCreateContract: false });
-  };
+  state = { dataKey: null };
 
   componentDidMount() {
     const { Registry } = this.props.drizzle.contracts;
@@ -81,22 +58,7 @@ class DerivativeList extends React.Component {
 
     const derivatives = this.getDerivativesData();
 
-    return (
-      <div className="DerivativeList">
-        Sponsor DApp
-        <Dialog open={this.state.open} onClose={this.handleModalClose} aria-labelledby="contract-details">
-          <DialogTitle>Contract Details</DialogTitle>
-          <DialogContent>
-            <ContractDetails />
-          </DialogContent>
-        </Dialog>
-        <CreateContractModal open={this.state.openCreateContract} onClose={this.handleCreateModalClose} />
-        <DerivativeListTable derivatives={derivatives} buttonPushFn={this.handleModalOpen} />
-        <Button variant="contained" color="primary" onClick={this.handleCreateModalOpen}>
-          Create New Token Contract
-        </Button>
-      </div>
-    );
+    return <DerivativeListTable derivatives={derivatives} buttonPushFn={this.props.buttonPushFn} />;
   }
 }
 
