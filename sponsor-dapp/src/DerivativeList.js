@@ -14,10 +14,10 @@ import ContractDetails from "./components/ContractDetails.js";
 import CreateContractModal from "./components/CreateContractModal";
 
 class DerivativeList extends React.Component {
-  state = { dataKey: null, open: false, openCreateContract: false };
+  state = { dataKey: null, open: false, openModalContractAddress: null, openCreateContract: false };
 
-  handleModalOpen = () => {
-    this.setState({ open: true });
+  handleModalOpen = (address) => {
+    this.setState({ open: true, openModalContractAddress: address });
   };
 
   handleModalClose = () => {
@@ -92,7 +92,11 @@ class DerivativeList extends React.Component {
         <Dialog open={this.state.open} onClose={this.handleModalClose} aria-labelledby="contract-details">
           <DialogTitle>Contract Details</DialogTitle>
           <DialogContent>
-            <ContractDetails />
+            <ContractDetails
+              contractAddress={this.state.openModalContractAddress}
+              drizzle={this.props.drizzle}
+              drizzleState={this.props.drizzleState}
+            />
           </DialogContent>
         </Dialog>
         <CreateContractModal open={this.state.openCreateContract} onClose={this.handleCreateModalClose} />
@@ -110,7 +114,7 @@ class DerivativeList extends React.Component {
                   <TableRow key={n.id}>
                     <TableCell padding="dense">{n.type}</TableCell>
                     <TableCell padding="dense">
-                      <Button onClick={this.handleModalOpen}>Open details for {n.address}</Button>
+                      <Button onClick={e => this.handleModalOpen(n.address, e)}>Open details for {n.address}</Button>
                     </TableCell>
                   </TableRow>
                 );

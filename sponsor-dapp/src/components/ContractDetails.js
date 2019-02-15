@@ -1,9 +1,44 @@
 import React, { Component } from "react";
 import ContractFinancialsTable from "./ContractFinancialsTable.js";
 import ContractParameters from "./ContractParameters.js";
+import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 
 class ContractDetails extends Component {
+  state = { derivativeStorageDataKey: null, contractKey: null };
+
+  componentWillMount() {
+    // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
+    // contracts without colliding.
+    const contractKey = this.props.contractAddress;
+    const contractConfig = {
+      contractName: this.props.contractAddress,
+      web3Contract: new this.props.drizzle.web3.eth.Contract(TokenizedDerivative.abi, this.props.contractAddress)
+    };
+    this.props.drizzle.addContract(contractConfig);
+
+    const derivativeStorageDataKey = this.props.drizzle.contracts[contractKey].methods.derivativeStorage.cacheCall();
+
+    // Keep contractKey and derivativeStorageDataKey in this component's state so that `render()` can access them.
+    this.setState({ derivativeStorageDataKey, contractKey: this.props.contractAddress });
+  }
+
   render() {
+    const isContractInStore = this.state.contractKey in this.props.drizzleState.contracts;
+    if (!isContractInStore) {
+      return <div>Looking up contract...</div>;
+    }
+
+    const isDerivativeStorageAvailable =
+      this.state.derivativeStorageDataKey in
+      this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage;
+    if (!isDerivativeStorageAvailable) {
+      return <div>Looking up contract details...</div>;
+    }
+
+    const derivativeStorage = this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage[
+      this.state.derivativeStorageDataKey
+    ].value;
+
     // TODO(ptare): Retrieve these values from the blockchain via Drizzle.
     const lastRemarginContractFinancials = {
       assetPrice: "$33",
@@ -24,7 +59,7 @@ class ContractDetails extends Component {
       yourTokens: "0"
     };
     const contractParameters = {
-      contractAddress: "0x12345",
+      contractAddress: this.props.contractAddress,
       creatorAddress: "0x67890",
       creationTime: "2018-12-10 T13:45:30",
       expiryTime: "2018-12-30 T17:00:00",
@@ -35,6 +70,7 @@ class ContractDetails extends Component {
 
     return (
       <div>
+        Name-goes-here ({derivativeStorage.fixedParameters.symbol})
         <ContractParameters parameters={contractParameters} />
         <ContractFinancialsTable
           lastRemargin={lastRemarginContractFinancials}
