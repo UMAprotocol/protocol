@@ -42,6 +42,12 @@ class DerivativeList extends React.Component {
       derivativesData.push({
         type: this.getDerivativeType(derivative.derivativeCreator),
         address: derivative.derivativeAddress,
+        tokenName: "Oil/Dai Coin",
+        symbol: "OILD",
+        status: "Active",
+        asset: "Oil/Dai",
+        created: "Tuesday, 05-Feb-19 16:43:01 UTC",
+        role: "Creator",
         id: i + 1
       });
     }
