@@ -41,7 +41,7 @@ class CreateContractModal extends React.Component {
           <form className={classes.root} autoComplete="off">
             <FormControl>
               <InputLabel htmlFor="create-contract-address">Address</InputLabel>
-              <Select value={this.state.address} inputProps={{id: 'create-contract-address'}}>
+              <Select value={this.state.address} inputProps={{ id: "create-contract-address" }}>
                 <MenuItem value="0">0xABCD</MenuItem>
                 <MenuItem value="1">0x1234</MenuItem>
                 <MenuItem value="2">0x4567</MenuItem>
@@ -49,34 +49,28 @@ class CreateContractModal extends React.Component {
             </FormControl>
             <FormControl>
               <InputLabel htmlFor="create-contract-leverage">Leverage</InputLabel>
-              <Select value={this.state.leverage} inputProps={{id: 'create-contract-leverage'}}>
+              <Select value={this.state.leverage} inputProps={{ id: "create-contract-leverage" }}>
                 <MenuItem value="1">unlevered</MenuItem>
                 <MenuItem value="2">2x</MenuItem>
               </Select>
             </FormControl>
             <FormControl>
               <InputLabel htmlFor="create-contract-asset">Asset Type</InputLabel>
-              <Select value={this.state.asset} inputProps={{id: 'create-contract-asset'}}>
+              <Select value={this.state.asset} inputProps={{ id: "create-contract-asset" }}>
                 <MenuItem value="OILUSD">OIL/USD</MenuItem>
                 <MenuItem value="SPYUSD">SPY/USD</MenuItem>
                 <MenuItem value="CNHUSD">CNH/USD</MenuItem>
               </Select>
             </FormControl>
-            <TextField
-              id="contract-name"
-              label="Contract Name"
-              value={this.state.name}
-            />
-            <TextField
-              id="contract-symbol"
-              label="Contract Symbol"
-              value={this.state.symbol}
-            />
+            <TextField id="contract-name" label="Contract Name" value={this.state.name} />
+            <TextField id="contract-symbol" label="Contract Symbol" value={this.state.symbol} />
           </form>
-          <Button variant="contained" color="primary" className={classes.submitButton} onClick={this.submit}>Create Contract</Button>
+          <Button variant="contained" color="primary" className={classes.submitButton} onClick={this.submit}>
+            Create Contract
+          </Button>
         </DialogContent>
       </Dialog>
-    )
+    );
   }
 }
 
