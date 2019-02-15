@@ -16,7 +16,7 @@ import CreateContractModal from "./components/CreateContractModal";
 class DerivativeList extends React.Component {
   state = { dataKey: null, open: false, openModalContractAddress: null, openCreateContract: false };
 
-  handleModalOpen = (address, e) => {
+  handleModalOpen = (address) => {
     this.setState({ open: true, openModalContractAddress: address });
   };
 
