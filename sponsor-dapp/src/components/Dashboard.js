@@ -14,8 +14,6 @@ import DerivativeList from "./DerivativeList";
 import ContractDetails from "./ContractDetails";
 import CreateContractModal from "./CreateContractModal";
 
-import Web3 from "web3";
-
 const styles = theme => ({
   root: {
     display: "flex",
@@ -73,8 +71,7 @@ class Dashboard extends React.Component {
 
   componentDidMount() {
     // Fetch Metamask account
-    this.web3 = new Web3(Web3.givenProvider);
-    this.web3.eth.getAccounts().then((accounts, err) => {
+    this.props.drizzle.web3.eth.getAccounts().then((accounts, err) => {
       if (err != null || accounts.length === 0) {
         throw Error("couldn't get accounts");
       }
