@@ -31,13 +31,7 @@ class App extends Component {
               return "Loading...";
             }
 
-            // Get the network and store in params
-            if (!this.state.network) {
-              this.props.drizzle.web3.eth.net.getNetworkType().then(network => {
-                params.network = network;
-                this.setState({ network });
-              });
-            }
+            params.network = drizzleState.web3.networkId;
 
             return (
               <MuiThemeProvider theme={theme}>
