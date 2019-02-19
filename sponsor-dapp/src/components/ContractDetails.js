@@ -12,17 +12,20 @@ const PriceFeedRequestsStatus = {
 };
 
 class ContractDetails extends Component {
+  state = { loading: true };
+
   componentDidMount() {
+    const { drizzle } = this.props;
     // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
     // contracts without colliding.
     this.contractKey = this.props.contractAddress;
     const contractConfig = {
       contractName: this.contractKey,
-      web3Contract: new this.props.drizzle.web3.eth.Contract(TokenizedDerivative.abi, this.props.contractAddress)
+      web3Contract: new drizzle.web3.eth.Contract(TokenizedDerivative.abi, this.props.contractAddress)
     };
-    this.props.drizzle.addContract(contractConfig);
+    drizzle.addContract(contractConfig);
 
-    const contractMethods = this.props.drizzle.contracts[this.contractKey].methods;
+    const contractMethods = drizzle.contracts[this.contractKey].methods;
     this.derivativeStorageDataKey = contractMethods.derivativeStorage.cacheCall();
     this.totalSupplyDataKey = contractMethods.totalSupply.cacheCall();
     this.nameDataKey = contractMethods.name.cacheCall();
@@ -30,16 +33,21 @@ class ContractDetails extends Component {
     this.estimatedNavDataKey = contractMethods.calcNAV.cacheCall();
     this.estimatedShortMarginBalanceDataKey = contractMethods.calcShortMarginBalance.cacheCall();
     this.priceFeedRequestsStatus = PriceFeedRequestsStatus.UNSENT;
+
+    this.unsubscribeFn = drizzle.store.subscribe(() => {
+      this.fetchAndWaitOnBlockchainData();
+    });
   }
 
-  render() {
-    const isContractInStore = this.contractKey in this.props.drizzleState.contracts;
-    if (!isContractInStore) {
-      return <div>Looking up contract...</div>;
-    }
-    const contract = this.props.drizzleState.contracts[this.contractKey];
+  fetchAndWaitOnBlockchainData() {
+    const { drizzle, drizzleState } = this.props;
 
-    const loadingMessage = <div>Looking up contract details...</div>;
+    const isContractInStore = this.contractKey in drizzleState.contracts;
+    if (!isContractInStore) {
+      return;
+    }
+    const contract = drizzleState.contracts[this.contractKey];
+
     const areAllMethodValuesAvailable =
       this.derivativeStorageDataKey in contract.derivativeStorage &&
       this.totalSupplyDataKey in contract.totalSupply &&
@@ -48,9 +56,60 @@ class ContractDetails extends Component {
       this.estimatedNavDataKey in contract.calcNAV &&
       this.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance;
     if (!areAllMethodValuesAvailable) {
-      return loadingMessage;
+      return;
     }
-    const web3 = this.props.drizzle.web3;
+
+    const derivativeStorage = contract.derivativeStorage[this.derivativeStorageDataKey].value;
+
+    const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
+    switch (this.priceFeedRequestsStatus) {
+      case PriceFeedRequestsStatus.UNSENT:
+        this.priceFeedRequestsStatus = PriceFeedRequestsStatus.WAITING_ON_CONTRACT;
+        const contractConfig = {
+          contractName: priceFeedAddress,
+          web3Contract: new drizzle.web3.eth.Contract(
+            ManualPriceFeed.abi,
+            derivativeStorage.externalAddresses.priceFeed
+          )
+        };
+        drizzle.addContract(contractConfig);
+        return;
+      case PriceFeedRequestsStatus.WAITING_ON_CONTRACT:
+        if (!(priceFeedAddress in drizzle.contracts)) {
+          return;
+        }
+        this.priceFeedRequestsStatus = PriceFeedRequestsStatus.SENT;
+        this.idDataKey = drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
+          derivativeStorage.fixedParameters.product,
+          {}
+        );
+        return;
+      case PriceFeedRequestsStatus.SENT:
+      default:
+      // Now we can continue on to checking whether idDataKey has retrieved a value.
+    }
+
+    const isLatestPriceAvailable = this.idDataKey in drizzleState.contracts[priceFeedAddress].latestPrice;
+    if (!isLatestPriceAvailable) {
+      return;
+    }
+
+    // All the data is now available.
+    this.setState({ loading: false });
+  }
+
+  componentWillUnmount() {
+    this.unsubscribeFn();
+  }
+
+  render() {
+    if (this.state.loading) {
+      return <div>Looking up contract details...</div>;
+    }
+    const { drizzle, drizzleState } = this.props;
+    const web3 = drizzle.web3;
+
+    const contract = drizzleState.contracts[this.contractKey];
     const derivativeStorage = contract.derivativeStorage[this.derivativeStorageDataKey].value;
     const totalSupply = contract.totalSupply[this.totalSupplyDataKey].value;
     const contractName = contract.name[this.nameDataKey].value;
@@ -59,43 +118,8 @@ class ContractDetails extends Component {
     const estimatedShortMarginBalance = web3.utils.toBN(
       contract.calcShortMarginBalance[this.estimatedShortMarginBalanceDataKey].value
     );
-
-    // TODO(ptare): We need the result of a Drizzle request (price feed address) to issue additional Drizzle requests.
-    // We do this by modifying state in this render() call and keeping track of the request status manually. Find a
-    // better way of doing this.
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
-    switch (this.priceFeedRequestsStatus) {
-      case PriceFeedRequestsStatus.UNSENT:
-        const contractConfig = {
-          contractName: priceFeedAddress,
-          web3Contract: new this.props.drizzle.web3.eth.Contract(
-            ManualPriceFeed.abi,
-            derivativeStorage.externalAddresses.priceFeed
-          )
-        };
-        this.props.drizzle.addContract(contractConfig);
-        this.priceFeedRequestsStatus = PriceFeedRequestsStatus.WAITING_ON_CONTRACT;
-        return loadingMessage;
-      case PriceFeedRequestsStatus.WAITING_ON_CONTRACT:
-        if (!(priceFeedAddress in this.props.drizzle.contracts)) {
-          return loadingMessage;
-        }
-        this.idDataKey = this.props.drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
-          derivativeStorage.fixedParameters.product,
-          {}
-        );
-        this.priceFeedRequestsStatus = PriceFeedRequestsStatus.SENT;
-        return loadingMessage;
-      case PriceFeedRequestsStatus.SENT:
-      default:
-      // Now we can continue on to checking whether idDataKey has retrieved a value.
-    }
-
-    const isLatestPriceAvailable = this.idDataKey in this.props.drizzleState.contracts[priceFeedAddress].latestPrice;
-    if (!isLatestPriceAvailable) {
-      return loadingMessage;
-    }
-    const latestPrice = this.props.drizzleState.contracts[priceFeedAddress].latestPrice[this.idDataKey].value;
+    const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.idDataKey].value;
 
     const lastRemarginContractFinancials = {
       time: ContractDetails.formatDate(derivativeStorage.currentTokenState.time, web3),
