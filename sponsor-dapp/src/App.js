@@ -3,6 +3,11 @@ import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./components/Dashboard.js";
+import parameters from "./parameters.json";
+import localParameters from "./parameters.local.json";
+
+// Overlay local parameters over the shared parameters
+const params = Object.assign({}, parameters, localParameters)
 
 const theme = createMuiTheme({
   palette: {
@@ -16,6 +21,8 @@ const theme = createMuiTheme({
 });
 
 class App extends Component {
+  state = { network: null };
+
   render() {
     return (
       <DrizzleContext.Provider drizzle={this.props.drizzle}>
@@ -28,9 +35,17 @@ class App extends Component {
               return "Loading...";
             }
 
+            // Get the network and store in params
+            if (!this.state.network) {
+              this.props.drizzle.web3.eth.net.getNetworkType().then(network => {
+                params.network = network;
+                this.setState({ network });
+              });
+            }
+
             return (
               <MuiThemeProvider theme={theme}>
-                <Dashboard drizzle={drizzle} drizzleState={drizzleState} />
+                <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={params} />
               </MuiThemeProvider>
             );
           }}
