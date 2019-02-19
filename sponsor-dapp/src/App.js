@@ -1,7 +1,16 @@
 import React, { Component } from "react";
+import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./components/Dashboard.js";
+
+const theme = createMuiTheme({
+  palette: {
+    primary: {
+      main: "#ff4a4a"
+    }
+  }
+});
 
 class App extends Component {
   render() {
@@ -16,7 +25,11 @@ class App extends Component {
               return "Loading...";
             }
 
-            return <Dashboard drizzle={drizzle} drizzleState={drizzleState} />;
+            return (
+              <MuiThemeProvider theme={theme}>
+                <Dashboard drizzle={drizzle} drizzleState={drizzleState} />
+              </MuiThemeProvider>
+            );
           }}
         </DrizzleContext.Consumer>
       </DrizzleContext.Provider>
