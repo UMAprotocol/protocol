@@ -18,21 +18,25 @@ class ContractDetails extends Component {
     const { drizzle } = this.props;
     // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
     // contracts without colliding.
-    this.contractKey = this.props.contractAddress;
+    const contractKey = this.props.contractAddress;
     const contractConfig = {
-      contractName: this.contractKey,
+      contractName: contractKey,
       web3Contract: new drizzle.web3.eth.Contract(TokenizedDerivative.abi, this.props.contractAddress)
     };
     drizzle.addContract(contractConfig);
 
-    const contractMethods = drizzle.contracts[this.contractKey].methods;
-    this.derivativeStorageDataKey = contractMethods.derivativeStorage.cacheCall();
-    this.totalSupplyDataKey = contractMethods.totalSupply.cacheCall();
-    this.nameDataKey = contractMethods.name.cacheCall();
-    this.estimatedTokenValueDataKey = contractMethods.calcTokenValue.cacheCall();
-    this.estimatedNavDataKey = contractMethods.calcNAV.cacheCall();
-    this.estimatedShortMarginBalanceDataKey = contractMethods.calcShortMarginBalance.cacheCall();
+    const contractMethods = drizzle.contracts[contractKey].methods;
+
     this.priceFeedRequestsStatus = PriceFeedRequestsStatus.UNSENT;
+    this.setState({
+      contractKey: contractKey,
+      derivativeStorageDataKey: contractMethods.derivativeStorage.cacheCall(),
+      totalSupplyDataKey: contractMethods.totalSupply.cacheCall(),
+      nameDataKey: contractMethods.name.cacheCall(),
+      estimatedTokenValueDataKey: contractMethods.calcTokenValue.cacheCall(),
+      estimatedNavDataKey: contractMethods.calcNAV.cacheCall(),
+      estimatedShortMarginBalanceDataKey: contractMethods.calcShortMarginBalance.cacheCall()
+    });
 
     this.unsubscribeFn = drizzle.store.subscribe(() => {
       this.fetchAndWaitOnBlockchainData();
@@ -42,24 +46,24 @@ class ContractDetails extends Component {
   fetchAndWaitOnBlockchainData() {
     const { drizzle, drizzleState } = this.props;
 
-    const isContractInStore = this.contractKey in drizzleState.contracts;
+    const isContractInStore = this.state.contractKey in drizzleState.contracts;
     if (!isContractInStore) {
       return;
     }
-    const contract = drizzleState.contracts[this.contractKey];
+    const contract = drizzleState.contracts[this.state.contractKey];
 
     const areAllMethodValuesAvailable =
-      this.derivativeStorageDataKey in contract.derivativeStorage &&
-      this.totalSupplyDataKey in contract.totalSupply &&
-      this.nameDataKey in contract.name &&
-      this.estimatedTokenValueDataKey in contract.calcTokenValue &&
-      this.estimatedNavDataKey in contract.calcNAV &&
-      this.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance;
+      this.state.derivativeStorageDataKey in contract.derivativeStorage &&
+      this.state.totalSupplyDataKey in contract.totalSupply &&
+      this.state.nameDataKey in contract.name &&
+      this.state.estimatedTokenValueDataKey in contract.calcTokenValue &&
+      this.state.estimatedNavDataKey in contract.calcNAV &&
+      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance;
     if (!areAllMethodValuesAvailable) {
       return;
     }
 
-    const derivativeStorage = contract.derivativeStorage[this.derivativeStorageDataKey].value;
+    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
 
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     switch (this.priceFeedRequestsStatus) {
@@ -79,23 +83,26 @@ class ContractDetails extends Component {
           return;
         }
         this.priceFeedRequestsStatus = PriceFeedRequestsStatus.SENT;
-        this.idDataKey = drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
-          derivativeStorage.fixedParameters.product,
-          {}
-        );
+        this.setState({
+          idDataKey: drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
+            derivativeStorage.fixedParameters.product,
+            {}
+          )
+        });
         return;
       case PriceFeedRequestsStatus.SENT:
       default:
       // Now we can continue on to checking whether idDataKey has retrieved a value.
     }
 
-    const isLatestPriceAvailable = this.idDataKey in drizzleState.contracts[priceFeedAddress].latestPrice;
+    const isLatestPriceAvailable = this.state.idDataKey in drizzleState.contracts[priceFeedAddress].latestPrice;
     if (!isLatestPriceAvailable) {
       return;
     }
 
     // All the data is now available.
     this.setState({ loading: false });
+    this.unsubscribeFn();
   }
 
   componentWillUnmount() {
@@ -109,38 +116,38 @@ class ContractDetails extends Component {
     const { drizzle, drizzleState } = this.props;
     const web3 = drizzle.web3;
 
-    const contract = drizzleState.contracts[this.contractKey];
-    const derivativeStorage = contract.derivativeStorage[this.derivativeStorageDataKey].value;
-    const totalSupply = contract.totalSupply[this.totalSupplyDataKey].value;
-    const contractName = contract.name[this.nameDataKey].value;
-    const estimatedTokenValue = web3.utils.toBN(contract.calcTokenValue[this.estimatedTokenValueDataKey].value);
-    const estimatedNav = web3.utils.toBN(contract.calcNAV[this.estimatedNavDataKey].value);
+    const contract = drizzleState.contracts[this.state.contractKey];
+    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
+    const totalSupply = contract.totalSupply[this.state.totalSupplyDataKey].value;
+    const contractName = contract.name[this.state.nameDataKey].value;
+    const estimatedTokenValue = web3.utils.toBN(contract.calcTokenValue[this.state.estimatedTokenValueDataKey].value);
+    const estimatedNav = web3.utils.toBN(contract.calcNAV[this.state.estimatedNavDataKey].value);
     const estimatedShortMarginBalance = web3.utils.toBN(
-      contract.calcShortMarginBalance[this.estimatedShortMarginBalanceDataKey].value
+      contract.calcShortMarginBalance[this.state.estimatedShortMarginBalanceDataKey].value
     );
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
-    const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.idDataKey].value;
+    const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.state.idDataKey].value;
 
     // TODO(ptare): Extract to some common library.
-    let state;
+    let contractState;
     switch (derivativeStorage.state) {
       case "0":
-        state = "Live";
+        contractState = "Live";
         break;
       case "1":
-        state = "Disputed";
+        contractState = "Disputed";
         break;
       case "2":
-        state = "Expired";
+        contractState = "Expired";
         break;
       case "3":
-        state = "Defaulted";
+        contractState = "Defaulted";
         break;
       case "4":
-        state = "Emergency";
+        contractState = "Emergency";
         break;
       case "5":
-        state = "Settled";
+        contractState = "Settled";
         break;
       default:
       // Getting here means that the enums in the contract and here have drifted.
@@ -195,7 +202,7 @@ class ContractDetails extends Component {
         <div>
           {contractName} ({derivativeStorage.fixedParameters.symbol})
         </div>
-        <div>Contract status: {state}</div>
+        <div>Contract status: {contractState}</div>
         <ContractParameters parameters={contractParameters} />
         <ContractFinancialsTable
           lastRemargin={lastRemarginContractFinancials}
