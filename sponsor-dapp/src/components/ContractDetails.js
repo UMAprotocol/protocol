@@ -121,6 +121,30 @@ class ContractDetails extends Component {
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.idDataKey].value;
 
+    // TODO(ptare): Extract to some common library.
+    let state;
+    switch (derivativeStorage.state) {
+      case "0":
+        state = "Live";
+        break;
+      case "1":
+        state = "Disputed";
+        break;
+      case "2":
+        state = "Expired";
+        break;
+      case "3":
+        state = "Defaulted";
+        break;
+      case "4":
+        state = "Emergency";
+        break;
+      case "5":
+        state = "Settled";
+        break;
+      default:
+      // Getting here means that the enums in the contract and here have drifted.
+    }
     const lastRemarginContractFinancials = {
       time: ContractDetails.formatDate(derivativeStorage.currentTokenState.time, web3),
       assetPrice: web3.utils.fromWei(derivativeStorage.currentTokenState.underlyingPrice),
@@ -168,7 +192,10 @@ class ContractDetails extends Component {
 
     return (
       <div>
-        {contractName} ({derivativeStorage.fixedParameters.symbol})
+        <div>
+          {contractName} ({derivativeStorage.fixedParameters.symbol})
+        </div>
+        <div>Contract status: {state}</div>
         <ContractParameters parameters={contractParameters} />
         <ContractFinancialsTable
           lastRemargin={lastRemarginContractFinancials}
