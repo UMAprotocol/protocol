@@ -72,10 +72,10 @@ class Dashboard extends React.Component {
         <div className="Dashboard">
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
-              <Typography component="h1" variant="title" color="inherit" align="left" noWrap className={classes.title}>
+              <Typography component="h1" variant="h1" color="inherit" align="left" noWrap className={classes.title}>
                 UMA Dashboard
               </Typography>
-              <Typography component="h1" variant="title" color="inherit" align="right" noWrap className={classes.title}>
+              <Typography component="h1" variant="h1" color="inherit" align="right" noWrap className={classes.title}>
                 {this.state.userAddress}
               </Typography>
             </Toolbar>
