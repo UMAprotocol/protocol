@@ -11,9 +11,6 @@
 # production
 /build
 
-# parameters
-src/parameters.local.json
-
 # misc
 .DS_Store
 .env.local

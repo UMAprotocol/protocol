@@ -3,11 +3,7 @@ import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./components/Dashboard.js";
-import parameters from "./parameters.json";
-import localParameters from "./parameters.local.json";
-
-// Overlay local parameters over the shared parameters
-const params = Object.assign({}, parameters, localParameters)
+import params from "./parameters.json";
 
 const theme = createMuiTheme({
   palette: {
