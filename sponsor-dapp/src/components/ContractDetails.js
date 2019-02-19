@@ -183,7 +183,7 @@ class ContractDetails extends Component {
     const sentinelExpiryTime = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
     const contractParameters = {
       contractAddress: this.props.contractAddress,
-      creatorAddress: "UNKNOWN",
+      creatorAddress: derivativeStorage.externalAddresses.sponsor,
       creationTime: "UNKNOWN",
       expiryTime:
         derivativeStorage.endTime === sentinelExpiryTime
