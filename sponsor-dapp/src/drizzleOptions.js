@@ -5,8 +5,8 @@ const options = {
   contracts: [Registry, TokenizedDerivativeCreator],
   events: {},
   polls: {
-    accounts: 1500,
-    blocks: 1500
+    accounts: 3500,
+    blocks: 3500
   }
 };
 
