@@ -4,6 +4,7 @@ import ContractParameters from "./ContractParameters.js";
 import ContractInteraction from "./ContractInteraction.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
+const BigNumber = require("bignumber.js");
 
 // Used to track the status of price feed requests via Drizzle.
 const PriceFeedRequestsStatus = {
@@ -114,6 +115,58 @@ class ContractDetails extends Component {
     });
   };
 
+  withdrawMargin = amount => {
+    amount = "1";
+    this.props.drizzle.contracts[this.state.contractKey].methods.withdraw.cacheSend(
+      this.props.drizzle.web3.utils.toWei(amount),
+      {
+        from: this.props.drizzleState.accounts[0]
+      }
+    );
+  };
+
+  depositMargin = amount => {
+    // if margin currency is ETH, then send ETH. Otherwise, authorize the transfer.
+    amount = "1";
+    this.props.drizzle.contracts[this.state.contractKey].methods.deposit.cacheSend({
+      from: this.props.drizzleState.accounts[0],
+      value: this.props.drizzle.web3.utils.toWei(amount)
+    });
+  };
+
+  createTokens = amount => {
+      amount = "1";
+    const estimatedTokenValue = this.props.drizzle.web3.utils.toBN(this.props.drizzleState.contracts[this.state.contractKey].calcTokenValue[this.state.estimatedTokenValueDataKey].value);
+      const amountToSend = estimatedTokenValue.mul(this.props.drizzle.web3.utils.toBN(amount));
+    // if margin currency is ETH, then send ETH. Otherwise, authorize the transfer.
+    this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
+      this.props.drizzle.web3.utils.toWei(amount),
+      {
+        from: this.props.drizzleState.accounts[0],
+          value: amountToSend
+      }
+    );
+  };
+
+  redeemTokens = amount => {
+      console.log("REDEEMED!");
+      this.props.drizzle.contracts[this.state.contractKey].methods.approve.cacheSend(
+          this.props.contractAddress,
+          this.props.drizzle.web3.utils.toWei(amount),
+          { from: this.props.drizzleState.accounts[0]
+          });
+      // NEED TO AUTHORIZE TOKENS BEING TRANSFERRED!
+    // this.props.drizzle.contracts[this.state.contractKey].methods.redeemTokens.cacheSend(
+      // {
+        // from: this.props.drizzleState.accounts[0]
+      // }
+    // );
+  };
+
+  waitOnTransferApproval() {
+      console.log("WAITED");
+  }
+
   componentWillUnmount() {
     this.unsubscribeFn();
   }
@@ -172,7 +225,7 @@ class ContractDetails extends Component {
       ),
       longMargin: web3.utils.fromWei(derivativeStorage.longBalance),
       shortMargin: web3.utils.fromWei(derivativeStorage.shortBalance),
-      tokenSupply: totalSupply,
+      tokenSupply: web3.utils.fromWei(totalSupply),
       yourTokens: "UNKNOWN"
     };
     const estimatedCurrentContractFinancials = {
@@ -183,7 +236,7 @@ class ContractDetails extends Component {
       longMargin: web3.utils.fromWei(estimatedNav),
       shortMargin: web3.utils.fromWei(estimatedShortMarginBalance),
       // These values don't change on remargins.
-      tokenSupply: totalSupply,
+      tokenSupply: web3.utils.fromWei(totalSupply),
       yourTokens: "UNKNOWN"
     };
     // The TokenizedDerivative smart contract uses this value to indicate using ETH as the margin currency.
@@ -217,7 +270,13 @@ class ContractDetails extends Component {
           lastRemargin={lastRemarginContractFinancials}
           estimatedCurrent={estimatedCurrentContractFinancials}
         />
-        <ContractInteraction remarginFn={this.remarginContract} />
+        <ContractInteraction
+          remarginFn={this.remarginContract}
+          depositFn={this.depositMargin}
+          withdrawFn={this.withdrawMargin}
+          createFn={this.createTokens}
+          redeemFn={this.redeemTokens}
+        />
       </div>
     );
   }
