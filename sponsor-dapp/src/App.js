@@ -9,7 +9,10 @@ const theme = createMuiTheme({
     primary: {
       main: "#ff4a4a"
     }
-  }
+  },
+  typography: {
+    useNextVariants: true,
+  },
 });
 
 class App extends Component {
