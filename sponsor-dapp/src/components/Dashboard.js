@@ -72,15 +72,6 @@ class Dashboard extends React.Component {
   };
 
   componentDidMount() {
-    // Fetch Metamask account
-    this.props.drizzle.web3.eth.getAccounts().then((accounts, err) => {
-      if (err != null || accounts.length === 0) {
-        throw Error("couldn't get accounts");
-      }
-
-      this.setState({ account: accounts[0] });
-    });
-
     this.verifySponsorEligible();
   }
 
@@ -102,12 +93,7 @@ class Dashboard extends React.Component {
         return;
       }
 
-      // Check that the account was fetched
-      if (this.state.account == null) {
-        return;
-      }
-
-      const account = this.state.account;
+      const account = this.props.drizzleState.accounts[0];
 
       const whitelistAddress = sponsorWhitelist.value;
       // Add the sponsorWhitelist contract. Use a flag to prevent recursive calls.
