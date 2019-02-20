@@ -10,9 +10,11 @@ import Grid from "@material-ui/core/Grid";
 import Toolbar from "@material-ui/core/Toolbar";
 import Typography from "@material-ui/core/Typography";
 
-import DerivativeList from "./DerivativeList.js";
-import ContractDetails from "./ContractDetails.js";
+import DerivativeList from "./DerivativeList";
+import ContractDetails from "./ContractDetails";
 import CreateContractModal from "./CreateContractModal";
+
+import AddressWhitelist from "../contracts/AddressWhitelist.json";
 
 const styles = theme => ({
   root: {
@@ -45,7 +47,13 @@ const styles = theme => ({
 });
 
 class Dashboard extends React.Component {
-  state = { contractDetailsOpen: false, openModalContractAddress: null, createContractOpen: false, userAddress: "0x0" };
+  state = {
+    contractDetailsOpen: false,
+    openModalContractAddress: null,
+    createContractOpen: false,
+    isCreateDisabled: true,
+    userAddress: "0x0"
+  };
 
   handleDetailsModalOpen = address => {
     this.setState({ contractDetailsOpen: true, openModalContractAddress: address });
@@ -63,18 +71,74 @@ class Dashboard extends React.Component {
     this.setState({ createContractOpen: false });
   };
 
+  componentDidMount() {
+    this.verifySponsorEligible();
+  }
+
+  verifySponsorEligible() {
+    // Get TokenizedDerivativeCreator's sponsorWhitelist address
+    const { drizzle } = this.props;
+    const { TokenizedDerivativeCreator } = drizzle.contracts;
+    const sponsorWhitelistKey = TokenizedDerivativeCreator.methods.sponsorWhitelist.cacheCall();
+    let contractAdded = false;
+    let calledIsOnWhitelist = false;
+    let onWhitelistKey = null;
+
+    const unsubscribe = drizzle.store.subscribe(() => {
+      const drizzleState = drizzle.store.getState();
+
+      const { TokenizedDerivativeCreator } = drizzleState.contracts;
+      const sponsorWhitelist = TokenizedDerivativeCreator.sponsorWhitelist[sponsorWhitelistKey];
+      if (sponsorWhitelist == null) {
+        return;
+      }
+
+      const account = this.props.drizzleState.accounts[0];
+
+      const whitelistAddress = sponsorWhitelist.value;
+      // Add the sponsorWhitelist contract. Use a flag to prevent recursive calls.
+      if (!contractAdded && drizzle.contracts[whitelistAddress] == null) {
+        contractAdded = true;
+        drizzle.addContract({
+          contractName: whitelistAddress,
+          web3Contract: new drizzle.web3.eth.Contract(AddressWhitelist.abi, whitelistAddress)
+        });
+      }
+
+      if (drizzle.contracts[whitelistAddress] == null) {
+        return;
+      }
+
+      const addressWhitelist = drizzle.contracts[whitelistAddress];
+      if (!calledIsOnWhitelist) {
+        calledIsOnWhitelist = true;
+        onWhitelistKey = addressWhitelist.methods.isOnWhitelist.cacheCall(account);
+      }
+
+      const isOnWhitelist = drizzleState.contracts[whitelistAddress].isOnWhitelist[onWhitelistKey];
+      if (isOnWhitelist == null) {
+        return;
+      }
+
+      this.setState({ isCreateDisabled: !isOnWhitelist.value });
+      unsubscribe();
+    });
+  }
+
   render() {
     const { classes } = this.props;
+    const isCreateDisabled = this.state.isCreateDisabled;
+
     return (
       <React.Fragment>
         <CssBaseline />
         <div className="Dashboard">
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
-              <Typography component="h1" variant="h1" color="inherit" align="left" noWrap className={classes.title}>
+              <Typography component="h1" variant="h6" color="inherit" align="left" noWrap className={classes.title}>
                 UMA Dashboard
               </Typography>
-              <Typography component="h1" variant="h1" color="inherit" align="right" noWrap className={classes.title}>
+              <Typography component="h1" variant="h6" color="inherit" align="right" noWrap className={classes.title}>
                 {this.state.userAddress}
               </Typography>
             </Toolbar>
@@ -94,7 +158,10 @@ class Dashboard extends React.Component {
               />
             </DialogContent>
           </Dialog>
-          <CreateContractModal open={this.state.createContractOpen} onClose={this.handleCreateModalClose} />
+          <CreateContractModal
+            open={this.state.createContractOpen}
+            onClose={this.handleCreateModalClose}
+          />
           <Grid container spacing={16} direction="column" alignItems="center" align="center" className={classes.root}>
             <Grid item xs>
               <DerivativeList
@@ -104,7 +171,12 @@ class Dashboard extends React.Component {
               />
             </Grid>
             <Grid item xs>
-              <Button variant="contained" color="primary" onClick={this.handleCreateModalOpen}>
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={isCreateDisabled}
+                onClick={this.handleCreateModalOpen}
+              >
                 Create New Token Contract
               </Button>
             </Grid>
