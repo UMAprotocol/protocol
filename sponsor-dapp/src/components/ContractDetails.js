@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import ContractFinancialsTable from "./ContractFinancialsTable.js";
 import ContractParameters from "./ContractParameters.js";
+import ContractInteraction from "./ContractInteraction.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
 
@@ -105,6 +106,14 @@ class ContractDetails extends Component {
     this.unsubscribeFn();
   }
 
+  remarginContract = () => {
+    // TODO(ptare): Figure out how to listen to the state of this transaction, and disable the 'Remargin' button while
+    // a remargin is pending.
+    this.props.drizzle.contracts[this.state.contractKey].methods.remargin.cacheSend({
+      from: this.props.drizzleState.accounts[0]
+    });
+  };
+
   componentWillUnmount() {
     this.unsubscribeFn();
   }
@@ -208,6 +217,7 @@ class ContractDetails extends Component {
           lastRemargin={lastRemarginContractFinancials}
           estimatedCurrent={estimatedCurrentContractFinancials}
         />
+        <ContractInteraction remarginFn={this.remarginContract} />
       </div>
     );
   }
