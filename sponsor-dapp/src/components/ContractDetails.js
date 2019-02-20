@@ -15,7 +15,7 @@ class ContractDetails extends Component {
   state = { loading: true };
 
   componentDidMount() {
-    const { drizzle } = this.props;
+    const { drizzle, drizzleState } = this.props;
     // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
     // contracts without colliding.
     const contractKey = this.props.contractAddress;
@@ -35,7 +35,8 @@ class ContractDetails extends Component {
       nameDataKey: contractMethods.name.cacheCall(),
       estimatedTokenValueDataKey: contractMethods.calcTokenValue.cacheCall(),
       estimatedNavDataKey: contractMethods.calcNAV.cacheCall(),
-      estimatedShortMarginBalanceDataKey: contractMethods.calcShortMarginBalance.cacheCall()
+      estimatedShortMarginBalanceDataKey: contractMethods.calcShortMarginBalance.cacheCall(),
+      tokenBalanceDataKey: contractMethods.balanceOf.cacheCall(drizzleState.accounts[0], {})
     });
 
     this.unsubscribeFn = drizzle.store.subscribe(() => {
@@ -58,7 +59,8 @@ class ContractDetails extends Component {
       this.state.nameDataKey in contract.name &&
       this.state.estimatedTokenValueDataKey in contract.calcTokenValue &&
       this.state.estimatedNavDataKey in contract.calcNAV &&
-      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance;
+      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance &&
+      this.state.tokenBalanceDataKey in contract.balanceOf;
     if (!areAllMethodValuesAvailable) {
       return;
     }
@@ -125,6 +127,7 @@ class ContractDetails extends Component {
     const estimatedShortMarginBalance = web3.utils.toBN(
       contract.calcShortMarginBalance[this.state.estimatedShortMarginBalanceDataKey].value
     );
+    const tokenBalance = web3.utils.fromWei(contract.balanceOf[this.state.tokenBalanceDataKey].value);
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.state.idDataKey].value;
 
@@ -164,7 +167,7 @@ class ContractDetails extends Component {
       longMargin: web3.utils.fromWei(derivativeStorage.longBalance),
       shortMargin: web3.utils.fromWei(derivativeStorage.shortBalance),
       tokenSupply: totalSupply,
-      yourTokens: "UNKNOWN"
+      yourTokens: tokenBalance
     };
     const estimatedCurrentContractFinancials = {
       time: ContractDetails.formatDate(latestPrice.publishTime, web3),
@@ -175,7 +178,7 @@ class ContractDetails extends Component {
       shortMargin: web3.utils.fromWei(estimatedShortMarginBalance),
       // These values don't change on remargins.
       tokenSupply: totalSupply,
-      yourTokens: "UNKNOWN"
+      yourTokens: tokenBalance
     };
     // The TokenizedDerivative smart contract uses this value to indicate using ETH as the margin currency.
     const sentinelMarginCurrency = "0x0000000000000000000000000000000000000000";
