@@ -14,6 +14,8 @@ import DerivativeList from "./DerivativeList";
 import ContractDetails from "./ContractDetails";
 import CreateContractModal from "./CreateContractModal";
 
+import AddressWhitelist from "../contracts/AddressWhitelist.json";
+
 const styles = theme => ({
   root: {
     display: "flex",
@@ -85,7 +87,7 @@ class Dashboard extends React.Component {
   verifySponsorEligible() {
     // Get TokenizedDerivativeCreator's sponsorWhitelist address
     const { drizzle } = this.props;
-    const { TokenizedDerivativeCreator, AddressWhitelist } = drizzle.contracts;
+    const { TokenizedDerivativeCreator } = drizzle.contracts;
     const sponsorWhitelistKey = TokenizedDerivativeCreator.methods.sponsorWhitelist.cacheCall();
     let contractAdded = false;
     let calledIsOnWhitelist = false;

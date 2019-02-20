@@ -1,9 +1,8 @@
 import Registry from "./contracts/Registry.json";
 import TokenizedDerivativeCreator from "./contracts/TokenizedDerivativeCreator.json";
-import AddressWhitelist from "./contracts/AddressWhitelist.json";
 
 const options = {
-  contracts: [Registry, TokenizedDerivativeCreator, AddressWhitelist],
+  contracts: [Registry, TokenizedDerivativeCreator],
   events: {},
   polls: {
     accounts: 1500,
