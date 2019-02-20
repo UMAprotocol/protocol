@@ -17,7 +17,7 @@ const theme = createMuiTheme({
 });
 
 class App extends Component {
-  state = { network: null };
+  state = { params, network: undefined };
 
   render() {
     return (
@@ -31,11 +31,25 @@ class App extends Component {
               return "Loading...";
             }
 
-            params.network = drizzleState.web3.networkId;
+            // Get the network and store in params
+            if (!this.state.network) {
+              this.props.drizzle.web3.eth.net.getNetworkType().then(network => {
+                // Copy params without network properties
+                const newParams = { ...params };
+                delete newParams.main;
+                delete newParams.ropsten;
+                delete newParams.private;
+
+                // Overlay network properties on top
+                Object.assign(newParams, params[network]);
+
+                this.setState({ params: newParams, network });
+              });
+            }
 
             return (
               <MuiThemeProvider theme={theme}>
-                <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={params} />
+                <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={this.state.params} />
               </MuiThemeProvider>
             );
           }}
