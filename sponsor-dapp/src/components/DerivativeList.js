@@ -28,8 +28,7 @@ class DerivativeList extends React.Component {
   }
 
   getDerivativesData() {
-    const { Registry } = this.props.drizzleState.contracts;
-    const { TokenizedDerivativeCreator } = this.props.drizzle.contracts;
+    const { Registry, TokenizedDerivativeCreator } = this.props.drizzleState.contracts;
 
     const dummyDerivative = { derivativeAddress: "0x0", derivativeCreator: TokenizedDerivativeCreator.address };
 
