@@ -138,8 +138,9 @@ class DerivativeList extends React.Component {
 
     // Array for data that should be passed to the table.
     let derivativesData = [];
-    for (let i = 0; i < derivatives.length; i++) {
-      const derivativeChecksumAddress = web3.utils.toChecksumAddress(derivatives[i].derivativeAddress);
+    let i = 1;
+    for (let derivative of derivatives) {
+      const derivativeChecksumAddress = web3.utils.toChecksumAddress(derivative.derivativeAddress);
 
       // If the derivative is not in the derivativeKeyMap, none of its information can be retrieved.
       if (!(derivativeChecksumAddress in this.state.derivativeKeyMap)) {
@@ -186,7 +187,7 @@ class DerivativeList extends React.Component {
         asset: web3.utils.toAscii(derivativeStorage.fixedParameters.product),
         created: "Tuesday, 05-Feb-19 16:43:01 UTC",
         role: role,
-        id: i + 1
+        id: i++
       });
     }
 
