@@ -4,7 +4,6 @@ import ContractParameters from "./ContractParameters.js";
 import ContractInteraction from "./ContractInteraction.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
-const BigNumber = require("bignumber.js");
 
 // Used to track the status of price feed requests via Drizzle.
 const PriceFeedRequestsStatus = {
@@ -115,7 +114,6 @@ class ContractDetails extends Component {
 
   handleFormChange = (name, event) => {
     const newFormInputs = this.state.formInputs;
-    // TODO(ptare): This might not work in optimized mode.
     newFormInputs[name] = event.target.value;
     this.setState({ formInputs: newFormInputs });
   };
@@ -153,18 +151,20 @@ class ContractDetails extends Component {
 
   createTokens = () => {
     const contractState = this.props.drizzleState.contracts[this.state.contractKey];
-    const estimatedTokenValue = new BigNumber(
+    const web3 = this.props.drizzle.web3;
+    const estimatedTokenValue = web3.utils.toBN(
       contractState.calcTokenValue[this.state.estimatedTokenValueDataKey].value
     );
-    const amountToSend = estimatedTokenValue
-      .times(new BigNumber(this.state.formInputs.createAmount))
-      .integerValue(BigNumber.ROUND_CEIL);
+    const numTokensInWei = web3.utils.toBN(web3.utils.toWei(this.state.formInputs.createAmount));
+    const marginCurrencyAmount = estimatedTokenValue
+      .mul(numTokensInWei)
+      .div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
 
     this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
-      this.props.drizzle.web3.utils.toWei(this.state.formInputs.createAmount),
+      web3.utils.toWei(this.state.formInputs.createAmount),
       {
         from: this.props.drizzleState.accounts[0],
-        value: this.getEthToAttachIfNeeded(amountToSend)
+        value: this.getEthToAttachIfNeeded(marginCurrencyAmount)
       }
     );
     this.resetForm();
@@ -183,6 +183,9 @@ class ContractDetails extends Component {
   };
 
   getEthToAttachIfNeeded(marginCurrencyAmount) {
+    // If the contract's margin currency is ETH, we need to send `marginCurrencyAmount` along with some method calls.
+    // If the contract uses an ERC20 margin currency, we send 0 ETH and rely on the contract being pre-approved to
+    // pull margin currency.
     const derivativeStorage = this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage[
       this.state.derivativeStorageDataKey
     ].value;
