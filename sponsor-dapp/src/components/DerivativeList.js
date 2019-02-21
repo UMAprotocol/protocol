@@ -184,7 +184,7 @@ class DerivativeList extends React.Component {
         tokenName: contract.name[tokenNameKey].value,
         symbol: contract.symbol[symbolKey].value,
         status: this.convertContractStateToString(derivativeStorage.state.toString()),
-        asset: web3.utils.hexToUtf8(web3.utils.bytesToHex(derivativeStorage.fixedParameters.product)),
+        asset: web3.utils.toAscii(derivativeStorage.fixedParameters.product),
         created: "Tuesday, 05-Feb-19 16:43:01 UTC",
         role: role,
         id: i + 1
