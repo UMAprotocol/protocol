@@ -18,9 +18,6 @@ const styles = theme => ({
   },
   button: {
     margin: theme.spacing.unit
-  },
-  noneFound: {
-    margin: theme.spacing.unit * 2
   }
 });
 
