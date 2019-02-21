@@ -64,18 +64,18 @@ class Dashboard extends React.Component {
   };
 
   render() {
-    const { classes } = this.props;
+    const { classes, drizzleState } = this.props;
     return (
       <React.Fragment>
         <CssBaseline />
         <div className="Dashboard">
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
-              <Typography component="h1" variant="h1" color="inherit" align="left" noWrap className={classes.title}>
+              <Typography component="h1" variant="h6" color="inherit" align="left" noWrap className={classes.title}>
                 UMA Dashboard
               </Typography>
-              <Typography component="h1" variant="h1" color="inherit" align="right" noWrap className={classes.title}>
-                {this.state.userAddress}
+              <Typography component="h1" variant="h6" color="inherit" align="right" noWrap className={classes.title}>
+                {drizzleState.accounts[0]}
               </Typography>
             </Toolbar>
           </AppBar>
