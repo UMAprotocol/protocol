@@ -4,6 +4,7 @@ import ContractParameters from "./ContractParameters.js";
 import ContractInteraction from "./ContractInteraction.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
+import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
 
 // Used to track the status of price feed requests via Drizzle.
 const PriceFeedRequestsStatus = {
@@ -223,30 +224,8 @@ class ContractDetails extends Component {
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.state.idDataKey].value;
 
-    // TODO(ptare): Extract to some common library.
-    let contractState;
-    switch (derivativeStorage.state) {
-      case "0":
-        contractState = "Live";
-        break;
-      case "1":
-        contractState = "Disputed";
-        break;
-      case "2":
-        contractState = "Expired";
-        break;
-      case "3":
-        contractState = "Defaulted";
-        break;
-      case "4":
-        contractState = "Emergency";
-        break;
-      case "5":
-        contractState = "Settled";
-        break;
-      default:
-      // Getting here means that the enums in the contract and here have drifted.
-    }
+    let contractState = stateToString(derivativeStorage.state);
+
     const lastRemarginContractFinancials = {
       time: ContractDetails.formatDate(derivativeStorage.currentTokenState.time, web3),
       assetPrice: web3.utils.fromWei(derivativeStorage.currentTokenState.underlyingPrice),
