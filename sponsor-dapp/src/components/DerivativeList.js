@@ -6,7 +6,6 @@ class DerivativeList extends React.Component {
   state = { registryDataKey: null, derivativeKeyMap: {} };
   unsubscribe = null;
   subscriptionLock = false;
-  addedContracts = {};
 
   componentDidMount() {
     const { drizzle, drizzleState } = this.props;
