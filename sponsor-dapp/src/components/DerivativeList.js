@@ -1,6 +1,7 @@
 import React from "react";
 import DerivativeListTable from "./DerivativeListTable.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
+import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
 
 class DerivativeList extends React.Component {
   state = { registryDataKey: null, derivativeKeyMap: {} };
@@ -109,26 +110,6 @@ class DerivativeList extends React.Component {
     this.subscriptionLock = false;
   }
 
-  // Converts the state returned by the contract to a user-readable string.
-  convertContractStateToString(state) {
-    switch (state) {
-      case "0":
-        return "Live";
-      case "1":
-        return "Disputed";
-      case "2":
-        return "Expired";
-      case "3":
-        return "Defaulted";
-      case "4":
-        return "Emergency";
-      case "5":
-        return "Settled";
-      default:
-        return "Unknown";
-    }
-  }
-
   getDerivativesData() {
     const { drizzle, drizzleState } = this.props;
     const { web3 } = drizzle;
@@ -183,7 +164,7 @@ class DerivativeList extends React.Component {
         address: derivativeChecksumAddress,
         tokenName: contract.name[tokenNameKey].value,
         symbol: contract.symbol[symbolKey].value,
-        status: this.convertContractStateToString(derivativeStorage.state.toString()),
+        status: stateToString(derivativeStorage.state.toString()),
         asset: web3.utils.toAscii(derivativeStorage.fixedParameters.product),
         created: "Tuesday, 05-Feb-19 16:43:01 UTC",
         role: role,
