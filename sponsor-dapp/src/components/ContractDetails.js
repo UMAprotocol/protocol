@@ -3,6 +3,7 @@ import ContractFinancialsTable from "./ContractFinancialsTable.js";
 import ContractParameters from "./ContractParameters.js";
 import ContractInteraction from "./ContractInteraction.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
+import TokenPreapproval from "./TokenPreapproval.js";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
 import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
 
@@ -12,6 +13,7 @@ const PriceFeedRequestsStatus = {
   WAITING_ON_CONTRACT: 2,
   SENT: 3
 };
+const UINT_MAX = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 class ContractDetails extends Component {
   state = {
@@ -43,7 +45,12 @@ class ContractDetails extends Component {
       estimatedTokenValueDataKey: contractMethods.calcTokenValue.cacheCall(),
       estimatedNavDataKey: contractMethods.calcNAV.cacheCall(),
       estimatedShortMarginBalanceDataKey: contractMethods.calcShortMarginBalance.cacheCall(),
-      tokenBalanceDataKey: contractMethods.balanceOf.cacheCall(drizzleState.accounts[0], {})
+      tokenBalanceDataKey: contractMethods.balanceOf.cacheCall(drizzleState.accounts[0], {}),
+      derivativeTokenAllowanceDataKey: contractMethods.allowance.cacheCall(
+        drizzleState.accounts[0],
+        this.props.contractAddress,
+        {}
+      )
     });
 
     this.unsubscribeDataFetch = drizzle.store.subscribe(() => {
@@ -97,7 +104,8 @@ class ContractDetails extends Component {
       this.state.estimatedTokenValueDataKey in contract.calcTokenValue &&
       this.state.estimatedNavDataKey in contract.calcNAV &&
       this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance &&
-      this.state.tokenBalanceDataKey in contract.balanceOf;
+      this.state.tokenBalanceDataKey in contract.balanceOf &&
+      this.state.derivativeTokenAllowanceDataKey in contract.allowance;
     if (!areAllMethodValuesAvailable) {
       return;
     }
@@ -236,6 +244,17 @@ class ContractDetails extends Component {
     return derivativeStorage.externalAddresses.marginCurrency === sentinelMarginCurrency;
   }
 
+  approveDerivativeTokens = () => {
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.approve.cacheSend(
+      this.props.contractAddress,
+      UINT_MAX,
+      {
+        from: this.props.drizzleState.accounts[0]
+      }
+    );
+    this.addPendingTransaction(initiatedTransactionId);
+  };
+
   render() {
     if (this.state.loading) {
       return <div>Looking up contract details...</div>;
@@ -283,16 +302,13 @@ class ContractDetails extends Component {
       tokenSupply: totalSupply,
       yourTokens: tokenBalance
     };
-    // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
-    const sentinelExpiryTime = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
     const contractParameters = {
       contractAddress: this.props.contractAddress,
       creatorAddress: derivativeStorage.externalAddresses.sponsor,
       creationTime: "UNKNOWN",
+      // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
       expiryTime:
-        derivativeStorage.endTime === sentinelExpiryTime
-          ? "None"
-          : ContractDetails.formatDate(derivativeStorage.endTime, web3),
+        derivativeStorage.endTime === UINT_MAX ? "None" : ContractDetails.formatDate(derivativeStorage.endTime, web3),
       priceFeedAddress: derivativeStorage.externalAddresses.priceFeed,
       marginCurrency: this.hasEthMarginCurrency(derivativeStorage)
         ? "ETH"
@@ -300,6 +316,34 @@ class ContractDetails extends Component {
       returnCalculator: derivativeStorage.externalAddresses.returnCalculator
     };
 
+    // In order to interact with contract methods, the user must have first approved at least this much in derivative
+    // token and marginc currency transfers. This value is chosen to be half of the value we will attempt to approve,
+    // so even as the approval gets used up, the user never needs to reapprove.
+    const minAllowance = web3.utils.toBN(UINT_MAX).divRound(web3.utils.toBN("2"));
+    let interactions;
+    if (web3.utils.toBN(contract.allowance[this.state.derivativeTokenAllowanceDataKey].value).lt(minAllowance)) {
+      interactions = (
+        <TokenPreapproval
+          isInteractionEnabled={this.state.isInteractionEnabled}
+          approveDerivativeTokensFn={this.approveDerivativeTokens}
+          tokenSymbol={derivativeStorage.fixedParameters.symbol}
+          marginCurrencySymbol={"ETH"}
+        />
+      );
+    } else {
+      interactions = (
+        <ContractInteraction
+          remarginFn={this.remarginContract}
+          depositFn={this.depositMargin}
+          withdrawFn={this.withdrawMargin}
+          createFn={this.createTokens}
+          redeemFn={this.redeemTokens}
+          formInputs={this.state.formInputs}
+          handleChangeFn={this.handleFormChange}
+          isInteractionEnabled={this.state.isInteractionEnabled}
+        />
+      );
+    }
     return (
       <div>
         <div>
@@ -311,16 +355,7 @@ class ContractDetails extends Component {
           lastRemargin={lastRemarginContractFinancials}
           estimatedCurrent={estimatedCurrentContractFinancials}
         />
-        <ContractInteraction
-          remarginFn={this.remarginContract}
-          depositFn={this.depositMargin}
-          withdrawFn={this.withdrawMargin}
-          createFn={this.createTokens}
-          redeemFn={this.redeemTokens}
-          formInputs={this.state.formInputs}
-          handleChangeFn={this.handleFormChange}
-          isInteractionEnabled={this.state.isInteractionEnabled}
-        />
+        {interactions}
       </div>
     );
   }
