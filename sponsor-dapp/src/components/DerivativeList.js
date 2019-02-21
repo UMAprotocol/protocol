@@ -70,9 +70,9 @@ class DerivativeList extends React.Component {
     const derivatives = this.getDerivativeList();
 
     let additionalDerivativeKeys = {};
-    for (let i = 0; i < derivatives.length; i++) {
+    for (let derivative of derivatives) {
       // Use the checksum address as the key since it's the canonical representation of ETH addresses.
-      const derivativeChecksumAddress = web3.utils.toChecksumAddress(derivatives[i].derivativeAddress);
+      const derivativeChecksumAddress = web3.utils.toChecksumAddress(derivative.derivativeAddress);
 
       if (!(derivativeChecksumAddress in drizzle.contracts)) {
         // If the contract is not present in the drizzle tracked contracts, add it.
