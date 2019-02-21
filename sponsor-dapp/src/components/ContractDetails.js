@@ -14,10 +14,10 @@ const PriceFeedRequestsStatus = {
 };
 
 class ContractDetails extends Component {
-  state = { loading: true };
+  state = { loading: true, formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" } };
 
   componentDidMount() {
-    const { drizzle } = this.props;
+    const { drizzle, drizzleState } = this.props;
     // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
     // contracts without colliding.
     const contractKey = this.props.contractAddress;
@@ -37,7 +37,8 @@ class ContractDetails extends Component {
       nameDataKey: contractMethods.name.cacheCall(),
       estimatedTokenValueDataKey: contractMethods.calcTokenValue.cacheCall(),
       estimatedNavDataKey: contractMethods.calcNAV.cacheCall(),
-      estimatedShortMarginBalanceDataKey: contractMethods.calcShortMarginBalance.cacheCall()
+      estimatedShortMarginBalanceDataKey: contractMethods.calcShortMarginBalance.cacheCall(),
+      tokenBalanceDataKey: contractMethods.balanceOf.cacheCall(drizzleState.accounts[0], {})
     });
 
     this.unsubscribeFn = drizzle.store.subscribe(() => {
@@ -60,7 +61,8 @@ class ContractDetails extends Component {
       this.state.nameDataKey in contract.name &&
       this.state.estimatedTokenValueDataKey in contract.calcTokenValue &&
       this.state.estimatedNavDataKey in contract.calcNAV &&
-      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance;
+      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance &&
+      this.state.tokenBalanceDataKey in contract.balanceOf;
     if (!areAllMethodValuesAvailable) {
       return;
     }
@@ -107,68 +109,94 @@ class ContractDetails extends Component {
     this.unsubscribeFn();
   }
 
+  componentWillUnmount() {
+    this.unsubscribeFn();
+  }
+
+  handleFormChange = (name, event) => {
+    const newFormInputs = this.state.formInputs;
+    // TODO(ptare): This might not work in optimized mode.
+    newFormInputs[name] = event.target.value;
+    this.setState({ formInputs: newFormInputs });
+  };
+
+  resetForm = () => {
+    this.setState({ formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" } });
+  };
+
   remarginContract = () => {
     // TODO(ptare): Figure out how to listen to the state of this transaction, and disable the 'Remargin' button while
     // a remargin is pending.
     this.props.drizzle.contracts[this.state.contractKey].methods.remargin.cacheSend({
       from: this.props.drizzleState.accounts[0]
     });
+    this.resetForm();
   };
 
-  withdrawMargin = amount => {
-    amount = "1";
+  withdrawMargin = () => {
     this.props.drizzle.contracts[this.state.contractKey].methods.withdraw.cacheSend(
-      this.props.drizzle.web3.utils.toWei(amount),
+      this.props.drizzle.web3.utils.toWei(this.state.formInputs.withdrawAmount),
       {
         from: this.props.drizzleState.accounts[0]
       }
     );
+    this.resetForm();
   };
 
-  depositMargin = amount => {
-    // if margin currency is ETH, then send ETH. Otherwise, authorize the transfer.
-    amount = "1";
+  depositMargin = () => {
     this.props.drizzle.contracts[this.state.contractKey].methods.deposit.cacheSend({
       from: this.props.drizzleState.accounts[0],
-      value: this.props.drizzle.web3.utils.toWei(amount)
+      value: this.getEthToAttachIfNeeded(this.props.drizzle.web3.utils.toWei(this.state.formInputs.depositAmount))
     });
+    this.resetForm();
   };
 
-  createTokens = amount => {
-      amount = "1";
-    const estimatedTokenValue = this.props.drizzle.web3.utils.toBN(this.props.drizzleState.contracts[this.state.contractKey].calcTokenValue[this.state.estimatedTokenValueDataKey].value);
-      const amountToSend = estimatedTokenValue.mul(this.props.drizzle.web3.utils.toBN(amount));
-    // if margin currency is ETH, then send ETH. Otherwise, authorize the transfer.
+  createTokens = () => {
+    const contractState = this.props.drizzleState.contracts[this.state.contractKey];
+    const estimatedTokenValue = new BigNumber(
+      contractState.calcTokenValue[this.state.estimatedTokenValueDataKey].value
+    );
+    const amountToSend = estimatedTokenValue
+      .times(new BigNumber(this.state.formInputs.createAmount))
+      .integerValue(BigNumber.ROUND_CEIL);
+
     this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
-      this.props.drizzle.web3.utils.toWei(amount),
+      this.props.drizzle.web3.utils.toWei(this.state.formInputs.createAmount),
       {
         from: this.props.drizzleState.accounts[0],
-          value: amountToSend
+        value: this.getEthToAttachIfNeeded(amountToSend)
       }
     );
+    this.resetForm();
   };
 
-  redeemTokens = amount => {
-      console.log("REDEEMED!");
-      this.props.drizzle.contracts[this.state.contractKey].methods.approve.cacheSend(
-          this.props.contractAddress,
-          this.props.drizzle.web3.utils.toWei(amount),
-          { from: this.props.drizzleState.accounts[0]
-          });
-      // NEED TO AUTHORIZE TOKENS BEING TRANSFERRED!
-    // this.props.drizzle.contracts[this.state.contractKey].methods.redeemTokens.cacheSend(
-      // {
-        // from: this.props.drizzleState.accounts[0]
-      // }
-    // );
+  redeemTokens = () => {
+    // TODO(mrice32): The contract's `redeemTokens` method doesn't currently take an argument, so this call doesn't
+    // work until the contract is updated.
+    this.props.drizzle.contracts[this.state.contractKey].methods.redeemTokens.cacheSend(
+      this.props.drizzle.web3.utils.toWei(this.state.formInputs.redeemAmount),
+      {
+        from: this.props.drizzleState.accounts[0]
+      }
+    );
+    this.resetForm();
   };
 
-  waitOnTransferApproval() {
-      console.log("WAITED");
+  getEthToAttachIfNeeded(marginCurrencyAmount) {
+    const derivativeStorage = this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage[
+      this.state.derivativeStorageDataKey
+    ].value;
+    if (this.hasEthMarginCurrency(derivativeStorage)) {
+      return marginCurrencyAmount;
+    } else {
+      return "0";
+    }
   }
 
-  componentWillUnmount() {
-    this.unsubscribeFn();
+  hasEthMarginCurrency(derivativeStorage) {
+    // The TokenizedDerivative smart contract uses this value to indicate using ETH as the margin currency.
+    const sentinelMarginCurrency = "0x0000000000000000000000000000000000000000";
+    return derivativeStorage.externalAddresses.marginCurrency === sentinelMarginCurrency;
   }
 
   render() {
@@ -180,13 +208,14 @@ class ContractDetails extends Component {
 
     const contract = drizzleState.contracts[this.state.contractKey];
     const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
-    const totalSupply = contract.totalSupply[this.state.totalSupplyDataKey].value;
+    const totalSupply = web3.utils.fromWei(contract.totalSupply[this.state.totalSupplyDataKey].value);
     const contractName = contract.name[this.state.nameDataKey].value;
     const estimatedTokenValue = web3.utils.toBN(contract.calcTokenValue[this.state.estimatedTokenValueDataKey].value);
     const estimatedNav = web3.utils.toBN(contract.calcNAV[this.state.estimatedNavDataKey].value);
     const estimatedShortMarginBalance = web3.utils.toBN(
       contract.calcShortMarginBalance[this.state.estimatedShortMarginBalanceDataKey].value
     );
+    const tokenBalance = web3.utils.fromWei(contract.balanceOf[this.state.tokenBalanceDataKey].value);
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.state.idDataKey].value;
 
@@ -225,8 +254,8 @@ class ContractDetails extends Component {
       ),
       longMargin: web3.utils.fromWei(derivativeStorage.longBalance),
       shortMargin: web3.utils.fromWei(derivativeStorage.shortBalance),
-      tokenSupply: web3.utils.fromWei(totalSupply),
-      yourTokens: "UNKNOWN"
+      tokenSupply: totalSupply,
+      yourTokens: tokenBalance
     };
     const estimatedCurrentContractFinancials = {
       time: ContractDetails.formatDate(latestPrice.publishTime, web3),
@@ -236,26 +265,23 @@ class ContractDetails extends Component {
       longMargin: web3.utils.fromWei(estimatedNav),
       shortMargin: web3.utils.fromWei(estimatedShortMarginBalance),
       // These values don't change on remargins.
-      tokenSupply: web3.utils.fromWei(totalSupply),
-      yourTokens: "UNKNOWN"
+      tokenSupply: totalSupply,
+      yourTokens: tokenBalance
     };
-    // The TokenizedDerivative smart contract uses this value to indicate using ETH as the margin currency.
-    const sentinelMarginCurrency = "0x0000000000000000000000000000000000000000";
     // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
     const sentinelExpiryTime = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
     const contractParameters = {
       contractAddress: this.props.contractAddress,
-      creatorAddress: "UNKNOWN",
+      creatorAddress: derivativeStorage.externalAddresses.sponsor,
       creationTime: "UNKNOWN",
       expiryTime:
         derivativeStorage.endTime === sentinelExpiryTime
           ? "None"
           : ContractDetails.formatDate(derivativeStorage.endTime, web3),
       priceFeedAddress: derivativeStorage.externalAddresses.priceFeed,
-      marginCurrency:
-        derivativeStorage.externalAddresses.marginCurrency === sentinelMarginCurrency
-          ? "ETH"
-          : derivativeStorage.externalAddresses.marginCurrency,
+      marginCurrency: this.hasEthMarginCurrency(derivativeStorage)
+        ? "ETH"
+        : derivativeStorage.externalAddresses.marginCurrency,
       returnCalculator: derivativeStorage.externalAddresses.returnCalculator
     };
 
@@ -276,6 +302,8 @@ class ContractDetails extends Component {
           withdrawFn={this.withdrawMargin}
           createFn={this.createTokens}
           redeemFn={this.redeemTokens}
+          formInputs={this.state.formInputs}
+          handleChangeFn={this.handleFormChange}
         />
       </div>
     );

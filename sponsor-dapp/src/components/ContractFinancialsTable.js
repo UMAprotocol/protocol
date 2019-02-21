@@ -59,8 +59,8 @@ const ContractFinancialsTable = ({ lastRemargin, estimatedCurrent }) => (
 
       <TableRow key="yourTokens">
         <TableCell>- Your tokens:</TableCell>
-        <TableCell>{lastRemargin.yourTokens}</TableCell>
-        <TableCell>{estimatedCurrent.yourTokens}</TableCell>
+        <TableCell>{lastRemargin.yourTokens} tokens</TableCell>
+        <TableCell>{estimatedCurrent.yourTokens} tokens</TableCell>
       </TableRow>
     </TableBody>
   </Table>
