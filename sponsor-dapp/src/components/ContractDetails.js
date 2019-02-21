@@ -113,7 +113,7 @@ class ContractDetails extends Component {
   }
 
   handleFormChange = (name, event) => {
-    const newFormInputs = this.state.formInputs;
+    const newFormInputs = Object.assign({}, this.state.formInputs);
     newFormInputs[name] = event.target.value;
     this.setState({ formInputs: newFormInputs });
   };
