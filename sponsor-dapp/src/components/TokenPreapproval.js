@@ -5,7 +5,7 @@ class TokenPreapproval extends Component {
   render() {
     // There are effectively two configuration booleans: isMarginCurrencyAuthorized and isDerivativeTokenAuthorized.
     // In the case of ETH as margin currency, isMarginCurrencyAuthorized can be taken to be true.
-    // TODO(madrasi): Provide copy.
+    // TODO(ptare): Obtain final copy.
     let copy;
     if (this.props.isMarginCurrencyAuthorized && this.props.isDerivativeTokenAuthorized) {
       // No preapprovals need to be obtained. Really shouldn't even try to render this component, but better to be

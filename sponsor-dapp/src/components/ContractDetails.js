@@ -8,12 +8,14 @@ import TokenPreapproval from "./TokenPreapproval.js";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
 import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
 
-// Used to track the status of price feed requests via Drizzle.
+// Used to track the status of follow up requests via Drizzle.
+// We are still trying to discover a good idiom for making follow up requests with Drizzle.
 const FollowUpRequestsStatus = {
   UNSENT: 1,
   WAITING_ON_CONTRACT: 2,
   SENT: 3
 };
+// Corresponds to `~uint(0)` in Solidity.
 const UINT_MAX = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 class ContractDetails extends Component {
@@ -57,14 +59,14 @@ class ContractDetails extends Component {
       )
     });
 
+    this.unsubscribeTokenizedDerivativeCheck = drizzle.store.subscribe(() => {
+      this.waitOnTokenizedDerivativeFetch();
+    });
     this.unsubscribePriceFeedFetch = drizzle.store.subscribe(() => {
       this.fetchPriceFeedData();
     });
     this.unsubscribeMarginCurrencyCheck = drizzle.store.subscribe(() => {
       this.fetchMarginCurrencyAllowance();
-    });
-    this.unsubscribeTokenizedDerivativeCheck = drizzle.store.subscribe(() => {
-      this.waitOnTokenizedDerivativeFetch();
     });
     this.unsubscribeTxCheck = drizzle.store.subscribe(() => {
       this.checkPendingTransaction();
@@ -343,6 +345,7 @@ class ContractDetails extends Component {
     return derivativeStorage.externalAddresses.marginCurrency === sentinelMarginCurrency;
   }
 
+  // Approves the TokenizedDerivative to spend a large number of its own tokens from the user.
   approveDerivativeTokens = () => {
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.approve.cacheSend(
       this.props.contractAddress,
@@ -354,6 +357,7 @@ class ContractDetails extends Component {
     this.addPendingTransaction(initiatedTransactionId);
   };
 
+  // Approves the TokenizedDerivative to spend a large number of margin currency tokens from the user.
   approveMarginCurrency = () => {
     const derivativeStorage = this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage[
       this.state.derivativeStorageDataKey
@@ -475,6 +479,7 @@ class ContractDetails extends Component {
         />
       );
     }
+
     return (
       <div>
         <div>
