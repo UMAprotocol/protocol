@@ -77,17 +77,22 @@ contract("AddressWhitelist", function(accounts) {
   });
 
   it("Retrieve whitelist", async function() {
-    const contractToAdd1 = web3.utils.randomHex(20);
+    const contractToReAdd = web3.utils.randomHex(20);
     const contractToRemove = web3.utils.randomHex(20);
-    const contractToAdd2 = web3.utils.randomHex(20);
+    const contractToAdd = web3.utils.randomHex(20);
 
-    await addressWhitelist.addToWhitelist(contractToAdd1, { from: owner });
-    await addressWhitelist.addToWhitelist(contractToAdd1, { from: owner });
+    await addressWhitelist.addToWhitelist(contractToReAdd, { from: owner });
+    await addressWhitelist.removeFromWhitelist(contractToReAdd, { from: owner });
+    await addressWhitelist.addToWhitelist(contractToReAdd, { from: owner });
+
     await addressWhitelist.addToWhitelist(contractToRemove, { from: owner });
     await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
-    await addressWhitelist.addToWhitelist(contractToAdd2, { from: owner });
+
+    await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
 
     const whitelist = await addressWhitelist.getWhitelist({ from: owner });
     assert(whitelist.length == 2);
+    assert(whitelist.indexOf(web3.utils.toChecksumAddress(contractToReAdd)) != -1);
+    assert(whitelist.indexOf(web3.utils.toChecksumAddress(contractToAdd)) != -1);
   });
 });
