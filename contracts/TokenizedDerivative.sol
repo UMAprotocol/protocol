@@ -274,23 +274,29 @@ library TokenizedDerivativeUtils {
 
         uint positiveTokenNav = _safeUintCast(newTokenNav);
 
-        // Subtract newTokenNav from amount sent.
+        // Get any refund due to sending more margin than the argument indicated (should only be able to happen in the
+        // ETH case).
         uint refund = s._pullSentMargin(marginForPurchase);
+
+        // Subtract newTokenNav from amount sent.
         uint depositAmount = marginForPurchase.sub(positiveTokenNav);
 
         // Deposit additional margin into the short account.
         s._depositInternal(depositAmount);
 
-        // Create new tokensToPurchase.
-        s._createTokensInternal(tokensToPurchase, positiveTokenNav);
+        // The _createTokensInternal call returns any refund due to the amount sent being larger than the amount
+        // required to purchase the tokens, so we add that to the running refund. This should be 0 in this case,
+        // but we leave this here in case of some refund being generated due to rounding errors or any bugs to ensure
+        // the sender never loses money.
+        refund = refund.add(s._createTokensInternal(tokensToPurchase, positiveTokenNav));
 
-        // Send any refund due to sending more margin than the argument indicated (should only be able to happen in the
-        // ETH case).
+        // Send the accumulated refund.
         s._sendMargin(refund);
     }
 
     function _redeemTokens(TDS.Storage storage s, uint tokensToRedeem) external {
         require(s.state == TDS.State.Live || s.state == TDS.State.Settled);
+        require(tokensToRedeem > 0);
 
         if (s.state == TDS.State.Live) {
             require(msg.sender == s.externalAddresses.sponsor || msg.sender == s.externalAddresses.apDelegate);
@@ -304,7 +310,6 @@ library TokenizedDerivativeUtils {
         require(initialSupply > 0);
 
         _pullAuthorizedTokens(thisErc20Token, tokensToRedeem);
-        require(tokensToRedeem > 0);
         thisErc20Token.burn(tokensToRedeem);
         emit TokensRedeemed(s.fixedParameters.symbol, tokensToRedeem);
 
@@ -427,11 +432,15 @@ library TokenizedDerivativeUtils {
     }
 
     function _createTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase) external onlySponsorOrApDelegate(s) {
+        // Returns any refund due to sending more margin than the argument indicated (should only be able to happen in
+        // the ETH case).
         uint refund = s._pullSentMargin(marginForPurchase);
-        s._createTokensInternal(tokensToPurchase, marginForPurchase);
 
-        // Send any refund due to sending more margin than the argument indicated (should only be able to happen in the
-        // ETH case).
+        // The _createTokensInternal call returns any refund due to the amount sent being larger than the amount
+        // required to purchase the tokens, so we add that to the running refund.
+        refund = refund.add(s._createTokensInternal(tokensToPurchase, marginForPurchase));
+
+        // Send the accumulated refund.
         s._sendMargin(refund);
     }
 
@@ -583,7 +592,7 @@ library TokenizedDerivativeUtils {
         s._payOracleFees(feeAmount);
     }
 
-    function _createTokensInternal(TDS.Storage storage s, uint tokensToPurchase, uint navSent) internal {
+    function _createTokensInternal(TDS.Storage storage s, uint tokensToPurchase, uint navSent) internal returns (uint refund) {
         s._remarginInternal();
 
         // Verify that remargining didn't push the contract into expiry or default.
@@ -596,7 +605,7 @@ library TokenizedDerivativeUtils {
         }
 
         // Ensures that requiredNav >= navSent.
-        uint refund = navSent.sub(_safeUintCast(purchasedNav));
+        refund = navSent.sub(_safeUintCast(purchasedNav));
 
         s.longBalance = s.longBalance.add(purchasedNav);
 
@@ -609,8 +618,6 @@ library TokenizedDerivativeUtils {
 
         // Make sure this still satisfies the margin requirement.
         require(s._satisfiesMarginRequirement(s.shortBalance));
-
-        s._sendMargin(refund);
     }
 
     function _depositInternal(TDS.Storage storage s, uint value) internal {
