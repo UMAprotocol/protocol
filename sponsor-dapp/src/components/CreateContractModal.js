@@ -80,7 +80,6 @@ class CreateContractModal extends React.Component {
       if (approvedIdentifiers.length == 1) {
         this.updateFormInput("identifier", approvedIdentifiers[0]);
       }
-      console.log("approvedIdentifiers", approvedIdentifiers);
       unsubscribe();
     });
   }
@@ -137,7 +136,6 @@ class CreateContractModal extends React.Component {
         return;
       }
 
-      console.log("whitelist", cacheWhitelist.value);
       this.setState({ returnCalculatorAddresses: cacheWhitelist.value });
       unsubscribe();
     });
