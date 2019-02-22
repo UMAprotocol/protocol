@@ -1652,7 +1652,9 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(totalSupply.toString(), web3.utils.toWei("1", "ether"));
 
       // Ensure token creation is still limited by the margin requirement.
-      assert(await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("125", "ether"), { from: sponsor })));
+      assert(
+        await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("125", "ether"), { from: sponsor }))
+      );
 
       // Should be able to create tokens without sending any margin, since the token price is negative.
       await derivativeContract.createTokens(web3.utils.toWei("1", "ether"), { from: sponsor });

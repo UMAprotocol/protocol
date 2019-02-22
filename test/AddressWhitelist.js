@@ -8,8 +8,8 @@ contract("AddressWhitelist", function(accounts) {
 
   let addressWhitelist;
 
-  before(async function() {
-    addressWhitelist = await AddressWhitelist.new();
+  beforeEach(async function() {
+    addressWhitelist = await AddressWhitelist.new({ from: owner });
   });
 
   it("Only Owner", async function() {
@@ -55,5 +55,39 @@ contract("AddressWhitelist", function(accounts) {
     // Verify that the additions and removal were applied correctly.
     assert.isTrue(await addressWhitelist.isOnWhitelist(contractToAdd));
     assert.isFalse(await addressWhitelist.isOnWhitelist(contractToRemove));
+  });
+
+  it("Add to whitelist twice", async function() {
+    const contractToAdd = web3.utils.randomHex(20);
+
+    await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
+    await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
+
+    assert.isTrue(await addressWhitelist.isOnWhitelist(contractToAdd));
+  });
+
+  it("Re-add to whitelist", async function() {
+    const contractToReAdd = web3.utils.randomHex(20);
+
+    await addressWhitelist.addToWhitelist(contractToReAdd, { from: owner });
+    await addressWhitelist.removeFromWhitelist(contractToReAdd, { from: owner });
+    await addressWhitelist.addToWhitelist(contractToReAdd, { from: owner });
+
+    assert.isTrue(await addressWhitelist.isOnWhitelist(contractToReAdd));
+  });
+
+  it("Retrieve whitelist", async function() {
+    const contractToAdd1 = web3.utils.randomHex(20);
+    const contractToRemove = web3.utils.randomHex(20);
+    const contractToAdd2 = web3.utils.randomHex(20);
+
+    await addressWhitelist.addToWhitelist(contractToAdd1, { from: owner });
+    await addressWhitelist.addToWhitelist(contractToAdd1, { from: owner });
+    await addressWhitelist.addToWhitelist(contractToRemove, { from: owner });
+    await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
+    await addressWhitelist.addToWhitelist(contractToAdd2, { from: owner });
+
+    const whitelist = await addressWhitelist.getWhitelist({ from: owner });
+    assert(whitelist.length == 2);
   });
 });

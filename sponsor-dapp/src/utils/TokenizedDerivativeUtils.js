@@ -19,4 +19,4 @@ function stateToString(state) {
 
 module.exports = {
   stateToString
-}
+};

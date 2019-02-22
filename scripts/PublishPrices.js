@@ -172,16 +172,12 @@ function getPriceFeeds(priceFeedAddress) {
       }
     },
     {
-      identifier: "SPY/ETH",
+      identifier: "SPY/USD",
       priceFeedAddress: priceFeedAddress,
       publishInterval: 900,
       numerator: {
         priceFetchFunction: getAlphaVantageQuote,
         assetName: "SPY"
-      },
-      denominator: {
-        priceFetchFunction: getAlphaVantageCurrencyRate,
-        assetName: "ETH"
       }
     },
     {
