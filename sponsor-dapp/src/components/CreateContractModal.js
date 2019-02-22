@@ -77,7 +77,7 @@ class CreateContractModal extends React.Component {
 
       this.setState({ approvedIdentifiers });
 
-      if (approvedIdentifiers.length == 1) {
+      if (approvedIdentifiers.length === 1) {
         this.updateFormInput("identifier", approvedIdentifiers[0]);
       }
       unsubscribe();
@@ -145,7 +145,6 @@ class CreateContractModal extends React.Component {
     const { drizzle } = this.props;
     const { LeveragedReturnCalculator } = drizzle.contracts;
 
-    let contractsAdded = false;
     const unsubscribe = drizzle.store.subscribe(() => {
       if (!this.state.returnCalculatorAddresses.length) {
         return;
@@ -204,7 +203,7 @@ class CreateContractModal extends React.Component {
 
       this.setState({ returnCalculatorLeverage: leverage });
 
-      if (leverage.length == 1) {
+      if (leverage.length === 1) {
         this.updateFormInput("leverage", this.state.returnCalculatorAddresses[0]);
       }
 
