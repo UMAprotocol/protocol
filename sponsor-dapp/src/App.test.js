@@ -9,12 +9,11 @@ import Dashboard from "./components/Dashboard.js";
 import DerivativeList from "./components/DerivativeList.js";
 import CreateContractModal from "./components/CreateContractModal.js";
 
-
 const getNewDrizzleInstance = () => {
-    // Add a custom fallback provider for testing.
-    const options = {...drizzleOptions, web3: {fallback: {url: "ws://127.0.0.1:9545"}}};
-    const drizzleStore = generateStore(options);
-    return new Drizzle(options, drizzleStore);
+  // Add a custom fallback provider for testing.
+  const options = { ...drizzleOptions, web3: { fallback: { url: "ws://127.0.0.1:9545" } } };
+  const drizzleStore = generateStore(options);
+  return new Drizzle(options, drizzleStore);
 };
 
 it("renders App without crashing", done => {

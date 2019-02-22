@@ -9,7 +9,7 @@ const ContractFinancialsTable = ({ lastRemargin, estimatedCurrent }) => (
   <Table>
     <TableHead>
       <TableRow>
-        <TableCell></TableCell>
+        <TableCell />
         <TableCell>
           <div>Values at last remargin</div>
           <div>as of {lastRemargin.time}</div>
