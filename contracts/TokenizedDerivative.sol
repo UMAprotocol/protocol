@@ -263,7 +263,7 @@ library TokenizedDerivativeUtils {
         s.fixedParameters.symbol = symbol;
     }
 
-    function _depositAndCreateTokens(TDS.Storage storage s, uint tokensToPurchase) external onlySponsorOrApDelegate(s) {
+    function _depositAndCreateTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase) external onlySponsorOrApDelegate(s) {
         s._remarginInternal();
 
         int newTokenNav = _computeNavForTokens(s.currentTokenState.tokenPrice, tokensToPurchase);
@@ -275,17 +275,21 @@ library TokenizedDerivativeUtils {
         uint positiveTokenNav = _safeUintCast(newTokenNav);
 
         // Subtract newTokenNav from amount sent.
-        uint sentAmount = s._pullSentMargin();
-        uint depositAmount = sentAmount.sub(positiveTokenNav);
+        uint refund = s._pullSentMargin(marginForPurchase);
+        uint depositAmount = marginForPurchase.sub(positiveTokenNav);
 
         // Deposit additional margin into the short account.
         s._depositInternal(depositAmount);
 
         // Create new tokensToPurchase.
         s._createTokensInternal(tokensToPurchase, positiveTokenNav);
+
+        // Send any refund due to sending more margin than the argument indicated (should only be able to happen in the
+        // ETH case).
+        s._sendMargin(refund);
     }
 
-    function _redeemTokens(TDS.Storage storage s) external {
+    function _redeemTokens(TDS.Storage storage s, uint tokensToRedeem) external {
         require(s.state == TDS.State.Live || s.state == TDS.State.Settled);
 
         if (s.state == TDS.State.Live) {
@@ -299,14 +303,14 @@ library TokenizedDerivativeUtils {
         uint initialSupply = _totalSupply();
         require(initialSupply > 0);
 
-        uint numTokens = _pullAllAuthorizedTokens(thisErc20Token);
-        require(numTokens > 0);
-        thisErc20Token.burn(numTokens);
-        emit TokensRedeemed(s.fixedParameters.symbol, numTokens);
+        _pullAuthorizedTokens(thisErc20Token, tokensToRedeem);
+        require(tokensToRedeem > 0);
+        thisErc20Token.burn(tokensToRedeem);
+        emit TokensRedeemed(s.fixedParameters.symbol, tokensToRedeem);
 
         // Value of the tokens is just the percentage of all the tokens multiplied by the balance of the investor
         // margin account.
-        uint tokenPercentage = numTokens.mul(1 ether).div(initialSupply);
+        uint tokenPercentage = tokensToRedeem.mul(1 ether).div(initialSupply);
         uint tokenMargin = _takePercentage(_safeUintCast(s.longBalance), tokenPercentage);
 
         s.longBalance = s.longBalance.sub(_safeIntCast(tokenMargin));
@@ -316,7 +320,7 @@ library TokenizedDerivativeUtils {
         s._sendMargin(tokenMargin);
     }
 
-    function _dispute(TDS.Storage storage s) external onlySponsor(s) {
+    function _dispute(TDS.Storage storage s, uint depositMargin) external onlySponsor(s) {
         require(
             s.state == TDS.State.Live,
             "Contract must be Live to dispute"
@@ -324,10 +328,10 @@ library TokenizedDerivativeUtils {
 
         uint requiredDeposit = _safeUintCast(_takePercentage(s._getRequiredMargin(s.currentTokenState), s.fixedParameters.disputeDeposit));
 
-        uint sentAmount = s._pullSentMargin();
+        uint sendInconsistencyRefund = s._pullSentMargin(depositMargin);
 
-        require(sentAmount >= requiredDeposit);
-        uint refund = sentAmount.sub(requiredDeposit);
+        require(depositMargin >= requiredDeposit);
+        uint overpaymentRefund = depositMargin.sub(requiredDeposit);
 
         s.state = TDS.State.Disputed;
         s.endTime = s.currentTokenState.time;
@@ -340,7 +344,10 @@ library TokenizedDerivativeUtils {
 
         s._requestOraclePrice(s.endTime);
 
-        s._sendMargin(refund);
+        // Add the two types of refunds:
+        // 1. The refund for ETH sent if it was > depositMargin.
+        // 2. The refund for depositMargin > requiredDeposit.
+        s._sendMargin(sendInconsistencyRefund.add(overpaymentRefund));
     }
 
     function _withdraw(TDS.Storage storage s, uint amount) external onlySponsor(s) {
@@ -419,13 +426,23 @@ library TokenizedDerivativeUtils {
         s._settleInternal();
     }
 
-    function _createTokens(TDS.Storage storage s, uint tokensToPurchase) external onlySponsorOrApDelegate(s) {
-        s._createTokensInternal(tokensToPurchase, s._pullSentMargin());
+    function _createTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase) external onlySponsorOrApDelegate(s) {
+        uint refund = s._pullSentMargin(marginForPurchase);
+        s._createTokensInternal(tokensToPurchase, marginForPurchase);
+
+        // Send any refund due to sending more margin than the argument indicated (should only be able to happen in the
+        // ETH case).
+        s._sendMargin(refund);
     }
 
-    function _deposit(TDS.Storage storage s) external onlySponsor(s) {
+    function _deposit(TDS.Storage storage s, uint marginToDeposit) external onlySponsor(s) {
         // Only allow the s.externalAddresses.sponsor to deposit margin.
-        s._depositInternal(s._pullSentMargin());
+        uint refund = s._pullSentMargin(marginToDeposit);
+        s._depositInternal(marginToDeposit);
+
+        // Send any refund due to sending more margin than the argument indicated (should only be able to happen in the
+        // ETH case).
+        s._sendMargin(refund);
     }
 
     // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
@@ -805,13 +822,18 @@ library TokenizedDerivativeUtils {
         requiredMargin = _takePercentage(effectiveNotional, s.fixedParameters.supportedMove);
     }
 
-    function _pullSentMargin(TDS.Storage storage s) internal returns (uint amount) {
+    function _pullSentMargin(TDS.Storage storage s, uint expectedMargin) internal returns (uint refund) {
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
-            return msg.value;
+            // Refund is any amount of ETH that was sent that was above the amount that was expected.
+            // Note: SafeMath will force a revert if msg.value < expectedMargin.
+            return msg.value.sub(expectedMargin);
         } else {
             // If we expect an ERC20 token, no ETH should be sent.
             require(msg.value == 0);
-            return _pullAllAuthorizedTokens(s.externalAddresses.marginCurrency);
+            _pullAuthorizedTokens(s.externalAddresses.marginCurrency, expectedMargin);
+
+            // There is never a refund in the ERC20 case since we use the argument to determine how much to "pull".
+            return 0;
         }
     }
 
@@ -843,16 +865,14 @@ library TokenizedDerivativeUtils {
         s._settleWithPrice(oraclePrice);
     }
 
-    function _pullAllAuthorizedTokens(IERC20 erc20) private returns (uint amount) {
-        amount = erc20.allowance(msg.sender, address(this));
-
-        // If nothing was authorized, there's no point in calling a transfer.
-        if (amount > 0) {
+    function _pullAuthorizedTokens(IERC20 erc20, uint amountToPull) private {
+        // If nothing is being pulled, there's no point in calling a transfer.
+        if (amountToPull > 0) {
             // Note: we have to do balance snapshotting to handle non compliant ERC20 tokens that don't return a bool
             // in the transferFrom() function.
             uint startingBalance = erc20.balanceOf(address(this));
-            erc20.transferFrom(msg.sender, address(this), amount);
-            require(startingBalance.add(amount) == erc20.balanceOf(address(this)));
+            erc20.transferFrom(msg.sender, address(this), amountToPull);
+            require(startingBalance.add(amountToPull) == erc20.balanceOf(address(this)));
         }
     }
 
@@ -937,23 +957,23 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     }
 
     // Creates tokens with sent margin and returns additional margin.
-    function createTokens(uint tokensToPurchase) external payable {
-        derivativeStorage._createTokens(tokensToPurchase);
+    function createTokens(uint marginForPurchase, uint tokensToPurchase) external payable {
+        derivativeStorage._createTokens(marginForPurchase, tokensToPurchase);
     }
 
     // Creates tokens with sent margin and deposits additional margin in short account.
-    function depositAndCreateTokens(uint newTokenNav) external payable {
-        derivativeStorage._depositAndCreateTokens(newTokenNav);
+    function depositAndCreateTokens(uint marginForPurchase, uint newTokenNav) external payable {
+        derivativeStorage._depositAndCreateTokens(marginForPurchase, newTokenNav);
     }
 
     // Redeems tokens for margin currency.
-    function redeemTokens() external {
-        derivativeStorage._redeemTokens();
+    function redeemTokens(uint tokensToRedeem) external {
+        derivativeStorage._redeemTokens(tokensToRedeem);
     }
 
     // Triggers a price dispute for the most recent remargin time.
-    function dispute() external payable {
-        derivativeStorage._dispute();
+    function dispute(uint depositMargin) external payable {
+        derivativeStorage._dispute(depositMargin);
     }
 
     // Withdraws `amount` from short margin account.
@@ -1015,8 +1035,8 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 
     // Adds the margin sent along with the call (or in the case of an ERC20 margin currency, authorized before the call)
     // to the short account.
-    function deposit() external payable {
-        derivativeStorage._deposit();
+    function deposit(uint amountToDeposit) external payable {
+        derivativeStorage._deposit(amountToDeposit);
     }
 
     // Allows the sponsor to withdraw any ERC20 balance that is not the margin token.
