@@ -18,7 +18,9 @@ const UINT_MAX = "11579208923731619542357098500868790785326998466564056403945758
 
 class ContractDetails extends Component {
   state = {
-    loading: true,
+    loadingTokenizedDerivativeData: true,
+    loadingPriceFeedData: true,
+    loadingMarginCurrencyData: true,
     isInteractionEnabled: true,
     initiatedTransactionId: null,
     formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" }
@@ -37,7 +39,8 @@ class ContractDetails extends Component {
 
     const contractMethods = drizzle.contracts[contractKey].methods;
 
-    this.followUpRequestsStatus = FollowUpRequestsStatus.UNSENT;
+    this.priceFeedRequestsStatus = FollowUpRequestsStatus.UNSENT;
+    this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.UNSENT;
     this.setState({
       contractKey: contractKey,
       derivativeStorageDataKey: contractMethods.derivativeStorage.cacheCall(),
@@ -54,8 +57,14 @@ class ContractDetails extends Component {
       )
     });
 
-    this.unsubscribeDataFetch = drizzle.store.subscribe(() => {
-      this.fetchAndWaitOnBlockchainData();
+    this.unsubscribePriceFeedFetch = drizzle.store.subscribe(() => {
+      this.fetchPriceFeedData();
+    });
+    this.unsubscribeMarginCurrencyCheck = drizzle.store.subscribe(() => {
+      this.fetchMarginCurrencyAllowance();
+    });
+    this.unsubscribeTokenizedDerivativeCheck = drizzle.store.subscribe(() => {
+      this.waitOnTokenizedDerivativeFetch();
     });
     this.unsubscribeTxCheck = drizzle.store.subscribe(() => {
       this.checkPendingTransaction();
@@ -89,7 +98,91 @@ class ContractDetails extends Component {
     });
   }
 
-  fetchAndWaitOnBlockchainData() {
+  fetchMarginCurrencyAllowance() {
+    const { drizzle, drizzleState } = this.props;
+
+    const isContractInStore = this.state.contractKey in drizzleState.contracts;
+    if (!isContractInStore) {
+      return;
+    }
+    const contract = drizzleState.contracts[this.state.contractKey];
+
+    if (!(this.state.derivativeStorageDataKey in contract.derivativeStorage)) {
+      return;
+    }
+    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
+
+    if (this.hasEthMarginCurrency(derivativeStorage)) {
+      // Nothing to authorize, we're done.
+      this.setState({ loadingMarginCurrencyData: false });
+      this.unsubscribeMarginCurrencyCheck();
+    }
+
+    const marginCurrencyAddress = derivativeStorage.externalAddresses.marginCurrency;
+    switch (this.marginCurrencyRequestsStatus) {
+      case FollowUpRequestsStatus.UNSENT:
+        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
+        const marginCurrencyContractConfig = {
+          contractName: marginCurrencyAddress,
+          web3Contract: new drizzle.web3.eth.Contract(IERC20.abi, marginCurrencyAddress)
+        };
+        drizzle.addContract(marginCurrencyContractConfig);
+        return;
+      case FollowUpRequestsStatus.WAITING_ON_CONTRACT:
+        if (!(marginCurrencyAddress in drizzle.contracts)) {
+          return;
+        }
+        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.SENT;
+        this.setState({
+          marginCurrencyAllowanceDataKey: drizzle.contracts[marginCurrencyAddress].methods.allowance.cacheCall(
+            drizzleState.accounts[0],
+            this.props.contractAddress,
+            {}
+          )
+        });
+        return;
+      case FollowUpRequestsStatus.SENT:
+      default:
+      // Now we can continue on to checking whether idDataKey has retrieved a value.
+    }
+
+    const isMarginCurrencyAllowanceAvailable =
+      this.state.marginCurrencyAllowanceDataKey in drizzleState.contracts[marginCurrencyAddress].allowance;
+    if (!isMarginCurrencyAllowanceAvailable) {
+      return;
+    }
+
+    // All the data is now available.
+    this.setState({ loadingMarginCurrencyData: false, marginCurrencyKey: marginCurrencyAddress });
+    this.unsubscribeMarginCurrencyCheck();
+  }
+
+  waitOnTokenizedDerivativeFetch() {
+    const { drizzleState } = this.props;
+
+    const isContractInStore = this.state.contractKey in drizzleState.contracts;
+    if (!isContractInStore) {
+      return;
+    }
+    const contract = drizzleState.contracts[this.state.contractKey];
+
+    const areAllMethodValuesAvailable =
+      this.state.derivativeStorageDataKey in contract.derivativeStorage &&
+      this.state.totalSupplyDataKey in contract.totalSupply &&
+      this.state.nameDataKey in contract.name &&
+      this.state.estimatedTokenValueDataKey in contract.calcTokenValue &&
+      this.state.estimatedNavDataKey in contract.calcNAV &&
+      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance &&
+      this.state.tokenBalanceDataKey in contract.balanceOf &&
+      this.state.derivativeTokenAllowanceDataKey in contract.allowance;
+    if (!areAllMethodValuesAvailable) {
+      return;
+    }
+    this.setState({ loadingTokenizedDerivativeData: false });
+    this.unsubscribeTokenizedDerivativeCheck();
+  }
+
+  fetchPriceFeedData() {
     const { drizzle, drizzleState } = this.props;
 
     const isContractInStore = this.state.contractKey in drizzleState.contracts;
@@ -114,53 +207,26 @@ class ContractDetails extends Component {
     const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
 
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
-    const marginCurrencyAddress = derivativeStorage.externalAddresses.marginCurrency;
-    switch (this.followUpRequestsStatus) {
+    switch (this.priceFeedRequestsStatus) {
       case FollowUpRequestsStatus.UNSENT:
-        this.followUpRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
+        this.priceFeedRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
         const priceFeedContractConfig = {
           contractName: priceFeedAddress,
           web3Contract: new drizzle.web3.eth.Contract(ManualPriceFeed.abi, priceFeedAddress)
         };
         drizzle.addContract(priceFeedContractConfig);
-        if (!this.hasEthMarginCurrency(derivativeStorage)) {
-          const marginCurrencyContractConfig = {
-            contractName: marginCurrencyAddress,
-            web3Contract: new drizzle.web3.eth.Contract(IERC20.abi, marginCurrencyAddress)
-          };
-          drizzle.addContract(marginCurrencyContractConfig);
-        }
         return;
       case FollowUpRequestsStatus.WAITING_ON_CONTRACT:
         if (!(priceFeedAddress in drizzle.contracts)) {
           return;
         }
-        if (!this.hasEthMarginCurrency) {
-          if (!(marginCurrencyAddress in drizzle.contracts)) {
-            return;
-          }
-        }
-        this.followUpRequestsStatus = FollowUpRequestsStatus.SENT;
-        if (this.hasEthMarginCurrency(derivativeStorage)) {
-          this.setState({
-            idDataKey: drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
-              derivativeStorage.fixedParameters.product,
-              {}
-            )
-          });
-        } else {
-          this.setState({
-            idDataKey: drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
-              derivativeStorage.fixedParameters.product,
-              {}
-            ),
-            marginCurrencyAllowanceDataKey: drizzle.contracts[marginCurrencyAddress].methods.allowance.cacheCall(
-              drizzleState.accounts[0],
-              this.props.contractAddress,
-              {}
-            )
-          });
-        }
+        this.priceFeedRequestsStatus = FollowUpRequestsStatus.SENT;
+        this.setState({
+          idDataKey: drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
+            derivativeStorage.fixedParameters.product,
+            {}
+          )
+        });
         return;
       case FollowUpRequestsStatus.SENT:
       default:
@@ -171,21 +237,16 @@ class ContractDetails extends Component {
     if (!isLatestPriceAvailable) {
       return;
     }
-    if (!this.hasEthMarginCurrency(derivativeStorage)) {
-      const isMarginCurrencyAllowanceAvailable =
-        this.state.marginCurrencyAllowanceDataKey in drizzleState.contracts[marginCurrencyAddress].allowance;
-      if (!isMarginCurrencyAllowanceAvailable) {
-        return;
-      }
-    }
 
     // All the data is now available.
-    this.setState({ loading: false, marginCurrencyKey: marginCurrencyAddress });
-    this.unsubscribeDataFetch();
+    this.setState({ loadingPriceFeedData: false });
+    this.unsubscribePriceFeedFetch();
   }
 
   componentWillUnmount() {
-    this.unsubscribeDataFetch();
+    this.unsubscribePriceFeedFetch();
+    this.unsubscribeMarginCurrencyCheck();
+    this.unsubscribeTokenizedDerivativeCheck();
     this.unsubscribeTxCheck();
   }
 
@@ -302,7 +363,11 @@ class ContractDetails extends Component {
   };
 
   render() {
-    if (this.state.loading) {
+    if (
+      this.state.loadingTokenizedDerivativeData ||
+      this.state.loadingPriceFeedData ||
+      this.state.loadingMarginCurrencyData
+    ) {
       return <div>Looking up contract details...</div>;
     }
     const { drizzle, drizzleState } = this.props;
