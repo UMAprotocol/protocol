@@ -14,7 +14,12 @@ const PriceFeedRequestsStatus = {
 };
 
 class ContractDetails extends Component {
-  state = { loading: true, formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" } };
+  state = {
+    loading: true,
+    isInteractionEnabled: true,
+    initiatedTransactionId: null,
+    formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" }
+  };
 
   componentDidMount() {
     const { drizzle, drizzleState } = this.props;
@@ -41,8 +46,38 @@ class ContractDetails extends Component {
       tokenBalanceDataKey: contractMethods.balanceOf.cacheCall(drizzleState.accounts[0], {})
     });
 
-    this.unsubscribeFn = drizzle.store.subscribe(() => {
+    this.unsubscribeDataFetch = drizzle.store.subscribe(() => {
       this.fetchAndWaitOnBlockchainData();
+    });
+    this.unsubscribeTxCheck = drizzle.store.subscribe(() => {
+      this.checkPendingTransaction();
+    });
+  }
+
+  addPendingTransaction(initiatedTransactionId) {
+    this.setState({ initiatedTransactionId: initiatedTransactionId, isInteractionEnabled: false });
+  }
+
+  checkPendingTransaction() {
+    if (this.state.initiatedTransactionId == null) {
+      // We don't have a transaction right now.
+      return;
+    }
+    const { transactions, transactionStack } = this.props.drizzleState;
+
+    const txHash = transactionStack[this.state.initiatedTransactionId];
+    if (!txHash || !(txHash in transactions)) {
+      // The transaction is waiting on user confirmation via Metamask.
+      return;
+    }
+    if (transactions[txHash].status === "pending") {
+      return;
+    }
+    // The transaction has completed, either in error or success. Renable the buttons.
+    this.setState({
+      initiatedTransactionId: null,
+      isInteractionEnabled: true,
+      formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" }
     });
   }
 
@@ -106,11 +141,12 @@ class ContractDetails extends Component {
 
     // All the data is now available.
     this.setState({ loading: false });
-    this.unsubscribeFn();
+    this.unsubscribeDataFetch();
   }
 
   componentWillUnmount() {
-    this.unsubscribeFn();
+    this.unsubscribeDataFetch();
+    this.unsubscribeTxCheck();
   }
 
   handleFormChange = (name, event) => {
@@ -120,35 +156,31 @@ class ContractDetails extends Component {
     });
   };
 
-  resetForm = () => {
-    this.setState({ formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" } });
-  };
-
   remarginContract = () => {
     // TODO(ptare): Figure out how to listen to the state of this transaction, and disable the 'Remargin' button while
     // a remargin is pending.
-    this.props.drizzle.contracts[this.state.contractKey].methods.remargin.cacheSend({
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.remargin.cacheSend({
       from: this.props.drizzleState.accounts[0]
     });
-    this.resetForm();
+    this.addPendingTransaction(initiatedTransactionId);
   };
 
   withdrawMargin = () => {
-    this.props.drizzle.contracts[this.state.contractKey].methods.withdraw.cacheSend(
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.withdraw.cacheSend(
       this.props.drizzle.web3.utils.toWei(this.state.formInputs.withdrawAmount),
       {
         from: this.props.drizzleState.accounts[0]
       }
     );
-    this.resetForm();
+    this.addPendingTransaction(initiatedTransactionId);
   };
 
   depositMargin = () => {
-    this.props.drizzle.contracts[this.state.contractKey].methods.deposit.cacheSend({
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.deposit.cacheSend({
       from: this.props.drizzleState.accounts[0],
       value: this.getEthToAttachIfNeeded(this.props.drizzle.web3.utils.toWei(this.state.formInputs.depositAmount))
     });
-    this.resetForm();
+    this.addPendingTransaction(initiatedTransactionId);
   };
 
   createTokens = () => {
@@ -162,26 +194,26 @@ class ContractDetails extends Component {
       .mul(numTokensInWei)
       .div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
 
-    this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
       web3.utils.toWei(this.state.formInputs.createAmount),
       {
         from: this.props.drizzleState.accounts[0],
         value: this.getEthToAttachIfNeeded(marginCurrencyAmount)
       }
     );
-    this.resetForm();
+    this.addPendingTransaction(initiatedTransactionId);
   };
 
   redeemTokens = () => {
     // TODO(mrice32): The contract's `redeemTokens` method doesn't currently take an argument, so this call doesn't
     // work until the contract is updated.
-    this.props.drizzle.contracts[this.state.contractKey].methods.redeemTokens.cacheSend(
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.redeemTokens.cacheSend(
       this.props.drizzle.web3.utils.toWei(this.state.formInputs.redeemAmount),
       {
         from: this.props.drizzleState.accounts[0]
       }
     );
-    this.resetForm();
+    this.addPendingTransaction(initiatedTransactionId);
   };
 
   getEthToAttachIfNeeded(marginCurrencyAmount) {
@@ -287,6 +319,7 @@ class ContractDetails extends Component {
           redeemFn={this.redeemTokens}
           formInputs={this.state.formInputs}
           handleChangeFn={this.handleFormChange}
+          isInteractionEnabled={this.state.isInteractionEnabled}
         />
       </div>
     );
