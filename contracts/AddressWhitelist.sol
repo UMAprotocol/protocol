@@ -20,7 +20,7 @@ contract AddressWhitelist is Ownable {
             return;
         }
 
-        // Only append the address in the index if it has never been included before
+        // Only append new addresses to the array, never a duplicate
         if (whitelist[newElement] == Status.None) {
             whitelistIndices[count] = newElement;
             count++;
