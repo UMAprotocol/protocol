@@ -75,6 +75,8 @@ class ContractDetails extends Component {
     this.setState({ initiatedTransactionId: initiatedTransactionId, isInteractionEnabled: false });
   }
 
+  // Checks for the state of pending transactions, and is responsible for wiping out any form inputs and reenabling
+  // interaction after a pending transaction completes. Assumes that there could only be one transaction at a time.
   checkPendingTransaction() {
     if (this.state.initiatedTransactionId == null) {
       // We don't have a transaction right now.
@@ -97,66 +99,7 @@ class ContractDetails extends Component {
       formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" }
     });
   }
-
-  fetchMarginCurrencyAllowance() {
-    const { drizzle, drizzleState } = this.props;
-
-    const isContractInStore = this.state.contractKey in drizzleState.contracts;
-    if (!isContractInStore) {
-      return;
-    }
-    const contract = drizzleState.contracts[this.state.contractKey];
-
-    if (!(this.state.derivativeStorageDataKey in contract.derivativeStorage)) {
-      return;
-    }
-    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
-
-    if (this.hasEthMarginCurrency(derivativeStorage)) {
-      // Nothing to authorize, we're done.
-      this.setState({ loadingMarginCurrencyData: false });
-      this.unsubscribeMarginCurrencyCheck();
-    }
-
-    const marginCurrencyAddress = derivativeStorage.externalAddresses.marginCurrency;
-    switch (this.marginCurrencyRequestsStatus) {
-      case FollowUpRequestsStatus.UNSENT:
-        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
-        const marginCurrencyContractConfig = {
-          contractName: marginCurrencyAddress,
-          web3Contract: new drizzle.web3.eth.Contract(IERC20.abi, marginCurrencyAddress)
-        };
-        drizzle.addContract(marginCurrencyContractConfig);
-        return;
-      case FollowUpRequestsStatus.WAITING_ON_CONTRACT:
-        if (!(marginCurrencyAddress in drizzle.contracts)) {
-          return;
-        }
-        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.SENT;
-        this.setState({
-          marginCurrencyAllowanceDataKey: drizzle.contracts[marginCurrencyAddress].methods.allowance.cacheCall(
-            drizzleState.accounts[0],
-            this.props.contractAddress,
-            {}
-          )
-        });
-        return;
-      case FollowUpRequestsStatus.SENT:
-      default:
-      // Now we can continue on to checking whether idDataKey has retrieved a value.
-    }
-
-    const isMarginCurrencyAllowanceAvailable =
-      this.state.marginCurrencyAllowanceDataKey in drizzleState.contracts[marginCurrencyAddress].allowance;
-    if (!isMarginCurrencyAllowanceAvailable) {
-      return;
-    }
-
-    // All the data is now available.
-    this.setState({ loadingMarginCurrencyData: false, marginCurrencyKey: marginCurrencyAddress });
-    this.unsubscribeMarginCurrencyCheck();
-  }
-
+  // Waits on the initial data fetch from TokenizedDerivative being available.
   waitOnTokenizedDerivativeFetch() {
     const { drizzleState } = this.props;
 
@@ -182,6 +125,69 @@ class ContractDetails extends Component {
     this.unsubscribeTokenizedDerivativeCheck();
   }
 
+  // Requires `derivativeStorage` to have been fetched, and then fetches the margin currency allowance.
+  fetchMarginCurrencyAllowance() {
+    const { drizzle, drizzleState } = this.props;
+
+    const isContractInStore = this.state.contractKey in drizzleState.contracts;
+    if (!isContractInStore) {
+      return;
+    }
+    const contract = drizzleState.contracts[this.state.contractKey];
+
+    if (!(this.state.derivativeStorageDataKey in contract.derivativeStorage)) {
+      return;
+    }
+    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
+
+    if (this.hasEthMarginCurrency(derivativeStorage)) {
+      // Nothing to authorize, we're done.
+      this.setState({ loadingMarginCurrencyData: false });
+      this.unsubscribeMarginCurrencyCheck();
+    }
+
+    const marginCurrencyAddress = derivativeStorage.externalAddresses.marginCurrency;
+    // Use the address as the key to be able to pull up info for different margin currencies
+    const marginCurrencyKey = marginCurrencyAddress;
+    switch (this.marginCurrencyRequestsStatus) {
+      case FollowUpRequestsStatus.UNSENT:
+        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
+        const marginCurrencyContractConfig = {
+          contractName: marginCurrencyKey,
+          web3Contract: new drizzle.web3.eth.Contract(IERC20.abi, marginCurrencyAddress)
+        };
+        drizzle.addContract(marginCurrencyContractConfig);
+        return;
+      case FollowUpRequestsStatus.WAITING_ON_CONTRACT:
+        if (!(marginCurrencyKey in drizzle.contracts)) {
+          return;
+        }
+        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.SENT;
+        this.setState({
+          marginCurrencyAllowanceDataKey: drizzle.contracts[marginCurrencyKey].methods.allowance.cacheCall(
+            drizzleState.accounts[0],
+            this.props.contractAddress,
+            {}
+          )
+        });
+        return;
+      case FollowUpRequestsStatus.SENT:
+      default:
+      // Now we can continue on to checking whether marginCurrencyKey has retrieved a value.
+    }
+
+    const isMarginCurrencyAllowanceAvailable =
+      this.state.marginCurrencyAllowanceDataKey in drizzleState.contracts[marginCurrencyKey].allowance;
+    if (!isMarginCurrencyAllowanceAvailable) {
+      return;
+    }
+
+    // All the data is now available.
+    this.setState({ loadingMarginCurrencyData: false, marginCurrencyKey: marginCurrencyKey });
+    this.unsubscribeMarginCurrencyCheck();
+  }
+
+  // Requires `derivativeStorage` to have been fetched, and then fetches price feed data.
   fetchPriceFeedData() {
     const { drizzle, drizzleState } = this.props;
 
@@ -443,6 +449,8 @@ class ContractDetails extends Component {
             .value
         )
         .gte(minAllowance);
+    // We either present the user with the buttons to pre-authorize the contract, or if they've already preauthorized,
+    // with the buttons to deposit, remargin, etc.
     if (!isDerivativeTokenAuthorized || !isMarginCurrencyAuthorized) {
       interactions = (
         <TokenPreapproval
