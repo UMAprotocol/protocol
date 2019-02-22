@@ -9,7 +9,7 @@ import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
 import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
 
 // Used to track the status of price feed requests via Drizzle.
-const PriceFeedRequestsStatus = {
+const FollowUpRequestsStatus = {
   UNSENT: 1,
   WAITING_ON_CONTRACT: 2,
   SENT: 3
@@ -37,7 +37,7 @@ class ContractDetails extends Component {
 
     const contractMethods = drizzle.contracts[contractKey].methods;
 
-    this.priceFeedRequestsStatus = PriceFeedRequestsStatus.UNSENT;
+    this.followUpRequestsStatus = FollowUpRequestsStatus.UNSENT;
     this.setState({
       contractKey: contractKey,
       derivativeStorageDataKey: contractMethods.derivativeStorage.cacheCall(),
@@ -115,9 +115,9 @@ class ContractDetails extends Component {
 
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     const marginCurrencyAddress = derivativeStorage.externalAddresses.marginCurrency;
-    switch (this.priceFeedRequestsStatus) {
-      case PriceFeedRequestsStatus.UNSENT:
-        this.priceFeedRequestsStatus = PriceFeedRequestsStatus.WAITING_ON_CONTRACT;
+    switch (this.followUpRequestsStatus) {
+      case FollowUpRequestsStatus.UNSENT:
+        this.followUpRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
         const priceFeedContractConfig = {
           contractName: priceFeedAddress,
           web3Contract: new drizzle.web3.eth.Contract(ManualPriceFeed.abi, priceFeedAddress)
@@ -131,7 +131,7 @@ class ContractDetails extends Component {
           drizzle.addContract(marginCurrencyContractConfig);
         }
         return;
-      case PriceFeedRequestsStatus.WAITING_ON_CONTRACT:
+      case FollowUpRequestsStatus.WAITING_ON_CONTRACT:
         if (!(priceFeedAddress in drizzle.contracts)) {
           return;
         }
@@ -140,7 +140,7 @@ class ContractDetails extends Component {
             return;
           }
         }
-        this.priceFeedRequestsStatus = PriceFeedRequestsStatus.SENT;
+        this.followUpRequestsStatus = FollowUpRequestsStatus.SENT;
         if (this.hasEthMarginCurrency(derivativeStorage)) {
           this.setState({
             idDataKey: drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
@@ -162,7 +162,7 @@ class ContractDetails extends Component {
           });
         }
         return;
-      case PriceFeedRequestsStatus.SENT:
+      case FollowUpRequestsStatus.SENT:
       default:
       // Now we can continue on to checking whether idDataKey has retrieved a value.
     }
@@ -170,6 +170,13 @@ class ContractDetails extends Component {
     const isLatestPriceAvailable = this.state.idDataKey in drizzleState.contracts[priceFeedAddress].latestPrice;
     if (!isLatestPriceAvailable) {
       return;
+    }
+    if (!this.hasEthMarginCurrency(derivativeStorage)) {
+      const isMarginCurrencyAllowanceAvailable =
+        this.state.marginCurrencyAllowanceDataKey in drizzleState.contracts[marginCurrencyAddress].allowance;
+      if (!isMarginCurrencyAllowanceAvailable) {
+        return;
+      }
     }
 
     // All the data is now available.
@@ -375,8 +382,8 @@ class ContractDetails extends Component {
       interactions = (
         <TokenPreapproval
           isInteractionEnabled={this.state.isInteractionEnabled}
-          isDerivativeTokenAuthorized={false}
-          isMarginCurrencyAuthorized={false}
+          isDerivativeTokenAuthorized={isDerivativeTokenAuthorized}
+          isMarginCurrencyAuthorized={isMarginCurrencyAuthorized}
           approveDerivativeTokensFn={this.approveDerivativeTokens}
           approveMarginCurrencyFn={this.approveMarginCurrency}
         />

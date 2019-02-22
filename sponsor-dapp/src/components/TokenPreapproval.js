@@ -12,9 +12,9 @@ class TokenPreapproval extends Component {
       // safe.
       return null;
     } else if (this.props.isMarginCurrencyAuthorized && !this.props.isDerivativeTokenAuthorized) {
-      copy = <div>You need to authorize margin currency!</div>;
+      copy = <div>You need to authorize derivative tokens!</div>;
     } else if (!this.props.isMarginCurrencyAuthorized && this.props.isDerivativeTokenAuthorized) {
-      copy = <div>You need to authorize derivative token!</div>;
+      copy = <div>You need to authorize margin currency!</div>;
     } else {
       copy = <div>You need to authorize both!</div>;
     }
