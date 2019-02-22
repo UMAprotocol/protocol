@@ -1930,7 +1930,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
     });
 
-    it(annotateTitle("Correct refund"), async function() {
+    it(annotateTitle("Argument/value sent inconsistency"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
 
