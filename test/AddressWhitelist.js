@@ -90,9 +90,9 @@ contract("AddressWhitelist", function(accounts) {
 
     await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
 
-    const whitelist = await addressWhitelist.getWhitelist({ from: owner });
-    assert(whitelist.length == 2);
-    assert(whitelist.indexOf(web3.utils.toChecksumAddress(contractToReAdd)) != -1);
-    assert(whitelist.indexOf(web3.utils.toChecksumAddress(contractToAdd)) != -1);
+    const whitelist = await addressWhitelist.getWhitelist();
+    assert.equal(whitelist.length, 2);
+    assert.notEqual(whitelist.indexOf(web3.utils.toChecksumAddress(contractToReAdd)), -1);
+    assert.notEqual(whitelist.indexOf(web3.utils.toChecksumAddress(contractToAdd)) , -1);
   });
 });

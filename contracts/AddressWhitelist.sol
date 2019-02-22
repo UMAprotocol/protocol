@@ -38,6 +38,11 @@ contract AddressWhitelist is Ownable {
     }
 
     // Gets all addresses that are currently included in the whitelist
+    // Note: This method skips over, but still iterates through addresses.
+    // It is possible for this call to run out of gas if a large number of
+    // addresses have been removed. To prevent this unlikely scenario, we can
+    // modify the implementation so that when addresses are removed, the last addresses
+    // in the array is moved to the empty index.
     function getWhitelist() external view returns (address[] memory activeWhitelist) {
         // Determine size of whitelist first
         uint activeCount = 0;
