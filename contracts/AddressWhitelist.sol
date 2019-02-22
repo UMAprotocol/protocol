@@ -10,8 +10,7 @@ contract AddressWhitelist is Ownable {
     enum Status { None, In, Out }
     mapping(address => Status) private whitelist;
 
-    uint private count;
-    mapping(uint => address) private whitelistIndices;
+    address[] private whitelistIndices;
 
     // Adds an address to the whitelist
     function addToWhitelist(address newElement) external onlyOwner {
@@ -22,8 +21,7 @@ contract AddressWhitelist is Ownable {
 
         // Only append new addresses to the array, never a duplicate
         if (whitelist[newElement] == Status.None) {
-            whitelistIndices[count] = newElement;
-            count++;
+            whitelistIndices.push(newElement);
         }
 
         whitelist[newElement] = Status.In;
@@ -43,7 +41,7 @@ contract AddressWhitelist is Ownable {
     function getWhitelist() external view returns (address[] memory activeWhitelist) {
         // Determine size of whitelist first
         uint activeCount = 0;
-        for (uint i = 0; i < count; i++) {
+        for (uint i = 0; i < whitelistIndices.length; i++) {
             if (whitelist[whitelistIndices[i]] == Status.In) {
                 activeCount++;
             }
@@ -52,7 +50,7 @@ contract AddressWhitelist is Ownable {
         // Populate whitelist
         activeWhitelist = new address[](activeCount);
         activeCount = 0;
-        for (uint i = 0; i < count; i++) {
+        for (uint i = 0; i < whitelistIndices.length; i++) {
             address addr = whitelistIndices[i];
             if (whitelist[addr] == Status.In) {
                 activeWhitelist[activeCount] = addr;
