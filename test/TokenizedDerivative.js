@@ -108,7 +108,11 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   // All test cases are run for each "variant" (or test parameterization) listed in this array.
-  let testVariants = [{ useErc20: true }, { usrErc20: false }];
+  let testVariants = [
+    { useErc20: true, preAuth: true },
+    { useErc20: true, preAuth: false },
+    { usrErc20: false, preAuth: false }
+  ];
 
   testVariants.forEach(testVariant => {
     // The following function declarations depend on the testVariant. To avoid passing it around, they are declared
@@ -159,6 +163,21 @@ contract("TokenizedDerivative", function(accounts) {
         (await derivativeContract.derivativeStorage()).fixedParameters.fixedFeePerSecond
       );
       feesPerInterval = feesPerSecond.muln(priceFeedUpdatesInterval);
+
+      // Pre-auth when required.
+      if (testVariant.preAuth) {
+        const uintMax = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+
+        // Pre auth the margin currency.
+        await marginToken.approve(derivativeContract.address, uintMax, { from: sponsor });
+        await marginToken.approve(derivativeContract.address, uintMax, { from: thirdParty });
+        await marginToken.approve(derivativeContract.address, uintMax, { from: apDelegate });
+
+        // Pre auth the derivative token.
+        await derivativeContract.approve(derivativeContract.address, uintMax, { from: sponsor });
+        await derivativeContract.approve(derivativeContract.address, uintMax, { from: thirdParty });
+        await derivativeContract.approve(derivativeContract.address, uintMax, { from: apDelegate });
+      }
     };
 
     const getMarginParams = async (value, sender) => {
@@ -168,13 +187,25 @@ contract("TokenizedDerivative", function(accounts) {
 
       let callParams = { from: sender };
       if (value) {
-        if (testVariant.useErc20) {
-          await marginToken.approve(derivativeContract.address, value, { from: sender });
-        } else {
+        if (!testVariant.useErc20) {
           callParams.value = value;
+        } else if (!testVariant.preAuth) {
+          await marginToken.approve(derivativeContract.address, value, { from: sender });
         }
       }
       return callParams;
+    };
+
+    const approveDerivativeTokens = async (value, sender) => {
+      if (testVariant.preAuth) {
+        return;
+      }
+
+      if (sender === undefined) {
+        sender = sponsor;
+      }
+
+      await derivativeContract.approve(derivativeContract.address, value, { from: sender });
     };
 
     const getMarginBalance = async address => {
@@ -190,7 +221,11 @@ contract("TokenizedDerivative", function(accounts) {
     };
 
     const annotateTitle = title => {
-      return (testVariant.useErc20 ? "ERC20 Margin | " : "ETH Margin   | ") + title;
+      return (
+        (testVariant.useErc20 ? "ERC20 Margin " : "ETH Margin   ") +
+        (testVariant.preAuth ? "(Pre-Authorized) | " : "                 | ") +
+        title
+      );
     };
 
     // Test cases.
@@ -226,7 +261,10 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), web3.utils.toWei("0", "ether"));
 
       // Check that the deposit function correctly credits the short account.
-      let result = await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.21", "ether")));
+      let result = await derivativeContract.deposit(
+        web3.utils.toWei("0.21", "ether"),
+        await getMarginParams(web3.utils.toWei("0.21", "ether"))
+      );
       truffleAssert.eventEmitted(result, "Deposited", ev => {
         return ev.amount.toString() === web3.utils.toWei("0.21", "ether");
       });
@@ -246,6 +284,7 @@ contract("TokenizedDerivative", function(accounts) {
         await didContractThrow(
           derivativeContract.createTokens(
             web3.utils.toWei("3", "ether"),
+            web3.utils.toWei("3", "ether"),
             await getMarginParams(web3.utils.toWei("3", "ether"))
           )
         )
@@ -254,6 +293,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Succeeds because exact is true and requested NAV (1 ETH) would not cause the short account to go below its
       // margin requirement.
       result = await derivativeContract.createTokens(
+        web3.utils.toWei("1", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1", "ether"))
       );
@@ -272,6 +312,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Succeeds because there is enough margin to support an additional 1 ETH of NAV.
       await derivativeContract.createTokens(
         web3.utils.toWei("1", "ether"),
+        web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1", "ether"))
       );
 
@@ -284,7 +325,10 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(nav.toString(), web3.utils.toWei("2", "ether"));
 
       // This number was chosen so that once the price doubles, the sponsor will not default.
-      await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("2.6", "ether")));
+      await derivativeContract.deposit(
+        web3.utils.toWei("2.6", "ether"),
+        await getMarginParams(web3.utils.toWei("2.6", "ether"))
+      );
 
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
 
@@ -329,14 +373,18 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(nav.toString(), expectedNav.toString());
       assert.equal(longBalance.toString(), expectedNav.toString());
 
-      // Should fail because the ERC20 tokens have not been authorized.
-      assert(await didContractThrow(derivativeContract.redeemTokens({ from: sponsor })));
+      // Should fail because the ERC20 tokens have not been authorized (only valid when the test didn't pre authorize token usage.)
+      if (!testVariant.preAuth) {
+        assert(
+          await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor }))
+        );
+      }
 
       let initialContractBalance = await getContractBalance();
 
       // Attempt redemption of half of the tokens.
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: sponsor });
-      result = await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
+      result = await derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
       truffleAssert.eventEmitted(result, "TokensRedeemed", ev => {
         return ev.numTokensRedeemed.toString() === web3.utils.toWei("1", "ether");
       });
@@ -353,7 +401,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(totalSupply.toString(), web3.utils.toWei("1", "ether"));
       assert.equal(longBalance.toString(), expectedNav.toString());
       assert.equal(nav.toString(), expectedNav.toString());
-      assert.equal(allowance.toString(), "0");
+
+      // The allowance shouldn't be compared against zero when pre-authorized.
+      if (!testVariant.preAuth) {
+        assert.equal(allowance.toString(), "0");
+      }
 
       let expectedBalanceChange = expectedNav;
       let actualBalanceChange = initialContractBalance.sub(newContractBalance);
@@ -437,10 +489,10 @@ contract("TokenizedDerivative", function(accounts) {
       let remainingBalance = await derivativeContract.balanceOf(sponsor);
       await derivativeContract.transfer(thirdParty, remainingBalance.toString(), { from: sponsor });
 
-      await derivativeContract.approve(derivativeContract.address, remainingBalance.toString(), { from: thirdParty });
+      await approveDerivativeTokens(remainingBalance.toString(), thirdParty);
       initialContractBalance = await getContractBalance();
       let initialUserBalance = await getMarginBalance(thirdParty);
-      await derivativeContract.redeemTokens({ from: thirdParty });
+      await derivativeContract.redeemTokens(remainingBalance.toString(), { from: thirdParty });
       newContractBalance = await getContractBalance();
       let newUserBalance = await getMarginBalance(thirdParty);
 
@@ -463,6 +515,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("3", "ether"),
         web3.utils.toWei("2", "ether"),
         await getMarginParams(web3.utils.toWei("3", "ether"))
       );
@@ -579,6 +632,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract.
       let result = await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.2", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.2", "ether"))
       );
@@ -656,6 +710,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.2", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.2", "ether"))
       );
@@ -708,6 +763,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.2", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.2", "ether"))
       );
@@ -726,7 +782,10 @@ contract("TokenizedDerivative", function(accounts) {
       const presettlementSponsorBalance = (await derivativeContract.derivativeStorage()).shortBalance;
 
       const disputeFee = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
-      let result = await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
+      let result = await derivativeContract.dispute(
+        disputeFee.toString(),
+        await getMarginParams(disputeFee.toString())
+      );
       truffleAssert.eventEmitted(result, "Disputed", ev => {
         return ev.navDisputed.toString() === nav.toString() && ev.timeDisputed.toString() === disputeTime.toString();
       });
@@ -752,8 +811,8 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Redeem tokens and withdraw money.
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
       await derivativeContract.withdraw(shortBalance.toString(), { from: sponsor });
 
       contractBalance = await getContractBalance();
@@ -766,6 +825,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.5", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.5", "ether"))
       );
@@ -775,7 +835,7 @@ contract("TokenizedDerivative", function(accounts) {
       const disputeTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
       // Dispute the current price.
       let disputeFee = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
-      await derivativeContract.dispute(await getMarginParams(disputeFee.toString()));
+      await derivativeContract.dispute(disputeFee.toString(), await getMarginParams(disputeFee.toString()));
       state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "1");
 
@@ -818,8 +878,8 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), web3.utils.toWei("0.5", "ether"));
 
       // Redeem tokens and withdraw money.
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
       await derivativeContract.withdraw(shortBalance.toString(), { from: sponsor });
 
       contractBalance = await getContractBalance();
@@ -833,6 +893,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.5", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.5", "ether"))
       );
@@ -908,6 +969,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.5", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.5", "ether"))
       );
@@ -955,6 +1017,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.5", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.5", "ether"))
       );
@@ -1053,6 +1116,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.5", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.5", "ether"))
       );
@@ -1084,7 +1148,10 @@ contract("TokenizedDerivative", function(accounts) {
       await deployNewTokenizedDerivative();
 
       // Deposit 1 ETH with 0 contract NAV to allow the only limiting factor on withdrawals to be the throttling.
-      await derivativeContract.deposit(await getMarginParams(web3.utils.toWei("1", "ether")));
+      await derivativeContract.deposit(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1", "ether"))
+      );
 
       // Cannot withdraw > 33% (or 0.33).
       assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.4", "ether"), { from: sponsor })));
@@ -1122,6 +1189,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.6", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.6", "ether"))
       );
@@ -1197,6 +1265,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.075", "ether"),
         web3.utils.toWei("0.5", "ether"),
         await getMarginParams(web3.utils.toWei("1.075", "ether"))
       );
@@ -1220,8 +1289,8 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Make sure the balances are withdrawable.
       await derivativeContract.withdraw(web3.utils.toWei("0.05"), { from: sponsor });
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("0.5", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("0.5", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("0.5", "ether"), { from: sponsor });
       assert.equal((await getContractBalance()).toString(), "0");
 
       // Reset Oracle fee.
@@ -1237,6 +1306,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.075", "ether"),
         web3.utils.toWei("0.5", "ether"),
         await getMarginParams(web3.utils.toWei("1.075", "ether"))
       );
@@ -1261,8 +1331,8 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Make sure the balances are withdrawable.
       await derivativeContract.withdraw(web3.utils.toWei("0.05"), { from: sponsor });
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("0.5", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("0.5", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("0.5", "ether"), { from: sponsor });
       assert.equal((await getContractBalance()).toString(), "0");
 
       // Reset Oracle fee.
@@ -1278,6 +1348,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.075", "ether"),
         web3.utils.toWei("0.5", "ether"),
         await getMarginParams(web3.utils.toWei("1.075", "ether"))
       );
@@ -1285,7 +1356,10 @@ contract("TokenizedDerivative", function(accounts) {
       // Push a new price and dispute it.
       await pushPrice(web3.utils.toWei("1", "ether"));
       await derivativeContract.remargin({ from: sponsor });
-      await derivativeContract.dispute(await getMarginParams(web3.utils.toWei("0.025", "ether")));
+      await derivativeContract.dispute(
+        web3.utils.toWei("0.025", "ether"),
+        await getMarginParams(web3.utils.toWei("0.025", "ether"))
+      );
 
       // Resolve it to a defaulting price.
       const disputeTime = (await derivativeContract.derivativeStorage()).currentTokenState.time.toString();
@@ -1302,8 +1376,8 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Make sure the balances are withdrawable.
       await derivativeContract.withdraw(web3.utils.toWei("0.075"), { from: sponsor });
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("0.5", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("0.5", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("0.5", "ether"), { from: sponsor });
       assert.equal((await getContractBalance()).toString(), "0");
 
       // Reset Oracle fee.
@@ -1317,6 +1391,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.6", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.6", "ether"))
       );
@@ -1326,7 +1401,12 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Tokens cannot be created because the contract has expired.
       assert(
-        await didContractThrow(derivativeContract.createTokens(await getMarginParams(web3.utils.toWei("1", "ether"))))
+        await didContractThrow(
+          derivativeContract.createTokens(
+            web3.utils.toWei("1", "ether"),
+            await getMarginParams(web3.utils.toWei("1", "ether"))
+          )
+        )
       );
     });
 
@@ -1339,6 +1419,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(
         await didContractThrow(
           derivativeContract.depositAndCreateTokens(
+            web3.utils.toWei("1.05", "ether"),
             web3.utils.toWei("1", "ether"),
             await getMarginParams(web3.utils.toWei("1.05", "ether"))
           )
@@ -1357,6 +1438,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(
         await didContractThrow(
           derivativeContract.depositAndCreateTokens(
+            web3.utils.toWei("1.5", "ether"),
             web3.utils.toWei("1", "ether"),
             await getMarginParams(web3.utils.toWei("1.5", "ether"), apDelegate)
           )
@@ -1371,6 +1453,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // AP Delegate can call depositAndCreate().
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.5", "ether"),
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("1.5", "ether"), apDelegate)
       );
@@ -1378,21 +1461,23 @@ contract("TokenizedDerivative", function(accounts) {
       // AP Delegate can call createTokens.
       await derivativeContract.createTokens(
         web3.utils.toWei("0.1", "ether"),
+        web3.utils.toWei("0.1", "ether"),
         await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate)
       );
 
       // AP Delegate can call redeemTokens.
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1.1", "ether"), {
-        from: apDelegate
-      });
-      await derivativeContract.redeemTokens({ from: apDelegate });
+      await approveDerivativeTokens(web3.utils.toWei("1.1", "ether"), apDelegate);
+      await derivativeContract.redeemTokens(web3.utils.toWei("1.1", "ether"), { from: apDelegate });
 
       assert(
         await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: apDelegate }))
       );
       assert(
         await didContractThrow(
-          derivativeContract.deposit(await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate))
+          derivativeContract.deposit(
+            web3.utils.toWei("0.1", "ether"),
+            await getMarginParams(web3.utils.toWei("0.1", "ether"), apDelegate)
+          )
         )
       );
 
@@ -1403,6 +1488,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(
         await didContractThrow(
           derivativeContract.depositAndCreateTokens(
+            web3.utils.toWei("1.5", "ether"),
             web3.utils.toWei("1", "ether"),
             await getMarginParams(web3.utils.toWei("1.5", "ether"), apDelegate)
           )
@@ -1445,6 +1531,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("3", "ether"),
         web3.utils.toWei("2", "ether"),
         await getMarginParams(web3.utils.toWei("3", "ether"))
       );
@@ -1505,6 +1592,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("3", "ether"),
         web3.utils.toWei("2", "ether"),
         await getMarginParams(web3.utils.toWei("3", "ether"))
       );
@@ -1585,6 +1673,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("3", "ether"),
         web3.utils.toWei("2", "ether"),
         await getMarginParams(web3.utils.toWei("3", "ether"))
       );
@@ -1617,8 +1706,8 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(storage.shortBalance.toString(), contractBalance.toString());
 
       // Redeem half of the tokens.
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
       //     = 1 * 0.5 * (1 + 2 * ((0.5 - 2) / 2))
@@ -1652,10 +1741,12 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(totalSupply.toString(), web3.utils.toWei("1", "ether"));
 
       // Ensure token creation is still limited by the margin requirement.
-      assert(await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("125", "ether"), { from: sponsor })));
+      assert(
+        await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("125", "ether"), { from: sponsor }))
+      );
 
       // Should be able to create tokens without sending any margin, since the token price is negative.
-      await derivativeContract.createTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
+      await derivativeContract.createTokens("0", web3.utils.toWei("1", "ether"), { from: sponsor });
 
       // Total supply should be 2 tokens after creation.
       totalSupply = await derivativeContract.totalSupply();
@@ -1721,6 +1812,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("3", "ether"),
         web3.utils.toWei("2", "ether"),
         await getMarginParams(web3.utils.toWei("3", "ether"))
       );
@@ -1753,8 +1845,8 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(storage.shortBalance.toString(), contractBalance.toString());
 
       // Redeem half of the tokens.
-      await derivativeContract.approve(derivativeContract.address, web3.utils.toWei("1", "ether"), { from: sponsor });
-      await derivativeContract.redeemTokens({ from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
 
       // nav = quantity * lastTokenPrice * (1 + leverage * ((currentUnderlyingPrice - lastUnderlyingPrice) / lastUnderlyingPrice))
       //     = 1 * 0.5 * (1 + 2 * ((0.5 - 2) / 2))
@@ -1788,7 +1880,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(totalSupply.toString(), web3.utils.toWei("1", "ether"));
 
       // Should be able to create tokens without sending any margin, since the token price is negative.
-      await derivativeContract.createTokens(web3.utils.toWei("1", "ether"), { from: sponsor });
+      await derivativeContract.createTokens("0", web3.utils.toWei("1", "ether"), { from: sponsor });
 
       // Total supply should be 2 tokens after creation.
       totalSupply = await derivativeContract.totalSupply();
@@ -1838,12 +1930,91 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
     });
 
+    it(annotateTitle("Argument/value sent inconsistency"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative();
+
+      // Test deposit and create for correct margin handling.
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("2", "ether"),
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("3", "ether"))
+      );
+
+      assert.equal((await getContractBalance()).toString(), web3.utils.toWei("2", "ether"));
+
+      // Test deposit for correct margin handling.
+      await derivativeContract.deposit(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("2", "ether"))
+      );
+
+      assert.equal((await getContractBalance()).toString(), web3.utils.toWei("3", "ether"));
+
+      // Check redeem for correct token handling.
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
+      await derivativeContract.redeemTokens(web3.utils.toWei("0.5", "ether"), { from: sponsor });
+
+      assert.equal(await derivativeContract.balanceOf(sponsor), web3.utils.toWei("0.5", "ether"));
+
+      // Verify that if less margin is sent (in the non pre-approval case) than specified in the arguments, all methods
+      // that add margin or tokens will revert.
+      if (!testVariant.preAuth) {
+        // All methods should revert if less margin is specified than is sent.
+        assert(
+          await didContractThrow(
+            derivativeContract.depositAndCreateTokens(
+              web3.utils.toWei("3", "ether"),
+              web3.utils.toWei("1", "ether"),
+              await getMarginParams(web3.utils.toWei("2", "ether"))
+            )
+          )
+        );
+
+        assert(
+          await didContractThrow(
+            derivativeContract.deposit(
+              web3.utils.toWei("2", "ether"),
+              await getMarginParams(web3.utils.toWei("1", "ether"))
+            )
+          )
+        );
+
+        await approveDerivativeTokens(web3.utils.toWei("0.25", "ether"));
+        assert(
+          await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("0.5", "ether"), { from: sponsor }))
+        );
+
+        assert(
+          await didContractThrow(
+            derivativeContract.dispute(
+              web3.utils.toWei("2", "ether"),
+              await getMarginParams(web3.utils.toWei("1", "ether"))
+            )
+          )
+        );
+      }
+
+      // Verify correct handling of margin in dispute.
+      await derivativeContract.dispute(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("2", "ether"))
+      );
+
+      const derivativeStorage = await derivativeContract.derivativeStorage();
+      const depositAmount = web3.utils.toBN((await derivativeContract.derivativeStorage()).disputeInfo.deposit);
+      const startingContractBalance = web3.utils.toBN(web3.utils.toWei("2.5", "ether"));
+
+      assert.equal((await getContractBalance()).toString(), startingContractBalance.add(depositAmount).toString());
+    });
+
     it(annotateTitle("Withdraw unexpected ERC20"), async function() {
       // Deploy TokenizedDerivative with 0 fee to make computations simpler.
       await deployNewTokenizedDerivative();
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1.075", "ether"),
         web3.utils.toWei("0.5", "ether"),
         await getMarginParams(web3.utils.toWei("1.075", "ether"))
       );
@@ -1877,7 +2048,10 @@ contract("TokenizedDerivative", function(accounts) {
       });
 
       // Dispute the new price.
-      await derivativeContract.dispute(await getMarginParams(web3.utils.toWei("0.025", "ether")));
+      await derivativeContract.dispute(
+        web3.utils.toWei("0.025", "ether"),
+        await getMarginParams(web3.utils.toWei("0.025", "ether"))
+      );
 
       // Resolve it to a defaulting price.
       const disputeTime = (await derivativeContract.derivativeStorage()).currentTokenState.time.toString();
