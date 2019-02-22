@@ -51,8 +51,7 @@ class Dashboard extends React.Component {
     contractDetailsOpen: false,
     openModalContractAddress: null,
     createContractOpen: false,
-    isCreateDisabled: true,
-    userAddress: "0x0"
+    isCreateDisabled: true
   };
 
   handleDetailsModalOpen = address => {
@@ -126,7 +125,7 @@ class Dashboard extends React.Component {
   }
 
   render() {
-    const { classes } = this.props;
+    const { classes, drizzleState } = this.props;
     const isCreateDisabled = this.state.isCreateDisabled;
 
     return (
@@ -139,7 +138,7 @@ class Dashboard extends React.Component {
                 UMA Dashboard
               </Typography>
               <Typography component="h1" variant="h6" color="inherit" align="right" noWrap className={classes.title}>
-                {this.state.userAddress}
+                {drizzleState.accounts[0]}
               </Typography>
             </Toolbar>
           </AppBar>
@@ -158,10 +157,7 @@ class Dashboard extends React.Component {
               />
             </DialogContent>
           </Dialog>
-          <CreateContractModal
-            open={this.state.createContractOpen}
-            onClose={this.handleCreateModalClose}
-          />
+          <CreateContractModal open={this.state.createContractOpen} onClose={this.handleCreateModalClose} />
           <Grid container spacing={16} direction="column" alignItems="center" align="center" className={classes.root}>
             <Grid item xs>
               <DerivativeList
