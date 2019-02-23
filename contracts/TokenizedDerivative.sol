@@ -197,8 +197,8 @@ library TokenizedDerivativeUtils {
     function _initialize(
         TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params, string memory symbol) public {
 
-        _setFixedParameters(s, params, symbol);
-        _setExternalAddresses(s, params);
+        s._setFixedParameters(params, symbol);
+        s._setExternalAddresses(params);
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
@@ -230,46 +230,6 @@ library TokenizedDerivativeUtils {
         s.nav = s._computeInitialNav(latestUnderlyingPrice, latestTime, params.startingTokenPrice);
 
         s.state = TDS.State.Live;
-    }
-
-    function _setExternalAddresses(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) private {
-        s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
-        s.externalAddresses.oracle = OracleInterface(params.oracle);
-        s.externalAddresses.store = StoreInterface(params.store);
-        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
-        s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
-
-        // Verify that the price feed and s.externalAddresses.oracle support the given s.fixedParameters.product.
-        require(s.externalAddresses.oracle.isIdentifierSupported(params.product));
-        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
-
-        s.externalAddresses.sponsor = params.sponsor;
-        s.externalAddresses.admin = params.admin;
-    }
-
-    function _setFixedParameters(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params, string memory symbol) private {
-        // Ensure only valid enum values are provided.
-        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound
-            || params.returnType == TokenizedDerivativeParams.ReturnType.Linear);
-
-        // Fee must be 0 if the returnType is linear.
-        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound || params.fixedYearlyFee == 0);
-
-        // The default penalty must be less than the required margin.
-        require(params.defaultPenalty <= 1 ether);
-
-        // Withdraw limit must be < 100%.
-        require(params.withdrawLimit < 1 ether);
-
-        s.fixedParameters.returnType = params.returnType;
-        s.fixedParameters.defaultPenalty = params.defaultPenalty;
-        s.fixedParameters.product = params.product;
-        s.fixedParameters.fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
-        s.fixedParameters.disputeDeposit = params.disputeDeposit;
-        s.fixedParameters.supportedMove = params.supportedMove;
-        s.fixedParameters.withdrawLimit = params.withdrawLimit;
-        s.fixedParameters.creationTime = params.creationTime;
-        s.fixedParameters.symbol = symbol;
     }
 
     function _depositAndCreateTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase) external onlySponsorOrApDelegate(s) {
@@ -543,6 +503,46 @@ library TokenizedDerivativeUtils {
         uint startingBalance = erc20.balanceOf(address(this));
         erc20.transfer(msg.sender, amount);
         require(startingBalance.sub(amount) == erc20.balanceOf(address(this)));
+    }
+
+    function _setExternalAddresses(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) internal {
+        s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
+        s.externalAddresses.oracle = OracleInterface(params.oracle);
+        s.externalAddresses.store = StoreInterface(params.store);
+        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
+        s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
+
+        // Verify that the price feed and s.externalAddresses.oracle support the given s.fixedParameters.product.
+        require(s.externalAddresses.oracle.isIdentifierSupported(params.product));
+        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
+
+        s.externalAddresses.sponsor = params.sponsor;
+        s.externalAddresses.admin = params.admin;
+    }
+
+    function _setFixedParameters(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params, string memory symbol) internal {
+        // Ensure only valid enum values are provided.
+        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound
+            || params.returnType == TokenizedDerivativeParams.ReturnType.Linear);
+
+        // Fee must be 0 if the returnType is linear.
+        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound || params.fixedYearlyFee == 0);
+
+        // The default penalty must be less than the required margin.
+        require(params.defaultPenalty <= 1 ether);
+
+        // Withdraw limit must be < 100%.
+        require(params.withdrawLimit < 1 ether);
+
+        s.fixedParameters.returnType = params.returnType;
+        s.fixedParameters.defaultPenalty = params.defaultPenalty;
+        s.fixedParameters.product = params.product;
+        s.fixedParameters.fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
+        s.fixedParameters.disputeDeposit = params.disputeDeposit;
+        s.fixedParameters.supportedMove = params.supportedMove;
+        s.fixedParameters.withdrawLimit = params.withdrawLimit;
+        s.fixedParameters.creationTime = params.creationTime;
+        s.fixedParameters.symbol = symbol;
     }
 
     // _remarginInternal() allows other functions to call remargin internally without satisfying permission checks for
