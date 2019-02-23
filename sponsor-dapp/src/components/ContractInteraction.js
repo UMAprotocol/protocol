@@ -11,22 +11,48 @@ class ContractInteraction extends Component {
     const formInputs = this.props.formInputs;
     return (
       <div>
-        <Button onClick={this.props.remarginFn}>Remargin contract</Button>
+        <Button disabled={!this.props.isInteractionEnabled} onClick={this.props.remarginFn}>
+          Remargin contract
+        </Button>
         <div>
-          <TextField value={formInputs.depositAmount} onChange={e => this.props.handleChangeFn("depositAmount", e)} />
-          <Button onClick={this.props.depositFn}>Deposit</Button>
+          <TextField
+            disabled={!this.props.isInteractionEnabled}
+            value={formInputs.depositAmount}
+            onChange={e => this.props.handleChangeFn("depositAmount", e)}
+          />
+          <Button disabled={!this.props.isInteractionEnabled} onClick={this.props.depositFn}>
+            Deposit
+          </Button>
         </div>
         <div>
-          <TextField value={formInputs.withdrawAmount} onChange={e => this.props.handleChangeFn("withdrawAmount", e)} />
-          <Button onClick={this.props.withdrawFn}>Withdraw</Button>
+          <TextField
+            disabled={!this.props.isInteractionEnabled}
+            value={formInputs.withdrawAmount}
+            onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
+          />
+          <Button disabled={!this.props.isInteractionEnabled} onClick={this.props.withdrawFn}>
+            Withdraw
+          </Button>
         </div>
         <div>
-          <TextField value={formInputs.createAmount} onChange={e => this.props.handleChangeFn("createAmount", e)} />
-          <Button onClick={this.props.createFn}>Create</Button>
+          <TextField
+            disabled={!this.props.isInteractionEnabled}
+            value={formInputs.createAmount}
+            onChange={e => this.props.handleChangeFn("createAmount", e)}
+          />
+          <Button disabled={!this.props.isInteractionEnabled} onClick={this.props.createFn}>
+            Create
+          </Button>
         </div>
         <div>
-          <TextField value={formInputs.redeemAmount} onChange={e => this.props.handleChangeFn("redeemAmount", e)} />
-          <Button onClick={this.props.redeemFn}>Redeem</Button>
+          <TextField
+            disabled={!this.props.isInteractionEnabled}
+            value={formInputs.redeemAmount}
+            onChange={e => this.props.handleChangeFn("redeemAmount", e)}
+          />
+          <Button disabled={!this.props.isInteractionEnabled} onClick={this.props.redeemFn}>
+            Redeem
+          </Button>
         </div>
       </div>
     );

@@ -5,7 +5,7 @@ import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
 
 class DerivativeList extends React.Component {
   state = { registryDataKey: null, derivativeKeyMap: {} };
-  unsubscribe = null;
+  unsubscribeFromStore = null;
   subscriptionLock = false;
 
   componentDidMount() {
@@ -44,17 +44,17 @@ class DerivativeList extends React.Component {
   // Subscription methods.
   subscribe() {
     const { drizzle } = this.props;
-    if (this.unsubscribe == null) {
-      this.unsubscribe = drizzle.store.subscribe(() => {
+    if (this.unsubscribeFromStore == null) {
+      this.unsubscribeFromStore = drizzle.store.subscribe(() => {
         this.waitForNewDerivatives();
       });
     }
   }
 
   unsubscribe() {
-    if (this.unsubscribe != null) {
-      this.unsubscribe();
-      this.unsubscribe = null;
+    if (this.unsubscribeFromStore != null) {
+      this.unsubscribeFromStore();
+      this.unsubscribeFromStore = null;
     }
   }
 
