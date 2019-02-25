@@ -78,13 +78,9 @@ it("renders DerivativeList without crashing", done => {
 
 it("renders CreateContractModal without crashing", done => {
   const getCreateContractModal = (drizzle, drizzleState) => {
-    return <CreateContractModal
-      drizzle={drizzle}
-      drizzleState={drizzleState}
-      open={true}
-      onClose={() => {}}
-      params={}
-    />
+    return (
+      <CreateContractModal drizzle={drizzle} drizzleState={drizzleState} open={true} onClose={() => {}} params={{}} />
+    );
   };
 
   const div = document.createElement("div");
