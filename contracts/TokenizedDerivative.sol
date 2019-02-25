@@ -15,6 +15,7 @@ import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 import "./StoreInterface.sol";
+import "./Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
@@ -46,6 +47,7 @@ library TokenizedDerivativeParams {
         uint withdrawLimit; // Percentage of derivativeStorage.shortBalance * 10^18
         ReturnType returnType;
         uint startingUnderlyingPrice;
+        uint creationTime;
     }
 }
 
@@ -115,6 +117,7 @@ library TDS {
         bytes32 product;
         TokenizedDerivativeParams.ReturnType returnType;
         uint initialTokenUnderlyingRatio;
+        uint creationTime;
         string symbol;
     }
 
@@ -193,42 +196,14 @@ library TokenizedDerivativeUtils {
     // functions).
     function _initialize(
         TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params, string memory symbol) public {
-        // Ensure only valid enum values are provided.
-        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound
-            || params.returnType == TokenizedDerivativeParams.ReturnType.Linear);
-        s.fixedParameters.returnType = params.returnType;
 
-        // Fee must be 0 if the returnType is linear.
-        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound || params.fixedYearlyFee == 0);
-
-        // The default penalty must be less than the required margin.
-        require(params.defaultPenalty <= 1 ether);
-        s.fixedParameters.supportedMove = params.supportedMove;
-
-        s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
+        s._setFixedParameters(params, symbol);
+        s._setExternalAddresses(params);
         
         // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
         // rounding or overflow errors.
         require(params.startingTokenPrice >= uint(1 ether).div(10**9));
         require(params.startingTokenPrice <= uint(1 ether).mul(10**9));
-
-        // Address information
-        s.externalAddresses.oracle = OracleInterface(params.oracle);
-        s.externalAddresses.store = StoreInterface(params.store);
-        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
-        // Verify that the price feed and s.externalAddresses.oracle support the given s.fixedParameters.product.
-        require(s.externalAddresses.oracle.isIdentifierSupported(params.product));
-        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
-
-        s.externalAddresses.sponsor = params.sponsor;
-        s.externalAddresses.admin = params.admin;
-        s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
-
-        // Contract parameters.
-        s.fixedParameters.defaultPenalty = params.defaultPenalty;
-        s.fixedParameters.product = params.product;
-        s.fixedParameters.fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
-        s.fixedParameters.disputeDeposit = params.disputeDeposit;
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
@@ -255,12 +230,6 @@ library TokenizedDerivativeUtils {
         s.nav = s._computeInitialNav(latestUnderlyingPrice, latestTime, params.startingTokenPrice);
 
         s.state = TDS.State.Live;
-
-        // Withdraw limit must be < 100%.
-        require(params.withdrawLimit < 1 ether);
-        s.fixedParameters.withdrawLimit = params.withdrawLimit;
-
-        s.fixedParameters.symbol = symbol;
     }
 
     function _depositAndCreateTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase) external onlySponsorOrApDelegate(s) {
@@ -534,6 +503,46 @@ library TokenizedDerivativeUtils {
         uint startingBalance = erc20.balanceOf(address(this));
         erc20.transfer(msg.sender, amount);
         require(startingBalance.sub(amount) == erc20.balanceOf(address(this)));
+    }
+
+    function _setExternalAddresses(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) internal {
+        s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
+        s.externalAddresses.oracle = OracleInterface(params.oracle);
+        s.externalAddresses.store = StoreInterface(params.store);
+        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
+        s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
+
+        // Verify that the price feed and s.externalAddresses.oracle support the given s.fixedParameters.product.
+        require(s.externalAddresses.oracle.isIdentifierSupported(params.product));
+        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
+
+        s.externalAddresses.sponsor = params.sponsor;
+        s.externalAddresses.admin = params.admin;
+    }
+
+    function _setFixedParameters(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params, string memory symbol) internal {
+        // Ensure only valid enum values are provided.
+        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound
+            || params.returnType == TokenizedDerivativeParams.ReturnType.Linear);
+
+        // Fee must be 0 if the returnType is linear.
+        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound || params.fixedYearlyFee == 0);
+
+        // The default penalty must be less than the required margin.
+        require(params.defaultPenalty <= 1 ether);
+
+        // Withdraw limit must be < 100%.
+        require(params.withdrawLimit < 1 ether);
+
+        s.fixedParameters.returnType = params.returnType;
+        s.fixedParameters.defaultPenalty = params.defaultPenalty;
+        s.fixedParameters.product = params.product;
+        s.fixedParameters.fixedFeePerSecond = params.fixedYearlyFee.div(SECONDS_PER_YEAR);
+        s.fixedParameters.disputeDeposit = params.disputeDeposit;
+        s.fixedParameters.supportedMove = params.supportedMove;
+        s.fixedParameters.withdrawLimit = params.withdrawLimit;
+        s.fixedParameters.creationTime = params.creationTime;
+        s.fixedParameters.symbol = symbol;
     }
 
     // _remarginInternal() allows other functions to call remargin internally without satisfying permission checks for
@@ -1083,7 +1092,7 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
 }
 
 
-contract TokenizedDerivativeCreator is ContractCreator {
+contract TokenizedDerivativeCreator is ContractCreator, Testable {
     struct Params {
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
         uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
@@ -1112,10 +1121,12 @@ contract TokenizedDerivativeCreator is ContractCreator {
         address _priceFeedAddress,
         address _sponsorWhitelist,
         address _returnCalculatorWhitelist,
-        address _marginCurrencyWhitelist
+        address _marginCurrencyWhitelist,
+        bool _isTest
     )
         public
         ContractCreator(registryAddress, _oracleAddress, _storeAddress, _priceFeedAddress)
+        Testable(_isTest)
     {
         sponsorWhitelist = AddressWhitelist(_sponsorWhitelist);
         returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
@@ -1168,5 +1179,6 @@ contract TokenizedDerivativeCreator is ContractCreator {
         constructorParams.oracle = oracleAddress;
         constructorParams.store = storeAddress;
         constructorParams.admin = oracleAddress;
+        constructorParams.creationTime = getCurrentTime();
     }
 }
