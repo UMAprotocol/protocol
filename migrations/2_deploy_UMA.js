@@ -67,7 +67,8 @@ module.exports = async function(deployer, network, accounts) {
     manualPriceFeed.address,
     sponsorWhitelist.address,
     returnCalculatorWhitelist.address,
-    marginCurrencyWhitelist.address
+    marginCurrencyWhitelist.address,
+    controllableTiming
   );
 
   // Add creator contracts to the registry.
