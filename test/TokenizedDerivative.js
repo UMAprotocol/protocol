@@ -2009,7 +2009,7 @@ contract("TokenizedDerivative", function(accounts) {
     });
 
     it(annotateTitle("Withdraw unexpected ERC20"), async function() {
-      // Deploy TokenizedDerivative with 0 fee to make computations simpler.
+      // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
 
       // Sponsor initializes contract
@@ -2088,6 +2088,17 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.withdrawUnexpectedErc20(derivativeContract.address, web3.utils.toWei("0.25", "ether"), {
         from: sponsor
       });
+    });
+
+    it(annotateTitle("Creation Time"), async function() {
+      // Set the current time in the creator and expect that that time will propagate to the derivative.
+      const creationTime = "1550878663";
+      tokenizedDerivativeCreator.setCurrentTime(creationTime);
+
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative();
+
+      assert.equal((await derivativeContract.derivativeStorage()).fixedParameters.creationTime, creationTime);
     });
 
     it(annotateTitle("Constructor assertions"), async function() {
