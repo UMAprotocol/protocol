@@ -6,7 +6,8 @@ import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 import IERC20 from "../contracts/IERC20.json";
 import TokenPreapproval from "./TokenPreapproval.js";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
-import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
+import { hasEthMarginCurrency, stateToString } from "../utils/TokenizedDerivativeUtils.js";
+import { formatDate } from "../utils/FormattingUtils.js";
 
 // Used to track the status of follow up requests via Drizzle.
 // We are still trying to discover a good idiom for making follow up requests with Drizzle.
@@ -142,7 +143,7 @@ class ContractDetails extends Component {
     }
     const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
 
-    if (this.hasEthMarginCurrency(derivativeStorage)) {
+    if (hasEthMarginCurrency(derivativeStorage)) {
       // Nothing to authorize, we're done.
       this.setState({ loadingMarginCurrencyData: false });
       this.unsubscribeMarginCurrencyCheck();
@@ -332,17 +333,11 @@ class ContractDetails extends Component {
     const derivativeStorage = this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage[
       this.state.derivativeStorageDataKey
     ].value;
-    if (this.hasEthMarginCurrency(derivativeStorage)) {
+    if (hasEthMarginCurrency(derivativeStorage)) {
       return marginCurrencyAmount;
     } else {
       return "0";
     }
-  }
-
-  hasEthMarginCurrency(derivativeStorage) {
-    // The TokenizedDerivative smart contract uses this value to indicate using ETH as the margin currency.
-    const sentinelMarginCurrency = "0x0000000000000000000000000000000000000000";
-    return derivativeStorage.externalAddresses.marginCurrency === sentinelMarginCurrency;
   }
 
   // Approves the TokenizedDerivative to spend a large number of its own tokens from the user.
@@ -399,7 +394,7 @@ class ContractDetails extends Component {
     let contractState = stateToString(derivativeStorage.state);
 
     const lastRemarginContractFinancials = {
-      time: ContractDetails.formatDate(derivativeStorage.currentTokenState.time, web3),
+      time: formatDate(derivativeStorage.currentTokenState.time, web3),
       assetPrice: web3.utils.fromWei(derivativeStorage.currentTokenState.underlyingPrice),
       tokenPrice: web3.utils.fromWei(derivativeStorage.currentTokenState.tokenPrice) + "/token",
       // NOTE: this method of getting totalHoldings explicitly disregards any margin currency sent to the contract not
@@ -413,7 +408,7 @@ class ContractDetails extends Component {
       yourTokens: tokenBalance
     };
     const estimatedCurrentContractFinancials = {
-      time: ContractDetails.formatDate(latestPrice.publishTime, web3),
+      time: formatDate(latestPrice.publishTime, web3),
       assetPrice: web3.utils.fromWei(latestPrice.price),
       tokenPrice: web3.utils.fromWei(estimatedTokenValue) + "/token",
       totalHoldings: web3.utils.fromWei(estimatedNav.add(estimatedShortMarginBalance)),
@@ -428,10 +423,9 @@ class ContractDetails extends Component {
       creatorAddress: derivativeStorage.externalAddresses.sponsor,
       creationTime: "UNKNOWN",
       // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
-      expiryTime:
-        derivativeStorage.endTime === UINT_MAX ? "None" : ContractDetails.formatDate(derivativeStorage.endTime, web3),
+      expiryTime: derivativeStorage.endTime === UINT_MAX ? "None" : formatDate(derivativeStorage.endTime, web3),
       priceFeedAddress: derivativeStorage.externalAddresses.priceFeed,
-      marginCurrency: this.hasEthMarginCurrency(derivativeStorage)
+      marginCurrency: hasEthMarginCurrency(derivativeStorage)
         ? "ETH"
         : derivativeStorage.externalAddresses.marginCurrency,
       returnCalculator: derivativeStorage.externalAddresses.returnCalculator
@@ -446,7 +440,7 @@ class ContractDetails extends Component {
       .toBN(contract.allowance[this.state.derivativeTokenAllowanceDataKey].value)
       .gte(minAllowance);
     const isMarginCurrencyAuthorized =
-      this.hasEthMarginCurrency(derivativeStorage) ||
+      hasEthMarginCurrency(derivativeStorage) ||
       web3.utils
         .toBN(
           drizzleState.contracts[this.state.marginCurrencyKey].allowance[this.state.marginCurrencyAllowanceDataKey]
@@ -494,18 +488,6 @@ class ContractDetails extends Component {
         {interactions}
       </div>
     );
-  }
-
-  static formatDate(timestampInSeconds, web3) {
-    return new Date(
-      parseInt(
-        web3.utils
-          .toBN(timestampInSeconds)
-          .muln(1000)
-          .toString(),
-        10
-      )
-    ).toString();
   }
 }
 
