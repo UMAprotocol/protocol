@@ -10,6 +10,8 @@ import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
 import TextField from "@material-ui/core/TextField";
 
+import LeveragedReturnCalculator from "../contracts/LeveragedReturnCalculator";
+
 const styles = theme => ({
   root: {
     display: "flex",
