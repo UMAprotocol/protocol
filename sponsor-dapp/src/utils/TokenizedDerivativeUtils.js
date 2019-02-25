@@ -17,6 +17,15 @@ function stateToString(state) {
   }
 }
 
+// Determines whether a contract uses ETH as its margin currency.
+// derivativeStorage: `TDS` struct from TokenizedDerivative.sol.
+function hasEthMarginCurrency(derivativeStorage) {
+  // The TokenizedDerivative smart contract uses this value to indicate using ETH as the margin currency.
+  const sentinelMarginCurrency = "0x0000000000000000000000000000000000000000";
+  return derivativeStorage.externalAddresses.marginCurrency === sentinelMarginCurrency;
+}
+
 module.exports = {
-  stateToString
+  stateToString,
+  hasEthMarginCurrency
 };
