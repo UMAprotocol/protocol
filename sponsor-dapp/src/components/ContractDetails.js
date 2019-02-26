@@ -356,6 +356,14 @@ class ContractDetails extends Component {
     this.addPendingTransaction(initiatedTransactionId);
   };
 
+  // Converts a string or BN instance from Wei to Ether, e.g., 1e19 -> 10.
+  fromWei(num) {
+    // Web3's `fromWei` function doesn't work on BN objects in minified mode (e.g.,
+    // `web3.utils.isBN(web3.utils.fromBN("5"))` is false), so we use a workaround where we always pass in strings.
+    // See https://github.com/ethereum/web3.js/issues/1777.
+    return this.props.drizzle.web3.utils.fromWei(num.toString());
+  }
+
   render() {
     if (
       this.state.loadingTokenizedDerivativeData ||
@@ -369,40 +377,39 @@ class ContractDetails extends Component {
 
     const contract = drizzleState.contracts[this.state.contractKey];
     const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
-    const totalSupply = web3.utils.fromWei(contract.totalSupply[this.state.totalSupplyDataKey].value);
+    const totalSupply = this.fromWei(contract.totalSupply[this.state.totalSupplyDataKey].value);
     const contractName = contract.name[this.state.nameDataKey].value;
     const estimatedTokenValue = web3.utils.toBN(contract.calcTokenValue[this.state.estimatedTokenValueDataKey].value);
     const estimatedNav = web3.utils.toBN(contract.calcNAV[this.state.estimatedNavDataKey].value);
     const estimatedShortMarginBalance = web3.utils.toBN(
       contract.calcShortMarginBalance[this.state.estimatedShortMarginBalanceDataKey].value
     );
-    const tokenBalance = web3.utils.fromWei(contract.balanceOf[this.state.tokenBalanceDataKey].value);
+    const tokenBalance = this.fromWei(contract.balanceOf[this.state.tokenBalanceDataKey].value);
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     const latestPrice = drizzleState.contracts[priceFeedAddress].latestPrice[this.state.idDataKey].value;
 
     let contractState = stateToString(derivativeStorage.state);
-
     const lastRemarginContractFinancials = {
       time: formatDate(derivativeStorage.currentTokenState.time, web3),
-      assetPrice: web3.utils.fromWei(derivativeStorage.currentTokenState.underlyingPrice),
-      tokenPrice: web3.utils.fromWei(derivativeStorage.currentTokenState.tokenPrice) + "/token",
+      assetPrice: this.fromWei(derivativeStorage.currentTokenState.underlyingPrice),
+      tokenPrice: this.fromWei(derivativeStorage.currentTokenState.tokenPrice) + "/token",
       // NOTE: this method of getting totalHoldings explicitly disregards any margin currency sent to the contract not
       // through Deposit.
-      totalHoldings: web3.utils.fromWei(
+      totalHoldings: this.fromWei(
         web3.utils.toBN(derivativeStorage.longBalance).add(web3.utils.toBN(derivativeStorage.shortBalance))
       ),
-      longMargin: web3.utils.fromWei(derivativeStorage.longBalance),
-      shortMargin: web3.utils.fromWei(derivativeStorage.shortBalance),
+      longMargin: this.fromWei(derivativeStorage.longBalance),
+      shortMargin: this.fromWei(derivativeStorage.shortBalance),
       tokenSupply: totalSupply,
       yourTokens: tokenBalance
     };
     const estimatedCurrentContractFinancials = {
       time: formatDate(latestPrice.publishTime, web3),
-      assetPrice: web3.utils.fromWei(latestPrice.price),
-      tokenPrice: web3.utils.fromWei(estimatedTokenValue) + "/token",
-      totalHoldings: web3.utils.fromWei(estimatedNav.add(estimatedShortMarginBalance)),
-      longMargin: web3.utils.fromWei(estimatedNav),
-      shortMargin: web3.utils.fromWei(estimatedShortMarginBalance),
+      assetPrice: this.fromWei(latestPrice.price),
+      tokenPrice: this.fromWei(estimatedTokenValue) + "/token",
+      totalHoldings: this.fromWei(estimatedNav.add(estimatedShortMarginBalance)),
+      longMargin: this.fromWei(estimatedNav),
+      shortMargin: this.fromWei(estimatedShortMarginBalance),
       // These values don't change on remargins.
       tokenSupply: totalSupply,
       yourTokens: tokenBalance
