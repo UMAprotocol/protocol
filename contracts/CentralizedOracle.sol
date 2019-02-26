@@ -106,7 +106,10 @@ contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
 
     // Adds the provided identifier as a supported identifier.
     function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
-        supportedIdentifiers[identifier] = true;
+        if(!supportedIdentifiers[identifier]) {
+            supportedIdentifiers[identifier] = true;
+            emit AddSupportedIdentifier(identifier);
+        }
     }
 
     // Calls emergencyShutdown() on the provided derivative.
@@ -140,4 +143,6 @@ contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
     function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported) {
         return supportedIdentifiers[identifier];
     }
+
+    event AddSupportedIdentifier(bytes32 indexed identifier);
 }
