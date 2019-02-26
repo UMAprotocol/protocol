@@ -23,10 +23,6 @@ interface RegistryInterface {
     // method.  
     function removeDerivativeCreator(address derivativeCreator) external;
 
-    // Removes a derivative from the list of registered derivatives. This can be called by the derivative creator that
-    // created this derivative, the owner, or the derivative, itself.
-    function unregisterDerivative(address derivativeAddress) external;
-
     // Returns whether the derivative has been registered with the registry (and is therefore an authorized participant
     // in the UMA system).
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered);
