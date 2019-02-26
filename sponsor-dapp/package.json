@@ -19,7 +19,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "link-contracts": "ln -s ../../build/contracts src/contracts",
+    "link-contracts": "ln -sfn ../../build/contracts src/contracts",
     "prettier": "prettier --write 'src/**/*.js'"
   },
   "eslintConfig": {
