@@ -49,7 +49,7 @@ const addDrizzleProviderWrapper = getComponent => {
 it("renders Dashboard without crashing", done => {
   const getDashboard = (drizzle, drizzleState) => {
     const params = { identifiers: [] };
-    return <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={params}/>;
+    return <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={params} />;
   };
 
   const div = document.createElement("div");
