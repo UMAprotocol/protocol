@@ -72,7 +72,8 @@ contract Registry is RegistryInterface, Withdrawable {
             partiesMap.parties[parties[i]] = true;
         }
 
-        emit RegisterDerivative(derivativeAddress, parties);
+        address[] memory partiesForEvent = parties;
+        emit RegisterDerivative(derivativeAddress, partiesForEvent);
     }
 
     function addDerivativeCreator(address derivativeCreator) external onlyOwner {
