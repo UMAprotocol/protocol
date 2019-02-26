@@ -79,6 +79,7 @@ class CreateContractModal extends React.Component {
 
       this.setState({ approvedIdentifiers });
 
+      // Set as default if only one identifier exists.
       if (approvedIdentifiers.length === 1) {
         this.updateFormInput("identifier", approvedIdentifiers[0]);
       }
@@ -118,6 +119,7 @@ class CreateContractModal extends React.Component {
     let returnCalculatorWhitelistKey;
 
     const unsubscribe = drizzle.store.subscribe(() => {
+      const drizzleState = drizzle.store.getState();
       if (!this.whitelistAddress) {
         return;
       }
@@ -132,9 +134,13 @@ class CreateContractModal extends React.Component {
         returnCalculatorWhitelistKey = addressWhitelist.methods.getWhitelist.cacheCall();
       }
 
-      const { drizzleState } = this.props;
-      const cacheWhitelist = drizzleState.contracts[this.whitelistAddress].getWhitelist[returnCalculatorWhitelistKey];
-      if (cacheWhitelist == null) {
+      const whitelistState = drizzleState.contracts[this.whitelistAddress];
+      if (!whitelistState) {
+        return;
+      }
+
+      const cacheWhitelist = whitelistState.getWhitelist[returnCalculatorWhitelistKey];
+      if (!cacheWhitelist) {
         return;
       }
 
@@ -145,7 +151,6 @@ class CreateContractModal extends React.Component {
 
   addReturnCalculators() {
     const { drizzle } = this.props;
-    const { LeveragedReturnCalculator } = drizzle.contracts;
 
     const unsubscribe = drizzle.store.subscribe(() => {
       if (!this.state.returnCalculatorAddresses.length) {
@@ -162,13 +167,21 @@ class CreateContractModal extends React.Component {
     });
   }
 
+  // NOTE: This function fetches the leverage value for LeveragedReturnCalculator
+  // but does not automatically update if the value changes. This is fine in the specific
+  // business case, where the value is not expected to change but does not conform to
+  // drizzle's design philosophy.
   getLeverage() {
     const { drizzle } = this.props;
 
     let leverageCalled = false;
+
+    // Stores the argument hash for each LeveragedReturnCalculator.leverage cacheCall.
     const leverageKeys = [];
 
     const unsubscribe = drizzle.store.subscribe(() => {
+      const drizzleState = drizzle.store.getState();
+
       if (!this.state.returnCalculatorAddresses.length) {
         return;
       }
@@ -188,10 +201,9 @@ class CreateContractModal extends React.Component {
         });
       }
 
-      const { contracts } = this.props.drizzleState;
       const leverageLoaded = this.state.returnCalculatorAddresses.every((address, idx) => {
         const key = leverageKeys[idx];
-        return contracts[address].leverage[key];
+        return drizzleState.contracts[address].leverage[key];
       });
 
       if (!leverageLoaded) {
@@ -200,11 +212,12 @@ class CreateContractModal extends React.Component {
 
       const leverage = this.state.returnCalculatorAddresses.map((address, idx) => {
         const key = leverageKeys[idx];
-        return contracts[address].leverage[key].value;
+        return drizzleState.contracts[address].leverage[key].value;
       });
 
       this.setState({ returnCalculatorLeverage: leverage });
 
+      // Set as default if only one exists.
       if (leverage.length === 1) {
         this.updateFormInput("leverage", this.state.returnCalculatorAddresses[0]);
       }
