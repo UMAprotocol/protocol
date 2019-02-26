@@ -59,7 +59,7 @@ class CreateContractModal extends React.Component {
     });
 
     const unsubscribe = drizzle.store.subscribe(() => {
-      const drizzleState = drizzle.store.getState();
+      const drizzleState = this.props.drizzleState;
 
       const { ManualPriceFeed } = drizzleState.contracts;
 
@@ -94,7 +94,7 @@ class CreateContractModal extends React.Component {
     const returnCalculatorKey = TokenizedDerivativeCreator.methods.returnCalculatorWhitelist.cacheCall();
 
     const unsubscribe = drizzle.store.subscribe(() => {
-      const drizzleState = drizzle.store.getState();
+      const drizzleState = this.props.drizzleState;
 
       const { TokenizedDerivativeCreator } = drizzleState.contracts;
       const cachedAddress = TokenizedDerivativeCreator.returnCalculatorWhitelist[returnCalculatorKey];
@@ -119,7 +119,7 @@ class CreateContractModal extends React.Component {
     let returnCalculatorWhitelistKey;
 
     const unsubscribe = drizzle.store.subscribe(() => {
-      const drizzleState = drizzle.store.getState();
+      const drizzleState = this.props.drizzleState;
       if (!this.whitelistAddress) {
         return;
       }
@@ -180,7 +180,7 @@ class CreateContractModal extends React.Component {
     const leverageKeys = [];
 
     const unsubscribe = drizzle.store.subscribe(() => {
-      const drizzleState = drizzle.store.getState();
+      const drizzleState = this.props.drizzleState;
 
       if (!this.state.returnCalculatorAddresses.length) {
         return;
