@@ -48,7 +48,8 @@ const addDrizzleProviderWrapper = getComponent => {
 
 it("renders Dashboard without crashing", done => {
   const getDashboard = (drizzle, drizzleState) => {
-    return <Dashboard drizzle={drizzle} drizzleState={drizzleState} />;
+    const params = { identifiers: [] };
+    return <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={params} />;
   };
 
   const div = document.createElement("div");
@@ -78,7 +79,16 @@ it("renders DerivativeList without crashing", done => {
 
 it("renders CreateContractModal without crashing", done => {
   const getCreateContractModal = (drizzle, drizzleState) => {
-    return <CreateContractModal drizzle={drizzle} drizzleState={drizzleState} open={true} onClose={() => {}} />;
+    const params = { identifiers: [] };
+    return (
+      <CreateContractModal
+        drizzle={drizzle}
+        drizzleState={drizzleState}
+        open={true}
+        onClose={() => {}}
+        params={params}
+      />
+    );
   };
 
   const div = document.createElement("div");
