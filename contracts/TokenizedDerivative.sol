@@ -218,6 +218,7 @@ library TokenizedDerivativeUtils {
 
         // Keep the ratio in case it's needed for margin computation.
         s.fixedParameters.initialTokenUnderlyingRatio = params.startingTokenPrice.mul(1 ether).div(_safeUintCast(latestUnderlyingPrice));
+        require(s.fixedParameters.initialTokenUnderlyingRatio != 0);
 
         // Set end time to max value of uint to implement no expiry.
         if (params.expiry == 0) {

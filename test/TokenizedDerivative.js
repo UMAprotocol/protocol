@@ -2231,6 +2231,32 @@ contract("TokenizedDerivative", function(accounts) {
           tokenizedDerivativeCreator.createTokenizedDerivative(unapprovedCurrencyParams, { from: sponsor })
         )
       );
+
+      // Make sure BigNumber doesn't use exponential notation until it sees very large exponents.
+      BigNumber.config({ EXPONENTIAL_AT: 100 });
+
+      // Initial token price to underlying price rounds to 0 if startingTokenPrice * 10^18 < startingUnderlyingPrice.
+      const tenToTwentyEight = BigNumber(1).shiftedBy(28);
+      const tenToNine = BigNumber(1).shiftedBy(9);
+      const initialRatioRoundsToZero = {
+        ...defaultConstructorParams,
+        startingTokenPrice: tenToNine.toString(),
+        startingUnderlyingPrice: tenToTwentyEight.toString()
+      };
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(initialRatioRoundsToZero, { from: sponsor })
+        )
+      );
+
+      // 10^9 * 10^18 == 10^27, so the assert should not fire.
+      const tenToTwentySeven = BigNumber(1).shiftedBy(27);
+      const initialRatioDoesNotRoundToZero = {
+        ...defaultConstructorParams,
+        startingTokenPrice: tenToNine.toString(),
+        startingUnderlyingPrice: tenToTwentySeven.toString()
+      };
+      await tokenizedDerivativeCreator.createTokenizedDerivative(initialRatioDoesNotRoundToZero, { from: sponsor });
     });
   });
 });
