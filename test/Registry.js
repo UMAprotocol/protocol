@@ -12,8 +12,8 @@ contract("Registry", function(accounts) {
   const rando1 = accounts[3];
   const rando2 = accounts[4];
 
-  before(async function() {
-    registry = await Registry.deployed();
+  beforeEach(async function() {
+    registry = await Registry.new();
   });
 
   const areAddressesEqual = (address1, address2) => {
@@ -42,10 +42,6 @@ contract("Registry", function(accounts) {
     // creator1 should be able to register a new contract.
     await registry.registerDerivative(parties, arbitraryContract, { from: creator1 });
     assert.isTrue(await registry.isDerivativeRegistered(arbitraryContract));
-
-    // Cleanup.
-    await registry.unregisterDerivative(arbitraryContract, { from: owner });
-    await registry.removeDerivativeCreator(creator1, { from: owner });
   });
 
   it("Register and query derivatives", async function() {
@@ -91,62 +87,6 @@ contract("Registry", function(accounts) {
     assert.isTrue(areAddressesEqual(allDerivatives[1].derivativeCreator, creator2));
     assert.isTrue(areAddressesEqual(allDerivatives[2].derivativeAddress, derivative3));
     assert.isTrue(areAddressesEqual(allDerivatives[2].derivativeCreator, creator1));
-
-    // Cleanup.
-    registry.unregisterDerivative(derivative1, { from: owner });
-    registry.unregisterDerivative(derivative2, { from: owner });
-    registry.unregisterDerivative(derivative3, { from: owner });
-    registry.removeDerivativeCreator(creator1, { from: owner });
-    registry.removeDerivativeCreator(creator2, { from: owner });
-  });
-
-  it("Derivative unregisters itself", async function() {
-    // Approve creator.
-    await registry.addDerivativeCreator(creator1, { from: owner });
-
-    // Register two derivatives that we control.
-    const derivative1 = rando1;
-    const derivative2 = rando2;
-    await registry.registerDerivative([], derivative1, { from: creator1 });
-    await registry.registerDerivative([], derivative2, { from: creator1 });
-
-    // A registered derivative cannot unregister another derivative.
-    assert(await didContractThrow(registry.unregisterDerivative(derivative1, { from: derivative2 })));
-
-    // A derivative can unregister itself.
-    await registry.unregisterDerivative(derivative1, { from: derivative1 });
-
-    // Cleanup.
-    await registry.unregisterDerivative(derivative2, { from: owner });
-    await registry.removeDerivativeCreator(creator1, { from: owner });
-  });
-
-  it("Creator unregisters derivative", async function() {
-    // Approve creator.
-    await registry.addDerivativeCreator(creator1, { from: owner });
-    await registry.addDerivativeCreator(creator2, { from: owner });
-
-    // Register two derivatives.
-    const derivative1 = web3.utils.randomHex(20);
-    const derivative2 = web3.utils.randomHex(20);
-    await registry.registerDerivative([], derivative1, { from: creator1 });
-    await registry.registerDerivative([], derivative2, { from: creator1 });
-
-    // An approved creator can only unregister derivatives that it registered.
-    assert(await didContractThrow(registry.unregisterDerivative(derivative1, { from: creator2 })));
-
-    // An approved creator can unregister its derivative.
-    await registry.unregisterDerivative(derivative1, { from: creator1 });
-
-    // Remove creator1 from the set of approved creators.
-    await registry.removeDerivativeCreator(creator1, { from: owner });
-
-    // An unapproved creator cannot unregister its derivatives.
-    assert(await didContractThrow(registry.unregisterDerivative(derivative2, { from: creator1 })));
-
-    // Cleanup.
-    await registry.unregisterDerivative(derivative2, { from: owner });
-    await registry.removeDerivativeCreator(creator1, { from: owner });
   });
 
   it("Double-register derivative", async function() {
@@ -159,27 +99,5 @@ contract("Registry", function(accounts) {
 
     // Cannot register a derivative that is already registered.
     assert(await didContractThrow(registry.registerDerivative([], derivative1, { from: creator1 })));
-
-    // Cleanup.
-    await registry.unregisterDerivative(derivative1, { from: owner });
-    await registry.removeDerivativeCreator(creator1, { from: owner });
-  });
-
-  it("Re-register derivative", async function() {
-    // Approve creator.
-    await registry.addDerivativeCreator(creator1, { from: owner });
-
-    // Register derivative.
-    const derivative1 = web3.utils.randomHex(20);
-    await registry.registerDerivative([], derivative1, { from: creator1 });
-
-    // Remove derivative.
-    await registry.unregisterDerivative(derivative1, { from: owner });
-
-    // Cannot re-register derivative after it was unregistered.
-    assert(await didContractThrow(registry.registerDerivative([], derivative1, { from: creator1 })));
-
-    // Cleanup.
-    await registry.removeDerivativeCreator(creator1, { from: owner });
   });
 });

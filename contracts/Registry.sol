@@ -81,37 +81,6 @@ contract Registry is RegistryInterface, Withdrawable {
         derivativeCreators[derivativeCreator] = false;
     }
 
-    function unregisterDerivative(address derivativeAddress) external {
-        // Grab the pointer for the derivative being unregistered.
-        Pointer storage pointer = derivativePointers[derivativeAddress];
-
-        // Ensure the derivative is registered before taking any action.
-        require(pointer.valid == PointerValidity.Valid);
-        uint128 index = pointer.index;
-
-        // Only the owner, the derivative, or the original creator of the derivative can remove it from the registry.
-        require(msg.sender == owner() || msg.sender == derivativeAddress
-            || (derivativeCreators[msg.sender] && (msg.sender == registeredDerivatives[index].derivativeCreator)));
-
-        // Set the unregistered derivative's slot in the array to the data in the last slot.
-        RegisteredDerivative storage slotToSwap = registeredDerivatives[index];
-        uint newLength = registeredDerivatives.length.sub(1);
-        slotToSwap = registeredDerivatives[newLength];
-
-        // Move the swapped derivative's pointer to its new index.
-        derivativePointers[slotToSwap.derivativeAddress].index = index;
-
-        // Remove the last element in the array.
-        registeredDerivatives.length = newLength;
-
-        // Remove pointer.
-        pointer.index = 0;
-        pointer.valid = PointerValidity.WasValid;
-
-        // Delete the party mapping.
-        delete derivativesToParties[derivativeAddress];
-    }
-
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
         return derivativePointers[derivative].valid == PointerValidity.Valid;
     }
