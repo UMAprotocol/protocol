@@ -102,6 +102,7 @@ class ContractDetails extends Component {
       formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" }
     });
   }
+
   // Waits on the initial data fetch from TokenizedDerivative being available.
   waitOnTokenizedDerivativeFetch() {
     const { drizzleState } = this.props;
@@ -200,19 +201,9 @@ class ContractDetails extends Component {
     }
     const contract = drizzleState.contracts[this.state.contractKey];
 
-    const areAllMethodValuesAvailable =
-      this.state.derivativeStorageDataKey in contract.derivativeStorage &&
-      this.state.totalSupplyDataKey in contract.totalSupply &&
-      this.state.nameDataKey in contract.name &&
-      this.state.estimatedTokenValueDataKey in contract.calcTokenValue &&
-      this.state.estimatedNavDataKey in contract.calcNAV &&
-      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance &&
-      this.state.tokenBalanceDataKey in contract.balanceOf &&
-      this.state.derivativeTokenAllowanceDataKey in contract.allowance;
-    if (!areAllMethodValuesAvailable) {
+    if (!(this.state.derivativeStorageDataKey in contract.derivativeStorage)) {
       return;
     }
-
     const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
 
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
@@ -267,8 +258,6 @@ class ContractDetails extends Component {
   };
 
   remarginContract = () => {
-    // TODO(ptare): Figure out how to listen to the state of this transaction, and disable the 'Remargin' button while
-    // a remargin is pending.
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.remargin.cacheSend({
       from: this.props.drizzleState.accounts[0]
     });
