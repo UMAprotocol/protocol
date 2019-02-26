@@ -228,8 +228,8 @@ class CreateContractModal extends React.Component {
   }
 
   updateFormInput = (key, value) => {
-    this.setState((state, props) => ({ formInputs: { ...state.formInputs, [key]: value } }))
-  }
+    this.setState((state, props) => ({ formInputs: { ...state.formInputs, [key]: value } }));
+  };
 
   handleChange = name => event => {
     this.updateFormInput(name, event.target.value);
