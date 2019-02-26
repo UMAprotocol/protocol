@@ -10,6 +10,7 @@ import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
 import TextField from "@material-ui/core/TextField";
 
+import AddressWhitelist from "../contracts/AddressWhitelist";
 import LeveragedReturnCalculator from "../contracts/LeveragedReturnCalculator";
 
 const styles = theme => ({
@@ -90,7 +91,7 @@ class CreateContractModal extends React.Component {
   addReturnCalculatorWhitelist() {
     const { drizzle } = this.props;
 
-    const { TokenizedDerivativeCreator, AddressWhitelist } = drizzle.contracts;
+    const { TokenizedDerivativeCreator } = drizzle.contracts;
     const returnCalculatorKey = TokenizedDerivativeCreator.methods.returnCalculatorWhitelist.cacheCall();
 
     const unsubscribe = drizzle.store.subscribe(() => {
@@ -226,10 +227,8 @@ class CreateContractModal extends React.Component {
     });
   }
 
-  updateFormInput(key, value) {
-    const formInputs = { ...this.state.formInputs };
-    formInputs[key] = value;
-    this.setState({ formInputs });
+  updateFormInput = (key, value) => {
+    this.setState((state, props) => ({ formInputs: { ...state.formInputs, [key]: value } }))
   }
 
   handleChange = name => event => {
