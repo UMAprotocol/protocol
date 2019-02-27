@@ -1,5 +1,7 @@
 const { didContractThrow } = require("./utils/DidContractThrow.js");
 
+const truffleAssert = require("truffle-assertions");
+
 const Registry = artifacts.require("Registry");
 
 contract("Registry", function(accounts) {
@@ -28,9 +30,18 @@ contract("Registry", function(accounts) {
     assert(await didContractThrow(registry.addDerivativeCreator(creator1, { from: rando1 })));
 
     // Register creator1, but not creator2.
-    await registry.addDerivativeCreator(creator1, { from: owner });
+    let result = await registry.addDerivativeCreator(creator1, { from: owner });
     assert.isTrue(await registry.isDerivativeCreatorAuthorized(creator1));
     assert.isFalse(await registry.isDerivativeCreatorAuthorized(creator2));
+
+    // Ensure an AddDerivativeCreator event is logged.
+    truffleAssert.eventEmitted(result, "AddDerivativeCreator", ev => {
+      return web3.utils.toChecksumAddress(ev.addedDerivativeCreator) === web3.utils.toChecksumAddress(creator1);
+    });
+
+    // Add it a second time, but check that an event is not emitted.
+    result = await registry.addDerivativeCreator(creator1, { from: owner });
+    truffleAssert.eventNotEmitted(result, "AddDerivativeCreator");
 
     // Try to register an arbitrary contract.
     const arbitraryContract = web3.utils.randomHex(20);
@@ -40,8 +51,30 @@ contract("Registry", function(accounts) {
     assert(await didContractThrow(registry.registerDerivative(parties, arbitraryContract, { from: creator2 })));
 
     // creator1 should be able to register a new contract.
-    await registry.registerDerivative(parties, arbitraryContract, { from: creator1 });
+    result = await registry.registerDerivative(parties, arbitraryContract, { from: creator1 });
     assert.isTrue(await registry.isDerivativeRegistered(arbitraryContract));
+
+    // Make sure a RegisterDerivative event is emitted.
+    truffleAssert.eventEmitted(result, "RegisterDerivative", ev => {
+      return web3.utils.toChecksumAddress(ev.derivativeAddress) === web3.utils.toChecksumAddress(arbitraryContract);
+    });
+
+    // Remove the derivative creator.
+    result = await registry.removeDerivativeCreator(creator1, { from: owner });
+    assert.isFalse(await registry.isDerivativeCreatorAuthorized(creator1));
+
+    // Ensure an event was emitted.
+    truffleAssert.eventEmitted(result, "RemoveDerivativeCreator", ev => {
+      return web3.utils.toChecksumAddress(ev.removedDerivativeCreator) === web3.utils.toChecksumAddress(creator1);
+    });
+
+    // Creation should fail since creator1 is no longer approved.
+    const secondContract = web3.utils.randomHex(20);
+    assert(await didContractThrow(registry.registerDerivative(parties, secondContract, { from: creator1 })));
+
+    // A second removal should not trigger another event.
+    result = await registry.removeDerivativeCreator(creator1, { from: owner });
+    truffleAssert.eventNotEmitted(result, "RemoveDerivativeCreator");
   });
 
   it("Register and query derivatives", async function() {

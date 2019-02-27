@@ -33,10 +33,13 @@ contract CentralizedStore is StoreInterface, Withdrawable {
         // Oracle fees at or over 100% don't make sense.
         require(newOracleFee < 1 ether);
         fixedOracleFeePerSecond = newOracleFee;
+        emit SetFixedOracleFeePerSecond(newOracleFee);
     }
 
     function computeOracleFees(uint startTime, uint endTime, uint pfc) external view returns (uint oracleFeeAmount) {
         uint timeRange = endTime.sub(startTime);
         return pfc.mul(fixedOracleFeePerSecond).mul(timeRange).div(1 ether);
     }
+
+    event SetFixedOracleFeePerSecond(uint newOracleFee);
 }
