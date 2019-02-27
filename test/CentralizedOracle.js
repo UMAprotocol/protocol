@@ -7,6 +7,7 @@ const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const BigNumber = require("bignumber.js");
+const truffleAssert = require("truffle-assertions");
 
 contract("CentralizedOracle", function(accounts) {
   // A deployed instance of the CentralizedOracle contract, ready for testing.
@@ -246,6 +247,31 @@ contract("CentralizedOracle", function(accounts) {
 
     // Can't push a price that isn't queried yet.
     assert(await didContractThrow(centralizedOracle.pushPrice(identifierBytes, 10, 10)));
+  });
+
+  it("Double add identifier", async function() {
+    const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Double"));
+
+    // Add the identifier for the first time.
+    let result = await centralizedOracle.addSupportedIdentifier(identifierBytes);
+
+    // Should produce event on the first add.
+    truffleAssert.eventEmitted(result, "AddSupportedIdentifier", ev => {
+      // Note: the toAscii result fails a comparison with "Double", so we went with a hardcoded hex string.
+      return ev.identifier.toString() === "0x446f75626c650000000000000000000000000000000000000000000000000000";
+    });
+
+    // Make sure the identifier is now supported.
+    assert.isTrue(await centralizedOracle.isIdentifierSupported(identifierBytes));
+
+    // Add the identifier a second time.
+    result = await centralizedOracle.addSupportedIdentifier(identifierBytes);
+
+    // No event should be produced.
+    truffleAssert.eventNotEmitted(result, "AddSupportedIdentifier");
+
+    // Make sure the identifier is still supported.
+    assert.isTrue(await centralizedOracle.isIdentifierSupported(identifierBytes));
   });
 
   it("Unsupported product", async function() {

@@ -1,6 +1,7 @@
 const { didContractThrow } = require("./utils/DidContractThrow.js");
 
 const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
+const truffleAssert = require("truffle-assertions");
 const truffleContract = require("truffle-contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
@@ -20,7 +21,12 @@ contract("CentralizedStore", function(accounts) {
 
   it("Compute fees", async function() {
     // Set a convenient fee for this test case of 10%.
-    await centralizedStore.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"));
+    const result = await centralizedStore.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"));
+
+    // Should produce an event each time fees are set.
+    truffleAssert.eventEmitted(result, "SetFixedOracleFeePerSecond", ev => {
+      return ev.newOracleFee.toString() === web3.utils.toWei("0.1", "ether");
+    });
 
     // One second time interval, 2 ether PFC. Expected fee is 0.1*2*1 = 0.2 ether.
     let fees = await centralizedStore.computeOracleFees(100, 101, web3.utils.toWei("2", "ether"));
