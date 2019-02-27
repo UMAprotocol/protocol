@@ -7,34 +7,66 @@ const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 
+const argv = require('minimist')(process.argv.slice());
+
+const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
+const truffleContract = require("truffle-contract");
+const ERC20Mintable = truffleContract(ERC20MintableData);
+ERC20Mintable.setProvider(web3.currentProvider);
+
+// Mirrors the identifiers in `scripts/PublishPrices.js`.
+// Run the script directly to publish meaningful numbers.
+const supportedIdentifiers = ["SPY/USD", "CNH/USD", "BTC/ETH"];
+
 // Deploys a TokenizedDerivative. Used for deploying a contract to Ganache for local testing.
 const initializeSystem = async function(callback) {
   try {
-    const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
+    // USAGE: `truffle exec test/scripts/InitializeSystem.js [--identifier <identifier>] --network <network>`
+    // <identifier> must be one of the values in supportedIdentifiers
+
     const deployedRegistry = await Registry.deployed();
     const deployedCentralizedOracle = await CentralizedOracle.deployed();
     const deployedCentralizedStore = await CentralizedStore.deployed();
     const deployedManualPriceFeed = await ManualPriceFeed.deployed();
     const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     const noLeverageCalculator = await LeveragedReturnCalculator.deployed();
-    const returnCalculatorWhitelist = await AddressWhitelist.at(
-      await tokenizedDerivativeCreator.returnCalculatorWhitelist()
-    );
 
-    await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
-    await deployedManualPriceFeed.setCurrentTime(100000);
+    // Use accounts[1] as the sponsor.
+    // When testing the web app, import the mnemonic directly into metamask
+    // to use the `sponsor` account defined in this script.
+    const sponsor = (await web3.eth.getAccounts())[1];
+
+    // Initialize ManualPriceFeed.
     const price = web3.utils.toWei("1", "ether");
     const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + 60;
+    await deployedManualPriceFeed.setCurrentTime(100000);
     await deployedManualPriceFeed.setCurrentTime(latestTime);
-    await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
+
+    // Add support for each identifier.
+    for (let i=0; i < supportedIdentifiers.length; i++) {
+      const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(supportedIdentifiers[i]));
+      await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
+      await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
+    }
+
+    // Create and register a margin currency.
+    const marginToken = await ERC20Mintable.new({ from: sponsor });
+    await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
+    const marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());
+    await marginCurrencyWhitelist.addToWhitelist(marginToken.address);
+    console.log("Registered margin address:", marginToken.address);
 
     await deployedRegistry.addDerivativeCreator(tokenizedDerivativeCreator.address);
 
-    // To distinguish from the "owner", i.e., UMA which is accounts[0].
-    const sponsor = (await web3.eth.getAccounts())[1];
+    // NOTE: Pass arguments through the command line and assign them here
+    // in order to customize the instantiated TokenizedDerivative.
+    let identifier = supportedIdentifiers[0];
+    if (argv.identifier && supportedIdentifiers.indexOf(argv.identifier) !== -1) {
+      identifier = argv.identifier;
+    }
+    console.log("Instantiating with identifier:", identifier);
+    const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
 
-    // TODO(ptare): Take some of these parameters from the command line, so that various TokenizedDerivatives can be
-    // deployed without changing this script every time.
     const defaultConstructorParams = {
       sponsor: sponsor,
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
@@ -45,7 +77,7 @@ const initializeSystem = async function(callback) {
       returnCalculator: noLeverageCalculator.address,
       startingTokenPrice: web3.utils.toWei("1", "ether"),
       expiry: 0, // Perpetual
-      marginCurrency: "0x0000000000000000000000000000000000000000", // ETH
+      marginCurrency: marginToken.address,
       withdrawLimit: web3.utils.toWei("0.33", "ether"),
       returnType: "1", // Compound
       startingUnderlyingPrice: "0", // Use price feed
