@@ -7,7 +7,7 @@ const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 
-const argv = require('minimist')(process.argv.slice());
+const argv = require("minimist")(process.argv.slice());
 
 const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
 const truffleContract = require("truffle-contract");
@@ -39,12 +39,11 @@ const initializeSystem = async function(callback) {
     // Initialize ManualPriceFeed.
     const price = web3.utils.toWei("1", "ether");
     const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + 60;
-    await deployedManualPriceFeed.setCurrentTime(100000);
     await deployedManualPriceFeed.setCurrentTime(latestTime);
 
     // Add support for each identifier.
-    for (let i=0; i < supportedIdentifiers.length; i++) {
-      const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(supportedIdentifiers[i]));
+    for (const identifier of supportedIdentifiers) {
+      const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
       await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
     }
@@ -52,7 +51,9 @@ const initializeSystem = async function(callback) {
     // Create and register a margin currency.
     const marginToken = await ERC20Mintable.new({ from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
-    const marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());
+    const marginCurrencyWhitelist = await AddressWhitelist.at(
+      await tokenizedDerivativeCreator.marginCurrencyWhitelist()
+    );
     await marginCurrencyWhitelist.addToWhitelist(marginToken.address);
     console.log("Registered margin address:", marginToken.address);
 
