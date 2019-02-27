@@ -8,14 +8,8 @@ import TokenPreapproval from "./TokenPreapproval.js";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
 import { hasEthMarginCurrency, stateToString } from "../utils/TokenizedDerivativeUtils.js";
 import { formatDate } from "../utils/FormattingUtils.js";
+import DrizzleHelper from "../utils/DrizzleHelper.js";
 
-// Used to track the status of follow up requests via Drizzle.
-// We are still trying to discover a good idiom for making follow up requests with Drizzle.
-const FollowUpRequestsStatus = {
-  UNSENT: 1,
-  WAITING_ON_CONTRACT: 2,
-  SENT: 3
-};
 // Corresponds to `~uint(0)` in Solidity.
 const UINT_MAX = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
@@ -30,48 +24,129 @@ class ContractDetails extends Component {
   };
 
   componentDidMount() {
-    const { drizzle, drizzleState } = this.props;
-    // Use the contractAddress as the contractKey, so that ContractDetails can be pulled up for separate
-    // contracts without colliding.
-    const contractKey = this.props.contractAddress;
-    const contractConfig = {
-      contractName: contractKey,
-      web3Contract: new drizzle.web3.eth.Contract(TokenizedDerivative.abi, this.props.contractAddress)
-    };
-    drizzle.addContract(contractConfig);
+    const { drizzle, contractAddress } = this.props;
 
-    const contractMethods = drizzle.contracts[contractKey].methods;
+    this.drizzleHelper = new DrizzleHelper(drizzle);
 
-    this.priceFeedRequestsStatus = FollowUpRequestsStatus.UNSENT;
-    this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.UNSENT;
-    this.setState({
-      contractKey: contractKey,
-      derivativeStorageDataKey: contractMethods.derivativeStorage.cacheCall(),
-      totalSupplyDataKey: contractMethods.totalSupply.cacheCall(),
-      nameDataKey: contractMethods.name.cacheCall(),
-      estimatedTokenValueDataKey: contractMethods.calcTokenValue.cacheCall(),
-      estimatedNavDataKey: contractMethods.calcNAV.cacheCall(),
-      estimatedShortMarginBalanceDataKey: contractMethods.calcShortMarginBalance.cacheCall(),
-      tokenBalanceDataKey: contractMethods.balanceOf.cacheCall(drizzleState.accounts[0], {}),
-      derivativeTokenAllowanceDataKey: contractMethods.allowance.cacheCall(
-        drizzleState.accounts[0],
-        this.props.contractAddress,
-        {}
-      )
+    Promise.all([
+      this.getContract(contractAddress),
+      this.fetchPriceFeedData(),
+      this.fetchMarginCurrencyAllowance()
+    ]).catch(error => {
+      console.error(`Contract ${contractAddress} failed to fetch: ${error.message}`);
     });
 
-    this.unsubscribeTokenizedDerivativeCheck = drizzle.store.subscribe(() => {
-      this.waitOnTokenizedDerivativeFetch();
-    });
-    this.unsubscribePriceFeedFetch = drizzle.store.subscribe(() => {
-      this.fetchPriceFeedData();
-    });
-    this.unsubscribeMarginCurrencyCheck = drizzle.store.subscribe(() => {
-      this.fetchMarginCurrencyAllowance();
-    });
     this.unsubscribeTxCheck = drizzle.store.subscribe(() => {
       this.checkPendingTransaction();
     });
+  }
+
+  async getContract(address) {
+    await this.drizzleHelper.addContract(address, TokenizedDerivative.abi);
+    const account = this.props.drizzleState.accounts[0];
+
+    return this.drizzleHelper
+      .cacheCallAll([
+        { address, methodName: "derivativeStorage", args: [] },
+        { address, methodName: "totalSupply", args: [] },
+        { address, methodName: "name", args: [] },
+        { address, methodName: "calcTokenValue", args: [] },
+        { address, methodName: "calcNAV", args: [] },
+        { address, methodName: "calcShortMarginBalance", args: [] },
+        { address, methodName: "balanceOf", args: [account] },
+        { address, methodName: "allowance", args: [account, address] }
+      ])
+      .then(results => {
+        // Update the state now that contract data has been loaded
+        const state = {};
+        results.forEach(({ methodName, key }) => {
+          switch (methodName) {
+            case "derivativeStorage":
+              state.derivativeStorageDataKey = key;
+              break;
+            case "totalSupply":
+              state.totalSupplyDataKey = key;
+              break;
+            case "name":
+              state.nameDataKey = key;
+              break;
+            case "calcTokenValue":
+              state.estimatedTokenValueDataKey = key;
+              break;
+            case "calcNAV":
+              state.estimatedNavDataKey = key;
+              break;
+            case "calcShortMarginBalance":
+              state.estimatedShortMarginBalanceDataKey = key;
+              break;
+            case "balanceOf":
+              state.tokenBalanceDataKey = key;
+              break;
+            case "allowance":
+              state.derivativeTokenAllowanceDataKey = key;
+              break;
+            default:
+              throw new Error(`Cannot find corresponding key for method: ${methodName}`);
+          }
+        });
+
+        state.contractKey = address;
+        state.loadingTokenizedDerivativeData = false;
+        this.setState(state);
+      });
+  }
+
+  async fetchMarginCurrencyAllowance() {
+    const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(
+      this.props.contractAddress,
+      "derivativeStorage",
+      []
+    );
+
+    // If margin currency is eth, exit early because authorization is unnecessary.
+    if (hasEthMarginCurrency(derivativeStorage)) {
+      this.setState({ loadingMarginCurrencyData: false });
+      return;
+    }
+
+    // Add margin currency contract.
+    const marginCurrencyAddress = derivativeStorage.externalAddresses.marginCurrency;
+    await this.drizzleHelper.addContract(marginCurrencyAddress, IERC20.abi);
+
+    // Get the current user's allowance.
+    const account = this.props.drizzleState.accounts[0];
+    const { key: marginCurrencyAllowanceDataKey } = await this.drizzleHelper.cacheCall(
+      marginCurrencyAddress,
+      "allowance",
+      [account, this.props.contractAddress, {}]
+    );
+
+    // Set key for both the margin currency's address and the allowance call.
+    this.setState({
+      loadingMarginCurrencyData: false,
+      marginCurrencyKey: marginCurrencyAddress,
+      marginCurrencyAllowanceDataKey
+    });
+  }
+
+  async fetchPriceFeedData() {
+    const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(
+      this.props.contractAddress,
+      "derivativeStorage",
+      []
+    );
+
+    // Get the price feed associated with the contract.
+    const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
+    const priceFeed = await this.drizzleHelper.addContract(priceFeedAddress, ManualPriceFeed.abi);
+
+    // Get the latest price.
+    const { key } = await this.drizzleHelper.cacheCall(priceFeed.address, "latestPrice", [
+      derivativeStorage.fixedParameters.product,
+      {}
+    ]);
+
+    this.setState({ loadingPriceFeedData: false, idDataKey: key });
   }
 
   addPendingTransaction(initiatedTransactionId) {
@@ -103,150 +178,7 @@ class ContractDetails extends Component {
     });
   }
 
-  // Waits on the initial data fetch from TokenizedDerivative being available.
-  waitOnTokenizedDerivativeFetch() {
-    const { drizzleState } = this.props;
-
-    const isContractInStore = this.state.contractKey in drizzleState.contracts;
-    if (!isContractInStore) {
-      return;
-    }
-    const contract = drizzleState.contracts[this.state.contractKey];
-
-    const areAllMethodValuesAvailable =
-      this.state.derivativeStorageDataKey in contract.derivativeStorage &&
-      this.state.totalSupplyDataKey in contract.totalSupply &&
-      this.state.nameDataKey in contract.name &&
-      this.state.estimatedTokenValueDataKey in contract.calcTokenValue &&
-      this.state.estimatedNavDataKey in contract.calcNAV &&
-      this.state.estimatedShortMarginBalanceDataKey in contract.calcShortMarginBalance &&
-      this.state.tokenBalanceDataKey in contract.balanceOf &&
-      this.state.derivativeTokenAllowanceDataKey in contract.allowance;
-    if (!areAllMethodValuesAvailable) {
-      return;
-    }
-    this.setState({ loadingTokenizedDerivativeData: false });
-    this.unsubscribeTokenizedDerivativeCheck();
-  }
-
-  // Requires `derivativeStorage` to have been fetched, and then fetches the margin currency allowance.
-  fetchMarginCurrencyAllowance() {
-    const { drizzle, drizzleState } = this.props;
-
-    const isContractInStore = this.state.contractKey in drizzleState.contracts;
-    if (!isContractInStore) {
-      return;
-    }
-    const contract = drizzleState.contracts[this.state.contractKey];
-
-    if (!(this.state.derivativeStorageDataKey in contract.derivativeStorage)) {
-      return;
-    }
-    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
-
-    if (hasEthMarginCurrency(derivativeStorage)) {
-      // Nothing to authorize, we're done.
-      this.setState({ loadingMarginCurrencyData: false });
-      this.unsubscribeMarginCurrencyCheck();
-    }
-
-    const marginCurrencyAddress = derivativeStorage.externalAddresses.marginCurrency;
-    // Use the address as the key to be able to pull up info for different margin currencies
-    const marginCurrencyKey = marginCurrencyAddress;
-    switch (this.marginCurrencyRequestsStatus) {
-      case FollowUpRequestsStatus.UNSENT:
-        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
-        const marginCurrencyContractConfig = {
-          contractName: marginCurrencyKey,
-          web3Contract: new drizzle.web3.eth.Contract(IERC20.abi, marginCurrencyAddress)
-        };
-        drizzle.addContract(marginCurrencyContractConfig);
-        return;
-      case FollowUpRequestsStatus.WAITING_ON_CONTRACT:
-        if (!(marginCurrencyKey in drizzle.contracts)) {
-          return;
-        }
-        this.marginCurrencyRequestsStatus = FollowUpRequestsStatus.SENT;
-        this.setState({
-          marginCurrencyAllowanceDataKey: drizzle.contracts[marginCurrencyKey].methods.allowance.cacheCall(
-            drizzleState.accounts[0],
-            this.props.contractAddress,
-            {}
-          )
-        });
-        return;
-      case FollowUpRequestsStatus.SENT:
-      default:
-      // Now we can continue on to checking whether marginCurrencyKey has retrieved a value.
-    }
-
-    const isMarginCurrencyAllowanceAvailable =
-      this.state.marginCurrencyAllowanceDataKey in drizzleState.contracts[marginCurrencyKey].allowance;
-    if (!isMarginCurrencyAllowanceAvailable) {
-      return;
-    }
-
-    // All the data is now available.
-    this.setState({ loadingMarginCurrencyData: false, marginCurrencyKey: marginCurrencyKey });
-    this.unsubscribeMarginCurrencyCheck();
-  }
-
-  // Requires `derivativeStorage` to have been fetched, and then fetches price feed data.
-  fetchPriceFeedData() {
-    const { drizzle, drizzleState } = this.props;
-
-    const isContractInStore = this.state.contractKey in drizzleState.contracts;
-    if (!isContractInStore) {
-      return;
-    }
-    const contract = drizzleState.contracts[this.state.contractKey];
-
-    if (!(this.state.derivativeStorageDataKey in contract.derivativeStorage)) {
-      return;
-    }
-    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
-
-    const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
-    switch (this.priceFeedRequestsStatus) {
-      case FollowUpRequestsStatus.UNSENT:
-        this.priceFeedRequestsStatus = FollowUpRequestsStatus.WAITING_ON_CONTRACT;
-        const priceFeedContractConfig = {
-          contractName: priceFeedAddress,
-          web3Contract: new drizzle.web3.eth.Contract(ManualPriceFeed.abi, priceFeedAddress)
-        };
-        drizzle.addContract(priceFeedContractConfig);
-        return;
-      case FollowUpRequestsStatus.WAITING_ON_CONTRACT:
-        if (!(priceFeedAddress in drizzle.contracts)) {
-          return;
-        }
-        this.priceFeedRequestsStatus = FollowUpRequestsStatus.SENT;
-        this.setState({
-          idDataKey: drizzle.contracts[priceFeedAddress].methods.latestPrice.cacheCall(
-            derivativeStorage.fixedParameters.product,
-            {}
-          )
-        });
-        return;
-      case FollowUpRequestsStatus.SENT:
-      default:
-      // Now we can continue on to checking whether idDataKey has retrieved a value.
-    }
-
-    const isLatestPriceAvailable = this.state.idDataKey in drizzleState.contracts[priceFeedAddress].latestPrice;
-    if (!isLatestPriceAvailable) {
-      return;
-    }
-
-    // All the data is now available.
-    this.setState({ loadingPriceFeedData: false });
-    this.unsubscribePriceFeedFetch();
-  }
-
   componentWillUnmount() {
-    this.unsubscribePriceFeedFetch();
-    this.unsubscribeMarginCurrencyCheck();
-    this.unsubscribeTokenizedDerivativeCheck();
     this.unsubscribeTxCheck();
   }
 
