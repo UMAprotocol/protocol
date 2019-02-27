@@ -71,14 +71,23 @@ contract Registry is RegistryInterface, Withdrawable {
         for (uint i = 0; i < parties.length; i = i.add(1)) {
             partiesMap.parties[parties[i]] = true;
         }
+
+        address[] memory partiesForEvent = parties;
+        emit RegisterDerivative(derivativeAddress, partiesForEvent);
     }
 
     function addDerivativeCreator(address derivativeCreator) external onlyOwner {
-        derivativeCreators[derivativeCreator] = true;
+        if (!derivativeCreators[derivativeCreator]) {
+            derivativeCreators[derivativeCreator] = true;
+            emit AddDerivativeCreator(derivativeCreator);
+        }
     }
 
     function removeDerivativeCreator(address derivativeCreator) external onlyOwner {
-        derivativeCreators[derivativeCreator] = false;
+        if (derivativeCreators[derivativeCreator]) {
+            derivativeCreators[derivativeCreator] = false;
+            emit RemoveDerivativeCreator(derivativeCreator);
+        }
     }
 
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
@@ -116,4 +125,9 @@ contract Registry is RegistryInterface, Withdrawable {
     function isDerivativeCreatorAuthorized(address derivativeCreator) external view returns (bool isAuthorized) {
         return derivativeCreators[derivativeCreator];
     }
+
+    event RegisterDerivative(address indexed derivativeAddress, address[] parties);
+    event AddDerivativeCreator(address indexed addedDerivativeCreator);
+    event RemoveDerivativeCreator(address indexed removedDerivativeCreator);
+
 }

@@ -1,5 +1,7 @@
 const { didContractThrow } = require("./utils/DidContractThrow.js");
 
+const truffleAssert = require("truffle-assertions");
+
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 contract("AddressWhitelist", function(accounts) {
@@ -32,7 +34,11 @@ contract("AddressWhitelist", function(accounts) {
     const contractToAdd = web3.utils.randomHex(20);
 
     // Owner can add to the whitelist.
-    await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
+    const result = await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
+
+    truffleAssert.eventEmitted(result, "AddToWhitelist", ev => {
+      return web3.utils.toChecksumAddress(ev.addedAddress) === web3.utils.toChecksumAddress(contractToAdd);
+    });
 
     // Verify that the addition is reflected in isOnWhitelist().
     assert.isTrue(await addressWhitelist.isOnWhitelist(contractToAdd));
@@ -50,18 +56,28 @@ contract("AddressWhitelist", function(accounts) {
     await addressWhitelist.addToWhitelist(contractToRemove, { from: owner });
 
     // Remove contractToRemove
-    await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
+    let result = await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
+
+    truffleAssert.eventEmitted(result, "RemoveFromWhitelist", ev => {
+      return web3.utils.toChecksumAddress(ev.removedAddress) === web3.utils.toChecksumAddress(contractToRemove);
+    });
 
     // Verify that the additions and removal were applied correctly.
     assert.isTrue(await addressWhitelist.isOnWhitelist(contractToAdd));
     assert.isFalse(await addressWhitelist.isOnWhitelist(contractToRemove));
+
+    // Double remove from whitelist. Shouldn't error, but shouldn't generate an event.
+    result = await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
+    truffleAssert.eventNotEmitted(result, "RemoveFromWhitelist");
   });
 
   it("Add to whitelist twice", async function() {
     const contractToAdd = web3.utils.randomHex(20);
 
     await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
-    await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
+    const result = await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
+
+    truffleAssert.eventNotEmitted(result, "AddToWhitelist");
 
     assert.isTrue(await addressWhitelist.isOnWhitelist(contractToAdd));
   });
