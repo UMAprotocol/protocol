@@ -876,7 +876,7 @@ library TokenizedDerivativeUtils {
     function _pullAuthorizedTokens(IERC20 erc20, uint amountToPull) private {
         // If nothing is being pulled, there's no point in calling a transfer.
         if (amountToPull > 0) {
-            require(erc20.transferFrom(msg.sender, address(this), amount));
+            require(erc20.transferFrom(msg.sender, address(this), amountToPull));
         }
     }
 
