@@ -498,12 +498,7 @@ library TokenizedDerivativeUtils {
         }
 
         IERC20 erc20 = IERC20(erc20Address);
-
-        // Note: we have to do balance snapshotting to handle non compliant ERC20 tokens that don't return a bool
-        // in the transfer() function.
-        uint startingBalance = erc20.balanceOf(address(this));
-        erc20.transfer(msg.sender, amount);
-        require(startingBalance.sub(amount) == erc20.balanceOf(address(this)));
+        require(erc20.transfer(msg.sender, amount));
     }
 
     function _setExternalAddresses(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) internal {
@@ -863,11 +858,7 @@ library TokenizedDerivativeUtils {
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
             msg.sender.transfer(amount);
         } else {
-            // Note: we have to do balance snapshotting to handle non compliant ERC20 tokens that don't return a bool
-            // in the transfer() function.
-            uint startingBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
-            s.externalAddresses.marginCurrency.transfer(msg.sender, amount);
-            require(startingBalance.sub(amount) == s.externalAddresses.marginCurrency.balanceOf(address(this)));
+            require(s.externalAddresses.marginCurrency.transfer(msg.sender, amount));
         }
     }
 
@@ -885,11 +876,7 @@ library TokenizedDerivativeUtils {
     function _pullAuthorizedTokens(IERC20 erc20, uint amountToPull) private {
         // If nothing is being pulled, there's no point in calling a transfer.
         if (amountToPull > 0) {
-            // Note: we have to do balance snapshotting to handle non compliant ERC20 tokens that don't return a bool
-            // in the transferFrom() function.
-            uint startingBalance = erc20.balanceOf(address(this));
-            erc20.transferFrom(msg.sender, address(this), amountToPull);
-            require(startingBalance.add(amountToPull) == erc20.balanceOf(address(this)));
+            require(erc20.transferFrom(msg.sender, address(this), amount));
         }
     }
 
