@@ -504,7 +504,13 @@ library TokenizedDerivativeUtils {
     }
 
     function _setExternalAddresses(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) internal {
+
+        // Note: not all "ERC20" tokens conform exactly to this interface (BNB, OMG, etc). The most common way that
+        // tokens fail to conform is that they do not return a bool from certain state-changing operations. This
+        // contract was not designed to work with those tokens because of the additional complexity they would
+        // introduce.
         s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
+
         s.externalAddresses.oracle = OracleInterface(params.oracle);
         s.externalAddresses.store = StoreInterface(params.store);
         s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
