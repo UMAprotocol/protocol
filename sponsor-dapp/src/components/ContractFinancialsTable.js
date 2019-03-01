@@ -10,7 +10,7 @@ import { withStyles } from "@material-ui/core/styles";
 const styles = theme => ({
   root: {
     margin: 18,
-    overflowX: "auto",
+    overflowX: "auto"
   },
   shaded: {
     backgroundColor: "gray"
