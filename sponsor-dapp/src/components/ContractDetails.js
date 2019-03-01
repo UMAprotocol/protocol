@@ -275,10 +275,14 @@ class ContractDetails extends Component {
   };
 
   depositMargin = () => {
-    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.deposit.cacheSend({
-      from: this.props.drizzleState.accounts[0],
-      value: this.getEthToAttachIfNeeded(this.props.drizzle.web3.utils.toWei(this.state.formInputs.depositAmount))
-    });
+    const { drizzle, drizzleState } = this.props;
+    const initiatedTransactionId = drizzle.contracts[this.state.contractKey].methods.deposit.cacheSend(
+      drizzle.web3.utils.toWei(this.state.formInputs.depositAmount),
+      {
+        from: drizzleState.accounts[0],
+        value: this.getEthToAttachIfNeeded(drizzle.web3.utils.toWei(this.state.formInputs.depositAmount))
+      }
+    );
     this.addPendingTransaction(initiatedTransactionId);
   };
 
@@ -294,6 +298,7 @@ class ContractDetails extends Component {
       .div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
 
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
+      marginCurrencyAmount.toString(),
       web3.utils.toWei(this.state.formInputs.createAmount),
       {
         from: this.props.drizzleState.accounts[0],
@@ -304,8 +309,6 @@ class ContractDetails extends Component {
   };
 
   redeemTokens = () => {
-    // TODO(mrice32): The contract's `redeemTokens` method doesn't currently take an argument, so this call doesn't
-    // work until the contract is updated.
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.redeemTokens.cacheSend(
       this.props.drizzle.web3.utils.toWei(this.state.formInputs.redeemAmount),
       {
@@ -346,8 +349,8 @@ class ContractDetails extends Component {
     const derivativeStorage = this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage[
       this.state.derivativeStorageDataKey
     ].value;
-    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.approve.cacheSend(
-      derivativeStorage.externalAddresses.marginCurrency,
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.marginCurrencyKey].methods.approve.cacheSend(
+      this.props.contractAddress,
       UINT_MAX,
       {
         from: this.props.drizzleState.accounts[0]
