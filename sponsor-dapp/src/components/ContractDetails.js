@@ -29,7 +29,7 @@ class ContractDetails extends Component {
     this.drizzleHelper = new DrizzleHelper(drizzle);
 
     Promise.all([
-      this.getContract(contractAddress),
+      this.getContract(),
       this.fetchPriceFeedData(),
       this.fetchMarginCurrencyAllowance()
     ]).catch(error => {
@@ -41,8 +41,10 @@ class ContractDetails extends Component {
     });
   }
 
-  async getContract(address) {
+  async getContract() {
+    const { contractAddress: address } = this.props;
     await this.drizzleHelper.addContract(address, TokenizedDerivative.abi);
+
     const account = this.props.drizzleState.accounts[0];
 
     return this.drizzleHelper
@@ -97,8 +99,11 @@ class ContractDetails extends Component {
   }
 
   async fetchMarginCurrencyAllowance() {
+    const { contractAddress: address } = this.props;
+    await this.drizzleHelper.addContract(address, TokenizedDerivative.abi);
+
     const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(
-      this.props.contractAddress,
+      address,
       "derivativeStorage",
       []
     );
@@ -118,7 +123,7 @@ class ContractDetails extends Component {
     const { key: marginCurrencyAllowanceDataKey } = await this.drizzleHelper.cacheCall(
       marginCurrencyAddress,
       "allowance",
-      [account, this.props.contractAddress, {}]
+      [account, address, {}]
     );
 
     // Set key for both the margin currency's address and the allowance call.
@@ -130,8 +135,11 @@ class ContractDetails extends Component {
   }
 
   async fetchPriceFeedData() {
+    const { contractAddress: address } = this.props;
+    await this.drizzleHelper.addContract(address, TokenizedDerivative.abi);
+
     const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(
-      this.props.contractAddress,
+      address,
       "derivativeStorage",
       []
     );
