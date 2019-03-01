@@ -895,7 +895,7 @@ library TokenizedDerivativeUtils {
         // The navNew division above truncates by default. Instead, we prefer to ceil this value to ensure tokens
         // cannot be purchased or backed with less than their true value.
         if ((navPreDivision % INT_FP_SCALING_FACTOR) != 0) {
-            navNew.add(1);
+            navNew = navNew.add(1);
         }
     }
 
