@@ -826,8 +826,7 @@ library TokenizedDerivativeUtils {
         view
         returns (int requiredMargin)
     {
-        int leverage = s.externalAddresses.returnCalculator.leverage();
-        int leverageMagnitude = leverage < 0 ? -leverage : leverage;
+        int leverageMagnitude = _absoluteValue(s.externalAddresses.returnCalculator.leverage());
 
         int effectiveNotional;
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
@@ -838,7 +837,9 @@ library TokenizedDerivativeUtils {
             effectiveNotional = currentNav.mul(leverageMagnitude);
         }
 
-        requiredMargin = _takePercentage(effectiveNotional, s.fixedParameters.supportedMove);
+        // Take the absolute value of the notional since a negative notional has similar risk properties to a positive
+        // notional of the same size, and, therefore, requires the same margin.
+        requiredMargin = _takePercentage(_absoluteValue(effectiveNotional), s.fixedParameters.supportedMove);
     }
 
     function _pullSentMargin(TDS.Storage storage s, uint expectedMargin) internal returns (uint refund) {
@@ -914,6 +915,10 @@ library TokenizedDerivativeUtils {
 
     function _takePercentage(int value, int percentage) private pure returns (int result) {
         return value.mul(percentage).div(INT_FP_SCALING_FACTOR);
+    }
+
+    function _absoluteValue(int value) private pure returns (int result) {
+        return value < 0 ? -value : value;
     }
 
     function _safeIntCast(uint value) private pure returns (int result) {
