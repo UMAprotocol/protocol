@@ -5,7 +5,6 @@ import Button from "@material-ui/core/Button";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import Dialog from "@material-ui/core/Dialog";
 import DialogContent from "@material-ui/core/DialogContent";
-import DialogTitle from "@material-ui/core/DialogTitle";
 import Grid from "@material-ui/core/Grid";
 import Toolbar from "@material-ui/core/Toolbar";
 import Typography from "@material-ui/core/Typography";
@@ -43,6 +42,9 @@ const styles = theme => ({
   },
   title: {
     flexGrow: 1
+  },
+  contractDetailsModal: {
+    padding: 10
   }
 });
 
@@ -146,9 +148,10 @@ class Dashboard extends React.Component {
           <Dialog
             open={this.state.contractDetailsOpen}
             onClose={this.handleDetailsModalClose}
+            className={classes.contractDetailsModal}
+            maxWidth="xl"
             aria-labelledby="contract-details"
           >
-            <DialogTitle>Contract Details</DialogTitle>
             <DialogContent>
               <ContractDetails
                 contractAddress={this.state.openModalContractAddress}
@@ -157,13 +160,7 @@ class Dashboard extends React.Component {
               />
             </DialogContent>
           </Dialog>
-          <CreateContractModal
-            params={this.props.params}
-            drizzle={this.props.drizzle}
-            drizzleState={this.props.drizzleState}
-            open={this.state.createContractOpen}
-            onClose={this.handleCreateModalClose}
-          />
+          <CreateContractModal open={this.state.createContractOpen} onClose={this.handleCreateModalClose} />
           <Grid container spacing={16} direction="column" alignItems="center" align="center" className={classes.root}>
             <Grid item xs>
               <DerivativeList

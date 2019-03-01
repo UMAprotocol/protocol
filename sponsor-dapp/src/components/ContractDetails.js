@@ -8,6 +8,21 @@ import TokenPreapproval from "./TokenPreapproval.js";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
 import { hasEthMarginCurrency, stateToString } from "../utils/TokenizedDerivativeUtils.js";
 import { formatDate } from "../utils/FormattingUtils.js";
+import { withStyles } from "@material-ui/core/styles";
+import Typography from "@material-ui/core/Typography";
+
+const styles = theme => ({
+  root: {
+    minWidth: 900
+  },
+  titleBar: {
+    display: "flex",
+    width: "100%"
+  },
+  title: {
+    flexGrow: 1
+  }
+});
 
 // Used to track the status of follow up requests via Drizzle.
 // We are still trying to discover a good idiom for making follow up requests with Drizzle.
@@ -471,11 +486,15 @@ class ContractDetails extends Component {
     }
 
     return (
-      <div>
-        <div>
-          {contractName} ({derivativeStorage.fixedParameters.symbol})
+      <div className={this.props.classes.root}>
+        <div className={this.props.classes.titleBar}>
+          <Typography component="h1" variant="h4" className={this.props.classes.title}>
+            {contractName} ({derivativeStorage.fixedParameters.symbol})
+          </Typography>
+          <Typography component="h2" variant="h5">
+            Contract status: {contractState}
+          </Typography>
         </div>
-        <div>Contract status: {contractState}</div>
         <ContractParameters parameters={contractParameters} />
         <ContractFinancialsTable
           lastRemargin={lastRemarginContractFinancials}
@@ -487,4 +506,4 @@ class ContractDetails extends Component {
   }
 }
 
-export default ContractDetails;
+export default withStyles(styles)(ContractDetails);
