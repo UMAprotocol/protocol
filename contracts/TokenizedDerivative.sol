@@ -911,7 +911,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _absoluteValue(int value) private pure returns (int result) {
-        return value < 0 ? -value : value;
+        return value < 0 ? value.mul(-1) : value;
     }
 
     function _safeIntCast(uint value) private pure returns (int result) {
