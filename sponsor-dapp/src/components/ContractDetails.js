@@ -28,11 +28,7 @@ class ContractDetails extends Component {
 
     this.drizzleHelper = new DrizzleHelper(drizzle);
 
-    Promise.all([
-      this.getContract(),
-      this.fetchPriceFeedData(),
-      this.fetchMarginCurrencyAllowance()
-    ]).catch(error => {
+    Promise.all([this.getContract(), this.fetchPriceFeedData(), this.fetchMarginCurrencyAllowance()]).catch(error => {
       console.error(`Contract ${contractAddress} failed to fetch: ${error.message}`);
     });
 
@@ -102,11 +98,7 @@ class ContractDetails extends Component {
     const { contractAddress: address } = this.props;
     await this.drizzleHelper.addContract(address, TokenizedDerivative.abi);
 
-    const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(
-      address,
-      "derivativeStorage",
-      []
-    );
+    const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(address, "derivativeStorage", []);
 
     // If margin currency is eth, exit early because authorization is unnecessary.
     if (hasEthMarginCurrency(derivativeStorage)) {
@@ -138,11 +130,7 @@ class ContractDetails extends Component {
     const { contractAddress: address } = this.props;
     await this.drizzleHelper.addContract(address, TokenizedDerivative.abi);
 
-    const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(
-      address,
-      "derivativeStorage",
-      []
-    );
+    const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(address, "derivativeStorage", []);
 
     // Get the price feed associated with the contract.
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
@@ -150,7 +138,7 @@ class ContractDetails extends Component {
 
     // Get the latest price.
     const { key } = await this.drizzleHelper.cacheCall(priceFeed.address, "latestPrice", [
-      derivativeStorage.fixedParameters.product,
+      derivativeStorage.fixedParameters.product
     ]);
 
     this.setState({ loadingPriceFeedData: false, idDataKey: key });
