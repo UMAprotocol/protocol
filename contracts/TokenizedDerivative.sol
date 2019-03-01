@@ -811,6 +811,11 @@ library TokenizedDerivativeUtils {
         }
 
         longDiff = newLongBalance.sub(s.longBalance);
+
+        // Cannot pull more margin from the short than is available.
+        if (longDiff > s.shortBalance) {
+            longDiff = s.shortBalance;
+        }
     }
 
     function _getDefaultPenalty(TDS.Storage storage s) internal view returns (int penalty) {
