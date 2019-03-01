@@ -93,7 +93,7 @@ class DerivativeList extends React.Component {
         additionalDerivativeKeys[derivativeChecksumAddress] = {
           tokenNameKey: derivativeContractMethods.name.cacheCall(),
           symbolKey: derivativeContractMethods.symbol.cacheCall(),
-          tokensHeldKey: derivativeContractMethods.balanceOf.cacheCall(drizzleState.accounts[0], {}),
+          tokensHeldKey: derivativeContractMethods.balanceOf.cacheCall(drizzleState.accounts[0]),
           derivativeStorageKey: derivativeContractMethods.derivativeStorage.cacheCall()
         };
       }

@@ -123,7 +123,7 @@ class ContractDetails extends Component {
     const { key: marginCurrencyAllowanceDataKey } = await this.drizzleHelper.cacheCall(
       marginCurrencyAddress,
       "allowance",
-      [account, address, {}]
+      [account, address]
     );
 
     // Set key for both the margin currency's address and the allowance call.
@@ -151,7 +151,6 @@ class ContractDetails extends Component {
     // Get the latest price.
     const { key } = await this.drizzleHelper.cacheCall(priceFeed.address, "latestPrice", [
       derivativeStorage.fixedParameters.product,
-      {}
     ]);
 
     this.setState({ loadingPriceFeedData: false, idDataKey: key });
