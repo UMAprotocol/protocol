@@ -16,6 +16,7 @@ contract CentralizedStore is StoreInterface, Withdrawable {
     using SafeMath for uint;
 
     uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
+    uint private constant FP_SCALING_FACTOR = 10**18;
 
     function payOracleFees() external payable {
         require(msg.value > 0);
@@ -31,14 +32,14 @@ contract CentralizedStore is StoreInterface, Withdrawable {
     // Sets a new Oracle fee per second.
     function setFixedOracleFeePerSecond(uint newOracleFee) external onlyOwner {
         // Oracle fees at or over 100% don't make sense.
-        require(newOracleFee < 1 ether);
+        require(newOracleFee < FP_SCALING_FACTOR);
         fixedOracleFeePerSecond = newOracleFee;
         emit SetFixedOracleFeePerSecond(newOracleFee);
     }
 
     function computeOracleFees(uint startTime, uint endTime, uint pfc) external view returns (uint oracleFeeAmount) {
         uint timeRange = endTime.sub(startTime);
-        return pfc.mul(fixedOracleFeePerSecond).mul(timeRange).div(1 ether);
+        return pfc.mul(fixedOracleFeePerSecond).mul(timeRange).div(FP_SCALING_FACTOR);
     }
 
     event SetFixedOracleFeePerSecond(uint newOracleFee);
