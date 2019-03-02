@@ -467,10 +467,10 @@ library TokenizedDerivativeUtils {
             newTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
         }
 
-        int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
-        int longDiff = s._getLongDiff(navNew);
-
         uint feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime);
+
+        int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
+        int longDiff = _getLongDiff(navNew, s.longBalance, s.shortBalance.sub(_safeIntCast(feeAmount)));
 
         newShortMarginBalance = s.shortBalance.sub(longDiff).sub(_safeIntCast(feeAmount));
     }
@@ -794,7 +794,7 @@ library TokenizedDerivativeUtils {
     function _updateBalances(TDS.Storage storage s, int navNew) internal {
         // Compute difference -- Add the difference to owner and subtract
         // from counterparty. Then update nav state variable.
-        int longDiff = s._getLongDiff(navNew);
+        int longDiff = _getLongDiff(navNew, s.longBalance, s.shortBalance);
         s.nav = navNew;
 
         s.longBalance = s.longBalance.add(longDiff);
@@ -803,7 +803,7 @@ library TokenizedDerivativeUtils {
 
     // Gets the change in balance for the long side.
     // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
-    function _getLongDiff(TDS.Storage storage s, int navNew) internal view returns (int longDiff) {
+    function _getLongDiff(int navNew, int longBalance, int shortBalance) private pure returns (int longDiff) {
         int newLongBalance = navNew;
 
         // Long balance cannot go below zero.
@@ -811,11 +811,11 @@ library TokenizedDerivativeUtils {
             newLongBalance = 0;
         }
 
-        longDiff = newLongBalance.sub(s.longBalance);
+        longDiff = newLongBalance.sub(longBalance);
 
         // Cannot pull more margin from the short than is available.
-        if (longDiff > s.shortBalance) {
-            longDiff = s.shortBalance;
+        if (longDiff > shortBalance) {
+            longDiff = shortBalance;
         }
     }
 
