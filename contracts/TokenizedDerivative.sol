@@ -801,24 +801,6 @@ library TokenizedDerivativeUtils {
         s.shortBalance = s.shortBalance.sub(longDiff);
     }
 
-    // Gets the change in balance for the long side.
-    // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
-    function _getLongDiff(int navNew, int longBalance, int shortBalance) private pure returns (int longDiff) {
-        int newLongBalance = navNew;
-
-        // Long balance cannot go below zero.
-        if (newLongBalance < 0) {
-            newLongBalance = 0;
-        }
-
-        longDiff = newLongBalance.sub(longBalance);
-
-        // Cannot pull more margin from the short than is available.
-        if (longDiff > shortBalance) {
-            longDiff = shortBalance;
-        }
-    }
-
     function _getDefaultPenalty(TDS.Storage storage s) internal view returns (int penalty) {
         return s.defaultPenaltyAmount;
     }
@@ -890,6 +872,24 @@ library TokenizedDerivativeUtils {
         // If nothing is being pulled, there's no point in calling a transfer.
         if (amountToPull > 0) {
             require(erc20.transferFrom(msg.sender, address(this), amountToPull));
+        }
+    }
+
+    // Gets the change in balance for the long side.
+    // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
+    function _getLongDiff(int navNew, int longBalance, int shortBalance) private pure returns (int longDiff) {
+        int newLongBalance = navNew;
+
+        // Long balance cannot go below zero.
+        if (newLongBalance < 0) {
+            newLongBalance = 0;
+        }
+
+        longDiff = newLongBalance.sub(longBalance);
+
+        // Cannot pull more margin from the short than is available.
+        if (longDiff > shortBalance) {
+            longDiff = shortBalance;
         }
     }
 
