@@ -291,6 +291,64 @@ class ContractDetails extends Component {
     return this.props.drizzle.web3.utils.fromWei(num.toString());
   }
 
+  // Gets how the current user is allowed to interact with the contract, i.e., which buttons are presented to them.
+  getInteractions() {
+    const { drizzle, drizzleState } = this.props;
+    const web3 = drizzle.web3;
+
+    const contract = drizzleState.contracts[this.state.contractKey];
+    const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
+
+    const isTokenSponsor = derivativeStorage.externalAddresses.sponsor === drizzleState.accounts[0];
+    if (!isTokenSponsor) {
+      // TODO(ptare): When this component supports the "Settled" state, we'd need to expose some buttons to the token
+      // holder to allow them to redeem their tokens.
+      return "";
+    }
+
+    // In order to interact with contract methods, the user must have first approved at least this much in derivative
+    // token and margin currency transfers. This value is chosen to be half of the value we will attempt to approve,
+    // so even as the approval gets used up, the user never needs to reapprove.
+    const minAllowance = web3.utils.toBN(UINT_MAX).divRound(web3.utils.toBN("2"));
+    const isDerivativeTokenAuthorized = web3.utils
+      .toBN(contract.allowance[this.state.derivativeTokenAllowanceDataKey].value)
+      .gte(minAllowance);
+    const isMarginCurrencyAuthorized =
+      hasEthMarginCurrency(derivativeStorage) ||
+      web3.utils
+        .toBN(
+          drizzleState.contracts[this.state.marginCurrencyKey].allowance[this.state.marginCurrencyAllowanceDataKey]
+            .value
+        )
+        .gte(minAllowance);
+    // We either present the user with the buttons to pre-authorize the contract, or if they've already preauthorized,
+    // with the buttons to deposit, remargin, etc.
+    if (!isDerivativeTokenAuthorized || !isMarginCurrencyAuthorized) {
+      return (
+        <TokenPreapproval
+          isInteractionEnabled={this.state.isInteractionEnabled}
+          isDerivativeTokenAuthorized={isDerivativeTokenAuthorized}
+          isMarginCurrencyAuthorized={isMarginCurrencyAuthorized}
+          approveDerivativeTokensFn={this.approveDerivativeTokens}
+          approveMarginCurrencyFn={this.approveMarginCurrency}
+        />
+      );
+    } else {
+      return (
+        <ContractInteraction
+          remarginFn={this.remarginContract}
+          depositFn={this.depositMargin}
+          withdrawFn={this.withdrawMargin}
+          createFn={this.createTokens}
+          redeemFn={this.redeemTokens}
+          formInputs={this.state.formInputs}
+          handleChangeFn={this.handleFormChange}
+          isInteractionEnabled={this.state.isInteractionEnabled}
+        />
+      );
+    }
+  }
+
   render() {
     if (
       this.state.loadingTokenizedDerivativeData ||
@@ -354,49 +412,6 @@ class ContractDetails extends Component {
       returnCalculator: derivativeStorage.externalAddresses.returnCalculator
     };
 
-    // In order to interact with contract methods, the user must have first approved at least this much in derivative
-    // token and margin currency transfers. This value is chosen to be half of the value we will attempt to approve,
-    // so even as the approval gets used up, the user never needs to reapprove.
-    const minAllowance = web3.utils.toBN(UINT_MAX).divRound(web3.utils.toBN("2"));
-    let interactions;
-    const isDerivativeTokenAuthorized = web3.utils
-      .toBN(contract.allowance[this.state.derivativeTokenAllowanceDataKey].value)
-      .gte(minAllowance);
-    const isMarginCurrencyAuthorized =
-      hasEthMarginCurrency(derivativeStorage) ||
-      web3.utils
-        .toBN(
-          drizzleState.contracts[this.state.marginCurrencyKey].allowance[this.state.marginCurrencyAllowanceDataKey]
-            .value
-        )
-        .gte(minAllowance);
-    // We either present the user with the buttons to pre-authorize the contract, or if they've already preauthorized,
-    // with the buttons to deposit, remargin, etc.
-    if (!isDerivativeTokenAuthorized || !isMarginCurrencyAuthorized) {
-      interactions = (
-        <TokenPreapproval
-          isInteractionEnabled={this.state.isInteractionEnabled}
-          isDerivativeTokenAuthorized={isDerivativeTokenAuthorized}
-          isMarginCurrencyAuthorized={isMarginCurrencyAuthorized}
-          approveDerivativeTokensFn={this.approveDerivativeTokens}
-          approveMarginCurrencyFn={this.approveMarginCurrency}
-        />
-      );
-    } else {
-      interactions = (
-        <ContractInteraction
-          remarginFn={this.remarginContract}
-          depositFn={this.depositMargin}
-          withdrawFn={this.withdrawMargin}
-          createFn={this.createTokens}
-          redeemFn={this.redeemTokens}
-          formInputs={this.state.formInputs}
-          handleChangeFn={this.handleFormChange}
-          isInteractionEnabled={this.state.isInteractionEnabled}
-        />
-      );
-    }
-
     return (
       <div>
         <div>
@@ -408,7 +423,7 @@ class ContractDetails extends Component {
           lastRemargin={lastRemarginContractFinancials}
           estimatedCurrent={estimatedCurrentContractFinancials}
         />
-        {interactions}
+        {this.getInteractions()}
       </div>
     );
   }
