@@ -97,7 +97,13 @@ contract("TokenizedDerivative", function(accounts) {
   const computeExpectedOracleFees = (longBalance, shortBalance) => {
     const pfc = longBalance.cmp(shortBalance) == 1 ? longBalance : shortBalance;
     const oracleFeeRatio = oracleFeePerSecond.mul(web3.utils.toBN(priceFeedUpdatesInterval));
-    return pfc.mul(oracleFeeRatio).div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
+    const preDivisionFees = pfc.mul(oracleFeeRatio);
+
+    // Before dividing out the fp_multiplier, we check the remainder and add 1 if the remainder is nonzero to ceil()
+    // the result of the division as is done in the solidity fee computation.
+    const fp_multiplier = web3.utils.toBN(web3.utils.toWei("1", "ether"));
+    const ceilAddition = preDivisionFees.mod(fp_multiplier).isZero() ? 0 : 1;
+    return preDivisionFees.div(fp_multiplier).addn(ceilAddition);
   };
 
   // Pushes a price to the ManualPriceFeed, incrementing time by `priceFeedUpdatesInterval`.
