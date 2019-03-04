@@ -273,9 +273,6 @@ class ContractDetails extends Component {
 
   // Approves the TokenizedDerivative to spend a large number of margin currency tokens from the user.
   approveMarginCurrency = () => {
-    const derivativeStorage = this.props.drizzleState.contracts[this.state.contractKey].derivativeStorage[
-      this.state.derivativeStorageDataKey
-    ].value;
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.marginCurrencyKey].methods.approve.cacheSend(
       this.props.contractAddress,
       UINT_MAX,
