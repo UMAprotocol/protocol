@@ -39,7 +39,15 @@ contract CentralizedStore is StoreInterface, Withdrawable {
 
     function computeOracleFees(uint startTime, uint endTime, uint pfc) external view returns (uint oracleFeeAmount) {
         uint timeRange = endTime.sub(startTime);
-        return pfc.mul(fixedOracleFeePerSecond).mul(timeRange).div(FP_SCALING_FACTOR);
+
+        // The oracle fees before being divided by the FP_SCALING_FACTOR.
+        uint oracleFeesPreDivision = pfc.mul(fixedOracleFeePerSecond).mul(timeRange);
+        oracleFeeAmount = oracleFeesPreDivision.div(FP_SCALING_FACTOR);
+
+        // If there is any remainder, add 1. This causes the division to ceil rather than floor the result.
+        if (oracleFeesPreDivision.mod(FP_SCALING_FACTOR) != 0) {
+            oracleFeeAmount = oracleFeeAmount.add(1);
+        }
     }
 
     event SetFixedOracleFeePerSecond(uint newOracleFee);
