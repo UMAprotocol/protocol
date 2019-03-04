@@ -160,7 +160,13 @@ class Dashboard extends React.Component {
               />
             </DialogContent>
           </Dialog>
-          <CreateContractModal open={this.state.createContractOpen} onClose={this.handleCreateModalClose} />
+          <CreateContractModal
+            params={this.props.params}
+            drizzle={this.props.drizzle}
+            drizzleState={this.props.drizzleState}
+            open={this.state.createContractOpen}
+            onClose={this.handleCreateModalClose}
+          />
           <Grid container spacing={16} direction="column" alignItems="center" align="center" className={classes.root}>
             <Grid item xs>
               <DerivativeList
