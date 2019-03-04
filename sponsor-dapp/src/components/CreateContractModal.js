@@ -56,7 +56,7 @@ class CreateContractModal extends React.Component {
     const identifierKeys = [];
     params.identifiers.forEach(identifier => {
       const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
-      identifierKeys.push(ManualPriceFeed.methods.isIdentifierSupported.cacheCall(identifierBytes, {}));
+      identifierKeys.push(ManualPriceFeed.methods.isIdentifierSupported.cacheCall(identifierBytes));
     });
 
     const unsubscribe = drizzle.store.subscribe(() => {

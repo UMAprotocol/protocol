@@ -20,6 +20,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     // -1 -> unlevered short
     // -2 -> 2x levered short
     int internal leverageMultiplier;
+    int private constant FP_SCALING_FACTOR = 10**18;
 
     constructor(int _leverageMultiplier) public {
         require(_leverageMultiplier != 0);
@@ -33,10 +34,10 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         }
 
         // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
-        int underlyingAssetReturn = newPrice.mul(1 ether).div(oldPrice);
+        int underlyingAssetReturn = newPrice.mul(FP_SCALING_FACTOR).div(oldPrice);
 
         // Compute the RoR of the underlying asset and multiply by leverageMultiplier to get the modified return.
-        assetReturn = underlyingAssetReturn.sub(1 ether).mul(leverageMultiplier);
+        assetReturn = underlyingAssetReturn.sub(FP_SCALING_FACTOR).mul(leverageMultiplier);
 
 
         // If oldPrice is < 0, we need to flip the sign to keep returns positively correlated with

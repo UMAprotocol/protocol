@@ -170,6 +170,8 @@ library TokenizedDerivativeUtils {
     uint private constant SECONDS_PER_DAY = 86400;
     uint private constant SECONDS_PER_YEAR = 31536000;
     uint private constant INT_MAX = 2**255 - 1;
+    uint private constant UINT_FP_SCALING_FACTOR = 10**18;
+    int private constant INT_FP_SCALING_FACTOR = 10**18;
 
     modifier onlySponsor(TDS.Storage storage s) {
         require(msg.sender == s.externalAddresses.sponsor);
@@ -200,10 +202,10 @@ library TokenizedDerivativeUtils {
         s._setFixedParameters(params, symbol);
         s._setExternalAddresses(params);
         
-        // Keep the starting token price relatively close to 1 ether to prevent users from unintentionally creating
-        // rounding or overflow errors.
-        require(params.startingTokenPrice >= uint(1 ether).div(10**9));
-        require(params.startingTokenPrice <= uint(1 ether).mul(10**9));
+        // Keep the starting token price relatively close to FP_SCALING_FACTOR to prevent users from unintentionally
+        // creating rounding or overflow errors.
+        require(params.startingTokenPrice >= UINT_FP_SCALING_FACTOR.div(10**9));
+        require(params.startingTokenPrice <= UINT_FP_SCALING_FACTOR.mul(10**9));
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
@@ -217,7 +219,7 @@ library TokenizedDerivativeUtils {
         require(latestTime != 0);
 
         // Keep the ratio in case it's needed for margin computation.
-        s.fixedParameters.initialTokenUnderlyingRatio = params.startingTokenPrice.mul(1 ether).div(_safeUintCast(latestUnderlyingPrice));
+        s.fixedParameters.initialTokenUnderlyingRatio = params.startingTokenPrice.mul(UINT_FP_SCALING_FACTOR).div(_safeUintCast(latestUnderlyingPrice));
         require(s.fixedParameters.initialTokenUnderlyingRatio != 0);
 
         // Set end time to max value of uint to implement no expiry.
@@ -285,7 +287,7 @@ library TokenizedDerivativeUtils {
 
         // Value of the tokens is just the percentage of all the tokens multiplied by the balance of the investor
         // margin account.
-        uint tokenPercentage = tokensToRedeem.mul(1 ether).div(initialSupply);
+        uint tokenPercentage = tokensToRedeem.mul(UINT_FP_SCALING_FACTOR).div(initialSupply);
         uint tokenMargin = _takePercentage(_safeUintCast(s.longBalance), tokenPercentage);
 
         s.longBalance = s.longBalance.sub(_safeIntCast(tokenMargin));
@@ -498,16 +500,17 @@ library TokenizedDerivativeUtils {
         }
 
         IERC20 erc20 = IERC20(erc20Address);
-
-        // Note: we have to do balance snapshotting to handle non compliant ERC20 tokens that don't return a bool
-        // in the transfer() function.
-        uint startingBalance = erc20.balanceOf(address(this));
-        erc20.transfer(msg.sender, amount);
-        require(startingBalance.sub(amount) == erc20.balanceOf(address(this)));
+        require(erc20.transfer(msg.sender, amount));
     }
 
     function _setExternalAddresses(TDS.Storage storage s, TokenizedDerivativeParams.ConstructorParams memory params) internal {
+
+        // Note: not all "ERC20" tokens conform exactly to this interface (BNB, OMG, etc). The most common way that
+        // tokens fail to conform is that they do not return a bool from certain state-changing operations. This
+        // contract was not designed to work with those tokens because of the additional complexity they would
+        // introduce.
         s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
+
         s.externalAddresses.oracle = OracleInterface(params.oracle);
         s.externalAddresses.store = StoreInterface(params.store);
         s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
@@ -530,10 +533,10 @@ library TokenizedDerivativeUtils {
         require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound || params.fixedYearlyFee == 0);
 
         // The default penalty must be less than the required margin.
-        require(params.defaultPenalty <= 1 ether);
+        require(params.defaultPenalty <= UINT_FP_SCALING_FACTOR);
 
         // Withdraw limit must be < 100%.
-        require(params.withdrawLimit < 1 ether);
+        require(params.withdrawLimit < UINT_FP_SCALING_FACTOR);
 
         s.fixedParameters.returnType = params.returnType;
         s.fixedParameters.defaultPenalty = params.defaultPenalty;
@@ -698,7 +701,7 @@ library TokenizedDerivativeUtils {
             beginningTokenState.underlyingPrice, latestUnderlyingPrice);
         int tokenReturn = underlyingReturn.sub(
             _safeIntCast(s.fixedParameters.fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time))));
-        int tokenMultiplier = tokenReturn.add(1 ether);
+        int tokenMultiplier = tokenReturn.add(INT_FP_SCALING_FACTOR);
         
         // In the compound case, don't allow the token price to go below 0.
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound && tokenMultiplier < 0) {
@@ -829,8 +832,8 @@ library TokenizedDerivativeUtils {
 
         int effectiveNotional;
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
-            int effectiveUnitsOfUnderlying = _safeIntCast(_totalSupply().mul(s.fixedParameters.initialTokenUnderlyingRatio).div(1 ether)).mul(leverageMagnitude);
-            effectiveNotional = effectiveUnitsOfUnderlying.mul(tokenState.underlyingPrice).div(1 ether);
+            int effectiveUnitsOfUnderlying = _safeIntCast(_totalSupply().mul(s.fixedParameters.initialTokenUnderlyingRatio).div(UINT_FP_SCALING_FACTOR)).mul(leverageMagnitude);
+            effectiveNotional = effectiveUnitsOfUnderlying.mul(tokenState.underlyingPrice).div(INT_FP_SCALING_FACTOR);
         } else {
             int currentNav = _computeNavForTokens(tokenState.tokenPrice, _totalSupply());
             effectiveNotional = currentNav.mul(leverageMagnitude);
@@ -863,11 +866,7 @@ library TokenizedDerivativeUtils {
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
             msg.sender.transfer(amount);
         } else {
-            // Note: we have to do balance snapshotting to handle non compliant ERC20 tokens that don't return a bool
-            // in the transfer() function.
-            uint startingBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
-            s.externalAddresses.marginCurrency.transfer(msg.sender, amount);
-            require(startingBalance.sub(amount) == s.externalAddresses.marginCurrency.balanceOf(address(this)));
+            require(s.externalAddresses.marginCurrency.transfer(msg.sender, amount));
         }
     }
 
@@ -885,16 +884,12 @@ library TokenizedDerivativeUtils {
     function _pullAuthorizedTokens(IERC20 erc20, uint amountToPull) private {
         // If nothing is being pulled, there's no point in calling a transfer.
         if (amountToPull > 0) {
-            // Note: we have to do balance snapshotting to handle non compliant ERC20 tokens that don't return a bool
-            // in the transferFrom() function.
-            uint startingBalance = erc20.balanceOf(address(this));
-            erc20.transferFrom(msg.sender, address(this), amountToPull);
-            require(startingBalance.add(amountToPull) == erc20.balanceOf(address(this)));
+            require(erc20.transferFrom(msg.sender, address(this), amountToPull));
         }
     }
 
     function _computeNavForTokens(int tokenPrice, uint numTokens) private pure returns (int navNew) {
-        navNew = _safeIntCast(numTokens).mul(tokenPrice).div(1 ether);
+        navNew = _safeIntCast(numTokens).mul(tokenPrice).div(INT_FP_SCALING_FACTOR);
     }
 
     function _totalSupply() private view returns (uint totalSupply) {
@@ -903,15 +898,15 @@ library TokenizedDerivativeUtils {
     }
 
     function _takePercentage(uint value, uint percentage) private pure returns (uint result) {
-        return value.mul(percentage).div(1 ether);
+        return value.mul(percentage).div(UINT_FP_SCALING_FACTOR);
     }
 
     function _takePercentage(int value, uint percentage) private pure returns (int result) {
-        return value.mul(_safeIntCast(percentage)).div(1 ether);
+        return value.mul(_safeIntCast(percentage)).div(INT_FP_SCALING_FACTOR);
     }
 
     function _takePercentage(int value, int percentage) private pure returns (int result) {
-        return value.mul(percentage).div(1 ether);
+        return value.mul(percentage).div(INT_FP_SCALING_FACTOR);
     }
 
     function _safeIntCast(uint value) private pure returns (int result) {

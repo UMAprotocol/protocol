@@ -2,7 +2,6 @@ const CentralizedOracle = artifacts.require("CentralizedOracle");
 const CentralizedStore = artifacts.require("CentralizedStore");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
-const DerivativeCreator = artifacts.require("DerivativeCreator");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
@@ -33,16 +32,6 @@ module.exports = async function(deployer, network, accounts) {
   const centralizedStore = await deployAndGet(deployer, CentralizedStore, controllableTiming);
   const returnCalculator = await deployAndGet(deployer, LeveragedReturnCalculator, 1);
 
-  // Deploy derivative creator.
-  const derivativeCreator = await deployAndGet(
-    deployer,
-    DerivativeCreator,
-    registry.address,
-    centralizedOracle.address,
-    centralizedStore.address,
-    manualPriceFeed.address
-  );
-
   // Deploy sponsor whitelist and add second account to it.
   const sponsorWhitelist = await deployAndGet(deployer, AddressWhitelist);
   await sponsorWhitelist.addToWhitelist(accounts[1]);
@@ -71,7 +60,6 @@ module.exports = async function(deployer, network, accounts) {
     controllableTiming
   );
 
-  // Add creator contracts to the registry.
-  await registry.addDerivativeCreator(derivativeCreator.address);
+  // Add creator contract to the registry.
   await registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
 };
