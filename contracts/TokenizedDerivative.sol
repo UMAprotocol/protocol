@@ -814,8 +814,7 @@ library TokenizedDerivativeUtils {
         view
         returns (int requiredMargin)
     {
-        int leverage = s.externalAddresses.returnCalculator.leverage();
-        int leverageMagnitude = leverage < 0 ? -leverage : leverage;
+        int leverageMagnitude = _absoluteValue(s.externalAddresses.returnCalculator.leverage());
 
         int effectiveNotional;
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
@@ -826,7 +825,9 @@ library TokenizedDerivativeUtils {
             effectiveNotional = currentNav.mul(leverageMagnitude);
         }
 
-        requiredMargin = _takePercentage(effectiveNotional, s.fixedParameters.supportedMove);
+        // Take the absolute value of the notional since a negative notional has similar risk properties to a positive
+        // notional of the same size, and, therefore, requires the same margin.
+        requiredMargin = _takePercentage(_absoluteValue(effectiveNotional), s.fixedParameters.supportedMove);
     }
 
     function _pullSentMargin(TDS.Storage storage s, uint expectedMargin) internal returns (uint refund) {
@@ -894,7 +895,14 @@ library TokenizedDerivativeUtils {
     }
 
     function _computeNavForTokens(int tokenPrice, uint numTokens) private pure returns (int navNew) {
-        navNew = _safeIntCast(numTokens).mul(tokenPrice).div(INT_FP_SCALING_FACTOR);
+        int navPreDivision = _safeIntCast(numTokens).mul(tokenPrice);
+        navNew = navPreDivision.div(INT_FP_SCALING_FACTOR);
+
+        // The navNew division above truncates by default. Instead, we prefer to ceil this value to ensure tokens
+        // cannot be purchased or backed with less than their true value.
+        if ((navPreDivision % INT_FP_SCALING_FACTOR) != 0) {
+            navNew = navNew.add(1);
+        }
     }
 
     function _totalSupply() private view returns (uint totalSupply) {
@@ -912,6 +920,10 @@ library TokenizedDerivativeUtils {
 
     function _takePercentage(int value, int percentage) private pure returns (int result) {
         return value.mul(percentage).div(INT_FP_SCALING_FACTOR);
+    }
+
+    function _absoluteValue(int value) private pure returns (int result) {
+        return value < 0 ? value.mul(-1) : value;
     }
 
     function _safeIntCast(uint value) private pure returns (int result) {
