@@ -1,7 +1,30 @@
 import React, { Component } from "react";
 import Button from "@material-ui/core/Button";
+import { withStyles } from "@material-ui/core/styles";
+
+const styles = theme => ({
+  button: {
+    height: 56,
+      margin: 10,
+    width: 198
+  },
+});
 
 class TokenPreapproval extends Component {
+  getButton(text, isEnabled, onClickHandler) {
+    return (
+      <Button
+        variant="outlined"
+        color="primary"
+        className={this.props.classes.button}
+        disabled={!isEnabled}
+        onClick={onClickHandler}
+      >
+        {text}
+      </Button>
+    );
+  }
+
   render() {
     // There are effectively two configuration booleans: isMarginCurrencyAuthorized and isDerivativeTokenAuthorized.
     // In the case of ETH as margin currency, isMarginCurrencyAuthorized can be taken to be true.
@@ -22,18 +45,14 @@ class TokenPreapproval extends Component {
       <div>
         {copy}
         {!this.props.isMarginCurrencyAuthorized && (
-          <Button disabled={!this.props.isInteractionEnabled} onClick={this.props.approveMarginCurrencyFn}>
-            Approve margin currency
-          </Button>
+            this.getButton("Approve margin currency", this.props.isInteractionEnabled, this.props.approveMarginCurrencyFn)
         )}
         {!this.props.isDerivativeTokenAuthorized && (
-          <Button disabled={!this.props.isInteractionEnabled} onClick={this.props.approveDerivativeTokensFn}>
-            Approve derivative tokens
-          </Button>
+            this.getButton("Approve derivative tokens", this.props.isInteractionEnabled, this.props.approveDerivativeTokensFn)
         )}
       </div>
     );
   }
 }
 
-export default TokenPreapproval;
+export default withStyles(styles)(TokenPreapproval);

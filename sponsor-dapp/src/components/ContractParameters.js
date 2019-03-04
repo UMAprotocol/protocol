@@ -1,8 +1,19 @@
 import React from "react";
+import { withStyles } from "@material-ui/core/styles";
 
-const ContractParameters = ({ parameters }) => (
-  <div>
-    <div>Details</div>
+const styles = theme => ({
+  root: {
+    marginTop: 10,
+    marginBottom: 10
+  },
+  title: {
+    color: "blue"
+  }
+});
+
+const ContractParameters = ({ parameters, classes }) => (
+  <div className={classes.root}>
+    <div className={classes.title}>Details</div>
     Address: {parameters.contractAddress}
     <div>Creator: {parameters.creatorAddress}</div>
     <div>Created: {parameters.creationTime}</div>
@@ -13,4 +24,4 @@ const ContractParameters = ({ parameters }) => (
   </div>
 );
 
-export default ContractParameters;
+export default withStyles(styles)(ContractParameters);
