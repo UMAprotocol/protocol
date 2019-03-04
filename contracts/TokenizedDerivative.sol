@@ -890,7 +890,14 @@ library TokenizedDerivativeUtils {
     }
 
     function _computeNavForTokens(int tokenPrice, uint numTokens) private pure returns (int navNew) {
-        navNew = _safeIntCast(numTokens).mul(tokenPrice).div(INT_FP_SCALING_FACTOR);
+        int navPreDivision = _safeIntCast(numTokens).mul(tokenPrice);
+        navNew = navPreDivision.div(INT_FP_SCALING_FACTOR);
+
+        // The navNew division above truncates by default. Instead, we prefer to ceil this value to ensure tokens
+        // cannot be purchased or backed with less than their true value.
+        if ((navPreDivision % INT_FP_SCALING_FACTOR) != 0) {
+            navNew = navNew.add(1);
+        }
     }
 
     function _totalSupply() private view returns (uint totalSupply) {
