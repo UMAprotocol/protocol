@@ -16,7 +16,7 @@ const styles = theme => ({
   root: {
     minWidth: 900
   },
-  titleBar: {
+  titleSection: {
     display: "flex",
     width: "100%"
   },
@@ -414,7 +414,7 @@ class ContractDetails extends Component {
 
     return (
       <div className={this.props.classes.root}>
-        <div className={this.props.classes.titleBar}>
+        <div className={this.props.classes.titleSection}>
           <Typography component="h1" variant="h4" className={this.props.classes.title}>
             {contractName} ({derivativeStorage.fixedParameters.symbol})
           </Typography>
