@@ -690,13 +690,13 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Verify nav and balances at settlement, no default penalty. Whatever the price feed said before is effectively
       // ignored.
-      state = (await derivativeContract.derivativeStorage()).state;
-      assert.equal(state.toString(), "5");
+      const derivativeStorage = await derivativeContract.derivativeStorage();
+      assert.equal(derivativeStorage.state.toString(), "5");
       // Can't call calc* methods when Settled.
-      assert(await didContractThrow(derivativeContract.calcNAV()));
-      assert(await didContractThrow(derivativeContract.calcTokenValue()));
-      assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
-      assert(await didContractThrow(derivativeContract.calcExcessMargin()));
+      assert.equal((await derivativeContract.calcNAV()).toString(), derivativeStorage.nav);;
+      assert.equal((await derivativeContract.calcTokenValue()).toString(), derivativeStorage.currentTokenState.tokenPrice.toString());
+      assert.equal((await derivativeContract.calcShortMarginBalance()).toString(), derivativeStorage.shortBalance.toString());
+      assert.equal((await derivativeContract.calcExcessMargin()).toString(), derivativeStorage.shortBalance.toString());
       priceReturn = web3.utils.toBN(web3.utils.toWei("1.05", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       changeInNav = expectedSettlementNav.sub(initialNav);
@@ -943,8 +943,17 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Then the Oracle price should be provided, which settles the contract.
       await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
+
+      // Grab calc method return values after the Oracle price is pushed, but before settle is called. Expect that
+      // they correctly predict the settlement values.
+      const calcedNav = await derivativeContract.calcNAV();
+      const calcedTokenValue = await derivativeContract.calcTokenValue();
+      const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
+      const calcedExcessMargin = await derivativeContract.calcExcessMargin();
+
       result = await derivativeContract.settle();
-      state = (await derivativeContract.derivativeStorage()).state;
+      const settledDerivativeStorage = await derivativeContract.derivativeStorage();
+      state = settledDerivativeStorage.state;
       assert.equal(state.toString(), "5");
 
       // Verify nav and balances at settlement.
@@ -952,11 +961,11 @@ contract("TokenizedDerivative", function(accounts) {
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       const expectedOracleFee = computeExpectedOracleFees(longBalance, shortBalance);
       let changeInNav = expectedSettlementNav.sub(initialNav);
-      actualNav = (await derivativeContract.derivativeStorage()).nav;
+      actualNav = settledDerivativeStorage.nav;
       expectedInvestorAccountBalance = longBalance.add(changeInNav);
       expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
-      longBalance = (await derivativeContract.derivativeStorage()).longBalance;
-      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      longBalance = settledDerivativeStorage.longBalance;
+      shortBalance = settledDerivativeStorage.shortBalance;
       truffleAssert.eventEmitted(result, "Settled", ev => {
         return (
           ev.finalNav.toString() === expectedSettlementNav.toString() &&
@@ -964,8 +973,12 @@ contract("TokenizedDerivative", function(accounts) {
         );
       });
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
+      assert.equal(calcedNav.toString(), expectedSettlementNav.toString());
       assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
+      assert.equal(calcedShortBalance.toString(), expectedSponsorAccountBalance.toString());
+      assert.equal(calcedExcessMargin.toString(), expectedSponsorAccountBalance.toString());
+      assert.equal(calcedTokenValue.toString(), settledDerivativeStorage.currentTokenState.tokenPrice.toString());
     });
 
     it(annotateTitle("Live -> Expired -> Settled (oracle price) [price available]"), async function() {
