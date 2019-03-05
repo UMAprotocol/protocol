@@ -37,7 +37,7 @@ class ContractInteraction extends Component {
     );
   }
 
-  render() {
+  getTokenSponsorInteraction() {
     const formInputs = this.props.formInputs;
     return (
       <div>
@@ -87,6 +87,28 @@ class ContractInteraction extends Component {
         </div>
       </div>
     );
+  }
+
+  getTokenHolderInteraction() {
+    return (
+      <div>
+        <TextField
+          variant="outlined"
+          disabled={!this.props.isInteractionEnabled}
+          value={this.props.formInputs.redeemAmount}
+          onChange={e => this.props.handleChangeFn("redeemAmount", e)}
+        />
+        {this.getButton("Redeem", this.props.isInteractionEnabled, this.props.redeemFn)}
+      </div>
+    );
+  }
+
+  render() {
+    if (this.props.isTokenSponsor) {
+      return this.getTokenSponsorInteraction();
+    } else {
+      return this.getTokenHolderInteraction();
+    }
   }
 }
 

@@ -1,16 +1,25 @@
+const ContractStateEnum = {
+  LIVE: "0",
+  DISPUTED: "1",
+  EXPIRED: "2",
+  DEFAULTED: "3",
+  EMERGENCY: "4",
+  SETTLED: "5"
+};
+
 function stateToString(state) {
   switch (state.toString()) {
-    case "0":
+    case ContractStateEnum.LIVE:
       return "Live";
-    case "1":
+    case ContractStateEnum.DISPUTED:
       return "Disputed";
-    case "2":
+    case ContractStateEnum.EXPIRED:
       return "Expired";
-    case "3":
+    case ContractStateEnum.DEFAULTED:
       return "Defaulted";
-    case "4":
+    case ContractStateEnum.EMERGENCY:
       return "Emergency";
-    case "5":
+    case ContractStateEnum.SETTLED:
       return "Settled";
     default:
       return "Unknown";
@@ -26,6 +35,7 @@ function hasEthMarginCurrency(derivativeStorage) {
 }
 
 module.exports = {
+  ContractStateEnum,
   stateToString,
   hasEthMarginCurrency
 };

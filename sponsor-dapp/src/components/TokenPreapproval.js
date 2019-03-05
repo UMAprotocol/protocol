@@ -5,9 +5,9 @@ import { withStyles } from "@material-ui/core/styles";
 const styles = theme => ({
   button: {
     height: 56,
-      margin: 10,
+    margin: 10,
     width: 198
-  },
+  }
 });
 
 class TokenPreapproval extends Component {
@@ -44,12 +44,18 @@ class TokenPreapproval extends Component {
     return (
       <div>
         {copy}
-        {!this.props.isMarginCurrencyAuthorized && (
-            this.getButton("Approve margin currency", this.props.isInteractionEnabled, this.props.approveMarginCurrencyFn)
-        )}
-        {!this.props.isDerivativeTokenAuthorized && (
-            this.getButton("Approve derivative tokens", this.props.isInteractionEnabled, this.props.approveDerivativeTokensFn)
-        )}
+        {!this.props.isMarginCurrencyAuthorized &&
+          this.getButton(
+            "Approve margin currency",
+            this.props.isInteractionEnabled,
+            this.props.approveMarginCurrencyFn
+          )}
+        {!this.props.isDerivativeTokenAuthorized &&
+          this.getButton(
+            "Approve derivative tokens",
+            this.props.isInteractionEnabled,
+            this.props.approveDerivativeTokensFn
+          )}
       </div>
     );
   }

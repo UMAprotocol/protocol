@@ -6,7 +6,7 @@ import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
 import IERC20 from "../contracts/IERC20.json";
 import TokenPreapproval from "./TokenPreapproval.js";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
-import { hasEthMarginCurrency, stateToString } from "../utils/TokenizedDerivativeUtils.js";
+import { ContractStateEnum, hasEthMarginCurrency, stateToString } from "../utils/TokenizedDerivativeUtils.js";
 import { formatDate } from "../utils/FormattingUtils.js";
 import { withStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
@@ -313,11 +313,11 @@ class ContractDetails extends Component {
 
     const contract = drizzleState.contracts[this.state.contractKey];
     const derivativeStorage = contract.derivativeStorage[this.state.derivativeStorageDataKey].value;
+    const contractState = derivativeStorage.state;
 
     const isTokenSponsor = derivativeStorage.externalAddresses.sponsor === drizzleState.accounts[0];
-    if (!isTokenSponsor) {
-      // TODO(ptare): When this component supports the "Settled" state, we'd need to expose some buttons to the token
-      // holder to allow them to redeem their tokens.
+    if (!isTokenSponsor && contractState !== ContractStateEnum.SETTLED) {
+      // Token holders cannot interact with a contract unless the contract is settled.
       return "";
     }
 
@@ -328,14 +328,17 @@ class ContractDetails extends Component {
     const isDerivativeTokenAuthorized = web3.utils
       .toBN(contract.allowance[this.state.derivativeTokenAllowanceDataKey].value)
       .gte(minAllowance);
+    // We can treat token holders as always having authorized the margin currency, since they never need to send
+    // margin currency to the contract.
     const isMarginCurrencyAuthorized =
-      hasEthMarginCurrency(derivativeStorage) ||
-      web3.utils
-        .toBN(
-          drizzleState.contracts[this.state.marginCurrencyKey].allowance[this.state.marginCurrencyAllowanceDataKey]
-            .value
-        )
-        .gte(minAllowance);
+      !isTokenSponsor ||
+      (hasEthMarginCurrency(derivativeStorage) ||
+        web3.utils
+          .toBN(
+            drizzleState.contracts[this.state.marginCurrencyKey].allowance[this.state.marginCurrencyAllowanceDataKey]
+              .value
+          )
+          .gte(minAllowance));
     // We either present the user with the buttons to pre-authorize the contract, or if they've already preauthorized,
     // with the buttons to deposit, remargin, etc.
     if (!isDerivativeTokenAuthorized || !isMarginCurrencyAuthorized) {
@@ -359,6 +362,7 @@ class ContractDetails extends Component {
           formInputs={this.state.formInputs}
           handleChangeFn={this.handleFormChange}
           isInteractionEnabled={this.state.isInteractionEnabled}
+          isTokenSponsor={isTokenSponsor}
         />
       );
     }
