@@ -477,7 +477,8 @@ library TokenizedDerivativeUtils {
 
             feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime);
         } else {
-            // If the contract is in one of the frozen states, pull the price from the oracle.
+            // If the contract is in one of the frozen states, pull the price from the oracle and recompute the NAV
+            // using the reference price. Note: no Oracle fees are charges in the Frozen -> Settled state transition.
             int oraclePrice = s.externalAddresses.oracle.getPrice(s.fixedParameters.product, s.endTime);
             newTokenState = s._computeNewTokenState(s.referenceTokenState, oraclePrice, s.endTime);
         }
