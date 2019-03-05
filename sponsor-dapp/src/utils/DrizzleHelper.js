@@ -77,11 +77,11 @@ export default class DrizzleHelper {
   // return value of the function call. Underneath the hood, Drizzle
   // converts arguments into a string and generates the sha3 output.
   _generateArgsHash(address, args) {
-    const contract = this.drizzle.contracts[address];
     if (!args.length) {
       return "0x0";
     }
 
+    const contract = this.drizzle.contracts[address];
     return contract.generateArgsHash(args);
   }
 
@@ -91,7 +91,7 @@ export default class DrizzleHelper {
     const key = this._generateArgsHash(address, args);
 
     const contract = drizzle.store.getState().contracts[address];
-    if (contract) {
+    if (!contract) {
       return false;
     }
 
