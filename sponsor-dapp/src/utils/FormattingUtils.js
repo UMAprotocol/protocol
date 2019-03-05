@@ -1,4 +1,4 @@
-function formatDate(timestampInSeconds, web3) {
+export function formatDate(timestampInSeconds, web3) {
   return new Date(
     parseInt(
       web3.utils
@@ -9,7 +9,3 @@ function formatDate(timestampInSeconds, web3) {
     )
   ).toString();
 }
-
-module.exports = {
-  formatDate
-};
