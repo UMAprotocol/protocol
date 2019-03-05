@@ -446,6 +446,7 @@ library TokenizedDerivativeUtils {
 
     function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
         (TDS.TokenState memory newTokenState, int newShortMarginBalance) = s._calcNewTokenStateAndBalance();
+        // Frozen/settled states effectively have 0 required margin since this method predicts the settlement state.
         int requiredMargin = s.state != TDS.State.Live ? 0 : s._getRequiredMargin(newTokenState);
         return newShortMarginBalance.sub(requiredMargin);
     }
