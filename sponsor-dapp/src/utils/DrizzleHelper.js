@@ -35,7 +35,6 @@ export default class DrizzleHelper {
   // or rejects if the contract specified in `address` has not been added to drizzle.
   cacheCall(address, methodName, args) {
     const drizzle = this.drizzle;
-
     return new Promise((resolve, reject) => {
       const contract = drizzle.contracts[address];
       if (!contract) {
