@@ -9,7 +9,8 @@ const options = {
   polls: {
     accounts: 3500,
     blocks: 3500
-  }
+  },
+  syncAlways: true
 };
 
 export default options;
