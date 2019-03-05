@@ -32,7 +32,6 @@ class CreateContractModal extends React.Component {
     returnCalculatorAddresses: [],
     returnCalculatorLeverage: [],
     approvedIdentifiers: [],
-    marginWhitelist: [],
 
     loadingMarginCurrency: true,
 
@@ -72,7 +71,7 @@ class CreateContractModal extends React.Component {
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
       supportedMove: web3.utils.toWei("0.1", "ether"),
       product: web3.utils.hexToBytes(web3.utils.utf8ToHex(formInputs.identifier)),
-      fixedYearlyFee: "100", // Must be 0 for linear return type.
+      fixedYearlyFee: "0", // Must be 0 for linear return type.
       disputeDeposit: web3.utils.toWei("0.5", "ether"),
       returnCalculator: formInputs.leverage,
       startingTokenPrice: web3.utils.toWei("1", "ether"),
@@ -112,8 +111,7 @@ class CreateContractModal extends React.Component {
     }
 
     this.setState({
-      loadingMarginCurrency: false,
-      marginWhitelist: marginWhitelist
+      loadingMarginCurrency: false
     });
 
     // Set as default if only one margin currency exists.
@@ -337,9 +335,15 @@ class CreateContractModal extends React.Component {
     ));
 
     const identifierMenuItems = this.createMenuItems(this.state.approvedIdentifiers);
-    const marginCurrencyMenuItems = this.createMenuItems(this.state.marginWhitelist);
+
     const marginErrorElement = this.marginErrorElement();
-    const buttonDisabled = this.state.loadingMarginCurrency;
+
+    let marginWhitelist = [];
+    if (!this.state.loadingMarginCurrency) {
+      const whitelistAddress = this.drizzleHelper.getCache("TokenizedDerivativeCreator", "marginCurrencyWhitelist", []);
+      marginWhitelist = this.drizzleHelper.getCache(whitelistAddress, "getWhitelist", []);
+    }
+    const marginCurrencyMenuItems = this.createMenuItems(marginWhitelist);
 
     return (
       <Dialog open={this.props.open} onClose={this.props.onClose}>
@@ -401,7 +405,7 @@ class CreateContractModal extends React.Component {
             />
           </form>
           <Button
-            disabled={buttonDisabled}
+            disabled={this.state.loadingMarginCurrency}
             variant="contained"
             color="primary"
             className={classes.submitButton}
