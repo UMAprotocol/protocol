@@ -446,28 +446,41 @@ library TokenizedDerivativeUtils {
 
     function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
         (TDS.TokenState memory newTokenState, int newShortMarginBalance) = s._calcNewTokenStateAndBalance();
-        int requiredMargin = s._getRequiredMargin(newTokenState);
+        int requiredMargin = s.state != TDS.State.Live ? 0 : s._getRequiredMargin(newTokenState);
         return newShortMarginBalance.sub(requiredMargin);
     }
 
     function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
     {
-        (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
-        require(latestTime < s.endTime);
-
-        if (latestTime <= s.currentTokenState.time) {
-            // If the time hasn't advanced since the last remargin, short circuit and return the most recently computed values.
+        uint feeAmount = 0;
+        if (s.state == TDS.State.Settled) {
+            // If the contract is Settled, just return the current contract state.
             return (s.currentTokenState, s.shortBalance);
-        }
+        } else if (s.state == TDS.State.Live) {
+            // If the contract is live, pull the price from the price feed.
+            (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
 
-        if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
-            newTokenState = s._computeNewTokenState(s.referenceTokenState, latestUnderlyingPrice, latestTime);
+            // If the latest time is after endTime, the contract will move into expiry, so we revert.
+            require(latestTime < s.endTime);
+
+            if (latestTime <= s.currentTokenState.time) {
+                // If the time hasn't advanced since the last remargin, short circuit and return the most recently computed values.
+                return (s.currentTokenState, s.shortBalance);
+            }
+
+            if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
+                newTokenState = s._computeNewTokenState(s.referenceTokenState, latestUnderlyingPrice, latestTime);
+            } else {
+                assert(s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound);
+                newTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
+            }
+
+            feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime);
         } else {
-            assert(s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound);
-            newTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
+            // If the contract is in one of the frozen states, pull the price from the oracle.
+            int oraclePrice = s.externalAddresses.oracle.getPrice(s.fixedParameters.product, s.endTime);
+            newTokenState = s._computeNewTokenState(s.referenceTokenState, oraclePrice, s.endTime);
         }
-
-        uint feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime);
 
         int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
         int longDiff = _getLongDiff(navNew, s.longBalance, s.shortBalance.sub(_safeIntCast(feeAmount)));
