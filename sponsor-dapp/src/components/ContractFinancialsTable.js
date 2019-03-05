@@ -52,15 +52,17 @@ class ContractFinancialsTable extends Component {
     const previousLongMargin = formatWei(derivativeStorage.longBalance, web3);
     const previousShortMargin = formatWei(derivativeStorage.shortBalance, web3);
     const previousTotalHoldings = formatWei(
-      toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance)), web3);
+      toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance)),
+      web3
+    );
 
     const currentTime = formatDate(latestPrice.publishTime, web3);
     const currentAssetPrice = formatWei(latestPrice.price, web3);
     const currentTokenPrice = estimatedTokenValue ? formatWei(estimatedTokenValue, web3) + "/token" : "Unknown";
     const currentLongMargin = estimatedNav ? formatWei(estimatedNav, web3) : "Unknown";
     const currentShortMargin = estimatedShort ? formatWei(estimatedShort, web3) : "Unknown";
-    const currentTotalHoldings = (estimatedNav && estimatedShort) ?
-      formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) : "Unknown";
+    const currentTotalHoldings =
+      estimatedNav && estimatedShort ? formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) : "Unknown";
 
     const numTotalTokens = formatWei(totalSupply, web3);
     const tokenBalance = formatWei(balanceOf, web3);
@@ -126,7 +128,7 @@ class ContractFinancialsTable extends Component {
           </TableBody>
         </Table>
       </Paper>
-    )
-  };
+    );
+  }
 }
 export default withStyles(styles)(ContractFinancialsTable);
