@@ -10,14 +10,14 @@ class DerivativeList extends React.Component {
   subscriptionLock = false;
 
   componentDidMount() {
-    const { drizzle, drizzleState } = this.props;
+    const { drizzle } = this.props;
     const { Registry } = drizzle.contracts;
 
     // Start the drizzle subscription that listens for new derivatives.
     this.subscribe();
 
     // Get the key for all registered derivatives involving this account.
-    const registryDataKey = Registry.methods.getRegisteredDerivatives.cacheCall(drizzleState.accounts[0]);
+    const registryDataKey = Registry.methods.getAllRegisteredDerivatives.cacheCall();
 
     this.setState({ registryDataKey });
   }
@@ -25,17 +25,17 @@ class DerivativeList extends React.Component {
   getDerivativeList() {
     const { Registry } = this.props.drizzleState.contracts;
 
-    if (!(this.state.registryDataKey in Registry.getRegisteredDerivatives)) {
+    if (!(this.state.registryDataKey in Registry.getAllRegisteredDerivatives)) {
       return [];
     }
 
     // Null is returned if the registry has no derivatives, so we need to specifically handle this case to turn it into
     // an empty array.
-    if (Registry.getRegisteredDerivatives[this.state.registryDataKey].value == null) {
+    if (Registry.getAllRegisteredDerivatives[this.state.registryDataKey].value == null) {
       return [];
     }
 
-    return Registry.getRegisteredDerivatives[this.state.registryDataKey].value;
+    return Registry.getAllRegisteredDerivatives[this.state.registryDataKey].value;
   }
 
   isObjectEmpty(obj) {
@@ -157,7 +157,8 @@ class DerivativeList extends React.Component {
       } else if (contract.balanceOf[tokensHeldKey].value.toString() !== "0") {
         role = "Token Holder";
       } else {
-        role = "None";
+        // Don't show this contract if the current user isn't a party to it.
+        continue;
       }
 
       // Add the data from drizzle to the array.
