@@ -6,9 +6,13 @@ import DialogContent from "@material-ui/core/DialogContent";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import InputLabel from "@material-ui/core/InputLabel";
 import FormControl from "@material-ui/core/FormControl";
+import FormHelperText from "@material-ui/core/FormHelperText";
 import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
 import TextField from "@material-ui/core/TextField";
+
+import DrizzleHelper from "../utils/DrizzleHelper.js";
+import { addDays, secondsSinceEpoch } from "../utils/DateUtils.js";
 
 import AddressWhitelist from "../contracts/AddressWhitelist";
 import LeveragedReturnCalculator from "../contracts/LeveragedReturnCalculator";
@@ -28,24 +32,92 @@ class CreateContractModal extends React.Component {
     returnCalculatorAddresses: [],
     returnCalculatorLeverage: [],
     approvedIdentifiers: [],
+
+    loadingMarginCurrency: true,
+
+    // Current value in the form.
     formInputs: {
       leverage: "",
       identifier: "",
       name: "",
-      symbol: ""
-    }
-  };
+      symbol: "",
+      margin: ""
+    },
 
-  submit = () => {
-    this.props.onClose();
+    // Any error text in the form.
+    marginFormError: ""
   };
 
   componentDidMount() {
+    this.drizzleHelper = new DrizzleHelper(this.props.drizzle);
     this.verifyPriceFeeds();
     this.addReturnCalculatorWhitelist();
     this.getReturnCalculatorAddresses();
     this.addReturnCalculators();
     this.getLeverage();
+
+    this.getMarginCurrency().catch(error => {
+      console.error(`Failed to get margin currency: {error}`);
+    });
+  }
+
+  submit = () => {
+    const { web3 } = this.props.drizzle;
+    const { formInputs } = this.state;
+    const account = this.props.drizzleState.accounts[0];
+
+    const constructorParams = {
+      sponsor: account,
+      defaultPenalty: web3.utils.toWei("0.5", "ether"),
+      supportedMove: web3.utils.toWei("0.1", "ether"),
+      product: web3.utils.hexToBytes(web3.utils.utf8ToHex(formInputs.identifier)),
+      fixedYearlyFee: "0", // Must be 0 for linear return type.
+      disputeDeposit: web3.utils.toWei("0.5", "ether"),
+      returnCalculator: formInputs.leverage,
+      startingTokenPrice: web3.utils.toWei("1", "ether"),
+      // TODO: Get expiry time based on identifier.
+      expiry: secondsSinceEpoch(addDays(new Date(), 30)), // 30 days from now, in seconds since epoch.
+      marginCurrency: formInputs.margin,
+      withdrawLimit: web3.utils.toWei("0.33", "ether"),
+      returnType: "0", // Linear
+      startingUnderlyingPrice: "0", // Use price feed.
+      name: formInputs.name,
+      symbol: formInputs.symbol
+    };
+
+    const { TokenizedDerivativeCreator } = this.props.drizzle.contracts;
+    TokenizedDerivativeCreator.methods.createTokenizedDerivative.cacheSend(constructorParams, { from: account });
+
+    // TODO: Add error handling and delay closing the modal until there's confirmation
+    // that the transaction has been included in the blockchain.
+    this.props.onClose();
+  };
+
+  async getMarginCurrency() {
+    const { result: whitelistAddress } = await this.drizzleHelper.cacheCall(
+      "TokenizedDerivativeCreator",
+      "marginCurrencyWhitelist",
+      []
+    );
+    await this.drizzleHelper.addContract(whitelistAddress, AddressWhitelist.abi);
+    const { result: marginWhitelist } = await this.drizzleHelper.cacheCall(whitelistAddress, "getWhitelist", []);
+
+    if (!marginWhitelist.length) {
+      this.setState({
+        loadingMarginCurrency: false,
+        marginFormError: "Margin currency not found"
+      });
+      return;
+    }
+
+    this.setState({
+      loadingMarginCurrency: false
+    });
+
+    // Set as default if only one margin currency exists.
+    if (marginWhitelist.length === 1) {
+      this.updateFormInput("margin", marginWhitelist[0]);
+    }
   }
 
   verifyPriceFeeds() {
@@ -235,6 +307,23 @@ class CreateContractModal extends React.Component {
     this.updateFormInput(name, event.target.value);
   };
 
+  // Create Material-UI menu items where both the value attribute and display value are the same.
+  createMenuItems = list => {
+    return list.map(item => (
+      <MenuItem value={item} key={item}>
+        {item}
+      </MenuItem>
+    ));
+  };
+
+  marginErrorElement() {
+    if (this.state.marginFormError) {
+      return <FormHelperText id="create-contract-margin-text">{this.state.marginFormError}</FormHelperText>;
+    }
+
+    return;
+  }
+
   render() {
     const { classes, drizzleState } = this.props;
     const account = drizzleState.accounts[0];
@@ -245,11 +334,16 @@ class CreateContractModal extends React.Component {
       </MenuItem>
     ));
 
-    const identifierMenuItems = this.state.approvedIdentifiers.map(identifier => (
-      <MenuItem value={identifier} key={identifier}>
-        {identifier}
-      </MenuItem>
-    ));
+    const identifierMenuItems = this.createMenuItems(this.state.approvedIdentifiers);
+
+    const marginErrorElement = this.marginErrorElement();
+
+    let marginWhitelist = [];
+    if (!this.state.loadingMarginCurrency) {
+      const whitelistAddress = this.drizzleHelper.getCache("TokenizedDerivativeCreator", "marginCurrencyWhitelist", []);
+      marginWhitelist = this.drizzleHelper.getCache(whitelistAddress, "getWhitelist", []);
+    }
+    const marginCurrencyMenuItems = this.createMenuItems(marginWhitelist);
 
     return (
       <Dialog open={this.props.open} onClose={this.props.onClose}>
@@ -283,6 +377,20 @@ class CreateContractModal extends React.Component {
                 {identifierMenuItems}
               </Select>
             </FormControl>
+            <FormControl error={this.state.marginFormError !== ""}>
+              <InputLabel htmlFor="create-contract-margin">Margin Currency</InputLabel>
+              <Select
+                value={this.state.formInputs.margin}
+                onChange={this.handleChange("margin")}
+                inputProps={{
+                  name: "margin",
+                  id: "create-contract-margin"
+                }}
+              >
+                {marginCurrencyMenuItems}
+              </Select>
+              {marginErrorElement}
+            </FormControl>
             <TextField
               id="contract-name"
               label="Contract Name"
@@ -296,7 +404,13 @@ class CreateContractModal extends React.Component {
               onChange={this.handleChange("symbol")}
             />
           </form>
-          <Button variant="contained" color="primary" className={classes.submitButton} onClick={this.submit}>
+          <Button
+            disabled={this.state.loadingMarginCurrency}
+            variant="contained"
+            color="primary"
+            className={classes.submitButton}
+            onClick={this.submit}
+          >
             Create Contract
           </Button>
         </DialogContent>
