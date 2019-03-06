@@ -53,6 +53,7 @@ contract("CentralizedOracle", function(accounts) {
     // Check that the query is pending. Trying to get the price should revert.
     pendingQueries = await centralizedOracle.getPendingQueries();
     assert.equal(pendingQueries.length, 1);
+    assert.isFalse(await centralizedOracle.hasPrice(identifierBytes, firstTime));
     assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, firstTime)));
 
     // Enqueue the second request for a price.
@@ -61,6 +62,7 @@ contract("CentralizedOracle", function(accounts) {
     expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, secondTime);
     await centralizedOracle.requestPrice(identifierBytes, secondTime);
     assert.equal(expectedTime, currentTime + oraclePriceDelay);
+    assert.isFalse(await centralizedOracle.hasPrice(identifierBytes, secondTime));
     assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, secondTime)));
 
     // Check that both queries are pending.
@@ -75,6 +77,7 @@ contract("CentralizedOracle", function(accounts) {
     // Get first price, and verify that `requestPrice` indicates that the price is available.
     expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, firstTime);
     assert.equal(expectedTime, 0);
+    assert.isTrue(await centralizedOracle.hasPrice(identifierBytes, firstTime));
     let oraclePrice = await centralizedOracle.getPrice(identifierBytes, firstTime);
     assert.equal(oraclePrice, price);
 
@@ -90,12 +93,14 @@ contract("CentralizedOracle", function(accounts) {
     // Get second price.
     expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, secondTime);
     assert.equal(expectedTime, 0);
+    assert.isTrue(await centralizedOracle.hasPrice(identifierBytes, secondTime));
     oraclePrice = await centralizedOracle.getPrice(identifierBytes, secondTime);
     assert.equal(oraclePrice, price);
 
     // Get the first price again, just to double check.
     expectedTime = await centralizedOracle.requestPrice.call(identifierBytes, firstTime);
     assert.equal(expectedTime, 0);
+    assert.isTrue(await centralizedOracle.hasPrice(identifierBytes, firstTime));
     oraclePrice = await centralizedOracle.getPrice(identifierBytes, firstTime);
     assert.equal(oraclePrice, price);
   });
@@ -145,6 +150,8 @@ contract("CentralizedOracle", function(accounts) {
     expectedTime = await centralizedOracle.requestPrice.call(secondIdentifierBytes, secondTime);
     await centralizedOracle.requestPrice(secondIdentifierBytes, secondTime);
     assert.equal(expectedTime, currentTime + oraclePriceDelay);
+    assert.isFalse(await centralizedOracle.hasPrice(firstIdentifierBytes, firstTime));
+    assert.isFalse(await centralizedOracle.hasPrice(secondIdentifierBytes, secondTime));
 
     // Push a price for the second identifier.
     await centralizedOracle.pushPrice(secondIdentifierBytes, secondTime, secondPrice);
@@ -152,6 +159,7 @@ contract("CentralizedOracle", function(accounts) {
     // Price should now be available.
     expectedTime = await centralizedOracle.requestPrice.call(secondIdentifierBytes, secondTime);
     assert.equal(expectedTime, 0);
+    assert.isTrue(await centralizedOracle.hasPrice(secondIdentifierBytes, secondTime));
     let oraclePrice = await centralizedOracle.getPrice(secondIdentifierBytes, secondTime);
     assert.equal(oraclePrice, secondPrice);
 
@@ -166,6 +174,7 @@ contract("CentralizedOracle", function(accounts) {
     // Price should now be available.
     expectedTime = await centralizedOracle.requestPrice.call(firstIdentifierBytes, firstTime);
     assert.equal(expectedTime, 0);
+    assert.isTrue(await centralizedOracle.hasPrice(firstIdentifierBytes, firstTime));
     oraclePrice = await centralizedOracle.getPrice(firstIdentifierBytes, firstTime);
     assert.equal(oraclePrice, firstPrice);
 
@@ -277,6 +286,7 @@ contract("CentralizedOracle", function(accounts) {
   it("Unsupported product", async function() {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Unsupported"));
     assert(await didContractThrow(centralizedOracle.requestPrice(identifierBytes, 10)));
+    assert(await didContractThrow(centralizedOracle.hasPrice(identifierBytes, 10)));
   });
 
   it("Unregistered Derivative", async function() {
@@ -287,11 +297,13 @@ contract("CentralizedOracle", function(accounts) {
 
     // Unregisterd derivatives cannot request prices.
     assert(await didContractThrow(centralizedOracle.requestPrice(identifierBytes, 10, { from: rando })));
+    assert(await didContractThrow(centralizedOracle.hasPrice(identifierBytes, 10, { from: rando })));
 
     // Register the derivative with the registry.
     await registry.registerDerivative([], rando, { from: creator });
 
     // Now that the derivative is registered, the price request should work.
     await centralizedOracle.requestPrice(identifierBytes, 10, { from: rando });
+    assert.isFalse(await centralizedOracle.hasPrice(identifierBytes, 10, { from: rando }));
   });
 });

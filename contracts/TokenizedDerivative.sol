@@ -453,9 +453,16 @@ library TokenizedDerivativeUtils {
 
     function _canBeSettled(TDS.Storage storage s) external view returns (bool canBeSettled) {
         TDS.State currentState = s.state;
-        require(currentState == TDS.State.Disputed || currentState == TDS.State.Expired
+        bool isInFrozenState = (currentState == TDS.State.Disputed || currentState == TDS.State.Expired
                 || currentState == TDS.State.Defaulted || currentState == TDS.State.Emergency);
-        return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
+        // This is an edge case, if the contract is Live but an Oracle price is available, then the contract
+        // technically can be settled immediately via dispute, expiry, default or emergency shutdown, but the
+        // settle() method cannot be invoked. How do we want to handle this case?
+        if(!isInFrozenState) {
+            return false;
+        } else {
+            return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
+        }
     }
 
     function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
