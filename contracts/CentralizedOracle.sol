@@ -16,6 +16,7 @@ import "./Testable.sol";
 import "./Withdrawable.sol";
 
 
+// DO NOT SUBMIT just a change to trigger CI.
 // Implements an oracle that allows the owner to push prices for queries that have been made.
 contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
     using SafeMath for uint;
