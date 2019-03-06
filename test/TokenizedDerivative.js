@@ -770,8 +770,9 @@ contract("TokenizedDerivative", function(accounts) {
       await deployedCentralizedOracle.requestPrice(identifierBytes, defaultTime);
       await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.1", "ether"));
 
-      // This a bit of an edge case: currently, we treat the contract as not settle-able because settle() cannot be
-      // called.
+      // This a bit of an edge case: currently, we treat the contract as not settle-able if remargin() would default
+      // because that isn't a normal flow of operations that we want to simulate: we want to discourage/disallow
+      // remargins in these situations.
       assert.isFalse(await derivativeContract.canBeSettled());
 
       // Remargin to the new price, which should immediately settle the contract.
@@ -1060,7 +1061,8 @@ contract("TokenizedDerivative", function(accounts) {
       const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
       const calcedExcessMargin = await derivativeContract.calcExcessMargin();
 
-      // Contract should go straight to settled.
+      // Contract should go straight to settled. The `canBeSettled()` method should indicate this.
+      assert.isTrue(await derivativeContract.canBeSettled());
       await derivativeContract.remargin({ from: sponsor });
       const settledDerivativeStorage = await derivativeContract.derivativeStorage();
       state = settledDerivativeStorage.state;

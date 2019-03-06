@@ -453,15 +453,25 @@ library TokenizedDerivativeUtils {
 
     function _canBeSettled(TDS.Storage storage s) external view returns (bool canBeSettled) {
         TDS.State currentState = s.state;
+
+        bool willFreezeOnNextUpdate = false;
+        if (s.state == TDS.State.Live) {
+            // Grab the price feed pricetime.
+            (uint priceFeedTime, int priceFeedPrice) = s._getLatestPrice();
+            bool isContractPostExpiry = priceFeedTime >= s.endTime;
+            // Technically we should also check if price will default the contract, but that isn't a normal flow of
+            // operations that we want to simulate: we want to discourage the sponsor remargining into a default.
+            willFreezeOnNextUpdate = isContractPostExpiry;
+        }
+
+        // The contract is already frozen.
         bool isInFrozenState = (currentState == TDS.State.Disputed || currentState == TDS.State.Expired
                 || currentState == TDS.State.Defaulted || currentState == TDS.State.Emergency);
-        // This is an edge case, if the contract is Live but an Oracle price is available, then the contract
-        // technically can be settled immediately via dispute, expiry, default or emergency shutdown, but the
-        // settle() method cannot be invoked. How do we want to handle this case?
-        if(!isInFrozenState) {
-            return false;
-        } else {
+
+        if (willFreezeOnNextUpdate || isInFrozenState) {
             return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
+        } else {
+            return false;
         }
     }
 
