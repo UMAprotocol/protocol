@@ -124,6 +124,15 @@ contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
         admin.remargin();
     }
 
+    // Checks whether a price has been resolved.
+    function hasPrice(bytes32 identifier, uint time) external view returns (bool hasPrice) {
+        // Ensure that the caller has been registered with the Oracle before processing the request.
+        require(registry.isDerivativeRegistered(msg.sender));
+        require(supportedIdentifiers[identifier]);
+        Price storage lookup = verifiedPrices[identifier][time];
+        return lookup.isAvailable;
+    }
+
     // Gets a price that has already been resolved.
     function getPrice(bytes32 identifier, uint time) external view returns (int price) {
         // Ensure that the caller has been registered with the Oracle before processing the request.
