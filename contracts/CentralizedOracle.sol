@@ -125,7 +125,7 @@ contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
     }
 
     // Checks whether a price has been resolved.
-    function hasPrice(bytes32 identifier, uint time) external view returns (bool hasPrice) {
+    function hasPrice(bytes32 identifier, uint time) external view returns (bool hasPriceAvailable) {
         // Ensure that the caller has been registered with the Oracle before processing the request.
         require(registry.isDerivativeRegistered(msg.sender));
         require(supportedIdentifiers[identifier]);
