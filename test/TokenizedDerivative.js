@@ -630,6 +630,23 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
+
+      // Push a price.
+      const requestedTime = await deployedManualPriceFeed.getCurrentTime();
+      await deployedCentralizedOracle.pushPrice(identifierBytes, requestedTime, web3.utils.toWei("1.43", "ether"));
+
+      calcNav = await derivativeContract.calcNAV();
+      calcTokenValue = await derivativeContract.calcTokenValue();
+      calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
+      calcExcessMargin = await derivativeContract.calcExcessMargin();
+
+      derivativeContract.settle({from: sponsor});
+      const settledDerivativeStorage = await derivativeContract.derivativeStorage();
+
+      assert.equal(calcNav.toString(), settledDerivativeStorage.nav.toString());
+      assert.equal(calcTokenValue.toString(), settledDerivativeStorage.currentTokenState.tokenPrice.toString());
+      assert.equal(calcShortMarginBalance.toString(), settledDerivativeStorage.shortBalance.toString());
+      assert.equal(calcExcessMargin.toString(), settledDerivativeStorage.shortBalance.toString());
     });
 
     it(annotateTitle("Live -> Default -> Settled (oracle)"), async function() {
@@ -845,11 +862,15 @@ contract("TokenizedDerivative", function(accounts) {
       state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "1");
 
-      // Can't call calc* methods when disputed.
-      assert(await didContractThrow(derivativeContract.calcNAV()));
-      assert(await didContractThrow(derivativeContract.calcTokenValue()));
-      assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
-      assert(await didContractThrow(derivativeContract.calcExcessMargin()));
+      // Provide the Oracle price.
+      await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
+
+      // Grab calc method return values after the Oracle price is pushed, but before settle is called. Expect that
+      // they correctly predict the settlement values.
+      const calcedNav = await derivativeContract.calcNAV();
+      const calcedTokenValue = await derivativeContract.calcTokenValue();
+      const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
+      const calcedExcessMargin = await derivativeContract.calcExcessMargin();
 
       // Can't call emergency shutdown while expired.
       assert(
@@ -857,9 +878,6 @@ contract("TokenizedDerivative", function(accounts) {
           deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
         )
       );
-
-      // Provide the Oracle price.
-      await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
 
       // Settle with the Oracle price.
       let presettlementNav = (await derivativeContract.derivativeStorage()).nav;
@@ -872,9 +890,14 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify that you can't call dispute once the contract is settled.
       assert(await didContractThrow(derivativeContract.dispute()));
 
-      nav = (await derivativeContract.derivativeStorage()).nav;
-      let shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
-      let longBalance = (await derivativeContract.derivativeStorage()).longBalance;
+      const settledDerivativeStorage = await derivativeContract.derivativeStorage();
+      nav = settledDerivativeStorage.nav;
+      let shortBalance = settledDerivativeStorage.shortBalance;
+      let longBalance = settledDerivativeStorage.longBalance;
+      assert.equal(calcedNav.toString(), nav.toString());
+      assert.equal(calcedShortBalance.toString(), shortBalance.toString());
+      assert.equal(calcedExcessMargin.toString(), shortBalance.toString());
+      assert.equal(calcedTokenValue.toString(), settledDerivativeStorage.currentTokenState.tokenPrice.toString());
 
       // Verify that the dispute fee was refunded and the nav didn't change.
       assert.equal(presettlementNav.toString(), nav.toString());
@@ -938,7 +961,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
 
-      // Verify that you can't call settle before the Oracle provides a price.
+      // Verify that you can't call dispute while expired.
       assert(await didContractThrow(derivativeContract.dispute()));
 
       // Then the Oracle price should be provided, which settles the contract.
@@ -1009,9 +1032,17 @@ contract("TokenizedDerivative", function(accounts) {
       await deployedCentralizedOracle.requestPrice(identifierBytes, expirationTime);
       await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
 
+      // Grab calc method return values after the Oracle price is pushed, but before remargin is called. Expect that
+      // they correctly predict the settlement values.
+      const calcedNav = await derivativeContract.calcNAV();
+      const calcedTokenValue = await derivativeContract.calcTokenValue();
+      const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
+      const calcedExcessMargin = await derivativeContract.calcExcessMargin();
+
       // Contract should go straight to settled.
       await derivativeContract.remargin({ from: sponsor });
-      state = (await derivativeContract.derivativeStorage()).state;
+      const settledDerivativeStorage = await derivativeContract.derivativeStorage();
+      state = settledDerivativeStorage.state;
       assert.equal(state.toString(), "5");
 
       // Verify nav and balances at settlement.
@@ -1019,14 +1050,20 @@ contract("TokenizedDerivative", function(accounts) {
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       const expectedOracleFee = computeExpectedOracleFees(longBalance, shortBalance);
       let changeInNav = expectedSettlementNav.sub(initialNav);
-      actualNav = (await derivativeContract.derivativeStorage()).nav;
+      actualNav = settledDerivativeStorage.nav;
       expectedInvestorAccountBalance = longBalance.add(changeInNav);
       expectedSponsorAccountBalance = shortBalance.sub(changeInNav).sub(expectedOracleFee);
-      longBalance = (await derivativeContract.derivativeStorage()).longBalance;
-      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      longBalance = settledDerivativeStorage.longBalance;
+      shortBalance = settledDerivativeStorage.shortBalance;
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
       assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
+
+      // Verify that the previously predicted settlement values were correct.
+      assert.equal(calcedNav.toString(), settledDerivativeStorage.nav.toString());
+      assert.equal(calcedTokenValue.toString(), settledDerivativeStorage.currentTokenState.tokenPrice.toString());
+      assert.equal(calcedShortBalance.toString(), settledDerivativeStorage.shortBalance.toString());
+      assert.equal(calcedExcessMargin.toString(), settledDerivativeStorage.shortBalance.toString());
     });
 
     it(annotateTitle("Live -> Remargin -> Remargin -> Expired -> Settled (oracle price)"), async function() {

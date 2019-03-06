@@ -446,48 +446,79 @@ library TokenizedDerivativeUtils {
 
     function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
         (TDS.TokenState memory newTokenState, int newShortMarginBalance) = s._calcNewTokenStateAndBalance();
-        // Frozen/settled states effectively have 0 required margin since this method predicts the settlement state.
-        int requiredMargin = s.state != TDS.State.Live ? 0 : s._getRequiredMargin(newTokenState);
+        // If the contract is in/will be moved to a settled state, the margin requirement will be 0.
+        int requiredMargin = newTokenState.time >= s.endTime ? 0 : s._getRequiredMargin(newTokenState);
         return newShortMarginBalance.sub(requiredMargin);
     }
 
     function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
     {
-        uint feeAmount = 0;
+        // TODO: there's a lot of repeated logic in this method from elsewhere in the contract. It should be extracted
+        // so the logic can be written once and used twice. However, much of this was written post-audit, so it was
+        // deemed preferable not to modify any state changing code that could potentially introduce new security
+        // bugs. This should be done before the next contract audit.
+
         if (s.state == TDS.State.Settled) {
             // If the contract is Settled, just return the current contract state.
             return (s.currentTokenState, s.shortBalance);
-        } else if (s.state == TDS.State.Live) {
-            // If the contract is live, pull the price from the price feed.
-            (uint latestTime, int latestUnderlyingPrice) = s._getLatestPrice();
-
-            // If the latest time is after endTime, the contract will move into expiry, so we revert.
-            require(latestTime < s.endTime);
-
-            if (latestTime <= s.currentTokenState.time) {
-                // If the time hasn't advanced since the last remargin, short circuit and return the most recently computed values.
-                return (s.currentTokenState, s.shortBalance);
-            }
-
-            if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
-                newTokenState = s._computeNewTokenState(s.referenceTokenState, latestUnderlyingPrice, latestTime);
-            } else {
-                assert(s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound);
-                newTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
-            }
-
-            feeAmount = s._computeExpectedOracleFees(s.currentTokenState.time, latestTime);
-        } else {
-            // If the contract is in one of the frozen states, pull the price from the oracle and recompute the NAV
-            // using the reference price. Note: no Oracle fees are charges in the Frozen -> Settled state transition.
-            int oraclePrice = s.externalAddresses.oracle.getPrice(s.fixedParameters.product, s.endTime);
-            newTokenState = s._computeNewTokenState(s.referenceTokenState, oraclePrice, s.endTime);
         }
 
-        int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
-        int longDiff = _getLongDiff(navNew, s.longBalance, s.shortBalance.sub(_safeIntCast(feeAmount)));
+        // Grab the price feed pricetime.
+        (uint priceFeedTime, int priceFeedPrice) = s._getLatestPrice();
 
-        newShortMarginBalance = s.shortBalance.sub(longDiff).sub(_safeIntCast(feeAmount));
+        bool isContractLive = s.state == TDS.State.Live;
+        bool isContractPostExpiry = priceFeedTime >= s.endTime;
+
+        // If the time hasn't advanced since the last remargin, short circuit and return the most recently computed values.
+        if (isContractLive && priceFeedTime <= s.currentTokenState.time) {
+            return (s.currentTokenState, s.shortBalance);
+        }
+
+        // Determine which previous price state to use when computing the new NAV.
+        // If the contract is live, we use the reference for the linear return type or if the contract will immediately
+        // move to expiry. 
+        bool shouldUseReferenceTokenState = isContractLive &&
+            (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear || isContractPostExpiry);
+        TDS.TokenState memory lastTokenState = shouldUseReferenceTokenState ? s.referenceTokenState : s.currentTokenState;
+
+        // Use the oracle settlement price/time if the contract is frozen or will move to expiry on the next remargin.
+        (uint recomputeTime, int recomputePrice) = !isContractLive || isContractPostExpiry ?
+            (s.endTime, s.externalAddresses.oracle.getPrice(s.fixedParameters.product, s.endTime)) :
+            (priceFeedTime, priceFeedPrice);
+
+        // Init the returned short balance to the current short balance.
+        newShortMarginBalance = s.shortBalance;
+
+        // Subtract the oracle fees from the short balance.
+        newShortMarginBalance = isContractLive ?
+            newShortMarginBalance.sub(
+                _safeIntCast(s._computeExpectedOracleFees(s.currentTokenState.time, recomputeTime))) :
+            newShortMarginBalance;
+
+        // Compute the new NAV
+        newTokenState = s._computeNewTokenState(lastTokenState, recomputePrice, recomputeTime);
+        int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
+        newShortMarginBalance = newShortMarginBalance.sub(_getLongDiff(navNew, s.longBalance, newShortMarginBalance));
+
+        // If the contract is frozen or will move into expiry, we need to settle it, which means adding the default
+        // penalty and dispute deposit if necessary.
+        if (!isContractLive || isContractPostExpiry) {
+            // Subtract default penalty (if necessary) from the short balance.
+            bool inDefault = !s._satisfiesMarginRequirement(newShortMarginBalance, newTokenState);
+            if (inDefault) {
+                int expectedDefaultPenalty = isContractLive ? s._computeDefaultPenalty() : s._getDefaultPenalty();
+                int defaultPenalty = (newShortMarginBalance < expectedDefaultPenalty) ?
+                    newShortMarginBalance :
+                    expectedDefaultPenalty;
+                newShortMarginBalance = newShortMarginBalance.sub(defaultPenalty);
+            }
+
+            // Add the dispute deposit to the short balance if necessary.
+            if (s.state == TDS.State.Disputed && navNew != s.disputeInfo.disputedNav) {
+                int depositValue = _safeIntCast(s.disputeInfo.deposit);
+                newShortMarginBalance = newShortMarginBalance.add(depositValue);
+            }
+        }
     }
 
     function _computeInitialNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime, uint startingTokenPrice)
@@ -608,7 +639,7 @@ library TokenizedDerivativeUtils {
         s._updateBalances(navNew);
 
         // Make sure contract has not moved into default.
-        bool inDefault = !s._satisfiesMarginRequirement(s.shortBalance);
+        bool inDefault = !s._satisfiesMarginRequirement(s.shortBalance, s.currentTokenState);
         if (inDefault) {
             s.state = TDS.State.Defaulted;
             s.defaultPenaltyAmount = potentialPenaltyAmount;
@@ -645,7 +676,7 @@ library TokenizedDerivativeUtils {
         s.nav = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
 
         // Make sure this still satisfies the margin requirement.
-        require(s._satisfiesMarginRequirement(s.shortBalance));
+        require(s._satisfiesMarginRequirement(s.shortBalance, s.currentTokenState));
     }
 
     function _depositInternal(TDS.Storage storage s, uint value) internal {
@@ -707,7 +738,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _computeNewTokenState(TDS.Storage storage s,
-        TDS.TokenState storage beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
+        TDS.TokenState memory beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
         internal
         view
         returns (TDS.TokenState memory newTokenState)
@@ -727,12 +758,12 @@ library TokenizedDerivativeUtils {
         newTokenState = TDS.TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
     }
 
-    function _satisfiesMarginRequirement(TDS.Storage storage s, int balance)
+    function _satisfiesMarginRequirement(TDS.Storage storage s, int balance, TDS.TokenState memory tokenState)
         internal
         view
         returns (bool doesSatisfyRequirement) 
     {
-        return s._getRequiredMargin(s.currentTokenState) <= balance;
+        return s._getRequiredMargin(tokenState) <= balance;
     }
 
     function _requestOraclePrice(TDS.Storage storage s, uint requestedTime) internal {
@@ -744,9 +775,6 @@ library TokenizedDerivativeUtils {
     }
 
     function _getLatestPrice(TDS.Storage storage s) internal view returns (uint latestTime, int latestUnderlyingPrice) {
-        // If not live, then we should be using the Oracle not the price feed.
-        require(s.state == TDS.State.Live);
-
         (latestTime, latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
         require(latestTime != 0);
     }
@@ -790,7 +818,7 @@ library TokenizedDerivativeUtils {
         // Remargin at whatever price we're using (verified or unverified).
         s._updateBalances(s._recomputeNav(price, s.endTime));
 
-        bool inDefault = !s._satisfiesMarginRequirement(s.shortBalance);
+        bool inDefault = !s._satisfiesMarginRequirement(s.shortBalance, s.currentTokenState);
 
         if (inDefault) {
             int expectedDefaultPenalty = s._getDefaultPenalty();
