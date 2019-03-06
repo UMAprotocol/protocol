@@ -454,25 +454,18 @@ library TokenizedDerivativeUtils {
     function _canBeSettled(TDS.Storage storage s) external view returns (bool canBeSettled) {
         TDS.State currentState = s.state;
 
-        bool willFreezeOnNextUpdate = false;
-        if (s.state == TDS.State.Live) {
-            // Grab the price feed pricetime.
-            (uint priceFeedTime, int priceFeedPrice) = s._getLatestPrice();
-            bool isContractPostExpiry = priceFeedTime >= s.endTime;
-            // Technically we should also check if price will default the contract, but that isn't a normal flow of
-            // operations that we want to simulate: we want to discourage the sponsor remargining into a default.
-            willFreezeOnNextUpdate = isContractPostExpiry;
-        }
-
-        // The contract is already frozen.
-        bool isInFrozenState = (currentState == TDS.State.Disputed || currentState == TDS.State.Expired
-                || currentState == TDS.State.Defaulted || currentState == TDS.State.Emergency);
-
-        if (willFreezeOnNextUpdate || isInFrozenState) {
-            return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
-        } else {
+        if (currentState == TDS.State.Settled) {
             return false;
         }
+
+        // Technically we should also check if price will default the contract, but that isn't a normal flow of
+        // operations that we want to simulate: we want to discourage the sponsor remargining into a default.
+        (uint priceFeedTime, ) = s._getLatestPrice();
+        if (currentState == TDS.State.Live && (priceFeedTime < s.endTime)) {
+            return false;
+        }
+
+        return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
     }
 
     function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
