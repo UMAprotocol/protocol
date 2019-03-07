@@ -451,6 +451,23 @@ library TokenizedDerivativeUtils {
         return newShortMarginBalance.sub(requiredMargin);
     }
 
+    function _canBeSettled(TDS.Storage storage s) external view returns (bool canBeSettled) {
+        TDS.State currentState = s.state;
+
+        if (currentState == TDS.State.Settled) {
+            return false;
+        }
+
+        // Technically we should also check if price will default the contract, but that isn't a normal flow of
+        // operations that we want to simulate: we want to discourage the sponsor remargining into a default.
+        (uint priceFeedTime, ) = s._getLatestPrice();
+        if (currentState == TDS.State.Live && (priceFeedTime < s.endTime)) {
+            return false;
+        }
+
+        return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
+    }
+
     function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
     {
         // TODO: there's a lot of repeated logic in this method from elsewhere in the contract. It should be extracted
@@ -1097,6 +1114,11 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     // price.  Value will be negative if the short margin is expected to be below the margin requirement.
     function calcExcessMargin() external view returns (int excessMargin) {
         return derivativeStorage._calcExcessMargin();
+    }
+
+    // Returns whether the contract can be settled, i.e., is it valid to call settle() now.
+    function canBeSettled() external view returns (bool canContractBeSettled) {
+        return derivativeStorage._canBeSettled();
     }
 
     // When an Oracle price becomes available, performs a final remargin, assesses any penalties, and moves the contract
