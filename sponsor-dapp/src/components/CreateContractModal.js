@@ -66,6 +66,10 @@ class CreateContractModal extends React.Component {
     const { formInputs } = this.state;
     const account = this.props.drizzleState.accounts[0];
 
+    // 10^18 * 10^18, which represents 10^20%. This is large enough to never hit, but small enough that the numbers
+    // will never overflow when multiplying by a balance.
+    const withdrawLimit = "1000000000000000000000000000000000000";
+
     const constructorParams = {
       sponsor: account,
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
@@ -78,7 +82,7 @@ class CreateContractModal extends React.Component {
       // TODO: Get expiry time based on identifier.
       expiry: secondsSinceEpoch(addDays(new Date(), 30)), // 30 days from now, in seconds since epoch.
       marginCurrency: formInputs.margin,
-      withdrawLimit: web3.utils.toWei("0.33", "ether"),
+      withdrawLimit: withdrawLimit,
       returnType: "0", // Linear
       startingUnderlyingPrice: "0", // Use price feed.
       name: formInputs.name,
