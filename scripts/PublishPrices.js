@@ -156,7 +156,8 @@ async function publishFeed(feed) {
   }
 }
 
-function getPriceFeeds(priceFeedAddress) {
+function getPriceFeeds() {
+  const priceFeedAddress = ManualPriceFeed.address;
   return [
     {
       identifier: "BTC/ETH",
@@ -195,21 +196,8 @@ function getPriceFeeds(priceFeedAddress) {
 async function runExport() {
   // Wrap all the functionality in a try/catch, so that this function never throws.
   try {
-    // Usage: `truffle exec scripts/PublishPrices.js <ManualPriceFeed address> --network <network>`
-    if (process.argv.length < 5) {
-      console.error("Not enough arguments. Include ManualPriceFeed's contract address.");
-      return;
-    }
-
-    // Get the price feed contract's hash from the command line.
-    const manualPriceFeedAddress = process.argv[4];
-    if (!commandlineUtil.validateAddress(manualPriceFeedAddress)) {
-      console.error("ManualPriceFeed's contract address missing. Exiting...");
-      return;
-    }
-
     // Get the list of price feeds to submit
-    for (const priceFeed of getPriceFeeds(manualPriceFeedAddress)) {
+    for (const priceFeed of getPriceFeeds()) {
       // Wrap each feed in a try/catch, so that a failure in one feed doesn't stop all the others from publishing.
       try {
         console.log(`Publishing price feed for [${priceFeed.identifier}], with config [${JSON.stringify(priceFeed)}]`);
