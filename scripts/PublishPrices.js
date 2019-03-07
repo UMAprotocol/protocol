@@ -116,8 +116,8 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
   }
 
   const lastPublishTime = (await manualPriceFeed.latestPrice(identifierBytes))[0];
-  const nextPublishTime = lastPublishTime.addn(publishInterval);
-  const shouldPublish = currentTime.gte(nextPublishTime);
+  const minNextPublishTime = lastPublishTime.addn(publishInterval);
+  const shouldPublish = currentTime.gte(minNextPublishTime);
   if (!shouldPublish) {
     console.log(
       `Not publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] > currentTime [${currentTime}]`
@@ -130,7 +130,7 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
   return {
     shouldPublish: shouldPublish,
     // This should really be current time, because that's the time the price is at?
-    publishTime: nextPublishTime
+    publishTime: currentTime
   };
 }
 
