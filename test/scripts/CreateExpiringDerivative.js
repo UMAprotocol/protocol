@@ -23,7 +23,9 @@ const createExpiringDerivative = async function(callback) {
     const expiryTime = parseInt(publishTime, 10) + 600;
 
     // Get the first eligible ERC-20 margin currency
-    const marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());
+    const marginCurrencyWhitelist = await AddressWhitelist.at(
+      await tokenizedDerivativeCreator.marginCurrencyWhitelist()
+    );
     const whitelist = await marginCurrencyWhitelist.getWhitelist();
     const erc20MarginToken = whitelist.find(address => address !== "0x0000000000000000000000000000000000000000");
 
@@ -47,12 +49,13 @@ const createExpiringDerivative = async function(callback) {
     await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: sponsor });
 
     // Push a price at the expiry time
-    await priceFeed.pushLatestPrice(identifierBytes, expiryTime, price);
-  } catch(e) {
+    const newPrice = price.add(web3.utils.toBN(web3.utils.toWei("0.1")));
+    await priceFeed.pushLatestPrice(identifierBytes, expiryTime, newPrice);
+  } catch (e) {
     console.error("CreateExpiringDerivative failed:", e);
   }
 
   callback();
-}
+};
 
 module.exports = createExpiringDerivative;
