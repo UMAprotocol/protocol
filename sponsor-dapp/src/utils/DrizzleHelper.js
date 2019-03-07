@@ -85,25 +85,37 @@ export default class DrizzleHelper {
     return contract.generateArgsHash(args);
   }
 
+  _getContract(address) {
+    return this.drizzle.store.getState().contracts[address];
+  }
+
   // hasCache returns true if a cached value exists for the method/arguments pair.
   hasCache(address, methodName, args) {
-    const { drizzle } = this;
-    const key = this._generateArgsHash(address, args);
-
-    const contract = drizzle.store.getState().contracts[address];
+    const contract = this._getContract(address);
     if (!contract) {
       return false;
     }
 
+    const key = this._generateArgsHash(address, args);
     return contract[methodName][key] !== undefined;
+  }
+
+  // cacheHasError returns true if a cached value exists with an error (e.g. revert/require)
+  cacheHasError(address, methodName, args) {
+    const contract = this._getContract(address);
+    if (!contract) {
+      return false;
+    }
+
+    const key = this._generateArgsHash(address, args);
+    return contract[methodName][key] !== undefined && contract[methodName][key].error !== undefined;
   }
 
   // getCache synchronously returns the cached value for the method/argument pair.
   // Use `hasCache` to check for the existence of a cached value.
   // The returned value may be stale. Call `cacheCall` to asynchronously fetch a fresh value.
   getCache(address, methodName, args) {
-    const { drizzle } = this;
     const key = this._generateArgsHash(address, args);
-    return drizzle.store.getState().contracts[address][methodName][key].value;
+    return this._getContract(address)[methodName][key].value;
   }
 }
