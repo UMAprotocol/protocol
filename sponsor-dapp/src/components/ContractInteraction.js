@@ -3,6 +3,9 @@ import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
 
+import DrizzleHelper from "../utils/DrizzleHelper";
+import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
+
 const styles = theme => ({
   button: {
     height: 56,
@@ -23,6 +26,10 @@ const styles = theme => ({
 // transactions, etc. Maintaining those bits of information as state in this component would require using more obscure
 // React lifecycle methods.
 class ContractInteraction extends Component {
+  componentWillMount() {
+    this.drizzleHelper = new DrizzleHelper(this.props.drizzle);
+  }
+
   getButton(text, isEnabled, onClickHandler) {
     return (
       <Button
@@ -38,7 +45,46 @@ class ContractInteraction extends Component {
   }
 
   getTokenSponsorInteraction() {
-    const formInputs = this.props.formInputs;
+    const { drizzleHelper } = this;
+    const { formInputs, contractAddress, isInteractionEnabled } = this.props;
+
+    const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
+
+    // pricePastExpiry simply denotes that the price feed published a time past expiry.
+    // A contract can be past expiry and not in the expired state (i.e. live or settled).
+    // Must be in sync: https://github.com/UMAprotocol/protocol/blob/84d2e693de06d3b76e266e5b79951174bea4eb85/contracts/TokenizedDerivative.sol#L456
+    const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
+    const identifierBytes = derivativeStorage.fixedParameters.product;
+    const latestPrice = drizzleHelper.getCache(priceFeedAddress, "latestPrice", [identifierBytes]);
+    const pricePastExpiry = derivativeStorage.endTime <= latestPrice.publishTime;
+
+    const canBeSettled = drizzleHelper.getCache(contractAddress, "canBeSettled", []);
+
+    const { state } = derivativeStorage;
+    const isLive = state === ContractStateEnum.LIVE;
+    const isSettled = state === ContractStateEnum.SETTLED;
+    const isLiveOrSettled = isLive || isSettled;
+
+    const isDepositDisabled = !isInteractionEnabled || !isLive;
+    const isWithdrawDisabled = !isInteractionEnabled || (isLive && pricePastExpiry) || !isLiveOrSettled;
+    const isCreateDisabled = !isInteractionEnabled || (isLive && pricePastExpiry) || !isLive;
+    const isRedeemDisabled = !isInteractionEnabled || (isLive && pricePastExpiry) || !isLiveOrSettled;
+
+    let middleButton;
+    if (isLive && !pricePastExpiry && !canBeSettled) {
+      // Users can remargin as long as they can't settle. Being live and able to settle is an extreme edge case
+      // in which the last published time is past expiry and the oracle has already provided a price.
+      middleButton = this.getButton("Remargin contract", isInteractionEnabled, this.props.remarginFn);
+    } else if (isLive && pricePastExpiry) {
+      // Users must initiate remargin to transition to the expired state.
+      middleButton = this.getButton("Expire contract", isInteractionEnabled, this.props.remarginFn);
+    } else if (!isSettled) {
+      middleButton = this.getButton("Settle contract", isInteractionEnabled && canBeSettled, this.props.settleFn);
+    } else {
+      // Render a placeholder button that's always disabled for settled contracts.
+      middleButton = this.getButton("Remargin contract", false, null);
+    }
+
     return (
       <div>
         <div className={this.props.classes.rowOne}>
@@ -46,43 +92,41 @@ class ContractInteraction extends Component {
             <TextField
               variant="outlined"
               className={this.props.classes.textField}
-              disabled={!this.props.isInteractionEnabled}
+              disabled={this.props.isDepositDisabled}
               value={formInputs.depositAmount}
               onChange={e => this.props.handleChangeFn("depositAmount", e)}
             />
-            {this.getButton("Deposit", this.props.isInteractionEnabled, this.props.depositFn)}
+            {this.getButton("Deposit", !isDepositDisabled, this.props.depositFn)}
           </div>
-          <div className={this.props.classes.centerButton}>
-            {this.getButton("Remargin contract", this.props.isInteractionEnabled, this.props.remarginFn)}
-          </div>
+          <div className={this.props.classes.centerButton}>{middleButton}</div>
           <div>
             <TextField
               variant="outlined"
-              disabled={!this.props.isInteractionEnabled}
+              disabled={isWithdrawDisabled}
               value={formInputs.withdrawAmount}
               onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
             />
-            {this.getButton("Withdraw", this.props.isInteractionEnabled, this.props.withdrawFn)}
+            {this.getButton("Withdraw", !isWithdrawDisabled, this.props.withdrawFn)}
           </div>
         </div>
         <div className={this.props.classes.rowOne}>
           <div>
             <TextField
               variant="outlined"
-              disabled={!this.props.isInteractionEnabled}
+              disabled={isCreateDisabled}
               value={formInputs.createAmount}
               onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
-            {this.getButton("Create", this.props.isInteractionEnabled, this.props.createFn)}
+            {this.getButton("Create", !isCreateDisabled, this.props.createFn)}
           </div>
           <div>
             <TextField
               variant="outlined"
-              disabled={!this.props.isInteractionEnabled}
+              disabled={isRedeemDisabled}
               value={formInputs.redeemAmount}
               onChange={e => this.props.handleChangeFn("redeemAmount", e)}
             />
-            {this.getButton("Redeem", this.props.isInteractionEnabled, this.props.redeemFn)}
+            {this.getButton("Redeem", !isRedeemDisabled, this.props.redeemFn)}
           </div>
         </div>
       </div>
