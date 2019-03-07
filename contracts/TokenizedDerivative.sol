@@ -347,7 +347,7 @@ library TokenizedDerivativeUtils {
             // Update throttling snapshot and verify that this withdrawal doesn't go past the throttle limit.
             uint currentTime = s.currentTokenState.time;
             if (s.withdrawThrottle.startTime <= currentTime.sub(SECONDS_PER_DAY)) {
-                // We've passeƒd the previous s.withdrawThrottle window. Start new one.
+                // We've passed the previous s.withdrawThrottle window. Start new one.
                 s.withdrawThrottle.startTime = currentTime;
                 s.withdrawThrottle.remainingWithdrawal = _takePercentage(_safeUintCast(s.shortBalance), s.fixedParameters.withdrawLimit);
             }
@@ -597,9 +597,6 @@ library TokenizedDerivativeUtils {
 
         // The default penalty must be less than the required margin.
         require(params.defaultPenalty <= UINT_FP_SCALING_FACTOR);
-
-        // Withdraw limit must be < 100%.
-        require(params.withdrawLimit < UINT_FP_SCALING_FACTOR);
 
         s.fixedParameters.returnType = params.returnType;
         s.fixedParameters.defaultPenalty = params.defaultPenalty;
