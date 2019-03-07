@@ -67,7 +67,8 @@ class ContractDetails extends Component {
         { address, methodName: "calcNAV", args: [] },
         { address, methodName: "calcShortMarginBalance", args: [] },
         { address, methodName: "balanceOf", args: [account] },
-        { address, methodName: "allowance", args: [account, address] }
+        { address, methodName: "allowance", args: [account, address] },
+        { address, methodName: "canBeSettled", args: [] }
       ])
       .then(results => {
         // Update the state now that contract data has been loaded
@@ -97,6 +98,9 @@ class ContractDetails extends Component {
               break;
             case "allowance":
               state.derivativeTokenAllowanceDataKey = key;
+              break;
+            case "canBeSettled":
+              state.canBeSettledKey = key;
               break;
             default:
               throw new Error(`Cannot find corresponding key for method: ${methodName}`);
@@ -201,6 +205,13 @@ class ContractDetails extends Component {
 
   remarginContract = () => {
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.remargin.cacheSend({
+      from: this.props.drizzleState.accounts[0]
+    });
+    this.addPendingTransaction(initiatedTransactionId);
+  };
+
+  settleContract = () => {
+    const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.settle.cacheSend({
       from: this.props.drizzleState.accounts[0]
     });
     this.addPendingTransaction(initiatedTransactionId);
@@ -331,6 +342,7 @@ class ContractDetails extends Component {
               .value
           )
           .gte(minAllowance));
+
     // We either present the user with the buttons to pre-authorize the contract, or if they've already preauthorized,
     // with the buttons to deposit, remargin, etc.
     if (!isDerivativeTokenAuthorized || !isMarginCurrencyAuthorized) {
@@ -346,11 +358,14 @@ class ContractDetails extends Component {
     } else {
       return (
         <ContractInteraction
+          drizzle={this.props.drizzle}
+          contractAddress={this.props.contractAddress}
           remarginFn={this.remarginContract}
           depositFn={this.depositMargin}
           withdrawFn={this.withdrawMargin}
           createFn={this.createTokens}
           redeemFn={this.redeemTokens}
+          settleFn={this.settleContract}
           formInputs={this.state.formInputs}
           handleChangeFn={this.handleFormChange}
           isInteractionEnabled={this.state.isInteractionEnabled}
