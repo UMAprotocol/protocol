@@ -1,7 +1,11 @@
 const HDWalletProvider = require("truffle-hdwallet-provider");
+require("dotenv").config();
+
+// Fallback to a public mnemonic to prevent exceptions
 const mnemonic = process.env.MNEMONIC
   ? process.env.MNEMONIC
   : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+const infuraApiKey = process.env.INFURA_API_KEY;
 
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
@@ -33,13 +37,13 @@ module.exports = {
       gas: 6720000
     },
     ropsten: {
-      provider: new HDWalletProvider(mnemonic, "https://ropsten.infura.io/v3/38504d9908d94d93a7692eaa900da084", 0, 2),
+      provider: new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/${infuraApiKey}`, 0, 2),
       network_id: "*",
       gas: 6720000,
       gasPrice: 20000000000
     },
     mainnet: {
-      provider: new HDWalletProvider(mnemonic, "https://mainnet.infura.io/v3/38504d9908d94d93a7692eaa900da084", 0, 2),
+      provider: new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/${infuraApiKey}`, 0, 2),
       network_id: "*",
       gas: 6720000,
       gasPrice: 20000000000
