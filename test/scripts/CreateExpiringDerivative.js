@@ -49,7 +49,8 @@ const createExpiringDerivative = async function(callback) {
     await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: sponsor });
 
     // Push a price at the expiry time
-    await priceFeed.pushLatestPrice(identifierBytes, expiryTime, price);
+    const newPrice = price.add(web3.utils.toBN(web3.utils.toWei("0.1")));
+    await priceFeed.pushLatestPrice(identifierBytes, expiryTime, newPrice);
   } catch (e) {
     console.error("CreateExpiringDerivative failed:", e);
   }
