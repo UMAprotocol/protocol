@@ -535,6 +535,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(longBalance.toString(), web3.utils.toBN(web3.utils.toWei("2", "ether")));
       assert.equal(shortBalance.toString(), web3.utils.toBN(web3.utils.toWei("1", "ether")));
       assert.equal(state.toString(), "0");
+      assert.isFalse(await derivativeContract.canBeSettled());
 
       // The estimation methods should line up.
       let calcNav = await derivativeContract.calcNAV();
@@ -568,6 +569,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(calcTokenValue.toString(), expectedNav.divn(2).toString());
       assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
       assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
+      assert.isFalse(await derivativeContract.canBeSettled());
 
       // Remargin and double check estimation methods.
       await derivativeContract.remargin({ from: sponsor });
@@ -587,6 +589,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
       assert.equal(shortBalance.toString(), expectedShortBalance.toString());
       assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
+      assert.isFalse(await derivativeContract.canBeSettled());
 
       // Increase the price to push the provider into default (but don't remargin). This price tests the case where
       // calcExcessMargin() returns a negative value.
@@ -610,6 +613,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(calcNav.toString(), expectedNav.toString());
       assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
       assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
+      assert.isFalse(await derivativeContract.canBeSettled());
 
       // Remargin into default.
       await derivativeContract.remargin({ from: sponsor });
@@ -630,6 +634,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
+      assert.isFalse(await derivativeContract.canBeSettled());
 
       // Push a price.
       const requestedTime = await deployedManualPriceFeed.getCurrentTime();
@@ -639,14 +644,16 @@ contract("TokenizedDerivative", function(accounts) {
       calcTokenValue = await derivativeContract.calcTokenValue();
       calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
       calcExcessMargin = await derivativeContract.calcExcessMargin();
+      assert.isTrue(await derivativeContract.canBeSettled());
 
-      derivativeContract.settle({from: sponsor});
+      derivativeContract.settle({ from: sponsor });
       const settledDerivativeStorage = await derivativeContract.derivativeStorage();
 
       assert.equal(calcNav.toString(), settledDerivativeStorage.nav.toString());
       assert.equal(calcTokenValue.toString(), settledDerivativeStorage.currentTokenState.tokenPrice.toString());
       assert.equal(calcShortMarginBalance.toString(), settledDerivativeStorage.shortBalance.toString());
       assert.equal(calcExcessMargin.toString(), settledDerivativeStorage.shortBalance.toString());
+      assert.isFalse(await derivativeContract.canBeSettled());
     });
 
     it(annotateTitle("Live -> Default -> Settled (oracle)"), async function() {
@@ -710,9 +717,15 @@ contract("TokenizedDerivative", function(accounts) {
       const derivativeStorage = await derivativeContract.derivativeStorage();
       assert.equal(derivativeStorage.state.toString(), "5");
       // Can't call calc* methods when Settled.
-      assert.equal((await derivativeContract.calcNAV()).toString(), derivativeStorage.nav);;
-      assert.equal((await derivativeContract.calcTokenValue()).toString(), derivativeStorage.currentTokenState.tokenPrice.toString());
-      assert.equal((await derivativeContract.calcShortMarginBalance()).toString(), derivativeStorage.shortBalance.toString());
+      assert.equal((await derivativeContract.calcNAV()).toString(), derivativeStorage.nav);
+      assert.equal(
+        (await derivativeContract.calcTokenValue()).toString(),
+        derivativeStorage.currentTokenState.tokenPrice.toString()
+      );
+      assert.equal(
+        (await derivativeContract.calcShortMarginBalance()).toString(),
+        derivativeStorage.shortBalance.toString()
+      );
       assert.equal((await derivativeContract.calcExcessMargin()).toString(), derivativeStorage.shortBalance.toString());
       priceReturn = web3.utils.toBN(web3.utils.toWei("1.05", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
@@ -756,6 +769,11 @@ contract("TokenizedDerivative", function(accounts) {
       // The Oracle price is already available.
       await deployedCentralizedOracle.requestPrice(identifierBytes, defaultTime);
       await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.1", "ether"));
+
+      // This a bit of an edge case: currently, we treat the contract as not settle-able if remargin() would default
+      // because that isn't a normal flow of operations that we want to simulate: we want to discourage/disallow
+      // remargins in these situations.
+      assert.isFalse(await derivativeContract.canBeSettled());
 
       // Remargin to the new price, which should immediately settle the contract.
       await derivativeContract.remargin({ from: sponsor });
@@ -863,7 +881,9 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(state.toString(), "1");
 
       // Provide the Oracle price.
+      assert.isFalse(await derivativeContract.canBeSettled());
       await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
+      assert.isTrue(await derivativeContract.canBeSettled());
 
       // Grab calc method return values after the Oracle price is pushed, but before settle is called. Expect that
       // they correctly predict the settlement values.
@@ -965,7 +985,9 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.dispute()));
 
       // Then the Oracle price should be provided, which settles the contract.
+      assert.isFalse(await derivativeContract.canBeSettled());
       await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
+      assert.isTrue(await derivativeContract.canBeSettled());
 
       // Grab calc method return values after the Oracle price is pushed, but before settle is called. Expect that
       // they correctly predict the settlement values.
@@ -1039,7 +1061,8 @@ contract("TokenizedDerivative", function(accounts) {
       const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
       const calcedExcessMargin = await derivativeContract.calcExcessMargin();
 
-      // Contract should go straight to settled.
+      // Contract should go straight to settled. The `canBeSettled()` method should indicate this.
+      assert.isTrue(await derivativeContract.canBeSettled());
       await derivativeContract.remargin({ from: sponsor });
       const settledDerivativeStorage = await derivativeContract.derivativeStorage();
       state = settledDerivativeStorage.state;
@@ -1374,7 +1397,9 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Resolve it to a defaulting price.
       const shutdownTime = (await deployedManualPriceFeed.getCurrentTime()).toString();
+      assert.isFalse(await derivativeContract.canBeSettled());
       await deployedCentralizedOracle.pushPrice(identifierBytes, shutdownTime, web3.utils.toWei("2", "ether"));
+      assert.isTrue(await derivativeContract.canBeSettled());
       await derivativeContract.settle({ from: sponsor });
 
       // This resolution should leave 0.075 left in the short margin account with a margin requirement of 0.1.

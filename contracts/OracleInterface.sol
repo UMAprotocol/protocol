@@ -13,6 +13,9 @@ interface OracleInterface {
     // method.
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime);
 
+    // Checks whether a price has been resolved.
+    function hasPrice(bytes32 identifier, uint time) external view returns (bool hasPriceAvailable);
+
     // Returns the Oracle price for identifier at a time. Reverts if the Oracle doesn't support this identifier or if
     // the Oracle doesn't have a price for this time. Only contracts registered in the Registry are authorized to call
     // this method.
