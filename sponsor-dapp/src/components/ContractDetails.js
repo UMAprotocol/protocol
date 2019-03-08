@@ -394,7 +394,7 @@ class ContractDetails extends Component {
     const contractParameters = {
       contractAddress: this.props.contractAddress,
       creatorAddress: derivativeStorage.externalAddresses.sponsor,
-      creationTime: "UNKNOWN",
+      creationTime: formatDate(derivativeStorage.fixedParameters.creationTime, web3),
       // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
       expiryTime: derivativeStorage.endTime === UINT_MAX ? "None" : formatDate(derivativeStorage.endTime, web3),
       priceFeedAddress: derivativeStorage.externalAddresses.priceFeed,
