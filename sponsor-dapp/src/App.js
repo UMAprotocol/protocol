@@ -22,6 +22,10 @@ const theme = createMuiTheme({
 class App extends Component {
   state = { params, network: undefined };
 
+  componentDidMount(){
+    document.title = "UMA Dashboard";
+  }
+
   render() {
     return (
       <DrizzleContext.Provider drizzle={this.props.drizzle}>

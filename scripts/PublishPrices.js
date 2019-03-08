@@ -4,8 +4,10 @@ const fetch = require("node-fetch");
 const util = require("util");
 const commandlineUtil = require("./CommandlineUtil");
 
-// NOTE: Key restricted to 5 calls per minute, 500 calls per day.
-const alphaVantageKey = "41EUIBN9FKJW9FQM";
+require("dotenv").config();
+
+// Get the API key from an environment variable or the `.env` file.
+const alphaVantageKey = process.env.ALPHAVANTAGE_API_KEY;
 
 // Gets JSON from a URL or throws.
 const getJson = async url => {
