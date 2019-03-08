@@ -9,6 +9,10 @@ require("dotenv").config();
 // Get the API key from an environment variable or the `.env` file.
 const alphaVantageKey = process.env.ALPHAVANTAGE_API_KEY;
 
+function stripApiKey(str) {
+  return str.replace(alphaVantageKey, "{redacted}");
+}
+
 // Gets JSON from a URL or throws.
 const getJson = async url => {
   const response = await fetch(url);
@@ -36,7 +40,7 @@ async function getCoinbasePrice(asset) {
 // Gets the AlphaVantage price for an asset or throws.
 async function getAlphaVantageQuote(asset) {
   const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=${alphaVantageKey}&symbol=${asset}`;
-  console.log(`Querying AlphaVantage with [${url}]`);
+  console.log(`Querying AlphaVantage with [${stripApiKey(url)}]`);
   const jsonOutput = await getJson(url);
   console.log(`AlphaVantage response [${JSON.stringify(jsonOutput)}]`);
   const price = jsonOutput["Global Quote"]["05. price"];
@@ -50,7 +54,7 @@ async function getAlphaVantageQuote(asset) {
 // Gets the AlphaVantage rate for a currency against USD.
 async function getAlphaVantageCurrencyRate(asset) {
   const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${asset}&to_currency=USD&apikey=${alphaVantageKey}`;
-  console.log(`Querying AlphaVantage with [${url}]`);
+  console.log(`Querying AlphaVantage with [${stripApiKey(url)}]`);
   const jsonOutput = await getJson(url);
   console.log(`AlphaVantage response [${JSON.stringify(jsonOutput)}]`);
   const rate = jsonOutput["Realtime Currency Exchange Rate"]["5. Exchange Rate"];
