@@ -6,6 +6,7 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
 import { withStyles } from "@material-ui/core/styles";
+import grey from '@material-ui/core/colors/grey';
 
 import { formatDate, formatWei } from "../utils/FormattingUtils";
 import DrizzleHelper from "../utils/DrizzleHelper";
@@ -16,7 +17,7 @@ const styles = theme => ({
     overflowX: "auto"
   },
   shaded: {
-    backgroundColor: "gray"
+    backgroundColor: grey[100]
   }
 });
 
