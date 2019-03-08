@@ -47,6 +47,7 @@ class ContractInteraction extends Component {
   getTokenSponsorInteraction() {
     const { drizzleHelper } = this;
     const { formInputs, contractAddress, isInteractionEnabled } = this.props;
+    const { web3 } = this.props.drizzle;
 
     const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
 
@@ -56,7 +57,7 @@ class ContractInteraction extends Component {
     const priceFeedAddress = derivativeStorage.externalAddresses.priceFeed;
     const identifierBytes = derivativeStorage.fixedParameters.product;
     const latestPrice = drizzleHelper.getCache(priceFeedAddress, "latestPrice", [identifierBytes]);
-    const pricePastExpiry = derivativeStorage.endTime <= latestPrice.publishTime;
+    const pricePastExpiry = web3.utils.toBN(derivativeStorage.endTime).lte(web3.utils.toBN(latestPrice.publishTime));
 
     const canBeSettled = drizzleHelper.getCache(contractAddress, "canBeSettled", []);
 
