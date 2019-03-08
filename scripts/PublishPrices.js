@@ -131,7 +131,6 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
   }
   return {
     shouldPublish: shouldPublish,
-    // This should really be current time, because that's the time the price is at?
     publishTime: currentTime
   };
 }
