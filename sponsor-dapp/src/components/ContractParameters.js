@@ -3,6 +3,7 @@ import Collapse from "@material-ui/core/Collapse";
 import { withStyles } from "@material-ui/core/styles";
 import ExpandLess from "@material-ui/icons/ExpandLess";
 import ExpandMore from "@material-ui/icons/ExpandMore";
+import Button from "@material-ui/core/Button";
 
 const styles = theme => ({
   detailsText: {
@@ -28,10 +29,9 @@ class ContractParameters extends Component {
     const { parameters, classes } = this.props;
     return (
       <div>
-        <div className={classes.title} onClick={this.handleClick}>
-          {this.state.open ? <ExpandLess /> : <ExpandMore />}
-          <span className={classes.detailsText}> Details </span>
-        </div>
+        <Button className={classes.title} onClick={this.handleClick}>
+          {this.state.open ? <ExpandLess /> : <ExpandMore />} Details
+        </Button>
         <Collapse in={this.state.open} timeout="auto">
           Address: {parameters.contractAddress}
           <div>Creator: {parameters.creatorAddress}</div>
