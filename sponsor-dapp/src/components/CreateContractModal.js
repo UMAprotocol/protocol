@@ -66,7 +66,6 @@ class CreateContractModal extends React.Component {
     const { web3 } = drizzle;
     const { formInputs } = this.state;
     const account = drizzleState.accounts[0];
-    const { ManualPriceFeed } = drizzleState.contracts;
 
     // 10^18 * 10^18, which represents 10^20%. This is large enough to never hit, but small enough that the numbers
     // will never overflow when multiplying by a balance.
