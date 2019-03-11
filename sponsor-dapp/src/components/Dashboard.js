@@ -157,6 +157,7 @@ class Dashboard extends React.Component {
                 contractAddress={this.state.openModalContractAddress}
                 drizzle={this.props.drizzle}
                 drizzleState={this.props.drizzleState}
+                params={this.props.params}
               />
             </DialogContent>
           </Dialog>
