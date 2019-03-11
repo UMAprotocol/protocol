@@ -22,7 +22,7 @@ const theme = createMuiTheme({
 class App extends Component {
   state = { params, network: undefined };
 
-  componentDidMount(){
+  componentDidMount() {
     document.title = "UMA Dashboard";
   }
 

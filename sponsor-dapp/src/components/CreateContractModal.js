@@ -72,7 +72,6 @@ class CreateContractModal extends React.Component {
     // will never overflow when multiplying by a balance.
     const withdrawLimit = "1000000000000000000000000000000000000";
 
-
     let assetPrice = web3.utils.toWei("1", "ether");
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(formInputs.identifier));
 
