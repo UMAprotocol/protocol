@@ -451,6 +451,15 @@ library TokenizedDerivativeUtils {
         return newShortMarginBalance.sub(requiredMargin);
     }
 
+    function _getCurrentRequiredMargin(TDS.Storage storage s) external view returns (int requiredMargin) {
+        if (s.state == TDS.State.Settled) {
+            // No margin needs to be maintained when the contract is settled.
+            return 0;
+        }
+
+         return s._getRequiredMargin(s.currentTokenState);
+    }
+
     function _canBeSettled(TDS.Storage storage s) external view returns (bool canBeSettled) {
         TDS.State currentState = s.state;
 
@@ -1116,6 +1125,12 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     // price.  Value will be negative if the short margin is expected to be below the margin requirement.
     function calcExcessMargin() external view returns (int excessMargin) {
         return derivativeStorage._calcExcessMargin();
+    }
+
+    // Returns the required margin, as of the last remargin. Note that `calcExcessMargin` uses updated values using the
+    // latest available Price Feed price.
+    function getCurrentRequiredMargin() external view returns (int requiredMargin) {
+        return derivativeStorage._getCurrentRequiredMargin();
     }
 
     // Returns whether the contract can be settled, i.e., is it valid to call settle() now.
