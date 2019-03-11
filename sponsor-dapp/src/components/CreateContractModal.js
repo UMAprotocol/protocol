@@ -13,6 +13,7 @@ import TextField from "@material-ui/core/TextField";
 
 import DrizzleHelper from "../utils/DrizzleHelper.js";
 import { addDays, secondsSinceEpoch } from "../utils/DateUtils.js";
+import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 
 import AddressWhitelist from "../contracts/AddressWhitelist";
 import LeveragedReturnCalculator from "../contracts/LeveragedReturnCalculator";
@@ -341,7 +342,7 @@ class CreateContractModal extends React.Component {
   }
 
   render() {
-    const { classes, drizzleState } = this.props;
+    const { classes, drizzleState, params } = this.props;
     const account = drizzleState.accounts[0];
 
     const leverageMenuItems = this.state.returnCalculatorAddresses.map((address, idx) => (
@@ -359,7 +360,12 @@ class CreateContractModal extends React.Component {
       const whitelistAddress = this.drizzleHelper.getCache("TokenizedDerivativeCreator", "marginCurrencyWhitelist", []);
       marginWhitelist = this.drizzleHelper.getCache(whitelistAddress, "getWhitelist", []);
     }
-    const marginCurrencyMenuItems = this.createMenuItems(marginWhitelist);
+
+    const marginCurrencyMenuItems = marginWhitelist.map(address => (
+      <MenuItem value={address} key={address}>
+        {currencyAddressToName(params, address) || address}
+      </MenuItem>
+    ));
 
     return (
       <Dialog open={this.props.open} onClose={this.props.onClose}>
