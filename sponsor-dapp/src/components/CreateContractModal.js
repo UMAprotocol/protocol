@@ -115,9 +115,7 @@ class CreateContractModal extends React.Component {
       []
     );
     await this.drizzleHelper.addContract(whitelistAddress, AddressWhitelist.abi);
-    const { result: marginWhitelistAddresses } = await this.drizzleHelper.cacheCall(whitelistAddress, "getWhitelist", []);
-
-    const marginWhitelist = currencyAddressesToNames(this.props.params, marginWhitelistAddresses);
+    const { result: marginWhitelist } = await this.drizzleHelper.cacheCall(whitelistAddress, "getWhitelist", []);
 
     if (!marginWhitelist.length) {
       this.setState({
