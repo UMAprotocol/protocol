@@ -63,39 +63,48 @@ class CreateContractModal extends React.Component {
   }
 
   submit = () => {
-    const { web3 } = this.props.drizzle;
+    const { drizzle, drizzleState, onClose } = this.props;
+    const { web3 } = drizzle;
     const { formInputs } = this.state;
-    const account = this.props.drizzleState.accounts[0];
+    const account = drizzleState.accounts[0];
 
     // 10^18 * 10^18, which represents 10^20%. This is large enough to never hit, but small enough that the numbers
     // will never overflow when multiplying by a balance.
     const withdrawLimit = "1000000000000000000000000000000000000";
 
+    let assetPrice = web3.utils.toWei("1", "ether");
+    const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(formInputs.identifier));
+
+    // Should always be the case, but the above value is a fallback.
+    if (this.drizzleHelper.hasCache("ManualPriceFeed", "latestPrice", [])) {
+      assetPrice = this.drizzleHelper.getCache("ManualPriceFeed", "latestPrice", []);
+    }
+
     const constructorParams = {
       sponsor: account,
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
       supportedMove: web3.utils.toWei("0.1", "ether"),
-      product: web3.utils.hexToBytes(web3.utils.utf8ToHex(formInputs.identifier)),
+      product: identifierBytes,
       fixedYearlyFee: "0", // Must be 0 for linear return type.
       disputeDeposit: web3.utils.toWei("0.5", "ether"),
       returnCalculator: formInputs.leverage,
-      startingTokenPrice: web3.utils.toWei("1", "ether"),
+      startingTokenPrice: assetPrice, // Align the starting asset price and the starting token price.
       // TODO: Get expiry time based on identifier.
       expiry: secondsSinceEpoch(addDays(new Date(), 30)), // 30 days from now, in seconds since epoch.
       marginCurrency: formInputs.margin,
       withdrawLimit: withdrawLimit,
       returnType: "0", // Linear
-      startingUnderlyingPrice: "0", // Use price feed.
+      startingUnderlyingPrice: assetPrice, // Use price feed.
       name: formInputs.name,
       symbol: formInputs.symbol
     };
 
-    const { TokenizedDerivativeCreator } = this.props.drizzle.contracts;
+    const { TokenizedDerivativeCreator } = drizzle.contracts;
     TokenizedDerivativeCreator.methods.createTokenizedDerivative.cacheSend(constructorParams, { from: account });
 
     // TODO: Add error handling and delay closing the modal until there's confirmation
     // that the transaction has been included in the blockchain.
-    this.props.onClose();
+    onClose();
   };
 
   async getMarginCurrency() {
@@ -133,7 +142,10 @@ class CreateContractModal extends React.Component {
     const identifierKeys = [];
     params.identifiers.forEach(identifier => {
       const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
-      identifierKeys.push(ManualPriceFeed.methods.isIdentifierSupported.cacheCall(identifierBytes));
+      identifierKeys.push({
+        supported: ManualPriceFeed.methods.isIdentifierSupported.cacheCall(identifierBytes),
+        price: ManualPriceFeed.methods.latestPrice.cacheCall(identifierBytes)
+      });
     });
 
     const unsubscribe = drizzle.store.subscribe(() => {
@@ -141,15 +153,15 @@ class CreateContractModal extends React.Component {
 
       const { ManualPriceFeed } = drizzleState.contracts;
 
-      const callFinished = identifierKeys.every(key => {
-        return ManualPriceFeed.isIdentifierSupported[key];
+      const callFinished = identifierKeys.every(keys => {
+        return ManualPriceFeed.isIdentifierSupported[keys.supported] && ManualPriceFeed.latestPrice[keys.price];
       });
       if (!callFinished) {
         return;
       }
 
-      const approvedIdentifiers = identifierKeys.reduce((identifiers, key, idx) => {
-        if (ManualPriceFeed.isIdentifierSupported[key].value) {
+      const approvedIdentifiers = identifierKeys.reduce((identifiers, keys, idx) => {
+        if (ManualPriceFeed.isIdentifierSupported[keys.supported].value) {
           identifiers.push(params.identifiers[idx]);
         }
         return identifiers;
