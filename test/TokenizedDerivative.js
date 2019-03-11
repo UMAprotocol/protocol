@@ -542,10 +542,13 @@ contract("TokenizedDerivative", function(accounts) {
       let calcTokenValue = await derivativeContract.calcTokenValue();
       let calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
       let calcExcessMargin = await derivativeContract.calcExcessMargin();
+      let updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
       assert.equal(calcNav.toString(), web3.utils.toWei("2", "ether"));
       assert.equal(calcTokenValue.toString(), web3.utils.toWei("1", "ether"));
       assert.equal(calcShortMarginBalance.toString(), web3.utils.toWei("1", "ether"));
       assert.equal(calcExcessMargin.toString(), web3.utils.toWei("0.8", "ether"));
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), await deployedManualPriceFeed.getCurrentTime());
 
       // Change the price but don't remargin (yet).
       await pushPrice(web3.utils.toWei("1.1", "ether"));
@@ -564,12 +567,15 @@ contract("TokenizedDerivative", function(accounts) {
       calcTokenValue = await derivativeContract.calcTokenValue();
       calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
       calcExcessMargin = await derivativeContract.calcExcessMargin();
+      updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
       assert.equal(calcNav.toString(), expectedNav);
       // There are 2 tokens outstading, so each token's value is 1/2 the NAV.
       assert.equal(calcTokenValue.toString(), expectedNav.divn(2).toString());
       assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
       assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
       assert.isFalse(await derivativeContract.canBeSettled());
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1.1", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), await deployedManualPriceFeed.getCurrentTime());
 
       // Remargin and double check estimation methods.
       await derivativeContract.remargin({ from: sponsor });
@@ -577,6 +583,7 @@ contract("TokenizedDerivative", function(accounts) {
       calcTokenValue = await derivativeContract.calcTokenValue();
       calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
       calcExcessMargin = await derivativeContract.calcExcessMargin();
+      updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
       nav = (await derivativeContract.derivativeStorage()).nav;
       let tokenValue = (await derivativeContract.derivativeStorage()).currentTokenState.tokenPrice;
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
@@ -590,6 +597,8 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), expectedShortBalance.toString());
       assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
       assert.isFalse(await derivativeContract.canBeSettled());
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1.1", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), await deployedManualPriceFeed.getCurrentTime());
 
       // Increase the price to push the provider into default (but don't remargin). This price tests the case where
       // calcExcessMargin() returns a negative value.
@@ -610,10 +619,13 @@ contract("TokenizedDerivative", function(accounts) {
       calcNav = await derivativeContract.calcNAV();
       calcShortMarginBalance = await derivativeContract.calcShortMarginBalance();
       calcExcessMargin = await derivativeContract.calcExcessMargin();
+      updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
       assert.equal(calcNav.toString(), expectedNav.toString());
       assert.equal(calcShortMarginBalance.toString(), expectedShortBalance.toString());
       assert.equal(calcExcessMargin.toString(), expectedShortBalance.sub(expectedMarginRequirement).toString());
       assert.isFalse(await derivativeContract.canBeSettled());
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1.43", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), await deployedManualPriceFeed.getCurrentTime());
 
       // Remargin into default.
       await derivativeContract.remargin({ from: sponsor });
@@ -634,6 +646,8 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
+      // We have no idea what price the contract will eventually settle at.
+      assert(await didContractThrow(derivativeContract.getUpdatedUnderlyingPrice()));
       assert.isFalse(await derivativeContract.canBeSettled());
 
       // Push a price.
@@ -689,6 +703,12 @@ contract("TokenizedDerivative", function(accounts) {
       const navPreDefault = (await derivativeContract.derivativeStorage()).nav;
       await pushPrice(web3.utils.toWei("1.1", "ether"));
       const defaultTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
+
+      // The price feed price will be used to update the contract.
+      updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1.1", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), defaultTime);
+
       await derivativeContract.remargin({ from: sponsor });
 
       // Verify nav and balances. The default penalty shouldn't be charged yet.
@@ -710,6 +730,12 @@ contract("TokenizedDerivative", function(accounts) {
       // Provide the Oracle price and call settle. The Oracle price is different from the price feed price, and the
       // sponsor is no longer in default.
       await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.05", "ether"));
+
+      // The Oracle price is the price that will be used to settle, not the price feed price.
+      updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1.05", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), defaultTime);
+
       await derivativeContract.settle();
 
       // Verify nav and balances at settlement, no default penalty. Whatever the price feed said before is effectively
@@ -957,7 +983,7 @@ contract("TokenizedDerivative", function(accounts) {
       let state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "0");
 
-      // Push the contract past expiry and provide Oracle price beforehand.
+      // Push the contract past expiry but don't provide Oracle price beforehand.
       await pushPrice(web3.utils.toWei("100", "ether"));
       const expirationTime = await deployedManualPriceFeed.getCurrentTime();
 
@@ -966,6 +992,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
+      assert(await didContractThrow(derivativeContract.getUpdatedUnderlyingPrice()));
 
       // Contract should go to expired.
       let result = await derivativeContract.remargin({ from: sponsor });
@@ -980,6 +1007,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.calcTokenValue()));
       assert(await didContractThrow(derivativeContract.calcShortMarginBalance()));
       assert(await didContractThrow(derivativeContract.calcExcessMargin()));
+      assert(await didContractThrow(derivativeContract.getUpdatedUnderlyingPrice()));
 
       // Verify that you can't call dispute while expired.
       assert(await didContractThrow(derivativeContract.dispute()));
@@ -995,6 +1023,7 @@ contract("TokenizedDerivative", function(accounts) {
       const calcedTokenValue = await derivativeContract.calcTokenValue();
       const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
       const calcedExcessMargin = await derivativeContract.calcExcessMargin();
+      const updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
 
       result = await derivativeContract.settle();
       const settledDerivativeStorage = await derivativeContract.derivativeStorage();
@@ -1024,6 +1053,8 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(calcedShortBalance.toString(), expectedSponsorAccountBalance.toString());
       assert.equal(calcedExcessMargin.toString(), expectedSponsorAccountBalance.toString());
       assert.equal(calcedTokenValue.toString(), settledDerivativeStorage.currentTokenState.tokenPrice.toString());
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1.1", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), expirationTime);
     });
 
     it(annotateTitle("Live -> Expired -> Settled (oracle price) [price available]"), async function() {
@@ -1060,6 +1091,7 @@ contract("TokenizedDerivative", function(accounts) {
       const calcedTokenValue = await derivativeContract.calcTokenValue();
       const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
       const calcedExcessMargin = await derivativeContract.calcExcessMargin();
+      const updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
 
       // Contract should go straight to settled. The `canBeSettled()` method should indicate this.
       assert.isTrue(await derivativeContract.canBeSettled());
@@ -1087,6 +1119,8 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(calcedTokenValue.toString(), settledDerivativeStorage.currentTokenState.tokenPrice.toString());
       assert.equal(calcedShortBalance.toString(), settledDerivativeStorage.shortBalance.toString());
       assert.equal(calcedExcessMargin.toString(), settledDerivativeStorage.shortBalance.toString());
+      assert.equal(updatedUnderlyingPrice.underlyingPrice.toString(), web3.utils.toWei("1.1", "ether"));
+      assert.equal(updatedUnderlyingPrice.time.toString(), expirationTime);
     });
 
     it(annotateTitle("Live -> Remargin -> Remargin -> Expired -> Settled (oracle price)"), async function() {

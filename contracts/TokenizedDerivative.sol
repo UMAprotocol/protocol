@@ -468,6 +468,11 @@ library TokenizedDerivativeUtils {
         return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
     }
 
+    function _getUpdatedUnderlyingPrice(TDS.Storage storage s) external view returns (int underlyingPrice, uint time) {
+        (TDS.TokenState memory newTokenState, ) = s._calcNewTokenStateAndBalance();
+        return (newTokenState.underlyingPrice, newTokenState.time);
+    }
+
     function _calcNewTokenStateAndBalance(TDS.Storage storage s) internal view returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
     {
         // TODO: there's a lot of repeated logic in this method from elsewhere in the contract. It should be extracted
@@ -1116,6 +1121,13 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     // Returns whether the contract can be settled, i.e., is it valid to call settle() now.
     function canBeSettled() external view returns (bool canContractBeSettled) {
         return derivativeStorage._canBeSettled();
+    }
+
+    // Returns the updated underlying price that was used in the calc* methods above. It will be a price feed price if
+    // the contract is Live and will remain Live, or an Oracle price if the contract is settled/about to be settled.
+    // Reverts if no Oracle price is available but an Oracle price is required.
+    function getUpdatedUnderlyingPrice() external view returns (int underlyingPrice, uint time) {
+        return derivativeStorage._getUpdatedUnderlyingPrice();
     }
 
     // When an Oracle price becomes available, performs a final remargin, assesses any penalties, and moves the contract
