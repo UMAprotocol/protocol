@@ -62,4 +62,11 @@ module.exports = async function(deployer, network, accounts) {
 
   // Add creator contract to the registry.
   await registry.addDerivativeCreator(tokenizedDerivativeCreator.address);
+
+  // Add supported identifiers to the Oracle.
+  const supportedIdentifiers = ["SPY/USD", "CNH/USD", "BTC/ETH"];
+  for (let identifier of supportedIdentifiers) {
+    const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
+    await centralizedOracle.addSupportedIdentifier(identifierBytes);
+  }
 };
