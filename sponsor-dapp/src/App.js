@@ -22,8 +22,19 @@ const theme = createMuiTheme({
 class App extends Component {
   state = { params, network: undefined };
 
-  componentDidMount(){
+  componentDidMount() {
     document.title = "UMA Dashboard";
+  }
+
+  networkIdToName(networkId) {
+    switch (networkId.toString()) {
+      case "1":
+        return "main";
+      case "3":
+        return "ropsten";
+      default:
+        return "private";
+    }
   }
 
   render() {
@@ -38,25 +49,18 @@ class App extends Component {
               return "Loading...";
             }
 
-            // Get the network and store in params
-            if (!this.state.network) {
-              this.props.drizzle.web3.eth.net.getNetworkType().then(network => {
-                // Copy params without network properties
-                const newParams = { ...params };
-                delete newParams.main;
-                delete newParams.ropsten;
-                delete newParams.private;
+            // Copy params without network properties
+            const newParams = { ...params };
+            delete newParams.main;
+            delete newParams.ropsten;
+            delete newParams.private;
 
-                // Overlay network properties on top
-                Object.assign(newParams, params[network]);
-
-                this.setState({ params: newParams, network });
-              });
-            }
+            // Overlay network properties on top
+            Object.assign(newParams, params[this.networkIdToName(drizzleState.web3.networkId)]);
 
             return (
               <MuiThemeProvider theme={theme}>
-                <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={this.state.params} />
+                <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={newParams} />
               </MuiThemeProvider>
             );
           }}

@@ -79,7 +79,7 @@ it("renders DerivativeList without crashing", done => {
 
 it("renders CreateContractModal without crashing", done => {
   const getCreateContractModal = (drizzle, drizzleState) => {
-    const params = { identifiers: [] };
+    const params = { identifiers: [], currencies: {} };
     return (
       <CreateContractModal
         drizzle={drizzle}
