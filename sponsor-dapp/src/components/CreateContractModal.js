@@ -12,7 +12,6 @@ import Select from "@material-ui/core/Select";
 import TextField from "@material-ui/core/TextField";
 
 import DrizzleHelper from "../utils/DrizzleHelper.js";
-import { addDays, secondsSinceEpoch } from "../utils/DateUtils.js";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 
 import AddressWhitelist from "../contracts/AddressWhitelist";
@@ -63,7 +62,7 @@ class CreateContractModal extends React.Component {
   }
 
   submit = () => {
-    const { drizzle, drizzleState, onClose } = this.props;
+    const { drizzle, drizzleState, onClose, params } = this.props;
     const { web3 } = drizzle;
     const { formInputs } = this.state;
     const account = drizzleState.accounts[0];
@@ -83,14 +82,13 @@ class CreateContractModal extends React.Component {
     const constructorParams = {
       sponsor: account,
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
-      supportedMove: web3.utils.toWei("0.1", "ether"),
+      supportedMove: web3.utils.toWei(params.identifiers[formInputs.identifier].supportedMove, "ether"),
       product: identifierBytes,
       fixedYearlyFee: "0", // Must be 0 for linear return type.
       disputeDeposit: web3.utils.toWei("0.5", "ether"),
       returnCalculator: formInputs.leverage,
       startingTokenPrice: assetPrice, // Align the starting asset price and the starting token price.
-      // TODO: Get expiry time based on identifier.
-      expiry: secondsSinceEpoch(addDays(new Date(), 30)), // 30 days from now, in seconds since epoch.
+      expiry: params.identifiers[formInputs.identifier].expiry,
       marginCurrency: formInputs.margin,
       withdrawLimit: withdrawLimit,
       returnType: "0", // Linear
@@ -134,18 +132,23 @@ class CreateContractModal extends React.Component {
     }
   }
 
+  // Sets this.state.approvedIdentifiers to be a list of strings representing the approved identifers that are also
+  // configured in this.props.params, e.g., ["SPY/USD", "BTC/ETH"].
   verifyPriceFeeds() {
     const { drizzle, params } = this.props;
     const { ManualPriceFeed } = drizzle.contracts;
     const { web3 } = drizzle;
 
-    const identifierKeys = [];
-    params.identifiers.forEach(identifier => {
+    const identifierDataKeys = {};
+    Object.keys(params.identifiers).forEach(identifier => {
       const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
-      identifierKeys.push({
+      // Calling latestPrice() on an unsupported identifier will revert, leading to errors being printed in the console.
+      // We don't expect any identifiers in params.identifiers to actually be unsupported, so it's not worth doing
+      // these calls sequentially.
+      identifierDataKeys[identifier] = {
         supported: ManualPriceFeed.methods.isIdentifierSupported.cacheCall(identifierBytes),
         price: ManualPriceFeed.methods.latestPrice.cacheCall(identifierBytes)
-      });
+      };
     });
 
     const unsubscribe = drizzle.store.subscribe(() => {
@@ -153,19 +156,16 @@ class CreateContractModal extends React.Component {
 
       const { ManualPriceFeed } = drizzleState.contracts;
 
-      const callFinished = identifierKeys.every(keys => {
-        return ManualPriceFeed.isIdentifierSupported[keys.supported] && ManualPriceFeed.latestPrice[keys.price];
+      const callFinished = Object.values(identifierDataKeys).every(dataKeys => {
+        return ManualPriceFeed.isIdentifierSupported[dataKeys.supported] && ManualPriceFeed.latestPrice[dataKeys.price];
       });
       if (!callFinished) {
         return;
       }
 
-      const approvedIdentifiers = identifierKeys.reduce((identifiers, keys, idx) => {
-        if (ManualPriceFeed.isIdentifierSupported[keys.supported].value) {
-          identifiers.push(params.identifiers[idx]);
-        }
-        return identifiers;
-      }, []);
+      const approvedIdentifiers = Object.keys(identifierDataKeys).filter(identifier => {
+        return ManualPriceFeed.isIdentifierSupported[identifierDataKeys[identifier].supported].value;
+      });
 
       this.setState({ approvedIdentifiers });
 

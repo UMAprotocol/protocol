@@ -1,5 +1,15 @@
 {
-  "identifiers": ["SPY/USD","CNH/USD"],
+  "identifiers": {
+    "SPY/USD": {
+      "comment": "expiry: secondsSinceEpoch, supportedMove: 0.1 corresponds to 10%",
+      "expiry": "1556658000",
+      "supportedMove": "0.1"
+    },
+    "CNH/USD": {
+      "expiry": "1556571600",
+      "supportedMove": "0.05"
+    }
+  },
   "currencies": {
         "0x0000000000000000000000000000000000000000": "ETH"
   },
