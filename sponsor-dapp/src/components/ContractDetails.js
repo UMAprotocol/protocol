@@ -64,9 +64,12 @@ class ContractDetails extends Component {
         { address, methodName: "derivativeStorage", args: [] },
         { address, methodName: "totalSupply", args: [] },
         { address, methodName: "name", args: [] },
+        { address, methodName: "getCurrentRequiredMargin", args: [] },
         { address, methodName: "calcTokenValue", args: [] },
         { address, methodName: "calcNAV", args: [] },
         { address, methodName: "calcShortMarginBalance", args: [] },
+        { address, methodName: "calcExcessMargin", args: [] },
+        { address, methodName: "getUpdatedUnderlyingPrice", args: [] },
         { address, methodName: "balanceOf", args: [account] },
         { address, methodName: "allowance", args: [account, address] },
         { address, methodName: "canBeSettled", args: [] }
@@ -85,6 +88,9 @@ class ContractDetails extends Component {
             case "name":
               state.nameDataKey = key;
               break;
+            case "getCurrentRequiredMargin":
+              state.getCurrentRequiredMarginDataKey = key;
+              break;
             case "calcTokenValue":
               state.estimatedTokenValueDataKey = key;
               break;
@@ -93,6 +99,12 @@ class ContractDetails extends Component {
               break;
             case "calcShortMarginBalance":
               state.estimatedShortMarginBalanceDataKey = key;
+              break;
+            case "calcExcessMargin":
+              state.estimatedExcessMarginDataKey = key;
+              break;
+            case "getUpdatedUnderlyingPrice":
+              state.getUpdatedUnderlyingPriceDataKey = key;
               break;
             case "balanceOf":
               state.tokenBalanceDataKey = key;

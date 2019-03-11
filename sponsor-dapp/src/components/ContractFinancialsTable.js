@@ -34,17 +34,13 @@ class ContractFinancialsTable extends Component {
 
     const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
 
-    const pricefeedAddress = derivativeStorage.externalAddresses.priceFeed;
-    const identifier = derivativeStorage.fixedParameters.product;
-
-    const latestPrice = drizzleHelper.getCache(pricefeedAddress, "latestPrice", [identifier]);
-
     const totalSupply = drizzleHelper.getCache(contractAddress, "totalSupply", []);
     const balanceOf = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
-
     const estimatedTokenValue = drizzleHelper.getCache(contractAddress, "calcTokenValue", []);
     const estimatedNav = drizzleHelper.getCache(contractAddress, "calcNAV", []);
     const estimatedShort = drizzleHelper.getCache(contractAddress, "calcShortMarginBalance", []);
+    const estimatedExcessMargin = drizzleHelper.getCache(contractAddress, "calcExcessMargin", []);
+    const latestPrice = drizzleHelper.getCache(contractAddress, "getUpdatedUnderlyingPrice", []);
 
     const { web3 } = drizzle;
     const toBN = web3.utils.toBN;
@@ -58,17 +54,25 @@ class ContractFinancialsTable extends Component {
       formatWei(derivativeStorage.currentTokenState.tokenPrice, web3) + marginCurrencyText + "/token";
     const previousLongMargin = formatWei(derivativeStorage.longBalance, web3) + marginCurrencyText;
     const previousShortMargin = formatWei(derivativeStorage.shortBalance, web3) + marginCurrencyText;
+    const previousRequiredMargin = formatWei(
+      drizzleHelper.getCache(contractAddress, "getCurrentRequiredMargin", []),
+      web3
+    );
     const previousTotalHoldings =
       formatWei(toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance)), web3) +
       marginCurrencyText;
 
-    const currentTime = formatDate(latestPrice.publishTime, web3);
-    const currentAssetPrice = formatWei(latestPrice.price, web3);
+    const currentTime = latestPrice.time ? formatDate(latestPrice.time, web3) : "Unknown";
+    const currentAssetPrice = latestPrice.underlyingPrice ? formatWei(latestPrice.underlyingPrice, web3) : "Unknown";
     const currentTokenPrice = estimatedTokenValue
       ? formatWei(estimatedTokenValue, web3) + marginCurrencyText + "/token"
       : "Unknown";
     const currentLongMargin = estimatedNav ? formatWei(estimatedNav, web3) + marginCurrencyText : "Unknown";
     const currentShortMargin = estimatedShort ? formatWei(estimatedShort, web3) + marginCurrencyText : "Unknown";
+    const currentRequiredMargin =
+      estimatedShort && estimatedExcessMargin
+        ? formatWei(web3.utils.toBN(estimatedShort).sub(web3.utils.toBN(estimatedExcessMargin)), web3)
+        : "Unknown";
     const currentTotalHoldings =
       estimatedNav && estimatedShort
         ? formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) + marginCurrencyText
@@ -120,8 +124,12 @@ class ContractFinancialsTable extends Component {
 
             <TableRow key="shortMargin">
               <TableCell>- Short margin:</TableCell>
-              <TableCell>{previousShortMargin}</TableCell>
-              <TableCell>{currentShortMargin}</TableCell>
+              <TableCell>
+                {previousShortMargin} (min {previousRequiredMargin})
+              </TableCell>
+              <TableCell>
+                {currentShortMargin} (min {currentRequiredMargin})
+              </TableCell>
             </TableRow>
 
             <TableRow key="tokenSupply" className={classes.shaded}>
