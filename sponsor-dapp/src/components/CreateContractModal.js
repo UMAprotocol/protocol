@@ -349,7 +349,7 @@ class CreateContractModal extends React.Component {
       marginWhitelist = this.drizzleHelper.getCache(whitelistAddress, "getWhitelist", []);
     }
 
-    const marginCurrencyMenuItems = marginWhitelist.map((address) => (
+    const marginCurrencyMenuItems = marginWhitelist.map(address => (
       <MenuItem value={address} key={address}>
         {currencyAddressToName(params, address) || address}
       </MenuItem>

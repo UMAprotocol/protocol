@@ -22,12 +22,12 @@ const theme = createMuiTheme({
 class App extends Component {
   state = { params, network: undefined };
 
-  componentDidMount(){
+  componentDidMount() {
     document.title = "UMA Dashboard";
   }
 
   networkIdToName(networkId) {
-    switch(networkId.toString()) {
+    switch (networkId.toString()) {
       case "1":
         return "main";
       case "3":

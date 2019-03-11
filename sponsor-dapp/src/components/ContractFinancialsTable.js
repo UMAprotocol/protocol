@@ -6,7 +6,7 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
 import { withStyles } from "@material-ui/core/styles";
-import grey from '@material-ui/core/colors/grey';
+import grey from "@material-ui/core/colors/grey";
 
 import { formatDate, formatWei } from "../utils/FormattingUtils";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
@@ -54,21 +54,25 @@ class ContractFinancialsTable extends Component {
 
     const previousTime = formatDate(derivativeStorage.currentTokenState.time, web3);
     const previousAssetPrice = formatWei(derivativeStorage.currentTokenState.underlyingPrice, web3);
-    const previousTokenPrice = formatWei(derivativeStorage.currentTokenState.tokenPrice, web3) + marginCurrencyText + "/token";
+    const previousTokenPrice =
+      formatWei(derivativeStorage.currentTokenState.tokenPrice, web3) + marginCurrencyText + "/token";
     const previousLongMargin = formatWei(derivativeStorage.longBalance, web3) + marginCurrencyText;
     const previousShortMargin = formatWei(derivativeStorage.shortBalance, web3) + marginCurrencyText;
-    const previousTotalHoldings = formatWei(
-      toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance)),
-      web3
-    ) + marginCurrencyText;
+    const previousTotalHoldings =
+      formatWei(toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance)), web3) +
+      marginCurrencyText;
 
     const currentTime = formatDate(latestPrice.publishTime, web3);
     const currentAssetPrice = formatWei(latestPrice.price, web3);
-    const currentTokenPrice = estimatedTokenValue ? formatWei(estimatedTokenValue, web3) + marginCurrencyText + "/token" : "Unknown";
+    const currentTokenPrice = estimatedTokenValue
+      ? formatWei(estimatedTokenValue, web3) + marginCurrencyText + "/token"
+      : "Unknown";
     const currentLongMargin = estimatedNav ? formatWei(estimatedNav, web3) + marginCurrencyText : "Unknown";
     const currentShortMargin = estimatedShort ? formatWei(estimatedShort, web3) + marginCurrencyText : "Unknown";
     const currentTotalHoldings =
-      estimatedNav && estimatedShort ? formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) + marginCurrencyText : "Unknown";
+      estimatedNav && estimatedShort
+        ? formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) + marginCurrencyText
+        : "Unknown";
 
     const numTotalTokens = formatWei(totalSupply, web3);
     const tokenBalance = formatWei(balanceOf, web3);
