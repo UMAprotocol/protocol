@@ -296,6 +296,12 @@ contract("TokenizedDerivative", function(accounts) {
         )
       );
 
+      // No required margin while no tokens are outstanding.
+      assert.equal(
+        (await derivativeContract.getCurrentRequiredMargin()).toString(),
+        web3.utils.toWei("0", "ether").toString()
+      );
+
       // Succeeds because exact is true and requested NAV (1 ETH) would not cause the short account to go below its
       // margin requirement.
       result = await derivativeContract.createTokens(
@@ -306,6 +312,12 @@ contract("TokenizedDerivative", function(accounts) {
       truffleAssert.eventEmitted(result, "TokensCreated", ev => {
         return ev.numTokensCreated.toString() === web3.utils.toWei("1", "ether");
       });
+
+      // Supported move of 10% yields a margin requirement of 10% of the long balance (which is 1 ether).
+      assert.equal(
+        (await derivativeContract.getCurrentRequiredMargin()).toString(),
+        web3.utils.toWei("0.1", "ether").toString()
+      );
 
       let sponsorTokenBalance = await derivativeContract.balanceOf(sponsor);
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
@@ -703,9 +715,12 @@ contract("TokenizedDerivative", function(accounts) {
       expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      let requiredMargin = await derivativeContract.getCurrentRequiredMargin();
       assert.equal(actualNav.toString(), expectedDefaultNav.toString());
       assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
+      // In default, the required margin should be higher than the actual margin.
+      assert.isTrue(requiredMargin.gt(shortBalance));
 
       // Provide the Oracle price and call settle. The Oracle price is different from the price feed price, and the
       // sponsor is no longer in default.
@@ -735,9 +750,12 @@ contract("TokenizedDerivative", function(accounts) {
       expectedSponsorAccountBalance = initialSponsorBalance.sub(changeInNav).sub(expectedOracleFee);
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      requiredMargin = await derivativeContract.getCurrentRequiredMargin();
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
       assert.equal(longBalance.toString(), expectedInvestorAccountBalance.toString());
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
+      // In the Settled state, no margin needs to be maintained.
+      assert.equal(requiredMargin.toString(), "0");
     });
 
     it(annotateTitle("Live -> Default -> Settled (oracle) [price available]"), async function() {
@@ -1353,6 +1371,13 @@ contract("TokenizedDerivative", function(accounts) {
       await pushPrice(web3.utils.toWei("1", "ether"));
       await derivativeContract.remargin({ from: sponsor });
 
+      // Margin requirement is 10% of the long balance of 0.5 ether. This function can still be called from the
+      // Expired state.
+      assert.equal(
+        (await derivativeContract.getCurrentRequiredMargin()).toString(),
+        web3.utils.toWei("0.05", "ether").toString()
+      );
+
       // Resolve it to a defaulting price.
       const expireTime = (await deployedManualPriceFeed.getCurrentTime()).toString();
       await deployedCentralizedOracle.pushPrice(identifierBytes, expireTime, web3.utils.toWei("2", "ether"));
@@ -1608,7 +1633,9 @@ contract("TokenizedDerivative", function(accounts) {
 
       // The margin requirement should start at 0.
       let excessMargin = await derivativeContract.calcExcessMargin();
+      let currentRequiredMargin = await derivativeContract.getCurrentRequiredMargin();
       assert.equal(excessMargin.toString(), "0");
+      assert.equal(currentRequiredMargin.toString(), "0");
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -1616,10 +1643,12 @@ contract("TokenizedDerivative", function(accounts) {
         web3.utils.toWei("2", "ether"),
         await getMarginParams(web3.utils.toWei("3", "ether"))
       );
+      // Required margin is 10% of the 2 ether long balance.
+      currentRequiredMargin = await derivativeContract.getCurrentRequiredMargin();
+      assert.equal(currentRequiredMargin.toString(), web3.utils.toWei("0.2", "ether"));
 
       // Underlying Price -> 1.5
       await pushPrice(web3.utils.toWei("1.5", "ether"));
-      await derivativeContract.remargin({ from: sponsor });
 
       // nav = quantity * startingTokenPrice * (1 + leverage * ((currentUnderlyingPrice - startingUnderlyingPrice) / startingUnderlyingPrice))
       //     = 2 * 0.5 * (1 + 2 * ((1 - 1.5) / 2))
@@ -1636,6 +1665,15 @@ contract("TokenizedDerivative", function(accounts) {
       shortBalance = await derivativeContract.calcShortMarginBalance();
       excessMargin = await derivativeContract.calcExcessMargin();
       assert.equal(expectedMarginRequirement.toString(), shortBalance.sub(excessMargin).toString());
+      // The current required margin shouldn't change until we remargin.
+      currentRequiredMargin = await derivativeContract.getCurrentRequiredMargin();
+      assert.equal(currentRequiredMargin.toString(), web3.utils.toWei("0.2", "ether"));
+
+      await derivativeContract.remargin({ from: sponsor });
+
+      // But after remargining, the currentRequiredMargin should line up with what calcExcessMargin gave.
+      currentRequiredMargin = await derivativeContract.getCurrentRequiredMargin();
+      assert.equal(currentRequiredMargin.toString(), expectedMarginRequirement);
 
       // Underlying Price -> 2
       await pushPrice(web3.utils.toWei("2", "ether"));
