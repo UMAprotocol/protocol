@@ -448,7 +448,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor should not be able to redeem tokens if the redemption would force them into default.
       await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
-      assert(await didContractThrow(derivativeContract.remargin({ from: sponsor })));
+      assert(await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor })));
 
       const defaultTime = await deployedManualPriceFeed.getCurrentTime();
       expectedOracleFee = computeExpectedOracleFees(longBalance, shortBalance);
@@ -902,6 +902,11 @@ contract("TokenizedDerivative", function(accounts) {
       const presettlementSponsorBalance = (await derivativeContract.derivativeStorage()).shortBalance;
 
       const disputeFee = computeExpectedPenalty(nav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
+
+      // Cannot dispute with anything less than the required fee.
+      const invalidDisputeFee = disputeFee.subn(1);
+      assert(await didContractThrow(derivativeContract.dispute(invalidDisputeFee.toString(), await getMarginParams(invalidDisputeFee.toString()))));
+
       let result = await derivativeContract.dispute(
         disputeFee.toString(),
         await getMarginParams(disputeFee.toString())
@@ -912,8 +917,11 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Auto-settles with the Oracle price.
       assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "5");
-      nav = (await derivativeContract.derivativeStorage()).nav;
 
+      // Cannot re-dispute after settlement.
+      assert(await didContractThrow(derivativeContract.dispute(disputeFee.toString(), await getMarginParams(disputeFee.toString()))));
+
+      nav = (await derivativeContract.derivativeStorage()).nav;
       const shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
       const longBalance = (await derivativeContract.derivativeStorage()).longBalance;
 
