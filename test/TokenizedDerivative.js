@@ -1911,7 +1911,8 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Should be able to create tokens without sending any margin, since the token price is negative.
-      await derivativeContract.createTokens("0", web3.utils.toWei("1", "ether"), { from: sponsor });
+      await derivativeContract.createTokens("0", web3.utils.toWei("0.5", "ether"), { from: sponsor });
+      await derivativeContract.createAndDepositTokens("0", web3.utils.toWei("0.5", "ether"), { from: sponsor });
 
       // Total supply should be 2 tokens after creation.
       totalSupply = await derivativeContract.totalSupply();
