@@ -401,6 +401,15 @@ contract("TokenizedDerivative", function(accounts) {
         );
       }
 
+      // Transfer some tokens to a third party and third party will attempt to redeem (should fail).
+      await derivativeContract.transfer(thirdParty, web3.utils.toWei("1", "ether"), { from: sponsor });
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"), thirdParty);
+      assert(await didContractThrow(derivativeContract.remargin({ from: thirdParty })));
+
+      // Transfer tokens back to sponsor.
+      await derivativeContract.transfer(sponsor, web3.utils.toWei("1", "ether"), { from: thirdParty });
+
+
       let initialContractBalance = await getContractBalance();
 
       // Attempt redemption of half of the tokens.
