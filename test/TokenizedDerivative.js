@@ -384,6 +384,9 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
       assert.equal(previousRemarginTime.toString(), expectedPreviousRemarginTime.toString());
 
+      // Ensure that remargin doesn't work if not calling from the oracle.
+      assert(await didContractThrow(derivativeContract.remargin({ from: thirdParty })));
+
       // Check new nav after price change.
       nav = (await derivativeContract.derivativeStorage()).nav;
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
@@ -2401,6 +2404,11 @@ contract("TokenizedDerivative", function(accounts) {
         startingTokenPrice: tenToNine.toString(),
         startingUnderlyingPrice: tenToTwentySeven.toString()
       };
+      await tokenizedDerivativeCreator.createTokenizedDerivative(initialRatioDoesNotRoundToZero, { from: sponsor });
+
+
+      // Prices <= 0 are not allowed to initialize the price feed.
+      await deployedManualPriceFeed.pushLatestPrice(identifierBytes, time, web3.utils.toWei("0", "ether"));
       await tokenizedDerivativeCreator.createTokenizedDerivative(initialRatioDoesNotRoundToZero, { from: sponsor });
     });
   });
