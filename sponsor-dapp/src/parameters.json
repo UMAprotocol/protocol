@@ -1,11 +1,11 @@
 {
   "identifiers": {
-    "SPY/USD": {
+    "ESM19": {
       "comment": "expiry: secondsSinceEpoch, supportedMove: 0.1 corresponds to 10%",
       "expiry": "1556658000",
       "supportedMove": "0.1"
     },
-    "CNH/USD": {
+    "CBN19": {
       "expiry": "1556571600",
       "supportedMove": "0.05"
     }
