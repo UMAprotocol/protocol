@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
+import red from "@material-ui/core/colors/red";
 
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
@@ -17,6 +18,9 @@ const styles = theme => ({
     flexGrow: 1,
     justifyContent: "space-between",
     marginTop: 20
+  },
+  warning: {
+    color: red[500]
   },
   centerButton: {}
 });
@@ -101,6 +105,7 @@ class ContractInteraction extends Component {
 
     return (
       <div>
+        {willDefault && isLive && <div className={this.props.classes.warning}>Please deposit to avoid a default</div>}
         <div className={this.props.classes.rowOne}>
           <div>
             <TextField
