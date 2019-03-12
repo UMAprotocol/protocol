@@ -8,7 +8,7 @@ contract("scripts/PushOraclePrice.js", function(accounts) {
   let registry;
   let centralizedOracle;
   const deployer = accounts[0];
-  const identifier = "CNH/USD";
+  const identifier = "ESM19";
   const time = 100;
   const price = 50;
 
