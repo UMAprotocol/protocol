@@ -445,6 +445,11 @@ contract("TokenizedDerivative", function(accounts) {
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       await pushPrice(web3.utils.toWei("2.6", "ether"));
+
+      // Sponsor should not be able to redeem tokens if the redemption would force them into default.
+      await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
+      assert(await didContractThrow(derivativeContract.remargin({ from: sponsor })));
+
       const defaultTime = await deployedManualPriceFeed.getCurrentTime();
       expectedOracleFee = computeExpectedOracleFees(longBalance, shortBalance);
       result = await derivativeContract.remargin({ from: sponsor });
@@ -493,12 +498,24 @@ contract("TokenizedDerivative", function(accounts) {
         await didContractThrow(derivativeContract.withdraw(sponsorBalancePostRemargin.toString(), { from: sponsor }))
       );
 
+      // Verify that the sponsor cannot redeem before settlement.
+      const sponsorDefaultTokenBalance = await derivativeContract.balanceOf(sponsor);
+      await approveDerivativeTokens(sponsorDefaultTokenBalance.toString());
+      assert(
+        await didContractThrow(derivativeContract.redeemTokens(sponsorDefaultTokenBalance.toString(), { from: sponsor }))
+      );
+
       // Verify that after the sponsor confirms, the state is moved to settled.
       result = await derivativeContract.acceptPriceAndSettle({ from: sponsor });
       truffleAssert.eventEmitted(result, "Settled");
 
       state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "5");
+
+      // Verify that the sponsor cannot create when the contract is not live.
+      assert(
+        await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("1", "ether"), web3.utils.toWei("5", "ether"), await getMarginParams(web3.utils.toWei("5", "ether"))))
+      );
 
       // Now that the contract is settled, verify that all parties can extract their tokens/balances.
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
@@ -515,7 +532,13 @@ contract("TokenizedDerivative", function(accounts) {
       // A third party should never be able to use the withdraw function.
       assert(await didContractThrow(derivativeContract.withdraw(longBalance.toString(), { from: thirdParty })));
 
-      // Tokens should be able to be transferred post-settlement. Anyone should be able to redeem them for the frozen price.
+      // 0 token redeem should throw.
+      assert(
+        await didContractThrow(derivativeContract.redeemTokens("0", { from: sponsor }))
+      );
+
+      // Tokens should be able to be transferred post-settlement. Anyone should be able to redeem them for the frozen
+      // price.
       let remainingBalance = await derivativeContract.balanceOf(sponsor);
       await derivativeContract.transfer(thirdParty, remainingBalance.toString(), { from: sponsor });
 
@@ -1912,7 +1935,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Should be able to create tokens without sending any margin, since the token price is negative.
       await derivativeContract.createTokens("0", web3.utils.toWei("0.5", "ether"), { from: sponsor });
-      await derivativeContract.createAndDepositTokens("0", web3.utils.toWei("0.5", "ether"), { from: sponsor });
+      await derivativeContract.depositAndCreateTokens("0", web3.utils.toWei("0.5", "ether"), { from: sponsor });
 
       // Total supply should be 2 tokens after creation.
       totalSupply = await derivativeContract.totalSupply();
