@@ -2418,7 +2418,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Prices <= 0 are not allowed to initialize the price feed.
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, time, web3.utils.toWei("0", "ether"));
-      await tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor });
+      assert(await didContractThrow(tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor })));
     });
   });
 });
