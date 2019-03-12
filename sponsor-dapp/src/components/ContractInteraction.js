@@ -65,7 +65,7 @@ class ContractInteraction extends Component {
 
     const canBeSettled = drizzleHelper.getCache(contractAddress, "canBeSettled", []);
     const excessMargin = drizzleHelper.getCache(contractAddress, "calcExcessMargin", []);
-    const willDefault = web3.utils.toBN(excessMargin).lt(web3.utils.toBN("0"));
+    const willDefault = excessMargin ? web3.utils.toBN(excessMargin).lt(web3.utils.toBN("0")) : false;
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
@@ -74,29 +74,37 @@ class ContractInteraction extends Component {
     const isSettled = state === ContractStateEnum.SETTLED;
     const isFrozen = !isLive && !isSettled;
 
+    // Contract operations are only enabled in certain states.
     let isDepositEnabled = isLiveNoExpiry || aboutToExpire;
     let isWithdrawEnabled = isLiveNoExpiry || isSettled;
     let isCreateEnabled = isLiveNoExpiry;
     let isRedeemEnabled = isLiveNoExpiry || isSettled;
 
-    // Only deposits (which don't remargin or advance time) are enabled if a remargin would default the contract.
-    if (willDefault) {
-      isWithdrawEnabled = false;
-      isCreateEnabled = false;
-      isRedeemEnabled = false;
-    }
-
+    // If operations are disabled in states that we would expect them to be enabled, this message explains what's going
+    // on.
+    let warningMessage = "";
     let middleButton;
-    if (isLive) {
-      if (isLiveNoExpiry) {
-        // Users can remargin as long as they can't settle. Being live and able to settle is an extreme edge case
-        // in which the last published time is past expiry and the oracle has already provided a price.
-        middleButton = this.getButton("Remargin contract", !willDefault, this.props.remarginFn);
-      } else {
-        // Users must initiate remargin to transition to the expired state.
-        middleButton = this.getButton("Expire contract", !willDefault, this.props.remarginFn);
+    if (isLiveNoExpiry) {
+      // Users can remargin as long as they can't settle. Being live and able to settle is an extreme edge case
+      // in which the last published time is past expiry and the oracle has already provided a price.
+      middleButton = this.getButton("Remargin contract", !willDefault, this.props.remarginFn);
+      // Only deposits (which don't remargin or advance time) are enabled if a remargin would default the contract.
+      if (willDefault) {
+        warningMessage = <div className={this.props.classes.warning}>Please deposit to avoid a default</div>;
+        isWithdrawEnabled = false;
+        isCreateEnabled = false;
+        isRedeemEnabled = false;
       }
+    } else if (aboutToExpire) {
+      // Users must initiate remargin to transition to the expired state. The edge case from above applies, if the
+      // Oracle price is available and would default the contract, we should probably disable this button.
+      middleButton = this.getButton("Expire contract", true, this.props.remarginFn);
     } else if (isFrozen) {
+      if (!canBeSettled) {
+        warningMessage = (
+          <div className={this.props.classes.warning}>Please wait for an Oracle price to settle the contract</div>
+        );
+      }
       middleButton = this.getButton("Settle contract", canBeSettled, this.props.settleFn);
     } else {
       // Render a placeholder button that's always disabled for settled contracts.
@@ -105,7 +113,7 @@ class ContractInteraction extends Component {
 
     return (
       <div>
-        {willDefault && isLive && <div className={this.props.classes.warning}>Please deposit to avoid a default</div>}
+        {warningMessage}
         <div className={this.props.classes.rowOne}>
           <div>
             <TextField
