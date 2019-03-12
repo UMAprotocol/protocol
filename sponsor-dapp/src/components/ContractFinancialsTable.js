@@ -62,8 +62,8 @@ class ContractFinancialsTable extends Component {
       formatWei(toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance)), web3) +
       marginCurrencyText;
 
-    const currentTime = latestPrice.time ? formatDate(latestPrice.time, web3) : "Unknown";
-    const currentAssetPrice = latestPrice.underlyingPrice ? formatWei(latestPrice.underlyingPrice, web3) : "Unknown";
+    const currentTime = latestPrice ? formatDate(latestPrice.time, web3) : "Unknown";
+    const currentAssetPrice = latestPrice ? formatWei(latestPrice.underlyingPrice, web3) : "Unknown";
     const currentTokenPrice = estimatedTokenValue
       ? formatWei(estimatedTokenValue, web3) + marginCurrencyText + "/token"
       : "Unknown";
