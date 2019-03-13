@@ -457,6 +457,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Cannot agree upon a price before moving to default.
       assert(await didContractThrow(derivativeContract.acceptPriceAndSettle({ from: sponsor })));
 
+      // Cannot settle before moving to default.
+      assert(
+        await didContractThrow(derivativeContract.settle({ from: sponsor }))
+      );
+
       const defaultTime = await deployedManualPriceFeed.getCurrentTime();
       expectedOracleFee = computeExpectedOracleFees(longBalance, shortBalance);
       result = await derivativeContract.remargin({ from: sponsor });
@@ -522,6 +527,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify that the sponsor cannot create when the contract is not live.
       assert(
         await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("1", "ether"), web3.utils.toWei("5", "ether"), await getMarginParams(web3.utils.toWei("5", "ether"))))
+      );
+
+      // Verify that the sponsor cannot deposit when the contract is not live.
+      assert(
+        await didContractThrow(derivativeContract.deposit(web3.utils.toWei("1", "ether"), await getMarginParams(web3.utils.toWei("1", "ether"))))
       );
 
       // Now that the contract is settled, verify that all parties can extract their tokens/balances.
@@ -2471,6 +2481,14 @@ contract("TokenizedDerivative", function(accounts) {
       assert(
         await didContractThrow(
           tokenizedDerivativeCreator.createTokenizedDerivative(invalidReturnTypeParams, { from: sponsor })
+        )
+      );
+
+      // Sponsor fee with linear return type.
+      const linearWithFee = { ...defaultConstructorParams, returnType: "0", fixedYearlyFee: web3.utils.toWei("0.01", "ether") };
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(linearWithFee, { from: sponsor })
         )
       );
     });
