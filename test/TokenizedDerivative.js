@@ -279,7 +279,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), web3.utils.toWei("0.21", "ether"));
 
       // Cannot withdraw more than the margin in the contract.
-      assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.01", "ether"), { from: sponsor })));
+      assert(await didContractThrow(derivativeContract.withdraw(web3.utils.toWei("0.22", "ether"), { from: sponsor })));
 
       // Check that the withdraw function correctly withdraws from the sponsor account.
       result = await derivativeContract.withdraw(web3.utils.toWei("0.01", "ether"), { from: sponsor });
