@@ -37,6 +37,7 @@ contract("TokenizedDerivative", function(accounts) {
 
   const name = "1x Bitcoin-Ether";
   const symbol = "BTCETH";
+  const uintMax = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
   // The ManualPriceFeed can support prices at arbitrary intervals, but for convenience, we send updates at this
   // interval.
@@ -172,8 +173,6 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Pre-auth when required.
       if (testVariant.preAuth) {
-        const uintMax = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
-
         // Pre auth the margin currency.
         await marginToken.approve(derivativeContract.address, uintMax, { from: sponsor });
         await marginToken.approve(derivativeContract.address, uintMax, { from: thirdParty });
@@ -882,7 +881,7 @@ contract("TokenizedDerivative", function(accounts) {
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       let changeInNav = expectedSettlementNav.sub(initialNav);
       actualNav = (await derivativeContract.derivativeStorage()).nav;
-      expectedInvestorAccountBalance = longBalance.add(shortBalance);
+      expectedInvestorAccountBalance = longBalance.add(shortBalance).sub(expectedOracleFee);
       expectedSponsorAccountBalance = "0";
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
@@ -2249,6 +2248,10 @@ contract("TokenizedDerivative", function(accounts) {
         await getMarginParams(web3.utils.toWei("1.075", "ether"))
       );
 
+      // Ensure the sponsor cannot burn or mint tokens on their own.
+      assert(await didContractThrow(derivativeContract.burn(web3.utils.toWei("0.5", "ether"))));
+      assert(await didContractThrow(derivativeContract.mint(web3.utils.toWei("0.5", "ether"))));
+
       // Transfer 0.5 tokens of the margin currency to the derivative address.
       // Note: this tests when the ERC20 token is the margin currency and when it isn't because this test is also
       // run with ETH as the margin currency.
@@ -2499,6 +2502,14 @@ contract("TokenizedDerivative", function(accounts) {
       assert(
         await didContractThrow(
           tokenizedDerivativeCreator.createTokenizedDerivative(linearWithFee, { from: sponsor })
+        )
+      );
+
+      // Very large underlying price.
+      const largeUnderlyingPrice = { ...defaultConstructorParams, startingUnderlyingPrice: uintMax };
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(largeUnderlyingPrice, { from: sponsor })
         )
       );
     });
