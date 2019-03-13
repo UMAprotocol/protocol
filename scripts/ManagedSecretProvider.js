@@ -28,17 +28,17 @@ class ManagedSecretProvider {
     });
   }
 
-  // Passes the call through. Requires that the wrapper provider has been created via, e.g., `sendAsync`.
+  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `sendAsync`.
   send(...all) {
     return getWrappedProviderOrThrow().send(...all);
   }
 
-  // Passes the call through. Requires that the wrapper provider has been created via, e.g., `sendAsync`.
+  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `sendAsync`.
   getAddress(idx) {
     return getWrappedProviderOrThrow().getAddress(idx);
   }
 
-  // Passes the call through. Requires that the wrapper provider has been created via, e.g., `sendAsync`.
+  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `sendAsync`.
   getAddress(...all) {
     return getWrappedProviderOrThrow().getAddress(...all);
   }
