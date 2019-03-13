@@ -237,7 +237,7 @@ contract("TokenizedDerivative", function(accounts) {
     it(annotateTitle("Live -> Default -> Settled (confirmed)"), async function() {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       // Set withdraw throttle to be 200% to allow most withdrawal attempts.
-      await deployNewTokenizedDerivative({withdrawLimit: web3.utils.toWei("2", "ether")});
+      await deployNewTokenizedDerivative({ withdrawLimit: web3.utils.toWei("2", "ether") });
 
       assert.equal(await derivativeContract.name(), name);
       assert.equal(await derivativeContract.symbol(), symbol);
@@ -407,7 +407,9 @@ contract("TokenizedDerivative", function(accounts) {
       // Transfer some tokens to a third party and third party will attempt to redeem (should fail).
       await derivativeContract.transfer(thirdParty, web3.utils.toWei("1", "ether"), { from: sponsor });
       await approveDerivativeTokens(web3.utils.toWei("1", "ether"), thirdParty);
-      assert(await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: thirdParty })));
+      assert(
+        await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: thirdParty }))
+      );
 
       // Transfer tokens back to sponsor.
       await derivativeContract.transfer(sponsor, web3.utils.toWei("1", "ether"), { from: thirdParty });
@@ -450,15 +452,15 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Sponsor should not be able to redeem tokens if the redemption would force them into default.
       await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
-      assert(await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor })));
+      assert(
+        await didContractThrow(derivativeContract.redeemTokens(web3.utils.toWei("1", "ether"), { from: sponsor }))
+      );
 
       // Cannot agree upon a price before moving to default.
       assert(await didContractThrow(derivativeContract.acceptPriceAndSettle({ from: sponsor })));
 
       // Cannot settle before moving to default.
-      assert(
-        await didContractThrow(derivativeContract.settle({ from: sponsor }))
-      );
+      assert(await didContractThrow(derivativeContract.settle({ from: sponsor })));
 
       const defaultTime = await deployedManualPriceFeed.getCurrentTime();
       expectedOracleFee = computeExpectedOracleFees(longBalance, shortBalance);
@@ -512,7 +514,9 @@ contract("TokenizedDerivative", function(accounts) {
       const sponsorDefaultTokenBalance = await derivativeContract.balanceOf(sponsor);
       await approveDerivativeTokens(sponsorDefaultTokenBalance.toString());
       assert(
-        await didContractThrow(derivativeContract.redeemTokens(sponsorDefaultTokenBalance.toString(), { from: sponsor }))
+        await didContractThrow(
+          derivativeContract.redeemTokens(sponsorDefaultTokenBalance.toString(), { from: sponsor })
+        )
       );
 
       // Verify that after the sponsor confirms, the state is moved to settled.
@@ -524,12 +528,23 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Verify that the sponsor cannot create when the contract is not live.
       assert(
-        await didContractThrow(derivativeContract.createTokens(web3.utils.toWei("1", "ether"), web3.utils.toWei("5", "ether"), await getMarginParams(web3.utils.toWei("5", "ether"))))
+        await didContractThrow(
+          derivativeContract.createTokens(
+            web3.utils.toWei("1", "ether"),
+            web3.utils.toWei("5", "ether"),
+            await getMarginParams(web3.utils.toWei("5", "ether"))
+          )
+        )
       );
 
       // Verify that the sponsor cannot deposit when the contract is not live.
       assert(
-        await didContractThrow(derivativeContract.deposit(web3.utils.toWei("1", "ether"), await getMarginParams(web3.utils.toWei("1", "ether"))))
+        await didContractThrow(
+          derivativeContract.deposit(
+            web3.utils.toWei("1", "ether"),
+            await getMarginParams(web3.utils.toWei("1", "ether"))
+          )
+        )
       );
 
       // Now that the contract is settled, verify that all parties can extract their tokens/balances.
@@ -548,9 +563,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.withdraw(longBalance.toString(), { from: thirdParty })));
 
       // 0 token redeem should throw.
-      assert(
-        await didContractThrow(derivativeContract.redeemTokens("0", { from: sponsor }))
-      );
+      assert(await didContractThrow(derivativeContract.redeemTokens("0", { from: sponsor })));
 
       // Tokens should be able to be transferred post-settlement. Anyone should be able to redeem them for the frozen
       // price.
@@ -917,7 +930,11 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Cannot dispute with anything less than the required fee.
       const invalidDisputeFee = disputeFee.subn(1);
-      assert(await didContractThrow(derivativeContract.dispute(invalidDisputeFee.toString(), await getMarginParams(invalidDisputeFee.toString()))));
+      assert(
+        await didContractThrow(
+          derivativeContract.dispute(invalidDisputeFee.toString(), await getMarginParams(invalidDisputeFee.toString()))
+        )
+      );
 
       let result = await derivativeContract.dispute(
         disputeFee.toString(),
@@ -931,7 +948,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "5");
 
       // Cannot re-dispute after settlement.
-      assert(await didContractThrow(derivativeContract.dispute(disputeFee.toString(), await getMarginParams(disputeFee.toString()))));
+      assert(
+        await didContractThrow(
+          derivativeContract.dispute(disputeFee.toString(), await getMarginParams(disputeFee.toString()))
+        )
+      );
 
       nav = (await derivativeContract.derivativeStorage()).nav;
       const shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
@@ -2189,11 +2210,14 @@ contract("TokenizedDerivative", function(accounts) {
       if (testVariant.useErc20) {
         // If ETH is sent when using ERC20, the call should fail.
         await getMarginParams(web3.utils.toWei("3", "ether"));
-        assert(await didContractThrow(derivativeContract.depositAndCreateTokens(
-          web3.utils.toWei("2", "ether"),
-          web3.utils.toWei("1", "ether"),
-          { from: sponsor, value: web3.utils.toWei("3", "ether") }
-        )));
+        assert(
+          await didContractThrow(
+            derivativeContract.depositAndCreateTokens(web3.utils.toWei("2", "ether"), web3.utils.toWei("1", "ether"), {
+              from: sponsor,
+              value: web3.utils.toWei("3", "ether")
+            })
+          )
+        );
       }
 
       assert.equal((await getContractBalance()).toString(), web3.utils.toWei("3", "ether"));
@@ -2503,7 +2527,11 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Prices <= 0 are not allowed to initialize the price feed.
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, time, web3.utils.toWei("0", "ether"));
-      assert(await didContractThrow(tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor })));
+      assert(
+        await didContractThrow(
+          tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor })
+        )
+      );
 
       // Invalid returnType.
       const invalidReturnTypeParams = { ...defaultConstructorParams, returnType: "2" };
@@ -2514,11 +2542,13 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Sponsor fee with linear return type.
-      const linearWithFee = { ...defaultConstructorParams, returnType: "0", fixedYearlyFee: web3.utils.toWei("0.01", "ether") };
+      const linearWithFee = {
+        ...defaultConstructorParams,
+        returnType: "0",
+        fixedYearlyFee: web3.utils.toWei("0.01", "ether")
+      };
       assert(
-        await didContractThrow(
-          tokenizedDerivativeCreator.createTokenizedDerivative(linearWithFee, { from: sponsor })
-        )
+        await didContractThrow(tokenizedDerivativeCreator.createTokenizedDerivative(linearWithFee, { from: sponsor }))
       );
 
       // Very large underlying price.
