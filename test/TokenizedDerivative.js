@@ -412,7 +412,6 @@ contract("TokenizedDerivative", function(accounts) {
       // Transfer tokens back to sponsor.
       await derivativeContract.transfer(sponsor, web3.utils.toWei("1", "ether"), { from: thirdParty });
 
-
       let initialContractBalance = await getContractBalance();
 
       // Attempt redemption of half of the tokens.
@@ -1613,6 +1612,25 @@ contract("TokenizedDerivative", function(accounts) {
           )
         )
       );
+    });
+
+    it(annotateTitle("NAV rounding"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      // One time step until expiry.
+      await deployNewTokenizedDerivative({ expiry: priceFeedUpdatesInterval * 2 });
+
+      // One token should be worth much less than 1 ETH.
+      await pushPrice(web3.utils.toWei("0.01", "ether"));
+
+      // Sponsor creates a single token. The true NAV of the contract will be < 1 wei, but should be ceiled to 1 wei.
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("1", "ether"),
+        "1",
+        await getMarginParams(web3.utils.toWei("1", "ether"))
+      );
+
+      const nav = (await derivativeContract.derivativeStorage()).nav;
+      assert.equal(nav.toString(), "1");
     });
 
     it(annotateTitle("DepositAndCreateTokens failure"), async function() {
