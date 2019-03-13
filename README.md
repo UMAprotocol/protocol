@@ -34,9 +34,10 @@ $(npm bin)/truffle test
 ```
 export MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
 ```
-2. Ensure your wallet has enough ETH to pay for the deployment (can take up to 0.4 ETH with the default gas settings).
-3. Tune the default gas price in `truffle.js` (currently set to `20 Gwei`) to your liking.
-4. Run the following command to start a fresh deployment to mainnet:
+2. Set your Infura API key as `INFURA_API_KEY` in your environment.
+3. Ensure your wallet has enough ETH to pay for the deployment (can take up to 0.4 ETH with the default gas settings).
+4. Tune the default gas price in `truffle.js` (currently set to `20 Gwei`) to your liking.
+5. Run the following command to start a fresh deployment to mainnet:
 ```
 $(npm bin)/truffle migrate --reset --network mainnet
 ```
@@ -54,11 +55,13 @@ preloaded with your private keys (loads the first two private keys for your mnem
 ### Upload Prices to the `ManualPriceFeed`
 
 After deploying the contracts to your network of choice, you can upload prices to the `ManualPriceFeed` contract for
-use by any derivatives that you choose to deploy. The script defaults to publishing `BTC/ETH`, `SPY/ETH`, and `CNH/USD`
-every 15 minutes. You can run this script using the following command:
+use by any derivatives that you choose to deploy. The script defaults to publishing `ESM19` and `CBN19`
+every 15 minutes. A barchart key must be set in your environment variable as `BARCHART_API_KEY`. You can run this script using the following command:
 ```
-./publishPrices.sh <ManualPriceFeed contract address> <network>
+./publishPrices.sh <network>
 ```
+
+For the script to succeed, the `build` directory must contain the `ManualPriceFeed` address for the specified network.
 
 ## Developer Information and Tools
 
@@ -89,3 +92,6 @@ The full report can be viewed by opening the `coverage/index.html` file in a bro
 ## Style Guide
 
 See [STYLE.md](STYLE.md).
+
+## Roadmap for the Oracle
+The current iteration of the system relies on a centrally controlled oracle to settle financial contracts with correct prices. To provide truly universal market access, future iterations will open up the system to allow outside participation while still providing guarantees about correct behavior, even with assumptions of arbitrary (byzantine) behavior. Look forward to our second whitepaper where we outline our vision for a trustless oracle.
