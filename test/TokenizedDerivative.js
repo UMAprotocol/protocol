@@ -117,7 +117,7 @@ contract("TokenizedDerivative", function(accounts) {
   let testVariants = [
     { useErc20: true, preAuth: true },
     { useErc20: true, preAuth: false },
-    { usrErc20: false, preAuth: false }
+    { useErc20: false, preAuth: false }
   ];
 
   testVariants.forEach(testVariant => {
@@ -859,12 +859,12 @@ contract("TokenizedDerivative", function(accounts) {
 
       // The price increases, forcing the sponsor into default.
       const navPreDefault = (await derivativeContract.derivativeStorage()).nav;
-      await pushPrice(web3.utils.toWei("1.1", "ether"));
+      await pushPrice(web3.utils.toWei("5", "ether"));
       const defaultTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
 
       // The Oracle price is already available.
       await deployedCentralizedOracle.requestPrice(identifierBytes, defaultTime);
-      await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.1", "ether"));
+      await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("5", "ether"));
 
       // This a bit of an edge case: currently, we treat the contract as not settle-able if remargin() would default
       // because that isn't a normal flow of operations that we want to simulate: we want to discourage/disallow
@@ -878,15 +878,12 @@ contract("TokenizedDerivative", function(accounts) {
       // Verify nav and balances at settlement, including default penalty.
       const expectedOracleFee = computeExpectedOracleFees(longBalance, shortBalance);
       const defaultPenalty = computeExpectedPenalty(initialNav, web3.utils.toBN(web3.utils.toWei("0.05", "ether")));
-      const priceReturn = web3.utils.toBN(web3.utils.toWei("1.1", "ether"));
+      const priceReturn = web3.utils.toBN(web3.utils.toWei("5", "ether"));
       const expectedSettlementNav = computeNewNav(initialNav, priceReturn, feesPerInterval);
       let changeInNav = expectedSettlementNav.sub(initialNav);
       actualNav = (await derivativeContract.derivativeStorage()).nav;
-      expectedInvestorAccountBalance = longBalance.add(changeInNav).add(defaultPenalty);
-      expectedSponsorAccountBalance = shortBalance
-        .sub(changeInNav)
-        .sub(defaultPenalty)
-        .sub(expectedOracleFee);
+      expectedInvestorAccountBalance = longBalance.add(shortBalance);
+      expectedSponsorAccountBalance = "0";
       longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
       assert.equal(actualNav.toString(), expectedSettlementNav.toString());
@@ -1578,7 +1575,7 @@ contract("TokenizedDerivative", function(accounts) {
       const storage = await derivativeContract.derivativeStorage();
       assert.equal(storage.shortBalance.toString(), web3.utils.toWei("0.075"));
       assert.equal(storage.longBalance.toString(), web3.utils.toWei("1.025"));
-      
+
       // Make sure the predicted balances match the true balance.
       assert.equal(calcedShortBalance.toString(), web3.utils.toWei("0.075"));
       assert.equal(calcedExcessMargin.toString(), web3.utils.toWei("0.075"));
@@ -2171,6 +2168,16 @@ contract("TokenizedDerivative", function(accounts) {
         web3.utils.toWei("1", "ether"),
         await getMarginParams(web3.utils.toWei("2", "ether"))
       );
+
+      if (testVariant.useErc20) {
+        // If ETH is sent when using ERC20, the call should fail.
+        await getMarginParams(web3.utils.toWei("3", "ether"));
+        assert(await didContractThrow(derivativeContract.depositAndCreateTokens(
+          web3.utils.toWei("2", "ether"),
+          web3.utils.toWei("1", "ether"),
+          { from: sponsor, value: web3.utils.toWei("3", "ether") }
+        )));
+      }
 
       assert.equal((await getContractBalance()).toString(), web3.utils.toWei("3", "ether"));
 
