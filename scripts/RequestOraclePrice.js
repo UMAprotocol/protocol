@@ -8,22 +8,10 @@ async function getDeployAddress() {
 }
 
 async function run() {
-  // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time>
+  // Usage: truffle exec scripts/RequestOraclePrice.js <identifier> <time>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
-  if (process.argv.length < 8) {
-    console.error("Not enough arguments. Must include <CentralizedOracle address>, <identifier>, and <time>");
-    return;
-  }
-
-  const registryAddress = process.argv[4];
-  if (!commandlineUtil.validateAddress(registryAddress)) {
-    console.error("Registry's contract address missing. Exiting...");
-    return;
-  }
-
-  const oracleAddress = process.argv[5];
-  if (!commandlineUtil.validateAddress(oracleAddress)) {
-    console.error("CentralizedOracle's contract address missing. Exiting...");
+  if (process.argv.length < 6) {
+    console.error("Not enough arguments. Must include <identifier> and <time>");
     return;
   }
 
@@ -35,7 +23,7 @@ async function run() {
     return;
   }
 
-  const registry = await Registry.at(registryAddress);
+  const registry = await Registry.deployed();
   try {
     await registry.addDerivativeCreator(deployAddress);
     console.log("Creator Added:", deployAddress);
@@ -47,13 +35,13 @@ async function run() {
     console.log(err);
   }
 
-  const identifier = process.argv[6];
+  const identifier = process.argv[4];
   const identifierInBytes = web3.utils.fromAscii(identifier);
-  const timeInSeconds = parseInt(process.argv[7], 10);
+  const timeInSeconds = parseInt(process.argv[5], 10);
   const timeInBN = web3.utils.toBN(timeInSeconds);
   const time = new Date(timeInSeconds * 10e2);
 
-  const oracle = await CentralizedOracle.at(oracleAddress);
+  const oracle = await CentralizedOracle.deployed();
   try {
     await oracle.addSupportedIdentifier(identifierInBytes);
     await oracle.requestPrice(identifierInBytes, timeInBN);
