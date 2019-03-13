@@ -2483,11 +2483,9 @@ contract("TokenizedDerivative", function(accounts) {
       };
       await tokenizedDerivativeCreator.createTokenizedDerivative(initialRatioDoesNotRoundToZero, { from: sponsor });
 
-
       // Prices <= 0 are not allowed to initialize the price feed.
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, time, web3.utils.toWei("0", "ether"));
       assert(await didContractThrow(tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor })));
-
 
       // Invalid returnType.
       const invalidReturnTypeParams = { ...defaultConstructorParams, returnType: "2" };
