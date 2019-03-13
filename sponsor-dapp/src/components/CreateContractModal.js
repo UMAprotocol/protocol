@@ -81,11 +81,11 @@ class CreateContractModal extends React.Component {
 
     const constructorParams = {
       sponsor: account,
-      defaultPenalty: web3.utils.toWei("0.5", "ether"),
+      defaultPenalty: web3.utils.toWei("1", "ether"),
       supportedMove: web3.utils.toWei(params.identifiers[formInputs.identifier].supportedMove, "ether"),
       product: identifierBytes,
       fixedYearlyFee: "0", // Must be 0 for linear return type.
-      disputeDeposit: web3.utils.toWei("0.5", "ether"),
+      disputeDeposit: web3.utils.toWei("1", "ether"),
       returnCalculator: formInputs.leverage,
       startingTokenPrice: assetPrice, // Align the starting asset price and the starting token price.
       expiry: params.identifiers[formInputs.identifier].expiry,
