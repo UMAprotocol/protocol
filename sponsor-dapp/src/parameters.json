@@ -1,13 +1,14 @@
 {
   "identifiers": {
-    "SPY/USD": {
-      "comment": "expiry: secondsSinceEpoch, supportedMove: 0.1 corresponds to 10%",
-      "expiry": "1556658000",
-      "supportedMove": "0.1"
+    "ESM19": {
+      "comment": "expiry: April 30, 2019 4:15pm ET, supportedMove: 0.085 corresponds to 8.5%",
+      "expiry": "1556655300",
+      "supportedMove": "0.085"
     },
-    "CNH/USD": {
-      "expiry": "1556571600",
-      "supportedMove": "0.05"
+    "CBN19": {
+      "comment": "expiry: April 30, 2019 7:30pm BST, supportedMove: 0.1 corresponds to 10%",
+      "expiry": "1556652600",
+      "supportedMove": "0.1"
     }
   },
   "currencies": {
