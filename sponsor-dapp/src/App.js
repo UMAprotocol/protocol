@@ -27,13 +27,11 @@ class App extends Component {
     let primaryColor;
     switch (network) {
       case "main":
+      case "ropsten":
         primaryColor = "#ff4a4a";
         break;
-      case "ropsten":
-        primaryColor = "#4aa5ff";
-        break;
       default:
-        primaryColor = "#ffa54a";
+        primaryColor = "#a44aff";
     }
 
     return createMuiTheme({
