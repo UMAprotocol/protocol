@@ -938,8 +938,6 @@ contract("TokenizedDerivative", function(accounts) {
       // Cannot re-dispute after settlement.
       assert(await didContractThrow(derivativeContract.dispute(disputeFee.toString(), await getMarginParams(disputeFee.toString()))));
 
-      const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
-      const calcedExcessMargin = await derivativeContract.calcExcessMargin();
       nav = (await derivativeContract.derivativeStorage()).nav;
       const shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
       const longBalance = (await derivativeContract.derivativeStorage()).longBalance;
@@ -956,10 +954,6 @@ contract("TokenizedDerivative", function(accounts) {
           .add(disputeFee)
           .toString()
       );
-
-      // Make sure the predicted balances match the true balance.
-      assert.equal(calcedShortBalance.toString(), shortBalance.toString());
-      assert.equal(calcedExcessMargin.toString(), shortBalance.toString());
 
       // Redeem tokens and withdraw money.
       await approveDerivativeTokens(web3.utils.toWei("1", "ether"));
@@ -1570,6 +1564,11 @@ contract("TokenizedDerivative", function(accounts) {
       // Resolve it to a defaulting price.
       const disputeTime = (await derivativeContract.derivativeStorage()).currentTokenState.time.toString();
       await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("2", "ether"));
+
+      // Calculate the expected short balance pre-settlement.
+      const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
+      const calcedExcessMargin = await derivativeContract.calcExcessMargin();
+
       await derivativeContract.settle({ from: sponsor });
 
       // This resolution should leave 0.075 left in the short margin account with a margin requirement of 0.1.
@@ -1579,6 +1578,10 @@ contract("TokenizedDerivative", function(accounts) {
       const storage = await derivativeContract.derivativeStorage();
       assert.equal(storage.shortBalance.toString(), web3.utils.toWei("0.075"));
       assert.equal(storage.longBalance.toString(), web3.utils.toWei("1.025"));
+      
+      // Make sure the predicted balances match the true balance.
+      assert.equal(calcedShortBalance.toString(), web3.utils.toWei("0.075"));
+      assert.equal(calcedExcessMargin.toString(), web3.utils.toWei("0.075"));
 
       // Make sure the balances are withdrawable.
       await derivativeContract.withdraw(web3.utils.toWei("0.075"), { from: sponsor });
