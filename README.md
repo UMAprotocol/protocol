@@ -55,8 +55,8 @@ preloaded with your private keys (loads the first two private keys for your mnem
 ### Upload Prices to the `ManualPriceFeed`
 
 After deploying the contracts to your network of choice, you can upload prices to the `ManualPriceFeed` contract for
-use by any derivatives that you choose to deploy. The script defaults to publishing `BTC/ETH`, `SPY/ETH`, and `CNH/USD`
-every 15 minutes. You can run this script using the following command:
+use by any derivatives that you choose to deploy. The script defaults to publishing `ESM19` and `CBN19`
+every 15 minutes. A barchart key must be set in your environment variable as `BARCHART_API_KEY`. You can run this script using the following command:
 ```
 ./publishPrices.sh <network>
 ```
