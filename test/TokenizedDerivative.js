@@ -2259,14 +2259,17 @@ contract("TokenizedDerivative", function(accounts) {
       const largeWithdrawLimit = "1000000000000000000000000000000000000";
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
-      await deployNewTokenizedDerivative({withdrawLimit: largeWithdrawLimit});
+      await deployNewTokenizedDerivative({ withdrawLimit: largeWithdrawLimit });
 
       // Deposit and withdraw a small amount to trigger the smallest possible throttle cap.
       await derivativeContract.deposit("1", await getMarginParams("1"));
       await derivativeContract.withdraw("1", { from: sponsor });
 
       // Expect that the user can withdraw up to 1 ETH - 1 wei from the contract, but no more.
-      await derivativeContract.deposit(web3.utils.toWei("1", "ether"), await getMarginParams(web3.utils.toWei("1", "ether")));
+      await derivativeContract.deposit(
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("1", "ether"))
+      );
       const withdrawableAmount = web3.utils.toBN(web3.utils.toWei("1", "ether")).subn(1);
       await derivativeContract.withdraw(withdrawableAmount.toString(), { from: sponsor });
 
