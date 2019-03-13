@@ -286,6 +286,7 @@ contract("CentralizedOracle", function(accounts) {
   it("Unsupported product", async function() {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("Unsupported"));
     assert(await didContractThrow(centralizedOracle.requestPrice(identifierBytes, 10)));
+    assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, 10)));
     assert(await didContractThrow(centralizedOracle.hasPrice(identifierBytes, 10)));
   });
 
@@ -297,6 +298,7 @@ contract("CentralizedOracle", function(accounts) {
 
     // Unregisterd derivatives cannot request prices.
     assert(await didContractThrow(centralizedOracle.requestPrice(identifierBytes, 10, { from: rando })));
+    assert(await didContractThrow(centralizedOracle.getPrice(identifierBytes, 10, { from: rando })));
     assert(await didContractThrow(centralizedOracle.hasPrice(identifierBytes, 10, { from: rando })));
 
     // Register the derivative with the registry.
