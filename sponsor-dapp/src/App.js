@@ -5,20 +5,6 @@ import "./App.css";
 import Dashboard from "./components/Dashboard.js";
 import params from "./parameters.json";
 
-const theme = createMuiTheme({
-  palette: {
-    primary: {
-      main: "#ff4a4a"
-    },
-    secondary: {
-      main: "#272528"
-    }
-  },
-  typography: {
-    useNextVariants: true
-  }
-});
-
 class App extends Component {
   state = { params, network: undefined };
 
@@ -35,6 +21,34 @@ class App extends Component {
       default:
         return "private";
     }
+  }
+
+  createMuiTheme(network) {
+    let primaryColor;
+    switch (network) {
+      case "main":
+        primaryColor = "#ff4a4a";
+        break;
+      case "ropsten":
+        primaryColor = "#4aa5ff";
+        break;
+      default:
+        primaryColor = "#ffa54a";
+    }
+
+    return createMuiTheme({
+      palette: {
+        primary: {
+          main: primaryColor
+        },
+        secondary: {
+          main: "#272528"
+        }
+      },
+      typography: {
+        useNextVariants: true
+      }
+    });
   }
 
   render() {
@@ -55,8 +69,13 @@ class App extends Component {
             delete newParams.ropsten;
             delete newParams.private;
 
+            const networkName = this.networkIdToName(drizzleState.web3.networkId);
+            newParams.network = networkName;
+
+            const theme = this.createMuiTheme(networkName);
+
             // Overlay network properties on top
-            Object.assign(newParams, params[this.networkIdToName(drizzleState.web3.networkId)]);
+            Object.assign(newParams, params[networkName]);
 
             return (
               <MuiThemeProvider theme={theme}>
