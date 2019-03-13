@@ -11,7 +11,7 @@ contract("LeveragedReturnCalculator", function(accounts) {
 
   it("0 leverage disallowed", async function() {
     assert(await didContractThrow(getReturnCalculator(0)));
-  }
+  });
 
   it("No Leverage", async function() {
     const returnCalculator = await getReturnCalculator(1);
