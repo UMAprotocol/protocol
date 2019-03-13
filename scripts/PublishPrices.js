@@ -6,11 +6,12 @@ const commandlineUtil = require("./CommandlineUtil");
 
 require("dotenv").config();
 
-// Get the API key from an environment variable or the `.env` file.
+// Get API keys from environment variables or the `.env` file.
 const alphaVantageKey = process.env.ALPHAVANTAGE_API_KEY;
+const barchartKey = process.env.BARCHART_API_KEY;
 
-function stripApiKey(str) {
-  return str.replace(alphaVantageKey, "{redacted}");
+function stripApiKey(str, key) {
+  return str.replace(key, "{redacted}");
 }
 
 // Gets JSON from a URL or throws.
@@ -22,6 +23,35 @@ const getJson = async url => {
   }
   return json;
 };
+
+async function getBarchartPrice(asset) {
+  const url = `https://ondemand.websol.barchart.com/getQuote.json?apikey=${barchartKey}&symbols=${asset}`;
+  console.log(`Querying Barchart with [${stripApiKey(url, barchartKey)}]`);
+  const jsonOutput = await getJson(url);
+  console.log(`Barchart response [${JSON.stringify(jsonOutput)}]`);
+
+  if (jsonOutput.status.code !== 200) {
+    throw "Barchart request failed";
+  }
+
+  if (jsonOutput.results == null || jsonOutput.results.length != 1) {
+    throw "Unexpected number of results in json response";
+  }
+
+  if (jsonOutput.results[0].symbol !== asset) {
+    throw "Unexpected symbol in json response";
+  }
+
+  // TODO: use the timestamp for this lastPrice for the upload rather than the current application time.
+  const price = jsonOutput.results[0].lastPrice;
+  if (!price) {
+    throw "Failed to get valid price out of JSON response";
+  }
+
+  console.log(`Retrieved quote [${price}] from Barchart for asset [${asset}]`);
+
+  return price;
+}
 
 // Gets the Coinbase price for an asset or throws.
 async function getCoinbasePrice(asset) {
@@ -40,7 +70,7 @@ async function getCoinbasePrice(asset) {
 // Gets the AlphaVantage price for an asset or throws.
 async function getAlphaVantageQuote(asset) {
   const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&apikey=${alphaVantageKey}&symbol=${asset}`;
-  console.log(`Querying AlphaVantage with [${stripApiKey(url)}]`);
+  console.log(`Querying AlphaVantage with [${stripApiKey(url, alphaVantageKey)}]`);
   const jsonOutput = await getJson(url);
   console.log(`AlphaVantage response [${JSON.stringify(jsonOutput)}]`);
   const price = jsonOutput["Global Quote"]["05. price"];
@@ -54,7 +84,7 @@ async function getAlphaVantageQuote(asset) {
 // Gets the AlphaVantage rate for a currency against USD.
 async function getAlphaVantageCurrencyRate(asset) {
   const url = `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${asset}&to_currency=USD&apikey=${alphaVantageKey}`;
-  console.log(`Querying AlphaVantage with [${stripApiKey(url)}]`);
+  console.log(`Querying AlphaVantage with [${stripApiKey(url, alphaVantageKey)}]`);
   const jsonOutput = await getJson(url);
   console.log(`AlphaVantage response [${JSON.stringify(jsonOutput)}]`);
   const rate = jsonOutput["Realtime Currency Exchange Rate"]["5. Exchange Rate"];
@@ -165,34 +195,21 @@ function getPriceFeeds() {
   const priceFeedAddress = ManualPriceFeed.address;
   return [
     {
-      identifier: "BTC/ETH",
-      priceFeedAddress: priceFeedAddress,
-      publishInterval: 900, // 15 minutes.
-      numerator: {
-        priceFetchFunction: getCoinbasePrice,
-        assetName: "BTC-USD"
-      },
-      denominator: {
-        priceFetchFunction: getCoinbasePrice,
-        assetName: "ETH-USD"
-      }
-    },
-    {
-      identifier: "SPY/USD",
+      identifier: "ESM19",
       priceFeedAddress: priceFeedAddress,
       publishInterval: 900,
       numerator: {
-        priceFetchFunction: getAlphaVantageQuote,
-        assetName: "SPY"
+        priceFetchFunction: getBarchartPrice,
+        assetName: "ESM19"
       }
     },
     {
-      identifier: "CNH/USD",
+      identifier: "CBN19",
       priceFeedAddress: priceFeedAddress,
       publishInterval: 900,
       numerator: {
-        priceFetchFunction: getAlphaVantageCurrencyRate,
-        assetName: "CNH"
+        priceFetchFunction: getBarchartPrice,
+        assetName: "CBN19"
       }
     }
   ];

@@ -15,6 +15,7 @@
     "solidity-coverage": "^0.5.11"
   },
   "dependencies": {
+    "@google-cloud/kms": "^0.3.0",
     "bignumber.js": "^8.0.1",
     "dotenv": "^6.2.0",
     "eslint": "5.12.0",

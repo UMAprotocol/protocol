@@ -16,7 +16,7 @@ ERC20Mintable.setProvider(web3.currentProvider);
 
 // Mirrors the identifiers in `scripts/PublishPrices.js`.
 // Run the script directly to publish meaningful numbers.
-const supportedIdentifiers = ["SPY/USD", "CNH/USD", "BTC/ETH"];
+const supportedIdentifiers = ["ESM19", "CBN19"];
 
 // Deploys a TokenizedDerivative. Used for deploying a contract to Ganache for local testing.
 const initializeSystem = async function(callback) {

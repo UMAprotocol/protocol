@@ -8,7 +8,7 @@ contract("scripts/PushOraclePrice.js", function(accounts) {
   let registry;
   let centralizedOracle;
   const deployer = accounts[0];
-  const identifier = "CNH/USD";
+  const identifier = "ESM19";
   const time = 100;
   const price = 50;
 
@@ -23,7 +23,7 @@ contract("scripts/PushOraclePrice.js", function(accounts) {
   });
 
   it("Resolves a requested price", async function() {
-    await PushOraclePrice.run(centralizedOracle.address, identifier, time, price);
+    await PushOraclePrice.run(identifier, time, price);
     const identifierInBytes = web3.utils.fromAscii(identifier);
     const timeInBN = web3.utils.toBN(time);
     const pushedPrice = await centralizedOracle.getPrice(identifierInBytes, timeInBN);
