@@ -1062,8 +1062,8 @@ contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     }
 
     // Creates tokens with sent margin and deposits additional margin in short account.
-    function depositAndCreateTokens(uint marginForPurchase, uint newTokenNav) external payable {
-        derivativeStorage._depositAndCreateTokens(marginForPurchase, newTokenNav);
+    function depositAndCreateTokens(uint marginForPurchase, uint tokensToPurchase) external payable {
+        derivativeStorage._depositAndCreateTokens(marginForPurchase, tokensToPurchase);
     }
 
     // Redeems tokens for margin currency.
