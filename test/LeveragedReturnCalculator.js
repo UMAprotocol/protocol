@@ -1,4 +1,5 @@
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
+const { didContractThrow } = require("./utils/DidContractThrow.js");
 
 contract("LeveragedReturnCalculator", function(accounts) {
   // A deployed instance of the LeveragedReturnCalculator.
@@ -7,6 +8,10 @@ contract("LeveragedReturnCalculator", function(accounts) {
   const getReturnCalculator = async leverage => {
     return await LeveragedReturnCalculator.new(leverage, { from: owner });
   };
+
+  it("0 leverage disallowed", async function() {
+    assert(await didContractThrow(getReturnCalculator(0)));
+  });
 
   it("No Leverage", async function() {
     const returnCalculator = await getReturnCalculator(1);
