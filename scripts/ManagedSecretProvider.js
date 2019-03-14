@@ -35,8 +35,9 @@ class ManagedSecretProvider {
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all) {
-    // The underlying call appears to always throw.
-    throw "Use sendAsync instead of send";
+    this.wrappedProviderPromise.then(wrappedProvider => {
+      wrappedProvider.send(...all);
+    });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
@@ -94,7 +95,8 @@ class ManagedSecretProvider {
           return this.wrappedProvider;
         },
         reason => {
-          return Promise.reject(reason);
+          console.error(reason);
+          throw reason;
         }
       );
   }
