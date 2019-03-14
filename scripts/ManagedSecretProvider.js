@@ -1,6 +1,7 @@
 const HDWalletProvider = require("truffle-hdwallet-provider");
 const kms = require("@google-cloud/kms");
 const { readFileSync } = require("fs");
+const { Storage } = require("@google-cloud/storage");
 
 // Wraps HDWalletProvider, deferring construction and allowing a Cloud KMS managed secret to be fetched asynchronously
 // and used to initialize an HDWalletProvider.
@@ -10,7 +11,8 @@ class ManagedSecretProvider {
   //   keyRingId: ID of keyring
   //   cryptoKeyId: ID of the crypto key to use for decrypting the key material
   //   locationId: Google Cloud location, e.g., 'global'.
-  //   ciphertextFilepath: Path to a file containing encrypted secret
+  //   ciphertextBucket: ID of a Google Cloud storage bucket.
+  //   ciphertextFilename: Name of a file within `ciphertextBucket`.
   constructor(cloudKmsSecretConfig, ...remainingArgs) {
     this.cloudKmsSecretConfig = cloudKmsSecretConfig;
     this.remainingArgs = remainingArgs;
@@ -62,23 +64,44 @@ class ManagedSecretProvider {
       return Promise.resolve(this.wrappedProvider);
     }
 
-    const client = new kms.KeyManagementServiceClient();
-    const name = client.cryptoKeyPath(
-      this.cloudKmsSecretConfig.projectId,
-      this.cloudKmsSecretConfig.locationId,
-      this.cloudKmsSecretConfig.keyRingId,
-      this.cloudKmsSecretConfig.cryptoKeyId
-    );
+    const storage = new Storage();
+    const keyMaterialBucket = storage.bucket(this.cloudKmsSecretConfig.ciphertextBucket);
+    const ciphertextFile = keyMaterialBucket.file(this.cloudKmsSecretConfig.ciphertextFilename);
 
-    const contentsBuffer = readFileSync(this.cloudKmsSecretConfig.ciphertextFilepath);
-    const ciphertext = contentsBuffer.toString("base64");
-    return client.decrypt({ name, ciphertext }).then(([result]) => {
-      const mnemonic = Buffer.from(result.plaintext, "base64")
-        .toString()
-        .trim();
-      this.wrappedProvider = new HDWalletProvider(mnemonic, ...this.remainingArgs);
-      return Promise.resolve(this.wrappedProvider);
-    });
+    return ciphertextFile
+      .download()
+      .then(
+        data => {
+          // Send the request to decrypt the downloaded file.
+          const contentsBuffer = data[0];
+          const ciphertext = contentsBuffer.toString("base64");
+
+          const client = new kms.KeyManagementServiceClient();
+          const name = client.cryptoKeyPath(
+            this.cloudKmsSecretConfig.projectId,
+            this.cloudKmsSecretConfig.locationId,
+            this.cloudKmsSecretConfig.keyRingId,
+            this.cloudKmsSecretConfig.cryptoKeyId
+          );
+          return client.decrypt({ name, ciphertext });
+        },
+        reason => {
+          console.error(reason);
+        }
+      )
+      .then(
+        ([result]) => {
+          // Construct a HDWalletProvider based on mnemonic in the plaintext.
+          const mnemonic = Buffer.from(result.plaintext, "base64")
+            .toString()
+            .trim();
+          this.wrappedProvider = new HDWalletProvider(mnemonic, ...this.remainingArgs);
+          return Promise.resolve(this.wrappedProvider);
+        },
+        reason => {
+          console.error(reason);
+        }
+      );
   }
 }
 
