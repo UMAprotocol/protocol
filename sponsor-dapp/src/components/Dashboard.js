@@ -130,6 +130,9 @@ class Dashboard extends React.Component {
     const { classes, drizzleState } = this.props;
     const isCreateDisabled = this.state.isCreateDisabled;
 
+    const network = this.props.params.network;
+    const titleSubHeader = network !== "main" ? `@${network}` : "";
+
     return (
       <React.Fragment>
         <CssBaseline />
@@ -137,7 +140,7 @@ class Dashboard extends React.Component {
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
               <Typography component="h1" variant="h6" color="inherit" align="left" noWrap className={classes.title}>
-                UMA Dashboard
+                UMA Dashboard {titleSubHeader}
               </Typography>
               <Typography component="h1" variant="h6" color="inherit" align="right" noWrap className={classes.title}>
                 {drizzleState.accounts[0]}
