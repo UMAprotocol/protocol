@@ -33,7 +33,8 @@ class ManagedSecretProvider {
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all) {
-    return getWrappedProviderOrThrow().send(...all);
+    // The underlying call appears to always throw.
+    throw "Use sendAsync instead of send";
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
