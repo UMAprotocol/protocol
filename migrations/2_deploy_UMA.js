@@ -69,4 +69,10 @@ module.exports = async function(deployer, network, accounts) {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
     await centralizedOracle.addSupportedIdentifier(identifierBytes);
   }
+
+  // Set oracle fees to 0.5% per year.
+  const annualFee = web3.utils.toWei("0.005");
+  const secondsPerYear = 31536000;
+  const feePerSecond = web3.utils.toBN(annualFee).divn(secondsPerYear);
+  await centralizedStore.setFixedOracleFeePerSecond(feePerSecond.toString());
 };

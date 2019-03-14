@@ -1,13 +1,13 @@
 {
   "identifiers": {
     "ESM19": {
-      "comment": "expiry: April 30, 2019 4:15pm ET, supportedMove: 0.085 corresponds to 8.5%",
-      "expiry": "1556655300",
+      "comment": "expiry: May 15, 2019 4:15pm ET, supportedMove: 0.085 corresponds to 8.5%",
+      "expiry": "1557951300",
       "supportedMove": "0.085"
     },
     "CBN19": {
-      "comment": "expiry: April 30, 2019 7:30pm BST, supportedMove: 0.1 corresponds to 10%",
-      "expiry": "1556652600",
+      "comment": "expiry: May 15, 2019 7:30pm BST, supportedMove: 0.1 corresponds to 10%",
+      "expiry": "1557945000",
       "supportedMove": "0.1"
     }
   },
