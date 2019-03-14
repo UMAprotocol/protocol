@@ -6,6 +6,7 @@ const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator")
 const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 const BigNumber = require("bignumber.js");
 const truffleAssert = require("truffle-assertions");
 
@@ -28,6 +29,13 @@ contract("CentralizedOracle", function(accounts) {
     registry = await Registry.deployed();
     await registry.addDerivativeCreator(creator, { from: owner });
     await registry.registerDerivative([], owner, { from: creator });
+
+    // Whitelist ETH margin currency.
+    const ethAddress = "0x0000000000000000000000000000000000000000";
+    const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
+    const marginCurrencyWhitelistAddress = await tokenizedDerivativeCreator.marginCurrencyWhitelist();
+    const marginCurrencyWhitelist = await AddressWhitelist.at(marginCurrencyWhitelistAddress);
+    await marginCurrencyWhitelist.addToWhitelist(ethAddress);
   });
 
   it("Enqueue queries (two times) > Push > Requery > Push > Request", async function() {

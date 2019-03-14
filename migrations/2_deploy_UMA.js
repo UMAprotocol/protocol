@@ -40,9 +40,8 @@ module.exports = async function(deployer, network, accounts) {
   const returnCalculatorWhitelist = await deployAndGet(deployer, AddressWhitelist);
   await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address);
 
-  // Deploy margin currency whitelist and add ETH to it.
+  // Deploy margin currency whitelist.
   const marginCurrencyWhitelist = await deployAndGet(deployer, AddressWhitelist);
-  await marginCurrencyWhitelist.addToWhitelist("0x0000000000000000000000000000000000000000");
 
   // TokenizedDerivativeCreator requires the TokenizedDerivativeUtils library to be deployed first.
   await deployer.deploy(TokenizedDerivativeUtils);
