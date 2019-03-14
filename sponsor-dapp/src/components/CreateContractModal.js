@@ -75,8 +75,8 @@ class CreateContractModal extends React.Component {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(formInputs.identifier));
 
     // Should always be the case, but the above value is a fallback.
-    if (this.drizzleHelper.hasCache("ManualPriceFeed", "latestPrice", [])) {
-      assetPrice = this.drizzleHelper.getCache("ManualPriceFeed", "latestPrice", []);
+    if (this.drizzleHelper.hasCache("ManualPriceFeed", "latestPrice", [identifierBytes])) {
+      assetPrice = this.drizzleHelper.getCache("ManualPriceFeed", "latestPrice", [identifierBytes]).price.toString();
     }
 
     const constructorParams = {
