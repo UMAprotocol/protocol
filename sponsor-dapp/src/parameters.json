@@ -7,7 +7,7 @@
     },
     "CBN19": {
       "comment": "expiry: May 15, 2019 7:30pm BST, supportedMove: 0.1 corresponds to 10%",
-      "expiry": "1557948600",
+      "expiry": "1557945000",
       "supportedMove": "0.1"
     }
   },
