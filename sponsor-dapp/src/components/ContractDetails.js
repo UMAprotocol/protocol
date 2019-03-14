@@ -259,9 +259,13 @@ class ContractDetails extends Component {
       contractState.calcTokenValue[this.state.estimatedTokenValueDataKey].value
     );
     const numTokensInWei = web3.utils.toBN(web3.utils.toWei(this.state.formInputs.createAmount));
-    const marginCurrencyAmount = estimatedTokenValue
-      .mul(numTokensInWei)
-      .div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
+
+    // Mirror the computation done by TokenizedDerivative when determining how much margin currency is required,
+    // specifically, rounding up instead of truncating.
+    const preDivisionMarginCurrency = estimatedTokenValue.mul(numTokensInWei);
+    const fp_multiplier = web3.utils.toBN(web3.utils.toWei("1", "ether"));
+    const ceilAddition = preDivisionMarginCurrency.mod(fp_multiplier).isZero() ? 0 : 1;
+    const marginCurrencyAmount = preDivisionMarginCurrency.div(fp_multiplier).addn(ceilAddition);
 
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
       marginCurrencyAmount.toString(),
