@@ -79,8 +79,6 @@ class CreateContractModal extends React.Component {
       assetPrice = this.drizzleHelper.getCache("ManualPriceFeed", "latestPrice", [identifierBytes]).price.toString();
     }
 
-
-
     const constructorParams = {
       sponsor: account,
       defaultPenalty: web3.utils.toWei("1", "ether"),
