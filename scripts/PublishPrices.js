@@ -14,6 +14,14 @@ function stripApiKey(str, key) {
   return str.replace(key, "{redacted}");
 }
 
+function stripApiKeys(str, keys) {
+  ret = str;
+  for (key of keys) {
+    ret = stripApiKey(ret, key);
+  }
+  return ret;
+}
+
 // Gets JSON from a URL or throws.
 const getJson = async url => {
   const response = await fetch(url);
@@ -226,7 +234,7 @@ async function runExport() {
         await publishFeed(priceFeed);
         console.log("Done publishing for one feed.\n\n");
       } catch (error) {
-        console.log(error);
+        console.log(stripApiKeys(error.toString(), [alphaVantageKey, barchartKey]));
       }
     }
     console.log("Done publishing for all feeds");
