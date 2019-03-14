@@ -70,25 +70,20 @@ class ManagedSecretProvider {
 
     return ciphertextFile
       .download()
-      .then(
-        data => {
-          // Send the request to decrypt the downloaded file.
-          const contentsBuffer = data[0];
-          const ciphertext = contentsBuffer.toString("base64");
+      .then(data => {
+        // Send the request to decrypt the downloaded file.
+        const contentsBuffer = data[0];
+        const ciphertext = contentsBuffer.toString("base64");
 
-          const client = new kms.KeyManagementServiceClient();
-          const name = client.cryptoKeyPath(
-            this.cloudKmsSecretConfig.projectId,
-            this.cloudKmsSecretConfig.locationId,
-            this.cloudKmsSecretConfig.keyRingId,
-            this.cloudKmsSecretConfig.cryptoKeyId
-          );
-          return client.decrypt({ name, ciphertext });
-        },
-        reason => {
-          console.error(reason);
-        }
-      )
+        const client = new kms.KeyManagementServiceClient();
+        const name = client.cryptoKeyPath(
+          this.cloudKmsSecretConfig.projectId,
+          this.cloudKmsSecretConfig.locationId,
+          this.cloudKmsSecretConfig.keyRingId,
+          this.cloudKmsSecretConfig.cryptoKeyId
+        );
+        return client.decrypt({ name, ciphertext });
+      })
       .then(
         ([result]) => {
           // Construct a HDWalletProvider based on mnemonic in the plaintext.
@@ -96,10 +91,10 @@ class ManagedSecretProvider {
             .toString()
             .trim();
           this.wrappedProvider = new HDWalletProvider(mnemonic, ...this.remainingArgs);
-          return Promise.resolve(this.wrappedProvider);
+          return this.wrappedProvider;
         },
         reason => {
-          console.error(reason);
+          return Promise.reject(reason);
         }
       );
   }
