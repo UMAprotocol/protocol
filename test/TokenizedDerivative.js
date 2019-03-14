@@ -38,6 +38,7 @@ contract("TokenizedDerivative", function(accounts) {
   const name = "1x Bitcoin-Ether";
   const symbol = "BTCETH";
   const uintMax = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+  const ethAddress = "0x0000000000000000000000000000000000000000";
 
   // The ManualPriceFeed can support prices at arbitrary intervals, but for convenience, we send updates at this
   // interval.
@@ -62,6 +63,9 @@ contract("TokenizedDerivative", function(accounts) {
     await marginToken.mint(apDelegate, web3.utils.toWei("100", "ether"), { from: sponsor });
     let marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());
     marginCurrencyWhitelist.addToWhitelist(marginToken.address);
+
+    // Whitelist ETH
+    marginCurrencyWhitelist.addToWhitelist(ethAddress);
 
     // Set return calculator whitelist for later use.
     returnCalculatorWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.returnCalculatorWhitelist());
@@ -127,7 +131,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     // The contract assumes that ETH is the margin currency if passed 0x0 as the margin token address.
     const marginTokenAddress = () => {
-      return testVariant.useErc20 ? marginToken.address : "0x0000000000000000000000000000000000000000";
+      return testVariant.useErc20 ? marginToken.address : ethAddress;
     };
 
     const deployNewTokenizedDerivative = async (overrideConstructorParams = {}) => {
