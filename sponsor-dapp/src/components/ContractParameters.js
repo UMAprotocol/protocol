@@ -34,11 +34,11 @@ class ContractParameters extends Component {
         </Button>
         <Collapse in={this.state.open} timeout="auto">
           Address: {parameters.contractAddress}
-          <div>Creator: {parameters.creatorAddress}</div>
+          <div>Sponsor: {parameters.creatorAddress}</div>
           <div>Created: {parameters.creationTime}</div>
           <div>Expiry: {parameters.expiryTime}</div>
           <div>Price Feed: {parameters.priceFeedAddress}</div>
-          <div>Denomination: {parameters.marginCurrency}</div>
+          <div>Margin currency: {parameters.marginCurrency}</div>
           <div>Return Calculator: {parameters.returnCalculator}</div>
         </Collapse>
       </div>
