@@ -15,7 +15,8 @@ import DrizzleHelper from "../utils/DrizzleHelper.js";
 
 const styles = theme => ({
   root: {
-    minWidth: 900
+    minWidth: 900,
+      margin: "36px 26px 26px 26px"
   },
   titleSection: {
     display: "flex",
