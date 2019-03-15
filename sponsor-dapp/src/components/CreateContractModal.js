@@ -23,8 +23,12 @@ const styles = theme => ({
     flexDirection: "column"
   },
   submitButton: {
-    marginTop: "10px"
-  }
+    marginTop: "30px"
+  },
+    modal: {
+        padding: "30px 50px 40px 50px",
+        width: "652px"
+    }
 });
 
 class CreateContractModal extends React.Component {
@@ -368,7 +372,7 @@ class CreateContractModal extends React.Component {
     ));
 
     return (
-      <Dialog open={this.props.open} onClose={this.props.onClose}>
+      <Dialog open={this.props.open} onClose={this.props.onClose} classes={{paper:classes.modal}}>
         <DialogTitle>Create New Token Contract</DialogTitle>
         <DialogContent>
           <div>Account: {account}</div>
