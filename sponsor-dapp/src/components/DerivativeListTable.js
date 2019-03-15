@@ -11,10 +11,11 @@ import Paper from "@material-ui/core/Paper";
 const styles = theme => ({
   root: {
     width: "100%",
-    overflowX: "auto"
+    overflowX: "auto",
+      marginTop: "32px"
   },
   table: {
-    minWidth: 700
+    minWidth: 700,
   },
   button: {
     margin: theme.spacing.unit,

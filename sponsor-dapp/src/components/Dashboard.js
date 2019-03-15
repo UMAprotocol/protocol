@@ -8,6 +8,7 @@ import DialogContent from "@material-ui/core/DialogContent";
 import Grid from "@material-ui/core/Grid";
 import Toolbar from "@material-ui/core/Toolbar";
 import Typography from "@material-ui/core/Typography";
+import grey from "@material-ui/core/colors/grey";
 
 import DerivativeList from "./DerivativeList";
 import ContractDetails from "./ContractDetails";
@@ -20,6 +21,9 @@ const styles = theme => ({
     display: "flex",
     width: "100%"
   },
+    icon: {
+        marginRight: "10px"
+    },
   toolbar: {
     paddingRight: 24 // keep right padding when drawer closed
   },
@@ -28,7 +32,9 @@ const styles = theme => ({
     transition: theme.transitions.create(["width", "margin"], {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen
-    })
+    }),
+      backgroundColor: grey[100],
+      color: "black"
   },
   appBarSpacer: theme.mixins.toolbar,
   content: {
@@ -139,6 +145,7 @@ class Dashboard extends React.Component {
         <div className="Dashboard">
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
+            <img src="favicon.ico" className={classes.icon}/>
               <Typography component="h1" variant="h6" color="inherit" align="left" noWrap className={classes.title}>
                 UMA Dashboard {titleSubHeader}
               </Typography>
