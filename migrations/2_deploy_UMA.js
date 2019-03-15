@@ -1,3 +1,7 @@
+// Note: for ropsten and mainnet deploys, the command should look as follows:
+// $(npm bin)/truffle migrate --reset --network <ropsten_or_mainnet> \
+// --keys={deployer,registry,store,priceFeed,sponsorWhitelist,returnCalculatorWhitelist,marginCurrencyWhitelist}
+
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const CentralizedStore = artifacts.require("CentralizedStore");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
@@ -22,7 +26,7 @@ const deployAndGet = async (deployer, contractType, ...args) => {
   return await contractType.deployed();
 };
 
-const getKeysForNetwork = (network, accounts) {
+const getKeysForNetwork = (network, accounts) => {
   if (network === "ropsten" || network === "mainnet") {
     return {
       deployer: accounts[0],
@@ -42,7 +46,7 @@ const getKeysForNetwork = (network, accounts) {
       sponsorWhitelist: accounts[0],
       returnCalculatorWhitelist: accounts[0],
       marginCurrencyWhitelist: accounts[0]
-    }
+    };
   }
 }
 
