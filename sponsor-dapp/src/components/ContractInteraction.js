@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
+import { formatWei } from "../utils/FormattingUtils";
 import red from "@material-ui/core/colors/red";
 
 import DrizzleHelper from "../utils/DrizzleHelper";
@@ -72,9 +73,11 @@ class ContractInteraction extends Component {
 
     const estimatedShort = drizzleHelper.getCache(contractAddress, "calcShortMarginBalance", []);
     const anyBalanceToWithdraw = estimatedShort ? web3.utils.toBN(estimatedShort).gt(zero) : false;
+      const withdrawHelper = formatWei(estimatedShort, web3) + " available";
 
     const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
     const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
+      const redeemHelper = formatWei(ownedTokens, web3) + " available";
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
@@ -140,6 +143,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isWithdrawEnabled}
               value={formInputs.withdrawAmount}
+        helperText={withdrawHelper}
               onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
             />
             {this.getButton("Withdraw", isWithdrawEnabled, this.props.withdrawFn)}
@@ -160,6 +164,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isRedeemEnabled}
               value={formInputs.redeemAmount}
+        helperText={redeemHelper}
               onChange={e => this.props.handleChangeFn("redeemAmount", e)}
             />
             {this.getButton("Redeem", isRedeemEnabled, this.props.redeemFn)}
