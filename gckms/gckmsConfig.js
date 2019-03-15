@@ -1,6 +1,23 @@
-const argv = require("minimist")(process.argv.slice());
+// Example usage:
+// $(npm bin)/truffle exec <some_script> --network test --keys priceFeed --keys priceFeed --keys registry
 
-function getStaticConfig() {
+const argv = require("minimist")(process.argv.slice());
+const fs = require("fs");
+
+// Import the .gcloudKmsOverride.js file if it exists.
+let overrideFname = "./.gcloudKmsOverride.js";
+let configOverride = {};
+try {
+  if (fs.existsSync(overrideFname)) {
+    configOverride = require(overrideFname);
+  }
+} catch (err) {
+  console.error(err);
+}
+
+// Note: this default config should not be used - it is intended to communicate the structure of the config.
+// .gcloudKmsOverride.js should export your real config.
+function getDefaultStaticConfig() {
   // The anatomy of an individual config is:
   //   projectId: ID of a Google Cloud project
   //   keyRingId: ID of keyring
@@ -10,8 +27,8 @@ function getStaticConfig() {
   //   ciphertextFilename: Name of a file within `ciphertextBucket`.
   return {
     main: {
+      deployer: {},
       registry: {},
-      oracle: {},
       store: {},
       priceFeed: {},
       sponsorWhitelist: {},
@@ -19,8 +36,8 @@ function getStaticConfig() {
       marginCurrencyWhitelist: {}
     },
     ropsten: {
+      deployer: {},
       registry: {},
-      oracle: {},
       store: {},
       priceFeed: {},
       sponsorWhitelist: {},
@@ -30,20 +47,18 @@ function getStaticConfig() {
     private: {
       deployer: {},
       registry: {},
-      oracle: {},
       store: {},
       priceFeed: {},
       sponsorWhitelist: {},
       returnCalculatorWhitelist: {},
       marginCurrencyWhitelist: {},
-      // Note: remove this once other private configs are populated.
       example: {
-        projectId: "risk-protocol",
-        locationId: "global",
-        keyRingId: "Yutaro_Test",
-        cryptoKeyId: "yutaro",
-        ciphertextBucket: "risk-labs-local-test",
-        ciphertextFilename: "taro_local_mnemonic.enc"
+        projectId: "project-name",
+        locationId: "asia-east2",
+        keyRingId: "Keyring_Test",
+        cryptoKeyId: "keyname",
+        ciphertextBucket: "cipher_bucket",
+        ciphertextFilename: "ciphertext_fname.enc"
       }
     }
   };
@@ -60,11 +75,22 @@ function getNetworkName() {
   }
 }
 
-const staticConfig = getStaticConfig();
+// Compose the exact config for this network.
+const staticConfig = { ...getDefaultStaticConfig(), ...configOverride };
 const networkConfig = staticConfig[getNetworkName()];
 
-const keyConfigs = argv.keys.map(keyName => {
+// Provide the configs for the keys requested.
+let keys = argv.keys;
+if (!keys) {
+  // If no keys were provided, send an empty array.
+  keys = [];
+} else if (!Array.isArray(keys)) {
+  // If a single key was provided, package it into an array.
+  keys = [keys];
+}
+const keyConfigs = keys.map(keyName => {
   return networkConfig[keyName];
 });
 
+// Export the requested config.
 module.exports = keyConfigs;
