@@ -17,7 +17,8 @@ const styles = theme => ({
     minWidth: 700
   },
   button: {
-    margin: theme.spacing.unit
+    margin: theme.spacing.unit,
+      fontFamily: "Courier"
   }
 });
 
