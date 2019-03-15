@@ -54,6 +54,9 @@ async function getBarchartPrice(asset) {
 
   const tradeTime = jsonOutput.results[0].tradeTimestamp;
   const timestamp = web3.utils.toBN(Math.round(new Date(tradeTime).getTime() / 1000));
+  if (!timestamp) {
+    throw `Failed to get valid timestamp out of JSON response tradeTimestamp field [${tradeTime}]`;
+  }
 
   console.log(`Retrieved quote [${price}] at [${timestamp}] ([${tradeTime}]) from Barchart for asset [${asset}]`);
 
