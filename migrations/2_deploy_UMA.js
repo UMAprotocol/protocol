@@ -48,7 +48,7 @@ const getKeysForNetwork = (network, accounts) => {
       marginCurrencyWhitelist: accounts[0]
     };
   }
-}
+};
 
 module.exports = async function(deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
@@ -58,7 +58,9 @@ module.exports = async function(deployer, network, accounts) {
   const registry = await deployAndGet(deployer, Registry, { from: keys.registry });
 
   // TODO: possibly update the oracle owner once we integrate hardware wallets.
-  const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, registry.address, controllableTiming, { from: keys.deployer });
+  const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, registry.address, controllableTiming, {
+    from: keys.deployer
+  });
   const manualPriceFeed = await deployAndGet(deployer, ManualPriceFeed, controllableTiming, { from: keys.priceFeed });
   const centralizedStore = await deployAndGet(deployer, CentralizedStore, controllableTiming, { from: keys.store });
   const returnCalculator = await deployAndGet(deployer, LeveragedReturnCalculator, 1, { from: keys.deployer });
@@ -68,11 +70,15 @@ module.exports = async function(deployer, network, accounts) {
   await sponsorWhitelist.addToWhitelist(accounts[1], { from: keys.sponsorWhitelist });
 
   // Deploy return calculator whitelist and add the 1x return calculator to it.
-  const returnCalculatorWhitelist = await deployAndGet(deployer, AddressWhitelist, { from: keys.returnCalculatorWhitelist });
+  const returnCalculatorWhitelist = await deployAndGet(deployer, AddressWhitelist, {
+    from: keys.returnCalculatorWhitelist
+  });
   await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address, { from: keys.returnCalculatorWhitelist });
 
   // Deploy margin currency whitelist.
-  const marginCurrencyWhitelist = await deployAndGet(deployer, AddressWhitelist, { from: keys.marginCurrencyWhitelist });
+  const marginCurrencyWhitelist = await deployAndGet(deployer, AddressWhitelist, {
+    from: keys.marginCurrencyWhitelist
+  });
 
   // TokenizedDerivativeCreator requires the TokenizedDerivativeUtils library to be deployed first.
   await deployer.deploy(TokenizedDerivativeUtils, { from: keys.deployer });

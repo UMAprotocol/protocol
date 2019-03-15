@@ -77,41 +77,39 @@ class ManagedSecretProvider {
       const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
       const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
 
-      return ciphertextFile
-        .download()
-        .then(data => {
-          // Send the request to decrypt the downloaded file.
-          const contentsBuffer = data[0];
-          const ciphertext = contentsBuffer.toString("base64");
+      return ciphertextFile.download().then(data => {
+        // Send the request to decrypt the downloaded file.
+        const contentsBuffer = data[0];
+        const ciphertext = contentsBuffer.toString("base64");
 
-          const client = new kms.KeyManagementServiceClient();
-          const name = client.cryptoKeyPath(
-            config.projectId,
-            config.locationId,
-            config.keyRingId,
-            config.cryptoKeyId
-          );
-          return client.decrypt({ name, ciphertext });
-        });
-    });
-
-    return Promise.all(fetchKeys).then(results => {
-      let keys = results.map(([result]) => {
-        return Buffer.from(result.plaintext, "base64").toString().trim();
+        const client = new kms.KeyManagementServiceClient();
+        const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
+        return client.decrypt({ name, ciphertext });
       });
-
-      // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
-      // This is important, as a single mnemonic will fail if passed in as an array.
-      if (keys.length == 1) {
-        keys = keys[0];
-      }
-
-      this.wrappedProvider = new HDWalletProvider(keys, ...this.remainingArgs);
-      return this.wrappedProvider;
-    }, reason => {
-      console.error(reason);
-      throw reason;
     });
+
+    return Promise.all(fetchKeys).then(
+      results => {
+        let keys = results.map(([result]) => {
+          return Buffer.from(result.plaintext, "base64")
+            .toString()
+            .trim();
+        });
+
+        // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
+        // This is important, as a single mnemonic will fail if passed in as an array.
+        if (keys.length == 1) {
+          keys = keys[0];
+        }
+
+        this.wrappedProvider = new HDWalletProvider(keys, ...this.remainingArgs);
+        return this.wrappedProvider;
+      },
+      reason => {
+        console.error(reason);
+        throw reason;
+      }
+    );
   }
 }
 
