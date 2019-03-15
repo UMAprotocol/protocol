@@ -37,7 +37,7 @@ class ContractInteraction extends Component {
   getButton(text, isEnabled, onClickHandler) {
     return (
       <Button
-        variant="outlined"
+        variant="contained"
         color="primary"
         className={this.props.classes.button}
         disabled={!isEnabled || !this.props.isInteractionEnabled}
