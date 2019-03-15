@@ -12,17 +12,17 @@ const styles = theme => ({
   root: {
     width: "100%",
     overflowX: "auto",
-      marginTop: "32px"
+    marginTop: "32px"
   },
   table: {
-    minWidth: 700,
+    minWidth: 700
   },
-    tableHead: {
-        fontSize: "18px",
-    },
+  tableHead: {
+    fontSize: "18px"
+  },
   button: {
     margin: theme.spacing.unit,
-      fontFamily: "Courier"
+    fontFamily: "Courier"
   }
 });
 
@@ -32,15 +32,29 @@ const DerivativeListTable = ({ derivatives, buttonPushFn, classes }) => (
       ""
     ) : (
       <Table align="center" className={classes.table}>
-        <TableHead >
+        <TableHead>
           <TableRow>
-            <TableCell className={classes.tableHead} padding="dense">Address</TableCell>
-            <TableCell  className={classes.tableHead} padding="dense">Token Name</TableCell>
-            <TableCell  className={classes.tableHead} padding="dense">Symbol</TableCell>
-            <TableCell  className={classes.tableHead} padding="dense">Status</TableCell>
-            <TableCell  className={classes.tableHead} padding="dense">Asset</TableCell>
-            <TableCell  className={classes.tableHead} padding="dense">Created</TableCell>
-            <TableCell  className={classes.tableHead} padding="dense">Role</TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Address
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Token Name
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Symbol
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Status
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Asset
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Created
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Role
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>

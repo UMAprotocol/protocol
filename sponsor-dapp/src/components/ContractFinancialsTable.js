@@ -123,7 +123,10 @@ class ContractFinancialsTable extends Component {
             </TableRow>
 
             <TableRow key="shortMargin">
-              <TableCell><p>- Short margin: </p><p>(Min short margin required)</p></TableCell>
+              <TableCell>
+                <p>- Short margin: </p>
+                <p>(Min short margin required)</p>
+              </TableCell>
               <TableCell>
                 <p>{previousShortMargin}</p> <p>(min {previousRequiredMargin})</p>
               </TableCell>

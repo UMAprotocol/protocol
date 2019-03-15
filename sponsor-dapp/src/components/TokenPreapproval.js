@@ -33,7 +33,7 @@ class TokenPreapproval extends Component {
 
   render() {
     const { drizzleHelper } = this;
-      const {contractAddress, params } = this.props;
+    const { contractAddress, params } = this.props;
 
     const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
     const marginCurrencyName = currencyAddressToName(params, derivativeStorage.externalAddresses.marginCurrency);
@@ -47,32 +47,49 @@ class TokenPreapproval extends Component {
       // safe.
       return null;
     } else if (this.props.isMarginCurrencyAuthorized && !this.props.isDerivativeTokenAuthorized) {
-      copy = <div>You must first authorize the contract to accept ERC-20 tokens from your wallet in order to redeem tokens you create and hold.</div>;
+      copy = (
+        <div>
+          You must first authorize the contract to accept ERC-20 tokens from your wallet in order to redeem tokens you
+          create and hold.
+        </div>
+      );
     } else if (!this.props.isMarginCurrencyAuthorized && this.props.isDerivativeTokenAuthorized) {
-      copy = <div>You must first authorize the contract to accept ERC-20 tokens from your wallet in order to create tokens or deposit margin.</div>;
+      copy = (
+        <div>
+          You must first authorize the contract to accept ERC-20 tokens from your wallet in order to create tokens or
+          deposit margin.
+        </div>
+      );
     } else {
-      copy = <div>You must first authorize the contract to accept ERC-20 tokens from your wallet in order to create tokens, redeem tokens, or deposit margin, or withdraw margin.</div>;
+      copy = (
+        <div>
+          You must first authorize the contract to accept ERC-20 tokens from your wallet in order to create tokens,
+          redeem tokens, or deposit margin, or withdraw margin.
+        </div>
+      );
     }
     return (
       <div>
+        <div>{copy}</div>
         <div>
-        {copy}
+          {!this.props.isMarginCurrencyAuthorized &&
+            this.getButton(
+              "Authorize this smart contract to use " + marginCurrencyText + " as the margin currency",
+              this.props.isInteractionEnabled,
+              this.props.approveMarginCurrencyFn
+            )}
         </div>
         <div>
-        {!this.props.isMarginCurrencyAuthorized &&
-          this.getButton(
-            "Authorize this smart contract to use " + marginCurrencyText + " as the margin currency",
-            this.props.isInteractionEnabled,
-            this.props.approveMarginCurrencyFn
-          )}
-        </div>
-        <div>
-        {!this.props.isDerivativeTokenAuthorized &&
-          this.getButton(
-            "Authorize this contract to allow you to redeem " + derivativeStorage.fixedParameters.symbol + " tokens for " + marginCurrencyText + " in the future",
-            this.props.isInteractionEnabled,
-            this.props.approveDerivativeTokensFn
-          )}
+          {!this.props.isDerivativeTokenAuthorized &&
+            this.getButton(
+              "Authorize this contract to allow you to redeem " +
+                derivativeStorage.fixedParameters.symbol +
+                " tokens for " +
+                marginCurrencyText +
+                " in the future",
+              this.props.isInteractionEnabled,
+              this.props.approveDerivativeTokensFn
+            )}
         </div>
       </div>
     );

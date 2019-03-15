@@ -21,9 +21,9 @@ const styles = theme => ({
     display: "flex",
     width: "100%"
   },
-    icon: {
-        marginRight: "10px"
-    },
+  icon: {
+    marginRight: "10px"
+  },
   toolbar: {
     paddingRight: 24 // keep right padding when drawer closed
   },
@@ -33,8 +33,8 @@ const styles = theme => ({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen
     }),
-      backgroundColor: grey[100],
-      color: "black"
+    backgroundColor: grey[100],
+    color: "black"
   },
   appBarSpacer: theme.mixins.toolbar,
   content: {
@@ -52,9 +52,9 @@ const styles = theme => ({
   contractDetailsModal: {
     padding: 10
   },
-    createButton: {
-        marginTop: "8px"
-    }
+  createButton: {
+    marginTop: "8px"
+  }
 });
 
 class Dashboard extends React.Component {
@@ -148,7 +148,7 @@ class Dashboard extends React.Component {
         <div className="Dashboard">
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
-            <img src="favicon.ico" className={classes.icon}/>
+              <img src="favicon.ico" className={classes.icon} />
               <Typography component="h1" variant="h6" color="inherit" align="left" noWrap className={classes.title}>
                 UMA Dashboard {titleSubHeader}
               </Typography>
@@ -195,7 +195,7 @@ class Dashboard extends React.Component {
                 color="primary"
                 disabled={isCreateDisabled}
                 onClick={this.handleCreateModalOpen}
-        className={classes.createButton}
+                className={classes.createButton}
               >
                 Create New Token Contract
               </Button>
