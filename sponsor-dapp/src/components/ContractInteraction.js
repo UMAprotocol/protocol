@@ -70,14 +70,14 @@ class ContractInteraction extends Component {
     const canBeSettled = drizzleHelper.getCache(contractAddress, "canBeSettled", []);
     const excessMargin = drizzleHelper.getCache(contractAddress, "calcExcessMargin", []);
     const willDefault = excessMargin ? web3.utils.toBN(excessMargin).lt(zero) : false;
+    const withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + " available" : "";
 
     const estimatedShort = drizzleHelper.getCache(contractAddress, "calcShortMarginBalance", []);
     const anyBalanceToWithdraw = estimatedShort ? web3.utils.toBN(estimatedShort).gt(zero) : false;
-    const withdrawHelper = formatWei(estimatedShort, web3) + " available";
 
     const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
     const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
-    const redeemHelper = formatWei(ownedTokens, web3) + " available";
+    const redeemHelper = ownedTokens ? formatWei(ownedTokens, web3) + " available" : "";
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
