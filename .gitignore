@@ -5,6 +5,7 @@ package-lock.json
 coverage/*
 coverage.json
 out.log
+.GckmsOverride.js
 
 # environment-specific values pulled by dotenv package
 .env

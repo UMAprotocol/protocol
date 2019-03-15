@@ -4,12 +4,13 @@
 const argv = require("minimist")(process.argv.slice());
 const fs = require("fs");
 
-// Import the .gcloudKmsOverride.js file if it exists.
-let overrideFname = "./.gcloudKmsOverride.js";
+// Import the .GckmsOverride.js file if it exists.
+// Note: this file is expected to be present in the same directory as this script.
+let overrideFname = ".GckmsOverride.js";
 let configOverride = {};
 try {
-  if (fs.existsSync(overrideFname)) {
-    configOverride = require(overrideFname);
+  if (fs.existsSync(`${__dirname}/${overrideFname}`)) {
+    configOverride = require(`./${overrideFname}`);
   }
 } catch (err) {
   console.error(err);
