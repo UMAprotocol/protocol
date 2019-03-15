@@ -53,7 +53,7 @@ async function getBarchartPrice(asset) {
   }
 
   const tradeTime = jsonOutput.results[0].tradeTimestamp;
-  const timestamp = web3.utils.toBN(new Date(tradeTime).getTime()).divn(1000);
+  const timestamp = web3.utils.toBN(Math.round(new Date(tradeTime).getTime() / 1000));
 
   console.log(`Retrieved quote [${price}] at [${timestamp}] ([${tradeTime}]) from Barchart for asset [${asset}]`);
 
@@ -198,15 +198,15 @@ async function publishFeed(feed) {
     feed.publishInterval,
     feed.minDelay
   );
-  if (shouldPublish) {
-    const { exchangeRate, timestamp } = await getExchangeRate(feed.numerator, feed.denominator);
-    if (timestamp.lte(minNextPublishTime)) {
-      console.log(`Skipping publish because timestamp [${timestamp}] <= minNextPublishTime [${minNextPublishTime}]`);
-    } else {
-      await publishPrice(manualPriceFeed, identifierBytes, timestamp, exchangeRate);
-    }
-  } else {
+  if (!shouldPublish) {
     console.log("Not publishing this run!");
+    return;
+  }
+  const { exchangeRate, timestamp } = await getExchangeRate(feed.numerator, feed.denominator);
+  if (timestamp.lte(minNextPublishTime)) {
+    console.log(`Skipping publish because timestamp [${timestamp}] <= minNextPublishTime [${minNextPublishTime}]`);
+  } else {
+    await publishPrice(manualPriceFeed, identifierBytes, timestamp, exchangeRate);
   }
 }
 
