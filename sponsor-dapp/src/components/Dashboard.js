@@ -51,7 +51,10 @@ const styles = theme => ({
   },
   contractDetailsModal: {
     padding: 10
-  }
+  },
+    createButton: {
+        marginTop: "8px"
+    }
 });
 
 class Dashboard extends React.Component {
@@ -192,6 +195,7 @@ class Dashboard extends React.Component {
                 color="primary"
                 disabled={isCreateDisabled}
                 onClick={this.handleCreateModalOpen}
+        className={classes.createButton}
               >
                 Create New Token Contract
               </Button>
