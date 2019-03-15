@@ -365,6 +365,9 @@ class ContractDetails extends Component {
     if (!isDerivativeTokenAuthorized || !isMarginCurrencyAuthorized) {
       return (
         <TokenPreapproval
+          drizzle={this.props.drizzle}
+          contractAddress={this.props.contractAddress}
+          params={this.props.params}
           isInteractionEnabled={this.state.isInteractionEnabled}
           isDerivativeTokenAuthorized={isDerivativeTokenAuthorized}
           isMarginCurrencyAuthorized={isMarginCurrencyAuthorized}
