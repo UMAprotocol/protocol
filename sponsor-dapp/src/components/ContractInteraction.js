@@ -70,7 +70,13 @@ class ContractInteraction extends Component {
     const canBeSettled = drizzleHelper.getCache(contractAddress, "canBeSettled", []);
     const excessMargin = drizzleHelper.getCache(contractAddress, "calcExcessMargin", []);
     const willDefault = excessMargin ? web3.utils.toBN(excessMargin).lt(zero) : false;
-    const withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + " available" : "";
+    let withdrawHelper = "";
+    let depositHelper = "";
+    if (willDefault) {
+      depositHelper = excessMargin ? "Deposit at least " + formatWei(web3.utils.toBN(excessMargin).muln(-1), web3) : "";
+    } else {
+      withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + " available" : "";
+    }
 
     const estimatedShort = drizzleHelper.getCache(contractAddress, "calcShortMarginBalance", []);
     const anyBalanceToWithdraw = estimatedShort ? web3.utils.toBN(estimatedShort).gt(zero) : false;
@@ -133,6 +139,7 @@ class ContractInteraction extends Component {
               className={this.props.classes.textField}
               disabled={!isDepositEnabled}
               value={formInputs.depositAmount}
+              helperText={depositHelper}
               onChange={e => this.props.handleChangeFn("depositAmount", e)}
             />
             {this.getButton("Deposit", isDepositEnabled, this.props.depositFn)}
