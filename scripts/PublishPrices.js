@@ -32,6 +32,11 @@ const getJson = async url => {
   return json;
 };
 
+// Gets the current time as BN.
+function getCurrentTime() {
+  return web3.utils.toBN(Math.round(Date.now() / 1000));
+}
+
 async function getBarchartPrice(asset) {
   const url = `https://ondemand.websol.barchart.com/getQuote.json?apikey=${barchartKey}&symbols=${asset}`;
   console.log(`Querying Barchart with [${stripApiKey(url, barchartKey)}]`);
@@ -50,15 +55,20 @@ async function getBarchartPrice(asset) {
     throw "Unexpected symbol in json response";
   }
 
-  // TODO: use the timestamp for this lastPrice for the upload rather than the current application time.
   const price = jsonOutput.results[0].lastPrice;
   if (!price) {
     throw "Failed to get valid price out of JSON response";
   }
 
-  console.log(`Retrieved quote [${price}] from Barchart for asset [${asset}]`);
+  const tradeTime = jsonOutput.results[0].tradeTimestamp;
+  const timestamp = web3.utils.toBN(Math.round(new Date(tradeTime).getTime() / 1000));
+  if (!timestamp) {
+    throw `Failed to get valid timestamp out of JSON response tradeTimestamp field [${tradeTime}]`;
+  }
 
-  return price;
+  console.log(`Retrieved quote [${price}] at [${timestamp}] ([${tradeTime}]) from Barchart for asset [${asset}]`);
+
+  return { price, timestamp };
 }
 
 // Gets the Coinbase price for an asset or throws.
@@ -72,7 +82,7 @@ async function getCoinbasePrice(asset) {
     throw "Failed to get valid price out of JSON response";
   }
   console.log(`Retrieved price [${price}] from Coinbase for asset [${asset}]`);
-  return price;
+  return { price, timestamp: getCurrentTime() };
 }
 
 // Gets the AlphaVantage price for an asset or throws.
@@ -86,7 +96,7 @@ async function getAlphaVantageQuote(asset) {
     throw "Failed to get valid price out of JSON response";
   }
   console.log(`Retrieved quote [${price}] from AlphaVantage for asset [${asset}]`);
-  return price;
+  return { price, timestamp: getCurrentTime() };
 }
 
 // Gets the AlphaVantage rate for a currency against USD.
@@ -100,7 +110,7 @@ async function getAlphaVantageCurrencyRate(asset) {
     throw "Failed to get valid price out of JSON response";
   }
   console.log(`Retrieved rate [${rate}] from Coinbase for asset [${asset}]`);
-  return rate;
+  return { price: rate, timestamp: getCurrentTime() };
 }
 
 // Pushes a price to a manual price feed.
@@ -112,7 +122,7 @@ async function publishPrice(manualPriceFeed, identifierBytes, publishTime, excha
 }
 
 async function getNonZeroPriceInWei(assetConfig) {
-  const price = await assetConfig.priceFetchFunction(assetConfig.assetName);
+  const { price, timestamp } = await assetConfig.priceFetchFunction(assetConfig.assetName);
   if (!price) {
     throw `No price for [${assetConfig}]`;
   }
@@ -120,19 +130,20 @@ async function getNonZeroPriceInWei(assetConfig) {
   if (web3.utils.toBN(priceInWei).isZero()) {
     throw `Got zero price for [${assetConfig}]`;
   }
-  return priceInWei;
+  return { priceInWei, timestamp };
 }
 
 // Gets the exchange rate or throws.
 async function getExchangeRate(numeratorConfig, denominatorConfig) {
-  const numInWei = await getNonZeroPriceInWei(numeratorConfig);
+  const { priceInWei: numInWei, timestamp } = await getNonZeroPriceInWei(numeratorConfig);
   // If no denominator is specified, then the exchange rate is the numerator. An example would be SPY denominated in
   // USD.
   if (!denominatorConfig) {
     console.log(`No denominator. Exchange rate (in Wei) [${numInWei}]`);
-    return numInWei;
+    return { exchangeRate: numInWei, timestamp };
   }
-  const denomInWei = await getNonZeroPriceInWei(denominatorConfig);
+  // For now, disregard denominator timestamp.
+  const { priceInWei: denomInWei } = await getNonZeroPriceInWei(denominatorConfig);
   const exchangeRate = web3.utils.toWei(
     BigNumber(numInWei)
       .div(BigNumber(denomInWei))
@@ -142,38 +153,40 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
   console.log(
     `Dividing numerator [${numInWei}] / denominator [${denomInWei}] = exchange rate (in Wei) [${exchangeRate}]`
   );
-  return exchangeRate;
+  return { exchangeRate, timestamp };
 }
 
 // Returns {shouldPublish, publishTime} for an identifier.
-async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterval) {
+async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterval, minDelay) {
   const isIdentifierSupported = await manualPriceFeed.isIdentifierSupported(identifierBytes);
-  const currentTime = web3.utils.toBN(Math.round(Date.now() / 1000));
+  const currentTime = getCurrentTime();
   // If the identifier is not supported (i.e., we have never published a price for it), then we should always publish at
   // the current time.
   if (!isIdentifierSupported) {
     console.log(`IdentifierBytes [${identifierBytes}] is currently unsupported, so publishing a new price`);
     return {
       shouldPublish: true,
-      publishTime: currentTime
+      minNextPublishTime: 0
     };
   }
 
   const lastPublishTime = (await manualPriceFeed.latestPrice(identifierBytes))[0];
   const minNextPublishTime = lastPublishTime.addn(publishInterval);
-  const shouldPublish = currentTime.gte(minNextPublishTime);
+  const shouldPublish = currentTime.subn(minDelay).gte(minNextPublishTime);
   if (!shouldPublish) {
     console.log(
-      `Not publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] > currentTime [${currentTime}]`
+      `Not publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] ` +
+        `> currentTime [${currentTime}] - delay [${minDelay}]`
     );
   } else {
     console.log(
-      `Publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] <= currentTime [${currentTime}]`
+      `Publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] ` +
+        `<= currentTime [${currentTime}] - delay [${minDelay}]`
     );
   }
   return {
     shouldPublish: shouldPublish,
-    publishTime: currentTime
+    minNextPublishTime
   };
 }
 
@@ -189,13 +202,22 @@ async function publishFeed(feed) {
   const manualPriceFeed = await ManualPriceFeed.at(feed.priceFeedAddress);
   const identifierBytes = web3.utils.fromAscii(feed.identifier);
 
-  await initializeTestFeed(manualPriceFeed); // Or we could do this once in the beginning.
-  const { shouldPublish, publishTime } = await getWhenToPublish(manualPriceFeed, identifierBytes, feed.publishInterval);
-  if (shouldPublish) {
-    const exchangeRate = await getExchangeRate(feed.numerator, feed.denominator);
-    await publishPrice(manualPriceFeed, identifierBytes, publishTime, exchangeRate);
-  } else {
+  await initializeTestFeed(manualPriceFeed);
+  const { shouldPublish, minNextPublishTime } = await getWhenToPublish(
+    manualPriceFeed,
+    identifierBytes,
+    feed.publishInterval,
+    feed.minDelay
+  );
+  if (!shouldPublish) {
     console.log("Not publishing this run!");
+    return;
+  }
+  const { exchangeRate, timestamp } = await getExchangeRate(feed.numerator, feed.denominator);
+  if (timestamp.lte(minNextPublishTime)) {
+    console.log(`Skipping publish because timestamp [${timestamp}] <= minNextPublishTime [${minNextPublishTime}]`);
+  } else {
+    await publishPrice(manualPriceFeed, identifierBytes, timestamp, exchangeRate);
   }
 }
 
@@ -206,6 +228,8 @@ function getPriceFeeds() {
       identifier: "ESM19",
       priceFeedAddress: priceFeedAddress,
       publishInterval: 900,
+      // Feed has a minimum delay of 10 minutes.
+      minDelay: 600,
       numerator: {
         priceFetchFunction: getBarchartPrice,
         assetName: "ESM19"
@@ -215,6 +239,8 @@ function getPriceFeeds() {
       identifier: "CBN19",
       priceFeedAddress: priceFeedAddress,
       publishInterval: 900,
+      // Feed has a minimum delay of 10 minutes.
+      minDelay: 600,
       numerator: {
         priceFetchFunction: getBarchartPrice,
         assetName: "CBN19"
