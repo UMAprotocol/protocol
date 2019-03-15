@@ -21,11 +21,11 @@ const PublishTestPrice = async function(callback) {
 
     await priceFeed.setCurrentTime(newTime, { from: deployer });
     await priceFeed.pushLatestPrice(identifierBytes, newTime, newPrice, { from: deployer });
-  } catch(e) {
+  } catch (e) {
     console.log("ERROR: " + e);
   }
 
   callback();
-}
+};
 
 module.exports = PublishTestPrice;
