@@ -62,7 +62,7 @@ module.exports = async function(deployer, network, accounts) {
     from: keys.deployer
   });
   const manualPriceFeed = await deployAndGet(deployer, ManualPriceFeed, controllableTiming, { from: keys.priceFeed });
-  const centralizedStore = await deployAndGet(deployer, CentralizedStore, controllableTiming, { from: keys.store });
+  const centralizedStore = await deployAndGet(deployer, CentralizedStore, { from: keys.store });
   const returnCalculator = await deployAndGet(deployer, LeveragedReturnCalculator, 1, { from: keys.deployer });
 
   // Deploy sponsor whitelist and add second account to it.
