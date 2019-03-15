@@ -13,7 +13,7 @@ git clone https://github.com/maandree/libkeccak
 cd libkeccak
 
 # Checkout a specific hash to avoid code contamination later.
-git checkout e17cf813fa38fbc13df6dbecdad5e6d0e8223ba2
+git checkout 47139985115e175ed9c3f7d648d6d9ec7c48b89b
 make
 make install PREFIX=/usr
 
@@ -23,7 +23,7 @@ git clone https://github.com/maandree/sha3sum.git
 cd sha3sum
 
 # Checkout a specific hash to avoid code contamination later.
-git checkout 47139985115e175ed9c3f7d648d6d9ec7c48b89b
+git checkout e17cf813fa38fbc13df6dbecdad5e6d0e8223ba2
 make
 make install
 
