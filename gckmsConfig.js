@@ -1,6 +1,5 @@
 const argv = require("minimist")(process.argv.slice());
 
-
 function getStaticConfig() {
   // The anatomy of an individual config is:
   //   projectId: ID of a Google Cloud project
@@ -17,7 +16,7 @@ function getStaticConfig() {
       priceFeed: {},
       sponsorWhitelist: {},
       returnCalculatorWhitelist: {},
-      marginCurrencyWhitelist: {},
+      marginCurrencyWhitelist: {}
     },
     ropsten: {
       registry: {},
@@ -26,7 +25,7 @@ function getStaticConfig() {
       priceFeed: {},
       sponsorWhitelist: {},
       returnCalculatorWhitelist: {},
-      marginCurrencyWhitelist: {},
+      marginCurrencyWhitelist: {}
     },
     private: {
       deployer: {},
@@ -48,25 +47,24 @@ function getStaticConfig() {
       }
     }
   };
-};
+}
 
 function getNetworkName() {
-  switch(argv.network) {
-  case "mainnet":
-    return "main";
-  case "ropsten":
-    return "ropsten";
-  default:
-    return "private";
-}
+  switch (argv.network) {
+    case "mainnet":
+      return "main";
+    case "ropsten":
+      return "ropsten";
+    default:
+      return "private";
+  }
 }
 
 const staticConfig = getStaticConfig();
 const networkConfig = staticConfig[getNetworkName()];
 
-const keyConfigs = [];
-for (let keyName of argv.keys) {
-  keyConfigs.push(networkConfig[keyName]);
-}
+const keyConfigs = argv.keys.map(keyName => {
+  return networkConfig[keyName];
+});
 
 module.exports = keyConfigs;
