@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
+import Grid from "@material-ui/core/Grid";
 import DrizzleHelper from "../utils/DrizzleHelper";
 import Button from "@material-ui/core/Button";
 import { withStyles } from "@material-ui/core/styles";
@@ -69,7 +70,14 @@ class TokenPreapproval extends Component {
       );
     }
     return (
-      <div>
+      <Grid
+        container
+        spacing={16}
+        direction="column"
+        alignItems="center"
+        align="center"
+        className={this.props.classes.root}
+      >
         <div>{copy}</div>
         <div>
           {!this.props.isMarginCurrencyAuthorized &&
@@ -91,7 +99,7 @@ class TokenPreapproval extends Component {
               this.props.approveDerivativeTokensFn
             )}
         </div>
-      </div>
+      </Grid>
     );
   }
 }
