@@ -1,5 +1,5 @@
 // Example usage:
-// $(npm bin)/truffle exec <some_script> --network test --keys priceFeed --keys priceFeed --keys registry
+// $(npm bin)/truffle exec <some_script> --network test --keys priceFeed --keys registry
 
 const argv = require("minimist")(process.argv.slice());
 const fs = require("fs");
