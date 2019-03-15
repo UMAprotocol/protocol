@@ -54,7 +54,7 @@ class ContractInteraction extends Component {
     const { web3 } = this.props.drizzle;
     const account = this.props.drizzle.store.getState().accounts[0];
 
-      const zero = web3.utils.toBN("0");
+    const zero = web3.utils.toBN("0");
 
     const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
 
@@ -71,10 +71,10 @@ class ContractInteraction extends Component {
     const willDefault = excessMargin ? web3.utils.toBN(excessMargin).lt(zero) : false;
 
     const estimatedShort = drizzleHelper.getCache(contractAddress, "calcShortMarginBalance", []);
-      const anyBalanceToWithdraw = estimatedShort ? web3.utils.toBN(estimatedShort).gt(zero) : false;
+    const anyBalanceToWithdraw = estimatedShort ? web3.utils.toBN(estimatedShort).gt(zero) : false;
 
-      const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
-      const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
+    const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
+    const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
@@ -87,7 +87,7 @@ class ContractInteraction extends Component {
     let isDepositEnabled = isLiveNoExpiry || aboutToExpire;
     let isWithdrawEnabled = (isLiveNoExpiry || isSettled) && anyBalanceToWithdraw;
     let isCreateEnabled = isLiveNoExpiry;
-    let isRedeemEnabled = isLiveNoExpiry || isSettled;
+    let isRedeemEnabled = (isLiveNoExpiry || isSettled) && anyTokensToRedeem;
 
     // If operations are disabled in states that we would expect them to be enabled, this message explains what's going
     // on.
