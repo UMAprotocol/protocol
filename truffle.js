@@ -1,4 +1,5 @@
 const HDWalletProvider = require("truffle-hdwallet-provider");
+const gckmsConfig = require("./gckmsConfig");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
