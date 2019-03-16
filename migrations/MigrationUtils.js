@@ -30,12 +30,12 @@ function getKeysForNetwork(network, accounts) {
   } else {
     return {
       deployer: accounts[0],
-      registry: accounts[0],
-      store: accounts[0],
-      priceFeed: accounts[0],
-      sponsorWhitelist: accounts[0],
-      returnCalculatorWhitelist: accounts[0],
-      marginCurrencyWhitelist: accounts[0]
+      registry: accounts[1],
+      store: accounts[2],
+      priceFeed: accounts[3],
+      sponsorWhitelist: accounts[4],
+      returnCalculatorWhitelist: accounts[5],
+      marginCurrencyWhitelist: accounts[6]
     };
   }
 };
