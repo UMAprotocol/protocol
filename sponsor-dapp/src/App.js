@@ -32,9 +32,9 @@ class App extends Component {
         primaryColor = "#ff4a4a";
         break;
       default:
-            // DO NOT SUBMIT
+        // DO NOT SUBMIT
         primaryColor = "#ff4a4a";
-        // primaryColor = "#a44aff";
+      // primaryColor = "#a44aff";
     }
 
     return createMuiTheme({
