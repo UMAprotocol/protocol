@@ -153,6 +153,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isCreateEnabled}
               value={formInputs.createAmount}
+              label="# tokens"
               onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
             {this.getButton("Create", isCreateEnabled, this.props.createFn)}
@@ -174,6 +175,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isRedeemEnabled}
               value={formInputs.redeemAmount}
+              label="# tokens"
               helperText={redeemHelper}
               onChange={e => this.props.handleChangeFn("redeemAmount", e)}
             />
