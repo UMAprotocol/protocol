@@ -429,9 +429,13 @@ class ContractDetails extends Component {
       creationTime: formatDate(derivativeStorage.fixedParameters.creationTime, web3),
       // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
       expiryTime: derivativeStorage.endTime === UINT_MAX ? "None" : formatDate(derivativeStorage.endTime, web3),
-      priceFeedAddress: derivativeStorage.externalAddresses.priceFeed,
+      priceFeedAddress:
+        web3.utils.hexToAscii(derivativeStorage.fixedParameters.product) +
+        " (" +
+        derivativeStorage.externalAddresses.priceFeed +
+        ")",
       marginCurrency: marginCurrencyDisplayName
-        ? marginCurrencyDisplayName
+        ? marginCurrencyDisplayName + " (" + derivativeStorage.externalAddresses.marginCurrency + ")"
         : derivativeStorage.externalAddresses.marginCurrency,
       returnCalculator: derivativeStorage.externalAddresses.returnCalculator
     };
