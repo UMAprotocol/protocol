@@ -10,7 +10,7 @@ const styles = theme => ({
   button: {
     height: 56,
     margin: 10,
-    width: 800
+    width: 600
   }
 });
 
