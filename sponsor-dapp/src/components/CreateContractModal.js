@@ -3,6 +3,8 @@ import Typography from "@material-ui/core/Typography";
 import { withStyles } from "@material-ui/core/styles";
 import Button from "@material-ui/core/Button";
 import Dialog from "@material-ui/core/Dialog";
+import IconButton from "@material-ui/core/IconButton";
+import CloseIcon from "@material-ui/icons/Close";
 import DialogContent from "@material-ui/core/DialogContent";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import InputLabel from "@material-ui/core/InputLabel";
@@ -27,9 +29,18 @@ const styles = theme => ({
   submitButton: {
     marginTop: "30px"
   },
+  title: {
+    margin: 0,
+    padding: theme.spacing.unit * 2
+  },
   modal: {
-    padding: "30px 50px 40px 50px",
     width: "652px"
+  },
+  closeButton: {
+    position: "absolute",
+    right: theme.spacing.unit,
+    top: theme.spacing.unit,
+    color: theme.palette.grey[500]
   }
 });
 
@@ -375,7 +386,12 @@ class CreateContractModal extends React.Component {
 
     return (
       <Dialog open={this.props.open} onClose={this.props.onClose} classes={{ paper: classes.modal }}>
-        <DialogTitle>Create New Token Contract</DialogTitle>
+        <DialogTitle className={classes.title}>
+          Create New Token Contract
+          <IconButton onClick={this.props.onClose} className={classes.closeButton}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
         <DialogContent>
           <div>
             <Typography variant="body2">Account: {account}</Typography>

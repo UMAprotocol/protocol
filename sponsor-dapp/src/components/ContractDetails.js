@@ -13,6 +13,8 @@ import { formatDate } from "../utils/FormattingUtils.js";
 import { withStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
 import DrizzleHelper from "../utils/DrizzleHelper.js";
+import IconButton from "@material-ui/core/IconButton";
+import CloseIcon from "@material-ui/icons/Close";
 
 const styles = theme => ({
   root: {
@@ -25,9 +27,6 @@ const styles = theme => ({
   },
   title: {
     flexGrow: 1
-  },
-  closeBar: {
-    textAlign: "right"
   },
   closeButton: {
     color: "blue",
@@ -442,11 +441,6 @@ class ContractDetails extends Component {
 
     return (
       <div className={this.props.classes.root}>
-        <div className={this.props.classes.closeBar}>
-          <Button className={this.props.classes.closeButton} onClick={this.props.onClose}>
-            Close
-          </Button>
-        </div>
         <div className={this.props.classes.titleSection}>
           <Typography component="h1" variant="h4" className={this.props.classes.title}>
             {contractName} ({derivativeStorage.fixedParameters.symbol})
