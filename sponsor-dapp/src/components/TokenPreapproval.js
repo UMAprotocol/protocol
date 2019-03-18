@@ -66,7 +66,7 @@ class TokenPreapproval extends Component {
       copy = (
         <div>
           You must first authorize the contract to accept ERC-20 tokens from your wallet in order to create tokens,
-          redeem tokens, or deposit margin, or withdraw margin.
+          redeem tokens, deposit margin, or withdraw margin.
         </div>
       );
     }
@@ -85,7 +85,7 @@ class TokenPreapproval extends Component {
         <div>
           {!this.props.isMarginCurrencyAuthorized &&
             this.getButton(
-              "Authorize this smart contract to use " + marginCurrencyText + " as the margin currency",
+              "Authorize " + marginCurrencyText + " as margin currency",
               this.props.isInteractionEnabled,
               this.props.approveMarginCurrencyFn
             )}
@@ -93,11 +93,7 @@ class TokenPreapproval extends Component {
         <div>
           {!this.props.isDerivativeTokenAuthorized &&
             this.getButton(
-              "Authorize this contract to allow you to redeem " +
-                derivativeStorage.fixedParameters.symbol +
-                " tokens for " +
-                marginCurrencyText +
-                " in the future",
+              "Authorize contract to redeem " + derivativeStorage.fixedParameters.symbol + " for " + marginCurrencyText,
               this.props.isInteractionEnabled,
               this.props.approveDerivativeTokensFn
             )}
