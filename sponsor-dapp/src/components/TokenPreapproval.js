@@ -1,10 +1,11 @@
 import React, { Component } from "react";
-import Typography from "@material-ui/core/Typography";
-import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
-import Grid from "@material-ui/core/Grid";
-import DrizzleHelper from "../utils/DrizzleHelper";
 import Button from "@material-ui/core/Button";
+import Grid from "@material-ui/core/Grid";
+import Typography from "@material-ui/core/Typography";
 import { withStyles } from "@material-ui/core/styles";
+
+import DrizzleHelper from "../utils/DrizzleHelper";
+import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 
 const styles = theme => ({
   button: {
@@ -49,26 +50,17 @@ class TokenPreapproval extends Component {
       // safe.
       return null;
     } else if (this.props.isMarginCurrencyAuthorized && !this.props.isDerivativeTokenAuthorized) {
-      copy = (
-        <div>
-          You must first authorize the contract to accept ERC-20 tokens from your wallet in order to redeem tokens you
-          create and hold.
-        </div>
-      );
+      copy =
+        "You must first authorize the contract to accept ERC-20 tokens from your wallet in order to " +
+        "redeem tokens you create and hold.";
     } else if (!this.props.isMarginCurrencyAuthorized && this.props.isDerivativeTokenAuthorized) {
-      copy = (
-        <div>
-          You must first authorize the contract to accept ERC-20 tokens from your wallet in order to create tokens or
-          deposit margin.
-        </div>
-      );
+      copy =
+        "You must first authorize the contract to accept ERC-20 tokens from your wallet in order to " +
+        "create tokens or deposit margin.";
     } else {
-      copy = (
-        <div>
-          You must first authorize the contract to accept ERC-20 tokens from your wallet in order to create tokens,
-          redeem tokens, deposit margin, or withdraw margin.
-        </div>
-      );
+      copy =
+        "You must first authorize the contract to accept ERC-20 tokens from your wallet in order to " +
+        "create tokens, redeem tokens, deposit margin, or withdraw margin.";
     }
     return (
       <Grid
@@ -85,7 +77,7 @@ class TokenPreapproval extends Component {
         <div>
           {!this.props.isMarginCurrencyAuthorized &&
             this.getButton(
-              "Authorize " + marginCurrencyText + " as margin currency",
+              `Authorize ${marginCurrencyText} as margin currency`,
               this.props.isInteractionEnabled,
               this.props.approveMarginCurrencyFn
             )}
@@ -93,7 +85,7 @@ class TokenPreapproval extends Component {
         <div>
           {!this.props.isDerivativeTokenAuthorized &&
             this.getButton(
-              "Authorize contract to redeem " + derivativeStorage.fixedParameters.symbol + " for " + marginCurrencyText,
+              `Authorize contract to redeem ${derivativeStorage.fixedParameters.symbol} for ${marginCurrencyText}`,
               this.props.isInteractionEnabled,
               this.props.approveDerivativeTokensFn
             )}

@@ -26,6 +26,14 @@ class ContractParameters extends Component {
     this.setState(state => ({ open: !state.open }));
   };
 
+  withTypography(text) {
+    return (
+      <div>
+        <Typography variant="body2">{text}</Typography>
+      </div>
+    );
+  }
+
   render() {
     const { parameters, classes } = this.props;
     return (
@@ -34,15 +42,13 @@ class ContractParameters extends Component {
           {this.state.open ? <ExpandLess /> : <ExpandMore />} Details
         </Button>
         <Collapse in={this.state.open} timeout="auto">
-          <Typography variant="body2">
-            Address: {parameters.contractAddress}
-            <div>Sponsor: {parameters.creatorAddress}</div>
-            <div>Created: {parameters.creationTime}</div>
-            <div>Expiry: {parameters.expiryTime}</div>
-            <div>Price Feed: {parameters.priceFeedAddress}</div>
-            <div>Margin currency: {parameters.marginCurrency}</div>
-            <div>Return Calculator: {parameters.returnCalculator}</div>
-          </Typography>
+          {this.withTypography(`Address: ${parameters.contractAddress}`)}
+          {this.withTypography(`Sponsor: ${parameters.creatorAddress}`)}
+          {this.withTypography(`Created: ${parameters.creationTime}`)}
+          {this.withTypography(`Expiry: ${parameters.expiryTime}`)}
+          {this.withTypography(`Price Feed: ${parameters.priceFeedAddress}`)}
+          {this.withTypography(`Margin currency: ${parameters.marginCurrency}`)}
+          {this.withTypography(`Return Calculator: ${parameters.returnCalculator}`)}
         </Collapse>
       </div>
     );

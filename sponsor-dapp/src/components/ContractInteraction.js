@@ -2,11 +2,11 @@ import React, { Component } from "react";
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
-import { formatWei } from "../utils/FormattingUtils";
-import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 
-import DrizzleHelper from "../utils/DrizzleHelper";
 import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
+import DrizzleHelper from "../utils/DrizzleHelper";
+import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
+import { formatWei } from "../utils/FormattingUtils";
 
 const styles = theme => ({
   button: {
@@ -81,8 +81,9 @@ class ContractInteraction extends Component {
       withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + marginCurrencyText + " available" : "";
     }
 
-    const estimatedShort = drizzleHelper.getCache(contractAddress, "calcShortMarginBalance", []);
-    const anyBalanceToWithdraw = estimatedShort ? web3.utils.toBN(estimatedShort).gt(zero) : false;
+    // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
+    // prevent withdrawing into default is handled separately.
+    const anyBalanceToWithdraw = web3.utils.toBN(derivativeStorage.shortBalance).gt(zero);
 
     const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
     const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
@@ -142,6 +143,7 @@ class ContractInteraction extends Component {
               className={this.props.classes.textField}
               disabled={!isDepositEnabled}
               value={formInputs.depositAmount}
+              label={"# " + marginCurrencyText}
               helperText={depositHelper}
               onChange={e => this.props.handleChangeFn("depositAmount", e)}
             />
@@ -165,6 +167,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isWithdrawEnabled}
               value={formInputs.withdrawAmount}
+              label={"# " + marginCurrencyText}
               helperText={withdrawHelper}
               onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
             />

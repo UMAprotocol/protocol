@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import ContractFinancialsTable from "./ContractFinancialsTable.js";
-import Button from "@material-ui/core/Button";
 import ContractParameters from "./ContractParameters.js";
 import ContractInteraction from "./ContractInteraction.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
@@ -423,11 +422,9 @@ class ContractDetails extends Component {
       expiryTime: derivativeStorage.endTime === UINT_MAX ? "None" : formatDate(derivativeStorage.endTime, web3),
       priceFeedAddress:
         web3.utils.hexToAscii(derivativeStorage.fixedParameters.product) +
-        " (" +
-        derivativeStorage.externalAddresses.priceFeed +
-        ")",
+        ` (${derivativeStorage.externalAddresses.priceFeed})`,
       marginCurrency: marginCurrencyDisplayName
-        ? marginCurrencyDisplayName + " (" + derivativeStorage.externalAddresses.marginCurrency + ")"
+        ? `${marginCurrencyDisplayName} (${derivativeStorage.externalAddresses.marginCurrency})`
         : derivativeStorage.externalAddresses.marginCurrency,
       returnCalculator: derivativeStorage.externalAddresses.returnCalculator
     };

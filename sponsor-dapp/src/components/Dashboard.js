@@ -1,19 +1,18 @@
 import React from "react";
-import { withStyles } from "@material-ui/core/styles";
 import AppBar from "@material-ui/core/AppBar";
 import Button from "@material-ui/core/Button";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import Dialog from "@material-ui/core/Dialog";
 import DialogContent from "@material-ui/core/DialogContent";
-import DialogTitle from "@material-ui/core/DialogTitle";
 import Grid from "@material-ui/core/Grid";
 import Toolbar from "@material-ui/core/Toolbar";
 import Typography from "@material-ui/core/Typography";
 import grey from "@material-ui/core/colors/grey";
+import { withStyles } from "@material-ui/core/styles";
 
-import DerivativeList from "./DerivativeList";
 import ContractDetails from "./ContractDetails";
 import CreateContractModal from "./CreateContractModal";
+import DerivativeList from "./DerivativeList";
 
 import AddressWhitelist from "../contracts/AddressWhitelist.json";
 
@@ -149,7 +148,7 @@ class Dashboard extends React.Component {
         <div className="Dashboard">
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
-              <img src="favicon.ico" className={classes.icon} />
+              <img src="favicon.ico" alt="UMA logo" className={classes.icon} />
               <Typography component="h1" variant="h6" color="inherit" align="left" noWrap className={classes.title}>
                 UMA Dashboard {titleSubHeader}
               </Typography>
