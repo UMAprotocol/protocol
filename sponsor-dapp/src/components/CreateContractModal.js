@@ -1,4 +1,5 @@
 import React from "react";
+import Typography from "@material-ui/core/Typography";
 import { withStyles } from "@material-ui/core/styles";
 import Button from "@material-ui/core/Button";
 import Dialog from "@material-ui/core/Dialog";
@@ -21,7 +22,7 @@ const styles = theme => ({
   root: {
     display: "flex",
     flexDirection: "column",
-      marginTop: "30px"
+    marginTop: "30px"
   },
   submitButton: {
     marginTop: "30px"
@@ -376,7 +377,9 @@ class CreateContractModal extends React.Component {
       <Dialog open={this.props.open} onClose={this.props.onClose} classes={{ paper: classes.modal }}>
         <DialogTitle>Create New Token Contract</DialogTitle>
         <DialogContent>
-          <div>Account: {account}</div>
+          <div>
+            <Typography variant="body2">Account: {account}</Typography>
+          </div>
           <form className={classes.root} autoComplete="off">
             <FormControl>
               <InputLabel htmlFor="create-contract-leverage">Leverage</InputLabel>

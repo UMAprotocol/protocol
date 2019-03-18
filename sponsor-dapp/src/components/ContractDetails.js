@@ -31,6 +31,7 @@ const styles = theme => ({
   },
   closeButton: {
     color: "blue",
+    textTransform: "none",
     textDecoration: "underline"
   }
 });
@@ -410,7 +411,7 @@ class ContractDetails extends Component {
       this.state.loadingPriceFeedData ||
       this.state.loadingMarginCurrencyData
     ) {
-      return <div>Looking up contract details...</div>;
+      return <Typography variant="body2">Looking up contract details...</Typography>;
     }
     const { drizzle, drizzleState, params } = this.props;
     const web3 = drizzle.web3;

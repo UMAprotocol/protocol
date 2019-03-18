@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import Typography from "@material-ui/core/Typography";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 import Grid from "@material-ui/core/Grid";
 import DrizzleHelper from "../utils/DrizzleHelper";
@@ -78,7 +79,9 @@ class TokenPreapproval extends Component {
         align="center"
         className={this.props.classes.root}
       >
-        <div>{copy}</div>
+        <div>
+          <Typography variant="body2">{copy}</Typography>
+        </div>
         <div>
           {!this.props.isMarginCurrencyAuthorized &&
             this.getButton(

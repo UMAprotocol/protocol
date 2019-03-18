@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import Typography from "@material-ui/core/Typography";
 import Collapse from "@material-ui/core/Collapse";
 import { withStyles } from "@material-ui/core/styles";
 import ExpandLess from "@material-ui/icons/ExpandLess";
@@ -33,13 +34,15 @@ class ContractParameters extends Component {
           {this.state.open ? <ExpandLess /> : <ExpandMore />} Details
         </Button>
         <Collapse in={this.state.open} timeout="auto">
-          Address: {parameters.contractAddress}
-          <div>Sponsor: {parameters.creatorAddress}</div>
-          <div>Created: {parameters.creationTime}</div>
-          <div>Expiry: {parameters.expiryTime}</div>
-          <div>Price Feed: {parameters.priceFeedAddress}</div>
-          <div>Margin currency: {parameters.marginCurrency}</div>
-          <div>Return Calculator: {parameters.returnCalculator}</div>
+          <Typography variant="body2">
+            Address: {parameters.contractAddress}
+            <div>Sponsor: {parameters.creatorAddress}</div>
+            <div>Created: {parameters.creationTime}</div>
+            <div>Expiry: {parameters.expiryTime}</div>
+            <div>Price Feed: {parameters.priceFeedAddress}</div>
+            <div>Margin currency: {parameters.marginCurrency}</div>
+            <div>Return Calculator: {parameters.returnCalculator}</div>
+          </Typography>
         </Collapse>
       </div>
     );
