@@ -4,7 +4,6 @@ import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
 import { formatWei } from "../utils/FormattingUtils";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
-import red from "@material-ui/core/colors/red";
 
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
@@ -20,9 +19,6 @@ const styles = theme => ({
     flexGrow: 1,
     justifyContent: "space-between",
     marginTop: 20
-  },
-  warning: {
-    color: red[500]
   },
   centerButton: {}
 });
@@ -155,23 +151,23 @@ class ContractInteraction extends Component {
           <div>
             <TextField
               variant="outlined"
-              disabled={!isWithdrawEnabled}
-              value={formInputs.withdrawAmount}
-              helperText={withdrawHelper}
-              onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
+              disabled={!isCreateEnabled}
+              value={formInputs.createAmount}
+              onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
-            {this.getButton("Withdraw", isWithdrawEnabled, this.props.withdrawFn)}
+            {this.getButton("Create", isCreateEnabled, this.props.createFn)}
           </div>
         </div>
         <div className={this.props.classes.rowOne}>
           <div>
             <TextField
               variant="outlined"
-              disabled={!isCreateEnabled}
-              value={formInputs.createAmount}
-              onChange={e => this.props.handleChangeFn("createAmount", e)}
+              disabled={!isWithdrawEnabled}
+              value={formInputs.withdrawAmount}
+              helperText={withdrawHelper}
+              onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
             />
-            {this.getButton("Create", isCreateEnabled, this.props.createFn)}
+            {this.getButton("Withdraw", isWithdrawEnabled, this.props.withdrawFn)}
           </div>
           <div>
             <TextField
