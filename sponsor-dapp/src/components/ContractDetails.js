@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import ContractFinancialsTable from "./ContractFinancialsTable.js";
+import Button from "@material-ui/core/Button";
 import ContractParameters from "./ContractParameters.js";
 import ContractInteraction from "./ContractInteraction.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
@@ -16,7 +17,7 @@ import DrizzleHelper from "../utils/DrizzleHelper.js";
 const styles = theme => ({
   root: {
     minWidth: 900,
-    margin: "36px 26px 26px 26px"
+    margin: "16px 26px 26px 26px"
   },
   titleSection: {
     display: "flex",
@@ -24,6 +25,13 @@ const styles = theme => ({
   },
   title: {
     flexGrow: 1
+  },
+  closeBar: {
+    textAlign: "right"
+  },
+  closeButton: {
+    color: "blue",
+    textDecoration: "underline"
   }
 });
 
@@ -428,6 +436,11 @@ class ContractDetails extends Component {
 
     return (
       <div className={this.props.classes.root}>
+        <div className={this.props.classes.closeBar}>
+          <Button className={this.props.classes.closeButton} onClick={this.handleClose}>
+            Close
+          </Button>
+        </div>
         <div className={this.props.classes.titleSection}>
           <Typography component="h1" variant="h4" className={this.props.classes.title}>
             {contractName} ({derivativeStorage.fixedParameters.symbol})
