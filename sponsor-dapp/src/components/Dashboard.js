@@ -171,6 +171,7 @@ class Dashboard extends React.Component {
                 drizzle={this.props.drizzle}
                 drizzleState={this.props.drizzleState}
                 params={this.props.params}
+                onClose={this.handleDetailsModalClose}
               />
             </DialogContent>
           </Dialog>

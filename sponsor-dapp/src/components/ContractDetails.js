@@ -437,7 +437,7 @@ class ContractDetails extends Component {
     return (
       <div className={this.props.classes.root}>
         <div className={this.props.classes.closeBar}>
-          <Button className={this.props.classes.closeButton} onClick={this.handleClose}>
+          <Button className={this.props.classes.closeButton} onClick={this.props.onClose}>
             Close
           </Button>
         </div>
