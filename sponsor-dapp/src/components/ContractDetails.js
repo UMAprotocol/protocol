@@ -17,7 +17,7 @@ import DrizzleHelper from "../utils/DrizzleHelper.js";
 const styles = theme => ({
   root: {
     minWidth: 900,
-    margin: "16px 26px 26px 26px"
+    margin: "0px 26px 26px 26px"
   },
   titleSection: {
     display: "flex",
@@ -389,6 +389,7 @@ class ContractDetails extends Component {
       return (
         <ContractInteraction
           drizzle={this.props.drizzle}
+          params={this.props.params}
           contractAddress={this.props.contractAddress}
           remarginFn={this.remarginContract}
           depositFn={this.depositMargin}
