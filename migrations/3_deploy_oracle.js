@@ -9,7 +9,9 @@ module.exports = async function(deployer, network, accounts) {
   const registry = await Registry.deployed();
 
   // TODO: possibly update the oracle owner once we integrate hardware wallets.
-  const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, registry.address, controllableTiming, { from: keys.deployer });
+  const centralizedOracle = await deployAndGet(deployer, CentralizedOracle, registry.address, controllableTiming, {
+    from: keys.deployer
+  });
 
   // Add supported identifiers to the Oracle.
   const supportedIdentifiers = ["ESM19", "CBN19"];

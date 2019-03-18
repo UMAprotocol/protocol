@@ -7,13 +7,13 @@ function enableControllableTiming(network) {
     network === "ci" ||
     network === "coverage"
   );
-};
+}
 
 // Helper function to deploy a contract and get the result.
 async function deployAndGet(deployer, contractType, ...args) {
   await deployer.deploy(contractType, ...args);
   return await contractType.deployed();
-};
+}
 
 // Maps key ordering to key names.
 function getKeysForNetwork(network, accounts) {
@@ -38,10 +38,10 @@ function getKeysForNetwork(network, accounts) {
       marginCurrencyWhitelist: accounts[6]
     };
   }
-};
+}
 
 module.exports = {
   enableControllableTiming,
   deployAndGet,
   getKeysForNetwork
-}
+};
