@@ -20,7 +20,8 @@ import LeveragedReturnCalculator from "../contracts/LeveragedReturnCalculator";
 const styles = theme => ({
   root: {
     display: "flex",
-    flexDirection: "column"
+    flexDirection: "column",
+      marginTop: "30px"
   },
   submitButton: {
     marginTop: "30px"
