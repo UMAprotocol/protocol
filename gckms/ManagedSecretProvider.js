@@ -6,15 +6,22 @@ const { Storage } = require("@google-cloud/storage");
 // Wraps HDWalletProvider, deferring construction and allowing a Cloud KMS managed secret to be fetched asynchronously
 // and used to initialize an HDWalletProvider.
 class ManagedSecretProvider {
-  // cloudKmsSecretConfig must have the fields:
-  //   projectId: ID of a Google Cloud project
-  //   keyRingId: ID of keyring
-  //   cryptoKeyId: ID of the crypto key to use for decrypting the key material
-  //   locationId: Google Cloud location, e.g., 'global'.
-  //   ciphertextBucket: ID of a Google Cloud storage bucket.
-  //   ciphertextFilename: Name of a file within `ciphertextBucket`.
-  constructor(cloudKmsSecretConfig, ...remainingArgs) {
-    this.cloudKmsSecretConfig = cloudKmsSecretConfig;
+  // cloudKmsSecretConfigs must either be:
+  //   a single config object which representing a mnemonic or a private key on GCKMS
+  //   or
+  //   an array of configs where each config must represent a private key
+  //   and each config contains the following fields:
+  //     projectId: ID of a Google Cloud project
+  //     keyRingId: ID of keyring
+  //     cryptoKeyId: ID of the crypto key to use for decrypting the key material
+  //     locationId: Google Cloud location, e.g., 'global'.
+  //     ciphertextBucket: ID of a Google Cloud storage bucket.
+  //     ciphertextFilename: Name of a file within `ciphertextBucket`.
+  constructor(cloudKmsSecretConfigs, ...remainingArgs) {
+    if (!Array.isArray(cloudKmsSecretConfigs)) {
+      cloudKmsSecretConfigs = [cloudKmsSecretConfigs];
+    }
+    this.cloudKmsSecretConfigs = cloudKmsSecretConfigs;
     this.remainingArgs = remainingArgs;
     this.wrappedProvider = null;
     this.wrappedProviderPromise = this.getOrConstructWrappedProvider();
@@ -35,8 +42,9 @@ class ManagedSecretProvider {
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all) {
-    // The underlying call appears to always throw.
-    throw "Use sendAsync instead of send";
+    this.wrappedProviderPromise.then(wrappedProvider => {
+      wrappedProvider.send(...all);
+    });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
@@ -64,39 +72,44 @@ class ManagedSecretProvider {
       return Promise.resolve(this.wrappedProvider);
     }
 
-    const storage = new Storage();
-    const keyMaterialBucket = storage.bucket(this.cloudKmsSecretConfig.ciphertextBucket);
-    const ciphertextFile = keyMaterialBucket.file(this.cloudKmsSecretConfig.ciphertextFilename);
+    const fetchKeys = this.cloudKmsSecretConfigs.map(config => {
+      const storage = new Storage();
+      const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
+      const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
 
-    return ciphertextFile
-      .download()
-      .then(data => {
+      return ciphertextFile.download().then(data => {
         // Send the request to decrypt the downloaded file.
         const contentsBuffer = data[0];
         const ciphertext = contentsBuffer.toString("base64");
 
         const client = new kms.KeyManagementServiceClient();
-        const name = client.cryptoKeyPath(
-          this.cloudKmsSecretConfig.projectId,
-          this.cloudKmsSecretConfig.locationId,
-          this.cloudKmsSecretConfig.keyRingId,
-          this.cloudKmsSecretConfig.cryptoKeyId
-        );
+        const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
         return client.decrypt({ name, ciphertext });
-      })
-      .then(
-        ([result]) => {
-          // Construct a HDWalletProvider based on mnemonic in the plaintext.
-          const mnemonic = Buffer.from(result.plaintext, "base64")
+      });
+    });
+
+    return Promise.all(fetchKeys).then(
+      results => {
+        let keys = results.map(([result]) => {
+          return Buffer.from(result.plaintext, "base64")
             .toString()
             .trim();
-          this.wrappedProvider = new HDWalletProvider(mnemonic, ...this.remainingArgs);
-          return this.wrappedProvider;
-        },
-        reason => {
-          return Promise.reject(reason);
+        });
+
+        // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
+        // This is important, as a single mnemonic will fail if passed in as an array.
+        if (keys.length == 1) {
+          keys = keys[0];
         }
-      );
+
+        this.wrappedProvider = new HDWalletProvider(keys, ...this.remainingArgs);
+        return this.wrappedProvider;
+      },
+      reason => {
+        console.error(reason);
+        throw reason;
+      }
+    );
   }
 }
 
