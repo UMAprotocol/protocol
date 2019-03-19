@@ -1,6 +1,8 @@
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const commandlineUtil = require("./CommandlineUtil");
 
+const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
+
 async function run(identifier, timeInSeconds, price) {
   try {
     const identifierInBytes = web3.utils.fromAscii(identifier);
@@ -20,18 +22,9 @@ async function run(identifier, timeInSeconds, price) {
 }
 
 const runPushOraclePrice = async function(callback) {
-  // Usage: truffle exec scripts/PushOraclePrice.js <identifier> <time> <price> --network <network>
-  // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
-  if (process.argv.length < 7) {
-    console.error("Not enough arguments. Must include <identifier>, <time> and <price>");
-    return;
-  }
-
-  const identifier = process.argv[4];
-  const timeInSeconds = parseInt(process.argv[5], 10);
-  const price = parseInt(process.argv[6], 10);
-
-  await run(identifier, timeInSeconds, price);
+  // Usage: truffle exec scripts/PushOraclePrice.js --identifier <identifier> --time <time> --price <price> --keys <oracle key> --network <network>
+  // where <time> is seconds since epoch and <price> is in Wei
+  await run(argv.identifier, argv.time, argv.price);
   callback();
 };
 
