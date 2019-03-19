@@ -7,7 +7,7 @@ const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator")
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 
-const whitelistSponsor = async function(callback) {
+const checkDeploymentValidity = async function(callback) {
   try {
     // Note: this script pulls the all contracts that are deployed as singletons and does a rough verification that
     // the deployed address points to a contract of the correct type. This will not catch minor bytecode mismatches.
@@ -66,4 +66,4 @@ const whitelistSponsor = async function(callback) {
   callback();
 };
 
-module.exports = whitelistSponsor;
+module.exports = checkDeploymentValidity;
