@@ -217,9 +217,9 @@ class ContractDetails extends Component {
     });
   };
 
-  getEstimatedMarginCurrencyAmount() {
+  getMarginCurrencyAmountForTokens() {
     if (!this.state.formInputs.createAmount) {
-      return "";
+      return null;
     }
     const contractState = this.props.drizzleState.contracts[this.state.contractKey];
     const web3 = this.props.drizzle.web3;
@@ -275,7 +275,7 @@ class ContractDetails extends Component {
 
   createTokens = () => {
     const web3 = this.props.drizzle.web3;
-    const marginCurrencyAmount = this.getEstimatedMarginCurrencyAmount();
+    const marginCurrencyAmount = this.getMarginCurrencyAmountForTokens();
 
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
       marginCurrencyAmount.toString(),
@@ -398,7 +398,7 @@ class ContractDetails extends Component {
           redeemFn={this.redeemTokens}
           settleFn={this.settleContract}
           formInputs={this.state.formInputs}
-          estimatedCreateCurrency={this.getEstimatedMarginCurrencyAmount()}
+          estimatedCreateCurrency={this.getMarginCurrencyAmountForTokens()}
           handleChangeFn={this.handleFormChange}
           isInteractionEnabled={this.state.isInteractionEnabled}
           isTokenSponsor={isTokenSponsor}

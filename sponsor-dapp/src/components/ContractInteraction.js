@@ -48,7 +48,7 @@ class ContractInteraction extends Component {
 
   getTokenSponsorInteraction() {
     const { drizzleHelper } = this;
-    const { formInputs, contractAddress, params } = this.props;
+    const { formInputs, contractAddress, estimatedCreateCurrency, params } = this.props;
     const { web3 } = this.props.drizzle;
     const account = this.props.drizzle.store.getState().accounts[0];
 
@@ -80,8 +80,8 @@ class ContractInteraction extends Component {
     } else {
       withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + marginCurrencyText + " available" : "";
     }
-    const createHelper = this.props.estimatedCreateCurrency
-      ? "Est. " + formatWei(this.props.estimatedCreateCurrency, web3) + " " + marginCurrencyText
+    const createHelper = estimatedCreateCurrency
+      ? "Est. " + formatWei(estimatedCreateCurrency, web3) + " " + marginCurrencyText
       : "";
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
