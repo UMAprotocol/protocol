@@ -12,6 +12,7 @@ import { formatDate } from "../utils/FormattingUtils.js";
 import { withStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
 import DrizzleHelper from "../utils/DrizzleHelper.js";
+import ReactGA from "react-ga";
 
 const styles = theme => ({
   root: {
@@ -42,6 +43,9 @@ class ContractDetails extends Component {
 
   componentDidMount() {
     const { drizzle, contractAddress } = this.props;
+    if (process.env.NODE_ENV === "production") {
+      ReactGA.modalview("/contractdetails");
+    }
 
     this.drizzleHelper = new DrizzleHelper(drizzle);
 

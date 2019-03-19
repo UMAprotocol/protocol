@@ -5,12 +5,17 @@ import { DrizzleContext } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./components/Dashboard.js";
 import params from "./parameters.json";
+import ReactGA from "react-ga";
 
 class App extends Component {
   state = { network: undefined };
 
   componentDidMount() {
     document.title = "UMA Dashboard";
+    if (process.env.NODE_ENV === "production") {
+      ReactGA.initialize("UA-130599982-2");
+      ReactGA.pageview("/homepage");
+    }
   }
 
   networkIdToName(networkId) {

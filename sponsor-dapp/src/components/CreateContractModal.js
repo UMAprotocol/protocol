@@ -10,6 +10,7 @@ import InputLabel from "@material-ui/core/InputLabel";
 import FormControl from "@material-ui/core/FormControl";
 import FormHelperText from "@material-ui/core/FormHelperText";
 import MenuItem from "@material-ui/core/MenuItem";
+import ReactGA from "react-ga";
 import Select from "@material-ui/core/Select";
 import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
@@ -341,6 +342,12 @@ class CreateContractModal extends React.Component {
     this.updateFormInput(name, event.target.value);
   };
 
+  onEntered = () => {
+    if (process.env.NODE_ENV === "production") {
+      ReactGA.modalview("/createcontract");
+    }
+  };
+
   // Create Material-UI menu items where both the value attribute and display value are the same.
   createMenuItems = list => {
     return list.map(item => (
@@ -385,7 +392,7 @@ class CreateContractModal extends React.Component {
     ));
 
     return (
-      <Dialog open={this.props.open} onClose={this.props.onClose} classes={{ paper: classes.modal }}>
+      <Dialog open={this.props.open} onClose={this.props.onClose} onEntered={this.onEntered} classes={{ paper: classes.modal }}>
         <DialogTitle className={classes.title}>
           Create New Token Contract
           <IconButton onClick={this.props.onClose} className={classes.closeButton}>
