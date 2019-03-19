@@ -48,7 +48,7 @@ class ContractInteraction extends Component {
 
   getTokenSponsorInteraction() {
     const { drizzleHelper } = this;
-    const { formInputs, contractAddress, params } = this.props;
+    const { formInputs, contractAddress, estimatedCreateCurrency, params } = this.props;
     const { web3 } = this.props.drizzle;
     const account = this.props.drizzle.store.getState().accounts[0];
 
@@ -80,6 +80,9 @@ class ContractInteraction extends Component {
     } else {
       withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + marginCurrencyText + " available" : "";
     }
+    const createHelper = estimatedCreateCurrency
+      ? "Est. " + formatWei(estimatedCreateCurrency, web3) + " " + marginCurrencyText
+      : "";
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
     // prevent withdrawing into default is handled separately.
@@ -156,6 +159,7 @@ class ContractInteraction extends Component {
               disabled={!isCreateEnabled}
               value={formInputs.createAmount}
               label="# tokens"
+              helperText={createHelper}
               onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
             {this.getButton("Create", isCreateEnabled, this.props.createFn)}
