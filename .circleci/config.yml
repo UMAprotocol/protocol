@@ -199,6 +199,7 @@ workflows:
           requires:
             - checkout_and_install
       - test:
+          context: infura
           requires:
             - build
       - sponsor_dapp_test:
