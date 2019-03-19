@@ -118,8 +118,12 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
   };
 
+  const getRandomIntBetween = (min, max) => {  
+    return Math.floor(Math.random() * (+max - +min)) + +min; 
+  } 
+
   // All test cases are run for each "variant" (or test parameterization) listed in this array.
-  let testVariants = [
+  const testVariants = [
     { useErc20: true, preAuth: true },
     { useErc20: true, preAuth: false },
     { useErc20: false, preAuth: false }
@@ -2281,6 +2285,51 @@ contract("TokenizedDerivative", function(accounts) {
       const startingContractBalance = web3.utils.toBN(web3.utils.toWei("2.5", "ether"));
 
       assert.equal((await getContractBalance()).toString(), startingContractBalance.add(depositAmount).toString());
+    });
+
+    it(annotateTitle("Linear NAV - Many remargins"), async function() {
+      // To detect the difference between linear and compounded, the contract requires |leverage| > 1.
+      const levered2x = await LeveragedReturnCalculator.new(2);
+      await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
+
+      // Set the oracle fee to 0 to make computation easier.
+      await deployedCentralizedStore.setFixedOracleFeePerSecond(0);
+
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative({
+        returnType: "0", // Linear
+        fixedYearlyFee: "0",
+        returnCalculator: levered2x.address,
+        withdrawLimit: web3.utils.toWei("1000", "ether")
+      });
+
+      // Sponsor initializes contract
+      await derivativeContract.depositAndCreateTokens(
+        web3.utils.toWei("16", "ether"),
+        web3.utils.toWei("1", "ether"),
+        await getMarginParams(web3.utils.toWei("16", "ether"))
+      );
+
+      // Randomly change the price 10 times keeping the margin
+      for (let i = 0; i < 10; i++) {
+        const randomInt = getRandomIntBetween(-5, 5);
+        await pushPrice(web3.utils.toWei(randomInt.toString(), "ether"));
+        await derivativeContract.remargin({ from: sponsor });
+      }
+
+      await pushPrice(web3.utils.toWei("1", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      // Balances should be exactly the same as they started.
+      const storage = await derivativeContract.derivativeStorage();
+      assert.equal(storage.longBalance.toString(), web3.utils.toWei("1", "ether"));
+      assert.equal(storage.shortBalance.toString(), web3.utils.toWei("15", "ether"));
+
+      // Withdraw most of the short margin to preserve the default ganache balances.
+      await derivativeContract.withdraw(web3.utils.toWei("14", "ether"), { from: sponsor });
+
+      // Reset oracle fees.
+      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
     });
 
     it(annotateTitle("Withdraw unexpected ERC20"), async function() {
