@@ -7,7 +7,7 @@ import Dashboard from "./components/Dashboard.js";
 import params from "./parameters.json";
 
 class App extends Component {
-  state = { params, network: undefined };
+  state = { network: undefined };
 
   componentDidMount() {
     document.title = "UMA Dashboard";
@@ -69,8 +69,15 @@ class App extends Component {
               );
             }
 
+            let newParams;
+            // Allow param override in props.
+            if (this.props.params) {
+              newParams = { ...this.props.params };
+            } else {
+              newParams = { ...params };
+            }
+
             // Copy params without network properties
-            const newParams = { ...params };
             delete newParams.main;
             delete newParams.ropsten;
             delete newParams.private;
