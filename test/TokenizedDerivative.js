@@ -118,9 +118,9 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
   };
 
-  const getRandomIntBetween = (min, max) => {  
-    return Math.floor(Math.random() * (max - min)) + min; 
-  } 
+  const getRandomIntBetween = (min, max) => {
+    return Math.floor(Math.random() * (max - min)) + min;
+  };
 
   // All test cases are run for each "variant" (or test parameterization) listed in this array.
   const testVariants = [
