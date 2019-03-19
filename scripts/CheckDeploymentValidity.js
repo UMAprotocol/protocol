@@ -40,8 +40,12 @@ const checkDeploymentValidity = async function(callback) {
     // TokenizedDerivativeCreator
     const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     const sponsorWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.sponsorWhitelist());
-    const marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());
-    const returnCalculatorWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.returnCalculatorWhitelist());
+    const marginCurrencyWhitelist = await AddressWhitelist.at(
+      await tokenizedDerivativeCreator.marginCurrencyWhitelist()
+    );
+    const returnCalculatorWhitelist = await AddressWhitelist.at(
+      await tokenizedDerivativeCreator.returnCalculatorWhitelist()
+    );
 
     // Sponsor Whitelist
     const arbitraryAddress = web3.utils.randomHex(20);
@@ -51,7 +55,7 @@ const checkDeploymentValidity = async function(callback) {
     await marginCurrencyWhitelist.isOnWhitelist(arbitraryAddress);
 
     // Return Calculator Whitelist
-    if (!await returnCalculatorWhitelist.isOnWhitelist(leveragedReturnCalculator.address)) {
+    if (!(await returnCalculatorWhitelist.isOnWhitelist(leveragedReturnCalculator.address))) {
       // TODO: check other, more specific parameterizations if/when they are abstracted out of the migration scripts.
       throw "Deployed Return Calculator is not on the whitelist.";
     }

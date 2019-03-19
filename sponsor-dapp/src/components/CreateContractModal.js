@@ -392,7 +392,12 @@ class CreateContractModal extends React.Component {
     ));
 
     return (
-      <Dialog open={this.props.open} onClose={this.props.onClose} onEntered={this.onEntered} classes={{ paper: classes.modal }}>
+      <Dialog
+        open={this.props.open}
+        onClose={this.props.onClose}
+        onEntered={this.onEntered}
+        classes={{ paper: classes.modal }}
+      >
         <DialogTitle className={classes.title}>
           Create New Token Contract
           <IconButton onClick={this.props.onClose} className={classes.closeButton}>
