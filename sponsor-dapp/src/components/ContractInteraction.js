@@ -2,10 +2,11 @@ import React, { Component } from "react";
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
-import red from "@material-ui/core/colors/red";
 
-import DrizzleHelper from "../utils/DrizzleHelper";
 import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
+import DrizzleHelper from "../utils/DrizzleHelper";
+import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
+import { formatWei } from "../utils/FormattingUtils";
 
 const styles = theme => ({
   button: {
@@ -18,9 +19,6 @@ const styles = theme => ({
     flexGrow: 1,
     justifyContent: "space-between",
     marginTop: 20
-  },
-  warning: {
-    color: red[500]
   },
   centerButton: {}
 });
@@ -37,7 +35,7 @@ class ContractInteraction extends Component {
   getButton(text, isEnabled, onClickHandler) {
     return (
       <Button
-        variant="outlined"
+        variant="contained"
         color="primary"
         className={this.props.classes.button}
         disabled={!isEnabled || !this.props.isInteractionEnabled}
@@ -50,8 +48,11 @@ class ContractInteraction extends Component {
 
   getTokenSponsorInteraction() {
     const { drizzleHelper } = this;
-    const { formInputs, contractAddress } = this.props;
+    const { formInputs, contractAddress, params } = this.props;
     const { web3 } = this.props.drizzle;
+    const account = this.props.drizzle.store.getState().accounts[0];
+
+    const zero = web3.utils.toBN("0");
 
     const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
 
@@ -65,7 +66,28 @@ class ContractInteraction extends Component {
 
     const canBeSettled = drizzleHelper.getCache(contractAddress, "canBeSettled", []);
     const excessMargin = drizzleHelper.getCache(contractAddress, "calcExcessMargin", []);
-    const willDefault = excessMargin ? web3.utils.toBN(excessMargin).lt(web3.utils.toBN("0")) : false;
+    const willDefault = excessMargin ? web3.utils.toBN(excessMargin).lt(zero) : false;
+
+    const marginCurrencyName = currencyAddressToName(params, derivativeStorage.externalAddresses.marginCurrency);
+    const marginCurrencyText = marginCurrencyName ? " " + marginCurrencyName : "";
+
+    let withdrawHelper = "";
+    let depositHelper = "";
+    if (willDefault) {
+      depositHelper = excessMargin
+        ? "Deposit at least " + formatWei(web3.utils.toBN(excessMargin).muln(-1), web3) + marginCurrencyText
+        : "";
+    } else {
+      withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + marginCurrencyText + " available" : "";
+    }
+
+    // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
+    // prevent withdrawing into default is handled separately.
+    const anyBalanceToWithdraw = web3.utils.toBN(derivativeStorage.shortBalance).gt(zero);
+
+    const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
+    const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
+    const redeemHelper = ownedTokens ? formatWei(ownedTokens, web3) + " token(s) available" : "";
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
@@ -76,9 +98,9 @@ class ContractInteraction extends Component {
 
     // Contract operations are only enabled in certain states.
     let isDepositEnabled = isLiveNoExpiry || aboutToExpire;
-    let isWithdrawEnabled = isLiveNoExpiry || isSettled;
+    let isWithdrawEnabled = (isLiveNoExpiry || isSettled) && anyBalanceToWithdraw;
     let isCreateEnabled = isLiveNoExpiry;
-    let isRedeemEnabled = isLiveNoExpiry || isSettled;
+    let isRedeemEnabled = (isLiveNoExpiry || isSettled) && anyTokensToRedeem;
 
     // If operations are disabled in states that we would expect them to be enabled, this message explains what's going
     // on.
@@ -121,6 +143,8 @@ class ContractInteraction extends Component {
               className={this.props.classes.textField}
               disabled={!isDepositEnabled}
               value={formInputs.depositAmount}
+              label={"# " + marginCurrencyText}
+              helperText={depositHelper}
               onChange={e => this.props.handleChangeFn("depositAmount", e)}
             />
             {this.getButton("Deposit", isDepositEnabled, this.props.depositFn)}
@@ -129,28 +153,33 @@ class ContractInteraction extends Component {
           <div>
             <TextField
               variant="outlined"
-              disabled={!isWithdrawEnabled}
-              value={formInputs.withdrawAmount}
-              onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
+              disabled={!isCreateEnabled}
+              value={formInputs.createAmount}
+              label="# tokens"
+              onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
-            {this.getButton("Withdraw", isWithdrawEnabled, this.props.withdrawFn)}
+            {this.getButton("Create", isCreateEnabled, this.props.createFn)}
           </div>
         </div>
         <div className={this.props.classes.rowOne}>
           <div>
             <TextField
               variant="outlined"
-              disabled={!isCreateEnabled}
-              value={formInputs.createAmount}
-              onChange={e => this.props.handleChangeFn("createAmount", e)}
+              disabled={!isWithdrawEnabled}
+              value={formInputs.withdrawAmount}
+              label={"# " + marginCurrencyText}
+              helperText={withdrawHelper}
+              onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
             />
-            {this.getButton("Create", isCreateEnabled, this.props.createFn)}
+            {this.getButton("Withdraw", isWithdrawEnabled, this.props.withdrawFn)}
           </div>
           <div>
             <TextField
               variant="outlined"
               disabled={!isRedeemEnabled}
               value={formInputs.redeemAmount}
+              label="# tokens"
+              helperText={redeemHelper}
               onChange={e => this.props.handleChangeFn("redeemAmount", e)}
             />
             {this.getButton("Redeem", isRedeemEnabled, this.props.redeemFn)}

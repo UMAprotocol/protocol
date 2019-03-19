@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import Typography from "@material-ui/core/Typography";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
@@ -6,7 +7,7 @@ import Dashboard from "./components/Dashboard.js";
 import params from "./parameters.json";
 
 class App extends Component {
-  state = { params, network: undefined };
+  state = { network: undefined };
 
   componentDidMount() {
     document.title = "UMA Dashboard";
@@ -44,7 +45,8 @@ class App extends Component {
         }
       },
       typography: {
-        useNextVariants: true
+        useNextVariants: true,
+        fontFamily: "Verdana"
       }
     });
   }
@@ -58,11 +60,24 @@ class App extends Component {
 
             // If drizzle hasn't gotten any state, don't load the application.
             if (!initialized) {
-              return "Loading...";
+              // We still need a theme here to load the right CSS (e.g., the right font family).
+              const theme = this.createMuiTheme("main");
+              return (
+                <MuiThemeProvider theme={theme}>
+                  <Typography variant="body2">Loading...</Typography>
+                </MuiThemeProvider>
+              );
+            }
+
+            let newParams;
+            // Allow param override in props.
+            if (this.props.params) {
+              newParams = { ...this.props.params };
+            } else {
+              newParams = { ...params };
             }
 
             // Copy params without network properties
-            const newParams = { ...params };
             delete newParams.main;
             delete newParams.ropsten;
             delete newParams.private;

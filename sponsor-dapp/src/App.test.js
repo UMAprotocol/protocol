@@ -18,7 +18,9 @@ const getNewDrizzleInstance = () => {
 
 it("renders App without crashing", done => {
   const div = document.createElement("div");
-  ReactDOM.render(<App drizzle={getNewDrizzleInstance()} />, div);
+
+  const params = { identifiers: [] };
+  ReactDOM.render(<App drizzle={getNewDrizzleInstance()} params={params} />, div);
 
   // Note: timeout is to allow time for any async requests by the component to go through.
   setTimeout(() => {

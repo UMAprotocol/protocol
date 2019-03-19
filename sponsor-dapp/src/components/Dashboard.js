@@ -1,5 +1,4 @@
 import React from "react";
-import { withStyles } from "@material-ui/core/styles";
 import AppBar from "@material-ui/core/AppBar";
 import Button from "@material-ui/core/Button";
 import CssBaseline from "@material-ui/core/CssBaseline";
@@ -8,10 +7,12 @@ import DialogContent from "@material-ui/core/DialogContent";
 import Grid from "@material-ui/core/Grid";
 import Toolbar from "@material-ui/core/Toolbar";
 import Typography from "@material-ui/core/Typography";
+import grey from "@material-ui/core/colors/grey";
+import { withStyles } from "@material-ui/core/styles";
 
-import DerivativeList from "./DerivativeList";
 import ContractDetails from "./ContractDetails";
 import CreateContractModal from "./CreateContractModal";
+import DerivativeList from "./DerivativeList";
 
 import AddressWhitelist from "../contracts/AddressWhitelist.json";
 
@@ -19,6 +20,9 @@ const styles = theme => ({
   root: {
     display: "flex",
     width: "100%"
+  },
+  icon: {
+    marginRight: "10px"
   },
   toolbar: {
     paddingRight: 24 // keep right padding when drawer closed
@@ -28,7 +32,9 @@ const styles = theme => ({
     transition: theme.transitions.create(["width", "margin"], {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen
-    })
+    }),
+    backgroundColor: grey[100],
+    color: "black"
   },
   appBarSpacer: theme.mixins.toolbar,
   content: {
@@ -45,6 +51,9 @@ const styles = theme => ({
   },
   contractDetailsModal: {
     padding: 10
+  },
+  createButton: {
+    marginTop: "8px"
   }
 });
 
@@ -139,6 +148,7 @@ class Dashboard extends React.Component {
         <div className="Dashboard">
           <AppBar className={classes.appBar}>
             <Toolbar className={classes.toolbar}>
+              <img src="favicon.ico" alt="UMA logo" className={classes.icon} />
               <Typography component="h1" variant="h6" color="inherit" align="left" noWrap className={classes.title}>
                 UMA Dashboard {titleSubHeader}
               </Typography>
@@ -161,6 +171,7 @@ class Dashboard extends React.Component {
                 drizzle={this.props.drizzle}
                 drizzleState={this.props.drizzleState}
                 params={this.props.params}
+                onClose={this.handleDetailsModalClose}
               />
             </DialogContent>
           </Dialog>
@@ -185,6 +196,7 @@ class Dashboard extends React.Component {
                 color="primary"
                 disabled={isCreateDisabled}
                 onClick={this.handleCreateModalOpen}
+                className={classes.createButton}
               >
                 Create New Token Contract
               </Button>
