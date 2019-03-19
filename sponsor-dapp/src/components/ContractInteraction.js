@@ -48,7 +48,7 @@ class ContractInteraction extends Component {
 
   getTokenSponsorInteraction() {
     const { drizzleHelper } = this;
-    const { formInputs, contractAddress, estimatedCreateCurrency, params } = this.props;
+    const { formInputs, contractAddress, estimatedCreateCurrency, params, isInteractionEnabled } = this.props;
     const { web3 } = this.props.drizzle;
     const account = this.props.drizzle.store.getState().accounts[0];
 
@@ -100,10 +100,10 @@ class ContractInteraction extends Component {
     const isFrozen = !isLive && !isSettled;
 
     // Contract operations are only enabled in certain states.
-    let isDepositEnabled = isLiveNoExpiry || aboutToExpire;
-    let isWithdrawEnabled = (isLiveNoExpiry || isSettled) && anyBalanceToWithdraw;
-    let isCreateEnabled = isLiveNoExpiry;
-    let isRedeemEnabled = (isLiveNoExpiry || isSettled) && anyTokensToRedeem;
+    let isDepositEnabled = (isLiveNoExpiry || aboutToExpire) && isInteractionEnabled;
+    let isWithdrawEnabled = (isLiveNoExpiry || isSettled) && anyBalanceToWithdraw && isInteractionEnabled;
+    let isCreateEnabled = isLiveNoExpiry && isInteractionEnabled;
+    let isRedeemEnabled = (isLiveNoExpiry || isSettled) && anyTokensToRedeem && isInteractionEnabled;
 
     // If operations are disabled in states that we would expect them to be enabled, this message explains what's going
     // on.
