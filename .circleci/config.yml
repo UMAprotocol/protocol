@@ -76,7 +76,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
-          command: $(npm bin)/truffle test --network ci
+          command: ./ci/run_truffle_tests.sh
   coverage:
     docker:
       # Note: we made a compromise here to get solidity-coverage to work. We're just creating a new build inside the
