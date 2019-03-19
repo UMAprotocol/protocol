@@ -9,7 +9,7 @@ async function run(account, derivative) {
     // Requires the contract to be live and for accounts[0] to be the owner of the oracle.
     oracle = await CentralizedOracle.deployed();
 
-    assert.equal(await oracle.owner(), account, "Account must be the owner of the oracle");
+    assert.strictEqual(await oracle.owner(), account, "Account must be the owner of the oracle");
 
     await oracle.callEmergencyShutdown(derivative);
     console.log("Emergency shutdown complete");
