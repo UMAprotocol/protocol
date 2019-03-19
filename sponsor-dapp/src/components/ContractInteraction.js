@@ -80,6 +80,9 @@ class ContractInteraction extends Component {
     } else {
       withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + marginCurrencyText + " available" : "";
     }
+    const createHelper = this.props.estimatedCreateCurrency
+      ? "Est. " + formatWei(this.props.estimatedCreateCurrency, web3) + " " + marginCurrencyText
+      : "";
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
     // prevent withdrawing into default is handled separately.
@@ -156,6 +159,7 @@ class ContractInteraction extends Component {
               disabled={!isCreateEnabled}
               value={formInputs.createAmount}
               label="# tokens"
+              helperText={createHelper}
               onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
             {this.getButton("Create", isCreateEnabled, this.props.createFn)}

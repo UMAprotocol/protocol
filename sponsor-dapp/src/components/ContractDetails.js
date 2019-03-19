@@ -217,6 +217,26 @@ class ContractDetails extends Component {
     });
   };
 
+  getEstimatedMarginCurrencyAmount() {
+    if (!this.state.formInputs.createAmount) {
+      return "";
+    }
+    const contractState = this.props.drizzleState.contracts[this.state.contractKey];
+    const web3 = this.props.drizzle.web3;
+    const estimatedTokenValue = web3.utils.toBN(
+      contractState.calcTokenValue[this.state.estimatedTokenValueDataKey].value
+    );
+    const numTokensInWei = web3.utils.toBN(web3.utils.toWei(this.state.formInputs.createAmount));
+
+    // Mirror the computation done by TokenizedDerivative when determining how much margin currency is required,
+    // specifically, rounding up instead of truncating.
+    const preDivisionMarginCurrency = estimatedTokenValue.mul(numTokensInWei);
+    const fp_multiplier = web3.utils.toBN(web3.utils.toWei("1", "ether"));
+    const ceilAddition = preDivisionMarginCurrency.mod(fp_multiplier).isZero() ? 0 : 1;
+    const marginCurrencyAmount = preDivisionMarginCurrency.div(fp_multiplier).addn(ceilAddition);
+    return marginCurrencyAmount;
+  }
+
   remarginContract = () => {
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.remargin.cacheSend({
       from: this.props.drizzleState.accounts[0]
@@ -254,19 +274,8 @@ class ContractDetails extends Component {
   };
 
   createTokens = () => {
-    const contractState = this.props.drizzleState.contracts[this.state.contractKey];
     const web3 = this.props.drizzle.web3;
-    const estimatedTokenValue = web3.utils.toBN(
-      contractState.calcTokenValue[this.state.estimatedTokenValueDataKey].value
-    );
-    const numTokensInWei = web3.utils.toBN(web3.utils.toWei(this.state.formInputs.createAmount));
-
-    // Mirror the computation done by TokenizedDerivative when determining how much margin currency is required,
-    // specifically, rounding up instead of truncating.
-    const preDivisionMarginCurrency = estimatedTokenValue.mul(numTokensInWei);
-    const fp_multiplier = web3.utils.toBN(web3.utils.toWei("1", "ether"));
-    const ceilAddition = preDivisionMarginCurrency.mod(fp_multiplier).isZero() ? 0 : 1;
-    const marginCurrencyAmount = preDivisionMarginCurrency.div(fp_multiplier).addn(ceilAddition);
+    const marginCurrencyAmount = this.getEstimatedMarginCurrencyAmount();
 
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.createTokens.cacheSend(
       marginCurrencyAmount.toString(),
@@ -389,6 +398,7 @@ class ContractDetails extends Component {
           redeemFn={this.redeemTokens}
           settleFn={this.settleContract}
           formInputs={this.state.formInputs}
+          estimatedCreateCurrency={this.getEstimatedMarginCurrencyAmount()}
           handleChangeFn={this.handleFormChange}
           isInteractionEnabled={this.state.isInteractionEnabled}
           isTokenSponsor={isTokenSponsor}
