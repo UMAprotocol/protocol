@@ -28,10 +28,5 @@
         "0xA7E2f86B4E2c241Ac6D2fb7cE9dEBb37DbB05093": "TUSD"
     }
   },
-  "private": {
-      "currencies": {
-        "0x0000000000000000000000000000000000000000": "ETH",
-        "0x076450013A5E585547721bbd93e487D6263d7B76": "DAI"
-      }
-  }
+  "private": {}
 }
