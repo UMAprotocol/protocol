@@ -12,12 +12,11 @@ async function run(identifier, timeInSeconds, priceAsString) {
     const timeInBN = web3.utils.toBN(timeInSeconds);
     const time = new Date(timeInSeconds * 10e2);
 
-    const priceInWei = web3.utils.toWei(priceAsString);
-    const priceInBN = web3.utils.toBN(priceInWei);
+    const priceInBN = web3.utils.toBN(web3.utils.toWei(priceAsString));
 
     const oracle = await CentralizedOracle.deployed();
     await oracle.pushPrice(identifierInBytes, timeInBN, priceInBN);
-    console.log(`Resolved price for ${identifier} @ ${time}: ${priceInWei} wei`);
+    console.log(`Resolved price for ${identifier} @ ${time}: ${priceAsString}`);
   } catch (err) {
     console.error(err);
     return;
