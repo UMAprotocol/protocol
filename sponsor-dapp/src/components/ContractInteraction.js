@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import Button from "@material-ui/core/Button";
+import InputAdornment from "@material-ui/core/InputAdornment";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
 
@@ -136,6 +137,16 @@ class ContractInteraction extends Component {
       middleButton = this.getButton("Remargin contract", false, null);
     }
 
+    // We have to embed inputProps inside of InputProps, otherwise ESLint thinks we are passing duplicate props.
+    const marginCurrencyInputProps = {
+      inputProps: { style: { textAlign: "right", width: "152px" } },
+      endAdornment: <InputAdornment position="end">{marginCurrencyText}</InputAdornment>
+    };
+    const tokenInputProps = {
+      inputProps: { style: { textAlign: "right", width: "132px" } },
+      endAdornment: <InputAdornment position="end">tokens</InputAdornment>
+    };
+
     return (
       <div>
         {warningMessage}
@@ -146,7 +157,7 @@ class ContractInteraction extends Component {
               className={this.props.classes.textField}
               disabled={!isDepositEnabled}
               value={formInputs.depositAmount}
-              label={"# " + marginCurrencyText}
+              InputProps={marginCurrencyInputProps}
               helperText={depositHelper}
               onChange={e => this.props.handleChangeFn("depositAmount", e)}
             />
@@ -158,7 +169,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isCreateEnabled}
               value={formInputs.createAmount}
-              label="# tokens"
+              InputProps={tokenInputProps}
               helperText={createHelper}
               onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
@@ -171,7 +182,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isWithdrawEnabled}
               value={formInputs.withdrawAmount}
-              label={"# " + marginCurrencyText}
+              InputProps={marginCurrencyInputProps}
               helperText={withdrawHelper}
               onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
             />
@@ -182,7 +193,7 @@ class ContractInteraction extends Component {
               variant="outlined"
               disabled={!isRedeemEnabled}
               value={formInputs.redeemAmount}
-              label="# tokens"
+              InputProps={tokenInputProps}
               helperText={redeemHelper}
               onChange={e => this.props.handleChangeFn("redeemAmount", e)}
             />
