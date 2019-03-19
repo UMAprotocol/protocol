@@ -43,8 +43,10 @@ jobs:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Lint
+          name: JS Formatting
           command: npm run prettier_check
+      - run:
+          name: Lint Solidity
           command: $(npm bin)/solhint --max-warnings=1 contracts/**/*.sol
   slither:
     docker:
