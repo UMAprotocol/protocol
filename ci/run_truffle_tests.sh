@@ -4,7 +4,7 @@ set -e
 # Test migration
 $(npm bin)/truffle migrate --reset --network ci
 
-# Ensure the migration is recoverable with only the aritifacts saved in networks/.
+# Ensure the migration is recoverable with only the artifacts saved in networks/.
 rm -rf build
 $(npm bin)/truffle compile
 $(npm bin)/apply-registry
