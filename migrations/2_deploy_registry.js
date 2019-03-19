@@ -3,10 +3,11 @@
 // --keys={deployer,registry,store,priceFeed,sponsorWhitelist,returnCalculatorWhitelist,marginCurrencyWhitelist}
 
 const Registry = artifacts.require("Registry");
-const { getKeysForNetwork } = require("./MigrationUtils.js");
+const { getKeysForNetwork, deployAndGet, addToTdr } = require("./MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
-  await deployer.deploy(Registry, { from: keys.registry });
+  const registry = await deployAndGet(deployer, Registry, { from: keys.registry });
+  await addToTdr(registry, network);
 };

@@ -1,3 +1,5 @@
+const tdr = require('truffle-deploy-registry')
+
 // Determines whether the network requires timestamps to be manually controlled or not.
 function enableControllableTiming(network) {
   return (
@@ -6,6 +8,14 @@ function enableControllableTiming(network) {
     network === "development" ||
     network === "ci" ||
     network === "coverage"
+  );
+}
+
+function shouldCommitDeployment(network) {
+  return (
+    network === "ci" || // Just for testing the process of saving deployments.
+    network === "ropsten" ||
+    network === "mainnet"
   );
 }
 
@@ -40,8 +50,16 @@ function getKeysForNetwork(network, accounts) {
   }
 }
 
+async function addToTdr(instance, network) {
+  // Probably redundant checks, but useful in case of future modifications.
+  if (!tdr.isDryRunNetworkName(network) && shouldCommitDeployment(network)) {
+    await tdr.appendInstance(instance);
+  }
+}
+
 module.exports = {
   enableControllableTiming,
   deployAndGet,
-  getKeysForNetwork
+  getKeysForNetwork,
+  addToTdr
 };
