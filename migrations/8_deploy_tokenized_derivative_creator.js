@@ -6,7 +6,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const { getKeysForNetwork, deployAndGet, enableControllableTiming } = require("./MigrationUtils.js");
+const { getKeysForNetwork, deployAndGet, enableControllableTiming, addToTdr } = require("./MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
@@ -41,6 +41,7 @@ module.exports = async function(deployer, network, accounts) {
     controllableTiming,
     { from: keys.deployer }
   );
+  await addToTdr(tokenizedDerivativeCreator, network);
 
   // Add the return calculator to the whitelist.
   const returnCalculator = await LeveragedReturnCalculator.deployed();
