@@ -1,4 +1,4 @@
-const tdr = require("truffle-deploy-registry");
+const tdr = require('truffle-deploy-registry')
 
 // Determines whether the network requires timestamps to be manually controlled or not.
 function enableControllableTiming(network) {
