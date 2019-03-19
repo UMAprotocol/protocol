@@ -1,20 +1,23 @@
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const commandlineUtil = require("./CommandlineUtil");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "price"] });
 
-async function run(identifier, timeInSeconds, price) {
+// priceAsString is formatted as a string, not a Number,
+// because they must be a string when converting to wei.
+async function run(identifier, timeInSeconds, priceAsString) {
   try {
     const identifierInBytes = web3.utils.fromAscii(identifier);
 
     const timeInBN = web3.utils.toBN(timeInSeconds);
     const time = new Date(timeInSeconds * 10e2);
 
-    const priceInBN = web3.utils.toBN(price);
+    const priceInWei = web3.utils.toWei(priceAsString);
+    const priceInBN = web3.utils.toBN(priceInWei);
 
     const oracle = await CentralizedOracle.deployed();
     await oracle.pushPrice(identifierInBytes, timeInBN, priceInBN);
-    console.log(`Resolved price for ${identifier} @ ${time}: ${price}`);
+    console.log(`Resolved price for ${identifier} @ ${time}: ${priceInWei} wei`);
   } catch (err) {
     console.error(err);
     return;
@@ -23,7 +26,8 @@ async function run(identifier, timeInSeconds, price) {
 
 const runPushOraclePrice = async function(callback) {
   // Usage: truffle exec scripts/PushOraclePrice.js --identifier <identifier> --time <time> --price <price> --keys <oracle key> --network <network>
-  // where <time> is seconds since epoch and <price> is in Wei
+  // where <time> is seconds since epoch
+  // and <price> is in ether (i.e. 10^18 wei)
   await run(argv.identifier, argv.time, argv.price);
   callback();
 };
