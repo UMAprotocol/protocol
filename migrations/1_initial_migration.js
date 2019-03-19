@@ -1,5 +1,8 @@
 const Migrations = artifacts.require("./Migrations.sol");
+const { getKeysForNetwork, deployAndGet, addToTdr } = require("./MigrationUtils.js");
 
-module.exports = function(deployer) {
-  deployer.deploy(Migrations);
+module.exports = async function(deployer, network, accounts) {
+  const keys = getKeysForNetwork(network, accounts);
+  const migrations = await deployAndGet(deployer, Migrations, { from: keys.deployer });
+  await addToTdr(migrations, network);
 };
