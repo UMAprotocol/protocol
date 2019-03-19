@@ -16,7 +16,8 @@ import ReactGA from "react-ga";
 
 const styles = theme => ({
   root: {
-    minWidth: 900
+    minWidth: 900,
+    margin: "0px 26px 26px 26px"
   },
   titleSection: {
     display: "flex",
@@ -369,6 +370,9 @@ class ContractDetails extends Component {
     if (!isDerivativeTokenAuthorized || !isMarginCurrencyAuthorized) {
       return (
         <TokenPreapproval
+          drizzle={this.props.drizzle}
+          contractAddress={this.props.contractAddress}
+          params={this.props.params}
           isInteractionEnabled={this.state.isInteractionEnabled}
           isDerivativeTokenAuthorized={isDerivativeTokenAuthorized}
           isMarginCurrencyAuthorized={isMarginCurrencyAuthorized}
@@ -380,6 +384,7 @@ class ContractDetails extends Component {
       return (
         <ContractInteraction
           drizzle={this.props.drizzle}
+          params={this.props.params}
           contractAddress={this.props.contractAddress}
           remarginFn={this.remarginContract}
           depositFn={this.depositMargin}
@@ -402,7 +407,7 @@ class ContractDetails extends Component {
       this.state.loadingPriceFeedData ||
       this.state.loadingMarginCurrencyData
     ) {
-      return <div>Looking up contract details...</div>;
+      return <Typography variant="body2">Looking up contract details...</Typography>;
     }
     const { drizzle, drizzleState, params } = this.props;
     const web3 = drizzle.web3;
@@ -419,9 +424,11 @@ class ContractDetails extends Component {
       creationTime: formatDate(derivativeStorage.fixedParameters.creationTime, web3),
       // The TokenizedDerivative smart contract uses this value `~uint(0)` as a sentinel to indicate no expiry.
       expiryTime: derivativeStorage.endTime === UINT_MAX ? "None" : formatDate(derivativeStorage.endTime, web3),
-      priceFeedAddress: derivativeStorage.externalAddresses.priceFeed,
+      priceFeedAddress:
+        web3.utils.hexToAscii(derivativeStorage.fixedParameters.product) +
+        ` (${derivativeStorage.externalAddresses.priceFeed})`,
       marginCurrency: marginCurrencyDisplayName
-        ? marginCurrencyDisplayName
+        ? `${marginCurrencyDisplayName} (${derivativeStorage.externalAddresses.marginCurrency})`
         : derivativeStorage.externalAddresses.marginCurrency,
       returnCalculator: derivativeStorage.externalAddresses.returnCalculator
     };

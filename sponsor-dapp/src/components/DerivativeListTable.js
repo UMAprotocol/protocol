@@ -11,13 +11,18 @@ import Paper from "@material-ui/core/Paper";
 const styles = theme => ({
   root: {
     width: "100%",
-    overflowX: "auto"
+    overflowX: "auto",
+    marginTop: "32px"
   },
   table: {
     minWidth: 700
   },
+  tableHead: {
+    fontSize: "18px"
+  },
   button: {
-    margin: theme.spacing.unit
+    margin: theme.spacing.unit,
+    fontFamily: "Courier"
   }
 });
 
@@ -29,13 +34,27 @@ const DerivativeListTable = ({ derivatives, buttonPushFn, classes }) => (
       <Table align="center" className={classes.table}>
         <TableHead>
           <TableRow>
-            <TableCell padding="dense">Address</TableCell>
-            <TableCell padding="dense">Token Name</TableCell>
-            <TableCell padding="dense">Symbol</TableCell>
-            <TableCell padding="dense">Status</TableCell>
-            <TableCell padding="dense">Asset</TableCell>
-            <TableCell padding="dense">Created</TableCell>
-            <TableCell padding="dense">Role</TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Address
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Token Name
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Symbol
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Status
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Asset
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Created
+            </TableCell>
+            <TableCell className={classes.tableHead} padding="dense">
+              Role
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
