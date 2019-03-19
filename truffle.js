@@ -1,4 +1,6 @@
 const HDWalletProvider = require("truffle-hdwallet-provider");
+const GckmsConfig = require("./gckms/GckmsConfig.js");
+const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
@@ -37,13 +39,23 @@ module.exports = {
       gas: 6720000
     },
     ropsten: {
-      provider: new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/${infuraApiKey}`, 0, 2),
+      provider: new ManagedSecretProvider(
+        GckmsConfig,
+        `https://ropsten.infura.io/v3/${infuraApiKey}`,
+        0,
+        GckmsConfig.length
+      ),
       network_id: "*",
       gas: 6720000,
       gasPrice: 20000000000
     },
     mainnet: {
-      provider: new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/${infuraApiKey}`, 0, 2),
+      provider: new ManagedSecretProvider(
+        GckmsConfig,
+        `https://mainnet.infura.io/v3/${infuraApiKey}`,
+        0,
+        GckmsConfig.length
+      ),
       network_id: "*",
       gas: 6720000,
       gasPrice: 20000000000
