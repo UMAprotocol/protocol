@@ -148,6 +148,7 @@ class ContractInteraction extends Component {
               value={formInputs.depositAmount}
               label={"# " + marginCurrencyText}
               helperText={depositHelper}
+              type="number"
               onChange={e => this.props.handleChangeFn("depositAmount", e)}
             />
             {this.getButton("Deposit", isDepositEnabled, this.props.depositFn)}
@@ -160,6 +161,7 @@ class ContractInteraction extends Component {
               value={formInputs.createAmount}
               label="# tokens"
               helperText={createHelper}
+              type="number"
               onChange={e => this.props.handleChangeFn("createAmount", e)}
             />
             {this.getButton("Create", isCreateEnabled, this.props.createFn)}
@@ -173,6 +175,7 @@ class ContractInteraction extends Component {
               value={formInputs.withdrawAmount}
               label={"# " + marginCurrencyText}
               helperText={withdrawHelper}
+              type="number"
               onChange={e => this.props.handleChangeFn("withdrawAmount", e)}
             />
             {this.getButton("Withdraw", isWithdrawEnabled, this.props.withdrawFn)}
@@ -184,6 +187,7 @@ class ContractInteraction extends Component {
               value={formInputs.redeemAmount}
               label="# tokens"
               helperText={redeemHelper}
+              type="number"
               onChange={e => this.props.handleChangeFn("redeemAmount", e)}
             />
             {this.getButton("Redeem", isRedeemEnabled, this.props.redeemFn)}
