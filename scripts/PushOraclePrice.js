@@ -23,8 +23,7 @@ async function run(identifier, timeInSeconds, price) {
 
 const runPushOraclePrice = async function(callback) {
   // Usage: truffle exec scripts/PushOraclePrice.js --identifier <identifier> --time <time> --price <price> --keys <oracle key> --network <network>
-  // where <time> is seconds since epoch.
-
+  // where <time> is seconds since epoch and <price> is in Wei
   await run(argv.identifier, argv.time, argv.price);
   callback();
 };
