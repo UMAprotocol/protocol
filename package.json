@@ -12,7 +12,7 @@
   "author": "UMA Team",
   "license": "MIT",
   "devDependencies": {
-    "prettier": "^1.14.3",
+    "prettier": "^1.16.4",
     "solhint": "^1.5.0",
     "solidity-coverage": "^0.5.11",
     "truffle-deploy-registry": "^0.5.1"
