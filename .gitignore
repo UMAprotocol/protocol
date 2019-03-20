@@ -7,5 +7,9 @@ coverage.json
 out.log
 .GckmsOverride.js
 
+# GAE deployment files and directories for GAE deployments.
+app.yaml
+.gae_deploy
+
 # environment-specific values pulled by dotenv package
 .env
