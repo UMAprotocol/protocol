@@ -256,6 +256,10 @@ class ContractDetails extends Component {
   };
 
   withdrawMargin = () => {
+    if (!this.state.formInputs.withdrawAmount) {
+      return;
+    }
+
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.withdraw.cacheSend(
       this.props.drizzle.web3.utils.toWei(this.state.formInputs.withdrawAmount),
       {
@@ -266,6 +270,10 @@ class ContractDetails extends Component {
   };
 
   depositMargin = () => {
+    if (!this.state.formInputs.depositAmount) {
+      return;
+    }
+
     const { drizzle, drizzleState } = this.props;
     const initiatedTransactionId = drizzle.contracts[this.state.contractKey].methods.deposit.cacheSend(
       drizzle.web3.utils.toWei(this.state.formInputs.depositAmount),
@@ -278,6 +286,10 @@ class ContractDetails extends Component {
   };
 
   createTokens = () => {
+    if (!this.state.formInputs.createAmount) {
+      return;
+    }
+
     const web3 = this.props.drizzle.web3;
     const marginCurrencyAmount = this.getMarginCurrencyAmountForTokens();
 
@@ -293,6 +305,10 @@ class ContractDetails extends Component {
   };
 
   redeemTokens = () => {
+    if (!this.state.formInputs.redeemAmount) {
+      return;
+    }
+
     const initiatedTransactionId = this.props.drizzle.contracts[this.state.contractKey].methods.redeemTokens.cacheSend(
       this.props.drizzle.web3.utils.toWei(this.state.formInputs.redeemAmount),
       {
