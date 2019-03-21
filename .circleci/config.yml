@@ -204,7 +204,7 @@ jobs:
           key: sponsor-dapp-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
         name: Deploy Dapp
-        command: 
+        command: ./ci/deploy_staging_dapp.sh
 
 
 workflows:
