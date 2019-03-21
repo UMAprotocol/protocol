@@ -200,6 +200,8 @@ jobs:
       - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
+      - restore_cache:
+          key: sponsor-dapp-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
         name: Deploy Dapp
         command: 
@@ -229,3 +231,10 @@ workflows:
       - sponsor_dapp_build:
           requires:
             - sponsor_dapp_test
+      - sponsor_dapp_deploy:
+          requires:
+            - sponsor_dapp_build
+            - test
+          # filters:
+          #     branches:
+          #         only: master

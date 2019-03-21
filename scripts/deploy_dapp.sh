@@ -2,11 +2,7 @@
 set -e
 
 # Usage:
-# If the app.yaml configuration file you'd like to use is in sponsor-dapp/app.yaml:
-# ./scripts/deploy_dapp.sh
-
-# If you'd like to use some other file name and/or path:
-# ./scripts/deploy_dapp.sh <your_file.yaml>
+# ./scripts/deploy_dapp.sh <your_app.yaml> <optional_additional_args_for_gcloud_app_deploy>
 
 # Note: you must have the gcloud CLI tool installed and authenticated before using this script.
 
@@ -17,14 +13,11 @@ get_abs_filename() {
   echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 }
 
-APP_YAML_PATH=$(pwd)/sponsor-dapp/app.yaml
+# Grab the absolute path for the provided file.
+APP_YAML_PATH=$(get_abs_filename $1)
 
-# If an argument was supplied, it's the desired app.yaml.
-if [ $# -ne 0 ]
-  then
-    # Grab the absolute path for the provided file.
-    APP_YAML_PATH=$(get_abs_filename $1)
-fi
+# Shift the arguments to provide to gcloud app deploy.
+shift
 
 # Compile contracts, load deployed addresses for mainnet and ropsten.
 echo "Compiling contracts."
@@ -65,7 +58,7 @@ cp -R $APP_YAML_PATH .gae_deploy/app.yaml
 cd .gae_deploy
 
 # Run gcloud app deploy to deploy.
-gcloud app deploy || echo "Deployment failed."
+gcloud app deploy "$@" || echo "Deployment failed."
 
 # Clean up temporary directory.
 echo "Cleaning up."
