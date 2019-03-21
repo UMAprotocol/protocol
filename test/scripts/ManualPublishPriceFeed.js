@@ -27,4 +27,3 @@ contract("scripts/ManualPublishPriceFeed.js", function(accounts) {
     assert.ok(web3.utils.toBN(web3.utils.toWei(price)).eq(publishPrice));
   });
 });
-
