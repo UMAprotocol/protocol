@@ -196,12 +196,10 @@ jobs:
   sponsor_dapp_deploy:
     docker:
       - image: circleci/node:latest
-    docker:
-      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: sponsor-dapp-build-{{ .Environment.CIRCLE_SHA1 }}
+          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
       - run:
         name: Deploy Dapp
         command: ./ci/deploy_staging_dapp.sh
