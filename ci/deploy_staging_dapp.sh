@@ -18,7 +18,7 @@ gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
 gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 
 # Copy the staging config into the sponsor-dapp dir.
-gsutil gs://staging-deployment-configuration/app.yaml sponsor-dapp/app.yaml
+gsutil cp gs://staging-deployment-configuration/app.yaml sponsor-dapp/app.yaml
 
 # Deploy dapp
 ./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
