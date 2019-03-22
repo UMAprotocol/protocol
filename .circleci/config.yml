@@ -230,6 +230,7 @@ workflows:
           requires:
             - sponsor_dapp_test
       - sponsor_dapp_deploy:
+          context: gcloud
           requires:
             - sponsor_dapp_test
             - test
