@@ -233,6 +233,3 @@ workflows:
           requires:
             - sponsor_dapp_test
             - test
-          # filters:
-          #     branches:
-          #         only: master
