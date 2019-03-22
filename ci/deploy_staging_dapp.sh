@@ -21,7 +21,7 @@ gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 gsutil cp gs://staging-deployment-configuration/app.yaml sponsor-dapp/app.yaml
 
 # Deploy dapp
-OUTPUT=./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
+OUTPUT=$(./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q)
 
 # We must grep the output because gcloud permissioning issues don't return a nonzero exit code.
 set +e
