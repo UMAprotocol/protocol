@@ -21,4 +21,18 @@ gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 gsutil cp gs://staging-deployment-configuration/app.yaml sponsor-dapp/app.yaml
 
 # Deploy dapp
-./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
+OUTPUT=./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
+
+# We must grep the output because gcloud permissioning issues don't return a nonzero exit code.
+set +e
+echo "$OUTPUT"
+NUM_FAILURES=$(echo "$OUTPUT" | grep -ci "Deployment failed")
+if [ $NUM_FAILURES -ne 0 ]
+then
+    # If we found failures, exit nonzero.
+    exit 1
+fi
+
+# If we get here make sure to exit 0.
+# Note: this is necessary because grep returns a nonzero exit code if it finds nothing.
+exit 0
