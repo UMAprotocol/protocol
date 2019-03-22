@@ -1,10 +1,13 @@
+#!/usr/bin/env bash
+set -e
+
 # Downloading gcloud package
 curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
 
 # Installing the package
-mkdir -p /usr/local/gcloud \
-  && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
-  && /usr/local/gcloud/google-cloud-sdk/install.sh
+sudo mkdir -p /usr/local/gcloud \
+  && sudo tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
+  && sudo /usr/local/gcloud/google-cloud-sdk/install.sh
 
 # Adding the package path to local
 export PATH=$PATH:/usr/local/gcloud/google-cloud-sdk/bin
@@ -18,4 +21,4 @@ gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 gsutil gs://staging-deployment-configuration/app.yaml sponsor-dapp/app.yaml
 
 # Deploy dapp
-../scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
+./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
