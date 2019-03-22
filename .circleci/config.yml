@@ -231,7 +231,7 @@ workflows:
             - sponsor_dapp_test
       - sponsor_dapp_deploy:
           requires:
-            - sponsor_dapp_build
+            - sponsor_dapp_test
             - test
           # filters:
           #     branches:
