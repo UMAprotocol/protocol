@@ -15,6 +15,7 @@ get_abs_filename() {
 
 # Grab the absolute path for the provided file.
 APP_YAML_PATH=$(get_abs_filename $1)
+PROTOCOL_DIR=$(pwd)
 
 # Shift the arguments to provide to gcloud app deploy.
 shift
@@ -49,6 +50,16 @@ npm run link-contracts
 echo "Building dapp."
 npm run build
 
+# Make sure to cleanup the temp directory for any exits after this line.
+function cleanup() {
+  local protocol_directory=$1
+  # Clean up temporary directory.
+  echo "Cleaning up."
+  cd $protocol_directory
+  rm -rf $protocol_directory/sponsor-dapp/.gae_deploy
+}
+trap "cleanup $PROTOCOL_DIR" EXIT
+
 # Make a temporary directory to isolate the files to upload to GAE.
 # Note: otherwise, it will attempt to upload all files in all subdirectories.
 echo "Copying dapp build to temporary directory."
@@ -58,9 +69,4 @@ cp -R $APP_YAML_PATH .gae_deploy/app.yaml
 cd .gae_deploy
 
 # Run gcloud app deploy to deploy.
-gcloud app deploy "$@" || echo "Deployment failed."
-
-# Clean up temporary directory.
-echo "Cleaning up."
-cd ..
-rm -rf .gae_deploy
+gcloud app deploy "$@"
