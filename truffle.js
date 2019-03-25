@@ -38,6 +38,12 @@ module.exports = {
       network_id: "*",
       gas: 6720000
     },
+    ropsten_mnemonic: {
+      provider: new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/${infuraApiKey}`, 0, 2),
+      network_id: 3,
+      gas: 6720000,
+      gasPrice: 20000000000
+    },
     ropsten: {
       provider: new ManagedSecretProvider(
         GckmsConfig,
@@ -45,7 +51,13 @@ module.exports = {
         0,
         GckmsConfig.length
       ),
-      network_id: "*",
+      network_id: 3,
+      gas: 6720000,
+      gasPrice: 20000000000
+    },
+    mainnet_mnemonic: {
+      provider: new HDWalletProvider(mnemonic, `https://mainnet.infura.io/v3/${infuraApiKey}`, 0, 2),
+      network_id: 1,
       gas: 6720000,
       gasPrice: 20000000000
     },
@@ -56,7 +68,7 @@ module.exports = {
         0,
         GckmsConfig.length
       ),
-      network_id: "*",
+      network_id: 1,
       gas: 6720000,
       gasPrice: 20000000000
     }
