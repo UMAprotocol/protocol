@@ -45,12 +45,20 @@ If you'd like to deploy to the Ropsten testnet instead, run the following comman
 ```
 $(npm bin)/truffle migrate --reset --network ropsten
 ```
-5. To interact with the contracts you've deployed, run:
+6. To interact with the contracts you've deployed, run:
 ```
 $(npm bin)/truffle console --network <mainnet_or_ropsten>
 ```
 This will open a node console with all contracts loaded along with a web3 instance connected to the network and
 preloaded with your private keys (loads the first two private keys for your mnemonic by default).
+
+If you'd like to interact with the official UMA deployment instead of doing your own deployment, skip steps 1-5
+above and run the following commands instead:
+```
+$(npm bin)/truffle compile
+$(npm bin)/apply-registry
+```
+Please do not run any security tests against our mainnet deployment.
 
 ### Upload Prices to the `ManualPriceFeed`
 
@@ -62,6 +70,16 @@ every 15 minutes. A barchart key must be set in your environment variable as `BA
 ```
 
 For the script to succeed, the `build` directory must contain the `ManualPriceFeed` address for the specified network.
+
+### Running the Dapp
+
+After deploying to ganache, ropsten, or mainnet, you can run the Sponsor Dapp against the contracts by running the following commands:
+```
+cd sponsor-dapp
+npm run link-contracts
+npm start
+```
+This should automatically start the dApp in your browser.
 
 ## Developer Information and Tools
 
