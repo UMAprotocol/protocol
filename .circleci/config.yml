@@ -203,9 +203,6 @@ jobs:
       - run:
           name: Deploy Dapp
           command: ./ci/deploy_staging_dapp.sh
-    branches:
-      only:
-        - master
 
 
 workflows:
@@ -237,6 +234,6 @@ workflows:
           requires:
             - sponsor_dapp_test
             - test
-          branches:
-            only:
-              - master
+          filters:
+            branches:
+              only: master
