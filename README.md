@@ -71,9 +71,10 @@ every 15 minutes. A barchart key must be set in your environment variable as `BA
 
 For the script to succeed, the `build` directory must contain the `ManualPriceFeed` address for the specified network.
 
-### Running the Dapp
+### Running the dApp
 
-After deploying to ganache, ropsten, or mainnet, you can run the Sponsor Dapp against the contracts by running the following commands:
+After deploying to ganache, ropsten, or mainnet (or any combination of those), you can run the Sponsor Dapp against the
+contracts by running the following commands:
 ```
 cd sponsor-dapp
 npm run link-contracts
