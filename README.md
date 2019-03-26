@@ -82,6 +82,12 @@ npm start
 ```
 This should automatically start the dApp in your browser.
 
+## Security and Bug Bounty
+
+Please report all security vulnerabilities through our [HackerOne bug bounty page](https://hackerone.com/risk_labs).
+Please do not run any security tests against our mainnet deployment. Please use our testnet deployment or a local
+ganache instance instead.
+
 ## Developer Information and Tools
 
 ### Solhint - Solidity Linter
