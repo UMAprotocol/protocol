@@ -7,7 +7,7 @@ import { withStyles } from "@material-ui/core/styles";
 import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
-import { formatWei } from "../utils/FormattingUtils";
+import { formatWei, formatWithMaxDecimals } from "../utils/FormattingUtils";
 
 const styles = theme => ({
   button: {
@@ -76,13 +76,13 @@ class ContractInteraction extends Component {
     let depositHelper = "";
     if (willDefault) {
       depositHelper = excessMargin
-        ? "Deposit at least " + formatWei(web3.utils.toBN(excessMargin).muln(-1), web3) + marginCurrencyText
+        ? "Deposit at least " + formatWithMaxDecimals(formatWei(web3.utils.toBN(excessMargin).muln(-1), web3), 4) + marginCurrencyText
         : "";
     } else {
-      withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + marginCurrencyText + " available" : "";
+      withdrawHelper = excessMargin ? formatWithMaxDecimals(formatWei(excessMargin, web3), 4) + " available" : "";
     }
     const createHelper = estimatedCreateCurrency
-      ? "Est. " + formatWei(estimatedCreateCurrency, web3) + " " + marginCurrencyText
+      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4) + " " + marginCurrencyText
       : "";
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
@@ -91,7 +91,7 @@ class ContractInteraction extends Component {
 
     const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
     const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
-    const redeemHelper = ownedTokens ? formatWei(ownedTokens, web3) + " token(s) available" : "";
+    const redeemHelper = ownedTokens ? formatWithMaxDecimals(formatWei(ownedTokens, web3), 4) + " available" : "";
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;

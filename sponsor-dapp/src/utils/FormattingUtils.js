@@ -17,3 +17,12 @@ export function formatWei(num, web3) {
   // See https://github.com/ethereum/web3.js/issues/1777.
   return web3.utils.fromWei(num.toString());
 }
+
+// Formats the input to round to decimalPlaces number of decimals.
+export function formatWithMaxDecimals(num, decimalPlaces) {
+  const fixedPrecisionString = Number.parseFloat(num).toFixed(decimalPlaces);
+  
+  // Converting to float and back will truncate any extra 0s on the string.
+  const truncatedFloat = Number.parseFloat(fixedPrecisionString);
+  return truncatedFloat.toString();
+}
