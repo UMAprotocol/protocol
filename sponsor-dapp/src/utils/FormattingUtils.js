@@ -1,3 +1,6 @@
+const BigNumber = require('bignumber.js');
+
+
 export function formatDate(timestampInSeconds, web3) {
   return new Date(
     parseInt(
@@ -20,19 +23,13 @@ export function formatWei(num, web3) {
 
 // Formats the input to round to decimalPlaces number of decimals.
 export function formatWithMaxDecimals(num, decimalPlaces, roundUp) {
-  const fullPrecisionFloat = Number.parseFloat(num);
-  let fixedPrecisionFloat = Number.parseFloat(fullPrecisionFloat.toFixed(decimalPlaces));
-
-  // Get the smallest representable unit in our fixed precision representation.
-  const smallestUnit = Math.pow(10, -decimalPlaces);
-
-  // Take the fixed precision float and ensure it's rounded the correct way.
-  // Note: this is necessary because toFixed() does rounding of its own.
-  if (roundUp && fixedPrecisionFloat < fullPrecisionFloat) {
-    fixedPrecisionFloat += smallestUnit;
-  } else if (!roundUp && fixedPrecisionFloat > fullPrecisionFloat) {
-    fixedPrecisionFloat -= smallestUnit;
+  if (roundUp) {
+    BigNumber.set({ ROUNDING_MODE: BigNumber.ROUND_UP });
+  } else {
+    BigNumber.set({ ROUNDING_MODE: BigNumber.ROUND_DOWN });
   }
 
+  const fullPrecisionFloat = BigNumber(num);
+  let fixedPrecisionFloat = BigNumber(fullPrecisionFloat.toFixed(decimalPlaces));
   return fixedPrecisionFloat.toString();
 }

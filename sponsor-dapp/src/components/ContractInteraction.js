@@ -88,9 +88,9 @@ class ContractInteraction extends Component {
         : "";
     }
 
-    // Round down on the number of tokens that will be created.
+    // Round up on the amount of margin that will be required to create the tokens.
     const createHelper = estimatedCreateCurrency
-      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, false) + " " + marginCurrencyText
+      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true) + " " + marginCurrencyText
       : "";
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
