@@ -17,9 +17,7 @@
     "web3": "1.0.0-beta.37"
   },
   "scripts": {
-    "start": "react-scripts start",
     "start_monitoring": "REACT_APP_MODE=monitoring npm start",
-    "build": "react-scripts build",
     "build_monitoring": "REACT_APP_MODE=monitoring npm run build",
     "start": "react-scripts start",
     "build": "react-scripts build",
