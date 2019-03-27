@@ -19,10 +19,20 @@ export function formatWei(num, web3) {
 }
 
 // Formats the input to round to decimalPlaces number of decimals.
-export function formatWithMaxDecimals(num, decimalPlaces) {
-  const fixedPrecisionString = Number.parseFloat(num).toFixed(decimalPlaces);
+export function formatWithMaxDecimals(num, decimalPlaces, roundUp) {
+  const fullPrecisionFloat = Number.parseFloat(num);
+  let fixedPrecisionFloat = Number.parseFloat(fullPrecisionFloat.toFixed(decimalPlaces));
 
-  // Converting to float and back will truncate any extra 0s on the string.
-  const truncatedFloat = Number.parseFloat(fixedPrecisionString);
-  return truncatedFloat.toString();
+  // Get the smallest representable unit in our fixed precision representation.
+  const smallestUnit = Math.pow(10, -decimalPlaces);
+
+  // Take the fixed precision float and ensure it's rounded the correct way.
+  // Note: this is necessary because toFixed() does rounding of its own.
+  if (roundUp && fixedPrecisionFloat < fullPrecisionFloat) {
+    fixedPrecisionFloat += smallestUnit;
+  } else if (!roundUp && fixedPrecisionFloat > fullPrecisionFloat) {
+    fixedPrecisionFloat -= smallestUnit;
+  }
+
+  return fixedPrecisionFloat.toString();
 }

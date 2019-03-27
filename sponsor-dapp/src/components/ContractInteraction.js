@@ -75,16 +75,22 @@ class ContractInteraction extends Component {
     let withdrawHelper = "";
     let depositHelper = "";
     if (willDefault) {
+      // Round up on the deposit requirement.
       depositHelper = excessMargin
         ? "Deposit at least " +
-          formatWithMaxDecimals(formatWei(web3.utils.toBN(excessMargin).muln(-1), web3), 4) +
+          formatWithMaxDecimals(formatWei(web3.utils.toBN(excessMargin).muln(-1), web3), 4, true) +
           marginCurrencyText
         : "";
     } else {
-      withdrawHelper = excessMargin ? formatWithMaxDecimals(formatWei(excessMargin, web3), 4) + " available" : "";
+      // Round down on the amount available for withdrawal.
+      withdrawHelper = excessMargin
+        ? formatWithMaxDecimals(formatWei(excessMargin, web3), 4, false) + " available"
+        : "";
     }
+
+    // Round down on the number of tokens that will be created.
     const createHelper = estimatedCreateCurrency
-      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4) + " " + marginCurrencyText
+      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, false) + " " + marginCurrencyText
       : "";
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
@@ -93,7 +99,11 @@ class ContractInteraction extends Component {
 
     const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
     const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
-    const redeemHelper = ownedTokens ? formatWithMaxDecimals(formatWei(ownedTokens, web3), 4) + " available" : "";
+
+    // Round down on the number of tokens that can be redeemed.
+    const redeemHelper = ownedTokens
+      ? formatWithMaxDecimals(formatWei(ownedTokens, web3), 4, false) + " available"
+      : "";
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
