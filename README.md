@@ -84,7 +84,7 @@ This should automatically start the dApp in your browser.
 
 ## Security and Bug Bounty
 
-Please report all security vulnerabilities through our [HackerOne bug bounty page](https://hackerone.com/risk_labs).
+Please report all security vulnerabilities through our [HackerOne bug bounty page](https://hackerone.com/uma_project).
 Please run all security tests against the testnet deployment or a local ganache to preserve the integrity of the
 mainnet deployment.
 
