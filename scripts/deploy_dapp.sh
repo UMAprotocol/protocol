@@ -8,6 +8,9 @@ set -e
 # If you'd like to use some other file name and/or path:
 # ./scripts/deploy_dapp.sh <your_file.yaml>
 
+# If you'd like to deploy the monitoring dapp:
+# REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh <your_file.yaml>
+
 # Note: you must have the gcloud CLI tool installed and authenticated before using this script.
 
 # Get the absolute path of a file.
