@@ -1,5 +1,4 @@
-const BigNumber = require('bignumber.js');
-
+const BigNumber = require("bignumber.js");
 
 export function formatDate(timestampInSeconds, web3) {
   return new Date(
