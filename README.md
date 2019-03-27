@@ -39,15 +39,15 @@ export MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble 
 4. Tune the default gas price in `truffle.js` (currently set to `20 Gwei`) to your liking.
 5. Run the following command to start a fresh deployment to mainnet:
 ```
-$(npm bin)/truffle migrate --reset --network mainnet
+$(npm bin)/truffle migrate --reset --network mainnet_mnemonic
 ```
 If you'd like to deploy to the Ropsten testnet instead, run the following command:
 ```
-$(npm bin)/truffle migrate --reset --network ropsten
+$(npm bin)/truffle migrate --reset --network ropsten_mnemonic
 ```
 6. To interact with the contracts you've deployed, run:
 ```
-$(npm bin)/truffle console --network <mainnet_or_ropsten>
+$(npm bin)/truffle console --network <network_name>
 ```
 This will open a node console with all contracts loaded along with a web3 instance connected to the network and
 preloaded with your private keys (loads the first two private keys for your mnemonic by default).

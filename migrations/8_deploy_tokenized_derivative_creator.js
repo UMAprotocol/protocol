@@ -47,7 +47,7 @@ module.exports = async function(deployer, network, accounts) {
   const returnCalculator = await LeveragedReturnCalculator.deployed();
   await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address, { from: keys.returnCalculatorWhitelist });
 
-  if (network !== "mainnet" && network !== "ropsten") {
+  if (!network.startsWith("mainnet") && !network.startsWith("ropsten")) {
     await sponsorWhitelist.addToWhitelist(accounts[1], { from: keys.sponsorWhitelist });
   }
 };
