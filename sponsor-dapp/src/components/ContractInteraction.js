@@ -76,7 +76,9 @@ class ContractInteraction extends Component {
     let depositHelper = "";
     if (willDefault) {
       depositHelper = excessMargin
-        ? "Deposit at least " + formatWithMaxDecimals(formatWei(web3.utils.toBN(excessMargin).muln(-1), web3), 4) + marginCurrencyText
+        ? "Deposit at least " +
+          formatWithMaxDecimals(formatWei(web3.utils.toBN(excessMargin).muln(-1), web3), 4) +
+          marginCurrencyText
         : "";
     } else {
       withdrawHelper = excessMargin ? formatWithMaxDecimals(formatWei(excessMargin, web3), 4) + " available" : "";
