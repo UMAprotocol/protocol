@@ -18,6 +18,10 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start_internal": "REACT_APP_MODE=monitoring npm start",
+    "build": "react-scripts build",
+    "build_internal": "REACT_APP_MODE=monitoring npm run build",
+    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
