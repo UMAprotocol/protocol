@@ -29,6 +29,6 @@ export function formatWithMaxDecimals(num, decimalPlaces, roundUp) {
   }
 
   const fullPrecisionFloat = BigNumber(num);
-  let fixedPrecisionFloat = BigNumber(fullPrecisionFloat.toFixed(decimalPlaces));
+  const fixedPrecisionFloat = BigNumber(fullPrecisionFloat.toFixed(decimalPlaces));
   return fixedPrecisionFloat.toString();
 }
