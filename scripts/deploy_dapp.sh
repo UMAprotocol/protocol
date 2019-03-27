@@ -3,10 +3,10 @@ set -e
 
 # Usage:
 # If the app.yaml configuration file you'd like to use is in sponsor-dapp/app.yaml:
-# ./scripts/deploy_dapp.sh
+# REACT_APP_MODE=default ./scripts/deploy_dapp.sh
 
 # If you'd like to use some other file name and/or path:
-# ./scripts/deploy_dapp.sh <your_file.yaml>
+# REACT_APP_MODE=default ./scripts/deploy_dapp.sh <your_file.yaml>
 
 # If you'd like to deploy the monitoring dapp:
 # REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh <your_file.yaml>

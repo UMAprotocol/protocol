@@ -19,6 +19,8 @@
   "scripts": {
     "start_monitoring": "REACT_APP_MODE=monitoring npm start",
     "build_monitoring": "REACT_APP_MODE=monitoring npm run build",
+    "start_default": "REACT_APP_MODE=default npm start",
+    "build_default": "REACT_APP_MODE=default npm run build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
