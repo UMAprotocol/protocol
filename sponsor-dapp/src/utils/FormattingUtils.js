@@ -29,6 +29,8 @@ export function formatWithMaxDecimals(num, decimalPlaces, roundUp) {
   }
 
   const fullPrecisionFloat = BigNumber(num);
+
+  // Convert back to BN to truncate any trailing 0s that the toFixed() output would print.
   const fixedPrecisionFloat = BigNumber(fullPrecisionFloat.toFixed(decimalPlaces));
   return fixedPrecisionFloat.toString();
 }
