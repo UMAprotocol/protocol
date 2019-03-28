@@ -89,9 +89,22 @@ class ContractInteraction extends Component {
     }
 
     // Round up on the amount of margin that will be required to create the tokens.
-    const createHelper = estimatedCreateCurrency
-      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true) + " " + marginCurrencyText
-      : "";
+    const fm = estimatedCreateCurrency ? formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true) : "";
+    const maxTokensToCreate = "2.1234";
+    const createEstimatedCost = estimatedCreateCurrency ? (
+      <div>
+        Est. cost {fm} {marginCurrencyText}DAI
+      </div>
+    ) : (
+      ""
+    );
+    const createMaxTokens = maxTokensToCreate ? <div>Max {maxTokensToCreate} tokens</div> : "";
+    const createHelper = (
+      <div>
+        {createMaxTokens}
+        {createEstimatedCost}
+      </div>
+    );
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
     // prevent withdrawing into default is handled separately.
@@ -183,6 +196,7 @@ class ContractInteraction extends Component {
               disabled={!isCreateEnabled}
               value={formInputs.createAmount}
               InputProps={tokenInputProps}
+              FormHelperTextProps={{ component: "div" }}
               helperText={createHelper}
               type="number"
               onChange={e => this.props.handleChangeFn("createAmount", e)}
