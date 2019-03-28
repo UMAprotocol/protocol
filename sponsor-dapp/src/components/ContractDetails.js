@@ -13,6 +13,7 @@ import { withStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
 import DrizzleHelper from "../utils/DrizzleHelper.js";
 import ReactGA from "react-ga";
+import LeveragedReturnCalculator from "../contracts/LeveragedReturnCalculator";
 
 const styles = theme => ({
   root: {
@@ -36,6 +37,7 @@ class ContractDetails extends Component {
     loadingTokenizedDerivativeData: true,
     loadingPriceFeedData: true,
     loadingMarginCurrencyData: true,
+    loadingLeverage: true,
     isInteractionEnabled: true,
     initiatedTransactionId: null,
     formInputs: { depositAmount: "", withdrawAmount: "", createAmount: "", redeemAmount: "" }
@@ -49,7 +51,12 @@ class ContractDetails extends Component {
 
     this.drizzleHelper = new DrizzleHelper(drizzle);
 
-    Promise.all([this.getContract(), this.fetchPriceFeedData(), this.fetchMarginCurrencyAllowance()]).catch(error => {
+    Promise.all([
+      this.getContract(),
+      this.fetchPriceFeedData(),
+      this.fetchMarginCurrencyAllowance(),
+      this.fetchLeverage()
+    ]).catch(error => {
       console.error(`Contract ${contractAddress} failed to fetch: ${error.message}`);
     });
 
@@ -179,6 +186,25 @@ class ContractDetails extends Component {
     ]);
 
     this.setState({ loadingPriceFeedData: false, idDataKey: key });
+  }
+
+  async fetchLeverage() {
+    const { contractAddress: address } = this.props;
+    await this.drizzleHelper.addContract(address, TokenizedDerivative.abi);
+
+    const { result: derivativeStorage } = await this.drizzleHelper.cacheCall(address, "derivativeStorage", []);
+
+    // Get the return calculator associated with the contract.
+    const returnCalculatorAddress = derivativeStorage.externalAddresses.returnCalculator;
+    const returnCalculator = await this.drizzleHelper.addContract(
+      returnCalculatorAddress,
+      LeveragedReturnCalculator.abi
+    );
+
+    // Get the leverage.
+    const { key } = await this.drizzleHelper.cacheCall(returnCalculator.address, "leverage", []);
+
+    this.setState({ loadingLeverage: false, leverageDataKey: key });
   }
 
   addPendingTransaction(initiatedTransactionId) {

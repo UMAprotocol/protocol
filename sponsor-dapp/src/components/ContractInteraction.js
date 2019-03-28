@@ -9,6 +9,8 @@ import DrizzleHelper from "../utils/DrizzleHelper";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 import { formatWei, formatWithMaxDecimals } from "../utils/FormattingUtils";
 
+const BigNumber = require("bignumber.js");
+
 const styles = theme => ({
   button: {
     height: 56,
@@ -47,6 +49,36 @@ class ContractInteraction extends Component {
     );
   }
 
+  calcMaxTokensThatCanBeCreated() {
+    const { drizzleHelper } = this;
+    const { contractAddress } = this.props;
+    const { web3 } = this.props.drizzle;
+
+    const ether = BigNumber(web3.utils.toWei("1", "ether"));
+    const newExcessMargin = BigNumber(drizzleHelper.getCache(contractAddress, "calcExcessMargin", []));
+    const newUnderlyingPrice = BigNumber(
+      drizzleHelper.getCache(contractAddress, "getUpdatedUnderlyingPrice", []).underlyingPrice
+    );
+
+    const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
+    const startingUnderlyingPrice = BigNumber(derivativeStorage.referenceTokenState.underlyingPrice);
+    const startingTokenPrice = BigNumber(derivativeStorage.referenceTokenState.tokenPrice);
+    const supportedMove = BigNumber(derivativeStorage.fixedParameters.supportedMove);
+    const leverage = BigNumber(
+      drizzleHelper.getCache(derivativeStorage.externalAddresses.returnCalculator, "leverage", [])
+    );
+
+    const maxTokens = newExcessMargin
+      .times(startingUnderlyingPrice)
+      .times(ether)
+      .div(startingTokenPrice)
+      .div(newUnderlyingPrice)
+      .div(supportedMove)
+      .div(leverage);
+    // Round down on the number of tokens that can be created.
+    return formatWithMaxDecimals(maxTokens.toString(), 4, false);
+  }
+
   getTokenSponsorInteraction() {
     const { drizzleHelper } = this;
     const { formInputs, contractAddress, estimatedCreateCurrency, params, isInteractionEnabled } = this.props;
@@ -56,6 +88,7 @@ class ContractInteraction extends Component {
     const zero = web3.utils.toBN("0");
 
     const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
+    const { state } = derivativeStorage;
 
     // pricePastExpiry simply denotes that the price feed published a time past expiry.
     // A contract can be past expiry and not in the expired state (i.e. live or settled).
@@ -89,16 +122,19 @@ class ContractInteraction extends Component {
     }
 
     // Round up on the amount of margin that will be required to create the tokens.
-    const fm = estimatedCreateCurrency ? formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true) : "";
-    const maxTokensToCreate = "2.1234";
+    const estimatedCostNumber = estimatedCreateCurrency
+      ? formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true)
+      : "";
     const createEstimatedCost = estimatedCreateCurrency ? (
       <div>
-        Est. cost {fm} {marginCurrencyText}DAI
+        Est. cost {estimatedCostNumber} {marginCurrencyText}DAI
       </div>
     ) : (
       ""
     );
-    const createMaxTokens = maxTokensToCreate ? <div>Max {maxTokensToCreate} tokens</div> : "";
+
+    const maxTokensThatCanBeCreated = state === ContractStateEnum.LIVE ? this.calcMaxTokensThatCanBeCreated() : 0;
+    const createMaxTokens = maxTokensThatCanBeCreated ? <div>Max {maxTokensThatCanBeCreated} tokens</div> : "";
     const createHelper = (
       <div>
         {createMaxTokens}
@@ -118,7 +154,6 @@ class ContractInteraction extends Component {
       ? formatWithMaxDecimals(formatWei(ownedTokens, web3), 4, false) + " available"
       : "";
 
-    const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
     const isLiveNoExpiry = isLive && !pricePastExpiry;
     const aboutToExpire = isLive && pricePastExpiry;
