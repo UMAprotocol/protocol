@@ -54,7 +54,7 @@ class ContractInteraction extends Component {
     const { contractAddress } = this.props;
     const { web3 } = this.props.drizzle;
 
-    const ether = BigNumber(web3.utils.toWei("1", "ether"));
+    const fpScalingFactor = BigNumber(web3.utils.toWei("1", "ether"));
     const newExcessMargin = BigNumber(drizzleHelper.getCache(contractAddress, "calcExcessMargin", []));
     const newUnderlyingPrice = BigNumber(
       drizzleHelper.getCache(contractAddress, "getUpdatedUnderlyingPrice", []).underlyingPrice
@@ -70,7 +70,7 @@ class ContractInteraction extends Component {
 
     const maxTokens = newExcessMargin
       .times(startingUnderlyingPrice)
-      .times(ether)
+      .times(fpScalingFactor)
       .div(startingTokenPrice)
       .div(newUnderlyingPrice)
       .div(supportedMove)
