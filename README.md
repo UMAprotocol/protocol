@@ -77,6 +77,7 @@ After deploying to ganache, ropsten, or mainnet (or any combination of those), y
 contracts by running the following commands:
 ```
 cd sponsor-dapp
+npm install
 npm run link-contracts
 npm start
 ```
