@@ -127,7 +127,7 @@ class ContractInteraction extends Component {
       : "";
     const createEstimatedCost = estimatedCreateCurrency ? (
       <div>
-        Est. cost {estimatedCostNumber} {marginCurrencyText}DAI
+        Est. cost {estimatedCostNumber} {marginCurrencyText}
       </div>
     ) : (
       ""
