@@ -140,7 +140,7 @@ jobs:
     docker:
       - image: circleci/node:latest
       - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 6720000 -p 9545
+        command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -180,12 +180,30 @@ jobs:
       - restore_cache:
           key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
       - run:
+          name: Apply Deployment Registry
+          command: $(npm bin)/apply-registry
+      - run:
           name: Build DApp
           working_directory: ~/protocol/sponsor-dapp
           command: npm run build
       - store_artifacts:
           path: ~/protocol/sponsor-dapp/build
           destination: build
+      - save_cache:
+          key: sponsor-dapp-build-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/protocol
+  sponsor_dapp_deploy:
+    docker:
+      - image: circleci/node:latest
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Deploy Dapp
+          command: ./ci/deploy_staging_dapp.sh
+
 
 workflows:
   version: 2
@@ -211,3 +229,11 @@ workflows:
       - sponsor_dapp_build:
           requires:
             - sponsor_dapp_test
+      - sponsor_dapp_deploy:
+          context: gcloud
+          requires:
+            - sponsor_dapp_test
+            - test
+          filters:
+            branches:
+              only: master

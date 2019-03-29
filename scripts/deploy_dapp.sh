@@ -2,14 +2,10 @@
 set -e
 
 # Usage:
-# If the app.yaml configuration file you'd like to use is in sponsor-dapp/app.yaml:
-# REACT_APP_MODE=default ./scripts/deploy_dapp.sh
-
-# If you'd like to use some other file name and/or path:
-# REACT_APP_MODE=default ./scripts/deploy_dapp.sh <your_file.yaml>
+# REACT_APP_MODE=default ./scripts/deploy_dapp.sh <your_file.yaml> <additional_args_for_gcloud_app_deploy>
 
 # If you'd like to deploy the monitoring dapp:
-# REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh <your_file.yaml>
+# REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh <your_file.yaml> <additional_args_for_gcloud_app_deploy>
 
 # Note: you must have the gcloud CLI tool installed and authenticated before using this script.
 
@@ -20,14 +16,12 @@ get_abs_filename() {
   echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 }
 
-APP_YAML_PATH=$(pwd)/sponsor-dapp/app.yaml
+# Grab the absolute path for the provided file.
+APP_YAML_PATH=$(get_abs_filename $1)
+PROTOCOL_DIR=$(pwd)
 
-# If an argument was supplied, it's the desired app.yaml.
-if [ $# -ne 0 ]
-  then
-    # Grab the absolute path for the provided file.
-    APP_YAML_PATH=$(get_abs_filename $1)
-fi
+# Shift the arguments to provide to gcloud app deploy.
+shift
 
 # Compile contracts, load deployed addresses for mainnet and ropsten.
 echo "Compiling contracts."
@@ -59,6 +53,16 @@ npm run link-contracts
 echo "Building dapp."
 npm run build
 
+# Make sure to cleanup the temp directory for any exits after this line.
+function cleanup() {
+  local protocol_directory=$1
+  # Clean up temporary directory.
+  echo "Cleaning up."
+  cd $protocol_directory
+  rm -rf $protocol_directory/sponsor-dapp/.gae_deploy
+}
+trap "cleanup $PROTOCOL_DIR" EXIT
+
 # Make a temporary directory to isolate the files to upload to GAE.
 # Note: otherwise, it will attempt to upload all files in all subdirectories.
 echo "Copying dapp build to temporary directory."
@@ -68,9 +72,4 @@ cp -R $APP_YAML_PATH .gae_deploy/app.yaml
 cd .gae_deploy
 
 # Run gcloud app deploy to deploy.
-gcloud app deploy || echo "Deployment failed."
-
-# Clean up temporary directory.
-echo "Cleaning up."
-cd ..
-rm -rf .gae_deploy
+gcloud app deploy "$@"
