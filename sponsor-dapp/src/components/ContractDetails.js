@@ -457,7 +457,8 @@ class ContractDetails extends Component {
     if (
       this.state.loadingTokenizedDerivativeData ||
       this.state.loadingPriceFeedData ||
-      this.state.loadingMarginCurrencyData
+      this.state.loadingMarginCurrencyData ||
+      this.state.loadingLeverage
     ) {
       return <Typography variant="body2">Looking up contract details...</Typography>;
     }
