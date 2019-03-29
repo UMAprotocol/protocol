@@ -156,8 +156,11 @@ class DerivativeList extends React.Component {
         role = "Sponsor";
       } else if (contract.balanceOf[tokensHeldKey].value.toString() !== "0") {
         role = "Token Holder";
+      } else if (process.env.REACT_APP_MODE === "monitoring") {
+        // Show watcher for all other contract if the dapp is in the monitoring mode.
+        role = "Watcher";
       } else {
-        // Don't show this contract if the current user isn't a party to it.
+        // Don't show this contract if the user isn't involved and the mode doesn't permit users to see all contracts.
         continue;
       }
 
