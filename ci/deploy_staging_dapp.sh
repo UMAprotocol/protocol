@@ -21,4 +21,10 @@ gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 gsutil cp gs://staging-deployment-configuration/app.yaml sponsor-dapp/app.yaml
 
 # Deploy dapp
-./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
+REACT_APP_MODE=default ./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
+
+# Copy the monitoring staging config into the sponsor-dapp dir.
+gsutil cp gs://staging-deployment-configuration/monitoring_app.yaml sponsor-dapp/monitoring_app.yaml
+
+# Deploy monitoring dapp
+REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh sponsor-dapp/monitoring_app.yaml -q
