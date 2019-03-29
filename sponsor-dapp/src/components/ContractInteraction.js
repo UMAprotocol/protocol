@@ -4,10 +4,12 @@ import InputAdornment from "@material-ui/core/InputAdornment";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
 
-import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
+import { ContractStateEnum, ReturnTypeEnum } from "../utils/TokenizedDerivativeUtils";
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 import { formatWei, formatWithMaxDecimals } from "../utils/FormattingUtils";
+
+const BigNumber = require("bignumber.js");
 
 const styles = theme => ({
   button: {
@@ -47,6 +49,43 @@ class ContractInteraction extends Component {
     );
   }
 
+  calcMaxTokensThatCanBeCreated() {
+    const { drizzleHelper } = this;
+    const { contractAddress } = this.props;
+    const { web3 } = this.props.drizzle;
+
+    const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
+    // TODO(ptare): Implement the equivalent computation for COMPOUND return type.
+    if (derivativeStorage.fixedParameters.returnType !== ReturnTypeEnum.LINEAR) {
+      return "";
+    }
+
+    const startingTokenUnderlyingRatio = BigNumber(derivativeStorage.fixedParameters.initialTokenUnderlyingRatio);
+    const supportedMove = BigNumber(derivativeStorage.fixedParameters.supportedMove);
+    const leverage = BigNumber(
+      drizzleHelper.getCache(derivativeStorage.externalAddresses.returnCalculator, "leverage", [])
+    );
+
+    const fpScalingFactor = BigNumber(web3.utils.toWei("1", "ether"));
+    const newExcessMargin = BigNumber(drizzleHelper.getCache(contractAddress, "calcExcessMargin", []));
+    const newUnderlyingPrice = BigNumber(
+      drizzleHelper.getCache(contractAddress, "getUpdatedUnderlyingPrice", []).underlyingPrice
+    );
+
+    // Computation in Solidity will round differently, so results may slightly differ. Since this value is rounded to
+    // 4 decimal places anyway, the difference in precision shouldn't matter.
+    const maxTokens = newExcessMargin
+      .times(fpScalingFactor)
+      .times(fpScalingFactor)
+      .div(startingTokenUnderlyingRatio)
+      .div(newUnderlyingPrice)
+      .div(supportedMove)
+      .div(leverage)
+      .abs();
+    // Round down on the number of tokens that can be created.
+    return formatWithMaxDecimals(maxTokens.toString(), 4, false);
+  }
+
   getTokenSponsorInteraction() {
     const { drizzleHelper } = this;
     const { formInputs, contractAddress, estimatedCreateCurrency, params, isInteractionEnabled } = this.props;
@@ -56,6 +95,7 @@ class ContractInteraction extends Component {
     const zero = web3.utils.toBN("0");
 
     const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
+    const { state } = derivativeStorage;
 
     // pricePastExpiry simply denotes that the price feed published a time past expiry.
     // A contract can be past expiry and not in the expired state (i.e. live or settled).
@@ -89,9 +129,25 @@ class ContractInteraction extends Component {
     }
 
     // Round up on the amount of margin that will be required to create the tokens.
-    const createHelper = estimatedCreateCurrency
-      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true) + " " + marginCurrencyText
+    const estimatedCostNumber = estimatedCreateCurrency
+      ? formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true)
       : "";
+    const createEstimatedCost = estimatedCreateCurrency ? (
+      <div>
+        Est. cost {estimatedCostNumber} {marginCurrencyText}
+      </div>
+    ) : (
+      ""
+    );
+
+    const maxTokensThatCanBeCreated = state === ContractStateEnum.LIVE ? this.calcMaxTokensThatCanBeCreated() : 0;
+    const createMaxTokens = maxTokensThatCanBeCreated ? <div>Max {maxTokensThatCanBeCreated} tokens</div> : "";
+    const createHelper = (
+      <div>
+        {createMaxTokens}
+        {createEstimatedCost}
+      </div>
+    );
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
     // prevent withdrawing into default is handled separately.
@@ -105,7 +161,6 @@ class ContractInteraction extends Component {
       ? formatWithMaxDecimals(formatWei(ownedTokens, web3), 4, false) + " available"
       : "";
 
-    const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;
     const isLiveNoExpiry = isLive && !pricePastExpiry;
     const aboutToExpire = isLive && pricePastExpiry;
@@ -183,6 +238,7 @@ class ContractInteraction extends Component {
               disabled={!isCreateEnabled}
               value={formInputs.createAmount}
               InputProps={tokenInputProps}
+              FormHelperTextProps={{ component: "div" }}
               helperText={createHelper}
               type="number"
               onChange={e => this.props.handleChangeFn("createAmount", e)}

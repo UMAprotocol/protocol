@@ -7,6 +7,11 @@ export const ContractStateEnum = {
   SETTLED: "5"
 };
 
+export const ReturnTypeEnum = {
+  LINEAR: "0",
+  COMPOUND: "1"
+};
+
 export function stateToString(state) {
   switch (state.toString()) {
     case ContractStateEnum.LIVE:
