@@ -39,18 +39,26 @@ export MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble 
 4. Tune the default gas price in `truffle.js` (currently set to `20 Gwei`) to your liking.
 5. Run the following command to start a fresh deployment to mainnet:
 ```
-$(npm bin)/truffle migrate --reset --network mainnet
+$(npm bin)/truffle migrate --reset --network mainnet_mnemonic
 ```
 If you'd like to deploy to the Ropsten testnet instead, run the following command:
 ```
-$(npm bin)/truffle migrate --reset --network ropsten
+$(npm bin)/truffle migrate --reset --network ropsten_mnemonic
 ```
-5. To interact with the contracts you've deployed, run:
+6. To interact with the contracts you've deployed, run:
 ```
-$(npm bin)/truffle console --network <mainnet_or_ropsten>
+$(npm bin)/truffle console --network <network_name>
 ```
 This will open a node console with all contracts loaded along with a web3 instance connected to the network and
 preloaded with your private keys (loads the first two private keys for your mnemonic by default).
+
+If you'd like to interact with the official UMA deployment instead of doing your own deployment, skip steps 1-5
+above and run the following commands instead:
+```
+$(npm bin)/truffle compile
+$(npm bin)/apply-registry
+```
+Please do not run any security tests against our mainnet deployment.
 
 ### Upload Prices to the `ManualPriceFeed`
 
@@ -62,6 +70,24 @@ every 15 minutes. A barchart key must be set in your environment variable as `BA
 ```
 
 For the script to succeed, the `build` directory must contain the `ManualPriceFeed` address for the specified network.
+
+### Running the dApp
+
+After deploying to ganache, ropsten, or mainnet (or any combination of those), you can run the Sponsor Dapp against the
+contracts by running the following commands:
+```
+cd sponsor-dapp
+npm install
+npm run link-contracts
+npm start
+```
+This should automatically start the dApp in your browser.
+
+## Security and Bug Bounty
+
+Please report all security vulnerabilities through our [HackerOne bug bounty page](https://hackerone.com/uma_project).
+Please run all security tests against the testnet deployment or a local ganache to preserve the integrity of the
+mainnet deployment.
 
 ## Developer Information and Tools
 

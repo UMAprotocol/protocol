@@ -14,8 +14,8 @@ function enableControllableTiming(network) {
 function shouldCommitDeployment(network) {
   return (
     network === "ci" || // Just for testing the process of saving deployments.
-    network === "ropsten" ||
-    network === "mainnet"
+    network.startsWith("ropsten") ||
+    network.startsWith("mainnet")
   );
 }
 

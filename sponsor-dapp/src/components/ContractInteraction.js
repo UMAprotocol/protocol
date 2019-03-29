@@ -7,7 +7,7 @@ import { withStyles } from "@material-ui/core/styles";
 import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
-import { formatWei } from "../utils/FormattingUtils";
+import { formatWei, formatWithMaxDecimals } from "../utils/FormattingUtils";
 
 const styles = theme => ({
   button: {
@@ -75,14 +75,22 @@ class ContractInteraction extends Component {
     let withdrawHelper = "";
     let depositHelper = "";
     if (willDefault) {
+      // Round up on the deposit requirement.
       depositHelper = excessMargin
-        ? "Deposit at least " + formatWei(web3.utils.toBN(excessMargin).muln(-1), web3) + marginCurrencyText
+        ? "Deposit at least " +
+          formatWithMaxDecimals(formatWei(web3.utils.toBN(excessMargin).muln(-1), web3), 4, true) +
+          marginCurrencyText
         : "";
     } else {
-      withdrawHelper = excessMargin ? formatWei(excessMargin, web3) + marginCurrencyText + " available" : "";
+      // Round down on the amount available for withdrawal.
+      withdrawHelper = excessMargin
+        ? formatWithMaxDecimals(formatWei(excessMargin, web3), 4, false) + " available"
+        : "";
     }
+
+    // Round up on the amount of margin that will be required to create the tokens.
     const createHelper = estimatedCreateCurrency
-      ? "Est. " + formatWei(estimatedCreateCurrency, web3) + " " + marginCurrencyText
+      ? "Est. " + formatWithMaxDecimals(formatWei(estimatedCreateCurrency, web3), 4, true) + " " + marginCurrencyText
       : "";
 
     // Check if the contract is empty (e.g., initial creation) and disallow withdrawals in that case. The logic to
@@ -91,7 +99,11 @@ class ContractInteraction extends Component {
 
     const ownedTokens = drizzleHelper.getCache(contractAddress, "balanceOf", [account]);
     const anyTokensToRedeem = ownedTokens ? web3.utils.toBN(ownedTokens).gt(zero) : false;
-    const redeemHelper = ownedTokens ? formatWei(ownedTokens, web3) + " token(s) available" : "";
+
+    // Round down on the number of tokens that can be redeemed.
+    const redeemHelper = ownedTokens
+      ? formatWithMaxDecimals(formatWei(ownedTokens, web3), 4, false) + " available"
+      : "";
 
     const { state } = derivativeStorage;
     const isLive = state === ContractStateEnum.LIVE;

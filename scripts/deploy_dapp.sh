@@ -2,7 +2,10 @@
 set -e
 
 # Usage:
-# ./scripts/deploy_dapp.sh <your_app.yaml> <optional_additional_args_for_gcloud_app_deploy>
+# REACT_APP_MODE=default ./scripts/deploy_dapp.sh <your_file.yaml> <additional_args_for_gcloud_app_deploy>
+
+# If you'd like to deploy the monitoring dapp:
+# REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh <your_file.yaml> <additional_args_for_gcloud_app_deploy>
 
 # Note: you must have the gcloud CLI tool installed and authenticated before using this script.
 
