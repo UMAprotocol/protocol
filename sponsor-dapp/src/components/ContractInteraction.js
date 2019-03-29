@@ -4,7 +4,7 @@ import InputAdornment from "@material-ui/core/InputAdornment";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
 
-import { ContractStateEnum } from "../utils/TokenizedDerivativeUtils";
+import { ContractStateEnum, ReturnTypeEnum } from "../utils/TokenizedDerivativeUtils";
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 import { formatWei, formatWithMaxDecimals } from "../utils/FormattingUtils";
@@ -54,27 +54,34 @@ class ContractInteraction extends Component {
     const { contractAddress } = this.props;
     const { web3 } = this.props.drizzle;
 
+    const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
+    // TODO(ptare): Implement the equivalent computation for COMPOUND return type.
+    if (derivativeStorage.fixedParameters.returnType !== ReturnTypeEnum.LINEAR) {
+      return "";
+    }
+
+    const startingTokenUnderlyingRatio = BigNumber(derivativeStorage.fixedParameters.initialTokenUnderlyingRatio);
+    const supportedMove = BigNumber(derivativeStorage.fixedParameters.supportedMove);
+    const leverage = BigNumber(
+      drizzleHelper.getCache(derivativeStorage.externalAddresses.returnCalculator, "leverage", [])
+    );
+
     const fpScalingFactor = BigNumber(web3.utils.toWei("1", "ether"));
     const newExcessMargin = BigNumber(drizzleHelper.getCache(contractAddress, "calcExcessMargin", []));
     const newUnderlyingPrice = BigNumber(
       drizzleHelper.getCache(contractAddress, "getUpdatedUnderlyingPrice", []).underlyingPrice
     );
 
-    const derivativeStorage = drizzleHelper.getCache(contractAddress, "derivativeStorage", []);
-    const startingUnderlyingPrice = BigNumber(derivativeStorage.referenceTokenState.underlyingPrice);
-    const startingTokenPrice = BigNumber(derivativeStorage.referenceTokenState.tokenPrice);
-    const supportedMove = BigNumber(derivativeStorage.fixedParameters.supportedMove);
-    const leverage = BigNumber(
-      drizzleHelper.getCache(derivativeStorage.externalAddresses.returnCalculator, "leverage", [])
-    );
-
+    // Computation in Solidity will round differently, so results may slightly differ. Since this value is rounded to
+    // 4 decimal places anyway, the difference in precision shouldn't matter.
     const maxTokens = newExcessMargin
-      .times(startingUnderlyingPrice)
       .times(fpScalingFactor)
-      .div(startingTokenPrice)
+      .times(fpScalingFactor)
+      .div(startingTokenUnderlyingRatio)
       .div(newUnderlyingPrice)
       .div(supportedMove)
-      .div(leverage);
+      .div(leverage)
+      .abs();
     // Round down on the number of tokens that can be created.
     return formatWithMaxDecimals(maxTokens.toString(), 4, false);
   }
