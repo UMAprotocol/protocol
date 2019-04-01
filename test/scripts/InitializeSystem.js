@@ -6,6 +6,7 @@ const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const identifiers = require("../../config/identifiers");
 
 const argv = require("minimist")(process.argv.slice());
 
@@ -14,15 +15,12 @@ const truffleContract = require("truffle-contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 
-// Mirrors the identifiers in `scripts/PublishPrices.js`.
-// Run the script directly to publish meaningful numbers.
-const supportedIdentifiers = ["ESM19", "CBN19"];
-
 // Deploys a TokenizedDerivative. Used for deploying a contract to Ganache for local testing.
 const initializeSystem = async function(callback) {
   try {
     // USAGE: `truffle exec test/scripts/InitializeSystem.js [--identifier <identifier>] --network <network>`
     // <identifier> must be one of the values in supportedIdentifiers
+    const supportedIdentifiers = Object.keys(identifiers);
 
     const deployedRegistry = await Registry.deployed();
     const deployedCentralizedOracle = await CentralizedOracle.deployed();

@@ -5,6 +5,7 @@ import { DrizzleContext } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./components/Dashboard.js";
 import params from "./parameters.json";
+import identifierConfig from "./identifiers.json";
 import ReactGA from "react-ga";
 
 class App extends Component {
@@ -79,7 +80,7 @@ class App extends Component {
             if (this.props.params) {
               newParams = { ...this.props.params };
             } else {
-              newParams = { ...params };
+              newParams = { ...params, identifiers: { ...identifierConfig } };
             }
 
             // Copy params without network properties
