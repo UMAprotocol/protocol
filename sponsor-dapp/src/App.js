@@ -4,8 +4,7 @@ import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
 import { DrizzleContext } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./components/Dashboard.js";
-import params from "./parameters.json";
-import identifierConfig from "./identifiers.json";
+import parameters from "./parameters.js";
 import ReactGA from "react-ga";
 
 class App extends Component {
@@ -80,7 +79,7 @@ class App extends Component {
             if (this.props.params) {
               newParams = { ...this.props.params };
             } else {
-              newParams = { ...params, identifiers: { ...identifierConfig } };
+              newParams = { ...parameters };
             }
 
             // Copy params without network properties
@@ -94,7 +93,7 @@ class App extends Component {
             const theme = this.createMuiTheme(networkName);
 
             // Overlay network properties on top
-            Object.assign(newParams, params[networkName]);
+            Object.assign(newParams, parameters[networkName]);
 
             return (
               <MuiThemeProvider theme={theme}>
