@@ -1,6 +1,7 @@
 const Registry = artifacts.require("Registry");
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const { getKeysForNetwork, enableControllableTiming, deployAndGet, addToTdr } = require("./MigrationUtils.js");
+const identifiers = require("../config/identifiers");
 
 module.exports = async function(deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
@@ -15,7 +16,7 @@ module.exports = async function(deployer, network, accounts) {
   await addToTdr(centralizedOracle, network);
 
   // Add supported identifiers to the Oracle.
-  const supportedIdentifiers = ["ESM19", "CBN19"];
+  const supportedIdentifiers = Object.keys(identifiers);
   for (let identifier of supportedIdentifiers) {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
     await centralizedOracle.addSupportedIdentifier(identifierBytes, { from: keys.deployer });

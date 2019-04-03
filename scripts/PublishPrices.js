@@ -3,6 +3,7 @@ const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const fetch = require("node-fetch");
 const util = require("util");
 const commandlineUtil = require("./CommandlineUtil");
+const identifiers = require("../config/identifiers");
 
 require("dotenv").config();
 
@@ -113,6 +114,21 @@ async function getAlphaVantageCurrencyRate(asset) {
   return { price: rate, timestamp: getCurrentTime() };
 }
 
+async function fetchPrice(assetConfig) {
+  switch (assetConfig.dataSource) {
+    case "Barchart":
+      return await getBarchartPrice(assetConfig.assetName);
+    case "AlphaVantage":
+      return await getAlphaVantageQuote(assetConfig.assetName);
+    case "AlphaVantageCurrency":
+      return await getAlphaVantageCurrencyRate(assetConfig.assetName);
+    case "Coinbase":
+      return await getCoinbasePrice(assetConfig.assetName);
+    default:
+      throw `Unknown dataSource [${value.uploaderConfig.dataSource}]`;
+  }
+}
+
 // Pushes a price to a manual price feed.
 async function publishPrice(manualPriceFeed, identifierBytes, publishTime, exchangeRate) {
   console.log(
@@ -122,7 +138,7 @@ async function publishPrice(manualPriceFeed, identifierBytes, publishTime, excha
 }
 
 async function getNonZeroPriceInWei(assetConfig) {
-  const { price, timestamp } = await assetConfig.priceFetchFunction(assetConfig.assetName);
+  const { price, timestamp } = await fetchPrice(assetConfig);
   if (!price) {
     throw `No price for [${assetConfig}]`;
   }
@@ -223,30 +239,13 @@ async function publishFeed(feed) {
 
 function getPriceFeeds() {
   const priceFeedAddress = ManualPriceFeed.address;
-  return [
-    {
-      identifier: "ESM19",
+  return Object.entries(identifiers).map(([key, value]) => {
+    return {
+      identifier: key,
       priceFeedAddress: priceFeedAddress,
-      publishInterval: 900,
-      // Feed has a minimum delay of 10 minutes.
-      minDelay: 600,
-      numerator: {
-        priceFetchFunction: getBarchartPrice,
-        assetName: "ESM19"
-      }
-    },
-    {
-      identifier: "CBN19",
-      priceFeedAddress: priceFeedAddress,
-      publishInterval: 900,
-      // Feed has a minimum delay of 10 minutes.
-      minDelay: 600,
-      numerator: {
-        priceFetchFunction: getBarchartPrice,
-        assetName: "CBN19"
-      }
-    }
-  ];
+      ...value.uploaderConfig
+    };
+  });
 }
 
 async function runExport() {
