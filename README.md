@@ -1,5 +1,17 @@
 # UMA Protocol
 
+## Contact Us
+
+### Slack
+
+For all technical questions and discussions, please join our Slack using
+[this link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LWZiYjg3ODY2M2MwZGQ3MDVjZDc1ZjUwNDJkMTA5NDZlNzFlZDYxYmQxOTAwNTY1NmZlNGRjY2IxYzUzNjQ0YjI).
+If you've used our Slack before, you can find it at umaprotocol.slack.com.
+
+### Email
+
+For anything non-technical, please contact reach out to [hello@umaproject.org](mailto:hello@umaproject.org).
+
 ## Deployment
 
 ### Initial Setup
