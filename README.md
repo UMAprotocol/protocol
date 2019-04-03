@@ -5,7 +5,7 @@
 - [Slack](umaprotocol.slack.com): to join, use this
 [invite link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LWZiYjg3ODY2M2MwZGQ3MDVjZDc1ZjUwNDJkMTA5NDZlNzFlZDYxYmQxOTAwNTY1NmZlNGRjY2IxYzUzNjQ0YjI).
 Please use Slack for all technical questions and discussions.
-- [Email](mailto:hello@umaproject.org): Please send us an email for anything non-technical.
+- [Email](mailto:hello@umaproject.org): for anything non-technical.
 
 ## Deployment
 
