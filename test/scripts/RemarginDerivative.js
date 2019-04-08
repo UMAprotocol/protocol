@@ -10,7 +10,6 @@ const remarginDerivative = async function(callback) {
     const centralizedOracle = await CentralizedOracle.deployed();
     await centralizedOracle.callRemargin(argv.derivative);
 
-
     console.log("Derivative Remargined: " + argv.derivative);
   } catch (e) {
     console.log("ERROR: " + e);
