@@ -59,8 +59,8 @@ jobs:
             - sec-toolbox-deps-{{ checksum "package.json" }}
             - sec-toolbox-deps-
       - run:
-          name: Grant Write Permissions
-          command: sudo chmod a+rwx /home/ethsec/.npm
+          name: Change user
+          command: sudo su - ethsec
       - run:
           name: Install Dependencies
           command: npm install --quiet
@@ -130,8 +130,8 @@ jobs:
             - sec-toolbox-deps-{{ checksum "package.json" }}
             - sec-toolbox-deps-
       - run:
-          name: Grant Write Permissions
-          command: sudo chmod a+rwx /home/ethsec/.npm
+          name: Change User
+          command: sudo su - ethsec
       - run:
           name: Install Dependencies
           command: npm install --quiet
