@@ -78,10 +78,15 @@ class ContractFinancialsTable extends Component {
         ? formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) + marginCurrencyText
         : "Unknown";
 
-        const estimatedFees =
-      estimatedNav && estimatedShort
-        ? formatWei(toBN(currentTotalHoldings).sub(toBN(previousTotalHoldings)), web3) + marginCurrencyText
-        : "Unknown";
+    const estimatedFees =
+    estimatedNav && estimatedShort
+      ? formatWei(
+          toBN(estimatedNav)
+            .add(toBN(estimatedShort))
+            .sub(toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance))),
+          web3
+        ) + marginCurrencyText
+      : "Unknown";
 
     const numTotalTokens = formatWei(totalSupply, web3);
     const tokenBalance = formatWei(balanceOf, web3);
