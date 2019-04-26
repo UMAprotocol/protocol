@@ -2,7 +2,7 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - checkout
@@ -12,7 +12,7 @@ jobs:
             - v2-dependency-cache-
       - run:
           name: Install Dependencies
-          command: npm install --quiet --no-optional
+          command: npm install --quiet
       - save_cache:
           key: v2-dependency-cache-{{ checksum "package.json" }}
           paths:
@@ -23,7 +23,7 @@ jobs:
             - ~/protocol
   build:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -37,7 +37,7 @@ jobs:
             - ~/protocol
   lint:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -76,7 +76,7 @@ jobs:
           command: ./ci/run_slither.sh
   test:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000
     working_directory: ~/protocol
@@ -150,7 +150,7 @@ jobs:
           command: ./ci/run_echidna_tests.sh
   sponsor_dapp_test:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
     working_directory: ~/protocol
@@ -186,7 +186,7 @@ jobs:
           command: ./ci/run_sponsor_dapp_tests.sh
   sponsor_dapp_build:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -207,7 +207,7 @@ jobs:
             - ~/protocol
   sponsor_dapp_deploy:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
