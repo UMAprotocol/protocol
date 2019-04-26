@@ -77,7 +77,11 @@ class ContractFinancialsTable extends Component {
       estimatedNav && estimatedShort
         ? formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) + marginCurrencyText
         : "Unknown";
-    const estimatedFees = previousTotalHoldings - currentTotalHoldings;
+
+        const estimatedFees =
+      estimatedNav && estimatedShort
+        ? formatWei(toBN(currentTotalHoldings).sub(toBN(previousTotalHoldings)), web3) + marginCurrencyText
+        : "Unknown";
 
     const numTotalTokens = formatWei(totalSupply, web3);
     const tokenBalance = formatWei(balanceOf, web3);
@@ -143,9 +147,14 @@ class ContractFinancialsTable extends Component {
             </TableRow>
 
             <TableRow key="remarginingFees">
-              <TableCell><p>- Fees extracted from remargin: </p></TableCell>
-              <TableCell> </TableCell>
-              <TableCell><p>- {estimatedFees}</p>{" "}</TableCell>
+
+              <TableCell>
+                <p>- Remargin fees: </p>
+              </TableCell>
+              <TableCell />
+              <TableCell>
+                <p> {estimatedFees}</p>{" "}
+              </TableCell>
             </TableRow>
 
             <TableRow key="tokenSupply" className={classes.shaded}>
