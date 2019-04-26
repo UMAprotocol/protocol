@@ -12,7 +12,7 @@ jobs:
             - v2-dependency-cache-
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: npm install --quiet --no-optional
       - save_cache:
           key: v2-dependency-cache-{{ checksum "package.json" }}
           paths:
