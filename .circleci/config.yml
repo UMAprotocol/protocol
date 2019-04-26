@@ -60,7 +60,10 @@ jobs:
             - sec-toolbox-deps-
       - run:
           name: Change user
-          command: sudo su - ethsec
+          command: sudo su ethsec
+      - run:
+          name: Reclaim ownership
+          command: sudo chown -R $(whoami) ~/.npm
       - run:
           name: Install Dependencies
           command: npm install --quiet
@@ -130,8 +133,11 @@ jobs:
             - sec-toolbox-deps-{{ checksum "package.json" }}
             - sec-toolbox-deps-
       - run:
-          name: Change User
-          command: sudo su - ethsec
+          name: Change user
+          command: sudo su ethsec
+      - run:
+          name: Reclaim ownership
+          command: sudo chown -R $(whoami) ~/.npm
       - run:
           name: Install Dependencies
           command: npm install --quiet
