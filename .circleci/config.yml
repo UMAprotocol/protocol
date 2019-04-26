@@ -2,7 +2,7 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - checkout
@@ -23,7 +23,7 @@ jobs:
             - ~/protocol
   build:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -37,7 +37,7 @@ jobs:
             - ~/protocol
   lint:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -56,21 +56,21 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v1-sec-toolbox-deps-
+            - sec-toolbox-deps-{{ checksum "package.json" }}
+            - sec-toolbox-deps-
       - run:
           name: Install Dependencies
-          command: sudo npm install --quiet
+          command: npm install --quiet
       - save_cache:
-          key: v1-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
           name: Slither
-          command: sudo ./ci/run_slither.sh
+          command: ./ci/run_slither.sh
   test:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:latest
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000
     working_directory: ~/protocol
@@ -124,13 +124,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v1-sec-toolbox-deps-
+            - sec-toolbox-deps-{{ checksum "package.json" }}
+            - sec-toolbox-deps-
       - run:
           name: Install Dependencies
-          command: sudo npm install --quiet
+          command: npm install --quiet
       - save_cache:
-          key: v1-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -138,7 +138,7 @@ jobs:
           command: ./ci/run_echidna_tests.sh
   sponsor_dapp_test:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:latest
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
     working_directory: ~/protocol
@@ -174,7 +174,7 @@ jobs:
           command: ./ci/run_sponsor_dapp_tests.sh
   sponsor_dapp_build:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -195,7 +195,7 @@ jobs:
             - ~/protocol
   sponsor_dapp_deploy:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:latest
     working_directory: ~/protocol
     steps:
       - restore_cache:
