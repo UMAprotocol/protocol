@@ -56,13 +56,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - sec-toolbox-deps-{{ checksum "package.json" }}
-            - sec-toolbox-deps-
+            - v1-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v1-sec-toolbox-deps-
       - run:
           name: Install Dependencies
           command: sudo npm install --quiet
       - save_cache:
-          key: sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v1-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -124,13 +124,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - sec-toolbox-deps-{{ checksum "package.json" }}
-            - sec-toolbox-deps-
+            - v1-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v1-sec-toolbox-deps-
       - run:
           name: Install Dependencies
           command: sudo npm install --quiet
       - save_cache:
-          key: sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v1-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
