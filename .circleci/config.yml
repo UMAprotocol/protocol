@@ -60,7 +60,7 @@ jobs:
             - sec-toolbox-deps-
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: sudo npm install --quiet
       - save_cache:
           key: sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
@@ -128,7 +128,7 @@ jobs:
             - sec-toolbox-deps-
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: sudo npm install --quiet
       - save_cache:
           key: sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
