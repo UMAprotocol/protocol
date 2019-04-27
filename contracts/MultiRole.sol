@@ -14,7 +14,7 @@ library Exclusive {
     }
 
     function resetMember(RoleMembership storage roleMembership, address newMember) internal {
-        require(newMember != address(0x0));
+        require(newMember != address(0x0), "Cannot set an exclusive role to 0x0");
         roleMembership.member = newMember;
     }
 
@@ -23,7 +23,7 @@ library Exclusive {
     }
 
     function init(RoleMembership storage roleMembership, address initialMember) internal {
-        roleMembership.member = initialMember;
+        resetMember(roleMembership, initialMember);
     }
 }
 
@@ -65,22 +65,27 @@ contract MutliRole {
     mapping(uint => Role) roles;
 
     modifier onlyRoleManager(uint roleId) {
-        require(holdsRole(roles[roleId].managingRole, msg.sender));
+        require(holdsRole(roles[roleId].managingRole, msg.sender), "Can only be called by a role manager");
         _;
     }
 
     modifier onlyValidRole(uint roleId) {
-        require(roles[roleId].roleType != RoleType.Invalid);
+        require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid roleId");
+        _;
+    }
+
+    modifier onlyInvalidRole(uint roleId) {
+        require(roles[roleId].roleType == RoleType.Invalid, "Attempted to initialize a pre-existing role");
         _;
     }
 
     modifier onlyExclusive(uint roleId) {
-        require(roles[roleId].roleType == RoleType.Exclusive, "must be called on an initialized Exclusive role");
+        require(roles[roleId].roleType == RoleType.Exclusive, "Must be called on an initialized Exclusive role");
         _;
     }
 
     modifier onlyShared(uint roleId) {
-        require(roles[roleId].roleType == RoleType.Shared, "must be called on an initialized Shared role");
+        require(roles[roleId].roleType == RoleType.Shared, "Must be called on an initialized Shared role");
         _;
     }
 
@@ -110,14 +115,22 @@ contract MutliRole {
         roles[roleId].sharedRoleMembership.removeMember(memberToRemove);
     }
 
-    function _createSharedRole(uint roleId, uint managingRoleId, address[] memory initialMembers) internal onlyValidRole(managingRoleId) {
+    function _createSharedRole(uint roleId, uint managingRoleId, address[] memory initialMembers)
+        internal
+        onlyInvalidRole(roleId)
+        onlyValidRole(managingRoleId)
+    {
         Role storage role = roles[roleId];
         role.roleType = RoleType.Shared;
         role.managingRole = managingRoleId;
         role.sharedRoleMembership.init(initialMembers);
     }
 
-    function _createExclusiveRole(uint roleId, uint managingRoleId, address initialMember) internal onlyValidRole(managingRoleId) {
+    function _createExclusiveRole(uint roleId, uint managingRoleId, address initialMember)
+        internal
+        onlyInvalidRole(roleId)
+        onlyValidRole(managingRoleId)
+    {
         Role storage role = roles[roleId];
         role.roleType = RoleType.Exclusive;
         role.managingRole = managingRoleId;
