@@ -77,9 +77,15 @@ class ContractFinancialsTable extends Component {
       estimatedNav && estimatedShort
         ? formatWei(toBN(estimatedNav).add(toBN(estimatedShort)), web3) + marginCurrencyText
         : "Unknown";
+
     const estimatedFees =
       estimatedNav && estimatedShort
-        ? formatWei(toBN(currentTotalHoldings).sub(toBN(previousTotalHoldings)), web3) + marginCurrencyText
+        ? formatWei(
+            toBN(estimatedNav)
+              .add(toBN(estimatedShort))
+              .sub(toBN(derivativeStorage.longBalance).add(toBN(derivativeStorage.shortBalance))),
+            web3
+          ) + marginCurrencyText
         : "Unknown";
 
     const numTotalTokens = formatWei(totalSupply, web3);
@@ -147,11 +153,11 @@ class ContractFinancialsTable extends Component {
 
             <TableRow key="remarginingFees">
               <TableCell>
-                <p>- Oracle Fees on remargin: </p>
+                <p>- Remargin fees: </p>
               </TableCell>
               <TableCell />
               <TableCell>
-                <p>- {estimatedFees}</p>{" "}
+                <p> {estimatedFees}</p>{" "}
               </TableCell>
             </TableRow>
 
