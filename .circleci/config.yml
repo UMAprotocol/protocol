@@ -2,19 +2,19 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - checkout
       - restore_cache:
           keys:
-            - v1-dependency-cache-{{ checksum "package.json" }}
-            - v1-dependency-cache-
+            - v2-dependency-cache-{{ checksum "package.json" }}
+            - v2-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v1-dependency-cache-{{ checksum "package.json" }}
+          key: v2-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -23,7 +23,7 @@ jobs:
             - ~/protocol
   build:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -37,7 +37,7 @@ jobs:
             - ~/protocol
   lint:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -56,13 +56,19 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - sec-toolbox-deps-{{ checksum "package.json" }}
-            - sec-toolbox-deps-
+            - v2-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v2-sec-toolbox-deps-
+      - run:
+          name: Change user
+          command: sudo su ethsec
+      - run:
+          name: Reclaim ownership
+          command: sudo chown -R $(whoami) ~/.npm
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v2-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -70,7 +76,7 @@ jobs:
           command: ./ci/run_slither.sh
   test:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000
     working_directory: ~/protocol
@@ -101,13 +107,13 @@ jobs:
           command: apk update && apk add make git python g++ curl ca-certificates openssl && update-ca-certificates
       - restore_cache:
           keys:
-            - coverage-dependency-cache-{{ checksum "package.json" }}
-            - coverage-dependency-cache-
+            - v2-coverage-dependency-cache-{{ checksum "package.json" }}
+            - v2-coverage-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: coverage-dependency-cache-{{ checksum "package.json" }}
+          key: v2-coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -124,13 +130,19 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - sec-toolbox-deps-{{ checksum "package.json" }}
-            - sec-toolbox-deps-
+            - v2-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v2-sec-toolbox-deps-
+      - run:
+          name: Change user
+          command: sudo su ethsec
+      - run:
+          name: Reclaim ownership
+          command: sudo chown -R $(whoami) ~/.npm
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v2-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -138,7 +150,7 @@ jobs:
           command: ./ci/run_echidna_tests.sh
   sponsor_dapp_test:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
     working_directory: ~/protocol
@@ -150,14 +162,14 @@ jobs:
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
           keys: 
-            - sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
-            - sponsor-dapp-dep-cache-
+            - v2-sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+            - v2-sponsor-dapp-dep-cache-
       - run:
           name: Install Dependencies
           working_directory: ~/protocol/sponsor-dapp
           command: npm install
       - save_cache:
-          key: sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
+          key: v2-sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
           paths:
             - sponsor-dapp/node_modules
       - run:
@@ -174,7 +186,7 @@ jobs:
           command: ./ci/run_sponsor_dapp_tests.sh
   sponsor_dapp_build:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -195,7 +207,7 @@ jobs:
             - ~/protocol
   sponsor_dapp_deploy:
     docker:
-      - image: circleci/node:latest
+      - image: circleci/node:11.5.0
     working_directory: ~/protocol
     steps:
       - restore_cache:
