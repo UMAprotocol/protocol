@@ -51,7 +51,7 @@ library Shared {
     }
 }
 
-contract MutliRole {
+contract MultiRole {
     using Exclusive for Exclusive.RoleMembership;
     using Shared for Shared.RoleMembership;
     enum RoleType { Invalid, Exclusive, Shared }
@@ -63,6 +63,11 @@ contract MutliRole {
     }
 
     mapping(uint => Role) roles;
+
+    modifier onlyRoleHolder(uint roleId) {
+        require(holdsRole(roleId));
+        _;
+    }
 
     modifier onlyRoleManager(uint roleId) {
         require(holdsRole(roles[roleId].managingRole, msg.sender), "Can only be called by a role manager");
