@@ -20,5 +20,5 @@ contract MultiRoleTest is MultiRole {
         _createExclusiveRole(roleId, managingRoleId, initialMember);
     }
 
-    function revertIfNotHoldingRole(uint roleId) onlyRoleHolder(roleId) {}
+    function revertIfNotHoldingRole(uint roleId) external view onlyRoleHolder(roleId) {}
 }

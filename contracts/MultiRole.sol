@@ -62,25 +62,15 @@ contract MultiRole {
         Shared.RoleMembership sharedRoleMembership;
     }
 
-    mapping(uint => Role) roles;
+    mapping(uint => Role) private roles;
 
     modifier onlyRoleHolder(uint roleId) {
-        require(holdsRole(roleId));
+        require(holdsRole(roleId, msg.sender), "Sender does not hold required role");
         _;
     }
 
     modifier onlyRoleManager(uint roleId) {
         require(holdsRole(roles[roleId].managingRole, msg.sender), "Can only be called by a role manager");
-        _;
-    }
-
-    modifier onlyValidRole(uint roleId) {
-        require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid roleId");
-        _;
-    }
-
-    modifier onlyInvalidRole(uint roleId) {
-        require(roles[roleId].roleType == RoleType.Invalid, "Attempted to initialize a pre-existing role");
         _;
     }
 
@@ -120,25 +110,35 @@ contract MultiRole {
         roles[roleId].sharedRoleMembership.removeMember(memberToRemove);
     }
 
+    modifier onlyValidRole(uint roleId) {
+        require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid roleId");
+        _;
+    }
+
+    modifier onlyInvalidRole(uint roleId) {
+        require(roles[roleId].roleType == RoleType.Invalid, "Cannot use a pre-existing role");
+        _;
+    }
+
     function _createSharedRole(uint roleId, uint managingRoleId, address[] memory initialMembers)
         internal
         onlyInvalidRole(roleId)
-        onlyValidRole(managingRoleId)
     {
         Role storage role = roles[roleId];
         role.roleType = RoleType.Shared;
         role.managingRole = managingRoleId;
         role.sharedRoleMembership.init(initialMembers);
+        require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid role to manage a shared role");
     }
 
     function _createExclusiveRole(uint roleId, uint managingRoleId, address initialMember)
         internal
         onlyInvalidRole(roleId)
-        onlyValidRole(managingRoleId)
     {
         Role storage role = roles[roleId];
         role.roleType = RoleType.Exclusive;
         role.managingRole = managingRoleId;
         role.exclusiveRoleMembership.init(initialMember);
+        require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid role to manage an exclusive role");
     }
 }
