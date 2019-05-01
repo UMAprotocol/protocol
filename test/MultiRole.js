@@ -71,7 +71,7 @@ contract("MultiRole", function(accounts) {
     assert.isTrue(await multiRole.holdsRole("1", account3));
     await multiRole.revertIfNotHoldingRole("1", { from: account3 });
 
-    // Anyone holding the role should be able to remove members.
+    // Anyone who holds the role should be able to remove members.
     await multiRole.removeMember("1", account2, { from: account3 });
     assert.isFalse(await multiRole.holdsRole("1", account2));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account2 })));
