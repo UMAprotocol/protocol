@@ -3,7 +3,6 @@ const { didContractThrow } = require("./utils/DidContractThrow.js");
 const MultiRoleTest = artifacts.require("MultiRoleTest");
 
 contract("MultiRole", function(accounts) {
-
   const account1 = accounts[0];
   const account2 = accounts[1];
   const account3 = accounts[2];
