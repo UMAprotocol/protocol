@@ -1,5 +1,5 @@
 /*
-  MutliRole contract.
+  MultiRole contract.
 */
 
 pragma solidity ^0.5.0;
