@@ -13,9 +13,25 @@ contract("MultiRole", function(accounts) {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createExclusiveRole("1", "1", account1);
 
+    // Shared methods should fail.
+    assert(await didContractThrow(multiRole.addMember("1", account2, { from: account1 })));
+    assert(await didContractThrow(multiRole.removeMember("1", account1, { from: account1 })));
+
+    // Create methods should fail.
+    assert(await didContractThrow(multiRole.createExclusiveRole("1", "1", account1)));
+    assert(await didContractThrow(multiRole.createSharedRole("1", "1", [account1])));
+
+    // Cannot call methods on roles that haven't been created.
+    assert(await didContractThrow(multiRole.addMember("2", account2, { from: account1 })));
+    assert(await didContractThrow(multiRole.removeMember("2", account2, { from: account1 })));
+    assert(await didContractThrow(multiRole.resetMember("2", account2, { from: account1 })));
+    assert(await didContractThrow(multiRole.getMember("2")));
+    assert(await didContractThrow(multiRole.holdsRole("2", account2)));
+
     // Check that only the account1 is the holder of the role.
     assert.isTrue(await multiRole.holdsRole("1", account1));
     assert.isFalse(await multiRole.holdsRole("1", account2));
+    assert.equal(await multiRole.getMember("1"), account1);
     await multiRole.revertIfNotHoldingRole("1", { from: account1 });
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account2 })));
 
@@ -29,6 +45,7 @@ contract("MultiRole", function(accounts) {
     // account2 should now be the holder of the role.
     assert.isFalse(await multiRole.holdsRole("1", account1));
     assert.isTrue(await multiRole.holdsRole("1", account2));
+    assert.equal(await multiRole.getMember("1"), account2);
     await multiRole.revertIfNotHoldingRole("1", { from: account2 });
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account1 })));
   });
@@ -41,23 +58,33 @@ contract("MultiRole", function(accounts) {
     // Check that only the account2 is the holder of the role.
     assert.isTrue(await multiRole.holdsRole("2", account2));
     assert.isFalse(await multiRole.holdsRole("2", account1));
+    assert.equal(await multiRole.getMember("2"), account2);
     await multiRole.revertIfNotHoldingRole("2", { from: account2 });
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account1 })));
 
     // Only the holder of the managing role should be able to modify it.
-    assert(await didContractThrow(multiRole.resetMember("1", account2, { from: account2 })));
-    await multiRole.resetMember("1", account1, { from: account1 });
+    assert(await didContractThrow(multiRole.resetMember("2", account1, { from: account2 })));
+    await multiRole.resetMember("2", account1, { from: account1 });
 
     // account1 should now be the holder of the role.
-    assert.isFalse(await multiRole.holdsRole("1", account2));
-    assert.isTrue(await multiRole.holdsRole("1", account1));
-    await multiRole.revertIfNotHoldingRole("1", { from: account1 });
-    assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account2 })));
+    assert.isFalse(await multiRole.holdsRole("2", account2));
+    assert.isTrue(await multiRole.holdsRole("2", account1));
+    assert.equal(await multiRole.getMember("2"), account1);
+    await multiRole.revertIfNotHoldingRole("2", { from: account1 });
+    assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account2 })));
   });
 
   it("Shared self-managed role", async function() {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createSharedRole("1", "1", [account1, account2]);
+
+    // Exclusive methods should fail.
+    assert(await didContractThrow(multiRole.resetMember("1", account3, { from: account1 })));
+    assert(await didContractThrow(multiRole.getMember("1")));
+
+    // Create methods should fail.
+    assert(await didContractThrow(multiRole.createExclusiveRole("1", "1", account1)));
+    assert(await didContractThrow(multiRole.createSharedRole("1", "1", [account1])));
 
     // Check that only the account1 and account2 are holders of the role.
     assert.isTrue(await multiRole.holdsRole("1", account1));
