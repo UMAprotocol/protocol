@@ -53,6 +53,9 @@ contract("MultiRole", function(accounts) {
   it("Exlusive externally managed role", async function() {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createExclusiveRole("1", "1", account1);
+
+    // Roles can only be managed by previously created roles.
+    assert(await didContractThrow(multiRole.createExclusiveRole("2", "3", account1)));
     await multiRole.createExclusiveRole("2", "1", account2);
 
     // Check that only the account2 is the holder of the role.
@@ -107,6 +110,9 @@ contract("MultiRole", function(accounts) {
   it("Shared externally-managed (shared) role", async function() {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createSharedRole("1", "1", [account1, account3]);
+
+    // Roles can only be managed by previously created roles.
+    assert(await didContractThrow(multiRole.createSharedRole("2", "3", [account1, account2])));
     await multiRole.createSharedRole("2", "1", [account1, account2]);
 
     // Check that only the account1 and account2 are holders of the role.

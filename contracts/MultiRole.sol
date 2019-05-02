@@ -128,7 +128,7 @@ contract MultiRole {
         role.roleType = RoleType.Shared;
         role.managingRole = managingRoleId;
         role.sharedRoleMembership.init(initialMembers);
-        require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid role to manage a shared role");
+        require(roles[managingRoleId].roleType != RoleType.Invalid, "Attempted to use an invalid role to manage a shared role");
     }
 
     function _createExclusiveRole(uint roleId, uint managingRoleId, address initialMember)
@@ -139,6 +139,6 @@ contract MultiRole {
         role.roleType = RoleType.Exclusive;
         role.managingRole = managingRoleId;
         role.exclusiveRoleMembership.init(initialMember);
-        require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid role to manage an exclusive role");
+        require(roles[managingRoleId].roleType != RoleType.Invalid, "Attempted to use an invalid role to manage an exclusive role");
     }
 }
