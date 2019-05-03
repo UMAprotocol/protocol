@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../common/test/DidContractThrow.js");
+const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
 const MultiRoleTest = artifacts.require("MultiRoleTest");
 
