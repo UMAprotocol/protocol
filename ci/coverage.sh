@@ -13,6 +13,7 @@ run_coverage() {
     cd $1
     cp -R $PROTOCOL_DIR/common ./
     cp -R $PROTOCOL_DIR/node_modules ./
+    pkill testrpc
     $(npm bin)/solidity-coverage
 }
 
