@@ -12,6 +12,7 @@ run_coverage() {
     # $1 is the truffle directory over which we want to run the coverage tool.
     cd $1
     cp $PROTOCOL_DIR/common/globalSolcoverConfig.js truffle-config.js
+    cp -R $PROTOCOL_DIR/common/gckms ./
     cp -R $PROTOCOL_DIR/node_modules ./
     $(npm bin)/solidity-coverage
 }
