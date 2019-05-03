@@ -1,4 +1,4 @@
-const { didContractThrow } = require("./utils/DidContractThrow.js");
+const { didContractThrow } = require("../../common/test/DidContractThrow.js");
 
 const MultiRoleTest = artifacts.require("MultiRoleTest");
 
