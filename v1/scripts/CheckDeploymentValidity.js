@@ -7,7 +7,7 @@ const checkDeploymentValidity = async function(callback) {
 
     // Migrations
     const migrations = await Migrations.deployed();
-    await migrations.lastCompletedMigration();
+    await migrations.last_completed_migration();
 
     console.log("Deployment looks good!");
   } catch (e) {
