@@ -114,10 +114,13 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Run coverage
-          command: ./ci/coverage.sh
+          name: Run v0 coverage
+          command: ./ci/coverage.sh ~/protocol/v0
       - store_artifacts:
           path: v0/coverage
+      - run:
+          name: Run v1 coverage
+          command: ./ci/coverage.sh ~/protocol/v1
       - store_artifacts:
           path: v1/coverage
   echidna:
