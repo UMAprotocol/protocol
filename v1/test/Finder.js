@@ -1,4 +1,4 @@
-const { didContractThrow } = require("./utils/DidContractThrow.js");
+const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
 const Finder = artifacts.require("Finder");
 
@@ -14,34 +14,38 @@ contract("Finder", function(accounts) {
     const finder = await Finder.new({ from: owner });
     await finder.resetMember(RolesEnumWriter, writer, { from: owner });
 
-    const implementationAddress1 = web3.utils.toChecksumAddress("0xc1912fEE45d61C87Cc5EA59DaE31190FFFFf232d");
-    const implementationAddress2 = web3.utils.toChecksumAddress("0xCB1Db113894E507041E01e3Ef278f33474bab3DD");
-    const implementationAddress3 = web3.utils.toChecksumAddress("0x861e0EEC945269E82D4FFDD8655E9eD320Ec7FA1");
+    const interfaceName1 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface1"));
+    const interfaceName2 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface2"));
+    const implementationAddress1 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+    const implementationAddress2 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+    const implementationAddress3 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 
     // The owner can't directly call the writer's methods.
     assert(
-      await didContractThrow(finder.changeImplementationAddress("interface1", implementationAddress1, { from: owner }))
+      await didContractThrow(
+        finder.changeImplementationAddress(interfaceName1, implementationAddress1, { from: owner })
+      )
     );
     // And random users, definitely not.
     assert(
-      await didContractThrow(finder.changeImplementationAddress("interface1", implementationAddress1, { from: user }))
+      await didContractThrow(finder.changeImplementationAddress(interfaceName1, implementationAddress1, { from: user }))
     );
 
     // Looking up unknown interfaces fails.
-    assert(await didContractThrow(finder.getImplementationAddress("interface1")));
+    assert(await didContractThrow(finder.getImplementationAddress(interfaceName1)));
 
     // Can set and then find an interface.
-    await finder.changeImplementationAddress("interface1", implementationAddress1, { from: writer });
-    assert.equal(await finder.getImplementationAddress("interface1"), implementationAddress1);
+    await finder.changeImplementationAddress(interfaceName1, implementationAddress1, { from: writer });
+    assert.equal(await finder.getImplementationAddress(interfaceName1), implementationAddress1);
 
     // Supports multiple interfaces.
-    await finder.changeImplementationAddress("interface2", implementationAddress2, { from: writer });
-    assert.equal(await finder.getImplementationAddress("interface1"), implementationAddress1);
-    assert.equal(await finder.getImplementationAddress("interface2"), implementationAddress2);
+    await finder.changeImplementationAddress(interfaceName2, implementationAddress2, { from: writer });
+    assert.equal(await finder.getImplementationAddress(interfaceName1), implementationAddress1);
+    assert.equal(await finder.getImplementationAddress(interfaceName2), implementationAddress2);
 
     // Can reset and then find an interface.
-    await finder.changeImplementationAddress("interface1", implementationAddress3, { from: writer });
-    assert.equal(await finder.getImplementationAddress("interface1"), implementationAddress3);
-    assert.equal(await finder.getImplementationAddress("interface2"), implementationAddress2);
+    await finder.changeImplementationAddress(interfaceName1, implementationAddress3, { from: writer });
+    assert.equal(await finder.getImplementationAddress(interfaceName1), implementationAddress3);
+    assert.equal(await finder.getImplementationAddress(interfaceName2), implementationAddress2);
   });
 });

@@ -4,6 +4,7 @@ import "./MultiRole.sol";
 
 
 /**
+ * @title Implementation finder
  * @dev Provides addresses of the live contracts implementing certain interfaces. Examples are the Oracle or Store
  * interfaces.
  */
@@ -16,7 +17,7 @@ contract Finder is MultiRole {
         Writer
     }
 
-    mapping(string => address) public interfacesImplemented;
+    mapping(bytes32 => address) public interfacesImplemented;
 
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
@@ -26,7 +27,7 @@ contract Finder is MultiRole {
     /**
      * @dev Updates the address of the contract that implements `interfaceName`.
      */
-    function changeImplementationAddress(string calldata interfaceName, address implementationAddress)
+    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress)
         external
         onlyRoleHolder(uint(Roles.Writer))
     {
@@ -36,7 +37,7 @@ contract Finder is MultiRole {
     /**
      * @dev Gets the address of the contract that implements the given `interfaceName`.
      */
-    function getImplementationAddress(string calldata interfaceName)
+    function getImplementationAddress(bytes32 interfaceName)
         external
         view
         returns (address implementationAddress)
