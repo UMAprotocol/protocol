@@ -1,21 +1,27 @@
 # UMA Protocol
 
-## Contact
+## [Contact](#contact)
 
 - [Slack](umaprotocol.slack.com): to join, use this
 [invite link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LWZiYjg3ODY2M2MwZGQ3MDVjZDc1ZjUwNDJkMTA5NDZlNzFlZDYxYmQxOTAwNTY1NmZlNGRjY2IxYzUzNjQ0YjI).
 Please use Slack for all technical questions and discussions.
 - [Email](mailto:hello@umaproject.org): for anything non-technical.
 
-## Deployment
+## [V0 System Deployment](#v0-system-deployment)
 
 ### Initial Setup
 
+Before attempting to do anything with the v0 system, please run the following commands:
+
 1. Install nodejs and npm
 1. Run `npm install`.
+1. Run `cd v0`. You'll need to be in the `v0` directory to run any truffle commands against the `v0` system. 
 1. Run `$(npm bin)/truffle compile` to compile the contracts.
 
-### Deployment and Testing in Ganache
+### Motivating Example: Deploying a test BTC/ETH tracking token on a local Ganache instance
+
+
+### Deploying in Ganache
 
 1. Install the [Ganache UI](https://truffleframework.com/ganache). You can also use
 [ganache-cli](https://github.com/trufflesuite/ganache-cli) if you prefer to use the command line.
@@ -35,7 +41,7 @@ This will open a node console with all contracts loaded along with a web3 instan
 $(npm bin)/truffle test
 ```
 
-### Mainnet/Testnet Deployment
+### Mainnet/Ropsten Testnet Deployment
 
 1. Load your wallet mnemonic into your environment as such:
 ```
