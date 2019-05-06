@@ -9,11 +9,11 @@ contract ResultComputationTest {
 
     ResultComputation.ResultComputationData public data;
 
-    function wrapGetResolvedPrice() external view returns (int) {
-        return data.getResolvedPrice();
-    }
-
     function wrapAddVote(int votePrice, uint numberTokens) external {
         data.addVote(votePrice, numberTokens);
+    }
+
+    function wrapGetResolvedPrice() external view returns (int) {
+        return data.getResolvedPrice();
     }
 }
