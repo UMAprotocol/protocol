@@ -1,17 +1,17 @@
 # UMA Protocol
 
-## [Contact](#contact)
+## Contact
 
 - [Slack](umaprotocol.slack.com): to join, use this
 [invite link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LWZiYjg3ODY2M2MwZGQ3MDVjZDc1ZjUwNDJkMTA5NDZlNzFlZDYxYmQxOTAwNTY1NmZlNGRjY2IxYzUzNjQ0YjI).
 Please use Slack for all technical questions and discussions.
 - [Email](mailto:hello@umaproject.org): for anything non-technical.
 
-## [V0 System Deployment](#v0-system-deployment)
+## V0 System Deployment
 
 ### Initial Setup
 
-Before attempting to do anything with the v0 system, please run the following commands:
+[Before](#initial-setup) attempting to do anything with the v0 system, please run the following commands:
 
 1. Install nodejs and npm
 1. Run `npm install`.
