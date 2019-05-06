@@ -23,6 +23,9 @@ PROTOCOL_DIR=$(pwd)
 # Shift the arguments to provide to gcloud app deploy.
 shift
 
+# Move to the v0 directory for contract compilation.
+cd $PROTOCOL_DIR/v0
+
 # Compile contracts, load deployed addresses for mainnet and ropsten.
 echo "Compiling contracts."
 $(npm bin)/truffle compile
@@ -47,7 +50,7 @@ fi
 set -e
 
 # Link the contracts dir to the dapp dir and build the dapp.
-cd sponsor-dapp
+cd $PROTOCOL_DIR/sponsor-dapp
 echo "Linking contracts to dapp."
 npm run link-contracts
 echo "Building dapp."
