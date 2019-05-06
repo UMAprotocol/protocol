@@ -2,6 +2,8 @@ const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
 const Finder = artifacts.require("Finder");
 
+const truffleAssert = require("truffle-assertions");
+
 contract("Finder", function(accounts) {
   const owner = accounts[0];
   const writer = accounts[1];
@@ -44,7 +46,13 @@ contract("Finder", function(accounts) {
     assert.equal(await finder.getImplementationAddress(interfaceName2), implementationAddress2);
 
     // Can reset and then find an interface.
-    await finder.changeImplementationAddress(interfaceName1, implementationAddress3, { from: writer });
+    const result = await finder.changeImplementationAddress(interfaceName1, implementationAddress3, { from: writer });
+    truffleAssert.eventEmitted(result, "InterfaceImplementationChanged", ev => {
+      return (
+        web3.utils.hexToUtf8(ev.interfaceName) === web3.utils.hexToUtf8(web3.utils.bytesToHex(interfaceName1)) &&
+        ev.newImplementationAddress === implementationAddress3
+      );
+    });
     assert.equal(await finder.getImplementationAddress(interfaceName1), implementationAddress3);
     assert.equal(await finder.getImplementationAddress(interfaceName2), implementationAddress2);
   });
