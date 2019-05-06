@@ -30,7 +30,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Compile contracts
-          command: $(npm bin)/truffle compile
+          command: ./ci/build.sh
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -43,11 +43,8 @@ jobs:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: JS Formatting
-          command: npm run prettier_check
-      - run:
-          name: Lint Solidity
-          command: $(npm bin)/solhint --max-warnings=1 contracts/**/*.sol
+          name: Lint
+          command: ./ci/lint.sh
   slither:
     docker:
       - image: trailofbits/eth-security-toolbox
@@ -117,11 +114,15 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Run coverage
-          command: npm run coverage
+          name: Run v0 coverage
+          command: ./ci/coverage.sh ~/protocol/v0
       - store_artifacts:
-          path: coverage
-          destination: coverage
+          path: v0/coverage
+      - run:
+          name: Run v1 coverage
+          command: ./ci/coverage.sh ~/protocol/v1
+      - store_artifacts:
+          path: v1/coverage
   echidna:
     docker:
       - image: trailofbits/eth-security-toolbox
@@ -159,6 +160,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Deploy Contracts
+          working_directory: ~/protocol/v0
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
           keys: 
@@ -193,6 +195,7 @@ jobs:
           key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Apply Deployment Registry
+          working_directory: ~/protocol/v0
           command: $(npm bin)/apply-registry
       - run:
           name: Build DApp
