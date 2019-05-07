@@ -11,7 +11,7 @@ Please use Slack for all technical questions and discussions.
 
 ### Initial Setup
 
-[Before](#initial-setup) attempting to do anything with the v0 system, please run the following commands:
+Before attempting to do anything with the v0 system, please run the following commands:
 
 1. Install nodejs and npm
 1. Run `npm install`.
@@ -20,8 +20,18 @@ Please use Slack for all technical questions and discussions.
 
 ### Motivating Example: Deploying a test BTC/ETH tracking token on a local Ganache instance
 
+Before starting this example, ensure you have done the [initial setup](#initial-setup) and are in the `v0` directory.
 
-### Deploying in Ganache
+1. Follow [these instructions](#deploying-to-ganache) to set up and deploy to ganache.
+1. To configure the price feed to track BTC/ETH rather than futures contracts that require an API key, you'll need to
+change the names of two files:
+```
+mv config/identifiers.json config/identifiersProdBackup.json
+mv config/identifiersTest.json config/identifiers.json
+```
+1. Follow [these instructions](#upload-prices-to-the-manualpricefeed) to upload begin uploading BTC/ETH prices to your price feed. Note: your network
+
+### Deploying to Ganache
 
 1. Install the [Ganache UI](https://truffleframework.com/ganache). You can also use
 [ganache-cli](https://github.com/trufflesuite/ganache-cli) if you prefer to use the command line.
@@ -30,15 +40,10 @@ Please use Slack for all technical questions and discussions.
 ```
 $(npm bin)/truffle migrate --reset --network test
 ```
-4. To interact with the contracts you've deployed, run:
-```
-$(npm bin)/truffle console --network test
-```
-This will open a node console with all contracts loaded along with a web3 instance connected to your ganache instance.
 
 5. To run the automated tests, run:
 ```
-$(npm bin)/truffle test
+$(npm bin)/truffle test --network test
 ```
 
 ### Mainnet/Ropsten Testnet Deployment
@@ -95,6 +100,25 @@ npm run link-contracts
 npm start
 ```
 This should automatically start the dApp in your browser.
+
+### Interacting with contracts in truffle console
+
+Make sure you've done the [initial setup](#initial-setup) and either [deployed to ganache](#deploying-to-ganache) or
+[deployed to a public network](#mainnetropsten-testnet-deployment).
+
+You can open a truffle console (a light wrapper around a node console) by running the following command and
+substituting `your_network_name` with the name of the network you deployed to:
+
+```
+$(npm bin)/truffle console --network your_network_name
+```
+
+
+To interact with the contracts you've deployed, run:
+```
+$(npm bin)/truffle console --network test
+```
+This will open a node console with all contracts loaded along with a web3 instance connected to your ganache instance.
 
 ## Security and Bug Bounty
 
