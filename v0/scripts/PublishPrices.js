@@ -187,8 +187,9 @@ async function getWhenToPublish(manualPriceFeed, identifierBytes, publishInterva
   }
 
   const lastPublishTime = (await manualPriceFeed.latestPrice(identifierBytes))[0];
-  const minNextPublishTime = lastPublishTime.addn(publishInterval);
-  const shouldPublish = currentTime.subn(minDelay).gte(minNextPublishTime);
+  const minNextPublishTime = lastPublishTime.add(web3.utils.toBN(publishInterval));
+  const shouldPublish = currentTime.sub(web3.utils.toBN(minDelay)).gte(minNextPublishTime);
+
   if (!shouldPublish) {
     console.log(
       `Not publishing because lastPublishTime [${lastPublishTime}] + publishInterval [${publishInterval}] ` +
