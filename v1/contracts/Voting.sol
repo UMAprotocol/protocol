@@ -10,7 +10,6 @@ contract Voting {
     struct VoteInstance {
         // Maps (voterAddress) to their committed hash.
         // A bytes32 of `0` indicates no commit or a commit that was already revealed.
-        // TODO(ptare): Do we prefer to store an extra boolean instead?
         mapping(address => bytes32) committedHashes;
     }
 
