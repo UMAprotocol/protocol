@@ -37,6 +37,6 @@ contract Voting {
         VoteInstance storage voteInstance = requests[identifier][time];
         require(keccak256(abi.encode(price, salt)) == voteInstance.committedHashes[msg.sender],
                 "Committed hash doesn't match revealed price and salt");
-        voteInstance.committedHashes[msg.sender] = bytes32(0);
+        delete voteInstance.committedHashes[msg.sender];
     }
 }
