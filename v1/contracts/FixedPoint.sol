@@ -12,7 +12,7 @@ library FixedPoint {
     using SafeMath for uint;
 
     // Supports 18 decimals. E.g., 1e18 represents "1", 5e17 represents "0.5".
-    // Can represent a value up to (2^256 - 1)/10^18 = ~10^59.
+    // Can represent a value up to (2^256 - 1)/10^18 = ~10^59. 10^59 will be stored internally as uint 10^77.
     uint private constant FP_SCALING_FACTOR = 10**18;
 
     struct Unsigned {
@@ -32,8 +32,8 @@ library FixedPoint {
     /** @dev Multiplies two `Unsigned`s, reverting on overflow. */
     function mul(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
-        // 1. Max output is ~10^41 (vs ~10^59 as the max value that can be represented), otherwise an intermediate value
-        // overflows.
+        // 1. Max output for the represented number is ~10^41, otherwise an intermediate value overflows. 10^41 is
+        // stored internally as a uint ~10^59.
         // 2. Results that can't be represented exactly are truncated not rounded. E.g., 1.4 * 2e-18 = 2.8e-18, which
         // would round to 3, but this computation produces the result 2.
         // No need to use SafeMath because FP_SCALING_FACTOR != 0.
