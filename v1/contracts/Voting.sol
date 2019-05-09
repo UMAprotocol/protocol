@@ -175,9 +175,8 @@ contract Voting is Testable {
      */
     function _addPriceRequestToRound(uint roundNumber, PriceRequest memory priceRequest) private {
         // Append to the list for this voting round.
-        Round storage round = rounds[roundNumber];
-        require(round.voteStage == VoteStage.Unstarted);
-        round.priceRequests.push(priceRequest);
+        require(rounds[roundNumber].voteStage == VoteStage.Unstarted);
+        rounds[roundNumber].priceRequests.push(priceRequest);
 
         // Set the price resolution round number to the provided round.
         priceResolutions[priceRequest.identifier][priceRequest.time].lastVotingRound = roundNumber;
