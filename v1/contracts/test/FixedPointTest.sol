@@ -29,7 +29,6 @@ contract FixedPointTest {
         return FixedPoint.Unsigned(a).sub(b).value;
     }
 
-
     // The second uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedSubOpposite(uint a, uint b) external pure returns (uint) {
         return FixedPoint.sub(a, FixedPoint.Unsigned(b)).value;
