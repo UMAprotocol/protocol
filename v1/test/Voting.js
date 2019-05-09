@@ -13,7 +13,7 @@ contract("Voting", function(accounts) {
   };
 
   it("One voter, one request", async function() {
-    const voting = await Voting.new();
+    const voting = await Voting.deployed();
 
     const identifier = web3.utils.utf8ToHex("id");
     const time = "1000";
@@ -55,7 +55,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Multiple voters", async function() {
-    const voting = await Voting.new();
+    const voting = await Voting.deployed();
 
     const identifier = web3.utils.utf8ToHex("id");
     const time = "1000";
@@ -98,7 +98,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Overlapping request keys", async function() {
-    const voting = await Voting.new();
+    const voting = await Voting.deployed();
 
     // Verify that concurrent votes with the same identifier but different times, or the same time but different
     // identifiers don't cause any problems.
