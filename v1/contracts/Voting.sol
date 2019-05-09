@@ -2,8 +2,7 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-// TODO move testable to common/contracts.
-import "../../v0/contracts/Testable.sol";
+import "../../common/contracts/Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
