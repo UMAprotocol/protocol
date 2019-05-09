@@ -128,4 +128,28 @@ contract("Voting", function(accounts) {
     voting.revealVote(identifier1, time2, price1, salt1);
     voting.revealVote(identifier2, time1, price2, salt2);
   });
+
+  it("Request and retrieval", async function() {
+    const voting = await Voting.new();
+
+    // Verify that concurrent votes with the same identifier but different times, or the same time but different
+    // identifiers don't cause any problems.
+    const identifier1 = web3.utils.utf8ToHex("id1");
+    const time1 = "1000";
+    const identifier2 = web3.utils.utf8ToHex("id2");
+    const time2 = "2000";
+
+    // Requests should not be added to the current voting round.
+    await voting.requestPrice(identifier1, time1);
+    let pendingRequests = await voting.getPendingRequests();
+    assert.equal(pendingRequests, []);
+
+    await voting.requestPrice(identifier2, time2);
+    pendingRequests = await voting.getPendingRequests();
+    assert.equal(pendingRequests, []);
+
+    // Since the round for these requests has not started, the price retrieval should fail.
+    assert(await didContractThrow(voting.getPrice(identifier1, time1)));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2)));
+  });
 });
