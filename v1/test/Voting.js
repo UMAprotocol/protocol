@@ -130,7 +130,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Request and retrieval", async function() {
-    const voting = await Voting.new();
+    const voting = await Voting.deployed();
 
     // Verify that concurrent votes with the same identifier but different times, or the same time but different
     // identifiers don't cause any problems.
@@ -142,11 +142,11 @@ contract("Voting", function(accounts) {
     // Requests should not be added to the current voting round.
     await voting.requestPrice(identifier1, time1);
     let pendingRequests = await voting.getPendingRequests();
-    assert.equal(pendingRequests, []);
+    assert.equal(pendingRequests.length, 0);
 
     await voting.requestPrice(identifier2, time2);
     pendingRequests = await voting.getPendingRequests();
-    assert.equal(pendingRequests, []);
+    assert.equal(pendingRequests.length, 0);
 
     // Since the round for these requests has not started, the price retrieval should fail.
     assert(await didContractThrow(voting.getPrice(identifier1, time1)));

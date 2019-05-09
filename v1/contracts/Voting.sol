@@ -6,6 +6,7 @@ import "../../v0/contracts/Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 /**
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
@@ -15,7 +16,7 @@ contract Voting is Testable {
     using SafeMath for uint;
 
     // The current voting round for the contract. Note: this assumes voting rounds do not overlap.
-    uint currentRoundNumber;
+    uint public currentRoundNumber;
 
     // Identifies a unique price request for which the Oracle will always return the same value.
     struct PriceRequest {
@@ -105,35 +106,6 @@ contract Voting is Testable {
     }
 
     /**
-     * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
-     */
-    function getPrice(bytes32 identifier, uint time) external view returns (int price) {
-        PriceResolution storage priceResolution = priceResolutions[identifier][time];
-        uint lastVotingRound = priceResolution.lastVotingRound;
-
-        if (lastVotingRound < currentRoundNumber) {
-            // Price must have been requested in the past.
-            require(lastVotingRound != 0, "Price was never requested.");
-
-            // Price has been resolved.
-            return priceResolution.resolvedPrice;
-        } else {
-            // Price has not yet been resolved.
-
-            // Price must have been voted on this round for an immediate resolution to be attempted.
-            require(lastVotingRound == currentRoundNumber);
-
-            // If the current voting round has not ended, we cannot immediately resolve the vote.
-            require(_calcVotingRound() > currentRoundNumber, "The current voting round has not ended.");
-
-            // Attempt to resolve the vote immediately since the round has ended.
-            (bool canBeResolved, int resolvedPrice) = _resolveVote(priceResolution.votes[lastVotingRound]);
-            require(canBeResolved, "Price was not resolved this voting round. It will require another round of voting.");
-            return resolvedPrice;
-        }
-    }
-
-    /**
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
      * @dev Returns the time at which the user should expect the price to be resolved.
      */
@@ -160,9 +132,39 @@ contract Voting is Testable {
     }
 
     /**
+     * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
+     */
+    function getPrice(bytes32 identifier, uint time) external view returns (int price) {
+        PriceResolution storage priceResolution = priceResolutions[identifier][time];
+        uint lastVotingRound = priceResolution.lastVotingRound;
+
+        if (lastVotingRound < currentRoundNumber) {
+            // Price must have been requested in the past.
+            require(lastVotingRound != 0, "Price was never requested.");
+
+            // Price has been resolved.
+            return priceResolution.resolvedPrice;
+        } else {
+            // Price has not yet been resolved.
+
+            // Price must have been voted on this round for an immediate resolution to be attempted.
+            require(lastVotingRound == currentRoundNumber);
+
+            // If the current voting round has not ended, we cannot immediately resolve the vote.
+            require(_calcVotingRound() > currentRoundNumber, "The current voting round has not ended.");
+
+            // Attempt to resolve the vote immediately since the round has ended.
+            (bool canBeResolved, int resolvedPrice) = _resolveVote(priceResolution.votes[lastVotingRound]);
+            require(canBeResolved,
+                "Price was not resolved this voting round. It will require another round of voting.");
+            return resolvedPrice;
+        }
+    }
+
+    /**
      * @notice Gets the queries that are being voted on this round.
      */
-    function getPendingRequests() external returns (PriceRequest[] memory priceRequests) {
+    function getPendingRequests() external view returns (PriceRequest[] memory priceRequests) {
         return rounds[_calcVotingRound()].priceRequests;
     }
 
@@ -194,7 +196,12 @@ contract Voting is Testable {
      * @dev If the vote can be resolved, the method should return (true, X) where X is the price that the vote decided.
      * If the vote was not resolved, the method should return (false, 0).
      */
-    function _resolveVote(VoteInstance storage voteInstance) private view returns (bool canBeResolved, int resolvedPrice) {
+     // solhint-disable-next-line no-unused-vars
+    function _resolveVote(VoteInstance storage voteInstance)
+        private
+        view
+        returns (bool canBeResolved, int resolvedPrice)
+    {
         return (true, 0);
     }
 }
