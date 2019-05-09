@@ -5,7 +5,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 /**
  * @title Library for fixed point arithmetic on uints
- * TODO(ptare): Add operations against non-fixed point number, e.g., add(Unsigned, uint).
  */
 library FixedPoint {
 
@@ -19,14 +18,34 @@ library FixedPoint {
         uint value;
     }
 
+    /** @dev Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`. */
+    function fromUnscaledUint(uint a) internal pure returns (Unsigned memory) {
+        return Unsigned(a.mul(FP_SCALING_FACTOR));
+    }
+
     /** @dev Adds two `Unsigned`s, reverting on overflow. */
     function add(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return Unsigned(a.value.add(b.value));
     }
 
+    /** @dev Adds an `Unsigned` to an unscaled uint, reverting on overflow. */
+    function add(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        return add(a, fromUnscaledUint(b));
+    }
+
     /** @dev Subtracts two `Unsigned`s, reverting on underflow. */
     function sub(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return Unsigned(a.value.sub(b.value));
+    }
+
+    /** @dev Subtracts an unscaled uint from an `Unsigned`, reverting on underflow. */
+    function sub(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        return sub(a, fromUnscaledUint(b));
+    }
+
+    /** @dev Subtracts an `Unsigned` from an unscaled uint, reverting on underflow. */
+    function sub(uint a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        return sub(fromUnscaledUint(a), b);
     }
 
     /** @dev Multiplies two `Unsigned`s, reverting on overflow. */
@@ -40,6 +59,11 @@ library FixedPoint {
         return Unsigned(a.value.mul(b.value) / FP_SCALING_FACTOR);
     }
 
+    /** @dev Multiplies an `Unsigned` by an unscaled uint, reverting on overflow. */
+    function mul(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        return Unsigned(a.value.mul(b));
+    }
+
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
     function div(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
@@ -48,5 +72,15 @@ library FixedPoint {
         // 2. Results that can't be represented exactly are truncated not rounded. E.g., 2 / 3 = 0.6 repeating, which
         // would round to 0.666666666666666667, but this computation produces the result 0.666666666666666666.
         return Unsigned(a.value.mul(FP_SCALING_FACTOR).div(b.value));
+    }
+
+    /** @dev Divides with truncation an `Unsigned` by an unscaled uint, reverting on division by 0. */
+    function div(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        return Unsigned(a.value.div(b));
+    }
+
+    /** @dev Divides with truncation an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */
+    function div(uint a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        return div(fromUnscaledUint(a), b);
     }
 }
