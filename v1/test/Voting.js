@@ -125,7 +125,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.revealVote(identifier1, time1, price2, salt2)));
 
     // Can reveal the right combos.
-    voting.revealVote(identifier1, time2, price1, salt1);
-    voting.revealVote(identifier2, time1, price2, salt2);
+    await voting.revealVote(identifier1, time2, price1, salt1);
+    await voting.revealVote(identifier2, time1, price2, salt2);
   });
 });
