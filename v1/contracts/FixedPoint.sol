@@ -43,7 +43,8 @@ library FixedPoint {
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
     function div(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
-        // 1. Max value for the dividend `a` is ~10^41, otherwise an intermediate value overflows.
+        // 1. Max value for the number dividend `a` represents is ~10^41, otherwise an intermediate value overflows.
+        // 10^41 is stored internally as a uint 10^59.
         // 2. Results that can't be represented exactly are truncated not rounded. E.g., 2 / 3 = 0.6 repeating, which
         // would round to 0.666666666666666667, but this computation produces the result 0.666666666666666666.
         return Unsigned(a.value.mul(FP_SCALING_FACTOR).div(b.value));
