@@ -203,6 +203,7 @@ contract Voting is Testable {
         view
         returns (bool canBeResolved, int resolvedPrice)
     {
+        // TODO: remove this dummy implementation once vote resolution is implemented.
         return (true, 0);
     }
 }
