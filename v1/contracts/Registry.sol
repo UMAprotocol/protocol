@@ -1,17 +1,25 @@
 pragma solidity ^0.5.0;
 
+import "./MultiRole.sol";
 import "./RegistryInterface.sol";
-import "./Withdrawable.sol";
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 pragma experimental ABIEncoderV2;
 
 
-contract Registry is RegistryInterface, Withdrawable {
+contract Registry is RegistryInterface, MultiRole {
 
     using SafeMath for uint;
+
+    enum Roles {
+        // The ultimate owner-type role that can change the writer.
+        Governance,
+        // Can add or remove DerivativeCreators.
+        Writer,
+        // Can register derivatives.
+        DerivativeCreator
+    }
 
     // Array of all registeredDerivatives that are approved to use the UMA Oracle.
     RegisteredDerivative[] private registeredDerivatives;
@@ -44,14 +52,16 @@ contract Registry is RegistryInterface, Withdrawable {
     // Maps from derivative creator address to whether that derivative creator has been approved to register contracts.
     mapping(address => bool) private derivativeCreators;
 
-    modifier onlyApprovedDerivativeCreator {
-        require(derivativeCreators[msg.sender]);
-        _;
+    constructor() public {
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+        // Start with no derivative creators registered.
+        _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
     }
 
     function registerDerivative(address[] calldata parties, address derivativeAddress)
         external
-        onlyApprovedDerivativeCreator
+        onlyRoleHolder(uint(Roles.DerivativeCreator))
     {
         // Create derivative pointer.
         Pointer storage pointer = derivativePointers[derivativeAddress];
@@ -74,20 +84,6 @@ contract Registry is RegistryInterface, Withdrawable {
 
         address[] memory partiesForEvent = parties;
         emit RegisterDerivative(derivativeAddress, partiesForEvent);
-    }
-
-    function addDerivativeCreator(address derivativeCreator) external onlyOwner {
-        if (!derivativeCreators[derivativeCreator]) {
-            derivativeCreators[derivativeCreator] = true;
-            emit AddDerivativeCreator(derivativeCreator);
-        }
-    }
-
-    function removeDerivativeCreator(address derivativeCreator) external onlyOwner {
-        if (derivativeCreators[derivativeCreator]) {
-            derivativeCreators[derivativeCreator] = false;
-            emit RemoveDerivativeCreator(derivativeCreator);
-        }
     }
 
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
@@ -122,12 +118,5 @@ contract Registry is RegistryInterface, Withdrawable {
         return registeredDerivatives;
     }
 
-    function isDerivativeCreatorAuthorized(address derivativeCreator) external view returns (bool isAuthorized) {
-        return derivativeCreators[derivativeCreator];
-    }
-
     event RegisterDerivative(address indexed derivativeAddress, address[] parties);
-    event AddDerivativeCreator(address indexed addedDerivativeCreator);
-    event RemoveDerivativeCreator(address indexed removedDerivativeCreator);
-
 }
