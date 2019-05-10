@@ -1,3 +1,10 @@
+const { didContractThrow } = require("../../common/SolidityTestUtils.js");
+
+const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
+const truffleAssert = require("truffle-assertions");
+const truffleContract = require("truffle-contract");
+const ERC20Mintable = truffleContract(ERC20MintableData);
+ERC20Mintable.setProvider(web3.currentProvider);
 const Store = artifacts.require("Store");
 
 contract("Store", function(accounts) {
@@ -13,12 +20,32 @@ contract("Store", function(accounts) {
   });
 
   it("Compute fees", async function() {
-    // Set a convenient fee for this test case of 10%.
-    //const result = await store.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"));
+    //set fee
 
-    //dummy test
-    const result = await store.computeOracleFees("0","0","0", {from:owner});
-    assert.equal(result.fee, 7);
+    //check event is emitted
+
+    //wait one second, then check fees are correct
+
+    //wait 10 seconds, then check fees are correct
+
+    //change fee
+
+    //run time tests again
+
+    //check that illegal times don't happen?
+
+    //can't pay 0 fees
+
+    //set up an expiring contract 
+    
+    //and have it compute a final fee
+
+    //check that only permitted role can change the fee
+    
+    const result = await store.computeRegularFee("0","1","10", {from:owner});
+    assert.equal(result.regularFee, 7);
     assert.equal(result.latePenalty, "0");
-	});
+  });
+
+  //TODO tests for fees in Ether and ERC20
 });
