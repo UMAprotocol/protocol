@@ -49,9 +49,6 @@ contract Registry is RegistryInterface, MultiRole {
     // Maps from derivative address to the set of parties that are involved in that derivative.
     mapping(address => PartiesMap) private derivativesToParties;
 
-    // Maps from derivative creator address to whether that derivative creator has been approved to register contracts.
-    mapping(address => bool) private derivativeCreators;
-
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
