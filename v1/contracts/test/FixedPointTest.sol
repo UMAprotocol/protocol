@@ -56,4 +56,9 @@ contract FixedPointTest {
     function wrapMixedDivOpposite(uint a, uint b) external pure returns (uint) {
         return FixedPoint.div(a, FixedPoint.Unsigned(b)).value;
     }
+
+    // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
+    function wrapPow(uint a, uint b) external pure returns (uint) {
+        return FixedPoint.Unsigned(a).pow(b).value;
+    }
 }

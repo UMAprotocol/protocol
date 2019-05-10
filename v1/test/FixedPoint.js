@@ -169,4 +169,23 @@ contract("FixedPoint", function(accounts) {
     // Reverts on division by zero.
     assert(await didContractThrow(fixedPoint.wrapMixedDivOpposite("1", "0")));
   });
+
+  it("Power", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    // 1.5^0 = 1
+    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "0"), web3.utils.toWei("1"));
+
+    // 1.5^1 = 1.5
+    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "1"), web3.utils.toWei("1.5"));
+
+    // 1.5^2 = 2.25.
+    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "2"), web3.utils.toWei("2.25"));
+
+    // 1.5^3 = 3.375
+    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "3"), web3.utils.toWei("3.375"));
+
+    // Reverts on overflow
+    assert(await didContractThrow(fixedPoint.wrapPow(web3.utils.toWei("10"), "60")));
+  });
 });
