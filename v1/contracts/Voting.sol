@@ -65,8 +65,9 @@ contract Voting is Testable {
         uint lastVotingRound;
     }
 
-    // Conceptually maps (identifier, time) to a `PriceResolution`.
-    mapping(bytes32 => mapping(uint => PriceResolution)) private priceResolutions;
+    // Conceptually maps (identifier, time) pair to a `PriceResolution`.
+    // Implemented as keccak256(identifier, time) -> `PriceResolution`.
+    mapping(bytes32 => PriceResolution) private priceResolutions;
 
     // Maps round numbers to the rounds.
     mapping(uint => Round) private rounds;
@@ -83,7 +84,7 @@ contract Voting is Testable {
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external {
         require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
 
-        PriceResolution storage priceResolution = priceResolutions[identifier][time];
+        PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
 
         // This price request must be slated for this round.
         // TODO: uncomment this line once phasing is implemented.
@@ -99,7 +100,7 @@ contract Voting is Testable {
      * committer can reveal their vote.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external {
-        VoteInstance storage voteInstance = priceResolutions[identifier][time].votes[currentRoundNumber];
+        VoteInstance storage voteInstance = _getPriceResolution(identifier, time).votes[currentRoundNumber];
         require(keccak256(abi.encode(price, salt)) == voteInstance.committedHashes[msg.sender],
                 "Committed hash doesn't match revealed price and salt");
         delete voteInstance.committedHashes[msg.sender];
@@ -110,7 +111,11 @@ contract Voting is Testable {
      * @dev Returns the time at which the user should expect the price to be resolved.
      */
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
-        uint priceResolutionRound = priceResolutions[identifier][time].lastVotingRound;
+        // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
+        // widely distributed and agreed upon before the vote. 
+        require(time > getCurrentTime());
+
+        uint priceResolutionRound = _getPriceResolution(identifier, time).lastVotingRound;
         uint secondsInWeek = 60*60*24*7;
 
         if (priceResolutionRound == 0) {
@@ -135,7 +140,7 @@ contract Voting is Testable {
      * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
      */
     function getPrice(bytes32 identifier, uint time) external view returns (int price) {
-        PriceResolution storage priceResolution = priceResolutions[identifier][time];
+        PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
         uint lastVotingRound = priceResolution.lastVotingRound;
 
         if (lastVotingRound < currentRoundNumber) {
@@ -178,7 +183,7 @@ contract Voting is Testable {
         rounds[roundNumber].priceRequests.push(priceRequest);
 
         // Set the price resolution round number to the provided round.
-        priceResolutions[priceRequest.identifier][priceRequest.time].lastVotingRound = roundNumber;
+        _getPriceResolution(priceRequest.identifier, priceRequest.time).lastVotingRound = roundNumber;
     }
 
     /**
@@ -203,5 +208,15 @@ contract Voting is Testable {
     {
         // TODO: remove this dummy implementation once vote resolution is implemented.
         return (true, 0);
+    }
+
+    /**
+     * @notice Looks up the price resolution for an identifier and time.
+     * @dev The price resolutions are indexed by a hash of the identifier and time. This method is responsible for
+     * doing that lookup.
+     */
+    function _getPriceResolution(bytes32 identifier, uint time) private view returns (PriceResolution storage) {
+        bytes32 hash = keccak256(identifier, time);
+        return priceResolutions[hash];
     }
 }
