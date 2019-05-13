@@ -6,6 +6,8 @@ import "../FixedPoint.sol";
 // Wraps the FixedPoint library for testing purposes.
 contract FixedPointTest {
     using FixedPoint for FixedPoint.Unsigned;
+    using FixedPoint for uint;
+    using SafeMath for uint;
 
     function wrapFromUnscaledUint(uint a) external pure returns (uint) {
         return FixedPoint.fromUnscaledUint(a).value;
@@ -31,7 +33,7 @@ contract FixedPointTest {
 
     // The second uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedSubOpposite(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.sub(a, FixedPoint.Unsigned(b)).value;
+        return a.sub(FixedPoint.Unsigned(b)).value;
     }
 
     function wrapMul(uint a, uint b) external pure returns (uint) {
@@ -54,7 +56,7 @@ contract FixedPointTest {
 
     // The second uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedDivOpposite(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.div(a, FixedPoint.Unsigned(b)).value;
+        return a.div(FixedPoint.Unsigned(b)).value;
     }
 
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
