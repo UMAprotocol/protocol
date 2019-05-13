@@ -66,8 +66,8 @@ contract Voting is Testable {
     }
 
     // Conceptually maps (identifier, time) pair to a `PriceResolution`.
-    // Implemented as keccak256(identifier, time) -> `PriceResolution`.
-    mapping(bytes32 => PriceResolution) private priceResolutions;
+    // Implemented as abi.encode(identifier, time) -> `PriceResolution`.
+    mapping(bytes => PriceResolution) private priceResolutions;
 
     // Maps round numbers to the rounds.
     mapping(uint => Round) private rounds;
@@ -216,7 +216,7 @@ contract Voting is Testable {
      * doing that lookup.
      */
     function _getPriceResolution(bytes32 identifier, uint time) private view returns (PriceResolution storage) {
-        bytes32 hash = keccak256(identifier, time);
-        return priceResolutions[hash];
+        bytes memory encodedArgs = abi.encode(identifier, time);
+        return priceResolutions[encodedArgs];
     }
 }
