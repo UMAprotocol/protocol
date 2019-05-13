@@ -56,6 +56,16 @@ contract Registry is RegistryInterface, MultiRole {
         _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
     }
 
+    /*
+     * @notice Do not call this function.
+     * @dev Do not call, only used to make the coverage tool work.
+     */
+    function doNotCall() public {
+        require(false, "Do not call this method.");
+         _createExclusiveRole(500, 501, msg.sender);
+         _createSharedRole(600, 601, new address[](0));
+    }
+
     function registerDerivative(address[] calldata parties, address derivativeAddress)
         external
         onlyRoleHolder(uint(Roles.DerivativeCreator))
