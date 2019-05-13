@@ -113,7 +113,7 @@ contract Voting is Testable {
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
         // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
         // widely distributed and agreed upon before the vote. 
-        require(time > getCurrentTime());
+        require(time < getCurrentTime());
 
         uint priceResolutionRound = _getPriceResolution(identifier, time).lastVotingRound;
         uint secondsInWeek = 60*60*24*7;

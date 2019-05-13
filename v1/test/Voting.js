@@ -139,11 +139,18 @@ contract("Voting", function(accounts) {
     const identifier2 = web3.utils.utf8ToHex("id2");
     const time2 = "2000";
 
+    // Can only request a past price.
+    await voting.setCurrentTime("1000");
+    assert(await didContractThrow(voting.requestPrice(identifier1, time1)));
+
     // Requests should not be added to the current voting round.
+    await voting.setCurrentTime("1001");
     await voting.requestPrice(identifier1, time1);
     let pendingRequests = await voting.getPendingRequests();
     assert.equal(pendingRequests.length, 0);
 
+
+    await voting.setCurrentTime("2001");
     await voting.requestPrice(identifier2, time2);
     pendingRequests = await voting.getPendingRequests();
     assert.equal(pendingRequests.length, 0);
