@@ -11,7 +11,7 @@ import "./Withdrawable.sol";
 
 
 // An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
-contract Store {//is Withdrawable {
+contract Store {
 
     using SafeMath for uint;
 
