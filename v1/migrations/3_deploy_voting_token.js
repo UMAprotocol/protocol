@@ -12,5 +12,5 @@ module.exports = async function(deployer, network, accounts) {
   const minterRoleEnumValue = 1;
   // Set the minter to be Voting.sol.
   const voting = await Voting.deployed();
-  await votingToken.resetMember(minterRoleEnumValue, voting.address, { from: keys.deployer });
+  await votingToken.addMember(minterRoleEnumValue, voting.address, { from: keys.deployer });
 };

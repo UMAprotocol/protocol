@@ -15,12 +15,15 @@ contract VotingToken is ERC20Snapshot, MultiRole {
         // Can set the minter.
         Governance,
         // The Oracle contract (currently named Voting.sol) can mint new tokens as voting rewards.
-        Minter
+        Minter,
+        // An UMA controlled address can burn tokens that it owns.
+        Burner
     }
 
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Minter), uint(Roles.Governance), msg.sender);
+        _createSharedRole(uint(Roles.Minter), uint(Roles.Governance), new address[](0));
+        _createSharedRole(uint(Roles.Burner), uint(Roles.Governance), new address[](0));
     }
 
     /**
@@ -29,5 +32,12 @@ contract VotingToken is ERC20Snapshot, MultiRole {
     function mint(address recipient, uint value) external onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
         _mint(recipient, value);
         return true;
+    }
+
+    /**
+     * @dev Burns `value` tokens owned by `msg.sender`.
+     */
+    function burn(uint value) external onlyRoleHolder(uint(Roles.Burner)) {
+        _burn(msg.sender, value);
     }
 }
