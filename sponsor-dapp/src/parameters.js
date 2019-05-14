@@ -1,9 +1,6 @@
 import identifierConfig from "./identifiers.json";
 
 const parameters = {
-  currencies: {
-    "0x0000000000000000000000000000000000000000": "ETH"
-  },
   main: {
     currencies: {
       "0x0000000000000000000000000000000000000000": "ETH",

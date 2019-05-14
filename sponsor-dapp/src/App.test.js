@@ -50,7 +50,10 @@ const addDrizzleProviderWrapper = getComponent => {
 
 it("renders Dashboard without crashing", done => {
   const getDashboard = (drizzle, drizzleState) => {
-    const params = { identifiers: [] };
+    const params = {
+      currencies: { "0x0000000000000000000000000000000000000000": "ETH" },
+      identifiers: []
+    };
     return <Dashboard drizzle={drizzle} drizzleState={drizzleState} params={params} />;
   };
 
