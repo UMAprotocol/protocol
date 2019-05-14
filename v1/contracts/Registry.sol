@@ -114,7 +114,8 @@ contract Registry is RegistryInterface, MultiRole {
 
     /*
      * @notice Do not call this function externally.
-     * @dev Only called from the constructor, and only extrated to a separate method to make the coverage tool work.
+     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work. If
+     * called again, the MultiRole checks will cause a revert.
      */
     function initializeRolesOnce() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
