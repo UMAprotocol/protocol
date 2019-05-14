@@ -18,7 +18,9 @@ const parameters = {
       "0xA7E2f86B4E2c241Ac6D2fb7cE9dEBb37DbB05093": "TUSD"
     }
   },
-  private: {},
+  private: {
+    "0x0000000000000000000000000000000000000000": "ETH"
+  },
   identifiers: {
     ...Object.entries(identifierConfig).reduce((joinedConfig, [identifier, config]) => {
       return { ...joinedConfig, [identifier]: config.dappConfig };
