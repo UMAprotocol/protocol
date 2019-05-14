@@ -50,10 +50,7 @@ contract Registry is RegistryInterface, MultiRole {
     mapping(address => PartiesMap) private derivativesToParties;
 
     constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
-        // Start with no derivative creators registered.
-        _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
+        initializeRolesOnce();
     }
 
     function registerDerivative(address[] calldata parties, address derivativeAddress)
@@ -113,6 +110,17 @@ contract Registry is RegistryInterface, MultiRole {
 
     function getAllRegisteredDerivatives() external view returns (RegisteredDerivative[] memory derivatives) {
         return registeredDerivatives;
+    }
+
+    /*
+     * @notice Do not call this function externally.
+     * @dev Only called from the constructor, and only used to make the coverage tool work.
+     */
+    function initializeRolesOnce() public {
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+        // Start with no derivative creators registered.
+        _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
     }
 
     event RegisterDerivative(address indexed derivativeAddress, address[] parties);
