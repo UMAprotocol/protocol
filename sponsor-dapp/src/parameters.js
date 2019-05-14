@@ -19,7 +19,9 @@ const parameters = {
     }
   },
   private: {
-    "0x0000000000000000000000000000000000000000": "ETH"
+    currencies: {
+      "0x0000000000000000000000000000000000000000": "ETH"
+    }
   },
   identifiers: {
     ...Object.entries(identifierConfig).reduce((joinedConfig, [identifier, config]) => {
