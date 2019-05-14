@@ -8,31 +8,50 @@ ERC20Mintable.setProvider(web3.currentProvider);
 const Store = artifacts.require("Store");
 
 contract("Store", function(accounts) {
-  // A deployed instance of the CentralizedStore contract, ready for testing.
+  // A deployed instance of the Store contract, ready for testing.
   let store;
 
   const owner = accounts[0];
   const derivative = accounts[1];
   const erc20TokenOwner = accounts[2];
 
+  const identifier = web3.utils.utf8ToHex("id");
+
   beforeEach(async function() {
     store = await Store.new();
   });
 
   it("Compute fees", async function() {
-    //set fee
+    //Set fee to 10%
+   const result = await store.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"));
+   console.log("FEE: " + result);
 
-    //check event is emitted
+    //Check event is emitted
+    // truffleAssert.eventEmitted(result, "SetFixedOracleFeePerSecond", ev => {
+    //   return ev.newOracleFee.toString() === web3.utils.toWei("0.1", "ether");
+    // });
 
-    //wait one second, then check fees are correct
+    // //Wait one second, then check fees are correct
+    let fees = await store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
+    assert.equal(fees.regularFee, web3.utils.toWei("0.2", "ether"));
+    assert.equal(fees.latePenalty, "0")
 
-    //wait 10 seconds, then check fees are correct
+    // //wait 10 seconds, then check fees are correct
+    // fees = await store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
+    // assert.equal(fees.toString(), web3.utils.toWei("2", "ether"));
 
-    //change fee
+    // //Change fee to 20%
+    // await store.setFixedOracleFeePerSecond(web3.utils.toWei("0.2", "ether"), identifier);
 
-    //run time tests again
+    // //Run time tests again
+    // fees = await store.computeRegularFee(100, 101, web3.utils.toWei("2", "ether"), identifier);
+    // assert.equal(fees.toString(), web3.utils.toWei("0.4", "ether"));
 
-    //check that illegal times don't happen?
+    // fees = await store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
+    // assert.equal(fees.toString(), web3.utils.toWei("0.2", "ether"));
+
+    // // Disallow endTime < startTime.
+    // assert(await didContractThrow(store.computeRegularFee(2, 1, 10, identifier)));
 
     //can't pay 0 fees
 
@@ -42,9 +61,9 @@ contract("Store", function(accounts) {
 
     //check that only permitted role can change the fee
     
-    const result = await store.computeRegularFee("0","1","10", {from:owner});
-    assert.equal(result.regularFee, 7);
-    assert.equal(result.latePenalty, "0");
+    //const result = await store.computeRegularFee("0","1","10", {from:owner});
+   // assert.equal(result.regularFee, 7);
+    //assert.equal(result.latePenalty, "0");
   });
 
   //TODO tests for fees in Ether and ERC20

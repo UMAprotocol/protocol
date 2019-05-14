@@ -18,7 +18,7 @@ contract Store {
     uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
     uint private constant FP_SCALING_FACTOR = 10**18;
 
-    uint weeklyDelayFee;
+    uint weeklyDelayFee; //<-- governance vote?
     mapping(address => uint) finalFees;
     uint secondsPerWeek = 604800;
 
@@ -45,7 +45,7 @@ contract Store {
     function computeRegularFee(uint startTime, uint endTime, uint pfc, bytes32 identifier) external view returns (uint regularFee, uint latePenalty) {
         uint timeDiff = endTime.sub(startTime);
 
-        regularFee = pfc.mul(regularFee.sub(timeDiff));
+        regularFee = pfc.mul(fixedOracleFeePerSecond.mul(timeDiff));
         latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(secondsPerWeek)));
 
         return (regularFee, latePenalty);
