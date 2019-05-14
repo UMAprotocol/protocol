@@ -22,7 +22,7 @@ Before attempting to do anything with the v0 system, please run the following co
 
 Before starting this example, ensure you have done the [initial setup](#initial-setup) and are in the `v0` directory.
 
-1. Follow [these instructions](#deploying-to-ganache) to set up and deploy to ganache. Note: this means that you should
+1. Follow [these instructions](#deploying-to-ganache) to set up and deploy to Ganache. Note: this means that you should
 be using the network `test` throughout these instructions.
 1. To configure the price feed to track BTC/ETH rather than futures contracts that require an API key, you'll need to
 change the names of two files:
@@ -38,8 +38,8 @@ price feed.
 
 1. Install the [Ganache UI](https://truffleframework.com/ganache). You can also use
 [ganache-cli](https://github.com/trufflesuite/ganache-cli) if you prefer to use the command line.
-2. Run ganache on localhost port `9545` (use the above links for instructions on how to do this).
-3. To deploy to ganache, run:
+2. Run Ganache on localhost port `9545` (use the above links for instructions on how to do this).
+3. To deploy to Ganache, run:
 ```
 $(npm bin)/truffle migrate --reset --network test
 ```
@@ -48,7 +48,7 @@ $(npm bin)/truffle migrate --reset --network test
 ```
 $(npm bin)/truffle test --network test
 ```
-5. If you want to use the dapp with your ganache deployment, make sure you plug the mnemonic that it generates into
+5. If you want to use the dapp with your Ganache deployment, make sure you plug the mnemonic that it generates into
 Metamask instead of your normal ETH account.
 
 ### Mainnet/Ropsten Testnet Deployment
@@ -105,7 +105,7 @@ For the script to succeed, the `build` directory must contain the `ManualPriceFe
 
 ### Running the dApp
 
-After deploying to ganache, ropsten, or mainnet (or any combination of those), you can run the Sponsor Dapp against the
+After deploying to Ganache, ropsten, or mainnet (or any combination of those), you can run the Sponsor Dapp against the
 contracts. Before running the dApp, make sure you have done the following:
 - Make sure that you have [Metamask](https://metamask.io/) installed.
 - Make sure you've provided your ETH account mnemonic to metamask.
@@ -117,7 +117,7 @@ contracts. Before running the dApp, make sure you have done the following:
     your mnemonic. If you only have one account in Metamask, you can use the `Create Account` button to create a
     second. You will need to select the second account if you'd like to launch contracts in the dapp.
 - Make sure you have the correct network selected in metamask.
-    - If you're using ganache, you'll need to create a custom RPC with the following URL: `http://127.0.0.1:9545`.
+    - If you're using Ganache, you'll need to create a custom RPC with the following URL: `http://127.0.0.1:9545`.
 
 Once you've done the above, you can start the dapp by running the following commands from the `protocol` (top level)
 directory:
@@ -133,7 +133,7 @@ into your browser: `localhost:3000`.
 
 ### Interacting with contracts directly in the truffle console
 
-Make sure you've done the [initial setup](#initial-setup) and either [deployed to ganache](#deploying-to-ganache),
+Make sure you've done the [initial setup](#initial-setup) and either [deployed to Ganache](#deploying-to-ganache),
 [deployed to a public network](#mainnetropsten-testnet-deployment), or
 [loaded the UMA deployment](#load-uma-mainnet-and-testnet-deployments). If you are using a mainnet or testnet
 deployment, make sure you load a mnemonic and infura API key into your environment as shown
@@ -149,7 +149,7 @@ $(npm bin)/truffle console --network your_network_name
 ## Security and Bug Bounty
 
 Please report all security vulnerabilities through our [HackerOne bug bounty page](https://hackerone.com/uma_project).
-Please run all security tests against the testnet deployment or a local ganache to preserve the integrity of the
+Please run all security tests against the testnet deployment or a local Ganache to preserve the integrity of the
 mainnet deployment.
 
 ## Developer Information and Tools
