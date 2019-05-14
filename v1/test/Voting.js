@@ -149,7 +149,6 @@ contract("Voting", function(accounts) {
     let pendingRequests = await voting.getPendingRequests();
     assert.equal(pendingRequests.length, 0);
 
-
     await voting.setCurrentTime("2001");
     await voting.requestPrice(identifier2, time2);
     pendingRequests = await voting.getPendingRequests();
