@@ -8,12 +8,14 @@ pragma solidity ^0.5.0;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 //import "./StoreInterface.sol";
 import "./Withdrawable.sol";
-
+import "./FixedPoint.sol";
 
 // An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
 contract Store {
 
     using SafeMath for uint;
+    using FixedPoint for FixedPoint.Unsigned;
+    using FixedPoint for uint;
 
     uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
     uint private constant FP_SCALING_FACTOR = 10**18;
@@ -45,7 +47,7 @@ contract Store {
     function computeRegularFee(uint startTime, uint endTime, uint pfc, bytes32 identifier) external view returns (uint regularFee, uint latePenalty) {
         uint timeDiff = endTime.sub(startTime);
 
-        regularFee = pfc.mul(fixedOracleFeePerSecond.mul(timeDiff));
+        regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff).div(FP_SCALING_FACTOR);
         latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(secondsPerWeek)));
 
         return (regularFee, latePenalty);
