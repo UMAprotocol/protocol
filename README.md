@@ -152,6 +152,15 @@ substituting `your_network_name` with the name of the network you deployed to:
 $(npm bin)/truffle console --network your_network_name
 ```
 
+### Troubleshooting
+
+- Run `git diff`. If you see any changes that were unintended, remove them. If you notice any changes in`package.json`,
+you should remove them and run:
+```
+rm -rf node_modules
+npm install
+```
+
 ## Security and Bug Bounty
 
 Please report all security vulnerabilities through our [HackerOne bug bounty page](https://hackerone.com/uma_project).
