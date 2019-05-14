@@ -128,4 +128,34 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier1, time2, price1, salt1);
     await voting.revealVote(identifier2, time1, price2, salt2);
   });
+
+  it("Request and retrieval", async function() {
+    const voting = await Voting.deployed();
+
+    // Verify that concurrent votes with the same identifier but different times, or the same time but different
+    // identifiers don't cause any problems.
+    const identifier1 = web3.utils.utf8ToHex("id1");
+    const time1 = "1000";
+    const identifier2 = web3.utils.utf8ToHex("id2");
+    const time2 = "2000";
+
+    // Can only request a past price.
+    await voting.setCurrentTime("1000");
+    assert(await didContractThrow(voting.requestPrice(identifier1, time1)));
+
+    // Requests should not be added to the current voting round.
+    await voting.setCurrentTime("1001");
+    await voting.requestPrice(identifier1, time1);
+    let pendingRequests = await voting.getPendingRequests();
+    assert.equal(pendingRequests.length, 0);
+
+    await voting.setCurrentTime("2001");
+    await voting.requestPrice(identifier2, time2);
+    pendingRequests = await voting.getPendingRequests();
+    assert.equal(pendingRequests.length, 0);
+
+    // Since the round for these requests has not started, the price retrieval should fail.
+    assert(await didContractThrow(voting.getPrice(identifier1, time1)));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2)));
+  });
 });
