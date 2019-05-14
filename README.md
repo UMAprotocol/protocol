@@ -69,7 +69,8 @@ If you'd like to deploy to the Ropsten testnet instead, run the following comman
 $(npm bin)/truffle migrate --reset --network ropsten_mnemonic
 ```
 
-5. Note: these deployments do not automatically whitelist addresses. To whitelist your address, run the following command:
+5. Note: mainnet and testnet deployments do not automatically whitelist addresses. To whitelist your address, run the
+following command:
 ```
 $(npm bin)/truffle exec test/scripts/WhitelistSponsor.js --sponsor <your_address_here> --network <network_name>
 ```
