@@ -115,15 +115,5 @@ contract Registry is RegistryInterface, MultiRole {
         return registeredDerivatives;
     }
 
-    /*
-     * @notice Do not call this function.
-     * @dev Do not call, only used to make the coverage tool work.
-     */
-    function doNotCall() public {
-        require(false, "Do not call this method.");
-        _createExclusiveRole(500, 501, msg.sender);
-        _createSharedRole(600, 601, new address[](0));
-    }
-
     event RegisterDerivative(address indexed derivativeAddress, address[] parties);
 }
