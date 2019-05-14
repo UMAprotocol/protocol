@@ -32,6 +32,7 @@ contract Finder is MultiRole {
         onlyRoleHolder(uint(Roles.Writer))
     {
         interfacesImplemented[interfaceName] = implementationAddress;
+        emit InterfaceImplementationChanged(interfaceName, implementationAddress);
     }
     
     /**
@@ -45,4 +46,6 @@ contract Finder is MultiRole {
         implementationAddress = interfacesImplemented[interfaceName];
         require(implementationAddress != address(0x0), "No implementation for interface found");
     }
+
+    event InterfaceImplementationChanged(bytes32 indexed interfaceName, address indexed newImplementationAddress);
 }
