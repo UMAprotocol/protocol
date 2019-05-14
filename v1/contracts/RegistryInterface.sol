@@ -18,8 +18,8 @@ interface RegistryInterface {
     function registerDerivative(address[] calldata counterparties, address derivativeAddress) external;
 
     /**
-     * @dev Returns whether the derivative has been registered with the registry (and is therefore an authorized participant
-     * in the UMA system).
+     * @dev Returns whether the derivative has been registered with the registry (and is therefore an authorized
+     * participant in the UMA system).
      */
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered);
 
