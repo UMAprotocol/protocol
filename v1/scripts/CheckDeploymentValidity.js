@@ -1,5 +1,7 @@
+const Finder = artifacts.require("Finder");
 const Migrations = artifacts.require("Migrations");
 const Registry = artifacts.require("Registry");
+const { interfaceName } = require("../utils/Constants.js");
 
 const checkDeploymentValidity = async function(callback) {
   try {
@@ -13,6 +15,15 @@ const checkDeploymentValidity = async function(callback) {
     // Registry
     const registry = await Registry.deployed();
     await registry.getAllRegisteredDerivatives();
+
+    // Finder
+    const finder = await Finder.deployed();
+    const registryImplementationAddress = await finder.getImplementationAddress(
+      web3.utils.utf8ToHex(interfaceName.Registry)
+    );
+    if (registryInterfaceAddress != registry.address) {
+      throw "Incorrect implementation address for Registry";
+    }
 
     console.log("Deployment looks good!");
   } catch (e) {
