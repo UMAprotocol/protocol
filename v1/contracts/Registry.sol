@@ -8,6 +8,10 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 pragma experimental ABIEncoderV2;
 
 
+/**
+ * @title Registry for derivatives and approved derivative creators.
+ * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives.
+ */
 contract Registry is RegistryInterface, MultiRole {
 
     using SafeMath for uint;
@@ -27,8 +31,7 @@ contract Registry is RegistryInterface, MultiRole {
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.
     enum PointerValidity {
         Invalid,
-        Valid,
-        WasValid
+        Valid
     }
 
     struct Pointer {
@@ -48,6 +51,10 @@ contract Registry is RegistryInterface, MultiRole {
 
     // Maps from derivative address to the set of parties that are involved in that derivative.
     mapping(address => PartiesMap) private derivativesToParties;
+
+    // TODO(ptare): Used to make doubly sure that roles are initialized only once. Figure out what's going wrong with
+    // coverage to necessitate this hack.
+    bool private rolesInitialized;
 
     constructor() public {
         initializeRolesOnce();
@@ -114,10 +121,12 @@ contract Registry is RegistryInterface, MultiRole {
 
     /*
      * @notice Do not call this function externally.
-     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work. If
-     * called again, the MultiRole checks will cause a revert.
+     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
+     * Will revert if called again.
      */
     function initializeRolesOnce() public {
+        require(!rolesInitialized, "Only the constructor should call this method");
+        rolesInitialized = true;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
         // Start with no derivative creators registered.

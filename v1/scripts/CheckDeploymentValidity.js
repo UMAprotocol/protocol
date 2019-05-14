@@ -1,4 +1,5 @@
 const Migrations = artifacts.require("Migrations");
+const Registry = artifacts.require("Registry");
 
 const checkDeploymentValidity = async function(callback) {
   try {
@@ -8,6 +9,10 @@ const checkDeploymentValidity = async function(callback) {
     // Migrations
     const migrations = await Migrations.deployed();
     await migrations.last_completed_migration();
+
+    // Registry
+    const registry = await Registry.deployed();
+    await registry.getAllRegisteredDerivatives();
 
     console.log("Deployment looks good!");
   } catch (e) {
