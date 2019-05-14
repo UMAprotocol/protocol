@@ -24,15 +24,15 @@ Before starting this example, ensure you have done the [initial setup](#initial-
 
 1. Follow [these instructions](#deploying-to-ganache) to set up and deploy to Ganache. Note: this means that you should
 be using the network `test` throughout these instructions.
-1. To configure the price feed to track BTC/ETH rather than futures contracts that require an API key, you'll need to
+2. To configure the price feed to track BTC/ETH rather than futures contracts that require an API key, you'll need to
 change the names of two files:
 ```
 mv config/identifiers.json config/identifiersProdBackup.json
 mv config/identifiersTest.json config/identifiers.json
 ```
-1. Follow [these instructions](#upload-prices-to-the-manualpricefeed) to begin uploading BTC/ETH prices to your
+3. Follow [these instructions](#upload-prices-to-the-manualpricefeed) to begin uploading BTC/ETH prices to your
 price feed.
-1. Follow [these instructions](#running-the-dapp) to begin running the dapp and launching contracts.
+4. Follow [these instructions](#running-the-dapp) to begin running the dapp and launching contracts.
 
 ### Deploying to Ganache
 
@@ -67,6 +67,11 @@ $(npm bin)/truffle migrate --reset --network mainnet_mnemonic
 If you'd like to deploy to the Ropsten testnet instead, run the following command:
 ```
 $(npm bin)/truffle migrate --reset --network ropsten_mnemonic
+```
+
+Note: these deployments do not automatically whitelist addresses. To whitelist your address, run the following command:
+```
+$(npm bin)/truffle exec test/scripts/WhitelistSponsor.js --sponsor <your_address_here> --network <network_name>
 ```
 
 ### Load UMA Mainnet and Testnet Deployments
