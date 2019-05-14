@@ -12,7 +12,7 @@ import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
 contract VotingToken is ERC20Snapshot, MultiRole {
 
     enum Roles {
-        // Can set the minter.
+        // Can set the minter and burner.
         Governance,
         // Addresses that can mint new tokens.
         Minter,
