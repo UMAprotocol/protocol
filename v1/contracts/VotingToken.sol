@@ -14,9 +14,9 @@ contract VotingToken is ERC20Snapshot, MultiRole {
     enum Roles {
         // Can set the minter.
         Governance,
-        // The Oracle contract (currently named Voting.sol) can mint new tokens as voting rewards.
+        // Addresses that can mint new tokens.
         Minter,
-        // An UMA controlled address can burn tokens that it owns.
+        // Addresses that can burn tokens that address owns.
         Burner
     }
 
