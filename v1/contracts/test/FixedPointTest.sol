@@ -13,6 +13,14 @@ contract FixedPointTest {
         return FixedPoint.fromUnscaledUint(a).value;
     }
 
+    function wrapIsGreaterThan(uint a, uint b) external pure returns (bool) {
+        return FixedPoint.Unsigned(a).isGreaterThan(FixedPoint.Unsigned(b));
+    }
+
+    function wrapIsLessThan(uint a, uint b) external pure returns (bool) {
+        return FixedPoint.Unsigned(a).isLessThan(FixedPoint.Unsigned(b));
+    }
+
     function wrapAdd(uint a, uint b) external pure returns (uint) {
         return FixedPoint.Unsigned(a).add(FixedPoint.Unsigned(b)).value;
     }

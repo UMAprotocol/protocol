@@ -15,6 +15,18 @@ contract("FixedPoint", function(accounts) {
     assert(await didContractThrow(fixedPoint.wrapFromUnscaledUint(tenToSixty)));
   });
 
+  it("Comparison", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    assert.isTrue(await fixedPoint.wrapIsGreaterThan(web3.utils.toWei("2"), web3.utils.toWei("1")));
+    assert.isFalse(await fixedPoint.wrapIsGreaterThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
+    assert.isFalse(await fixedPoint.wrapIsGreaterThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
+
+    assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("1")));
+    assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
+    assert.isTrue(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
+  });
+
   it("Addition", async function() {
     const fixedPoint = await FixedPointTest.new();
 
