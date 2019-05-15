@@ -17,41 +17,39 @@ contract("Store", function(accounts) {
 
   const identifier = web3.utils.utf8ToHex("id");
 
+  //add test final fee for test identifier
+
   beforeEach(async function() {
     store = await Store.new();
   });
 
   it("Compute fees", async function() {
     //Set fee to 10%
-   const result = await store.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"));
-   console.log("FEE: " + result);
-
-    //Check event is emitted
-    // truffleAssert.eventEmitted(result, "SetFixedOracleFeePerSecond", ev => {
-    //   return ev.newOracleFee.toString() === web3.utils.toWei("0.1", "ether");
-    // });
+    let feeRate = await store.setFixedOracleFeePerSecond(web3.utils.toWei("0.1", "ether"));
 
     // //Wait one second, then check fees are correct
     let fees = await store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
-    assert.equal(fees.regularFee, web3.utils.toWei("0.2", "ether"));
-    assert.equal(fees.latePenalty, "0")
+     store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
+     assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.2", "ether"));
+     assert.equal(fees.latePenalty, "0")
 
-    // //wait 10 seconds, then check fees are correct
-    // fees = await store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
-    // assert.equal(fees.toString(), web3.utils.toWei("2", "ether"));
+    //wait 10 seconds, then check fees are correct
+    fees = await store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
+    assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
 
-    // //Change fee to 20%
-    // await store.setFixedOracleFeePerSecond(web3.utils.toWei("0.2", "ether"), identifier);
+    let fixedPointExample = { value: web3.utils.toWei("1", "ether") };
+    //Change fee to 20%
+    await store.setFixedOracleFeePerSecond(web3.utils.toWei("0.2", "ether"));
 
-    // //Run time tests again
+    //Run time tests again
     // fees = await store.computeRegularFee(100, 101, web3.utils.toWei("2", "ether"), identifier);
-    // assert.equal(fees.toString(), web3.utils.toWei("0.4", "ether"));
+    // assert.equal(fees.regularFees.toString(), web3.utils.toWei("0.4", "ether"));
 
     // fees = await store.computeRegularFee(100, 110, web3.utils.toWei("2", "ether"), identifier);
     // assert.equal(fees.toString(), web3.utils.toWei("0.2", "ether"));
 
     // // Disallow endTime < startTime.
-    // assert(await didContractThrow(store.computeRegularFee(2, 1, 10, identifier)));
+    assert(await didContractThrow(store.computeRegularFee(2, 1, 10, identifier)));
 
     //can't pay 0 fees
 
