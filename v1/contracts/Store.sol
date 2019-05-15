@@ -4,9 +4,10 @@
   An implementation of StoreInterface with a fee per second and withdraw functions for the owner.
 */
 pragma solidity ^0.5.0;
+pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-//import "./StoreInterface.sol";
+import "./StoreInterface.sol";
 import "./Withdrawable.sol";
 import "./FixedPoint.sol";
 
@@ -21,7 +22,7 @@ contract Store {
     uint private constant FP_SCALING_FACTOR = 10**18;
 
     uint weeklyDelayFee; //<-- governance vote?
-    mapping(address => uint) finalFees;
+    mapping(address => FixedPoint.Unsigned) finalFees;
     uint secondsPerWeek = 604800;
 
     function payOracleFees() external payable {
@@ -44,16 +45,16 @@ contract Store {
         emit SetFixedOracleFeePerSecond(newOracleFee);
     }
 
-    function computeRegularFee(uint startTime, uint endTime, uint pfc, bytes32 identifier) external view returns (uint regularFee, uint latePenalty) {
+    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc, bytes32 identifier) external view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) {
         uint timeDiff = endTime.sub(startTime);
 
-        regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff).div(FP_SCALING_FACTOR);
+        regularFee = fixedOracleFeePerSecond.mul(pfc).mul(timeDiff);
         latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(secondsPerWeek)));
 
         return (regularFee, latePenalty);
     }
 
-    function computeFinalFee(bytes32 identifier, address currency) external view returns (uint finalFee) {
+    function computeFinalFee(bytes32 identifier, address currency) external view returns (FixedPoint.Unsigned memory finalFee) {
         finalFee = finalFees[currency];
     }
 
