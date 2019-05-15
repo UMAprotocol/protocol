@@ -64,13 +64,27 @@ contract("ResultComputation", function(accounts) {
   it("Min vote threshold", async function() {
     const resultComputation = await ResultComputationTest.new();
 
-    const price = web3.utils.toWei("10");
+    // Arbitrary but distinct prices.
+    const priceOne = web3.utils.toWei("10");
+    const priceTwo = web3.utils.toWei("11");
 
-    await resultComputation.wrapAddVote(price, web3.utils.toWei("5"));
-    let resolved = await resultComputation.wrapGetResolvedPrice(web3.utils.toWei("4"));
-    assert.isTrue(resolved.isResolved);
+    // A non-zero minimum vote threshold.
+    const minVotes = web3.utils.toWei("5");
 
-    resolved = await resultComputation.wrapGetResolvedPrice(web3.utils.toWei("6"));
+    // Price isn't resolved because minimum votes threshold isn't met, even though 100% of votes are for the median.
+    await resultComputation.wrapAddVote(priceOne, minVotes);
+    let resolved = await resultComputation.wrapGetResolvedPrice(minVotes);
     assert.isFalse(resolved.isResolved);
+
+    // Minimum votes threshold is satisfied, but mode threshold isn't satisfied.
+    await resultComputation.wrapAddVote(priceTwo, minVotes);
+    resolved = await resultComputation.wrapGetResolvedPrice(minVotes);
+    assert.isFalse(resolved.isResolved);
+
+    // Both thresholds are satisfied.
+    await resultComputation.wrapAddVote(priceOne, minVotes);
+    resolved = await resultComputation.wrapGetResolvedPrice(minVotes);
+    assert.isTrue(resolved.isResolved);
+    assert.equal(resolved.price, priceOne);
   });
 });
