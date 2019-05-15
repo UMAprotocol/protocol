@@ -52,7 +52,8 @@ library ResultComputation {
     {
         data.totalVotes = data.totalVotes.add(numberTokens);
         data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
-        if (data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])) {
+        if (votePrice != data.currentMode
+            && data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])) {
             data.currentMode = votePrice;
         }
     }
