@@ -23,15 +23,20 @@ library ResultComputation {
     /**
      * @dev Returns whether the result is resolved, and if so, what value it resolved to. `price` should be ignored if
      * `isResolved` is false.
+     * @param minVoteThreshold Minimum number of tokens that must have been voted for the result to be valid. Can be
+     * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      */
-    function getResolvedPrice(ResultComputationData storage data) internal view returns (bool isResolved, int price) {
+    function getResolvedPrice(ResultComputationData storage data, FixedPoint.Unsigned memory minVoteThreshold)
+        internal
+        view
+        returns (bool isResolved, int price)
+    {
         // TODO(ptare): Figure out where this parameter is supposed to come from.
         FixedPoint.Unsigned memory modeThreshold = FixedPoint.fromUnscaledUint(50).div(100);
 
-        FixedPoint.Unsigned memory modeFrequency = data.voteFrequency[data.currentMode];
-        if (modeFrequency.isGreaterThan(FixedPoint.fromUnscaledUint(0)) &&
-            modeFrequency.div(data.totalVotes).isGreaterThan(modeThreshold)) {
-            // `modeThreshold` is met, so the current mode is the resolved price.
+        if (data.totalVotes.isGreaterThan(minVoteThreshold) &&
+            data.voteFrequency[data.currentMode].div(data.totalVotes).isGreaterThan(modeThreshold)) {
+            // `modeThreshold` and `minVoteThreshold` are met, so the current mode is the resolved price.
             isResolved = true;
             price = data.currentMode;
         } else {
@@ -42,7 +47,9 @@ library ResultComputation {
     /**
      * @dev Adds a new vote to be used when computing the result.
      */
-    function addVote(ResultComputationData storage data, int votePrice, FixedPoint.Unsigned memory numberTokens) internal {
+    function addVote(ResultComputationData storage data, int votePrice, FixedPoint.Unsigned memory numberTokens)
+        internal
+    {
         data.totalVotes = data.totalVotes.add(numberTokens);
         data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
         if (data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])) {

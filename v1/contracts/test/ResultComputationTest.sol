@@ -10,14 +10,14 @@ import "../FixedPoint.sol";
 contract ResultComputationTest {
     using ResultComputation for ResultComputation.ResultComputationData;
 
-     ResultComputation.ResultComputationData public data;
+    ResultComputation.ResultComputationData public data;
 
-     function wrapAddVote(int votePrice, uint numberTokens) external {
+    function wrapAddVote(int votePrice, uint numberTokens) external {
         data.addVote(votePrice, FixedPoint.Unsigned(numberTokens));
     }
 
-     function wrapGetResolvedPrice() external view returns (bool isResolved, int price) {
-        return data.getResolvedPrice();
+    function wrapGetResolvedPrice(uint minVoteThreshold) external view returns (bool isResolved, int price) {
+        return data.getResolvedPrice(FixedPoint.Unsigned(minVoteThreshold));
     }
 }
 
