@@ -36,7 +36,7 @@ contract("ResultComputation", function(accounts) {
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
     assert.isFalse(resolved.isResolved);
 
-    await resultComputation.wrapAddVote(priceTwo, web3.utils.toWei("4"));
+    await resultComputation.wrapAddVote(priceTwo, web3.utils.toWei("1.1"));
     // Frequency table: priceOne->5, priceTwo->9.1, priceThree->4. Cutoff: 9.05.
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
     assert.isTrue(resolved.isResolved);
