@@ -11,6 +11,7 @@ import "./StoreInterface.sol";
 import "./Withdrawable.sol";
 import "./FixedPoint.sol";
 
+
 // An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
 contract Store {
 
@@ -21,9 +22,9 @@ contract Store {
     uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
     uint private constant FP_SCALING_FACTOR = 10**18;
 
-    uint constant WEEKLY_DELAY_FEE = 0; //<-- governance vote?
-    mapping(address => FixedPoint.Unsigned) finalFees;
-    uint constant SECONDS_PER_WEEK = 604800;
+    uint private constant WEEKLY_DELAY_FEE = 0; //<-- governance vote?
+    private mapping(address => FixedPoint.Unsigned) finalFees;
+    uint private constant SECONDS_PER_WEEK = 604800;
 
     function payOracleFees() external payable {
         require(msg.value > 0);

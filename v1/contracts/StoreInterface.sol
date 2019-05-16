@@ -20,10 +20,12 @@ interface StoreInterface {
     // ERC20 token rather than ETH. All approved tokens are transfered.
     function payOracleFeesErc20(address erc20Address) external; 
 
-    // Computes the regular Oracle fees that a contract should pay for a period. `pfc` is the "profit from corruption", or the
-    // maximum amount of margin currency that a token sponsor could extract from the contract through corrupting the
+    // Computes the regular Oracle fees that a contract should pay for a period. `pfc` is the 
+    // "profit from corruption", or the maximum amount of margin currency that a token sponsor
+    // could extract from the contract through corrupting the
     // price feed in their favor.
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc, bytes32 identifier) external view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty);
+    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc, bytes32 identifier) 
+    external view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty);
     
     // Computes the final Oracle fees that a contract should pay at settlement.
     function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory finalFee);
