@@ -13,7 +13,7 @@ contract("Finder", function(accounts) {
   const RolesEnumWriter = "1";
 
   it("General methods", async function() {
-    const finder = await Finder.new({ from: owner });
+    const finder = await Finder.deployed();
     await finder.resetMember(RolesEnumWriter, writer, { from: owner });
 
     const interfaceName1 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface1"));
