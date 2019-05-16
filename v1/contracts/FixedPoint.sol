@@ -23,6 +23,16 @@ library FixedPoint {
         return Unsigned(a.mul(FP_SCALING_FACTOR));
     }
 
+    /** @dev Whether `a` is greater than `b`. */
+    function isGreaterThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
+        return a.value > b.value;
+    }
+
+    /** @dev Whether `a` is less than `b`. */
+    function isLessThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
+        return a.value < b.value;
+    }
+
     /** @dev Adds two `Unsigned`s, reverting on overflow. */
     function add(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return Unsigned(a.value.add(b.value));
