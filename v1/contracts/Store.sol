@@ -23,7 +23,7 @@ contract Store {
     uint private constant FP_SCALING_FACTOR = 10**18;
 
     uint private constant WEEKLY_DELAY_FEE = 0; //<-- governance vote?
-    private mapping(address => FixedPoint.Unsigned) finalFees;
+    mapping(address => FixedPoint.Unsigned) private finalFees;
     uint private constant SECONDS_PER_WEEK = 604800;
 
     function payOracleFees() external payable {
