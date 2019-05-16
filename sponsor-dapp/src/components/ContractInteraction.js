@@ -68,9 +68,14 @@ class ContractInteraction extends Component {
 
     const fpScalingFactor = BigNumber(web3.utils.toWei("1", "ether"));
     const newExcessMargin = BigNumber(drizzleHelper.getCache(contractAddress, "calcExcessMargin", []));
-    const newUnderlyingPrice = BigNumber(
-      drizzleHelper.getCache(contractAddress, "getUpdatedUnderlyingPrice", []).underlyingPrice
-    );
+    const updatedPriceCache = drizzleHelper.getCache(contractAddress, "getUpdatedUnderlyingPrice", []);
+    if (!updatedPriceCache) {
+      // If the updated price isn't available, we can't estimate the number of tokens that can be created. One case
+      // in which a valid contract gets into this state is when the contract will expire on a remargin but no Oracle
+      // price is available yet.
+      return "";
+    }
+    const newUnderlyingPrice = BigNumber(updatedPriceCache.underlyingPrice);
 
     // Computation in Solidity will round differently, so results may slightly differ. Since this value is rounded to
     // 4 decimal places anyway, the difference in precision shouldn't matter.
