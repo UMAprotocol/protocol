@@ -3,6 +3,7 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/contracts/Testable.sol";
+import "./VoteTiming.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -16,7 +17,7 @@ contract Voting is Testable {
     using SafeMath for uint;
 
     // The current voting round for the contract. Note: this assumes voting rounds do not overlap.
-    uint public currentRoundNumber;
+    uint private currentRoundNumber;
 
     // Identifies a unique price request for which the Oracle will always return the same value.
     struct PriceRequest {
@@ -72,8 +73,10 @@ contract Voting is Testable {
     // Maps round numbers to the rounds.
     mapping(uint => Round) private rounds;
 
-    constructor(bool _isTest) public Testable(_isTest) {
-        currentRoundNumber = 1;
+    VoteTiming.Data private voteTiming;
+
+    constructor(uint phaseLength, bool _isTest) public Testable(_isTest) {
+        voteTiming.init(phaseLength);
     }
 
     /**
@@ -83,6 +86,13 @@ contract Voting is Testable {
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external {
         require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
+        
+        uint currentTime = getCurrentTime();
+        require(voteTiming.getUpdatedPhase(currentTime) == VoteTiming.Phase.Commit, "Cannot commit while in the reveal phase.");
+
+        // Can only 
+
+
 
         PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
 
