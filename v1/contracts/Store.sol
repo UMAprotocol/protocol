@@ -48,7 +48,7 @@ contract Store {
     function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc, bytes32 identifier) external view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) {
         uint timeDiff = endTime.sub(startTime);
 
-        regularFee = fixedOracleFeePerSecond.mul(pfc).mul(timeDiff);
+        regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff).div(FP_SCALING_FACTOR);
         latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(secondsPerWeek)));
 
         return (regularFee, latePenalty);
