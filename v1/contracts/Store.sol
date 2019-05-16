@@ -45,7 +45,10 @@ contract Store {
         emit SetFixedOracleFeePerSecond(newOracleFee);
     }
 
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc, bytes32 identifier) external view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) {
+    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc,
+     bytes32 identifier) external view 
+     returns (FixedPoint.Unsigned memory regularFee, 
+     FixedPoint.Unsigned memory latePenalty) {
         uint timeDiff = endTime.sub(startTime);
 
         regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff).div(FP_SCALING_FACTOR);
@@ -54,7 +57,8 @@ contract Store {
         return (regularFee, latePenalty);
     }
 
-    function computeFinalFee(bytes32 identifier, address currency) external view returns (FixedPoint.Unsigned memory finalFee) {
+    function computeFinalFee(bytes32 identifier, address currency) external view 
+    returns (FixedPoint.Unsigned memory finalFee) {
         finalFee = finalFees[currency];
     }
 
