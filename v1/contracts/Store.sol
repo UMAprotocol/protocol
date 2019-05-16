@@ -21,9 +21,9 @@ contract Store {
     uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
     uint private constant FP_SCALING_FACTOR = 10**18;
 
-    uint constant weeklyDelayFee = 0; //<-- governance vote?
+    uint constant WEEKLY_DELAY_FEE = 0; //<-- governance vote?
     mapping(address => FixedPoint.Unsigned) finalFees;
-    uint constant secondsPerWeek = 604800;
+    uint constant SECONDS_PER_WEEK = 604800;
 
     function payOracleFees() external payable {
         require(msg.value > 0);
@@ -52,12 +52,12 @@ contract Store {
         uint timeDiff = endTime.sub(startTime);
 
         regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff).div(FP_SCALING_FACTOR);
-        latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(secondsPerWeek)));
+        latePenalty = pfc.mul(WEEKLY_DELAY_FEE.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
     }
 
-    function computeFinalFee(bytes32 identifier, address currency) external view 
+    function computeFinalFee(address currency) external view 
     returns (FixedPoint.Unsigned memory finalFee) {
         finalFee = finalFees[currency];
     }
