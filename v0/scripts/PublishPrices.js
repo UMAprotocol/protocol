@@ -12,7 +12,11 @@ const alphaVantageKey = process.env.ALPHAVANTAGE_API_KEY;
 const barchartKey = process.env.BARCHART_API_KEY;
 
 function stripApiKey(str, key) {
-  return str.replace(key, "{redacted}");
+  if (key) {
+    return str.replace(key, "{redacted}");
+  }
+
+  return str;
 }
 
 function stripApiKeys(str, keys) {
@@ -74,7 +78,7 @@ async function getBarchartPrice(asset) {
 
 // Gets the Coinbase price for an asset or throws.
 async function getCoinbasePrice(asset) {
-  const url = `https://api.coinbase.com/v2/prices/${asset}/spot`;
+  const url = `https://api.coinbase.com/v2/prices/${asset}-USD/spot`;
   console.log(util.format("Querying Coinbase with [%s]", url));
   const jsonOutput = await getJson(url);
   console.log(util.format("Coinbase response [%s]", JSON.stringify(jsonOutput)));
