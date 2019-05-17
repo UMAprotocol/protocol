@@ -6,7 +6,7 @@ sudo chmod -R a+rwx /usr/local/lib/node_modules
 
 run_slither() {
     cd $1
-    truffle compile 
+    $(npm bin)/truffle compile 
 
     cd $PROTOCOL_DIR
     slither --exclude=naming-convention,solc-version,pragma,external-function,reentrancy-benign,reentrancy-no-eth,arbitrary-send,locked-ether,reentrancy-eth $1
