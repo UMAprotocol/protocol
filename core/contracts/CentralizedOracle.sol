@@ -12,7 +12,7 @@ import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "./AdminInterface.sol";
 import "./OracleInterface.sol";
 import "./RegistryInterface.sol";
-import "../../common/contracts/Testable.sol";
+import "./Testable.sol";
 import "./Withdrawable.sol";
 
 

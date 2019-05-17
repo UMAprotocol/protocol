@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("./SolidityTestUtils.js");
 
 const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
 const truffleAssert = require("truffle-assertions");

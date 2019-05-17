@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("./SolidityTestUtils.js");
 
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const BigNumber = require("bignumber.js");
