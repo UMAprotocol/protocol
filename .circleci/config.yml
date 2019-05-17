@@ -114,15 +114,10 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Run v0 coverage
-          command: ./ci/coverage.sh ~/protocol/v0
+          name: Run coverage
+          command: ./ci/coverage.sh ~/protocol/core
       - store_artifacts:
-          path: v0/coverage
-      - run:
-          name: Run v1 coverage
-          command: ./ci/coverage.sh ~/protocol/v1
-      - store_artifacts:
-          path: v1/coverage
+          path: core/coverage
   echidna:
     docker:
       - image: trailofbits/eth-security-toolbox
@@ -160,7 +155,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Deploy Contracts
-          working_directory: ~/protocol/v0
+          working_directory: ~/protocol/core
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
           keys: 
@@ -195,7 +190,7 @@ jobs:
           key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Apply Deployment Registry
-          working_directory: ~/protocol/v0
+          working_directory: ~/protocol/core
           command: $(npm bin)/apply-registry
       - run:
           name: Build DApp

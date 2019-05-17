@@ -23,8 +23,8 @@ PROTOCOL_DIR=$(pwd)
 # Shift the arguments to provide to gcloud app deploy.
 shift
 
-# Move to the v0 directory for contract compilation.
-cd $PROTOCOL_DIR/v0
+# Move to the core directory for contract compilation.
+cd $PROTOCOL_DIR/core
 
 # Compile contracts, load deployed addresses for mainnet and ropsten.
 echo "Compiling contracts."

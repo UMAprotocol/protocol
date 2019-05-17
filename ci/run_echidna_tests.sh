@@ -7,7 +7,7 @@
 
 # Note: this assumes the .sol and .yaml files are 1:1 and have the same name.
 run_echidna_test() {
-    local prefix=v0/contracts/echidna_tests/
+    local prefix=core/contracts/echidna_tests/
     local solidity_fname=$prefix$1.sol
     local config_fname=$prefix$1.yaml
     local contract_name=$2
