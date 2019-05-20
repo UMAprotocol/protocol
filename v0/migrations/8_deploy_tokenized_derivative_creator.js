@@ -54,5 +54,7 @@ module.exports = async function(deployer, network, accounts) {
 
   if (!network.startsWith("mainnet") && !network.startsWith("ropsten")) {
     await sponsorWhitelist.addToWhitelist(accounts[1], { from: keys.sponsorWhitelist });
+    const ethAddress = "0x0000000000000000000000000000000000000000";
+    await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
   }
 };
