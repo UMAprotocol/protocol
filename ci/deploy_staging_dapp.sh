@@ -27,5 +27,4 @@ REACT_APP_MODE=default ./scripts/deploy_dapp.sh sponsor-dapp/app.yaml -q
 gsutil cp gs://staging-deployment-configuration/monitoring_app.yaml sponsor-dapp/monitoring_app.yaml
 
 # Deploy monitoring dapp
-
 REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh sponsor-dapp/monitoring_app.yaml -q
