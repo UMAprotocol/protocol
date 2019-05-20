@@ -6,6 +6,10 @@ sudo chmod -R a+rwx /usr/local/lib/node_modules
 
 run_slither() {
     cd $1
+    # Slither appears to assume that node_modules will be in the directory $1, not the directory above.
+    mkdir -p node_modules
+    cp -r ../node_modules/openzeppelin-solidity ./node_modules/openzeppelin-solidity
+
     truffle compile 
 
     cd $PROTOCOL_DIR
