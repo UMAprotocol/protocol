@@ -7,7 +7,7 @@ sudo chmod -R a+rwx /usr/local/lib/node_modules
 run_slither() {
     cd $1
     mkdir -p node_modules/
-    cp -r ../node_modules/ ./
+    cp -r ../node_modules/openzeppelin-solidity ./node_modules/openzeppelin-solidity
     truffle compile 
 
     cd $PROTOCOL_DIR
