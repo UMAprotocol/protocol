@@ -6,6 +6,8 @@ sudo chmod -R a+rwx /usr/local/lib/node_modules
 
 run_slither() {
     cd $1
+    mkdir -p node_modules/
+    cp -r ../node_modules/ ./node_modules/
     truffle compile 
 
     cd $PROTOCOL_DIR
