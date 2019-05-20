@@ -7,7 +7,9 @@ require("dotenv").config();
 const mnemonic = process.env.MNEMONIC
   ? process.env.MNEMONIC
   : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
-const infuraApiKey = process.env.INFURA_API_KEY;
+
+// Fallback to a backup non-prod API key.
+const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "9317010b1b6343558b7eff9d25934f38";
 
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
