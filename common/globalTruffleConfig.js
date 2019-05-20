@@ -9,9 +9,7 @@ const mnemonic = process.env.MNEMONIC
   : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
 
 // Fallback to a backup non-prod API key.
-const infuraApiKey = process.env.INFURA_API_KEY
-  ? process.env.INFURA_API_KEY
-  : "9317010b1b6343558b7eff9d25934f38";
+const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "9317010b1b6343558b7eff9d25934f38";
 
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
