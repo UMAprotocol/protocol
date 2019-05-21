@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("./SolidityTestUtils.js");
 
 const CentralizedOracle = artifacts.require("CentralizedOracle");
 const CentralizedStore = artifacts.require("CentralizedStore");

@@ -7,20 +7,20 @@
 Please use Slack for all technical questions and discussions.
 - [Email](mailto:hello@umaproject.org): for anything non-technical.
 
-## V0 System Deployment
+## System Deployment
 
 ### Initial Setup
 
-Before attempting to do anything with the v0 system, please run the following commands:
+Before attempting to do anything with the system, please run the following commands:
 
 1. Install nodejs and npm
 1. Run `npm install`.
-1. Run `cd v0`. You'll need to be in the `v0` directory to run any truffle commands against the `v0` system. 
+1. Run `cd core`. You'll need to be in the `core` directory to run any truffle commands against the system. 
 1. Run `$(npm bin)/truffle compile` to compile the contracts.
 
 ### Motivating Example: Deploying a test BTC/ETH tracking token on a local Ganache instance
 
-Before starting this example, ensure you have done the [initial setup](#initial-setup) and are in the `v0` directory.
+Before starting this example, ensure you have done the [initial setup](#initial-setup) and are in the `core` directory.
 
 1. Follow [these instructions](#deploying-to-ganache) to set up and deploy to Ganache. Note: this means that you should
 be using the network `test` throughout these instructions.
@@ -92,7 +92,7 @@ Please do not run any security tests against the mainnet deployment.
 
 After deploying the contracts to your network of choice, you can upload prices to the `ManualPriceFeed` contract for
 use by any derivatives that you choose to deploy. The script defaults to publishing `ESM19` and `CBN19` every 15
-minutes. Depending on the types of price feeds configured in your `v0/config/identifiers.json` file, you may need some
+minutes. Depending on the types of price feeds configured in your `core/config/identifiers.json` file, you may need some
 API keys in your environment:
 - Crypto price feeds (like `BTCETH` or `ETHUSD`): no environment variables are required.
 - Futures price feeds (like `ESM19` or `CBN19`): a barchart key must be set as an environment variable called

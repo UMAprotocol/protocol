@@ -15,7 +15,7 @@ import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 import "./StoreInterface.sol";
-import "../../common/contracts/Testable.sol";
+import "./Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
