@@ -31,6 +31,10 @@ contract Store is StoreInterface, MultiRole {
     mapping(address => FixedPoint.Unsigned) private finalFees;
     uint private constant SECONDS_PER_WEEK = 604800;
 
+    // TODO(roz): Used to make doubly sure that roles are initialized only once. 
+    // Figure out what's going wrong with coverage to necessitate this hack.
+    bool private rolesInitialized;
+
     constructor() public {
         initializeRolesOnce();
     }
@@ -97,10 +101,10 @@ contract Store is StoreInterface, MultiRole {
      * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
      * Will revert if called again.
      */
-    function initializeRolesOnce() {
+    function initializeRolesOnce() public {
         require(!rolesInitialized, "Only the constructor should call this method");
         rolesInitialized = true;
-      _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
     }
 
     event SetFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
