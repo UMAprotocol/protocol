@@ -32,7 +32,7 @@ contract Store is StoreInterface, MultiRole {
     uint private constant SECONDS_PER_WEEK = 604800;
 
     constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        initializeRolesOnce();
     }
 
     function payOracleFees() external payable {
@@ -90,6 +90,17 @@ contract Store is StoreInterface, MultiRole {
         returns (FixedPoint.Unsigned memory finalFee) 
     {
         finalFee = finalFees[currency];
+    }
+    
+    /*
+     * @notice Do not call this function externally.
+     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
+     * Will revert if called again.
+     */
+    function initializeRolesOnce() {
+        require(!rolesInitialized, "Only the constructor should call this method");
+        rolesInitialized = true;
+      _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
     }
 
     event SetFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
