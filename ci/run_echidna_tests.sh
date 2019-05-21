@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# TODO(ptare): This script is NOT currently run from CI.
 # Note: this script should be run from inside the trailofbits/eth-security-toolbox docker container with this
 # repository mounted at ~/protocol.
 # An example run command would look like the following:
