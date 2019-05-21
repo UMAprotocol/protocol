@@ -15,7 +15,6 @@ contract("Store", function(accounts) {
   const derivative = accounts[1];
   const erc20TokenOwner = accounts[2];
 
-
   const identifier = web3.utils.utf8ToHex("id");
 
   //Add test final fee for test identifier
@@ -27,7 +26,7 @@ contract("Store", function(accounts) {
   it("Compute fees", async function() {
     // Set fee to 10%
     let newFee = { value: web3.utils.toWei("0.1", "ether") };
-    let txReciept = await store.setFixedOracleFeePerSecond(newFee, {from: owner});
+    let txReciept = await store.setFixedOracleFeePerSecond(newFee, { from: owner });
 
     // Fixed Point wrappers
     let pfc = { value: web3.utils.toWei("2", "ether") };
@@ -44,7 +43,7 @@ contract("Store", function(accounts) {
 
     // Change fee to 20%
     newFee = { value: web3.utils.toWei("0.2", "ether") };
-    await store.setFixedOracleFeePerSecond(newFee, {from: owner});
+    await store.setFixedOracleFeePerSecond(newFee, { from: owner });
 
     // Run time tests again
     fees = await store.computeRegularFee(100, 101, pfc, identifier);
@@ -58,7 +57,7 @@ contract("Store", function(accounts) {
 
     // Disallow setting fees higher than 100%.
     let highFee = { value: web3.utils.toWei("1", "ether") };
-    assert(await didContractThrow(store.setFixedOracleFeePerSecond(highFee, {from: owner})));
+    assert(await didContractThrow(store.setFixedOracleFeePerSecond(highFee, { from: owner })));
 
     // TODO Check that only permitted role can change the fee
   });
