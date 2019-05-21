@@ -14,7 +14,7 @@ import "./MultiRole.sol";
 
 
 // An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
-contract Store is StoreInterface, MultiRole{
+contract Store is StoreInterface, MultiRole {
 
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
