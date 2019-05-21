@@ -9,4 +9,4 @@ npm run prettier_check
 
 # Lint Solidity
 echo "Linting Solidity"
-$(npm bin)/solhint --max-warnings=1 'v0/contracts/**/*.sol' 'v1/contracts/**/*.sol'
+$(npm bin)/solhint --max-warnings=1 'core/contracts/**/*.sol'

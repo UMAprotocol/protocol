@@ -46,12 +46,5 @@ run_tests() {
     $(npm bin)/truffle test --network ci
 }
 
-# Run tests for v0.
-run_tests $PROTOCOL_DIR/v0
-
-# Verify the validity of the v0 mainnet and ropsten deployments if they exist.
-check_deployment $PROTOCOL_DIR/v0 1 mainnet
-check_deployment $PROTOCOL_DIR/v0 3 ropsten
-
-# Run tests for v1.
-run_tests $PROTOCOL_DIR/v1
+# Run tests for core.
+run_tests $PROTOCOL_DIR/core
