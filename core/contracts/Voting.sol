@@ -2,7 +2,7 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../../common/contracts/Testable.sol";
+import "./Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
