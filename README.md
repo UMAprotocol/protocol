@@ -35,7 +35,7 @@ $(npm bin)/truffle migrate --reset --network test
 $(npm bin)/truffle test --network test
 ```
 5. If you want to use the dapp with your Ganache deployment, make sure you plug the mnemonic that it generates into
-Metamask instead of your normal ETH account.
+Metamask instead of your normal ETH account. NOTE: `sponsor-dapp` only with v0 for now.
 
 ## V0 System Deployment
 
