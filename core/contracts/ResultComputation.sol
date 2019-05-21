@@ -57,4 +57,24 @@ library ResultComputation {
             data.currentMode = votePrice;
         }
     }
+
+    /**
+     * @dev Checks whether a `votePrice` is considered correct. Should only be called after a vote is resolved, i.e.,
+     * via `getResolvedPrice`.
+     */
+    function wasVoteCorrect(ResultComputationData storage data, int votePrice) internal view returns (bool) {
+        return votePrice == data.currentMode;
+    }
+
+    /**
+     * @dev Gets the total number of tokens whose votes are considered correct. Should only be called after a vote is
+     * resolved, i.e., via `getResolvedPrice`.
+     */
+    function getTotalCorrectlyVotedTokens(ResultComputationData storage data)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory)
+    {
+        return data.voteFrequency[data.currentMode];
+    }
 }
