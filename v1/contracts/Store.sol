@@ -10,21 +10,30 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./StoreInterface.sol";
 import "./Withdrawable.sol";
 import "./FixedPoint.sol";
+import "./MultiRole.sol";
 
 
 // An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
-contract Store {
+contract Store is StoreInterface, MultiRole{
 
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint;
 
+    enum Roles {
+        Governance
+    }
+
     uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
     uint private constant FP_SCALING_FACTOR = 10**18;
 
-    uint private constant WEEKLY_DELAY_FEE = 0; //<-- governance vote?
+    uint private weeklyDelayFee;
     mapping(address => FixedPoint.Unsigned) private finalFees;
     uint private constant SECONDS_PER_WEEK = 604800;
+
+    constructor() public {
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+    }
 
     function payOracleFees() external payable {
         require(msg.value > 0);
@@ -37,32 +46,52 @@ contract Store {
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
 
-    // Sets a new Oracle fee per second.
-    //TODO change permissioning
-    function setFixedOracleFeePerSecond(uint newOracleFee) external {
+    // Sets a new Oracle fee per second
+    function setFixedOracleFeePerSecond(FixedPoint.Unsigned calldata newOracleFee) 
+        external 
+        onlyRoleHolder(uint(Roles.Governance)) 
+    {
         // Oracle fees at or over 100% don't make sense.
-        require(newOracleFee < FP_SCALING_FACTOR);
-        fixedOracleFeePerSecond = newOracleFee;
+        require(newOracleFee.isLessThan(1));
+        fixedOracleFeePerSecond = newOracleFee.value;
         emit SetFixedOracleFeePerSecond(newOracleFee);
     }
 
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc,
-    bytes32 identifier) external view 
-    returns (FixedPoint.Unsigned memory regularFee, 
-    FixedPoint.Unsigned memory latePenalty) {
+    function setFinalFee(address currency, uint finalFee) 
+        external 
+        onlyRoleHolder(uint(Roles.Governance))
+    {
+        finalFees[currency] = FixedPoint.Unsigned(finalFee);
+    }
+
+    function setWeeklyDelayFee(uint newWeeklyDelayFee) 
+        external 
+        onlyRoleHolder(uint(Roles.Governance)) 
+    {
+        weeklyDelayFee = newWeeklyDelayFee;
+    }
+
+    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc, bytes32 identifier) 
+        external 
+        view 
+        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) 
+    {
         uint timeDiff = endTime.sub(startTime);
 
         regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff).div(FP_SCALING_FACTOR);
-        latePenalty = pfc.mul(WEEKLY_DELAY_FEE.mul(timeDiff.div(SECONDS_PER_WEEK)));
+        latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
     }
 
-    function computeFinalFee(address currency) external view 
-    returns (FixedPoint.Unsigned memory finalFee) {
+    function computeFinalFee(address currency) 
+        external 
+        view 
+        returns (FixedPoint.Unsigned memory finalFee) 
+    {
         finalFee = finalFees[currency];
     }
 
-    event SetFixedOracleFeePerSecond(uint newOracleFee);
+    event SetFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
 
 }
