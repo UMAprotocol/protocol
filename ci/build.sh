@@ -3,8 +3,5 @@ set -e
 
 PROTOCOL_DIR=$(pwd)
 
-cd $PROTOCOL_DIR/v0
-$(npm bin)/truffle compile
-
-cd $PROTOCOL_DIR/v1
+cd $PROTOCOL_DIR/core
 $(npm bin)/truffle compile
