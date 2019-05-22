@@ -75,7 +75,7 @@ contract Store is StoreInterface, MultiRole {
         weeklyDelayFee = newWeeklyDelayFee;
     }
 
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc, bytes32 identifier) 
+    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc) 
         external 
         view 
         returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) 

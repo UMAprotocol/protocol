@@ -17,43 +17,47 @@ contract("Store", function(accounts) {
 
   const identifier = web3.utils.utf8ToHex("id");
 
-  //Add test final fee for test identifier
+  // TODO Add test final fee for test identifier
 
   beforeEach(async function() {
     store = await Store.new();
   });
 
-  it("Compute fees", async function() {
+  it("Compute fees basic check", async function() {
     // Set fee to 10%
     let newFee = { value: web3.utils.toWei("0.1", "ether") };
-    let txReciept = await store.setFixedOracleFeePerSecond(newFee, { from: owner });
+    await store.setFixedOracleFeePerSecond(newFee, { from: owner });
 
-    // Fixed Point wrappers
     let pfc = { value: web3.utils.toWei("2", "ether") };
 
     // Wait one second, then check fees are correct
-    let fees = await store.computeRegularFee(100, 101, pfc, identifier);
-    store.computeRegularFee(100, 101, pfc, identifier);
+    let fees = await store.computeRegularFee(100, 101, pfc, {});
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.2", "ether"));
     assert.equal(fees.latePenalty.toString(), "0");
 
     // Wait 10 seconds, then check fees are correct
-    fees = await store.computeRegularFee(100, 110, pfc, identifier);
+    fees = await store.computeRegularFee(100, 110, pfc, {});
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
+   });
 
+  it("Compute fees at 20%", async function() {
     // Change fee to 20%
-    newFee = { value: web3.utils.toWei("0.2", "ether") };
+    let newFee = { value: web3.utils.toWei("0.2", "ether") };
     await store.setFixedOracleFeePerSecond(newFee, { from: owner });
 
+    let pfc = { value: web3.utils.toWei("2", "ether") };
+
     // Run time tests again
-    fees = await store.computeRegularFee(100, 101, pfc, identifier);
+    let fees = await store.computeRegularFee(100, 101, pfc, {});
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.4", "ether"));
 
-    fees = await store.computeRegularFee(100, 110, pfc, identifier);
+    fees = await store.computeRegularFee(100, 110, pfc, {});
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("4", "ether"));
+  });
 
+  it("Check for illegal params", async function() {
     // Disallow endTime < startTime.
-    assert(await didContractThrow(store.computeRegularFee(2, 1, 10, identifier)));
+    assert(await didContractThrow(store.computeRegularFee(2, 1, 10)));
 
     // Disallow setting fees higher than 100%.
     let highFee = { value: web3.utils.toWei("1", "ether") };
