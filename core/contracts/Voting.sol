@@ -68,16 +68,16 @@ contract Voting is Testable {
         require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
         
         // Current time is required for all vote timing queries.
-        uint currentTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(currentTime) == VoteTiming.Phase.Commit,
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit,
             "Cannot commit while in the reveal phase");
 
         // Should only update the round in the commit phase because a new round that's already in the reveal phase
         // would be wasted.
-        _updateRound(currentTime);
+        _updateRound(blockTime);
 
         // At this point, the computed and last updated round ID should be equal.
-        uint currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
+        uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
 
@@ -95,13 +95,13 @@ contract Voting is Testable {
      * committer can reveal their vote.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external {
-        uint currentTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(currentTime) == VoteTiming.Phase.Reveal,
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
             "Cannot reveal while in the commit phase");
 
         // Note: computing the current round is required to disallow people from revealing an old commit after the
         // round is over.
-        uint roundId = voteTiming.computeCurrentRoundId(currentTime);
+        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
 
         VoteInstance storage voteInstance = _getPriceResolution(identifier, time).votes[roundId];
         bytes32 hash = voteInstance.committedHashes[msg.sender];
@@ -120,10 +120,10 @@ contract Voting is Testable {
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
         // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
         // widely distributed and agreed upon before the vote. 
-        uint currentTime = getCurrentTime();
-        require(time < currentTime);
+        uint blockTime = getCurrentTime();
+        require(time < blockTime);
 
-        uint currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
+        uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
         uint priceResolutionRound = _getPriceResolution(identifier, time).lastVotingRound;
 
         if (priceResolutionRound == 0) {
@@ -132,7 +132,7 @@ contract Voting is Testable {
             // Must ensure the round is updated here so the requested price will be voted on in the next commit cycle.
             // TODO: this may be an expensive operation - may make sense to have a public updateRound() method to handle
             // extreme cases.
-            _updateRound(currentTime);
+            _updateRound(blockTime);
 
             // Price requests always go in the next round, so add 1 to the computed current round.
             uint nextRoundId = currentRoundId.add(1);
@@ -188,12 +188,12 @@ contract Voting is Testable {
      * @notice Gets the queries that are being voted on this round.
      */
     function getPendingRequests() external view returns (PriceRequest[] memory priceRequests) {
-        uint currentTime = getCurrentTime();
+        uint blockTime = getCurrentTime();
 
         // Get the rollover price requests.
         PriceRequest[] memory rolloverPriceRequests;
-        if (voteTiming.shouldUpdateRoundId(currentTime)) {
-            rolloverPriceRequests = _getRolloverPriceRequests(voteTiming.computeCurrentRoundId(currentTime));
+        if (voteTiming.shouldUpdateRoundId(blockTime)) {
+            rolloverPriceRequests = _getRolloverPriceRequests(voteTiming.computeCurrentRoundId(blockTime));
         } else {
             // Last active round is the current round, so no price requests need to be rolled.
             rolloverPriceRequests = new PriceRequest[](0);
@@ -201,7 +201,7 @@ contract Voting is Testable {
 
         // Grab the pending price requests that were already slated for this round.
         PriceRequest[] storage preexistingPriceRequests = rounds[
-            voteTiming.computeCurrentRoundId(currentTime)].priceRequests;
+            voteTiming.computeCurrentRoundId(blockTime)].priceRequests;
         uint numPreexistingPriceRequests = preexistingPriceRequests.length;
 
         // Allocate the array to return.
@@ -296,13 +296,13 @@ contract Voting is Testable {
         return priceResolutions[encodedArgs];
     }
 
-    function _updateRound(uint currentTime) private {
-        if (voteTiming.shouldUpdateRoundId(currentTime)) {
+    function _updateRound(uint blockTime) private {
+        if (voteTiming.shouldUpdateRoundId(blockTime)) {
             // Only do the rollover if the next round has started.
             uint lastActiveVotingRoundId = voteTiming.getLastUpdatedRoundId();
             Round storage lastActiveVotingRound = rounds[lastActiveVotingRoundId];
 
-            uint nextVotingRoundId = voteTiming.computeCurrentRoundId(currentTime);
+            uint nextVotingRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
             for (uint i = 0; i < lastActiveVotingRound.priceRequests.length; i++) {
                 PriceRequest storage priceRequest = lastActiveVotingRound.priceRequests[i];
@@ -327,7 +327,7 @@ contract Voting is Testable {
             }
 
             // Update the stored round to the current one.
-            voteTiming.updateRoundId(currentTime);
+            voteTiming.updateRoundId(blockTime);
         }
     }
 }
