@@ -28,7 +28,7 @@ library FixedPoint {
         return a.value > b.value;
     }
 
-        /** @dev Whether `a` is less than `b`. */
+    /** @dev Whether `a` is less than `b`. */
     function isGreaterThan(Unsigned memory a, uint b) internal pure returns (bool) {
         return a.value > fromUnscaledUint(b).value;
     }
