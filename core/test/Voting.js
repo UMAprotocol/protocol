@@ -178,7 +178,7 @@ contract("Voting", function(accounts) {
     assert.isTrue(await voting.isIdentifierSupported(supported));
     assert.isFalse(await voting.isIdentifierSupported(unsupported));
 
-    // Unsupported identifiers can't request prices.
+    // Can't request prices for unsupported identifiers.
     assert(await didContractThrow(voting.requestPrice(unsupported, "0")));
   });
 });
