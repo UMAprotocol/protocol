@@ -38,7 +38,7 @@ contract("Store", function(accounts) {
     // Wait 10 seconds, then check fees are correct
     fees = await store.computeRegularFee(100, 110, pfc, {});
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
-   });
+  });
 
   it("Compute fees at 20%", async function() {
     // Change fee to 20%
