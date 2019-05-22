@@ -6,10 +6,7 @@
 
 pragma solidity ^0.5.0;
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-
-
-contract Testable is Ownable {
+contract Testable {
 
     // Is the contract being run on the test network. Note: this variable should be set on construction and never
     // modified.
@@ -29,7 +26,7 @@ contract Testable is Ownable {
         _;
     }
 
-    function setCurrentTime(uint _time) external onlyOwner onlyIfTest {
+    function setCurrentTime(uint _time) external onlyIfTest {
         currentTime = _time;
     }
 
