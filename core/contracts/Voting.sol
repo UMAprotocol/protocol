@@ -55,8 +55,10 @@ contract Voting is Testable {
 
     VoteTiming.Data private voteTiming;
 
+    bool initialized;
+
     constructor(uint phaseLength, bool _isTest) public Testable(_isTest) {
-        voteTiming.init(phaseLength);
+        initializeOnce();
     }
 
     /**
@@ -224,6 +226,17 @@ contract Voting is Testable {
 
     function getCurrentRoundId() external view returns (uint) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
+    }
+
+    /*
+     * @notice Do not call this function externally.
+     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
+     * Will revert if called again.
+     */
+    function initializeOnce() public {
+        require(!initialized, "Only the constructor should call this method");
+        initialized = true;
+        voteTiming.init(phaseLength);
     }
 
     function _getRolloverPriceRequests(uint roundId)
