@@ -119,7 +119,7 @@ jobs:
       - store_artifacts:
           path: core/coverage
   echidna:
-    docker:	
+    docker:
       - image: trailofbits/eth-security-toolbox	
     working_directory: ~/protocol	
     steps:	
