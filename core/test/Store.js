@@ -20,7 +20,7 @@ contract("Store", function(accounts) {
   // TODO Add test final fee for test identifier
 
   beforeEach(async function() {
-    store = await Store.new();
+    store = await Store.deployed();
   });
 
   it("Compute fees basic check", async function() {

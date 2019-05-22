@@ -13,7 +13,9 @@ import "./FixedPoint.sol";
 import "./MultiRole.sol";
 
 
-// An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
+/** 
+ * @title An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
+ */
 contract Store is StoreInterface, MultiRole {
 
     using SafeMath for uint;
@@ -24,7 +26,7 @@ contract Store is StoreInterface, MultiRole {
         Governance
     }
 
-    FixedPoint.Unsigned private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
+    FixedPoint.Unsigned private fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
 
     uint private weeklyDelayFee;
     mapping(address => FixedPoint.Unsigned) private finalFees;
@@ -48,7 +50,7 @@ contract Store is StoreInterface, MultiRole {
         require(authorizedAmount > 0);
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
-    
+
     /**
      * Sets a new weekly delay fee
      */ 
