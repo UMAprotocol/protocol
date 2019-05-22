@@ -122,27 +122,27 @@ jobs:
     docker:
       - image: trailofbits/eth-security-toolbox	
     working_directory: ~/protocol	
-    steps:	
+    steps:
       - checkout	
-      - restore_cache:	
-          keys:	
-            - v2-sec-toolbox-deps-{{ checksum "package.json" }}	
-            - v2-sec-toolbox-deps-	
-      - run:	
-          name: Change user	
-          command: sudo su ethsec	
-      - run:	
-          name: Reclaim ownership	
-          command: sudo chown -R $(whoami) ~/.npm	
-      - run:	
-          name: Install Dependencies	
-          command: npm install --quiet	
-      - save_cache:	
-          key: v2-sec-toolbox-deps-{{ checksum "package.json" }}	
-          paths:	
-            - node_modules	
-      - run:	
-          name: Run Echidna Tests	
+      - restore_cache:
+          keys:
+            - v2-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v2-sec-toolbox-deps-
+      - run:
+          name: Change user
+          command: sudo su ethsec
+      - run:
+          name: Reclaim ownership
+          command: sudo chown -R $(whoami) ~/.npm
+      - run:
+          name: Install Dependencies
+          command: npm install --quiet
+      - save_cache:
+          key: v2-sec-toolbox-deps-{{ checksum "package.json" }}
+          paths:
+            - node_modules
+      - run:
+          name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
 
 workflows:
