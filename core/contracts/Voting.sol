@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./MultiRole.sol";
 import "./Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -11,7 +12,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable {
+contract Voting is Testable, MultiRole {
 
     using SafeMath for uint;
 
@@ -72,8 +73,20 @@ contract Voting is Testable {
     // Maps round numbers to the rounds.
     mapping(uint => Round) private rounds;
 
+    // The set of identifiers the oracle can provide verified prices for.
+    mapping(bytes32 => bool) private supportedIdentifiers;
+
+    enum Roles {
+        // Can set the writer.
+        Governance,
+        // Can change parameters and whitelists, such as adding new supported identifiers.
+        Writer
+    }
+
+    bool initialized;
+
     constructor(bool _isTest) public Testable(_isTest) {
-        currentRoundNumber = 1;
+        initializeOnce();
     }
 
     /**
@@ -114,6 +127,7 @@ contract Voting is Testable {
         // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
         // widely distributed and agreed upon before the vote. 
         require(time < getCurrentTime());
+        require(supportedIdentifiers[identifier], "Price request for unsupported identifier");
 
         uint priceResolutionRound = _getPriceResolution(identifier, time).lastVotingRound;
         uint secondsInWeek = 60*60*24*7;
@@ -134,6 +148,22 @@ contract Voting is Testable {
             return 0;
         }
 
+    }
+
+    /**
+     * @notice Adds the provided identifier as a supported identifier.
+     */
+    function addSupportedIdentifier(bytes32 identifier) external onlyRoleHolder(uint(Roles.Writer)) {
+        if (!supportedIdentifiers[identifier]) {
+            supportedIdentifiers[identifier] = true;
+        }
+    }
+
+    /**
+     * @notice Whether this contract provides prices for this identifier.
+     */
+    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
+        return supportedIdentifiers[identifier];
     }
 
     /**
@@ -171,6 +201,19 @@ contract Voting is Testable {
      */
     function getPendingRequests() external view returns (PriceRequest[] memory priceRequests) {
         return rounds[_calcVotingRound()].priceRequests;
+    }
+
+    /*
+     * @notice Do not call this function externally.
+     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
+     * Will revert if called again.
+     */
+    function initializeOnce() public {
+        require(!initialized, "Only the constructor should call this method");
+        initialized = true;
+        currentRoundNumber = 1;
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
     }
 
     /**

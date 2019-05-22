@@ -139,6 +139,10 @@ contract("Voting", function(accounts) {
     const identifier2 = web3.utils.utf8ToHex("id2");
     const time2 = "2000";
 
+    // Make the Oracle support these two identifiers.
+    await voting.addSupportedIdentifier(identifier1);
+    await voting.addSupportedIdentifier(identifier2);
+
     // Can only request a past price.
     await voting.setCurrentTime("1000");
     assert(await didContractThrow(voting.requestPrice(identifier1, time1)));
@@ -157,5 +161,24 @@ contract("Voting", function(accounts) {
     // Since the round for these requests has not started, the price retrieval should fail.
     assert(await didContractThrow(voting.getPrice(identifier1, time1)));
     assert(await didContractThrow(voting.getPrice(identifier2, time2)));
+  });
+
+  it("Supported identifiers", async function() {
+    const voting = await Voting.deployed();
+
+    const supported = web3.utils.utf8ToHex("supported");
+    const unsupported = web3.utils.utf8ToHex("unsupported");
+
+    // No identifiers are originally suppported.
+    assert.isFalse(await voting.isIdentifierSupported(supported));
+    assert.isFalse(await voting.isIdentifierSupported(unsupported));
+
+    // Verify that supported identifiers can be added.
+    await voting.addSupportedIdentifier(supported);
+    assert.isTrue(await voting.isIdentifierSupported(supported));
+    assert.isFalse(await voting.isIdentifierSupported(unsupported));
+
+    // Unsupported identifiers can't request prices.
+    assert(await didContractThrow(voting.requestPrice(unsupported, "0")));
   });
 });
