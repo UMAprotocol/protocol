@@ -300,4 +300,74 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.requestPrice.call(identifier, time)).toNumber(), 0);
     await voting.requestPrice(identifier, time);
   });
+
+  it("Retrieval timing", async function() {
+    await moveToNextRound();
+
+    const identifier = web3.utils.utf8ToHex("retrieval-timing");
+    const time = "1000";
+
+    // Two stage call is required to get the expected return value from the second call.
+    // The expected resolution time should be the end of the *next* round.
+    await voting.requestPrice(identifier, time);
+
+    // Cannot get the price before the voting round begins.
+    assert(await didContractThrow(voting.getPrice(identifier, time)));
+
+    await moveToNextRound();
+
+    // Cannot get the price while the voting is ongoing.
+    assert(await didContractThrow(voting.getPrice(identifier, time)));
+
+    // A single commit is required to cause the round to advance and resolve.
+    const price = getRandomInt();
+    const salt = getRandomInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time, hash);
+
+    // Cannot get the price during the reveal phase.
+    await moveToNextPhase();
+    assert(await didContractThrow(voting.getPrice(identifier, time)));
+
+    await moveToNextRound();
+
+    // After the voting round is over, the price should be retrievable.
+    assert.equal((await voting.getPrice(identifier, time)).toString(), "1");
+  });
+
+  it("Pending Requests", async function() {
+    await moveToNextRound();
+
+    const startingTime = await voting.getCurrentTime();
+    const identifier = web3.utils.utf8ToHex("pending-requests");
+    const time = "1000";
+
+    // Pending requests should be empty for this new round.
+    assert.equal((await voting.getPendingRequests()).length, 0);
+
+    // Two stage call is required to get the expected return value from the second call.
+    // The expected resolution time should be the end of the *next* round.
+    await voting.requestPrice(identifier, time);
+
+    // Pending requests should be empty before the voting round begins.
+    assert.equal((await voting.getPendingRequests()).length, 0);
+
+    // Pending requests should be have a single entry now that voting has started.
+    await moveToNextRound();
+    assert.equal((await voting.getPendingRequests()).length, 1);
+
+    // A single commit is required to cause the round to advance and resolve.
+    const price = getRandomInt();
+    const salt = getRandomInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time, hash);
+
+    // Pending requests should still have a single entry in the reveal phase.
+    await moveToNextPhase();
+    assert.equal((await voting.getPendingRequests()).length, 1);
+
+    // Pending requests should be empty after the voting round ends and the price is resolved.
+    await moveToNextRound();
+    assert.equal((await voting.getPendingRequests()).length, 0);
+  });
 });
