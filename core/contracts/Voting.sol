@@ -58,7 +58,7 @@ contract Voting is Testable {
     bool initialized;
 
     constructor(uint phaseLength, bool _isTest) public Testable(_isTest) {
-        initializeOnce();
+        initializeOnce(phaseLength);
     }
 
     /**
@@ -233,7 +233,7 @@ contract Voting is Testable {
      * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
      * Will revert if called again.
      */
-    function initializeOnce() public {
+    function initializeOnce(uint phaseLength) public {
         require(!initialized, "Only the constructor should call this method");
         initialized = true;
         voteTiming.init(phaseLength);
