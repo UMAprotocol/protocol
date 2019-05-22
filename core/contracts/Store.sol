@@ -48,30 +48,7 @@ contract Store is StoreInterface, MultiRole {
         require(authorizedAmount > 0);
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
-
-    /**
-     * Sets a new oracle fee per second
-     */ 
-    function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee) 
-        public 
-        onlyRoleHolder(uint(Roles.Governance)) 
-    {
-        // Oracle fees at or over 100% don't make sense.
-        require(newOracleFee.isLessThan(1));
-        fixedOracleFeePerSecond = newOracleFee;
-        emit SetFixedOracleFeePerSecond(newOracleFee);
-    }
     
-    /**
-     * Sets a new final fee for a particular currency
-     */ 
-    function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee) 
-        public 
-        onlyRoleHolder(uint(Roles.Governance))
-    {
-        finalFees[currency] = finalFee;
-    }
-
     /**
      * Sets a new weekly delay fee
      */ 
@@ -101,6 +78,29 @@ contract Store is StoreInterface, MultiRole {
         returns (FixedPoint.Unsigned memory finalFee) 
     {
         finalFee = finalFees[currency];
+    }
+
+    /**
+     * Sets a new oracle fee per second
+     */ 
+    function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee) 
+        public 
+        onlyRoleHolder(uint(Roles.Governance)) 
+    {
+        // Oracle fees at or over 100% don't make sense.
+        require(newOracleFee.isLessThan(1));
+        fixedOracleFeePerSecond = newOracleFee;
+        emit SetFixedOracleFeePerSecond(newOracleFee);
+    }
+    
+    /**
+     * Sets a new final fee for a particular currency
+     */ 
+    function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee) 
+        public 
+        onlyRoleHolder(uint(Roles.Governance))
+    {
+        finalFees[currency] = finalFee;
     }
     
     /*
