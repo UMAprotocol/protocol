@@ -254,4 +254,50 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.requestPrice(identifier, timeFail)));
     await voting.requestPrice(identifier, timeSucceed);
   });
+
+  it("Request timing", async function() {
+    await moveToNextRound();
+
+    const startingTime = await voting.getCurrentTime();
+    const identifier = web3.utils.utf8ToHex("request-timing");
+    const time = "1000";
+
+    // Two stage call is required to get the expected return value from the second call.
+    // The expected resolution time should be the end of the *next* round.
+    const preRoundExpectedResolution = (await voting.requestPrice.call(identifier, time)).toNumber();
+    await voting.requestPrice(identifier, time);
+    const requestRoundTime = (await voting.getCurrentTime()).toNumber();
+
+    // The expected resolution time should be after all times in the request round.
+    assert.isAbove(preRoundExpectedResolution, requestRoundTime);
+
+    // A redundant request in the same round should produce the exact same expected resolution time.
+    assert.equal((await voting.requestPrice.call(identifier, time)).toNumber(), preRoundExpectedResolution);
+    await voting.requestPrice(identifier, time);
+
+    // Move to the voting round.
+    await moveToNextRound();
+    const votingRoundTime = (await voting.getCurrentTime()).toNumber();
+
+    // Expected resolution time should be after the
+    assert.isAbove(preRoundExpectedResolution, votingRoundTime);
+
+    // A redundant request during the voting round should return the same estimated time.
+    assert.equal((await voting.requestPrice.call(identifier, time)).toNumber(), preRoundExpectedResolution);
+    await voting.requestPrice(identifier, time);
+
+    // A single commit is required to cause the round to advance and resolve.
+    const price = getRandomInt();
+    const salt = getRandomInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time, hash);
+
+    await moveToNextRound();
+    const postVoteTime = (await voting.getCurrentTime()).toNumber();
+    assert.isAtMost(preRoundExpectedResolution, postVoteTime);
+
+    // Now that the request has been resolved, requestPrice should always return 0.
+    assert.equal((await voting.requestPrice.call(identifier, time)).toNumber(), 0);
+    await voting.requestPrice(identifier, time);
+  });
 });

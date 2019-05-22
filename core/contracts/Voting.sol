@@ -144,10 +144,10 @@ contract Voting is Testable {
 
             // Estimate the end of next round and return the time.
             return voteTiming.computeEstimatedRoundEndTime(nextRoundId);
-        } else if (priceResolutionRound == currentRoundId) {
-            // Price is currently being resolved.
+        } else if (priceResolutionRound >= currentRoundId) {
+            // Price is already slated to be resolved.
             
-            return voteTiming.computeEstimatedRoundEndTime(currentRoundId);
+            return voteTiming.computeEstimatedRoundEndTime(priceResolutionRound);
         } else {
             // Price has been resolved.
             return 0;
