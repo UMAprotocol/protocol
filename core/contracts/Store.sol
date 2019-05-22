@@ -24,8 +24,7 @@ contract Store is StoreInterface, MultiRole {
         Governance
     }
 
-    uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
-    uint private constant FP_SCALING_FACTOR = 10**18;
+    FixedPoint.Unsigned private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
 
     uint private weeklyDelayFee;
     mapping(address => FixedPoint.Unsigned) private finalFees;
@@ -53,24 +52,24 @@ contract Store is StoreInterface, MultiRole {
     /**
      * Sets a new oracle fee per second
      */ 
-    function setFixedOracleFeePerSecond(FixedPoint.Unsigned calldata newOracleFee) 
-        external 
+    function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee) 
+        public 
         onlyRoleHolder(uint(Roles.Governance)) 
     {
         // Oracle fees at or over 100% don't make sense.
         require(newOracleFee.isLessThan(1));
-        fixedOracleFeePerSecond = newOracleFee.value;
+        fixedOracleFeePerSecond = newOracleFee;
         emit SetFixedOracleFeePerSecond(newOracleFee);
     }
     
     /**
      * Sets a new final fee for a particular currency
      */ 
-    function setFinalFee(address currency, uint finalFee) 
-        external 
+    function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee) 
+        public 
         onlyRoleHolder(uint(Roles.Governance))
     {
-        finalFees[currency] = FixedPoint.Unsigned(finalFee);
+        finalFees[currency] = finalFee;
     }
 
     /**
@@ -90,7 +89,7 @@ contract Store is StoreInterface, MultiRole {
     {
         uint timeDiff = endTime.sub(startTime);
 
-        regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff).div(FP_SCALING_FACTOR);
+        regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff);
         latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
