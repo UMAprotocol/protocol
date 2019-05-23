@@ -27,7 +27,7 @@ interface StoreInterface {
 
     /**
      * @dev Computes the regular oracle fees that a contract should pay for a period. 
-     * `pfc` is the "profit from corruption", or the maximum amount of margin currency that a
+     * pfc` is the "profit from corruption", or the maximum amount of margin currency that a
      * token sponsor could extract from the contract through corrupting the price feed
      * in their favor.
      */
