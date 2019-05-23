@@ -60,6 +60,9 @@ contract("Voting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("one-voter");
     const time = "1000";
 
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time);
     assert.equal((await voting.getCurrentRoundId()).toString(), "2");
@@ -110,6 +113,9 @@ contract("Voting", function(accounts) {
   it("Multiple voters", async function() {
     const identifier = web3.utils.utf8ToHex("multiple-voters");
     const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time);
     await moveToNextRound();
@@ -162,6 +168,10 @@ contract("Voting", function(accounts) {
     const identifier2 = web3.utils.utf8ToHex("overlapping-keys2");
     const time2 = "2000";
 
+    // Make the Oracle support these two identifiers.
+    await voting.addSupportedIdentifier(identifier1);
+    await voting.addSupportedIdentifier(identifier2);
+
     // Send the requests.
     await voting.requestPrice(identifier1, time2);
     await voting.requestPrice(identifier2, time1);
@@ -199,6 +209,10 @@ contract("Voting", function(accounts) {
     const time1 = "1000";
     const identifier2 = web3.utils.utf8ToHex("request-retrieval2");
     const time2 = "2000";
+
+    // Make the Oracle support these two identifiers.
+    await voting.addSupportedIdentifier(identifier1);
+    await voting.addSupportedIdentifier(identifier2);
 
     // Requests should not be added to the current voting round.
     await voting.setCurrentTime("1001");
@@ -245,6 +259,9 @@ contract("Voting", function(accounts) {
     const startingTime = await voting.getCurrentTime();
     const identifier = web3.utils.utf8ToHex("future-request");
 
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
     // Time 1 is in the future and should fail.
     const timeFail = startingTime.addn(1).toString();
 
@@ -261,6 +278,9 @@ contract("Voting", function(accounts) {
     const startingTime = await voting.getCurrentTime();
     const identifier = web3.utils.utf8ToHex("request-timing");
     const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
@@ -307,6 +327,9 @@ contract("Voting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("retrieval-timing");
     const time = "1000";
 
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
     await voting.requestPrice(identifier, time);
@@ -342,6 +365,9 @@ contract("Voting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("pending-requests");
     const time = "1000";
 
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
     // Pending requests should be empty for this new round.
     assert.equal((await voting.getPendingRequests()).length, 0);
 
@@ -369,5 +395,24 @@ contract("Voting", function(accounts) {
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound();
     assert.equal((await voting.getPendingRequests()).length, 0);
+  });
+
+  it("Supported identifiers", async function() {
+    const voting = await Voting.deployed();
+
+    const supported = web3.utils.utf8ToHex("supported");
+    const unsupported = web3.utils.utf8ToHex("unsupported");
+
+    // No identifiers are originally suppported.
+    assert.isFalse(await voting.isIdentifierSupported(supported));
+    assert.isFalse(await voting.isIdentifierSupported(unsupported));
+
+    // Verify that supported identifiers can be added.
+    await voting.addSupportedIdentifier(supported);
+    assert.isTrue(await voting.isIdentifierSupported(supported));
+    assert.isFalse(await voting.isIdentifierSupported(unsupported));
+
+    // Can't request prices for unsupported identifiers.
+    assert(await didContractThrow(voting.requestPrice(unsupported, "0")));
   });
 });

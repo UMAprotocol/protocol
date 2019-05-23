@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./MultiRole.sol";
 import "./Testable.sol";
 import "./VoteTiming.sol";
 
@@ -12,7 +13,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable {
+contract Voting is Testable, MultiRole {
 
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -54,6 +55,16 @@ contract Voting is Testable {
     mapping(uint => Round) private rounds;
 
     VoteTiming.Data private voteTiming;
+
+    // The set of identifiers the oracle can provide verified prices for.
+    mapping(bytes32 => bool) private supportedIdentifiers;
+
+    enum Roles {
+        // Can set the writer.
+        Governance,
+        // Can change parameters and whitelists, such as adding new supported identifiers.
+        Writer
+    }
 
     bool initialized;
 
@@ -124,6 +135,7 @@ contract Voting is Testable {
         // widely distributed and agreed upon before the vote. 
         uint blockTime = getCurrentTime();
         require(time < blockTime);
+        require(supportedIdentifiers[identifier], "Price request for unsupported identifier");
 
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
         uint priceResolutionRound = _getPriceResolution(identifier, time).lastVotingRound;
@@ -152,6 +164,22 @@ contract Voting is Testable {
             // Price has been resolved.
             return 0;
         }
+    }
+
+    /**
+     * @notice Adds the provided identifier as a supported identifier.
+     */
+    function addSupportedIdentifier(bytes32 identifier) external onlyRoleHolder(uint(Roles.Writer)) {
+        if (!supportedIdentifiers[identifier]) {
+            supportedIdentifiers[identifier] = true;
+        }
+    }
+
+    /**
+     * @notice Whether this contract provides prices for this identifier.
+     */
+    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
+        return supportedIdentifiers[identifier];
     }
 
     /**
@@ -236,6 +264,8 @@ contract Voting is Testable {
     function initializeOnce(uint phaseLength) public {
         require(!initialized, "Only the constructor should call this method");
         initialized = true;
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
         voteTiming.init(phaseLength);
     }
 
@@ -271,7 +301,7 @@ contract Voting is Testable {
             rolloverPriceRequests[i] = tmpRolloverArray[i];
         }
     }
-
+    
     /**
      * @notice Adds a price request to a round.
      * @dev This can be used to roll a price request over to the next round or respond to a new requestPrice call.

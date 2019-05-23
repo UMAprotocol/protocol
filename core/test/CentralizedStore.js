@@ -16,7 +16,7 @@ contract("CentralizedStore", function(accounts) {
   const erc20TokenOwner = accounts[2];
 
   before(async function() {
-    centralizedStore = await CentralizedStore.deployed();
+    centralizedStore = await CentralizedStore.new();
   });
 
   it("Compute fees", async function() {
@@ -75,12 +75,12 @@ contract("CentralizedStore", function(accounts) {
 
     // Send 1 ether to the contract and verify balance.
     await centralizedStore.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
-    balance = await web3.eth.getBalance(CentralizedStore.address);
+    balance = await web3.eth.getBalance(centralizedStore.address);
     assert.equal(balance.toString(), web3.utils.toWei("1", "ether"));
 
     // Send a further 2 ether to the contract and verify balance.
     await centralizedStore.payOracleFees({ from: derivative, value: web3.utils.toWei("2", "ether") });
-    balance = await web3.eth.getBalance(CentralizedStore.address);
+    balance = await web3.eth.getBalance(centralizedStore.address);
     assert.equal(balance.toString(), web3.utils.toWei("3", "ether"));
 
     // Only the owner can withdraw.
@@ -88,7 +88,7 @@ contract("CentralizedStore", function(accounts) {
 
     // Withdraw 0.5 ether and verify the  balance.
     await centralizedStore.withdraw(web3.utils.toWei("0.5", "ether"));
-    balance = await web3.eth.getBalance(CentralizedStore.address);
+    balance = await web3.eth.getBalance(centralizedStore.address);
     assert.equal(balance.toString(), web3.utils.toWei("2.5", "ether"));
 
     // Can't withdraw more than the balance.
@@ -96,7 +96,7 @@ contract("CentralizedStore", function(accounts) {
 
     // Withdraw remaining balance.
     await centralizedStore.withdraw(web3.utils.toWei("2.5", "ether"));
-    balance = await web3.eth.getBalance(CentralizedStore.address);
+    balance = await web3.eth.getBalance(centralizedStore.address);
     assert.equal(balance.toString(), web3.utils.toWei("0", "ether"));
   });
 
