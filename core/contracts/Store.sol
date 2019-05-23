@@ -52,7 +52,7 @@ contract Store is StoreInterface, MultiRole {
     }
 
     /**
-     * Sets a new weekly delay fee
+     * @dev Sets a new weekly delay fee
      */ 
     function setWeeklyDelayFee(uint newWeeklyDelayFee) 
         external 
@@ -83,7 +83,7 @@ contract Store is StoreInterface, MultiRole {
     }
 
     /**
-     * Sets a new oracle fee per second
+     * @dev Sets a new oracle fee per second
      */ 
     function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee) 
         public 
@@ -96,7 +96,7 @@ contract Store is StoreInterface, MultiRole {
     }
     
     /**
-     * Sets a new final fee for a particular currency
+     * @dev Sets a new final fee for a particular currency
      */ 
     function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee) 
         public 
@@ -105,7 +105,7 @@ contract Store is StoreInterface, MultiRole {
         finalFees[currency] = finalFee;
     }
     
-    /*
+    /**
      * @notice Do not call this function externally.
      * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
      * Will revert if called again.
