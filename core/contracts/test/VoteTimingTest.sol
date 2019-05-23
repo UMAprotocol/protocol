@@ -13,16 +13,16 @@ contract VoteTimingTest {
         wrapInit(phaseLength);
     }
 
+    function wrapUpdateRoundId(uint currentTime) external {
+        voteTiming.updateRoundId(currentTime);
+    }
+
     function wrapGetLastUpdatedRoundId() external view returns (uint) {
         return voteTiming.getLastUpdatedRoundId();
     }
 
     function wrapShouldUpdateRoundId(uint currentTime) external view returns (bool) {
         return voteTiming.shouldUpdateRoundId(currentTime);
-    }
-
-    function wrapUpdateRoundId(uint currentTime) external {
-        voteTiming.updateRoundId(currentTime);
     }
 
     function wrapComputeCurrentRoundId(uint currentTime) external view returns (uint) {
