@@ -66,7 +66,7 @@ contract Voting is Testable, MultiRole {
         Writer
     }
 
-    bool initialized;
+    bool private initialized;
 
     constructor(uint phaseLength, bool _isTest) public Testable(_isTest) {
         initializeOnce(phaseLength);
@@ -301,7 +301,7 @@ contract Voting is Testable, MultiRole {
             rolloverPriceRequests[i] = tmpRolloverArray[i];
         }
     }
-    
+
     /**
      * @notice Adds a price request to a round.
      * @dev This can be used to roll a price request over to the next round or respond to a new requestPrice call.

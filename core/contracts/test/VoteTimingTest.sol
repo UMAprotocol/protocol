@@ -13,10 +13,6 @@ contract VoteTimingTest {
         wrapInit(phaseLength);
     }
 
-    function wrapInit(uint phaseLength) public {
-        voteTiming.init(phaseLength);
-    }
-
     function wrapGetLastUpdatedRoundId() external view returns (uint) {
         return voteTiming.getLastUpdatedRoundId();
     }
@@ -39,5 +35,9 @@ contract VoteTimingTest {
 
     function wrapComputeEstimatedRoundEndTime(uint roundId) external view returns (uint) {
         return voteTiming.computeEstimatedRoundEndTime(roundId);
+    }
+
+    function wrapInit(uint phaseLength) public {
+        voteTiming.init(phaseLength);
     }
 }

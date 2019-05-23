@@ -61,7 +61,11 @@ library VoteTiming {
         return data.roundStartTime.add(roundDiff.mul(roundLength));
     }
 
-    function _getCurrentRoundIdAndStartTime(Data storage data, uint currentTime) private view returns (uint roundId, uint startTime) {
+    function _getCurrentRoundIdAndStartTime(Data storage data, uint currentTime)
+        private
+        view
+        returns (uint roundId, uint startTime)
+    {
         uint currentStartTime = data.roundStartTime;
         // Return current data if time has moved backwards.
         if (currentTime <= data.roundStartTime) {
