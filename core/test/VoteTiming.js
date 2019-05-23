@@ -84,7 +84,6 @@ contract("VoteTiming", function(accounts) {
     assert.equal((await voteTiming.voteTiming()).roundStartTime.toNumber(), updatedStartTime + 200);
   });
 
-
   it("Estimated Round End Times", async function() {
     const roundId = (await voteTiming.wrapGetLastUpdatedRoundId()).toNumber();
     const startTime = (await voteTiming.voteTiming()).roundStartTime.toNumber();
@@ -96,7 +95,7 @@ contract("VoteTiming", function(accounts) {
     assert.equal((await voteTiming.wrapComputeEstimatedRoundEndTime(roundId + 1)).toNumber(), startTime + 400);
 
     // The estimated end of the round 50 rounds from now should be 51 round lengths in the future.
-    assert.equal((await voteTiming.wrapComputeEstimatedRoundEndTime(roundId + 50)).toNumber(), startTime + (51 * 200));
+    assert.equal((await voteTiming.wrapComputeEstimatedRoundEndTime(roundId + 50)).toNumber(), startTime + 51 * 200);
 
     // Any rounds in the past should result in an error.
     assert(await didContractThrow(voteTiming.wrapComputeEstimatedRoundEndTime(roundId - 1)));
