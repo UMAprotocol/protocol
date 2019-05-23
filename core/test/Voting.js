@@ -12,6 +12,9 @@ contract("Voting", function(accounts) {
 
   const secondsPerDay = web3.utils.toBN(86400);
 
+  const COMMIT_PHASE = "0";
+  const REVEAL_PHASE = "1";
+
   const getRandomInt = () => {
     return web3.utils.toBN(web3.utils.randomHex(32));
   };
@@ -20,7 +23,7 @@ contract("Voting", function(accounts) {
     const phase = await voting.getVotePhase();
     const currentTime = await voting.getCurrentTime();
     let timeIncrement;
-    if (phase.toString() === "0") {
+    if (phase.toString() === COMMIT_PHASE) {
       // Commit phase, so it will take 2 days to move to the next round.
       timeIncrement = secondsPerDay.muln(2);
     } else {
@@ -45,15 +48,15 @@ contract("Voting", function(accounts) {
     await moveToNextRound();
 
     // Rounds should start with Commit.
-    assert.equal((await voting.getVotePhase()).toString(), "0");
+    assert.equal((await voting.getVotePhase()).toString(), COMMIT_PHASE);
 
     // Shift of one phase should be Reveal.
     await moveToNextPhase();
-    assert.equal((await voting.getVotePhase()).toString(), "1");
+    assert.equal((await voting.getVotePhase()).toString(), REVEAL_PHASE);
 
-    // A seconds shift should go back to commit.
+    // A second shift should go back to commit.
     await moveToNextPhase();
-    assert.equal((await voting.getVotePhase()).toString(), "0");
+    assert.equal((await voting.getVotePhase()).toString(), COMMIT_PHASE);
   });
 
   it("One voter, one request", async function() {
@@ -66,7 +69,7 @@ contract("Voting", function(accounts) {
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time);
     assert.equal((await voting.getCurrentRoundId()).toString(), "2");
-    assert.equal((await voting.getVotePhase()).toString(), "0");
+    assert.equal((await voting.getVotePhase()).toString(), COMMIT_PHASE);
     await moveToNextRound();
 
     const price = getRandomInt();

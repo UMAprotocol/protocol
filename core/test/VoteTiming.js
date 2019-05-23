@@ -5,18 +5,21 @@ const VoteTimingTest = artifacts.require("VoteTimingTest");
 contract("VoteTiming", function(accounts) {
   let votingTiming;
 
+  const COMMIT_PHASE = "0";
+  const REVEAL_PHASE = "1";
+
   beforeEach(async function() {
     voteTiming = await VoteTimingTest.new("100");
   });
 
   it("Phasing", async function() {
-    // If time % 200 is between 0 and 99 (inclusive), the phase should be commit (0).
-    assert.equal((await voteTiming.wrapComputeCurrentPhase("50")).toString(), "0");
-    assert.equal((await voteTiming.wrapComputeCurrentPhase("1401")).toString(), "0");
+    // If time % 200 is between 0 and 99 (inclusive), the phase should be commit.
+    assert.equal((await voteTiming.wrapComputeCurrentPhase("50")).toString(), COMMIT_PHASE);
+    assert.equal((await voteTiming.wrapComputeCurrentPhase("1401")).toString(), COMMIT_PHASE);
 
-    // If time % 200 is between 100 and 199 (inclusive), the phase should be reveal (1).
-    assert.equal((await voteTiming.wrapComputeCurrentPhase("100")).toString(), "1");
-    assert.equal((await voteTiming.wrapComputeCurrentPhase("17145")).toString(), "1");
+    // If time % 200 is between 100 and 199 (inclusive), the phase should be reveal.
+    assert.equal((await voteTiming.wrapComputeCurrentPhase("100")).toString(), REVEAL_PHASE);
+    assert.equal((await voteTiming.wrapComputeCurrentPhase("17145")).toString(), REVEAL_PHASE);
   });
 
   it("Should Update", async function() {

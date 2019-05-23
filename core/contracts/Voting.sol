@@ -42,8 +42,8 @@ contract Voting is Testable, MultiRole {
         // The price that was resolved. 0 if it hasn't been resolved.
         int resolvedPrice;
 
-        // If in the past, this was the voting round where this price was resolved. If current or in the future, this
-        // is the next voting round where this price will be voted on.
+        // If in the past, this was the voting round where this price was resolved. If current or the upcoming round, this
+        // is the voting round where this price will be voted on, but not necessarily resolved.
         uint lastVotingRound;
     }
 
@@ -137,16 +137,19 @@ contract Voting is Testable, MultiRole {
         require(time < blockTime);
         require(supportedIdentifiers[identifier], "Price request for unsupported identifier");
 
+        // Must ensure the round is updated here so the requested price will be voted on in the next commit cycle.
+        // It's preferred to offload this cost to voters, but since the logic currently requires the rollover to be
+        // done when adding new requests, it must be here.
+        // TODO: look into how to elminate this call or require it only for a subset of the if cases below.
+        // TODO: this may be an expensive operation - may make sense to have a public updateRound() method to handle
+        // extreme cases.
+        _updateRound(blockTime);
+
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
         uint priceResolutionRound = _getPriceResolution(identifier, time).lastVotingRound;
 
         if (priceResolutionRound == 0) {
             // Price has never been requested.
-
-            // Must ensure the round is updated here so the requested price will be voted on in the next commit cycle.
-            // TODO: this may be an expensive operation - may make sense to have a public updateRound() method to handle
-            // extreme cases.
-            _updateRound(blockTime);
 
             // Price requests always go in the next round, so add 1 to the computed current round.
             uint nextRoundId = currentRoundId.add(1);
@@ -220,22 +223,16 @@ contract Voting is Testable, MultiRole {
     function getPendingRequests() external view returns (PriceRequest[] memory priceRequests) {
         uint blockTime = getCurrentTime();
 
-        // Get the rollover price requests.
-        PriceRequest[] memory rolloverPriceRequests;
-        if (voteTiming.shouldUpdateRoundId(blockTime)) {
-            rolloverPriceRequests = _getRolloverPriceRequests(voteTiming.computeCurrentRoundId(blockTime));
-        } else {
-            // Last active round is the current round, so no price requests need to be rolled.
-            rolloverPriceRequests = new PriceRequest[](0);
-        }
-
         // Grab the pending price requests that were already slated for this round.
         PriceRequest[] storage preexistingPriceRequests = rounds[
             voteTiming.computeCurrentRoundId(blockTime)].priceRequests;
         uint numPreexistingPriceRequests = preexistingPriceRequests.length;
 
+        // Get the rollover price requests.
+        (PriceRequest[] memory rolloverPriceRequests, uint numRolloverPriceRequests) = _getRolloverPriceRequests(blockTime);
+
         // Allocate the array to return.
-        priceRequests = new PriceRequest[](rolloverPriceRequests.length + numPreexistingPriceRequests);
+        priceRequests = new PriceRequest[](numPreexistingPriceRequests + numRolloverPriceRequests);
 
         // Add preexisting price requests to the array.
         for (uint i = 0; i < numPreexistingPriceRequests; i++) {
@@ -243,7 +240,7 @@ contract Voting is Testable, MultiRole {
         }
 
         // Add rollover price requests to the array.
-        for (uint i = 0; i < rolloverPriceRequests.length; i++) {
+        for (uint i = 0; i < numRolloverPriceRequests; i++) {
             priceRequests[i + numPreexistingPriceRequests] = rolloverPriceRequests[i];
         }
     }
@@ -269,23 +266,29 @@ contract Voting is Testable, MultiRole {
         voteTiming.init(phaseLength);
     }
 
-    function _getRolloverPriceRequests(uint roundId)
+    function _getRolloverPriceRequests(uint blockTime)
         private
         view
-        returns (PriceRequest[] memory rolloverPriceRequests)
+        returns (PriceRequest[] memory rolloverPriceRequests, uint numRolloverPriceRequests)
     {
+        // Return nothing if it is not yet time to roll votes over.
+        if (!voteTiming.shouldUpdateRoundId(blockTime)) {
+            return (new PriceRequest[](0), 0);
+        }
+
+        uint roundId = voteTiming.getLastUpdatedRoundId();
         PriceRequest[] storage allPriceRequests = rounds[roundId].priceRequests;
         uint numPriceRequests = allPriceRequests.length;
 
         // Allocate enough space for all of the price requests to be rolled over and just track the length
         // separately.
         PriceRequest[] memory tmpRolloverArray = new PriceRequest[](numPriceRequests);
-        uint numRolloverPriceRequests = 0;
+        numRolloverPriceRequests = 0;
 
         // Note: the code here is very similar to that in _updateRound(). The reason I decided not use this method
-        // there is that there is some complexity in this method wrt resizing in-memory arrays that's unnecessary when
-        // changing storage. To preserve the gas-efficiency of _updateRound(), I didn't want to include that same
-        // complexity there.
+        // there is that there is some complexity in this method wrt creating potentially large in-memory arrays that's
+        // unnecessary when changing storage. To preserve the gas-efficiency of _updateRound(), I didn't want to
+        // include that same complexity there.
         for (uint i = 0; i < numPriceRequests; i++) {
             PriceRequest memory priceRequest = allPriceRequests[i];
             PriceResolution storage priceResolution = _getPriceResolution(priceRequest.identifier, priceRequest.time);
@@ -293,12 +296,6 @@ contract Voting is Testable, MultiRole {
             if (!canBeResolved) {
                 tmpRolloverArray[numRolloverPriceRequests++] = priceRequest;
             }
-        }
-
-        // Copy price requests into the compressed array.
-        rolloverPriceRequests = new PriceRequest[](numRolloverPriceRequests);
-        for (uint i = 0; i < numRolloverPriceRequests; i++) {
-            rolloverPriceRequests[i] = tmpRolloverArray[i];
         }
     }
 
@@ -340,37 +337,39 @@ contract Voting is Testable, MultiRole {
     }
 
     function _updateRound(uint blockTime) private {
-        if (voteTiming.shouldUpdateRoundId(blockTime)) {
-            // Only do the rollover if the next round has started.
-            uint lastActiveVotingRoundId = voteTiming.getLastUpdatedRoundId();
-            Round storage lastActiveVotingRound = rounds[lastActiveVotingRoundId];
-
-            uint nextVotingRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
-            for (uint i = 0; i < lastActiveVotingRound.priceRequests.length; i++) {
-                PriceRequest storage priceRequest = lastActiveVotingRound.priceRequests[i];
-                PriceResolution storage priceResolution = _getPriceResolution(
-                    priceRequest.identifier,
-                    priceRequest.time
-                );
-
-                // TODO: we should probably take this assert out before we move to production to keep the voting
-                // contract from locking in the case of a bug. This would be an assert, but asserts don't allow
-                // messages.
-                require(priceResolution.lastVotingRound == lastActiveVotingRoundId,
-                    "Found price request that was incorrectly placed in a round");
-                (bool canBeResolved, int resolvedPrice) = _resolveVote(priceResolution.votes[lastActiveVotingRoundId]);
-                if (canBeResolved) {
-                    // If the vote can be resolved, just set the resolved price.
-                    priceResolution.resolvedPrice = resolvedPrice;
-                } else {
-                    // If the vote cannot be resolved, push the request into the current round.
-                    _addPriceRequestToRound(nextVotingRoundId, priceRequest);
-                }
-            }
-
-            // Update the stored round to the current one.
-            voteTiming.updateRoundId(blockTime);
+        if (!voteTiming.shouldUpdateRoundId(blockTime)) {
+            return;
         }
+
+        // Only do the rollover if the next round has started.
+        uint lastActiveVotingRoundId = voteTiming.getLastUpdatedRoundId();
+        Round storage lastActiveVotingRound = rounds[lastActiveVotingRoundId];
+
+        uint nextVotingRoundId = voteTiming.computeCurrentRoundId(blockTime);
+
+        for (uint i = 0; i < lastActiveVotingRound.priceRequests.length; i++) {
+            PriceRequest storage priceRequest = lastActiveVotingRound.priceRequests[i];
+            PriceResolution storage priceResolution = _getPriceResolution(
+                priceRequest.identifier,
+                priceRequest.time
+            );
+
+            // TODO: we should probably take this assert out before we move to production to keep the voting
+            // contract from locking in the case of a bug. This would be an assert, but asserts don't allow
+            // messages.
+            require(priceResolution.lastVotingRound == lastActiveVotingRoundId,
+                "Found price request that was incorrectly placed in a round");
+            (bool canBeResolved, int resolvedPrice) = _resolveVote(priceResolution.votes[lastActiveVotingRoundId]);
+            if (canBeResolved) {
+                // If the vote can be resolved, just set the resolved price.
+                priceResolution.resolvedPrice = resolvedPrice;
+            } else {
+                // If the vote cannot be resolved, push the request into the current round.
+                _addPriceRequestToRound(nextVotingRoundId, priceRequest);
+            }
+        }
+
+        // Update the stored round to the current one.
+        voteTiming.updateRoundId(blockTime);
     }
 }
