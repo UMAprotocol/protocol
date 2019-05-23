@@ -1,6 +1,6 @@
 /*
   CentralizedStore implementation.
- 
+
   An implementation of StoreInterface with a fee per second and withdraw functions for the owner.
 */
 pragma solidity ^0.5.0;
@@ -18,6 +18,18 @@ contract CentralizedStore is StoreInterface, Withdrawable {
     uint private fixedOracleFeePerSecond; // Percentage of 10^18. E.g., 1e18 is 100% Oracle fee.
     uint private constant FP_SCALING_FACTOR = 10**18;
 
+    enum Roles {
+        Governance,
+        Writer,
+        Withdraw
+    }
+
+    constructor() public {
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        createWithdrawRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Withdraw), msg.sender);
+    }
+
     function payOracleFees() external payable {
         require(msg.value > 0);
     }
@@ -30,7 +42,7 @@ contract CentralizedStore is StoreInterface, Withdrawable {
     }
 
     // Sets a new Oracle fee per second.
-    function setFixedOracleFeePerSecond(uint newOracleFee) external onlyOwner {
+    function setFixedOracleFeePerSecond(uint newOracleFee) external onlyRoleHolder(uint(Roles.Writer)) {
         // Oracle fees at or over 100% don't make sense.
         require(newOracleFee < FP_SCALING_FACTOR);
         fixedOracleFeePerSecond = newOracleFee;
