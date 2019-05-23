@@ -25,6 +25,8 @@ contract("FixedPoint", function(accounts) {
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("1")));
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isTrue(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
+
+    //TODO: Add issLessThan & isGreaterThan tests for the FixedPoint uint comparisons
   });
 
   it("Addition", async function() {
