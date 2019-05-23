@@ -275,7 +275,6 @@ contract Voting is Testable, MultiRole {
         voteTiming.init(phaseLength);
     }
 
-
     /**
      * @dev Gets a list of price requests that need to be rolled over from the last round. If a rollover doesn't need
      * to happen immediately, the array will be empty. The array may be longer than the number of populated elements,
