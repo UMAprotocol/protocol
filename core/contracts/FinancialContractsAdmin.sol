@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "./AdminInterface.sol";
+import "./AdministrateeInterface.sol";
 import "./MultiRole.sol";
 
 
@@ -29,16 +29,16 @@ contract FinancialContractsAdmin is MultiRole {
      * @dev Calls emergency shutdown on the provided financial contract.
      */
     function callEmergencyShutdown(address financialContract) external onlyRoleHolder(uint(Roles.EmergencyShutdown)) {
-        AdminInterface admin = AdminInterface(financialContract);
-        admin.emergencyShutdown();
+        AdministrateeInterface administratee = AdministrateeInterface(financialContract);
+        administratee.emergencyShutdown();
     }
 
     /**
      * @dev Calls remargin on the provided financial contract.
      */
     function callRemargin(address financialContract) external onlyRoleHolder(uint(Roles.Remargin)) {
-        AdminInterface admin = AdminInterface(financialContract);
-        admin.remargin();
+        AdministrateeInterface administratee = AdministrateeInterface(financialContract);
+        administratee.remargin();
     }
 
     /*
@@ -50,7 +50,7 @@ contract FinancialContractsAdmin is MultiRole {
         require(!rolesInitialized, "Only the constructor should call this method");
         rolesInitialized = true;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Remargin), uint(Roles.Governance), msg.sender);
+        _createSharedRole(uint(Roles.Remargin), uint(Roles.Governance), new address[](0));
         _createExclusiveRole(uint(Roles.EmergencyShutdown), uint(Roles.Governance), msg.sender);
     }
 }
