@@ -36,19 +36,16 @@ library VoteTiming {
     }
 
     function shouldUpdateRoundId(Data storage data, uint currentTime) internal view returns (bool) {
-        return data.roundStartTime != _computeCurrentRoundStartTime(data, currentTime);
+        (uint roundId,) = _getCurrentRoundIdAndStartTime(data, currentTime);
+        return data.roundId != roundId;
     }
 
     function updateRoundId(Data storage data, uint currentTime) internal {
-        data.roundId = computeCurrentRoundId(data, currentTime);
-        data.roundStartTime = _computeCurrentRoundStartTime(data, currentTime);
+        (data.roundId, data.roundStartTime) = _getCurrentRoundIdAndStartTime(data, currentTime);
     }
 
     function computeCurrentRoundId(Data storage data, uint currentTime) internal view returns (uint roundId) {
-        roundId = data.roundId;
-        if (shouldUpdateRoundId(data, currentTime)) {
-            roundId = roundId.add(1);
-        }
+        (roundId,) = _getCurrentRoundIdAndStartTime(data, currentTime);
     }
 
     function computeCurrentPhase(Data storage data, uint currentTime) internal view returns (Phase) {
@@ -64,8 +61,22 @@ library VoteTiming {
         return data.roundStartTime.add(roundDiff.mul(roundLength));
     }
 
-    function _computeCurrentRoundStartTime(Data storage data, uint currentTime) private view returns (uint) {
+    function _getCurrentRoundIdAndStartTime(Data storage data, uint currentTime) private view returns (uint roundId, uint startTime) {
+        uint currentStartTime = data.roundStartTime;
+        // Return current data if time has moved backwards.
+        if (currentTime <= data.roundStartTime) {
+            return (data.roundId, data.roundStartTime);
+        }
+
+        // Get the start of the round that currentTime would be a part of by flooring by roundLength.
         uint roundLength = data.phaseLength.mul(NUM_PHASES);
-        return currentTime.div(roundLength).mul(roundLength);
+        startTime = currentTime.div(roundLength).mul(roundLength);
+
+        // Only increment the round ID if the start time has changed.
+        if (startTime > currentStartTime) {
+            roundId = data.roundId.add(1);
+        } else {
+            roundId = data.roundId;
+        }
     }
 }
