@@ -215,10 +215,7 @@ contract("Voting", function(accounts) {
     await voting.addSupportedIdentifier(identifier2);
 
     // Requests should not be added to the current voting round.
-    await voting.setCurrentTime("1001");
     await voting.requestPrice(identifier1, time1);
-
-    await voting.setCurrentTime("2001");
     await voting.requestPrice(identifier2, time2);
 
     // Since the round for these requests has not started, the price retrieval should fail.
