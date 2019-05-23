@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# TODO(ptare): This script is NOT currently run from CI.
 # Note: this script should be run from inside the trailofbits/eth-security-toolbox docker container with this
 # repository mounted at ~/protocol.
 # An example run command would look like the following:
@@ -8,7 +7,7 @@
 
 # Note: this assumes the .sol and .yaml files are 1:1 and have the same name.
 run_echidna_test() {
-    local prefix=v0/contracts/echidna_tests/
+    local prefix=core/contracts/echidna_tests/
     local solidity_fname=$prefix$1.sol
     local config_fname=$prefix$1.yaml
     local contract_name=$2
