@@ -25,34 +25,61 @@ library VoteTiming {
         uint phaseLength;
     }
 
+    /**
+     * @notice Initializes the data object. Sets the phase length based on the input and resets the round id and round
+     * start time to 1 and 0 respectively.
+     * @dev This method should generally only be run once, but it can also be used to reset the data structure to its
+     * initial values.
+     */
     function init(Data storage data, uint phaseLength) internal {
         data.phaseLength = phaseLength;
         data.roundId = 1;
         data.roundStartTime = 0;
     }
 
+    /**
+     * @notice Gets the most recently stored round ID set by updateRoundId().
+     */
     function getLastUpdatedRoundId(Data storage data) internal view returns (uint) {
         return data.roundId;
     }
 
+    /**
+     * @notice Determines whether time has advanced far enough to advance to the next voting round and update the
+     * stored round id.
+     */
     function shouldUpdateRoundId(Data storage data, uint currentTime) internal view returns (bool) {
         (uint roundId,) = _getCurrentRoundIdAndStartTime(data, currentTime);
         return data.roundId != roundId;
     }
 
+    /**
+     * @notice Updates the round id. Note: if shouldUpdateRoundId() returns false, this method will have no effect.
+     */
     function updateRoundId(Data storage data, uint currentTime) internal {
         (data.roundId, data.roundStartTime) = _getCurrentRoundIdAndStartTime(data, currentTime);
     }
 
+    /**
+     * @notice Computes what the stored round id would be if it were updated right now, but this method does not
+     * commit the update.
+     */
     function computeCurrentRoundId(Data storage data, uint currentTime) internal view returns (uint roundId) {
         (roundId,) = _getCurrentRoundIdAndStartTime(data, currentTime);
     }
 
+    /**
+     * @notice Computes the current phase based only on the current time.
+     */
     function computeCurrentPhase(Data storage data, uint currentTime) internal view returns (Phase) {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
         return Phase(currentTime.div(data.phaseLength).mod(NUM_PHASES));
     }
 
+    /**
+     * @notice Gets the end time of the current round or any round in the future. Note: this method will revert if
+     * the roundId < getLastUpdatedRoundId().
+     */
     function computeEstimatedRoundEndTime(Data storage data, uint roundId) internal view returns (uint) {
         // The add(1) is because we want the round end time rather than the start time, so it's really the start of
         // the next round.
@@ -61,6 +88,9 @@ library VoteTiming {
         return data.roundStartTime.add(roundDiff.mul(roundLength));
     }
 
+    /**
+     * @dev Computes an updated round id and round start time based on the current time.
+     */
     function _getCurrentRoundIdAndStartTime(Data storage data, uint currentTime)
         private
         view

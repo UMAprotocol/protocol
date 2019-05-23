@@ -42,8 +42,8 @@ contract Voting is Testable, MultiRole {
         // The price that was resolved. 0 if it hasn't been resolved.
         int resolvedPrice;
 
-        // If in the past, this was the voting round where this price was resolved. If current or the upcoming round, this
-        // is the voting round where this price will be voted on, but not necessarily resolved.
+        // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
+        // this is the voting round where this price will be voted on, but not necessarily resolved.
         uint lastVotingRound;
     }
 
@@ -128,7 +128,8 @@ contract Voting is Testable, MultiRole {
 
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
-     * @dev Returns the time at which the user should expect the price to be resolved.
+     * @dev Returns the time at which the user should expect the price to be resolved. 0 means the price has already
+     * been resolved.
      */
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
         // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
@@ -187,6 +188,7 @@ contract Voting is Testable, MultiRole {
 
     /**
      * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
+     * @dev If the price is not available, the method reverts.
      */
     function getPrice(bytes32 identifier, uint time) external view returns (int price) {
         PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
@@ -229,7 +231,8 @@ contract Voting is Testable, MultiRole {
         uint numPreexistingPriceRequests = preexistingPriceRequests.length;
 
         // Get the rollover price requests.
-        (PriceRequest[] memory rolloverPriceRequests, uint numRolloverPriceRequests) = _getRolloverPriceRequests(blockTime);
+        (PriceRequest[] memory rolloverPriceRequests, uint numRolloverPriceRequests) = _getRolloverPriceRequests(
+            blockTime);
 
         // Allocate the array to return.
         priceRequests = new PriceRequest[](numPreexistingPriceRequests + numRolloverPriceRequests);
@@ -245,10 +248,16 @@ contract Voting is Testable, MultiRole {
         }
     }
 
+    /**
+     * @notice Gets the current vote phase (commit or reveal) based on the current block time.
+     */
     function getVotePhase() external view returns (VoteTiming.Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
+    /**
+     * @notice Gets the current vote round id based on the current block time.
+     */
     function getCurrentRoundId() external view returns (uint) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
@@ -266,6 +275,12 @@ contract Voting is Testable, MultiRole {
         voteTiming.init(phaseLength);
     }
 
+
+    /**
+     * @dev Gets a list of price requests that need to be rolled over from the last round. If a rollover doesn't need
+     * to happen immediately, the array will be empty. The array may be longer than the number of populated elements,
+     * so numRolloverPriceRequests gives the true number of elements.
+     */
     function _getRolloverPriceRequests(uint blockTime)
         private
         view
@@ -336,6 +351,12 @@ contract Voting is Testable, MultiRole {
         return priceResolutions[encodedArgs];
     }
 
+    /**
+     * @notice Updates the round if necessary. After this method is run voteTiming.getLastUpdatedRoundId() and
+     * and voteTiming.computeCurrentRoundId(blockTime) should return the same value.
+     * @dev The method loops through all price requests for the last voting round and rolls them over to the next round
+     * if required.
+     */
     function _updateRound(uint blockTime) private {
         if (!voteTiming.shouldUpdateRoundId(blockTime)) {
             return;
