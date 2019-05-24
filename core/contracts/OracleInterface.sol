@@ -20,6 +20,11 @@ interface OracleInterface {
     function isIdentifierSupported(bytes32 identifier) external view returns (bool);
 
     /**
+     * @notice Whether the price for `identifier` and `time` is available.
+     */
+    function hasPrice(bytes32 identifier, uint time) external view returns (bool);
+
+    /**
      * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
      * @dev If the price is not available, the method reverts.
      */
