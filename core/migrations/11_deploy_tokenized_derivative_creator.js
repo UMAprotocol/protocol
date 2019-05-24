@@ -1,7 +1,6 @@
-const CentralizedOracle = artifacts.require("CentralizedOracle");
-const CentralizedStore = artifacts.require("CentralizedStore");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Finder = artifacts.require("Finder");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
-const Registry = artifacts.require("Registry");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
@@ -27,18 +26,16 @@ module.exports = async function(deployer, network, accounts) {
   });
 
   const manualPriceFeed = await ManualPriceFeed.deployed();
-  const centralizedOracle = await CentralizedOracle.deployed();
-  const centralizedStore = await CentralizedStore.deployed();
-  const registry = await Registry.deployed();
+  const finder = await Finder.deployed();
+  const financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
   // Link and deploy creator.
   await deployer.link(TokenizedDerivativeUtils, TokenizedDerivativeCreator);
   const tokenizedDerivativeCreator = await deployAndGet(
     deployer,
     TokenizedDerivativeCreator,
-    registry.address,
-    centralizedOracle.address,
-    centralizedStore.address,
+    finder.address,
+    financialContractsAdmin.address,
     manualPriceFeed.address,
     sponsorWhitelist.address,
     returnCalculatorWhitelist.address,

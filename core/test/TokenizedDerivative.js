@@ -1,6 +1,9 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
-const CentralizedOracle = artifacts.require("CentralizedOracle");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Finder = artifacts.require("Finder");
+const MockOracle = artifacts.require("MockOracle");
+// const CentralizedOracle = artifacts.require("CentralizedOracle");
 const CentralizedStore = artifacts.require("CentralizedStore");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
@@ -22,7 +25,9 @@ contract("TokenizedDerivative", function(accounts) {
   let identifierBytes;
   let derivativeContract;
   let deployedRegistry;
-  let deployedCentralizedOracle;
+  let deployedFinder;
+  let deployedAdmin;
+  let mockOracle;
   let deployedCentralizedStore;
   let deployedManualPriceFeed;
   let tokenizedDerivativeCreator;
@@ -40,6 +45,9 @@ contract("TokenizedDerivative", function(accounts) {
   const uintMax = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
   const ethAddress = "0x0000000000000000000000000000000000000000";
 
+  const adminRemarginRole = "1"; // Corresponds to FinancialContractsAdmin.Roles.Remargin.
+  const derivativeCreatorRole = "2"; // Corresponds to Registry.Roles.DerivativeCreator.
+
   // The ManualPriceFeed can support prices at arbitrary intervals, but for convenience, we send updates at this
   // interval.
   const priceFeedUpdatesInterval = 60;
@@ -51,11 +59,19 @@ contract("TokenizedDerivative", function(accounts) {
     identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETH/USD"));
     // Set the deployed registry and oracle.
     deployedRegistry = await Registry.deployed();
-    deployedCentralizedOracle = await CentralizedOracle.deployed();
+    deployedFinder = await Finder.deployed();
+    deployedAdmin = await FinancialContractsAdmin.deployed();
+    mockOracle = await MockOracle.new();
     deployedCentralizedStore = await CentralizedStore.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     noLeverageCalculator = await LeveragedReturnCalculator.deployed();
+
+    // Change the Oracle to MockOracle so that we can push prices from test cases.
+    const oracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex("Oracle"));
+    await deployedFinder.changeImplementationAddress(oracleInterfaceName, mockOracle.address);
+
+    await deployedAdmin.addMember(adminRemarginRole, owner);
 
     // Create an arbitrary ERC20 margin token.
     marginToken = await ERC20Mintable.new({ from: sponsor });
@@ -71,13 +87,13 @@ contract("TokenizedDerivative", function(accounts) {
     returnCalculatorWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.returnCalculatorWhitelist());
 
     // Make sure the Oracle and PriceFeed support the underlying product.
-    await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
+    await mockOracle.addSupportedIdentifier(identifierBytes);
     await deployedManualPriceFeed.setCurrentTime(100000);
     await pushPrice(web3.utils.toWei("1", "ether"));
 
     // Add the owner to the list of registered derivatives so it's allowed to query oracle prices.
     let creator = accounts[5];
-    await deployedRegistry.addDerivativeCreator(creator);
+    await deployedRegistry.addMember(derivativeCreatorRole, creator);
     await deployedRegistry.registerDerivative([], owner, { from: creator });
 
     // Set an Oracle fee.
@@ -264,7 +280,7 @@ contract("TokenizedDerivative", function(accounts) {
       let contractAdmin = (await derivativeContract.derivativeStorage()).externalAddresses.admin;
 
       assert.equal(contractSponsor, sponsor);
-      assert.equal(contractAdmin, deployedCentralizedOracle.address);
+      assert.equal(contractAdmin, deployedAdmin.address);
 
       let longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       let shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
@@ -389,7 +405,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Ensure that a remargin with no new price works appropriately and doesn't create any balance issues.
       // The prevTokenState also shouldn't get blown away.
-      await deployedCentralizedOracle.callRemargin(derivativeContract.address, { from: owner });
+      await deployedAdmin.callRemargin(derivativeContract.address, { from: owner });
       lastRemarginTime = (await derivativeContract.derivativeStorage()).currentTokenState.time;
       let previousRemarginTime = (await derivativeContract.derivativeStorage()).referenceTokenState.time;
       assert.equal(lastRemarginTime.toString(), expectedLastRemarginTime.toString());
@@ -504,11 +520,7 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Can't call emergency shutdown while in default.
-      assert(
-        await didContractThrow(
-          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
-        )
-      );
+      assert(await didContractThrow(deployedAdmin.callEmergencyShutdown(derivativeContract.address, { from: owner })));
 
       // Only the sponsor can confirm.
       assert(await didContractThrow(derivativeContract.acceptPriceAndSettle({ from: thirdParty })));
@@ -735,7 +747,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Push a price.
       const requestedTime = await deployedManualPriceFeed.getCurrentTime();
-      await deployedCentralizedOracle.pushPrice(identifierBytes, requestedTime, web3.utils.toWei("1.43", "ether"));
+      await mockOracle.pushPrice(identifierBytes, requestedTime, web3.utils.toWei("1.43", "ether"));
 
       calcNav = await derivativeContract.calcNAV();
       calcTokenValue = await derivativeContract.calcTokenValue();
@@ -815,7 +827,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Provide the Oracle price and call settle. The Oracle price is different from the price feed price, and the
       // sponsor is no longer in default.
-      await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.05", "ether"));
+      await mockOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("1.05", "ether"));
 
       // The Oracle price is the price that will be used to settle, not the price feed price.
       updatedUnderlyingPrice = await derivativeContract.getUpdatedUnderlyingPrice();
@@ -882,8 +894,8 @@ contract("TokenizedDerivative", function(accounts) {
       const defaultTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
 
       // The Oracle price is already available.
-      await deployedCentralizedOracle.requestPrice(identifierBytes, defaultTime);
-      await deployedCentralizedOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("5", "ether"));
+      await mockOracle.requestPrice(identifierBytes, defaultTime);
+      await mockOracle.pushPrice(identifierBytes, defaultTime, web3.utils.toWei("5", "ether"));
 
       // This a bit of an edge case: currently, we treat the contract as not settle-able if remargin() would default
       // because that isn't a normal flow of operations that we want to simulate: we want to discourage/disallow
@@ -924,8 +936,8 @@ contract("TokenizedDerivative", function(accounts) {
       let nav = (await derivativeContract.derivativeStorage()).nav;
       const disputeTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
       // Provide oracle price for the disputed time.
-      await deployedCentralizedOracle.requestPrice(identifierBytes, disputeTime);
-      await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("0.9", "ether"));
+      await mockOracle.requestPrice(identifierBytes, disputeTime);
+      await mockOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("0.9", "ether"));
 
       // Pushing these prices doesn't remargin the contract, so it doesn't affect what we dispute.
       await pushPrice(web3.utils.toWei("1.1", "ether"));
@@ -1010,7 +1022,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Provide the Oracle price.
       assert.isFalse(await derivativeContract.canBeSettled());
-      await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
+      await mockOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("1", "ether"));
       assert.isTrue(await derivativeContract.canBeSettled());
 
       // Grab calc method return values after the Oracle price is pushed, but before settle is called. Expect that
@@ -1021,11 +1033,7 @@ contract("TokenizedDerivative", function(accounts) {
       const calcedExcessMargin = await derivativeContract.calcExcessMargin();
 
       // Can't call emergency shutdown while expired.
-      assert(
-        await didContractThrow(
-          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
-        )
-      );
+      assert(await didContractThrow(deployedAdmin.callEmergencyShutdown(derivativeContract.address, { from: owner })));
 
       // Settle with the Oracle price.
       let presettlementNav = (await derivativeContract.derivativeStorage()).nav;
@@ -1116,7 +1124,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Then the Oracle price should be provided, which settles the contract.
       assert.isFalse(await derivativeContract.canBeSettled());
-      await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
+      await mockOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
       assert.isTrue(await derivativeContract.canBeSettled());
 
       // Grab calc method return values after the Oracle price is pushed, but before settle is called. Expect that
@@ -1184,8 +1192,8 @@ contract("TokenizedDerivative", function(accounts) {
       // Push the contract to expiry, and provide Oracle price beforehand.
       await pushPrice(web3.utils.toWei("100", "ether"));
       const expirationTime = await deployedManualPriceFeed.getCurrentTime();
-      await deployedCentralizedOracle.requestPrice(identifierBytes, expirationTime);
-      await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
+      await mockOracle.requestPrice(identifierBytes, expirationTime);
+      await mockOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.1", "ether"));
 
       // Grab calc method return values after the Oracle price is pushed, but before remargin is called. Expect that
       // they correctly predict the settlement values.
@@ -1294,7 +1302,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Contract should go to EXPIRED, and then on settle(), go to SETTLED.
       state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "2");
-      await deployedCentralizedOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.089", "ether"));
+      await mockOracle.pushPrice(identifierBytes, expirationTime, web3.utils.toWei("1.089", "ether"));
       await derivativeContract.settle();
       state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "5");
@@ -1426,7 +1434,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert(await didContractThrow(derivativeContract.emergencyShutdown({ from: sponsor })));
 
       // Admin calls emergency shutdown.
-      await deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner });
+      await deployedAdmin.callEmergencyShutdown(derivativeContract.address, { from: owner });
 
       // TODO: add back this test once we determine how to listen for indirect events (not declared within the called contract).
       // truffleAssert.eventEmitted(result, "EmergencyShutdownTransition", ev => {
@@ -1437,14 +1445,10 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(state.toString(), "4");
 
       // Can't call emergency shutdown while already in emergency shutdown.
-      assert(
-        await didContractThrow(
-          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
-        )
-      );
+      assert(await didContractThrow(deployedAdmin.callEmergencyShutdown(derivativeContract.address, { from: owner })));
 
       // Provide Oracle price and call settle().
-      await deployedCentralizedOracle.pushPrice(identifierBytes, lastRemarginTime, web3.utils.toWei("1.3", "ether"));
+      await mockOracle.pushPrice(identifierBytes, lastRemarginTime, web3.utils.toWei("1.3", "ether"));
       await derivativeContract.settle();
       state = (await derivativeContract.derivativeStorage()).state;
       assert.equal(state.toString(), "5");
@@ -1464,11 +1468,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(shortBalance.toString(), expectedSponsorAccountBalance.toString());
 
       // Can't call emergency shutdown in the Settled state.
-      assert(
-        await didContractThrow(
-          deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner })
-        )
-      );
+      assert(await didContractThrow(deployedAdmin.callEmergencyShutdown(derivativeContract.address, { from: owner })));
     });
 
     it(annotateTitle("Live -> Expiry -> Settled (Default)"), async function() {
@@ -1498,7 +1498,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Resolve it to a defaulting price.
       const expireTime = (await deployedManualPriceFeed.getCurrentTime()).toString();
-      await deployedCentralizedOracle.pushPrice(identifierBytes, expireTime, web3.utils.toWei("2", "ether"));
+      await mockOracle.pushPrice(identifierBytes, expireTime, web3.utils.toWei("2", "ether"));
       await derivativeContract.settle({ from: sponsor });
 
       // This resolution should leave 0.075 left in the short margin account with a margin requirement of 0.1.
@@ -1536,12 +1536,12 @@ contract("TokenizedDerivative", function(accounts) {
       // Push a new price and emergency shut down the contract.
       await pushPrice(web3.utils.toWei("1", "ether"));
       await derivativeContract.remargin({ from: sponsor });
-      await deployedCentralizedOracle.callEmergencyShutdown(derivativeContract.address, { from: owner });
+      await deployedAdmin.callEmergencyShutdown(derivativeContract.address, { from: owner });
 
       // Resolve it to a defaulting price.
       const shutdownTime = (await deployedManualPriceFeed.getCurrentTime()).toString();
       assert.isFalse(await derivativeContract.canBeSettled());
-      await deployedCentralizedOracle.pushPrice(identifierBytes, shutdownTime, web3.utils.toWei("2", "ether"));
+      await mockOracle.pushPrice(identifierBytes, shutdownTime, web3.utils.toWei("2", "ether"));
       assert.isTrue(await derivativeContract.canBeSettled());
       await derivativeContract.settle({ from: sponsor });
 
@@ -1587,7 +1587,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Resolve it to a defaulting price.
       const disputeTime = (await derivativeContract.derivativeStorage()).currentTokenState.time.toString();
-      await deployedCentralizedOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("2", "ether"));
+      await mockOracle.pushPrice(identifierBytes, disputeTime, web3.utils.toWei("2", "ether"));
 
       // Calculate the expected short balance pre-settlement.
       const calcedShortBalance = await derivativeContract.calcShortMarginBalance();
@@ -2489,7 +2489,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Product unsupported by price feed.
       const productUnsupportedByPriceFeed = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByFeed"));
-      await deployedCentralizedOracle.addSupportedIdentifier(productUnsupportedByPriceFeed);
+      await mockOracle.addSupportedIdentifier(productUnsupportedByPriceFeed);
 
       const unsupportedByPriceFeedParams = { ...defaultConstructorParams, product: productUnsupportedByPriceFeed };
       assert(
