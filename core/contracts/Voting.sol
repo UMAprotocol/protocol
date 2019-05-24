@@ -3,6 +3,7 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "./MultiRole.sol";
+import "./OracleInterface.sol";
 import "./Testable.sol";
 import "./VoteTiming.sol";
 
@@ -13,7 +14,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, MultiRole {
+contract Voting is Testable, MultiRole, OracleInterface {
 
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -126,11 +127,6 @@ contract Voting is Testable, MultiRole {
         delete voteInstance.committedHashes[msg.sender];
     }
 
-    /**
-     * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
-     * @dev Returns the time at which the user should expect the price to be resolved. 0 means the price has already
-     * been resolved.
-     */
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
         // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
         // widely distributed and agreed upon before the vote. 
@@ -179,17 +175,10 @@ contract Voting is Testable, MultiRole {
         }
     }
 
-    /**
-     * @notice Whether this contract provides prices for this identifier.
-     */
     function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
         return supportedIdentifiers[identifier];
     }
 
-    /**
-     * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
-     * @dev If the price is not available, the method reverts.
-     */
     function getPrice(bytes32 identifier, uint time) external view returns (int price) {
         PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
         uint resolutionVotingRound = priceResolution.lastVotingRound;
