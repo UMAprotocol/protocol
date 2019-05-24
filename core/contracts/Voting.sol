@@ -179,6 +179,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
         return supportedIdentifiers[identifier];
     }
 
+    function hasPrice(bytes32 identifier, uint time) external view returns (bool) {
+        // TODO(ptare): Price resolution isn't implemented yet.
+        return true;
+    }
+
     function getPrice(bytes32 identifier, uint time) external view returns (int price) {
         PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
         uint resolutionVotingRound = priceResolution.lastVotingRound;
