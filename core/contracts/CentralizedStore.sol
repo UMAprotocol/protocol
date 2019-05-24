@@ -27,7 +27,7 @@ contract CentralizedStore is StoreInterface, Withdrawable {
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         createWithdrawRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
-        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Withdraw), msg.sender);
+        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
     function payOracleFees() external payable {
