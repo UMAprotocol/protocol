@@ -7,32 +7,18 @@
 Please use Slack for all technical questions and discussions.
 - [Email](mailto:hello@umaproject.org): for anything non-technical.
 
-## V0 System Deployment
+## V1 System Deployment
+
+The v1 system is not yet deployed to mainnet.
 
 ### Initial Setup
 
-Before attempting to do anything with the v0 system, please run the following commands:
+Before attempting to do anything with the v1 system, please run the following commands:
 
 1. Install nodejs and npm
 1. Run `npm install`.
-1. Run `cd v0`. You'll need to be in the `v0` directory to run any truffle commands against the `v0` system. 
+1. Run `cd core`. You'll need to be in the `core` directory to run any truffle commands against the system. 
 1. Run `$(npm bin)/truffle compile` to compile the contracts.
-
-### Motivating Example: Deploying a test BTC/ETH tracking token on a local Ganache instance
-
-Before starting this example, ensure you have done the [initial setup](#initial-setup) and are in the `v0` directory.
-
-1. Follow [these instructions](#deploying-to-ganache) to set up and deploy to Ganache. Note: this means that you should
-be using the network `test` throughout these instructions.
-2. To configure the price feed to track BTC/ETH rather than futures contracts that require an API key, you'll need to
-change the names of two files:
-```
-mv config/identifiers.json config/identifiersProdBackup.json
-mv config/identifiersTest.json config/identifiers.json
-```
-3. Follow [these instructions](#upload-prices-to-the-manualpricefeed) to begin uploading BTC/ETH prices to your
-price feed.
-4. Follow [these instructions](#running-the-dapp) to begin running the dapp and launching contracts.
 
 ### Deploying to Ganache
 
@@ -49,7 +35,31 @@ $(npm bin)/truffle migrate --reset --network test
 $(npm bin)/truffle test --network test
 ```
 5. If you want to use the dapp with your Ganache deployment, make sure you plug the mnemonic that it generates into
-Metamask instead of your normal ETH account.
+Metamask instead of your normal ETH account. NOTE: `sponsor-dapp` only with v0 for now.
+
+## V0 System Deployment
+
+NOTE: In order to work with the v0 system, you should be on the [v0 branch](https://github.com/UMAprotocol/protocol/tree/v0).
+
+To work with the v0 system deployment, follow the directions in this [README.md](https://github.com/UMAprotocol/protocol/blob/v0/README.md).
+
+The instructions below are kept around only for convenience only and should not be followed from the master branch.
+
+### Motivating Example: Deploying a test BTC/ETH tracking token on a local Ganache instance
+
+Before starting this example, ensure you have done the [initial setup](#initial-setup) and are in the `v0` directory.
+
+1. Follow [these instructions](#deploying-to-ganache) to set up and deploy to Ganache. Note: this means that you should
+be using the network `test` throughout these instructions.
+2. To configure the price feed to track BTC/ETH rather than futures contracts that require an API key, you'll need to
+change the names of two files:
+```
+mv config/identifiers.json config/identifiersProdBackup.json
+mv config/identifiersTest.json config/identifiers.json
+```
+3. Follow [these instructions](#upload-prices-to-the-manualpricefeed) to begin uploading BTC/ETH prices to your
+price feed.
+4. Follow [these instructions](#running-the-dapp) to begin running the dapp and launching contracts.
 
 ### Mainnet/Ropsten Testnet Deployment
 

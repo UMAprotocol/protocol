@@ -114,21 +114,16 @@ jobs:
           paths:
             - node_modules
       - run:
-          name: Run v0 coverage
-          command: ./ci/coverage.sh ~/protocol/v0
+          name: Run coverage
+          command: ./ci/coverage.sh ~/protocol/core
       - store_artifacts:
-          path: v0/coverage
-      - run:
-          name: Run v1 coverage
-          command: ./ci/coverage.sh ~/protocol/v1
-      - store_artifacts:
-          path: v1/coverage
+          path: core/coverage
   echidna:
     docker:
-      - image: trailofbits/eth-security-toolbox
-    working_directory: ~/protocol
+      - image: trailofbits/eth-security-toolbox	
+    working_directory: ~/protocol	
     steps:
-      - checkout
+      - checkout	
       - restore_cache:
           keys:
             - v2-sec-toolbox-deps-{{ checksum "package.json" }}
@@ -149,76 +144,6 @@ jobs:
       - run:
           name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
-  sponsor_dapp_test:
-    docker:
-      - image: circleci/node:11.5.0
-      - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Deploy Contracts
-          working_directory: ~/protocol/v0
-          command: $(npm bin)/truffle migrate --reset --network test
-      - restore_cache:
-          keys: 
-            - v2-sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
-            - v2-sponsor-dapp-dep-cache-
-      - run:
-          name: Install Dependencies
-          working_directory: ~/protocol/sponsor-dapp
-          command: npm install
-      - save_cache:
-          key: v2-sponsor-dapp-dep-cache-{{ checksum "sponsor-dapp/package.json" }}
-          paths:
-            - sponsor-dapp/node_modules
-      - run:
-          name: Link Contracts
-          working_directory: ~/protocol/sponsor-dapp
-          command: npm run link-contracts
-      - save_cache:
-          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - ~/protocol
-      - run:
-          name: Test DApp
-          working_directory: ~/protocol
-          command: ./ci/run_sponsor_dapp_tests.sh
-  sponsor_dapp_build:
-    docker:
-      - image: circleci/node:11.5.0
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Apply Deployment Registry
-          working_directory: ~/protocol/v0
-          command: $(npm bin)/apply-registry
-      - run:
-          name: Build DApp
-          working_directory: ~/protocol/sponsor-dapp
-          command: npm run build
-      - store_artifacts:
-          path: ~/protocol/sponsor-dapp/build
-          destination: build
-      - save_cache:
-          key: sponsor-dapp-build-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - ~/protocol
-  sponsor_dapp_deploy:
-    docker:
-      - image: circleci/node:11.5.0
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Deploy Dapp
-          command: ./ci/deploy_staging_dapp.sh
-
 
 workflows:
   version: 2
@@ -238,17 +163,3 @@ workflows:
           context: infura
           requires:
             - build
-      - sponsor_dapp_test:
-          requires:
-            - build
-      - sponsor_dapp_build:
-          requires:
-            - sponsor_dapp_test
-      - sponsor_dapp_deploy:
-          context: gcloud
-          requires:
-            - sponsor_dapp_test
-            - test
-          filters:
-            branches:
-              only: master
