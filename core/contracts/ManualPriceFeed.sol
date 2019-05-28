@@ -33,11 +33,22 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
     // this bound will probably work reasonably well in both directions.
     uint constant private BLOCK_TIMESTAMP_TOLERANCE = 900;
 
-    constructor(bool _isTest) public Testable(_isTest) {} // solhint-disable-line no-empty-blocks
+    enum Roles {
+        Governance,
+        Writer,
+        Withdraw
+    }
+
+    constructor(bool _isTest) public Testable(_isTest) {
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
+    }
 
     // Adds a new price to the series for a given identifier. The pushed publishTime must be later than the last time
     // pushed so far.
-    function pushLatestPrice(bytes32 identifier, uint publishTime, int newPrice) external onlyOwner {
+    function pushLatestPrice(bytes32 identifier, uint publishTime, int newPrice) external
+        onlyRoleHolder(uint(Roles.Writer)) {
         require(publishTime <= getCurrentTime().add(BLOCK_TIMESTAMP_TOLERANCE));
         require(publishTime > prices[identifier].timestamp);
         prices[identifier] = PriceTick(publishTime, newPrice);

@@ -28,29 +28,9 @@ library FixedPoint {
         return a.value > b.value;
     }
 
-    /** @dev Whether `a` is greater than `b`. */
-    function isGreaterThan(Unsigned memory a, uint b) internal pure returns (bool) {
-        return a.value > fromUnscaledUint(b).value;
-    }
-
-    /** @dev Whether `a` is greater than `b`. */
-    function isGreaterThan(uint a, Unsigned memory b) internal pure returns (bool) {
-        return fromUnscaledUint(a).value > b.value;
-    }
-
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.value < b.value;
-    }
-
-    /** @dev Whether `a` is less than `b`. */
-    function isLessThan(Unsigned memory a, uint b) internal pure returns (bool) {
-        return a.value < fromUnscaledUint(b).value;
-    }
-
-    /** @dev Whether `a` is less than `b`. */
-    function isLessThan(uint a, Unsigned memory b) internal pure returns (bool) {
-        return fromUnscaledUint(a).value < b.value;
     }
 
     /** @dev Adds two `Unsigned`s, reverting on overflow. */

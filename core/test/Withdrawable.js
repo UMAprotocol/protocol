@@ -1,7 +1,6 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
-const Withdrawable = artifacts.require("Withdrawable");
-const Store = artifacts.require("Store");
+const WithdrawableTest = artifacts.require("WithdrawableTest");
 
 // Pull in contracts from dependencies.
 const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
@@ -22,7 +21,7 @@ contract("Withdrawable", function(accounts) {
   });
 
   it("Withdraw ERC20", async function() {
-    const withdrawable = await Withdrawable.new();
+    const withdrawable = await WithdrawableTest.new();
 
     // Transfer tokens to the withdrawable address without notifying the contract.
     await token.transfer(withdrawable.address, web3.utils.toWei("1.5", "ether"), { from: rando });
@@ -58,13 +57,10 @@ contract("Withdrawable", function(accounts) {
 
   it("Withdraw ETH", async function() {
     // Note: we must use a contract that can accept payments to test ETH withdrawal.
-    const store = await Store.new();
+    const withdrawable = await WithdrawableTest.new();
 
     // Add 1.5 ETH to the contract.
-    await store.payOracleFees({ from: rando, value: web3.utils.toWei("1.5", "ether") });
-
-    // To ensure we use the withdrawable interface to withdraw, we "cast" the store to Withdrawable.
-    const withdrawable = await Withdrawable.at(store.address);
+    await withdrawable.pay({ from: rando, value: web3.utils.toWei("1.5", "ether") });
 
     // Attempted to withdraw more than the current balance.
     assert(await didContractThrow(withdrawable.withdraw(web3.utils.toWei("2", "ether"))));
@@ -74,16 +70,16 @@ contract("Withdrawable", function(accounts) {
 
     // Should only withdraw 0.5 tokens.
     let startingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
-    await withdrawable.withdraw(web3.utils.toWei("0.5", "ether"), { from: owner });
+    await withdrawable.withdraw(web3.utils.toWei("0.5", "ether"));
     let endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
     assert.equal(
       startingBalance.sub(web3.utils.toBN(web3.utils.toWei("0.5", "ether"))).toString(),
       endingBalance.toString()
     );
 
-    // // Withdraw remaining balance.
-    // await withdrawable.withdraw(web3.utils.toWei("1", "ether"));
-    // endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
-    // assert.equal(endingBalance.toString(), "0");
+    // Withdraw remaining balance.
+    await withdrawable.withdraw(web3.utils.toWei("1", "ether"));
+    endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
+    assert.equal(endingBalance.toString(), "0");
   });
 });
