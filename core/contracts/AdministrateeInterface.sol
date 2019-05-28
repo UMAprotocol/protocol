@@ -1,12 +1,12 @@
 /*
-  AdminInterface contract.
+  AdministrateeInterface contract.
   The interfact that enumerates the functionality that derivative contracts expose to the admin.
 */
 pragma solidity ^0.5.0;
 
 
 // The functionality that all derivative contracts expose to the admin.
-interface AdminInterface {
+interface AdministrateeInterface {
     // Initiates the shutdown process, in case of an emergency.
     function emergencyShutdown() external;
 
