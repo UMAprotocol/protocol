@@ -1,6 +1,4 @@
-const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
-const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
@@ -26,7 +24,6 @@ module.exports = async function(deployer, network, accounts) {
   });
 
   const finder = await Finder.deployed();
-  const financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
   // Link and deploy creator.
   await deployer.link(TokenizedDerivativeUtils, TokenizedDerivativeCreator);
@@ -34,7 +31,6 @@ module.exports = async function(deployer, network, accounts) {
     deployer,
     TokenizedDerivativeCreator,
     finder.address,
-    financialContractsAdmin.address,
     sponsorWhitelist.address,
     returnCalculatorWhitelist.address,
     marginCurrencyWhitelist.address,

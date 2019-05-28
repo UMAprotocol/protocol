@@ -7,14 +7,9 @@ import "./Registry.sol";
 // TODO(ptare): Make this (and all contracts) Withdrawable.
 contract ContractCreator {
     address internal finderAddress;
-    address internal adminAddress;
 
-    constructor(
-        address _finderAddress,
-        address _adminAddress
-    ) public {
+    constructor(address _finderAddress) public {
         finderAddress = _finderAddress;
-        adminAddress = _adminAddress;
     }
 
     function _registerContract(address[] memory parties, address contractToRegister) internal {

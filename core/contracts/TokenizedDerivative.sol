@@ -32,7 +32,6 @@ library TokenizedDerivativeParams {
 
     struct ConstructorParams {
         address sponsor;
-        address adminAddress;
         address finderAddress;
         uint defaultPenalty; // Percentage of margin requirement * 10^18
         uint supportedMove; // Expected percentage move in the underlying price that the long is protected against.
@@ -124,7 +123,6 @@ library TDS {
     struct ExternalAddresses {
         // Other addresses/contracts
         address sponsor;
-        address admin;
         address apDelegate;
         Finder finder;
         ReturnCalculatorInterface returnCalculator;
@@ -178,12 +176,12 @@ library TokenizedDerivativeUtils {
     }
 
     modifier onlyAdmin(TDS.Storage storage s) {
-        require(msg.sender == s.externalAddresses.admin);
+        require(msg.sender == _getAdminAddress(s));
         _;
     }
 
     modifier onlySponsorOrAdmin(TDS.Storage storage s) {
-        require(msg.sender == s.externalAddresses.sponsor || msg.sender == s.externalAddresses.admin);
+        require(msg.sender == s.externalAddresses.sponsor || msg.sender == _getAdminAddress(s));
         _;
     }
 
@@ -531,6 +529,11 @@ library TokenizedDerivativeUtils {
         return s.externalAddresses.finder.getImplementationAddress(priceFeedInterface);
     }
 
+    function _getAdminAddress(TDS.Storage storage s) internal view returns (address) {
+        bytes32 adminInterface = "FinancialContractsAdmin";
+        return s.externalAddresses.finder.getImplementationAddress(adminInterface);
+    }
+
     function _calcNewTokenStateAndBalance(TDS.Storage storage s)
         internal
         view
@@ -640,7 +643,6 @@ library TokenizedDerivativeUtils {
         require(PriceFeedInterface(_getPriceFeedAddress(s)).isIdentifierSupported(params.product));
 
         s.externalAddresses.sponsor = params.sponsor;
-        s.externalAddresses.admin = params.adminAddress;
     }
 
     function _setFixedParameters(
@@ -1291,12 +1293,11 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
 
     constructor(
         address _finderAddress,
-        address _adminAddress,
         address _sponsorWhitelist,
         address _returnCalculatorWhitelist,
         address _marginCurrencyWhitelist,
         bool _isTest
-    ) public ContractCreator(_finderAddress, _adminAddress) Testable(_isTest) {
+    ) public ContractCreator(_finderAddress) Testable(_isTest) {
         sponsorWhitelist = AddressWhitelist(_sponsorWhitelist);
         returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
         marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
@@ -1345,7 +1346,6 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
 
         // Copy internal variables.
         constructorParams.finderAddress = finderAddress;
-        constructorParams.adminAddress = adminAddress;
         constructorParams.creationTime = getCurrentTime();
     }
 }

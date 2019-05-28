@@ -277,10 +277,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(nav.toString(), "0");
 
       let contractSponsor = (await derivativeContract.derivativeStorage()).externalAddresses.sponsor;
-      let contractAdmin = (await derivativeContract.derivativeStorage()).externalAddresses.admin;
-
       assert.equal(contractSponsor, sponsor);
-      assert.equal(contractAdmin, deployedAdmin.address);
 
       let longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       let shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;

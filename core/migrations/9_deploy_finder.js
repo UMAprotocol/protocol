@@ -1,3 +1,4 @@
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
@@ -29,6 +30,11 @@ module.exports = async function(deployer, network, accounts) {
 
   const priceFeed = await ManualPriceFeed.deployed();
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.PriceFeed), priceFeed.address, {
+    from: keys.deployer
+  });
+
+  const admin = await FinancialContractsAdmin.deployed();
+  await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin), admin.address, {
     from: keys.deployer
   });
 };
