@@ -1,13 +1,24 @@
+/*
+  CentralizedOracle implementation.
+
+  Implementation of OracleInterface that allows the owner to provide verified prices.
+*/
 pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../OracleInterface.sol";
-import "../Testable.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "./AdminInterface.sol";
+import "./OracleInterface.sol";
+import "./RegistryInterface.sol";
+import "../../common/contracts/Testable.sol";
+import "./Withdrawable.sol";
 
 
-// A mock oracle used for testing.
-contract MockOracle is OracleInterface, Testable {
+// Implements an oracle that allows the owner to push prices for queries that have been made.
+contract CentralizedOracle is OracleInterface, Withdrawable, Testable {
+    using SafeMath for uint;
 
     // This contract doesn't implement the voting routine, and naively indicates that all requested prices will be
     // available in a week.
@@ -45,11 +56,17 @@ contract MockOracle is OracleInterface, Testable {
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    constructor() public Testable(true) {
+    // Registry to verify that a derivative is approved to use the Oracle.
+    RegistryInterface private registry;
+
+    constructor(address _registry, bool _isTest) public Testable(_isTest) {
+        registry = RegistryInterface(_registry);
     }
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
+        // Ensure that the caller has been registered with the Oracle before processing the request.
+        require(registry.isDerivativeRegistered(msg.sender));
         require(supportedIdentifiers[identifier]);
         Price storage lookup = verifiedPrices[identifier][time];
         if (lookup.isAvailable) {
@@ -57,18 +74,20 @@ contract MockOracle is OracleInterface, Testable {
             return 0;
         } else if (queryIndices[identifier][time].isValid) {
             // We already have a pending query, don't need to do anything.
-            return getCurrentTime() + SECONDS_IN_WEEK;
+            return getCurrentTime().add(SECONDS_IN_WEEK);
         } else {
             // New query, enqueue it for review.
             queryIndices[identifier][time] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(identifier, time));
-            return getCurrentTime() + SECONDS_IN_WEEK;
+            emit VerifiedPriceRequested(identifier, time);
+            return getCurrentTime().add(SECONDS_IN_WEEK);
         }
     }
 
     // Pushes the verified price for a requested query.
-    function pushPrice(bytes32 identifier, uint time, int price) external {
+    function pushPrice(bytes32 identifier, uint time, int price) external onlyOwner {
         verifiedPrices[identifier][time] = Price(true, price, getCurrentTime());
+        emit VerifiedPriceAvailable(identifier, time, price);
 
         QueryIndex storage queryIndex = queryIndices[identifier][time];
         require(queryIndex.isValid, "Can't push prices that haven't been requested");
@@ -76,24 +95,39 @@ contract MockOracle is OracleInterface, Testable {
         // the contents of the last index (unless it is the last index).
         uint indexToReplace = queryIndex.index;
         delete queryIndices[identifier][time];
-        uint lastIndex = requestedPrices.length - 1;
+        uint lastIndex = requestedPrices.length.sub(1);
         if (lastIndex != indexToReplace) {
             QueryPoint storage queryToCopy = requestedPrices[lastIndex];
             queryIndices[queryToCopy.identifier][queryToCopy.time].index = indexToReplace;
             requestedPrices[indexToReplace] = queryToCopy;
         }
-        requestedPrices.length = requestedPrices.length - 1;
+        requestedPrices.length = requestedPrices.length.sub(1);
     }
 
     // Adds the provided identifier as a supported identifier.
-    function addSupportedIdentifier(bytes32 identifier) external {
+    function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
+            emit AddSupportedIdentifier(identifier);
         }
+    }
+
+    // Calls emergencyShutdown() on the provided derivative.
+    function callEmergencyShutdown(address derivative) external onlyOwner {
+        AdminInterface admin = AdminInterface(derivative);
+        admin.emergencyShutdown();
+    }
+
+    // Calls remargin() on the provided derivative.
+    function callRemargin(address derivative) external onlyOwner {
+        AdminInterface admin = AdminInterface(derivative);
+        admin.remargin();
     }
 
     // Checks whether a price has been resolved.
     function hasPrice(bytes32 identifier, uint time) external view returns (bool hasPriceAvailable) {
+        // Ensure that the caller has been registered with the Oracle before processing the request.
+        require(registry.isDerivativeRegistered(msg.sender));
         require(supportedIdentifiers[identifier]);
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
@@ -101,6 +135,8 @@ contract MockOracle is OracleInterface, Testable {
 
     // Gets a price that has already been resolved.
     function getPrice(bytes32 identifier, uint time) external view returns (int price) {
+        // Ensure that the caller has been registered with the Oracle before processing the request.
+        require(registry.isDerivativeRegistered(msg.sender));
         require(supportedIdentifiers[identifier]);
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);
@@ -108,7 +144,7 @@ contract MockOracle is OracleInterface, Testable {
     }
 
     // Gets the queries that still need verified prices.
-    function getPendingQueries() external view returns (QueryPoint[] memory queryPoints) {
+    function getPendingQueries() external view onlyOwner returns (QueryPoint[] memory queryPoints) {
         return requestedPrices;
     }
 
@@ -116,4 +152,6 @@ contract MockOracle is OracleInterface, Testable {
     function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported) {
         return supportedIdentifiers[identifier];
     }
+
+    event AddSupportedIdentifier(bytes32 indexed identifier);
 }
