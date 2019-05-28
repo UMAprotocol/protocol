@@ -1,5 +1,6 @@
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const Registry = artifacts.require("Registry");
+const CentralizedOracle = artifacts.require("CentralizedOracle");
 const { getKeysForNetwork } = require("../../common/MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
@@ -9,6 +10,5 @@ module.exports = async function(deployer, network, accounts) {
   const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
 
   // Add creator contract to the registry.
-  const derivativeCreatorRole = "2"; // Corresponds to Registry.Roles.DerivativeCreator.
-  await registry.addMember(derivativeCreatorRole, tokenizedDerivativeCreator.address, { from: keys.registry });
+  await registry.addDerivativeCreator(tokenizedDerivativeCreator.address, { from: keys.registry });
 };

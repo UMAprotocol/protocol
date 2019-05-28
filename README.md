@@ -113,9 +113,9 @@ API keys in your environment:
 `"dataSource: AlphaVantage"` is present in `identifiers.json`.
 
 
-You can run this script from the top level directory (e.g. v0) using the following command:
+You can run this script using the following command:
 ```
-./scripts/publishPrices.sh --network <network>
+./publishPrices.sh --network <network>
 ```
 For the script to succeed, the `build` directory must contain the `ManualPriceFeed` address for the specified network.
 

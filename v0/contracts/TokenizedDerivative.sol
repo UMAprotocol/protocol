@@ -7,16 +7,15 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-import "./AdministrateeInterface.sol";
+import "./AdminInterface.sol";
 import "./AddressWhitelist.sol";
 import "./ContractCreator.sol";
 import "./ExpandedIERC20.sol";
-import "./Finder.sol";
 import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 import "./StoreInterface.sol";
-import "./Testable.sol";
+import "../../common/contracts/Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
@@ -32,7 +31,10 @@ library TokenizedDerivativeParams {
 
     struct ConstructorParams {
         address sponsor;
-        address finderAddress;
+        address admin;
+        address oracle;
+        address store;
+        address priceFeed;
         uint defaultPenalty; // Percentage of margin requirement * 10^18
         uint supportedMove; // Expected percentage move in the underlying price that the long is protected against.
         bytes32 product;
@@ -123,8 +125,11 @@ library TDS {
     struct ExternalAddresses {
         // Other addresses/contracts
         address sponsor;
+        address admin;
         address apDelegate;
-        Finder finder;
+        OracleInterface oracle;
+        StoreInterface store;
+        PriceFeedInterface priceFeed;
         ReturnCalculatorInterface returnCalculator;
         IERC20 marginCurrency;
     }
@@ -176,12 +181,12 @@ library TokenizedDerivativeUtils {
     }
 
     modifier onlyAdmin(TDS.Storage storage s) {
-        require(msg.sender == _getAdminAddress(s));
+        require(msg.sender == s.externalAddresses.admin);
         _;
     }
 
     modifier onlySponsorOrAdmin(TDS.Storage storage s) {
-        require(msg.sender == s.externalAddresses.sponsor || msg.sender == _getAdminAddress(s));
+        require(msg.sender == s.externalAddresses.sponsor || msg.sender == s.externalAddresses.admin);
         _;
     }
 
@@ -457,7 +462,7 @@ library TokenizedDerivativeUtils {
             return false;
         }
 
-        return OracleInterface(_getOracleAddress(s)).hasPrice(s.fixedParameters.product, s.endTime);
+        return s.externalAddresses.oracle.hasPrice(s.fixedParameters.product, s.endTime);
     }
 
     function _getUpdatedUnderlyingPrice(TDS.Storage storage s) external view returns (int underlyingPrice, uint time) {
@@ -485,7 +490,7 @@ library TokenizedDerivativeUtils {
         require(params.startingTokenPrice <= UINT_FP_SCALING_FACTOR.mul(10**9));
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint latestTime, int latestUnderlyingPrice) = PriceFeedInterface(_getPriceFeedAddress(s)).latestPrice(
+        (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
             s.fixedParameters.product);
 
         // If nonzero, take the user input as the starting price.
@@ -512,26 +517,6 @@ library TokenizedDerivativeUtils {
         s.nav = s._computeInitialNav(latestUnderlyingPrice, latestTime, params.startingTokenPrice);
 
         s.state = TDS.State.Live;
-    }
-    
-    function _getOracleAddress(TDS.Storage storage s) internal view returns (address) {
-        bytes32 oracleInterface = "Oracle";
-        return s.externalAddresses.finder.getImplementationAddress(oracleInterface);
-    }
-    
-    function _getStoreAddress(TDS.Storage storage s) internal view returns (address) {
-        bytes32 storeInterface = "Store";
-        return s.externalAddresses.finder.getImplementationAddress(storeInterface);
-    }
-
-    function _getPriceFeedAddress(TDS.Storage storage s) internal view returns (address) {
-        bytes32 priceFeedInterface = "PriceFeed";
-        return s.externalAddresses.finder.getImplementationAddress(priceFeedInterface);
-    }
-
-    function _getAdminAddress(TDS.Storage storage s) internal view returns (address) {
-        bytes32 adminInterface = "FinancialContractsAdmin";
-        return s.externalAddresses.finder.getImplementationAddress(adminInterface);
     }
 
     function _calcNewTokenStateAndBalance(TDS.Storage storage s)
@@ -571,7 +556,7 @@ library TokenizedDerivativeUtils {
 
         // Use the oracle settlement price/time if the contract is frozen or will move to expiry on the next remargin.
         (uint recomputeTime, int recomputePrice) = !isContractLive || isContractPostExpiry ?
-            (s.endTime, OracleInterface(_getOracleAddress(s)).getPrice(s.fixedParameters.product, s.endTime)) :
+            (s.endTime, s.externalAddresses.oracle.getPrice(s.fixedParameters.product, s.endTime)) :
             (priceFeedTime, priceFeedPrice);
 
         // Init the returned short balance to the current short balance.
@@ -634,15 +619,17 @@ library TokenizedDerivativeUtils {
         // introduce.
         s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
 
+        s.externalAddresses.oracle = OracleInterface(params.oracle);
+        s.externalAddresses.store = StoreInterface(params.store);
+        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
         s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
-        s.externalAddresses.finder = Finder(params.finderAddress);
 
-        // Verify that the price feed and Oracle support the given s.fixedParameters.product.
-        OracleInterface oracle = OracleInterface(_getOracleAddress(s));
-        require(oracle.isIdentifierSupported(params.product));
-        require(PriceFeedInterface(_getPriceFeedAddress(s)).isIdentifierSupported(params.product));
+        // Verify that the price feed and s.externalAddresses.oracle support the given s.fixedParameters.product.
+        require(s.externalAddresses.oracle.isIdentifierSupported(params.product));
+        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
 
         s.externalAddresses.sponsor = params.sponsor;
+        s.externalAddresses.admin = params.admin;
     }
 
     function _setFixedParameters(
@@ -799,12 +786,11 @@ library TokenizedDerivativeUtils {
             return;
         }
 
-        StoreInterface store = StoreInterface(_getStoreAddress(s));
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
-            store.payOracleFees.value(feeAmount)();
+            s.externalAddresses.store.payOracleFees.value(feeAmount)();
         } else {
-            require(s.externalAddresses.marginCurrency.approve(address(store), feeAmount));
-            store.payOracleFeesErc20(address(s.externalAddresses.marginCurrency));
+            require(s.externalAddresses.marginCurrency.approve(address(s.externalAddresses.store), feeAmount));
+            s.externalAddresses.store.payOracleFeesErc20(address(s.externalAddresses.marginCurrency));
         }
     }
 
@@ -813,10 +799,9 @@ library TokenizedDerivativeUtils {
         view
         returns (uint feeAmount)
     {
-        StoreInterface store = StoreInterface(_getStoreAddress(s));
         // The profit from corruption is set as the max(longBalance, shortBalance).
         int pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
-        uint expectedFeeAmount = store.computeOracleFees(
+        uint expectedFeeAmount = s.externalAddresses.store.computeOracleFees(
             lastTimeOracleFeesPaid,
             currentTime,
             _safeUintCast(pfc)
@@ -857,8 +842,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _requestOraclePrice(TDS.Storage storage s, uint requestedTime) internal {
-        OracleInterface oracle = OracleInterface(_getOracleAddress(s));
-        uint expectedTime = oracle.requestPrice(s.fixedParameters.product, requestedTime);
+        uint expectedTime = s.externalAddresses.oracle.requestPrice(s.fixedParameters.product, requestedTime);
         if (expectedTime == 0) {
             // The Oracle price is already available, settle the contract right away.
             s._settleInternal();
@@ -866,8 +850,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _getLatestPrice(TDS.Storage storage s) internal view returns (uint latestTime, int latestUnderlyingPrice) {
-        (latestTime, latestUnderlyingPrice) = PriceFeedInterface(
-            _getPriceFeedAddress(s)).latestPrice(s.fixedParameters.product);
+        (latestTime, latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
         require(latestTime != 0);
     }
 
@@ -1010,8 +993,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _settleVerifiedPrice(TDS.Storage storage s) internal {
-        OracleInterface oracle = OracleInterface(_getOracleAddress(s));
-        int oraclePrice = oracle.getPrice(s.fixedParameters.product, s.endTime);
+        int oraclePrice = s.externalAddresses.oracle.getPrice(s.fixedParameters.product, s.endTime);
         s._settleWithPrice(oraclePrice);
     }
 
@@ -1108,7 +1090,7 @@ library TokenizedDerivativeUtils {
 
 
 // TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
-contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
+contract TokenizedDerivative is ERC20, AdminInterface, ExpandedIERC20 {
     using TokenizedDerivativeUtils for TDS.Storage;
 
     // Note: these variables are to give ERC20 consumers information about the token.
@@ -1292,12 +1274,15 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
     AddressWhitelist public marginCurrencyWhitelist;
 
     constructor(
-        address _finderAddress,
+        address registryAddress,
+        address _oracleAddress,
+        address _storeAddress,
+        address _priceFeedAddress,
         address _sponsorWhitelist,
         address _returnCalculatorWhitelist,
         address _marginCurrencyWhitelist,
         bool _isTest
-    ) public ContractCreator(_finderAddress) Testable(_isTest) {
+    ) public ContractCreator(registryAddress, _oracleAddress, _storeAddress, _priceFeedAddress) Testable(_isTest) {
         sponsorWhitelist = AddressWhitelist(_sponsorWhitelist);
         returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
         marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
@@ -1345,7 +1330,10 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         constructorParams.startingUnderlyingPrice = params.startingUnderlyingPrice;
 
         // Copy internal variables.
-        constructorParams.finderAddress = finderAddress;
+        constructorParams.priceFeed = priceFeedAddress;
+        constructorParams.oracle = oracleAddress;
+        constructorParams.store = storeAddress;
+        constructorParams.admin = oracleAddress;
         constructorParams.creationTime = getCurrentTime();
     }
 }

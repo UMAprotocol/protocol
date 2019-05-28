@@ -1,7 +1,7 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
-
-const WithdrawableTest = artifacts.require("WithdrawableTest");
+const Withdrawable = artifacts.require("Withdrawable");
+const Store = artifacts.require("Store");
 
 // Pull in contracts from dependencies.
 const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
@@ -22,7 +22,7 @@ contract("Withdrawable", function(accounts) {
   });
 
   it("Withdraw ERC20", async function() {
-    const withdrawable = await WithdrawableTest.new();
+    const withdrawable = await Withdrawable.new();
 
     // Transfer tokens to the withdrawable address without notifying the contract.
     await token.transfer(withdrawable.address, web3.utils.toWei("1.5", "ether"), { from: rando });
@@ -58,10 +58,13 @@ contract("Withdrawable", function(accounts) {
 
   it("Withdraw ETH", async function() {
     // Note: we must use a contract that can accept payments to test ETH withdrawal.
-    const withdrawable = await WithdrawableTest.new();
+    const store = await Store.new();
 
     // Add 1.5 ETH to the contract.
-    await withdrawable.pay({ from: rando, value: web3.utils.toWei("1.5", "ether") });
+    await store.payOracleFees({ from: rando, value: web3.utils.toWei("1.5", "ether") });
+
+    // To ensure we use the withdrawable interface to withdraw, we "cast" the store to Withdrawable.
+    const withdrawable = await Withdrawable.at(store.address);
 
     // Attempted to withdraw more than the current balance.
     assert(await didContractThrow(withdrawable.withdraw(web3.utils.toWei("2", "ether"))));

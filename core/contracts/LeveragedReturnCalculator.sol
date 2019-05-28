@@ -22,16 +22,9 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     int internal leverageMultiplier;
     int private constant FP_SCALING_FACTOR = 10**18;
 
-    enum Roles {
-        Governance,
-        Withdraw
-    }
-
     constructor(int _leverageMultiplier) public {
         require(_leverageMultiplier != 0);
         leverageMultiplier = _leverageMultiplier;
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
     function computeReturn(int oldPrice, int newPrice) external view returns (int assetReturn) {
