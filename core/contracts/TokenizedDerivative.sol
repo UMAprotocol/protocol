@@ -15,13 +15,14 @@ import "./Finder.sol";
 import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
-import "./StoreInterface.sol";
+import "./StoreInterfaceV0.sol";
 import "./Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "./FixedPoint.sol";
 
 
 library TokenizedDerivativeParams {
@@ -191,7 +192,7 @@ library TokenizedDerivativeUtils {
     }
 
     function _depositAndCreateTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase)
-        external 
+        external
         onlySponsorOrApDelegate(s)
     {
         s._remarginInternal();
@@ -472,13 +473,13 @@ library TokenizedDerivativeUtils {
         TDS.Storage storage s,
         TokenizedDerivativeParams.ConstructorParams memory params,
         string memory symbol
-    ) 
-        public 
+    )
+        public
     {
 
         s._setFixedParameters(params, symbol);
         s._setExternalAddresses(params);
-        
+
         // Keep the starting token price relatively close to FP_SCALING_FACTOR to prevent users from unintentionally
         // creating rounding or overflow errors.
         require(params.startingTokenPrice >= UINT_FP_SCALING_FACTOR.div(10**9));
@@ -513,12 +514,12 @@ library TokenizedDerivativeUtils {
 
         s.state = TDS.State.Live;
     }
-    
+
     function _getOracleAddress(TDS.Storage storage s) internal view returns (address) {
         bytes32 oracleInterface = "Oracle";
         return s.externalAddresses.finder.getImplementationAddress(oracleInterface);
     }
-    
+
     function _getStoreAddress(TDS.Storage storage s) internal view returns (address) {
         bytes32 storeInterface = "Store";
         return s.externalAddresses.finder.getImplementationAddress(storeInterface);
@@ -563,7 +564,7 @@ library TokenizedDerivativeUtils {
 
         // Determine which previous price state to use when computing the new NAV.
         // If the contract is live, we use the reference for the linear return type or if the contract will immediately
-        // move to expiry. 
+        // move to expiry.
         bool shouldUseReferenceTokenState = isContractLive &&
             (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear || isContractPostExpiry);
         TDS.TokenState memory lastTokenState = (shouldUseReferenceTokenState ?
@@ -838,7 +839,7 @@ library TokenizedDerivativeUtils {
         int tokenReturn = underlyingReturn.sub(
             _safeIntCast(s.fixedParameters.fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time))));
         int tokenMultiplier = tokenReturn.add(INT_FP_SCALING_FACTOR);
-        
+
         // In the compound case, don't allow the token price to go below 0.
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound && tokenMultiplier < 0) {
             tokenMultiplier = 0;
@@ -851,7 +852,7 @@ library TokenizedDerivativeUtils {
     function _satisfiesMarginRequirement(TDS.Storage storage s, int balance, TDS.TokenState memory tokenState)
         internal
         view
-        returns (bool doesSatisfyRequirement) 
+        returns (bool doesSatisfyRequirement)
     {
         return s._getRequiredMargin(tokenState) <= balance;
     }
@@ -912,7 +913,7 @@ library TokenizedDerivativeUtils {
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
-    // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all 
+    // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settleWithPrice(TDS.Storage storage s, int price) internal {
 
