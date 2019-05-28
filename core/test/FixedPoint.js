@@ -25,8 +25,18 @@ contract("FixedPoint", function(accounts) {
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("1")));
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isTrue(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
+  });
 
-    //TODO: Add issLessThan & isGreaterThan tests for the FixedPoint uint comparisons
+  it("Mixed Comparison", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    assert.isTrue(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "1"));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "2"));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "3"));
+
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "1"));
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "2"));
+    assert.isTrue(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "3"));
   });
 
   it("Addition", async function() {
