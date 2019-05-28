@@ -800,7 +800,7 @@ library TokenizedDerivativeUtils {
             return;
         }
 
-        StoreInterface store = StoreInterface(_getStoreAddress(s));
+        StoreInterfaceV0 store = StoreInterfaceV0(_getStoreAddress(s));
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
             store.payOracleFees.value(feeAmount)();
         } else {
@@ -814,7 +814,7 @@ library TokenizedDerivativeUtils {
         view
         returns (uint feeAmount)
     {
-        StoreInterface store = StoreInterface(_getStoreAddress(s));
+        StoreInterfaceV0 store = StoreInterfaceV0(_getStoreAddress(s));
         // The profit from corruption is set as the max(longBalance, shortBalance).
         int pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
         uint expectedFeeAmount = store.computeOracleFees(

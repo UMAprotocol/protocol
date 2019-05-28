@@ -9,7 +9,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 
 // This interface allows derivative contracts to pay Oracle fees for their use of the system.
-interface StoreInterface {
+interface StoreInterfaceV0 {
 
     // Pays Oracle fees in ETH to the store. To be used by contracts whose margin currency is ETH.
     function payOracleFees() external payable;
