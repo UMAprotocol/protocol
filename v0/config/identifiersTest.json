@@ -9,11 +9,11 @@
       "publishInterval": "900",
       "numerator": {
         "dataSource": "Coinbase",
-        "assetName": "BTC"
+        "assetName": "BTC-USD"
       },
       "denominator": {
         "dataSource": "Coinbase",
-        "assetName": "ETH"
+        "assetName": "ETH-USD"
       }
     }
   }
