@@ -7,4 +7,8 @@ import "../Testable.sol";
 contract TestableTest is Testable {
     // solhint-disable-next-line no-empty-blocks
     constructor(bool _isTest) public Testable(_isTest) {}
+
+    function getTestableTimeAndBlockTime() external view returns (uint testableTime, uint blockTime) {
+        return (getCurrentTime(), now);
+    }
 }
