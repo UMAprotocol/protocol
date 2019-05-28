@@ -1,4 +1,5 @@
 const Finder = artifacts.require("Finder");
+const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const CentralizedStore = artifacts.require("CentralizedStore");
@@ -23,6 +24,11 @@ module.exports = async function(deployer, network, accounts) {
 
   const store = await CentralizedStore.deployed();
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Store), store.address, {
+    from: keys.deployer
+  });
+
+  const priceFeed = await ManualPriceFeed.deployed();
+  await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.PriceFeed), priceFeed.address, {
     from: keys.deployer
   });
 };

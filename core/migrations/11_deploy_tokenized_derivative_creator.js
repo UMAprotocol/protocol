@@ -25,7 +25,6 @@ module.exports = async function(deployer, network, accounts) {
     from: keys.marginCurrencyWhitelist
   });
 
-  const manualPriceFeed = await ManualPriceFeed.deployed();
   const finder = await Finder.deployed();
   const financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
@@ -36,7 +35,6 @@ module.exports = async function(deployer, network, accounts) {
     TokenizedDerivativeCreator,
     finder.address,
     financialContractsAdmin.address,
-    manualPriceFeed.address,
     sponsorWhitelist.address,
     returnCalculatorWhitelist.address,
     marginCurrencyWhitelist.address,

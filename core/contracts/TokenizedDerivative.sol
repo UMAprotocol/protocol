@@ -34,7 +34,6 @@ library TokenizedDerivativeParams {
         address sponsor;
         address adminAddress;
         address finderAddress;
-        address priceFeed;
         uint defaultPenalty; // Percentage of margin requirement * 10^18
         uint supportedMove; // Expected percentage move in the underlying price that the long is protected against.
         bytes32 product;
@@ -128,7 +127,6 @@ library TDS {
         address admin;
         address apDelegate;
         Finder finder;
-        PriceFeedInterface priceFeed;
         ReturnCalculatorInterface returnCalculator;
         IERC20 marginCurrency;
     }
@@ -489,7 +487,7 @@ library TokenizedDerivativeUtils {
         require(params.startingTokenPrice <= UINT_FP_SCALING_FACTOR.mul(10**9));
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
+        (uint latestTime, int latestUnderlyingPrice) = PriceFeedInterface(_getPriceFeedAddress(s)).latestPrice(
             s.fixedParameters.product);
 
         // If nonzero, take the user input as the starting price.
@@ -526,6 +524,11 @@ library TokenizedDerivativeUtils {
     function _getStoreAddress(TDS.Storage storage s) internal view returns (address) {
         bytes32 storeInterface = "Store";
         return s.externalAddresses.finder.getImplementationAddress(storeInterface);
+    }
+
+    function _getPriceFeedAddress(TDS.Storage storage s) internal view returns (address) {
+        bytes32 priceFeedInterface = "PriceFeed";
+        return s.externalAddresses.finder.getImplementationAddress(priceFeedInterface);
     }
 
     function _calcNewTokenStateAndBalance(TDS.Storage storage s)
@@ -628,15 +631,13 @@ library TokenizedDerivativeUtils {
         // introduce.
         s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
 
-        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeed);
         s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
-
         s.externalAddresses.finder = Finder(params.finderAddress);
 
         // Verify that the price feed and Oracle support the given s.fixedParameters.product.
         OracleInterface oracle = OracleInterface(_getOracleAddress(s));
         require(oracle.isIdentifierSupported(params.product));
-        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
+        require(PriceFeedInterface(_getPriceFeedAddress(s)).isIdentifierSupported(params.product));
 
         s.externalAddresses.sponsor = params.sponsor;
         s.externalAddresses.admin = params.adminAddress;
@@ -863,7 +864,8 @@ library TokenizedDerivativeUtils {
     }
 
     function _getLatestPrice(TDS.Storage storage s) internal view returns (uint latestTime, int latestUnderlyingPrice) {
-        (latestTime, latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
+        (latestTime, latestUnderlyingPrice) = PriceFeedInterface(
+            _getPriceFeedAddress(s)).latestPrice(s.fixedParameters.product);
         require(latestTime != 0);
     }
 
@@ -1290,12 +1292,11 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
     constructor(
         address _finderAddress,
         address _adminAddress,
-        address _priceFeedAddress,
         address _sponsorWhitelist,
         address _returnCalculatorWhitelist,
         address _marginCurrencyWhitelist,
         bool _isTest
-    ) public ContractCreator(_finderAddress, _adminAddress, _priceFeedAddress) Testable(_isTest) {
+    ) public ContractCreator(_finderAddress, _adminAddress) Testable(_isTest) {
         sponsorWhitelist = AddressWhitelist(_sponsorWhitelist);
         returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
         marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
@@ -1345,7 +1346,6 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         // Copy internal variables.
         constructorParams.finderAddress = finderAddress;
         constructorParams.adminAddress = adminAddress;
-        constructorParams.priceFeed = priceFeedAddress;
         constructorParams.creationTime = getCurrentTime();
     }
 }

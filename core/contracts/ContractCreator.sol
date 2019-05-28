@@ -8,16 +8,13 @@ import "./Registry.sol";
 contract ContractCreator {
     address internal finderAddress;
     address internal adminAddress;
-    address internal priceFeedAddress;
 
     constructor(
         address _finderAddress,
-        address _adminAddress,
-        address _priceFeedAddress
+        address _adminAddress
     ) public {
         finderAddress = _finderAddress;
         adminAddress = _adminAddress;
-        priceFeedAddress = _priceFeedAddress;
     }
 
     function _registerContract(address[] memory parties, address contractToRegister) internal {
