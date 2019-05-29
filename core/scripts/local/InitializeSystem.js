@@ -1,5 +1,5 @@
-const CentralizedOracle = artifacts.require("CentralizedOracle");
-const CentralizedStore = artifacts.require("CentralizedStore");
+const Finder = artifacts.require("Finder");
+const Voting = artifacts.require("Voting");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const Registry = artifacts.require("Registry");
@@ -7,6 +7,7 @@ const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const identifiers = require("../../config/identifiers");
+const { interfaceName } = require("../../utils/Constants.js");
 
 const argv = require("minimist")(process.argv.slice());
 
@@ -22,10 +23,18 @@ const initializeSystem = async function(callback) {
     // <identifier> must be one of the values in supportedIdentifiers
     const supportedIdentifiers = Object.keys(identifiers);
 
-    const deployedRegistry = await Registry.deployed();
-    const deployedCentralizedOracle = await CentralizedOracle.deployed();
-    const deployedCentralizedStore = await CentralizedStore.deployed();
-    const deployedManualPriceFeed = await ManualPriceFeed.deployed();
+    const deployedFinder = await Finder.deployed();
+
+    const deployedRegistry = await Registry.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry))
+    );
+    const deployedVoting = await Voting.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
+    );
+    const deployedManualPriceFeed = await ManualPriceFeed.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.PriceFeed))
+    );
+
     const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     const noLeverageCalculator = await LeveragedReturnCalculator.deployed();
 
@@ -42,7 +51,7 @@ const initializeSystem = async function(callback) {
     // Add support for each identifier.
     for (const identifier of supportedIdentifiers) {
       const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
-      await deployedCentralizedOracle.addSupportedIdentifier(identifierBytes);
+      await deployedVoting.addSupportedIdentifier(identifierBytes);
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
     }
 
@@ -55,7 +64,8 @@ const initializeSystem = async function(callback) {
     await marginCurrencyWhitelist.addToWhitelist(marginToken.address);
     console.log("Registered margin address:", marginToken.address);
 
-    await deployedRegistry.addDerivativeCreator(tokenizedDerivativeCreator.address);
+    const derivativeCreatorRole = "2"; // Corresponds to Registry.Roles.DerivativeCreator.
+    await deployedRegistry.addMember(derivativeCreatorRole, tokenizedDerivativeCreator.address);
 
     // NOTE: Pass arguments through the command line and assign them here
     // in order to customize the instantiated TokenizedDerivative.
@@ -84,6 +94,9 @@ const initializeSystem = async function(callback) {
       symbol: "symbolsymbol"
     };
     await tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor });
+
+    const derivatives = await deployedRegistry.getRegisteredDerivatives(sponsor);
+    console.log("Registered derivative at: " + derivatives[0].derivativeAddress);
 
     console.log("INITIALIZED!");
   } catch (e) {
