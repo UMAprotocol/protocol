@@ -62,13 +62,11 @@ const runRequestOraclePrice = async function(callback) {
   // Usage: truffle exec scripts/RequestOraclePrice.js <identifier> <time> --network <network>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
   if (!argv.identifier) {
-    console.error("Must include <identifier>");
-    callback();
+    callback("Must include <identifier>");
   }
 
   if (!argv.time) {
-    console.error("Must include <time>");
-    callback();
+    callback("Must include <time>");
   }
 
   const finder = await Finder.deployed();
