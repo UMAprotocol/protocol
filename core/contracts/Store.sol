@@ -68,7 +68,8 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
     {
         uint timeDiff = endTime.sub(startTime);
 
-        regularFee = pfc.mul(fixedOracleFeePerSecond).mul(timeDiff);
+        // Multiply by the unscaled `timeDiff` first, to get more accurate results.
+        regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
         latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
