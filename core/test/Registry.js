@@ -1,4 +1,5 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
+const { RegistryRolesEnum } = require("../utils/Enums.js");
 
 const truffleAssert = require("truffle-assertions");
 
@@ -15,14 +16,9 @@ contract("Registry", function(accounts) {
   const rando1 = accounts[4];
   const rando2 = accounts[5];
 
-  // Corresponds to Registry.Roles.
-  const governanceRole = "0";
-  const writerRole = "1";
-  const derivativeCreatorRole = "2";
-
   beforeEach(async function() {
     registry = await Registry.new();
-    await registry.resetMember(writerRole, writer);
+    await registry.resetMember(RegistryRolesEnum.WRITER, writer);
   });
 
   const areAddressesEqual = (address1, address2) => {
@@ -36,19 +32,23 @@ contract("Registry", function(accounts) {
 
   it("Derivative creation", async function() {
     // No creators should be registered initially.
-    assert.isNotTrue(await registry.holdsRole(derivativeCreatorRole, creator1));
+    assert.isNotTrue(await registry.holdsRole(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1));
 
     // Only the writer should be able to add derivative creators.
-    assert(await didContractThrow(registry.addMember(derivativeCreatorRole, creator1, { from: rando1 })));
-    assert(await didContractThrow(registry.addMember(derivativeCreatorRole, creator1, { from: governance })));
+    assert(
+      await didContractThrow(registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: rando1 }))
+    );
+    assert(
+      await didContractThrow(registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: governance }))
+    );
 
     // Register creator1, but not creator2.
-    let result = await registry.addMember(derivativeCreatorRole, creator1, { from: writer });
-    assert.isTrue(await registry.holdsRole(derivativeCreatorRole, creator1));
-    assert.isFalse(await registry.holdsRole(derivativeCreatorRole, creator2));
+    let result = await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer });
+    assert.isTrue(await registry.holdsRole(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1));
+    assert.isFalse(await registry.holdsRole(RegistryRolesEnum.DERIVATIVE_CREATOR, creator2));
 
     // Add it a second time.
-    result = await registry.addMember(derivativeCreatorRole, creator1, { from: writer });
+    result = await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer });
 
     // Try to register an arbitrary contract.
     const arbitraryContract = web3.utils.randomHex(20);
@@ -67,27 +67,31 @@ contract("Registry", function(accounts) {
     });
 
     // Remove the derivative creator.
-    result = await registry.removeMember(derivativeCreatorRole, creator1, { from: writer });
-    assert.isFalse(await registry.holdsRole(derivativeCreatorRole, creator1));
+    result = await registry.removeMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer });
+    assert.isFalse(await registry.holdsRole(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1));
 
     // Creation should fail since creator1 is no longer approved.
     const secondContract = web3.utils.randomHex(20);
     assert(await didContractThrow(registry.registerDerivative(parties, secondContract, { from: creator1 })));
 
     // A second removal should still work.
-    result = await registry.removeMember(derivativeCreatorRole, creator1, { from: writer });
+    result = await registry.removeMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer });
 
     // Remove the writer.
-    await registry.resetMember(writerRole, governance, { from: governance });
+    await registry.resetMember(RegistryRolesEnum.WRITER, governance, { from: governance });
 
     // The writer can no longer add or remove derivative creators.
-    assert(await didContractThrow(registry.addMember(derivativeCreatorRole, creator1, { from: writer })));
-    assert(await didContractThrow(registry.removeMember(derivativeCreatorRole, creator1, { from: writer })));
+    assert(
+      await didContractThrow(registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer }))
+    );
+    assert(
+      await didContractThrow(registry.removeMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer }))
+    );
   });
 
   it("Register and query derivatives", async function() {
-    await registry.addMember(derivativeCreatorRole, creator1, { from: writer });
-    await registry.addMember(derivativeCreatorRole, creator2, { from: writer });
+    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer });
+    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator2, { from: writer });
 
     // Register an arbitrary derivative.
     const derivative1 = web3.utils.randomHex(20);
@@ -132,7 +136,7 @@ contract("Registry", function(accounts) {
 
   it("Double-register derivative", async function() {
     // Approve creator.
-    await registry.addMember(derivativeCreatorRole, creator1, { from: writer });
+    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: writer });
 
     // Register derivative.
     const derivative1 = web3.utils.randomHex(20);

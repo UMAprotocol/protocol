@@ -1,4 +1,5 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
+const { RegistryRolesEnum } = require("../utils/Enums.js");
 
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
@@ -46,7 +47,6 @@ contract("TokenizedDerivative", function(accounts) {
   const ethAddress = "0x0000000000000000000000000000000000000000";
 
   const adminRemarginRole = "1"; // Corresponds to FinancialContractsAdmin.Roles.Remargin.
-  const derivativeCreatorRole = "2"; // Corresponds to Registry.Roles.DerivativeCreator.
 
   // The ManualPriceFeed can support prices at arbitrary intervals, but for convenience, we send updates at this
   // interval.
@@ -93,7 +93,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Add the owner to the list of registered derivatives so it's allowed to query oracle prices.
     let creator = accounts[5];
-    await deployedRegistry.addMember(derivativeCreatorRole, creator);
+    await deployedRegistry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator);
     await deployedRegistry.registerDerivative([], owner, { from: creator });
 
     // Set an Oracle fee.
