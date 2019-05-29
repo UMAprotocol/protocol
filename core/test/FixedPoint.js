@@ -25,8 +25,26 @@ contract("FixedPoint", function(accounts) {
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("1")));
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isTrue(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
+  });
 
-    //TODO: Add issLessThan & isGreaterThan tests for the FixedPoint uint comparisons
+  it("Mixed Comparison", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    assert.isTrue(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "1"));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "2"));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "3"));
+
+    assert.isTrue(await fixedPoint.wrapMixedIsGreaterThanOpposite("4", web3.utils.toWei("3")));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThanOpposite("3", web3.utils.toWei("3")));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThanOpposite("2", web3.utils.toWei("3")));
+
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "1"));
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "2"));
+    assert.isTrue(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "3"));
+
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThanOpposite("3", web3.utils.toWei("2")));
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThanOpposite("2", web3.utils.toWei("2")));
+    assert.isTrue(await fixedPoint.wrapMixedIsLessThanOpposite("1", web3.utils.toWei("2")));
   });
 
   it("Addition", async function() {
