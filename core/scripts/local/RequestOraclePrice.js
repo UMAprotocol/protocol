@@ -59,7 +59,7 @@ async function run(deployedFinder, identifier, timeInSeconds) {
 }
 
 const runRequestOraclePrice = async function(callback) {
-  // Usage: truffle exec scripts/RequestOraclePrice.js <identifier> <time> --network <network>
+  // Usage: truffle exec scripts/RequestOraclePrice.js --identifier <identifier> --time <time> --network <network>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
   if (!argv.identifier) {
     callback("Must include <identifier>");
