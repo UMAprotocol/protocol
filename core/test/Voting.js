@@ -1,9 +1,11 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
 const Voting = artifacts.require("Voting");
+const VotingToken = artifacts.require("VotingToken");
 
 contract("Voting", function(accounts) {
   let voting;
+  let votingToken;
 
   const account1 = accounts[0];
   const account2 = accounts[1];
@@ -50,6 +52,19 @@ contract("Voting", function(accounts) {
 
   before(async function() {
     voting = await Voting.deployed();
+    votingToken = await VotingToken.deployed();
+
+    // Allow account1 to mint tokens.
+    const minterRole = 1;
+    await votingToken.addMember(minterRole, account1);
+
+    // Mint a single token to each of the 3 accounts so they all have ~33% of the vote.
+    await votingToken.mint(account1, web3.utils.toWei("1", "ether"));
+    await votingToken.mint(account2, web3.utils.toWei("1", "ether"));
+    await votingToken.mint(account3, web3.utils.toWei("1", "ether"));
+
+    // Mint 0.1 tokens to the last account so that its vote would not reach the GAT.
+    await votingToken.mint(account4, web3.utils.toWei(".1", "ether"));
   });
 
   it("Vote phasing", async function() {
@@ -585,6 +600,97 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
 
     // Price should resolve to the one that 2 and 3 voted for.
+    await moveToNextRound();
+    assert.equal((await voting.getPrice(identifier, time)).toString(), winningPrice.toString());
+  });
+
+  it("GAT", async function() {
+    const identifier = web3.utils.utf8ToHex("gat");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time);
+    await moveToNextRound();
+
+    // Commit vote.
+    const price = 123;
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time, hash, { from: account4 });
+
+    // Reveal the vote.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time, price, salt, { from: account4 });
+
+    // Since the GAT was not hit, the price should not resolve.
+    await moveToNextRound();
+    assert.isFalse(await voting.hasPrice(identifier, time));
+
+    // With a larger vote, the GAT should be hit and the price should resolve.
+    // Commit votes.
+    await voting.commitVote(identifier, time, hash, { from: account4 });
+    await voting.commitVote(identifier, time, hash, { from: account1 });
+
+    // Reveal votes.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time, price, salt, { from: account4 });
+    await voting.revealVote(identifier, time, price, salt, { from: account1 });
+
+    await moveToNextRound();
+    assert.equal((await voting.getPrice(identifier, time)).toString(), price.toString());
+  });
+
+  it("Basic Snapshotting", async function() {
+    const identifier = web3.utils.utf8ToHex("basic-snapshotting");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time);
+    await moveToNextRound();
+
+    // Commit votes.
+
+    // account3 starts with only 1/3 of the tokens, but votes for 123.
+    const winningPrice = 123;
+    const salt3 = getRandomUnsignedInt();
+    const hash3 = web3.utils.soliditySha3(winningPrice, salt3);
+    await voting.commitVote(identifier, time, hash3, { from: account3 });
+
+    // Both account 2 and 3, who start with 2/3 of the tokens, vote for 456.
+    const losingPrice = 456;
+
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(losingPrice, salt1);
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(losingPrice, salt2);
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
+    // All 3 accounts should have equal balances to start, so for winningPrice to win, account1 or account2 must
+    // transfer more than half of their balance to account3 before the snapshot.
+    await votingToken.transfer(account3, web3.utils.toWei("0.6", "ether"), { from: account1 });
+
+    // Move to the reveal phase, where the snapshot should be taken.
+    await moveToNextPhase();
+
+    // account2's reveal should create a snapshot since it's the first action of the reveal.
+    await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
+
+    // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
+    await votingToken.transfer(account1, web3.utils.toWei("0.6", "ether"), { from: account3 });
+
+    // Do the final two reveals.
+    await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
+    await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
+
+    // The resulting price should be the winningPrice that account3 voted for.
     await moveToNextRound();
     assert.equal((await voting.getPrice(identifier, time)).toString(), winningPrice.toString());
   });

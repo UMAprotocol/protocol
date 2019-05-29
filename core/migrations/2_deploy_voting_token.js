@@ -7,10 +7,4 @@ module.exports = async function(deployer, network, accounts) {
 
   const votingToken = await deployAndGet(deployer, VotingToken, { from: keys.deployer });
   await addToTdr(votingToken, network);
-
-  // Corresponds to VotingToken.Roles.Minter;
-  const minterRoleEnumValue = 1;
-  // Set the minter to be Voting.sol.
-  const voting = await Voting.deployed();
-  await votingToken.addMember(minterRoleEnumValue, voting.address, { from: keys.deployer });
 };
