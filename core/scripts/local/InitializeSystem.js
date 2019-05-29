@@ -8,6 +8,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const identifiers = require("../../config/identifiers");
 const { interfaceName } = require("../../utils/Constants.js");
+const { RegistryRolesEnum } = require("../../utils/Enums.js");
 
 const argv = require("minimist")(process.argv.slice());
 
@@ -64,8 +65,7 @@ const initializeSystem = async function(callback) {
     await marginCurrencyWhitelist.addToWhitelist(marginToken.address);
     console.log("Registered margin address:", marginToken.address);
 
-    const derivativeCreatorRole = "2"; // Corresponds to Registry.Roles.DerivativeCreator.
-    await deployedRegistry.addMember(derivativeCreatorRole, tokenizedDerivativeCreator.address);
+    await deployedRegistry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, tokenizedDerivativeCreator.address);
 
     // NOTE: Pass arguments through the command line and assign them here
     // in order to customize the instantiated TokenizedDerivative.
