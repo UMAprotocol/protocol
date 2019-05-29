@@ -6,12 +6,12 @@
 pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./StoreInterface.sol";
+import "./StoreInterfaceV0.sol";
 import "./Withdrawable.sol";
 
 
 // An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
-contract CentralizedStore is StoreInterface, Withdrawable {
+contract CentralizedStore is StoreInterfaceV0, Withdrawable {
 
     using SafeMath for uint;
 
