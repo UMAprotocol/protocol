@@ -1,16 +1,20 @@
-const CentralizedOracle = artifacts.require("CentralizedOracle");
+const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
+
+const Finder = artifacts.require("Finder");
+const Voting = artifacts.require("Voting");
 const Registry = artifacts.require("Registry");
+const { interfaceName } = require("../../utils/Constants.js");
+const { RegistryRolesEnum } = require("../../utils/Enums.js");
 
 async function getDeployAddress() {
   const accounts = await web3.eth.getAccounts();
   return accounts[0];
 }
 
-async function registerDerivative(registryAddress) {
+async function registerDerivative(registry) {
   const deployAddress = await getDeployAddress();
 
-  const registry = await Registry.at(registryAddress);
-  await registry.addDerivativeCreator(deployAddress);
+  await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, deployAddress);
   console.log("Creator Added:", deployAddress);
   if (!(await registry.isDerivativeRegistered(deployAddress))) {
     await registry.registerDerivative([], deployAddress);
@@ -23,25 +27,30 @@ async function registerDerivative(registryAddress) {
 // This script executes the following steps:
 //   1. Registers the migration deployer's address as a Derivative Creator.
 //   2. Registers the deployer's address as a derivative.
-//   3. Adds the specified identifier with the CentralizedOracle.
+//   3. Adds the specified identifier with Voting.
 //   4. Requests a price at the specified time.
-async function run(registryAddress, oracleAddress, identifier, timeInSeconds) {
+async function run(deployedFinder, identifier, timeInSeconds) {
   try {
-    await registerDerivative(registryAddress);
+    const deployedRegistry = await Registry.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry))
+    );
+    await registerDerivative(deployedRegistry);
 
     const identifierInBytes = web3.utils.fromAscii(identifier);
     const timeInBN = web3.utils.toBN(timeInSeconds);
     const time = new Date(timeInSeconds * 10e2);
 
-    const oracle = await CentralizedOracle.at(oracleAddress);
-    await oracle.addSupportedIdentifier(identifierInBytes);
-    const result = await oracle.requestPrice.call(identifierInBytes, timeInBN);
+    const deployedVoting = await Voting.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
+    );
+    await deployedVoting.addSupportedIdentifier(identifierInBytes);
+    const result = await deployedVoting.requestPrice.call(identifierInBytes, timeInBN);
     if (result == 0) {
       console.log(`Price already exists for ${identifier} @ ${time}`);
       return;
     }
 
-    await oracle.requestPrice(identifierInBytes, timeInBN);
+    await deployedVoting.requestPrice(identifierInBytes, timeInBN);
     console.log(`Price requested for ${identifier} @ ${time}`);
   } catch (err) {
     console.error(err);
@@ -50,31 +59,15 @@ async function run(registryAddress, oracleAddress, identifier, timeInSeconds) {
 }
 
 const runRequestOraclePrice = async function(callback) {
-  // Usage: truffle exec scripts/RequestOraclePrice.js <Registry address> <CentralizedOracle address> <identifier> <time> --network <network>
+  // Usage: truffle exec scripts/RequestOraclePrice.js <identifier> <time> --network <network>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
-  if (process.argv.length < 8) {
-    console.error(
-      "Not enough arguments. Must include <Registry address>, <CentralizedOracle address>, <identifier>, and <time>"
-    );
+  if (process.argv.length < 4) {
+    console.error("Not enough arguments. Must include <identifier> and <time>");
     return;
   }
 
-  const registryAddress = process.argv[4];
-  if (registryAddress.substring(0, 2) != "0x" || registryAddress.length != 42) {
-    console.error("Registry's contract address missing. Exiting...");
-    return;
-  }
-
-  const oracleAddress = process.argv[5];
-  if (oracleAddress.substring(0, 2) != "0x" || oracleAddress.length != 42) {
-    console.error("CentralizedOracle's contract address missing. Exiting...");
-    return;
-  }
-
-  const identifier = process.argv[6];
-  const timeInSeconds = parseInt(process.argv[7], 10);
-
-  await run(registryAddress, oracleAddress, identifier, timeInSeconds);
+  const finder = await Finder.deployed();
+  await run(finder, argv.identifier, argv.time);
   callback();
 };
 
