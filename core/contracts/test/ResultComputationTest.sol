@@ -8,9 +8,9 @@ import "../FixedPoint.sol";
 
  // Wraps the library ResultComputation for testing purposes.
 contract ResultComputationTest {
-    using ResultComputation for ResultComputation.ResultComputationData;
+    using ResultComputation for ResultComputation.Data;
 
-    ResultComputation.ResultComputationData public data;
+    ResultComputation.Data public data;
 
     function wrapAddVote(int votePrice, uint numberTokens) external {
         data.addVote(votePrice, FixedPoint.Unsigned(numberTokens));

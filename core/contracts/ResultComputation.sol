@@ -11,7 +11,7 @@ library ResultComputation {
 
     using FixedPoint for FixedPoint.Unsigned;
 
-    struct ResultComputationData {
+    struct Data {
         // Maps price to number of tokens that voted for that price.
         mapping(int => FixedPoint.Unsigned) voteFrequency;
         // The total votes that have been added.
@@ -26,7 +26,7 @@ library ResultComputation {
      * @param minVoteThreshold Minimum number of tokens that must have been voted for the result to be valid. Can be
      * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      */
-    function getResolvedPrice(ResultComputationData storage data, FixedPoint.Unsigned memory minVoteThreshold)
+    function getResolvedPrice(Data storage data, FixedPoint.Unsigned memory minVoteThreshold)
         internal
         view
         returns (bool isResolved, int price)
@@ -47,7 +47,7 @@ library ResultComputation {
     /**
      * @dev Adds a new vote to be used when computing the result.
      */
-    function addVote(ResultComputationData storage data, int votePrice, FixedPoint.Unsigned memory numberTokens)
+    function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens)
         internal
     {
         data.totalVotes = data.totalVotes.add(numberTokens);
@@ -62,7 +62,7 @@ library ResultComputation {
      * @dev Checks whether a `votePrice` is considered correct. Should only be called after a vote is resolved, i.e.,
      * via `getResolvedPrice`.
      */
-    function wasVoteCorrect(ResultComputationData storage data, int votePrice) internal view returns (bool) {
+    function wasVoteCorrect(Data storage data, int votePrice) internal view returns (bool) {
         return votePrice == data.currentMode;
     }
 
@@ -70,7 +70,7 @@ library ResultComputation {
      * @dev Gets the total number of tokens whose votes are considered correct. Should only be called after a vote is
      * resolved, i.e., via `getResolvedPrice`.
      */
-    function getTotalCorrectlyVotedTokens(ResultComputationData storage data)
+    function getTotalCorrectlyVotedTokens(Data storage data)
         internal
         view
         returns (FixedPoint.Unsigned memory)
