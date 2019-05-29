@@ -61,9 +61,14 @@ async function run(deployedFinder, identifier, timeInSeconds) {
 const runRequestOraclePrice = async function(callback) {
   // Usage: truffle exec scripts/RequestOraclePrice.js <identifier> <time> --network <network>
   // where <time> is seconds since January 1st, 1970 00:00:00 UTC.
-  if (process.argv.length < 4) {
-    console.error("Not enough arguments. Must include <identifier> and <time>");
-    return;
+  if (!argv.identifier) {
+    console.error("Must include <identifier>");
+    callback();
+  }
+
+  if (!argv.time) {
+    console.error("Must include <time>");
+    callback();
   }
 
   const finder = await Finder.deployed();
