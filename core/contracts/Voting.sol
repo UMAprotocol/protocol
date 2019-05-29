@@ -195,7 +195,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
     }
 
     function hasPrice(bytes32 identifier, uint time) external view returns (bool _hasPrice) {
-        (_hasPrice,,) = _getPriceOrError(identifier, time);
+        (_hasPrice, ,) = _getPriceOrError(identifier, time);
     }
 
     function getPrice(bytes32 identifier, uint time) external view returns (int) {
@@ -262,7 +262,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         voteTiming.init(phaseLength);
     }
 
-
     /*
      * @dev Checks to see if there is a price that has or can be resolved for an (identifier, time) pair.
      * @returns a boolean noting whether a price is resolved, the price, and an error string if necessary.
@@ -301,7 +300,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
             VoteInstance storage voteInstance = priceResolution.votes[resolutionVotingRound];
 
             // TODO: replace 0 with a real token threshold once a token contract is integrated.
-            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(FixedPoint.fromUnscaledUint(0));
+            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                FixedPoint.fromUnscaledUint(0));
             if (!isResolved) {
                 return (false, 0, "Price was not resolved this voting round. It will require another round of voting");
             }
@@ -405,7 +405,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
             VoteInstance storage voteInstance = priceResolution.votes[lastActiveVotingRoundId];
 
             // TODO: replace 0 with a real token threshold once a token contract is integrated.
-            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(FixedPoint.fromUnscaledUint(0));
+            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                FixedPoint.fromUnscaledUint(0));
             if (isResolved) {
                 // If the vote can be resolved, just set the resolved price.
                 priceResolution.resolvedPrice = resolvedPrice;
