@@ -8,6 +8,7 @@ import "./OracleInterface.sol";
 import "./ResultComputation.sol";
 import "./Testable.sol";
 import "./VoteTiming.sol";
+import "./VotingToken.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -18,6 +19,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  */
 contract Voting is Testable, MultiRole, OracleInterface {
 
+    using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
     using ResultComputation for ResultComputation.Data;
@@ -31,6 +33,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
     struct Round {
         // The list of price requests that were/are being voted on this round.
         PriceRequest[] priceRequests;
+
+        // Voting token snapshot ID for this round. If this is 0, no snapshot has been taken.
+        uint snapshotId;
     }
 
     struct VoteInstance {
@@ -66,6 +71,13 @@ contract Voting is Testable, MultiRole, OracleInterface {
     // The set of identifiers the oracle can provide verified prices for.
     mapping(bytes32 => bool) private supportedIdentifiers;
 
+    // Percentage of the total token supply that must be used in a vote to create a valid price resolution.
+    // 1 == 100%.
+    FixedPoint.Unsigned private gatPercentage;
+
+    // Reference to the voting token.
+    VotingToken private votingToken;
+
     enum Roles {
         // Can set the writer.
         Governance,
@@ -75,13 +87,25 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
     bool private initialized;
 
+    // Max value of an unsigned integer.
+    uint constant private UINT_MAX = ~uint(0);
+
     /**
      * @notice Construct the Voting contract.
      * @param phaseLength length of the commit and reveal phases in seconds.
+     * @param _gatPercentage percentage of the total token supply that must be used in a vote to create a valid price
+     * resolution.
      * @param _isTest whether this contract is being constructed for the purpose of running automated tests.
      */
-    constructor(uint phaseLength, bool _isTest) public Testable(_isTest) {
+    constructor(
+        uint phaseLength,
+        FixedPoint.Unsigned memory _gatPercentage,
+        address _votingToken,
+        bool _isTest
+    ) public Testable(_isTest) {
         initializeOnce(phaseLength);
+        gatPercentage = _gatPercentage;
+        votingToken = VotingToken(_votingToken);
     }
 
     /**
@@ -137,9 +161,15 @@ contract Voting is Testable, MultiRole, OracleInterface {
                 "Committed hash doesn't match revealed price and salt");
         delete voteInstance.committedHashes[msg.sender];
 
+        // Get or create a snapshot for this round.
+        uint snapshotId = _getOrCreateSnapshotId(roundId);
+
+        // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
+        // initialize the Unsigned value with the returned uint.
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
+
         // Add vote to the results.
-        // TODO: replace `1` with voter's snapshotted balance.
-        voteInstance.resultComputation.addVote(price, FixedPoint.fromUnscaledUint(1));
+        voteInstance.resultComputation.addVote(price, balance);
     }
 
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
@@ -299,9 +329,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
             // Attempt to resolve the vote immediately since the round has ended.
             VoteInstance storage voteInstance = priceResolution.votes[resolutionVotingRound];
 
-            // TODO: replace 0 with a real token threshold once a token contract is integrated.
             (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
-                FixedPoint.fromUnscaledUint(0));
+                _computeGat(resolutionVotingRound));
             if (!isResolved) {
                 return (false, 0, "Price was not resolved this voting round. It will require another round of voting");
             }
@@ -343,8 +372,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
             PriceResolution storage priceResolution = _getPriceResolution(priceRequest.identifier, priceRequest.time);
             VoteInstance storage voteInstance = priceResolution.votes[roundId];
 
-            // TODO: replace 0 with a real token threshold once a token contract is integrated.
-            (bool isResolved,) = voteInstance.resultComputation.getResolvedPrice(FixedPoint.fromUnscaledUint(0));
+            (bool isResolved,) = voteInstance.resultComputation.getResolvedPrice(_computeGat(roundId));
             if (!isResolved) {
                 rolloverPriceRequests[numRolloverPriceRequests++] = priceRequest;
             }
@@ -404,9 +432,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
                 "Found price request that was incorrectly placed in a round");
             VoteInstance storage voteInstance = priceResolution.votes[lastActiveVotingRoundId];
 
-            // TODO: replace 0 with a real token threshold once a token contract is integrated.
             (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
-                FixedPoint.fromUnscaledUint(0));
+                _computeGat(lastActiveVotingRoundId));
             if (isResolved) {
                 // If the vote can be resolved, just set the resolved price.
                 priceResolution.resolvedPrice = resolvedPrice;
@@ -418,5 +445,29 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Update the stored round to the current one.
         voteTiming.updateRoundId(blockTime);
+    }
+
+    function _getOrCreateSnapshotId(uint roundId) private returns (uint) {
+        Round storage round = rounds[roundId];
+        if (round.snapshotId == 0) {
+            // There is no snapshot ID set, so create one.
+            round.snapshotId = votingToken.snapshot();
+        }
+        return round.snapshotId;
+    }
+
+    function _computeGat(uint roundId) private view returns (FixedPoint.Unsigned memory) {
+        uint snapshotId = rounds[roundId].snapshotId;
+        if (snapshotId == 0) {
+            // No snapshot - return max value to err on the side of caution.
+            return FixedPoint.Unsigned(UINT_MAX);
+        }
+
+        // Grab the snaphotted supply from the voting token. It's already scaled by 10**18, so we can directly
+        // initialize the Unsigned value with the returned uint.
+        FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
+
+        // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
+        return snapshottedSupply.mul(gatPercentage);
     }
 }
