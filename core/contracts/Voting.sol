@@ -33,6 +33,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
     struct Round {
         // The list of price requests that were/are being voted on this round.
         PriceRequest[] priceRequests;
+
+        // Voting token snapshot ID for this round. If this is 0, no snapshot has been taken.
+        uint snapshotId;
     }
 
     struct VoteInstance {
@@ -74,9 +77,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
     // Reference to the voting token.
     VotingToken private votingToken;
-
-    // Voting rounds -> voting token snapshot IDs.
-    mapping(uint => uint) private snapshotIds;
 
     enum Roles {
         // Can set the writer.
@@ -447,17 +447,17 @@ contract Voting is Testable, MultiRole, OracleInterface {
         voteTiming.updateRoundId(blockTime);
     }
 
-    function _getOrCreateSnapshotId(uint roundId) private returns (uint snapshotId) {
-        snapshotId = snapshotIds[roundId];
-        if (snapshotId == 0) {
+    function _getOrCreateSnapshotId(uint roundId) private returns (uint) {
+        Round storage round = rounds[roundId];
+        if (round.snapshotId == 0) {
             // There is no snapshot ID set, so create one.
-            snapshotId = votingToken.snapshot();
-            snapshotIds[roundId] = snapshotId;
+            round.snapshotId = votingToken.snapshot();
         }
+        return round.snapshotId;
     }
 
     function _computeGat(uint roundId) private view returns (FixedPoint.Unsigned memory) {
-        uint snapshotId = snapshotIds[roundId];
+        uint snapshotId = rounds[roundId].snapshotId;
         if (snapshotId == 0) {
             // No snapshot - return max value to err on the side of caution.
             return FixedPoint.Unsigned(UINT_MAX);
