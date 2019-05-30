@@ -4,8 +4,7 @@ const { RegistryRolesEnum } = require("../utils/Enums.js");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
-// const CentralizedOracle = artifacts.require("CentralizedOracle");
-const CentralizedStore = artifacts.require("CentralizedStore");
+const Store = artifacts.require("Store");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const Registry = artifacts.require("Registry");
@@ -29,7 +28,7 @@ contract("TokenizedDerivative", function(accounts) {
   let deployedFinder;
   let deployedAdmin;
   let mockOracle;
-  let deployedCentralizedStore;
+  let deployedStore;
   let deployedManualPriceFeed;
   let tokenizedDerivativeCreator;
   let noLeverageCalculator;
@@ -62,7 +61,7 @@ contract("TokenizedDerivative", function(accounts) {
     deployedFinder = await Finder.deployed();
     deployedAdmin = await FinancialContractsAdmin.deployed();
     mockOracle = await MockOracle.new();
-    deployedCentralizedStore = await CentralizedStore.deployed();
+    deployedStore = await Store.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     noLeverageCalculator = await LeveragedReturnCalculator.deployed();
@@ -97,7 +96,7 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedRegistry.registerDerivative([], owner, { from: creator });
 
     // Set an Oracle fee.
-    await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+    await setNewFixedOracleFee(oracleFeePerSecond);
   });
 
   const computeNewNav = (previousNav, priceReturn, fees) => {
@@ -116,15 +115,11 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   const computeExpectedOracleFees = (longBalance, shortBalance) => {
+    const fp_multiplier = web3.utils.toBN(web3.utils.toWei("1", "ether"));
+
     const pfc = longBalance.cmp(shortBalance) == 1 ? longBalance : shortBalance;
     const oracleFeeRatio = oracleFeePerSecond.mul(web3.utils.toBN(priceFeedUpdatesInterval));
-    const preDivisionFees = pfc.mul(oracleFeeRatio);
-
-    // Before dividing out the fp_multiplier, we check the remainder and add 1 if the remainder is nonzero to ceil()
-    // the result of the division as is done in the solidity fee computation.
-    const fp_multiplier = web3.utils.toBN(web3.utils.toWei("1", "ether"));
-    const ceilAddition = preDivisionFees.mod(fp_multiplier).isZero() ? 0 : 1;
-    return preDivisionFees.div(fp_multiplier).addn(ceilAddition);
+    return pfc.mul(oracleFeeRatio).div(fp_multiplier);
   };
 
   // Pushes a price to the ManualPriceFeed, incrementing time by `priceFeedUpdatesInterval`.
@@ -132,6 +127,10 @@ contract("TokenizedDerivative", function(accounts) {
     const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + priceFeedUpdatesInterval;
     await deployedManualPriceFeed.setCurrentTime(latestTime);
     await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
+  };
+
+  const setNewFixedOracleFee = async feePerSecond => {
+    await deployedStore.setFixedOracleFeePerSecond({ value: feePerSecond.toString() });
   };
 
   const getRandomIntBetween = (min, max) => {
@@ -281,7 +280,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       let longBalance = (await derivativeContract.derivativeStorage()).longBalance;
       let shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
-      const initialStoreBalance = await getMarginBalance(deployedCentralizedStore.address);
+      const initialStoreBalance = await getMarginBalance(deployedStore.address);
       let totalOracleFeesPaid = web3.utils.toBN(web3.utils.toWei("0", "ether"));
 
       // Ensure the short balance is 0 ETH (as is deposited in beforeEach()).
@@ -602,7 +601,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Contract should be empty.
       assert.equal(newContractBalance.toString(), "0");
 
-      const finalStoreBalance = await getMarginBalance(deployedCentralizedStore.address);
+      const finalStoreBalance = await getMarginBalance(deployedStore.address);
       const oracleFeesPaidToStore = finalStoreBalance.sub(initialStoreBalance);
       assert.equal(oracleFeesPaidToStore.toString(), totalOracleFeesPaid.toString());
     });
@@ -1332,7 +1331,7 @@ contract("TokenizedDerivative", function(accounts) {
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
 
-      const initialStoreBalance = web3.utils.toBN(await getMarginBalance(deployedCentralizedStore.address));
+      const initialStoreBalance = web3.utils.toBN(await getMarginBalance(deployedStore.address));
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -1343,7 +1342,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Set an absurdly high Oracle fee that will wipe out the short balance when charged.
       const oracleFeePerSecond2 = web3.utils.toBN(web3.utils.toWei("0.9", "ether"));
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond2);
+      await setNewFixedOracleFee(oracleFeePerSecond2);
       const shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
 
       // Remargin at the next interval.
@@ -1355,11 +1354,11 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal(state.toString(), "3");
 
       // Verify that the entire short balance got paid to the Oracle.
-      const finalStoreBalance = web3.utils.toBN(await getMarginBalance(deployedCentralizedStore.address));
+      const finalStoreBalance = web3.utils.toBN(await getMarginBalance(deployedStore.address));
       assert.equal(finalStoreBalance.sub(initialStoreBalance).toString(), shortBalance.toString());
 
       // Clean up: reset the Oracle fee.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+      await setNewFixedOracleFee(oracleFeePerSecond);
     });
 
     it(annotateTitle("Withdraw throttling"), async function() {
@@ -1394,13 +1393,13 @@ contract("TokenizedDerivative", function(accounts) {
       // Set the Oracle fee to 0 for this withdraw. This is required because the oracle fee is set so high in these
       // tests that, when we skip a full day, the fee will add up to > 100% (8640%, specifically) driving the contract
       // balance to 0.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(0);
+      await setNewFixedOracleFee(0);
 
       // // Now that 24 hours has passed, the limit has been reset, so 0.1 should be withdrawable.
       await derivativeContract.withdraw(web3.utils.toWei("0.1", "ether"), { from: sponsor });
 
       // Reset the Oracle fee.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+      await setNewFixedOracleFee(oracleFeePerSecond);
     });
 
     it(annotateTitle("Live -> Remargin -> Emergency shutdown"), async function() {
@@ -1473,7 +1472,7 @@ contract("TokenizedDerivative", function(accounts) {
       await deployNewTokenizedDerivative({ fixedYearlyFee: "0", expiry: priceFeedUpdatesInterval });
 
       // Set oracle fee to 0 for ease of computing expected penalties.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
+      await setNewFixedOracleFee("0");
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
@@ -1513,7 +1512,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal((await getContractBalance()).toString(), "0");
 
       // Reset Oracle fee.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+      await setNewFixedOracleFee(oracleFeePerSecond);
     });
 
     it(annotateTitle("Live -> EmergencyShutdown -> Settled (Default)"), async function() {
@@ -1521,7 +1520,7 @@ contract("TokenizedDerivative", function(accounts) {
       await deployNewTokenizedDerivative({ fixedYearlyFee: "0" });
 
       // Set oracle fee to 0 for ease of computing expected penalties.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
+      await setNewFixedOracleFee("0");
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
@@ -1557,7 +1556,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal((await getContractBalance()).toString(), "0");
 
       // Reset Oracle fee.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+      await setNewFixedOracleFee(oracleFeePerSecond);
     });
 
     it(annotateTitle("Live -> Dispute -> Settled (Default)"), async function() {
@@ -1565,7 +1564,7 @@ contract("TokenizedDerivative", function(accounts) {
       await deployNewTokenizedDerivative({ fixedYearlyFee: "0" });
 
       // Set oracle fee to 0 for ease of computing expected penalties.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond("0");
+      await setNewFixedOracleFee("0");
 
       // Sponsor initializes contract.
       await derivativeContract.depositAndCreateTokens(
@@ -1611,7 +1610,7 @@ contract("TokenizedDerivative", function(accounts) {
       assert.equal((await getContractBalance()).toString(), "0");
 
       // Reset Oracle fee.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+      await setNewFixedOracleFee(oracleFeePerSecond);
     });
 
     it(annotateTitle("Live -> Create -> Create fails on expiry"), async function() {
@@ -2290,7 +2289,7 @@ contract("TokenizedDerivative", function(accounts) {
       await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
       // Set the oracle fee to 0 to make computation easier.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(0);
+      await setNewFixedOracleFee(0);
 
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
@@ -2326,7 +2325,7 @@ contract("TokenizedDerivative", function(accounts) {
       await derivativeContract.withdraw(web3.utils.toWei("14", "ether"), { from: sponsor });
 
       // Reset oracle fees.
-      await deployedCentralizedStore.setFixedOracleFeePerSecond(oracleFeePerSecond);
+      await setNewFixedOracleFee(oracleFeePerSecond);
     });
 
     it(annotateTitle("Withdraw unexpected ERC20"), async function() {

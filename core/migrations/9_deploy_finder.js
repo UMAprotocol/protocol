@@ -3,7 +3,7 @@ const Finder = artifacts.require("Finder");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
-const CentralizedStore = artifacts.require("CentralizedStore");
+const Store = artifacts.require("Store");
 const { getKeysForNetwork, deployAndGet, addToTdr } = require("../../common/MigrationUtils.js");
 const { interfaceName } = require("../utils/Constants.js");
 
@@ -23,7 +23,7 @@ module.exports = async function(deployer, network, accounts) {
     from: keys.deployer
   });
 
-  const store = await CentralizedStore.deployed();
+  const store = await Store.deployed();
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Store), store.address, {
     from: keys.deployer
   });

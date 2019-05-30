@@ -12,10 +12,11 @@ import "./AddressWhitelist.sol";
 import "./ContractCreator.sol";
 import "./ExpandedIERC20.sol";
 import "./Finder.sol";
+import "./FixedPoint.sol";
 import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
-import "./StoreInterfaceV0.sol";
+import "./StoreInterface.sol";
 import "./Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -800,7 +801,7 @@ library TokenizedDerivativeUtils {
             return;
         }
 
-        StoreInterfaceV0 store = StoreInterfaceV0(_getStoreAddress(s));
+        StoreInterface store = StoreInterface(_getStoreAddress(s));
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
             store.payOracleFees.value(feeAmount)();
         } else {
@@ -814,14 +815,15 @@ library TokenizedDerivativeUtils {
         view
         returns (uint feeAmount)
     {
-        StoreInterfaceV0 store = StoreInterfaceV0(_getStoreAddress(s));
+        StoreInterface store = StoreInterface(_getStoreAddress(s));
         // The profit from corruption is set as the max(longBalance, shortBalance).
         int pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
-        uint expectedFeeAmount = store.computeOracleFees(
+        (FixedPoint.Unsigned memory expectedFee, ) = store.computeRegularFee(
             lastTimeOracleFeesPaid,
             currentTime,
-            _safeUintCast(pfc)
+            FixedPoint.Unsigned(_safeUintCast(pfc))
         );
+        uint expectedFeeAmount = expectedFee.value;
 
         // Ensure the fee returned can actually be paid by the short margin account.
         uint shortBalance = _safeUintCast(s.shortBalance);
