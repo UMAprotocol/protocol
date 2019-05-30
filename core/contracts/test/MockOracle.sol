@@ -45,8 +45,8 @@ contract MockOracle is OracleInterface, Testable {
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    constructor() public Testable(true) {
-    }
+    // solhint-disable-next-line no-empty-blocks
+    constructor() public Testable(true) {}
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {

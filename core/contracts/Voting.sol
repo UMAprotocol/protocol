@@ -2,10 +2,13 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./FixedPoint.sol";
 import "./MultiRole.sol";
 import "./OracleInterface.sol";
+import "./ResultComputation.sol";
 import "./Testable.sol";
 import "./VoteTiming.sol";
+import "./VotingToken.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -16,8 +19,10 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  */
 contract Voting is Testable, MultiRole, OracleInterface {
 
+    using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
+    using ResultComputation for ResultComputation.Data;
 
     // Identifies a unique price request for which the Oracle will always return the same value.
     struct PriceRequest {
@@ -28,12 +33,18 @@ contract Voting is Testable, MultiRole, OracleInterface {
     struct Round {
         // The list of price requests that were/are being voted on this round.
         PriceRequest[] priceRequests;
+
+        // Voting token snapshot ID for this round. If this is 0, no snapshot has been taken.
+        uint snapshotId;
     }
 
     struct VoteInstance {
         // Maps (voterAddress) to their committed hash.
         // A bytes32 of `0` indicates no commit or a commit that was already revealed.
         mapping(address => bytes32) committedHashes;
+
+        // The data structure containing the computed voting results.
+        ResultComputation.Data resultComputation;
     }
 
     struct PriceResolution {
@@ -60,6 +71,13 @@ contract Voting is Testable, MultiRole, OracleInterface {
     // The set of identifiers the oracle can provide verified prices for.
     mapping(bytes32 => bool) private supportedIdentifiers;
 
+    // Percentage of the total token supply that must be used in a vote to create a valid price resolution.
+    // 1 == 100%.
+    FixedPoint.Unsigned private gatPercentage;
+
+    // Reference to the voting token.
+    VotingToken private votingToken;
+
     enum Roles {
         // Can set the writer.
         Governance,
@@ -69,8 +87,25 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
     bool private initialized;
 
-    constructor(uint phaseLength, bool _isTest) public Testable(_isTest) {
+    // Max value of an unsigned integer.
+    uint constant private UINT_MAX = ~uint(0);
+
+    /**
+     * @notice Construct the Voting contract.
+     * @param phaseLength length of the commit and reveal phases in seconds.
+     * @param _gatPercentage percentage of the total token supply that must be used in a vote to create a valid price
+     * resolution.
+     * @param _isTest whether this contract is being constructed for the purpose of running automated tests.
+     */
+    constructor(
+        uint phaseLength,
+        FixedPoint.Unsigned memory _gatPercentage,
+        address _votingToken,
+        bool _isTest
+    ) public Testable(_isTest) {
         initializeOnce(phaseLength);
+        gatPercentage = _gatPercentage;
+        votingToken = VotingToken(_votingToken);
     }
 
     /**
@@ -125,6 +160,16 @@ contract Voting is Testable, MultiRole, OracleInterface {
         require(keccak256(abi.encode(price, salt)) == voteInstance.committedHashes[msg.sender],
                 "Committed hash doesn't match revealed price and salt");
         delete voteInstance.committedHashes[msg.sender];
+
+        // Get or create a snapshot for this round.
+        uint snapshotId = _getOrCreateSnapshotId(roundId);
+
+        // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
+        // initialize the Unsigned value with the returned uint.
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
+
+        // Add vote to the results.
+        voteInstance.resultComputation.addVote(price, balance);
     }
 
     function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
@@ -179,38 +224,16 @@ contract Voting is Testable, MultiRole, OracleInterface {
         return supportedIdentifiers[identifier];
     }
 
-    function hasPrice(bytes32 identifier, uint time) external view returns (bool) {
-        // TODO(ptare): Price resolution isn't implemented yet.
-        return true;
+    function hasPrice(bytes32 identifier, uint time) external view returns (bool _hasPrice) {
+        (_hasPrice, ,) = _getPriceOrError(identifier, time);
     }
 
-    function getPrice(bytes32 identifier, uint time) external view returns (int price) {
-        PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
-        uint resolutionVotingRound = priceResolution.lastVotingRound;
-        uint lastActiveVotingRound = voteTiming.getLastUpdatedRoundId();
+    function getPrice(bytes32 identifier, uint time) external view returns (int) {
+        (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
-        if (resolutionVotingRound < lastActiveVotingRound) {
-            // Price must have been requested in the past.
-            require(resolutionVotingRound != 0, "Price was never requested");
-
-            // Price has been resolved.
-            return priceResolution.resolvedPrice;
-        } else {
-            // Price has not yet been resolved.
-
-            // Price must have been voted on this round for an immediate resolution to be attempted.
-            require(resolutionVotingRound == lastActiveVotingRound, "Request has not yet been voted on");
-
-            // If the current voting round has not ended, we cannot immediately resolve the vote.
-            require(voteTiming.computeCurrentRoundId(getCurrentTime()) != lastActiveVotingRound,
-                "The current voting round has not ended");
-
-            // Attempt to resolve the vote immediately since the round has ended.
-            (bool canBeResolved, int resolvedPrice) = _resolveVote(priceResolution.votes[resolutionVotingRound]);
-            require(canBeResolved,
-                "Price was not resolved this voting round. It will require another round of voting");
-            return resolvedPrice;
-        }
+        // If the price wasn't available, revert with the provided message.
+        require(_hasPrice, message);
+        return price;
     }
 
     /**
@@ -269,6 +292,53 @@ contract Voting is Testable, MultiRole, OracleInterface {
         voteTiming.init(phaseLength);
     }
 
+    /*
+     * @dev Checks to see if there is a price that has or can be resolved for an (identifier, time) pair.
+     * @returns a boolean noting whether a price is resolved, the price, and an error string if necessary.
+     */
+    function _getPriceOrError(bytes32 identifier, uint time)
+        private
+        view
+        returns (bool _hasPrice, int price, string memory err)
+    {
+        PriceResolution storage priceResolution = _getPriceResolution(identifier, time);
+        uint resolutionVotingRound = priceResolution.lastVotingRound;
+        uint lastActiveVotingRound = voteTiming.getLastUpdatedRoundId();
+
+        if (resolutionVotingRound < lastActiveVotingRound) {
+            // Price must have been requested in the past.
+            if (resolutionVotingRound == 0) {
+                return (false, 0, "Price was never requested");
+            }
+
+            // Price has been resolved.
+            return (true, priceResolution.resolvedPrice, "");
+        } else {
+            // Price has not yet been resolved.
+
+            // Price must have been voted on this round for an immediate resolution to be attempted.
+            if (resolutionVotingRound != lastActiveVotingRound) {
+                return (false, 0, "Request has not yet been voted on");
+            }
+
+            // If the current voting round has not ended, we cannot immediately resolve the vote.
+            if (voteTiming.computeCurrentRoundId(getCurrentTime()) == lastActiveVotingRound) {
+                return (false, 0, "The current voting round has not ended");
+            }
+
+            // Attempt to resolve the vote immediately since the round has ended.
+            VoteInstance storage voteInstance = priceResolution.votes[resolutionVotingRound];
+
+            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(resolutionVotingRound));
+            if (!isResolved) {
+                return (false, 0, "Price was not resolved this voting round. It will require another round of voting");
+            }
+
+            return (true, resolvedPrice, "");
+        }
+    }
+
     /**
      * @dev Gets a list of price requests that need to be rolled over from the last round. If a rollover doesn't need
      * to happen immediately, the array will be empty. The array may be longer than the number of populated elements,
@@ -290,7 +360,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Allocate enough space for all of the price requests to be rolled over and just track the length
         // separately.
-        PriceRequest[] memory tmpRolloverArray = new PriceRequest[](numPriceRequests);
+        rolloverPriceRequests = new PriceRequest[](numPriceRequests);
         numRolloverPriceRequests = 0;
 
         // Note: the code here is very similar to that in _updateRound(). The reason I decided not use this method
@@ -300,9 +370,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
         for (uint i = 0; i < numPriceRequests; i++) {
             PriceRequest memory priceRequest = allPriceRequests[i];
             PriceResolution storage priceResolution = _getPriceResolution(priceRequest.identifier, priceRequest.time);
-            (bool canBeResolved,) = _resolveVote(priceResolution.votes[roundId]);
-            if (!canBeResolved) {
-                tmpRolloverArray[numRolloverPriceRequests++] = priceRequest;
+            VoteInstance storage voteInstance = priceResolution.votes[roundId];
+
+            (bool isResolved,) = voteInstance.resultComputation.getResolvedPrice(_computeGat(roundId));
+            if (!isResolved) {
+                rolloverPriceRequests[numRolloverPriceRequests++] = priceRequest;
             }
         }
     }
@@ -317,21 +389,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Set the price resolution round number to the provided round.
         _getPriceResolution(priceRequest.identifier, priceRequest.time).lastVotingRound = roundNumber;
-    }
-
-    /**
-     * @notice Attempts to resolve a vote.
-     * @dev If the vote can be resolved, the method should return (true, X) where X is the price that the vote decided.
-     * If the vote was not resolved, the method should return (false, 0).
-     */
-     // solhint-disable-next-line no-unused-vars
-    function _resolveVote(VoteInstance storage voteInstance)
-        private
-        view
-        returns (bool canBeResolved, int resolvedPrice)
-    {
-        // TODO: remove this dummy implementation once vote resolution is implemented.
-        return (true, 1);
     }
 
     /**
@@ -373,8 +430,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
             // messages.
             require(priceResolution.lastVotingRound == lastActiveVotingRoundId,
                 "Found price request that was incorrectly placed in a round");
-            (bool canBeResolved, int resolvedPrice) = _resolveVote(priceResolution.votes[lastActiveVotingRoundId]);
-            if (canBeResolved) {
+            VoteInstance storage voteInstance = priceResolution.votes[lastActiveVotingRoundId];
+
+            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(lastActiveVotingRoundId));
+            if (isResolved) {
                 // If the vote can be resolved, just set the resolved price.
                 priceResolution.resolvedPrice = resolvedPrice;
             } else {
@@ -385,5 +445,29 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Update the stored round to the current one.
         voteTiming.updateRoundId(blockTime);
+    }
+
+    function _getOrCreateSnapshotId(uint roundId) private returns (uint) {
+        Round storage round = rounds[roundId];
+        if (round.snapshotId == 0) {
+            // There is no snapshot ID set, so create one.
+            round.snapshotId = votingToken.snapshot();
+        }
+        return round.snapshotId;
+    }
+
+    function _computeGat(uint roundId) private view returns (FixedPoint.Unsigned memory) {
+        uint snapshotId = rounds[roundId].snapshotId;
+        if (snapshotId == 0) {
+            // No snapshot - return max value to err on the side of caution.
+            return FixedPoint.Unsigned(UINT_MAX);
+        }
+
+        // Grab the snaphotted supply from the voting token. It's already scaled by 10**18, so we can directly
+        // initialize the Unsigned value with the returned uint.
+        FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
+
+        // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
+        return snapshottedSupply.mul(gatPercentage);
     }
 }
