@@ -584,7 +584,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, winningPrice, salt2, { from: account2 });
     await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
 
-    // Should not have the price since the vote was equally split.
+    // Price should resolve to the one that 2 and 3 voted for.
     await moveToNextRound();
     assert.equal((await voting.getPrice(identifier, time)).toString(), winningPrice.toString());
   });
