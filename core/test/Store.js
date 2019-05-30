@@ -16,6 +16,7 @@ contract("Store", function(accounts) {
   const erc20TokenOwner = accounts[2];
 
   const identifier = web3.utils.utf8ToHex("id");
+  const tokenAddr = "0x249bB6CF1751c221058749a9B571F1Fb0a621443";
 
   // TODO Add test final fee for test identifier
 
@@ -64,6 +65,13 @@ contract("Store", function(accounts) {
     assert(await didContractThrow(store.setFixedOracleFeePerSecond(highFee, { from: owner })));
 
     // TODO Check that only permitted role can change the fee
+  });
+
+  it("Final fees", async function() {
+    //Add final fee and confirm
+    await store.setFinalFee(tokenAddr, { value: web3.utils.toWei("5", "ether") }, { from: owner } );
+    let fee = await store.computeFinalFee(tokenAddr);
+    assert.equal(fee.value, web3.utils.toWei("5", "ether"));
   });
 
   // TODO tests for fees in Ether and ERC20
