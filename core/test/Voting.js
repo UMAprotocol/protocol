@@ -15,7 +15,16 @@ contract("Voting", function(accounts) {
   const COMMIT_PHASE = "0";
   const REVEAL_PHASE = "1";
 
-  const getRandomInt = () => {
+  const getRandomSignedInt = () => {
+    // Generate a random unsigned 256 bit int.
+    const unsignedValue = web3.utils.toBN(web3.utils.randomHex(32));
+
+    // The signed range is just the unsigned range decreased by 2^255.
+    const signedOffset = web3.utils.toBN(2).pow(web3.utils.toBN(255));
+    return unsignedValue.sub(signedOffset);
+  };
+
+  const getRandomUnsignedInt = () => {
     return web3.utils.toBN(web3.utils.randomHex(32));
   };
 
@@ -72,8 +81,8 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getVotePhase()).toString(), COMMIT_PHASE);
     await moveToNextRound();
 
-    const price = getRandomInt();
-    const salt = getRandomInt();
+    const price = getRandomSignedInt();
+    const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
 
     // Can't commit hash of 0.
@@ -83,8 +92,8 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash);
 
     // Voters can alter their commits.
-    const newPrice = getRandomInt();
-    const newSalt = getRandomInt();
+    const newPrice = getRandomSignedInt();
+    const newSalt = getRandomUnsignedInt();
     const newHash = web3.utils.soliditySha3(newPrice, newSalt);
 
     // Can alter a committed hash.
@@ -123,17 +132,17 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier, time);
     await moveToNextRound();
 
-    const price1 = getRandomInt();
-    const salt1 = getRandomInt();
+    const price1 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
     const hash1 = web3.utils.soliditySha3(price1, salt1);
 
-    const price2 = getRandomInt();
-    const salt2 = getRandomInt();
+    const price2 = getRandomSignedInt();
+    const salt2 = getRandomUnsignedInt();
     const hash2 = web3.utils.soliditySha3(price2, salt2);
 
     // Voter3 wants to vote the same price as voter1.
     const price3 = price1;
-    const salt3 = getRandomInt();
+    const salt3 = getRandomUnsignedInt();
     const hash3 = web3.utils.soliditySha3(price3, salt3);
 
     // Multiple voters can commit.
@@ -182,12 +191,12 @@ contract("Voting", function(accounts) {
     // Move to voting round.
     await moveToNextRound();
 
-    const price1 = getRandomInt();
-    const salt1 = getRandomInt();
+    const price1 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
     const hash1 = web3.utils.soliditySha3(price1, salt1);
 
-    const price2 = getRandomInt();
-    const salt2 = getRandomInt();
+    const price2 = getRandomSignedInt();
+    const salt2 = getRandomUnsignedInt();
     const hash2 = web3.utils.soliditySha3(price2, salt2);
 
     await voting.commitVote(identifier1, time2, hash1);
@@ -222,26 +231,42 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier2, time2);
 
     // Since the round for these requests has not started, the price retrieval should fail.
+    assert.isFalse(await voting.hasPrice(identifier1, time1));
+    assert.isFalse(await voting.hasPrice(identifier2, time2));
     assert(await didContractThrow(voting.getPrice(identifier1, time1)));
     assert(await didContractThrow(voting.getPrice(identifier2, time2)));
 
     // Move to the voting round.
     await moveToNextRound();
 
-    // At least one commit must be sent to push the round forward.
-    const price = getRandomInt();
-    const salt = getRandomInt();
-    const hash = web3.utils.soliditySha3(price, salt);
-    await voting.commitVote(identifier1, time1, hash);
+    // Commit vote 1.
+    const price1 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(price1, salt1);
+    await voting.commitVote(identifier1, time1, hash1);
+
+    // Commit vote 2.
+    const price2 = getRandomSignedInt();
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(price2, salt2);
+    await voting.commitVote(identifier2, time2, hash2);
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
+    assert.isFalse(await voting.hasPrice(identifier1, time1));
+    assert.isFalse(await voting.hasPrice(identifier2, time2));
     assert(await didContractThrow(voting.getPrice(identifier1, time1)));
     assert(await didContractThrow(voting.getPrice(identifier2, time2)));
 
     // Move to the reveal phase of the voting period.
     await moveToNextPhase();
 
+    // Reveal both votes.
+    await voting.revealVote(identifier1, time1, price1, salt1);
+    await voting.revealVote(identifier2, time2, price2, salt2);
+
     // Prices cannot be provided until both commit and reveal for the current round have finished.
+    assert.isFalse(await voting.hasPrice(identifier1, time1));
+    assert.isFalse(await voting.hasPrice(identifier2, time2));
     assert(await didContractThrow(voting.getPrice(identifier1, time1)));
     assert(await didContractThrow(voting.getPrice(identifier2, time2)));
 
@@ -249,8 +274,10 @@ contract("Voting", function(accounts) {
     await moveToNextRound();
 
     // Note: all voting results are currently hardcoded to 1.
-    assert.equal((await voting.getPrice(identifier1, time1)).toString(), "1");
-    assert.equal((await voting.getPrice(identifier2, time2)).toString(), "1");
+    assert.isTrue(await voting.hasPrice(identifier1, time1));
+    assert.isTrue(await voting.hasPrice(identifier2, time2));
+    assert.equal((await voting.getPrice(identifier1, time1)).toString(), price1.toString());
+    assert.equal((await voting.getPrice(identifier2, time2)).toString(), price2.toString());
   });
 
   it("Future price requests disallowed", async function() {
@@ -270,6 +297,17 @@ contract("Voting", function(accounts) {
 
     assert(await didContractThrow(voting.requestPrice(identifier, timeFail)));
     await voting.requestPrice(identifier, timeSucceed);
+
+    // Finalize this vote.
+    await moveToNextRound();
+    const price = getRandomSignedInt();
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, timeSucceed, hash);
+
+    // Move to reveal phase and reveal vote.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, timeSucceed, price, salt);
   });
 
   it("Request timing", async function() {
@@ -306,11 +344,15 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.requestPrice.call(identifier, time)).toNumber(), preRoundExpectedResolution);
     await voting.requestPrice(identifier, time);
 
-    // A single commit is required to cause the round to advance and resolve.
-    const price = getRandomInt();
-    const salt = getRandomInt();
+    // Commit vote.
+    const price = getRandomSignedInt();
+    const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
     await voting.commitVote(identifier, time, hash);
+
+    // Move to reveal phase and reveal vote.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time, price, salt);
 
     await moveToNextRound();
     const postVoteTime = (await voting.getCurrentTime()).toNumber();
@@ -342,38 +384,44 @@ contract("Voting", function(accounts) {
     // Cannot get the price while the voting is ongoing.
     assert(await didContractThrow(voting.getPrice(identifier, time)));
 
-    // A single commit is required to cause the round to advance and resolve.
-    const price = getRandomInt();
-    const salt = getRandomInt();
+    // Commit vote.
+    const price = getRandomSignedInt();
+    const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
     await voting.commitVote(identifier, time, hash);
 
-    // Cannot get the price during the reveal phase.
+    // Move to reveal phase and reveal vote.
     await moveToNextPhase();
+    await voting.revealVote(identifier, time, price, salt);
+
+    // Cannot get the price during the reveal phase.
     assert(await didContractThrow(voting.getPrice(identifier, time)));
 
     await moveToNextRound();
 
     // After the voting round is over, the price should be retrievable.
-    assert.equal((await voting.getPrice(identifier, time)).toString(), "1");
+    assert.equal((await voting.getPrice(identifier, time)).toString(), price.toString());
   });
 
   it("Pending Requests", async function() {
     await moveToNextRound();
 
     const startingTime = await voting.getCurrentTime();
-    const identifier = web3.utils.utf8ToHex("pending-requests");
-    const time = "1000";
+    const identifier1 = web3.utils.utf8ToHex("pending-requests1");
+    const time1 = "1000";
+    const identifier2 = web3.utils.utf8ToHex("pending-requests2");
+    const time2 = "1001";
 
-    // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    // Make the Oracle support these identifiers.
+    await voting.addSupportedIdentifier(identifier1);
+    await voting.addSupportedIdentifier(identifier2);
 
     // Pending requests should be empty for this new round.
     assert.equal((await voting.getPendingRequests()).length, 0);
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
-    await voting.requestPrice(identifier, time);
+    await voting.requestPrice(identifier1, time1);
 
     // Pending requests should be empty before the voting round begins.
     assert.equal((await voting.getPendingRequests()).length, 0);
@@ -382,15 +430,37 @@ contract("Voting", function(accounts) {
     await moveToNextRound();
     assert.equal((await voting.getPendingRequests()).length, 1);
 
-    // A single commit is required to cause the round to advance and resolve.
-    const price = getRandomInt();
-    const salt = getRandomInt();
-    const hash = web3.utils.soliditySha3(price, salt);
-    await voting.commitVote(identifier, time, hash);
+    // Add a new request during the voting round.
+    await voting.requestPrice(identifier2, time2);
+
+    // Pending requests should still be 1 because this request should not be voted on until next round.
+    assert.equal((await voting.getPendingRequests()).length, 1);
+
+    // Move to next round and roll the first request over.
+    await moveToNextRound();
+
+    // Pending requests should be 2 because one vote was rolled over and the second was dispatched after the previous
+    // voting round started.
+    assert.equal((await voting.getPendingRequests()).length, 2);
+
+    // Commit votes.
+    const price1 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(price1, salt1);
+    await voting.commitVote(identifier1, time1, hash1);
+
+    const price2 = getRandomSignedInt();
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(price2, salt2);
+    await voting.commitVote(identifier2, time2, hash2);
 
     // Pending requests should still have a single entry in the reveal phase.
     await moveToNextPhase();
-    assert.equal((await voting.getPendingRequests()).length, 1);
+    assert.equal((await voting.getPendingRequests()).length, 2);
+
+    // Reveal vote.
+    await voting.revealVote(identifier1, time1, price1, salt1);
+    await voting.revealVote(identifier2, time2, price2, salt2);
 
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound();
@@ -414,5 +484,108 @@ contract("Voting", function(accounts) {
 
     // Can't request prices for unsupported identifiers.
     assert(await didContractThrow(voting.requestPrice(unsupported, "0")));
+  });
+
+  it("Simple vote resolution", async function() {
+    const identifier = web3.utils.utf8ToHex("simple-vote");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time);
+    await moveToNextRound();
+
+    // Commit vote.
+    const price = 123;
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time, hash);
+
+    // Reveal the vote.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time, price, salt);
+
+    // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
+    // tokens to exceed the GAT.
+    await moveToNextRound();
+    assert.equal((await voting.getPrice(identifier, time)).toString(), price.toString());
+  });
+
+  it("Equally split vote", async function() {
+    const identifier = web3.utils.utf8ToHex("equal-split");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time);
+    await moveToNextRound();
+
+    // Commit votes.
+    const price1 = 123;
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(price1, salt1);
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    const price2 = 456;
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(price2, salt2);
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
+    // Reveal the votes.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
+    await voting.revealVote(identifier, time, price2, salt2, { from: account2 });
+
+    // Should not have the price since the vote was equally split.
+    await moveToNextRound();
+    assert.isFalse(await voting.hasPrice(identifier, time));
+
+    // Cleanup: resolve the vote this round.
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
+  });
+
+  it("Two thirds majority", async function() {
+    const identifier = web3.utils.utf8ToHex("two-thirds");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time);
+    await moveToNextRound();
+
+    // Commit votes.
+    const losingPrice = 123;
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(losingPrice, salt1);
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    // Both account 2 and 3 vote for 456.
+    const winningPrice = 456;
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(winningPrice, salt2);
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
+    const salt3 = getRandomUnsignedInt();
+    const hash3 = web3.utils.soliditySha3(winningPrice, salt3);
+    await voting.commitVote(identifier, time, hash3, { from: account3 });
+
+    // Reveal the votes.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
+    await voting.revealVote(identifier, time, winningPrice, salt2, { from: account2 });
+    await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
+
+    // Price should resolve to the one that 2 and 3 voted for.
+    await moveToNextRound();
+    assert.equal((await voting.getPrice(identifier, time)).toString(), winningPrice.toString());
   });
 });
