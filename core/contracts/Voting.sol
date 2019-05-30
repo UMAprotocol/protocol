@@ -2,9 +2,11 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./Finder.sol";
 import "./FixedPoint.sol";
 import "./MultiRole.sol";
 import "./OracleInterface.sol";
+import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./Testable.sol";
 import "./VoteTiming.sol";
@@ -78,6 +80,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
     // Reference to the voting token.
     VotingToken private votingToken;
 
+    // Reference to the Finder.
+    Finder private finder;
+
     enum Roles {
         // Can set the writer.
         Governance,
@@ -101,11 +106,19 @@ contract Voting is Testable, MultiRole, OracleInterface {
         uint phaseLength,
         FixedPoint.Unsigned memory _gatPercentage,
         address _votingToken,
+        address _finder,
         bool _isTest
     ) public Testable(_isTest) {
         initializeOnce(phaseLength);
         gatPercentage = _gatPercentage;
         votingToken = VotingToken(_votingToken);
+        finder = Finder(_finder);
+    }
+
+    modifier onlyRegisteredDerivative() {
+        Registry registry = Registry(finder.getImplementationAddress("Registry"));
+        require(registry.isDerivativeRegistered(msg.sender), "Must be registered derivative");
+        _;
     }
 
     /**
@@ -172,7 +185,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
         voteInstance.resultComputation.addVote(price, balance);
     }
 
-    function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
+    function requestPrice(bytes32 identifier, uint time) external onlyRegisteredDerivative() returns (uint expectedTime) {
         // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
         // widely distributed and agreed upon before the vote. 
         uint blockTime = getCurrentTime();
@@ -224,11 +237,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
         return supportedIdentifiers[identifier];
     }
 
-    function hasPrice(bytes32 identifier, uint time) external view returns (bool _hasPrice) {
+    function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool _hasPrice) {
         (_hasPrice, ,) = _getPriceOrError(identifier, time);
     }
 
-    function getPrice(bytes32 identifier, uint time) external view returns (int) {
+    function getPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (int) {
         (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
         // If the price wasn't available, revert with the provided message.

@@ -16,8 +16,9 @@ module.exports = async function(deployer, network, accounts) {
   // Set the GAT percentage to 5%
   const gatPercentage = { value: web3.utils.toWei("0.05", "ether") };
 
-  // Get the previously deployed VotingToken
+  // Get the previously deployed VotingToken and Finder.
   const votingToken = await VotingToken.deployed();
+  const finder = await Finder.deployed();
 
   // Set phase length to one day.
   const secondsPerDay = "86400";
@@ -28,12 +29,12 @@ module.exports = async function(deployer, network, accounts) {
     secondsPerDay,
     gatPercentage,
     votingToken.address,
+    finder.address,
     controllableTiming,
     { from: keys.deployer }
   );
   await addToTdr(voting, network);
 
-  const finder = await Finder.deployed();
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), voting.address, {
     from: keys.deployer
   });
