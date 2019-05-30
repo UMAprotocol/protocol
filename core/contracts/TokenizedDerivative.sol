@@ -590,11 +590,18 @@ library TokenizedDerivativeUtils {
         int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
         newShortMarginBalance = newShortMarginBalance.sub(_getLongDiff(navNew, s.longBalance, newShortMarginBalance));
 
+        bool inDefault = !s._satisfiesMarginRequirement(newShortMarginBalance, newTokenState);
+        // If the contract is about to enter a frozen state (i.e., either expiry or default), then an Oracle final fee
+        // will need to be paid.
+        if (isContractLive && (isContractPostExpiry || inDefault)) {
+            uint oracleFinalFee = s._computeOracleFinalFee(newShortMarginBalance);
+            newShortMarginBalance = newShortMarginBalance.sub(_safeIntCast(oracleFinalFee));
+        }
+
         // If the contract is frozen or will move into expiry, we need to settle it, which means adding the default
         // penalty and dispute deposit if necessary.
         if (!isContractLive || isContractPostExpiry) {
             // Subtract default penalty (if necessary) from the short balance.
-            bool inDefault = !s._satisfiesMarginRequirement(newShortMarginBalance, newTokenState);
             if (inDefault) {
                 int expectedDefaultPenalty = isContractLive ? s._computeDefaultPenalty() : s._getDefaultPenalty();
                 int defaultPenalty = (newShortMarginBalance < expectedDefaultPenalty) ?
@@ -860,12 +867,31 @@ library TokenizedDerivativeUtils {
     }
 
     function _requestOraclePrice(TDS.Storage storage s, uint requestedTime) internal {
+        uint finalFee = s._computeOracleFinalFee(s.shortBalance);
+        s.shortBalance = s.shortBalance.sub(_safeIntCast(finalFee));
+        s._payOracleFees(finalFee);
+
         OracleInterface oracle = OracleInterface(_getOracleAddress(s));
         uint expectedTime = oracle.requestPrice(s.fixedParameters.product, requestedTime);
         if (expectedTime == 0) {
             // The Oracle price is already available, settle the contract right away.
             s._settleInternal();
         }
+    }
+
+    function _computeOracleFinalFee(TDS.Storage storage s, int shortBalance)
+        internal
+        view
+        returns (uint actualFeeAmount)
+    {
+        StoreInterface store = StoreInterface(_getStoreAddress(s));
+        FixedPoint.Unsigned memory expectedFee = store.computeFinalFee(
+            address(s.externalAddresses.marginCurrency)
+        );
+        uint expectedFeeAmount = expectedFee.value;
+        // Ensure the fee returned can actually be paid by the short margin account.
+        uint shortBalanceUint = _safeUintCast(shortBalance);
+        actualFeeAmount = (shortBalanceUint < expectedFeeAmount) ? shortBalanceUint : expectedFeeAmount;
     }
 
     function _getLatestPrice(TDS.Storage storage s) internal view returns (uint latestTime, int latestUnderlyingPrice) {
