@@ -185,7 +185,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
         voteInstance.resultComputation.addVote(price, balance);
     }
 
-    function requestPrice(bytes32 identifier, uint time) external onlyRegisteredDerivative() returns (uint expectedTime) {
+    function requestPrice(bytes32 identifier, uint time)
+        external
+        onlyRegisteredDerivative()
+        returns (uint expectedTime)
+    {
         // TODO: we may want to allow future price requests and/or add a delay so that the price has enough time to be
         // widely distributed and agreed upon before the vote. 
         uint blockTime = getCurrentTime();
