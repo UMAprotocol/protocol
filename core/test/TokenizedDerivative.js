@@ -94,9 +94,6 @@ contract("TokenizedDerivative", function(accounts) {
     let creator = accounts[5];
     await deployedRegistry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator);
     await deployedRegistry.registerDerivative([], owner, { from: creator });
-
-    // Set an Oracle fee.
-    await setNewFixedOracleFee(oracleFeePerSecond);
   });
 
   const computeNewNav = (previousNav, priceReturn, fees) => {
@@ -194,6 +191,9 @@ contract("TokenizedDerivative", function(accounts) {
       );
       feesPerInterval = feesPerSecond.muln(priceFeedUpdatesInterval);
 
+      // Set the Oracle fees.
+      await setNewFixedOracleFee(oracleFeePerSecond);
+      await deployedStore.setWeeklyDelayFee("0");
       await setOracleFinalFee("0");
 
       // Pre-auth when required.
@@ -252,7 +252,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     const setOracleFinalFee = async finalFee => {
       const marginCurrencyAddress = (await derivativeContract.derivativeStorage()).externalAddresses.marginCurrency;
-      await deployedStore.setFinalFee(marginCurrencyAddress, { value: finalFee });
+      await deployedStore.setFinalFee(marginCurrencyAddress, { value: finalFee.toString() });
     };
 
     const annotateTitle = title => {
@@ -2322,9 +2322,6 @@ contract("TokenizedDerivative", function(accounts) {
       const levered2x = await LeveragedReturnCalculator.new(2);
       await returnCalculatorWhitelist.addToWhitelist(levered2x.address);
 
-      // Set the oracle fee to 0 to make computation easier.
-      await setNewFixedOracleFee(0);
-
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative({
         returnType: "0", // Linear
@@ -2332,6 +2329,9 @@ contract("TokenizedDerivative", function(accounts) {
         returnCalculator: levered2x.address,
         withdrawLimit: web3.utils.toWei("1000", "ether")
       });
+
+      // Set the oracle fee to 0 to make computation easier.
+      await setNewFixedOracleFee(0);
 
       // Sponsor initializes contract
       await derivativeContract.depositAndCreateTokens(
@@ -2664,6 +2664,75 @@ contract("TokenizedDerivative", function(accounts) {
           tokenizedDerivativeCreator.createTokenizedDerivative(largeUnderlyingPrice, { from: sponsor })
         )
       );
+    });
+
+    it(annotateTitle("Oracle Fees"), async function() {
+      // A new TokenizedDerivative must be deployed before the start of each test case.
+      await deployNewTokenizedDerivative();
+
+      // Due to other test cases, the store could already have some balance in it.
+      let storeBalance = web3.utils.toBN(await getMarginBalance(deployedStore.address));
+      let totalOracleFeesPaid = web3.utils.toBN(web3.utils.toWei("0", "ether"));
+
+      // Deposit money into the short.
+      const initialBalance = web3.utils.toWei("1", "ether");
+      await derivativeContract.deposit(initialBalance, await getMarginParams(initialBalance));
+      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      assert.equal(shortBalance.toString(), initialBalance);
+
+      // Remargin and check that the regular Oracle fee was paid to the Store.
+      await setNewFixedOracleFee(oracleFeePerSecond);
+      await pushPrice(web3.utils.toWei("1", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      let expectedRegularOracleFee = web3.utils.toBN(computeExpectedOracleFees(web3.utils.toBN("0"), shortBalance));
+      let expectedShortBalance = web3.utils.toBN(initialBalance).sub(expectedRegularOracleFee);
+      let expectedStoreBalance = storeBalance.add(expectedRegularOracleFee);
+      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      storeBalance = web3.utils.toBN(await getMarginBalance(deployedStore.address));
+      assert.equal(shortBalance.toString(), expectedShortBalance.toString());
+      assert.equal(storeBalance.toString(), expectedStoreBalance.toString());
+
+      // Wipe out the regular component of the Oracle fee but set a weekly delay fee.
+      await setNewFixedOracleFee("0");
+      const weeklyDelayFee = web3.utils.toWei("0.1", "ether");
+      await deployedStore.setWeeklyDelayFee(weeklyDelayFee);
+
+      // Go two weeks without remargining, and see if the delay fee was paid.
+      const numWeeks = 2;
+      const secondsInTwoWeeks = 60 * 60 * 24 * 7 * numWeeks;
+      const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + secondsInTwoWeeks;
+      await deployedManualPriceFeed.setCurrentTime(latestTime);
+      await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, web3.utils.toWei("1", "ether"));
+      await derivativeContract.remargin({ from: sponsor });
+
+      const expectedDelayFee = web3.utils
+        .toBN(shortBalance)
+        .mul(web3.utils.toBN(weeklyDelayFee))
+        .muln(numWeeks)
+        .div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
+      expectedShortBalance = web3.utils.toBN(shortBalance).sub(expectedDelayFee);
+      expectedStoreBalance = storeBalance.add(expectedDelayFee);
+      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      storeBalance = web3.utils.toBN(await getMarginBalance(deployedStore.address));
+      assert.equal(shortBalance.toString(), expectedShortBalance.toString());
+      assert.equal(storeBalance.toString(), expectedStoreBalance.toString());
+
+      // Shutdown the contract and see if the final fee was paid correctly.
+      const oracleFinalFee = web3.utils.toBN(web3.utils.toWei("0.05", "ether"));
+      await setOracleFinalFee(oracleFinalFee);
+
+      await deployedAdmin.callEmergencyShutdown(derivativeContract.address, { from: owner });
+      const lastRemarginTime = await deployedManualPriceFeed.getCurrentTime();
+      await mockOracle.pushPrice(identifierBytes, lastRemarginTime, web3.utils.toWei("1", "ether"));
+      await derivativeContract.settle();
+
+      expectedShortBalance = web3.utils.toBN(shortBalance).sub(oracleFinalFee);
+      expectedStoreBalance = storeBalance.add(oracleFinalFee);
+      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      storeBalance = web3.utils.toBN(await getMarginBalance(deployedStore.address));
+      assert.equal(shortBalance.toString(), expectedShortBalance.toString());
+      assert.equal(storeBalance.toString(), expectedStoreBalance.toString());
     });
   });
 });
