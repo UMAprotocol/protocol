@@ -69,48 +69,44 @@ contract("Store", function(accounts) {
 
   it("Final fees", async function() {
     //Add final fee and confirm
-    await store.setFinalFee(tokenAddr, { value: web3.utils.toWei("5", "ether") }, { from: owner } );
+    await store.setFinalFee(tokenAddr, { value: web3.utils.toWei("5", "ether") }, { from: owner });
     let fee = await store.computeFinalFee(tokenAddr);
     assert.equal(fee.value, web3.utils.toWei("5", "ether"));
   });
 
   it("Pay fees in Ether", async function() {
-     // Verify the starting balance is 0.
-     let balance = await web3.eth.getBalance(store.address);
-     assert.equal(balance.toString(), "0");
- 
-     // Can't pay a fee of 0 ether.
-     assert(
-       await didContractThrow(
-         store.payOracleFees({ from: derivative, value: web3.utils.toWei("0", "ether") })
-       )
-     );
- 
-     // Send 1 ether to the contract and verify balance.
-     await store.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
-     balance = await web3.eth.getBalance(store.address);
-     assert.equal(balance.toString(), web3.utils.toWei("1", "ether"));
- 
-     // Send a further 2 ether to the contract and verify balance.
-     await store.payOracleFees({ from: derivative, value: web3.utils.toWei("2", "ether") });
-     balance = await web3.eth.getBalance(store.address);
-     assert.equal(balance.toString(), web3.utils.toWei("3", "ether"));
- 
-     // Only the owner can withdraw.
-     assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: derivative })));
- 
-     // Withdraw 0.5 ether and verify the  balance.
-     await store.withdraw(web3.utils.toWei("0.5", "ether"));
-     balance = await web3.eth.getBalance(store.address);
-     assert.equal(balance.toString(), web3.utils.toWei("2.5", "ether"));
- 
-     // Can't withdraw more than the balance.
-     assert(await didContractThrow(store.withdraw(web3.utils.toWei("10", "ether"))));
- 
-     // Withdraw remaining balance.
-     await store.withdraw(web3.utils.toWei("2.5", "ether"));
-     balance = await web3.eth.getBalance(store.address);
-     assert.equal(balance.toString(), web3.utils.toWei("0", "ether"));
+    // Verify the starting balance is 0.
+    let balance = await web3.eth.getBalance(store.address);
+    assert.equal(balance.toString(), "0");
+
+    // Can't pay a fee of 0 ether.
+    assert(await didContractThrow(store.payOracleFees({ from: derivative, value: web3.utils.toWei("0", "ether") })));
+
+    // Send 1 ether to the contract and verify balance.
+    await store.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
+    balance = await web3.eth.getBalance(store.address);
+    assert.equal(balance.toString(), web3.utils.toWei("1", "ether"));
+
+    // Send a further 2 ether to the contract and verify balance.
+    await store.payOracleFees({ from: derivative, value: web3.utils.toWei("2", "ether") });
+    balance = await web3.eth.getBalance(store.address);
+    assert.equal(balance.toString(), web3.utils.toWei("3", "ether"));
+
+    // Only the owner can withdraw.
+    assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: derivative })));
+
+    // Withdraw 0.5 ether and verify the  balance.
+    await store.withdraw(web3.utils.toWei("0.5", "ether"));
+    balance = await web3.eth.getBalance(store.address);
+    assert.equal(balance.toString(), web3.utils.toWei("2.5", "ether"));
+
+    // Can't withdraw more than the balance.
+    assert(await didContractThrow(store.withdraw(web3.utils.toWei("10", "ether"))));
+
+    // Withdraw remaining balance.
+    await store.withdraw(web3.utils.toWei("2.5", "ether"));
+    balance = await web3.eth.getBalance(store.address);
+    assert.equal(balance.toString(), web3.utils.toWei("0", "ether"));
   });
 
   it("Pay fees in ERC20 token", async function() {
