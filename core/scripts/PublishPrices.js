@@ -1,5 +1,6 @@
 const BigNumber = require("bignumber.js");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
+const assert = require("assert");
 const fetch = require("node-fetch");
 const util = require("util");
 const commandlineUtil = require("./CommandlineUtil");
@@ -215,7 +216,20 @@ async function initializeTestFeed(manualPriceFeed) {
   }
 }
 
+function verifyFeedConfig(feed) {
+  assert(feed.publishInterval, "Feed config must provide `publishInterval`");
+  assert(feed.minDelay, "Feed config must provide `minDelay`");
+
+  assert(feed.numerator.dataSource, "Feed config must provide `numerator.dataSource`");
+  assert(feed.numerator.assetName, "Feed config must provide `numerator.assetName`");
+  if (feed.denominator) {
+    assert(feed.denominator.dataSource, "Feed config must provide `denominator.dataSource`");
+    assert(feed.denominator.assetName, "Feed config must provide `denominator.assetName`");
+  }
+}
+
 async function publishFeed(feed) {
+  verifyFeedConfig(feed);
   const manualPriceFeed = await ManualPriceFeed.at(feed.priceFeedAddress);
   const identifierBytes = web3.utils.fromAscii(feed.identifier);
 
