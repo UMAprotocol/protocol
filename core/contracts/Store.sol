@@ -51,16 +51,6 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
 
-    /**
-     * @dev Sets a new weekly delay fee
-     */ 
-    function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) 
-        public 
-        onlyRoleHolder(uint(Roles.Governance)) 
-    {
-        weeklyDelayFee = newWeeklyDelayFee;
-    }
-
     function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc) 
         external 
         view 
@@ -96,7 +86,17 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         fixedOracleFeePerSecond = newOracleFee;
         emit SetFixedOracleFeePerSecond(newOracleFee);
     }
-    
+
+    /**
+     * @dev Sets a new weekly delay fee
+     */ 
+    function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) 
+        public 
+        onlyRoleHolder(uint(Roles.Governance)) 
+    {
+        weeklyDelayFee = newWeeklyDelayFee;
+    }
+
     /**
      * @dev Sets a new final fee for a particular currency
      */ 
