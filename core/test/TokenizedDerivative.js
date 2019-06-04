@@ -130,6 +130,10 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedStore.setFixedOracleFeePerSecond({ value: feePerSecond.toString() });
   };
 
+  const setNewWeeklyDelayFee = async weeklyDelayFee => {
+    await deployedStore.setWeeklyDelayFee({ value: weeklyDelayFee.toString() });
+  };
+
   const getRandomIntBetween = (min, max) => {
     return Math.floor(Math.random() * (max - min)) + min;
   };
@@ -193,7 +197,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Set the Oracle fees.
       await setNewFixedOracleFee(oracleFeePerSecond);
-      await deployedStore.setWeeklyDelayFee("0");
+      await setNewWeeklyDelayFee("0");
       await setOracleFinalFee("0");
 
       // Pre-auth when required.
@@ -2696,7 +2700,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Wipe out the regular component of the Oracle fee but set a weekly delay fee.
       await setNewFixedOracleFee("0");
       const weeklyDelayFee = web3.utils.toWei("0.1", "ether");
-      await deployedStore.setWeeklyDelayFee(weeklyDelayFee);
+      await setNewWeeklyDelayFee(weeklyDelayFee);
 
       // Go two weeks without remargining, and see if the delay fee was paid.
       const numWeeks = 2;
