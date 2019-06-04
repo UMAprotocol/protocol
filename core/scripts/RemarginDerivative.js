@@ -6,8 +6,6 @@ const Finder = artifacts.require("Finder");
 
 const remarginDerivative = async function(callback) {
   try {
-    const deployer = (await web3.eth.getAccounts())[0];
-
     const deployedFinder = await Finder.deployed();
 
     // Remargin the contract using the admin.
