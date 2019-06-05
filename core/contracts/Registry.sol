@@ -84,7 +84,7 @@ contract Registry is RegistryInterface, MultiRole {
         }
 
         address[] memory partiesForEvent = parties;
-        emit RegisterDerivative(derivativeAddress, partiesForEvent);
+        emit NewDerivativeRegistered(derivativeAddress, partiesForEvent);
     }
 
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
@@ -133,5 +133,5 @@ contract Registry is RegistryInterface, MultiRole {
         _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
     }
 
-    event RegisterDerivative(address indexed derivativeAddress, address[] parties);
+    event NewDerivativeRegistered(address indexed derivativeAddress, address[] parties);
 }
