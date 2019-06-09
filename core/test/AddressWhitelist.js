@@ -36,7 +36,7 @@ contract("AddressWhitelist", function(accounts) {
     // Owner can add to the whitelist.
     const result = await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
 
-    truffleAssert.eventEmitted(result, "AddToWhitelist", ev => {
+    truffleAssert.eventEmitted(result, "AddedToWhitelist", ev => {
       return web3.utils.toChecksumAddress(ev.addedAddress) === web3.utils.toChecksumAddress(contractToAdd);
     });
 
@@ -58,7 +58,7 @@ contract("AddressWhitelist", function(accounts) {
     // Remove contractToRemove
     let result = await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
 
-    truffleAssert.eventEmitted(result, "RemoveFromWhitelist", ev => {
+    truffleAssert.eventEmitted(result, "RemovedFromWhitelist", ev => {
       return web3.utils.toChecksumAddress(ev.removedAddress) === web3.utils.toChecksumAddress(contractToRemove);
     });
 
@@ -68,7 +68,7 @@ contract("AddressWhitelist", function(accounts) {
 
     // Double remove from whitelist. Shouldn't error, but shouldn't generate an event.
     result = await addressWhitelist.removeFromWhitelist(contractToRemove, { from: owner });
-    truffleAssert.eventNotEmitted(result, "RemoveFromWhitelist");
+    truffleAssert.eventNotEmitted(result, "RemovedFromWhitelist");
   });
 
   it("Add to whitelist twice", async function() {
@@ -77,7 +77,7 @@ contract("AddressWhitelist", function(accounts) {
     await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
     const result = await addressWhitelist.addToWhitelist(contractToAdd, { from: owner });
 
-    truffleAssert.eventNotEmitted(result, "AddToWhitelist");
+    truffleAssert.eventNotEmitted(result, "AddedToWhitelist");
 
     assert.isTrue(await addressWhitelist.isOnWhitelist(contractToAdd));
   });

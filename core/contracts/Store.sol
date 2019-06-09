@@ -93,7 +93,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         // Oracle fees at or over 100% don't make sense.
         require(newOracleFee.isLessThan(1));
         fixedOracleFeePerSecond = newOracleFee;
-        emit SetFixedOracleFeePerSecond(newOracleFee);
+        emit NewFixedOracleFeePerSecond(newOracleFee);
     }
     
     /**
@@ -117,6 +117,6 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
     }
 
-    event SetFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
+    event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
 
 }
