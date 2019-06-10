@@ -414,7 +414,13 @@ contract Voting is Testable, MultiRole, OracleInterface {
      * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
      * Will revert if called again.
      */
-    function initializeOnce(uint phaseLength, FixedPoint.Unsigned memory _gatPercentage, FixedPoint.Unsigned memory _inflationRate) public {
+    function initializeOnce(
+        uint phaseLength,
+        FixedPoint.Unsigned memory _gatPercentage,
+        FixedPoint.Unsigned memory _inflationRate
+    )
+        public
+    {
         require(!initialized, "Only the constructor should call this method");
         initialized = true;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
