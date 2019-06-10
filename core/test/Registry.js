@@ -61,8 +61,8 @@ contract("Registry", function(accounts) {
     result = await registry.registerDerivative(parties, arbitraryContract, { from: creator1 });
     assert.isTrue(await registry.isDerivativeRegistered(arbitraryContract));
 
-    // Make sure a RegisterDerivative event is emitted.
-    truffleAssert.eventEmitted(result, "RegisterDerivative", ev => {
+    // Make sure a NewDerivativeRegistered event is emitted.
+    truffleAssert.eventEmitted(result, "NewDerivativeRegistered", ev => {
       return web3.utils.toChecksumAddress(ev.derivativeAddress) === web3.utils.toChecksumAddress(arbitraryContract);
     });
 

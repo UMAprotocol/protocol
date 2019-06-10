@@ -1,5 +1,7 @@
-const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "price"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "price", "time"] });
+const { interfaceName } = require("../utils/Constants.js");
 
+const Finder = artifacts.require("Finder");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 
 async function run(account, identifier, priceAsString, time) {
@@ -7,7 +9,10 @@ async function run(account, identifier, priceAsString, time) {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
     const price = web3.utils.toWei(priceAsString);
 
-    const priceFeed = await ManualPriceFeed.deployed();
+    const deployedFinder = await Finder.deployed();
+    const priceFeed = await ManualPriceFeed.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.PriceFeed))
+    );
 
     await priceFeed.pushLatestPrice(identifierBytes, time, price, { from: account });
     console.log(`Published price for ${identifier} @ ${time}: ${priceAsString}`);
@@ -19,7 +24,7 @@ async function run(account, identifier, priceAsString, time) {
 const PublishTestPrice = async function(callback) {
   const account = (await web3.eth.getAccounts())[0];
 
-  await run(account, argv.identifier, argv.time, argv.price);
+  await run(account, argv.identifier, argv.price, argv.time);
 
   callback();
 };

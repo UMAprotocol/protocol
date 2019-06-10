@@ -1,5 +1,8 @@
 const assert = require("assert");
-const CentralizedOracle = artifacts.require("CentralizedOracle");
+const { interfaceName } = require("../utils/Constants.js");
+
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Finder = artifacts.require("Finder");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["derivative"] });
 
@@ -7,11 +10,14 @@ async function run(account, derivative) {
   try {
     // Usage: `truffle exec scripts/EmergencyShutdown.js --derivative <derivative address> --keys <oracle key> --network <network>
     // Requires the contract to be live and for accounts[0] to be the owner of the oracle.
-    oracle = await CentralizedOracle.deployed();
+    const deployedFinder = await Finder.deployed();
 
-    assert.strictEqual(await oracle.owner(), account, "Account must be the owner of the oracle");
+    // Emergency shutdown the contract using the admin.
+    const admin = await FinancialContractsAdmin.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin))
+    );
+    await admin.callEmergencyShutdown(derivative);
 
-    await oracle.callEmergencyShutdown(derivative);
     console.log("Emergency shutdown complete");
   } catch (e) {
     console.log(e);

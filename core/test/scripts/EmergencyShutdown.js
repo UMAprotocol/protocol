@@ -1,19 +1,21 @@
 const EmergencyShutdown = require("../../scripts/EmergencyShutdown");
 
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const CentralizedOracle = artifacts.require("CentralizedOracle");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
+const Voting = artifacts.require("Voting");
 
 contract("scripts/EmergencyShutdown.js", function(accounts) {
   const ethAddress = "0x0000000000000000000000000000000000000000";
 
   let creator;
   let registry;
-  let oracle;
+  let admin;
+  let voting;
   let leverage;
   let priceFeed;
   let derivativeContract;
@@ -24,7 +26,8 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
   before(async function() {
     creator = await TokenizedDerivativeCreator.deployed();
     registry = await Registry.deployed();
-    oracle = await CentralizedOracle.deployed();
+    admin = await FinancialContractsAdmin.deployed();
+    voting = await Voting.deployed();
     leverage = await LeveragedReturnCalculator.deployed();
     priceFeed = await ManualPriceFeed.deployed();
 
@@ -34,12 +37,16 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
     const marginCurrencyWhitelist = await AddressWhitelist.at(await creator.marginCurrencyWhitelist());
     await marginCurrencyWhitelist.addToWhitelist(ethAddress);
 
-    // Add identifier to Oracle
-    await oracle.addSupportedIdentifier(identifierBytes);
+    // Add identifier to Voting
+    await voting.addSupportedIdentifier(identifierBytes);
 
     // Push a price to the price feed
     const latestTime = parseInt(await priceFeed.getCurrentTime(), 10);
     await priceFeed.pushLatestPrice(identifierBytes, latestTime + 600, web3.utils.toWei("1", "ether"));
+
+    // Voting currently disallows price requests in the future, so push Voting's time forward to make the Oracle
+    // request created by emergency shutdown is in the past.
+    await voting.setCurrentTime(latestTime + 700);
 
     // Create derivative
     const params = {

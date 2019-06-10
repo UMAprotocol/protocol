@@ -26,14 +26,14 @@ contract AddressWhitelist is Ownable {
 
         whitelist[newElement] = Status.In;
 
-        emit AddToWhitelist(newElement);
+        emit AddedToWhitelist(newElement);
     }
 
     // Removes an address from the whitelist.
     function removeFromWhitelist(address elementToRemove) external onlyOwner {
         if (whitelist[elementToRemove] != Status.Out) {
             whitelist[elementToRemove] = Status.Out;
-            emit RemoveFromWhitelist(elementToRemove);
+            emit RemovedFromWhitelist(elementToRemove);
         }
     }
 
@@ -69,6 +69,6 @@ contract AddressWhitelist is Ownable {
         }
     }
 
-    event AddToWhitelist(address indexed addedAddress);
-    event RemoveFromWhitelist(address indexed removedAddress);
+    event AddedToWhitelist(address indexed addedAddress);
+    event RemovedFromWhitelist(address indexed removedAddress);
 }
