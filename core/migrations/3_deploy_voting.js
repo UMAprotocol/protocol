@@ -14,6 +14,9 @@ module.exports = async function(deployer, network, accounts) {
   // Set the GAT percentage to 5%
   const gatPercentage = { value: web3.utils.toWei("0.05", "ether") };
 
+  // Set the inflation rate.
+  const inflationRate = { value: web3.utils.toWei("0.05", "ether") };
+
   // Get the previously deployed VotingToken
   const votingToken = await VotingToken.deployed();
 
@@ -25,6 +28,7 @@ module.exports = async function(deployer, network, accounts) {
     Voting,
     secondsPerDay,
     gatPercentage,
+    inflationRate,
     votingToken.address,
     controllableTiming,
     { from: keys.deployer }

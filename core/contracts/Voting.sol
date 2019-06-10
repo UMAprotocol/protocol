@@ -36,13 +36,20 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Voting token snapshot ID for this round. If this is 0, no snapshot has been taken.
         uint snapshotId;
+
+        // Inflation rate set for this round.
+        FixedPoint.Unsigned inflationRate;
     }
 
+    // A particular voter's submission.
     struct VoteSubmission {
         // A bytes32 of `0` indicates no commit or a commit that was already revealed.
         bytes32 committedHash;
 
+        // The value of the vote that was revealed.
         int revealedVote;
+
+        // Whether the voter revealed their vote (this is to handle valid reveals for 0 prices).
         bool didReveal;
     }
 
@@ -82,8 +89,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
     // 1 == 100%.
     FixedPoint.Unsigned private gatPercentage;
 
-    // Rate of inflation per vote. This is the percentage of the snapshotted total supply that should be split among
-    // the correct voters.
+    // Global setting for the rate of inflation per vote. This is the percentage of the snapshotted total supply that
+    // should be split among the correct voters. Note: this value is used to set per-round inflation at the beginning
+    // of each round.
     // 1 = 100%
     FixedPoint.Unsigned private inflationRate;
 
@@ -96,7 +104,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
     enum Roles {
         // Can set the writer.
         Governance,
-        // Can change parameters and whitelists, such as adding new supported identifiers.
+        // Can change parameters and whitelists, such as adding new supported identifiers or changing the inflation
+        // rate.
+        // TODO: consider splitting this role into smaller roles with narrower permissions. 
         Writer
     }
 
@@ -306,6 +316,17 @@ contract Voting is Testable, MultiRole, OracleInterface {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
+    /**
+     * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
+     * @dev This method is public because calldata structs are not currently supported by solidity.
+     */
+    function setInflationRate(FixedPoint.Unsigned memory _inflationRate) public onlyRoleHolder(uint(Roles.Writer)) {
+        inflationRate = _inflationRate;
+    }
+
+    /**
+     * @notice Retrieves any rewards the voter is owed.
+     */ 
     function retrieveRewards() public {
         uint blockTime = getCurrentTime();
         uint roundId = votersLastRound[msg.sender];
@@ -334,11 +355,12 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Compute the total amount of reward that will be issues for each of the votes in the round.
         FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
-        FixedPoint.Unsigned memory totalRewardPerVote = inflationRate.mul(snapshotTotalSupply);
+        FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
 
         // Keep track of the voter's accumulated token reward.
         FixedPoint.Unsigned memory totalRewardToIssue = FixedPoint.Unsigned(0);
 
+        // Loop over all price requests in the round to check for rewards.
         PriceRequest[] storage priceRequests = round.priceRequests;
         uint numPriceRequests = priceRequests.length;
         for (uint i = 0; i < numPriceRequests; i++) {
@@ -363,7 +385,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
             }
 
             // Delete the submission to capture any refund and clean up storage.
-            delete voteSubmission;
+            delete voteInstance.voteSubmissions[msg.sender];
         }
 
         // Issue any accumulated rewards.
@@ -533,8 +555,14 @@ contract Voting is Testable, MultiRole, OracleInterface {
             } else {
                 // If the vote cannot be resolved, push the request into the current round.
                 _addPriceRequestToRound(nextVotingRoundId, priceRequest);
+
+                // Zero out the price request to reduce gas costs.
+                delete lastActiveVotingRound.priceRequests[i];
             }
         }
+
+        // Set the round inflation rate to the current global inflation rate.
+        rounds[nextVotingRoundId].inflationRate = inflationRate;
 
         // Update the stored round to the current one.
         voteTiming.updateRoundId(blockTime);
