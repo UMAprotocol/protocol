@@ -165,6 +165,7 @@ library TokenizedDerivativeUtils {
     using TokenizedDerivativeUtils for TDS.Storage;
     using SafeMath for uint;
     using SignedSafeMath for int;
+    using FixedPoint for FixedPoint.Unsigned;
 
     uint private constant SECONDS_PER_DAY = 86400;
     uint private constant SECONDS_PER_YEAR = 31536000;
@@ -825,12 +826,13 @@ library TokenizedDerivativeUtils {
         StoreInterface store = StoreInterface(_getStoreAddress(s));
         // The profit from corruption is set as the max(longBalance, shortBalance).
         int pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
-        (FixedPoint.Unsigned memory expectedFee, ) = store.computeRegularFee(
+        (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory delayFee) = store.computeRegularFee(
             lastTimeOracleFeesPaid,
             currentTime,
             FixedPoint.Unsigned(_safeUintCast(pfc))
         );
-        uint expectedFeeAmount = expectedFee.value;
+        // TODO(ptare): Implement a keeper system, but for now, pay the delay fee to the Oracle.
+        uint expectedFeeAmount = regularFee.add(delayFee).value;
 
         // Ensure the fee returned can actually be paid by the short margin account.
         uint shortBalance = _safeUintCast(s.shortBalance);
