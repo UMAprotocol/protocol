@@ -2681,7 +2681,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Deposit money into the short.
       const initialBalance = web3.utils.toWei("1", "ether");
       await derivativeContract.deposit(initialBalance, await getMarginParams(initialBalance));
-      shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
+      let shortBalance = (await derivativeContract.derivativeStorage()).shortBalance;
       assert.equal(shortBalance.toString(), initialBalance);
 
       // Remargin and check that the regular Oracle fee was paid to the Store.
