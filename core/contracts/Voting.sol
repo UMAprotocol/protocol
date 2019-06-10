@@ -352,11 +352,10 @@ contract Voting is Testable, MultiRole, OracleInterface {
             // If the last round the voter participated in is the current round, rewards cannot be dispatched until the
             // round is over.
             return;
-        } else if (roundId == voteTiming.getLastUpdatedRoundId()) {
-            // If the voter is trying to retrieve rewards for the last voting round, must do a roll over before before
-            // rewards can be computed.
-            _updateRound(blockTime);
         }
+
+        // Round must be updated (if possible) for the voter to retrieve rewards.
+        _updateRound(blockTime);
 
         Round storage round = rounds[roundId];
         uint snapshotId = round.snapshotId;
