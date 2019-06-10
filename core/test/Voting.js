@@ -789,7 +789,7 @@ contract("Voting", function(accounts) {
     await voting.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time1);
+    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
     await moveToNextRound();
 
     // Commit votes.
@@ -859,7 +859,7 @@ contract("Voting", function(accounts) {
     await voting.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time1);
+    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
     await moveToNextRound();
 
     // Commit.
@@ -874,7 +874,7 @@ contract("Voting", function(accounts) {
 
     // Request new price to commit to next round.
     const time2 = "1001";
-    await voting.requestPrice(identifier, time2);
+    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
     await moveToNextRound();
 
     // Commit, which should send the reward.
