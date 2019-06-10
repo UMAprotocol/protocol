@@ -135,10 +135,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
-        initializeOnce(phaseLength);
-        inflationRate = _inflationRate;
-        gatPercentage = _gatPercentage;
-        require(gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+        initializeOnce(phaseLength, _gatPercentage, _inflationRate);
         votingToken = VotingToken(_votingToken);
         finder = Finder(_finder);
     }
@@ -417,12 +414,15 @@ contract Voting is Testable, MultiRole, OracleInterface {
      * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
      * Will revert if called again.
      */
-    function initializeOnce(uint phaseLength) public {
+    function initializeOnce(uint phaseLength, FixedPoint.Unsigned memory _gatPercentage, FixedPoint.Unsigned memory _inflationRate) public {
         require(!initialized, "Only the constructor should call this method");
         initialized = true;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
         voteTiming.init(phaseLength);
+        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+        gatPercentage = _gatPercentage;
+        inflationRate = _inflationRate;
     }
 
     /*
