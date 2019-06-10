@@ -355,6 +355,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
         }
 
         // Round must be updated (if possible) for the voter to retrieve rewards.
+        // Note: this could be done only when the voter is trying to retrieve a reward for the most recently completed
+        // round, but it makes the logic a bit simpler to just do it in all cases.
         _updateRound(blockTime);
 
         Round storage round = rounds[roundId];
