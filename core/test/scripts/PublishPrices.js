@@ -1,8 +1,20 @@
 const PublishPrices = require("../../scripts/PublishPrices.js");
 const assertPackage = require("assert");
+const identifiers = require("../../config/identifiers");
+const identifiersTest = require("../../config/identifiersTest");
 
 contract("scripts/PublishPrices.js", function(accounts) {
+  const verifyAllConfigs = function(config) {
+    for (const identifierConfig of Object.values(config)) {
+      PublishPrices.verifyFeedConfig(identifierConfig.uploaderConfig);
+    }
+  };
+
   it("verifyFeedConfig", async function() {
+    // Verify that the checked in configs are valid.
+    verifyAllConfigs(identifiers);
+    verifyAllConfigs(identifiersTest);
+
     const validConfig = {
       publishInterval: "900",
       minDelay: "0",
