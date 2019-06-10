@@ -28,7 +28,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
 
     FixedPoint.Unsigned private fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
 
-    uint private weeklyDelayFee;
+    FixedPoint.Unsigned private weeklyDelayFee; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
     mapping(address => FixedPoint.Unsigned) private finalFees;
     uint private constant SECONDS_PER_WEEK = 604800;
 
@@ -51,16 +51,6 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
 
-    /**
-     * @dev Sets a new weekly delay fee
-     */ 
-    function setWeeklyDelayFee(uint newWeeklyDelayFee) 
-        external 
-        onlyRoleHolder(uint(Roles.Governance)) 
-    {
-        weeklyDelayFee = newWeeklyDelayFee;
-    }
-
     function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc) 
         external 
         view 
@@ -70,6 +60,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
         regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
+        // `weeklyDelayFee` is already scaled up.
         latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
@@ -95,7 +86,17 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         fixedOracleFeePerSecond = newOracleFee;
         emit NewFixedOracleFeePerSecond(newOracleFee);
     }
-    
+
+    /**
+     * @dev Sets a new weekly delay fee
+     */ 
+    function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) 
+        public 
+        onlyRoleHolder(uint(Roles.Governance)) 
+    {
+        weeklyDelayFee = newWeeklyDelayFee;
+    }
+
     /**
      * @dev Sets a new final fee for a particular currency
      */ 
