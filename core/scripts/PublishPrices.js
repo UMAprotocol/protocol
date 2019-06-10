@@ -283,7 +283,9 @@ async function runExport() {
   }
 }
 
-module.exports = async function(callback) {
+runExport.verifyFeedConfig = verifyFeedConfig;
+runExport.run = async function(callback) {
   await runExport();
   callback();
 };
+module.exports = runExport;
