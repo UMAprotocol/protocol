@@ -370,7 +370,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
         FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
             votingToken.balanceOfAt(msg.sender, snapshotId));
 
-        // Compute the total amount of reward that will be issues for each of the votes in the round.
+        // Compute the total amount of reward that will be issued for each of the votes in the round.
         FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
         FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
 
@@ -407,7 +407,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
-            votingToken.mint(msg.sender, totalRewardToIssue.value);
+            require(votingToken.mint(msg.sender, totalRewardToIssue.value));
         }
     }
 
