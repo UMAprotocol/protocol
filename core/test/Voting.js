@@ -55,6 +55,10 @@ contract("Voting", function(accounts) {
     await voting.setCurrentTime(currentTime.add(secondsPerDay));
   };
 
+  const setNewInflationRate = async inflationRate => {
+    await voting.setInflationRate({ value: inflationRate.toString() });
+  };
+
   before(async function() {
     voting = await Voting.deployed();
     votingToken = await VotingToken.deployed();
@@ -71,6 +75,9 @@ contract("Voting", function(accounts) {
 
     // Mint 0.1 tokens to the last account so that its vote would not reach the GAT.
     await votingToken.mint(account4, web3.utils.toWei(".1", "ether"));
+
+    // Set the inflation rate to 0 by default, so the balances stay fixed until inflation is tested.
+    await setNewInflationRate("0");
 
     // Register derivative with Registry.
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, account1);
@@ -762,5 +769,135 @@ contract("Voting", function(accounts) {
     // Unregistered derivatives can't retrieve prices.
     assert(await didContractThrow(voting.hasPrice(identifier, time, { from: unregisteredDerivative })));
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredDerivative })));
+  });
+
+  it("Basic Inflation", async function() {
+    // Set the inflation rate to 100% (for ease of computation).
+    await setNewInflationRate(web3.utils.toWei("1", "ether"));
+
+    const identifier = web3.utils.utf8ToHex("basic-inflation");
+    const time1 = "1000";
+
+    // Cache balances for later comparison.
+    const initialAccount1Balance = await votingToken.balanceOf(account1);
+    const initialAccount2Balance = await votingToken.balanceOf(account2);
+    const initialAccount3Balance = await votingToken.balanceOf(account3);
+    const initialAccount4Balance = await votingToken.balanceOf(account4);
+    const initialTotalSupply = await votingToken.totalSupply();
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
+    await moveToNextRound();
+
+    // Commit votes.
+    const losingPrice = 123;
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(losingPrice, salt1);
+    await voting.commitVote(identifier, time1, hash1, { from: account1 });
+
+    // Both account 2 and 3 vote for 456.
+    const winningPrice = 456;
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(winningPrice, salt2);
+    await voting.commitVote(identifier, time1, hash2, { from: account2 });
+
+    const salt3 = getRandomUnsignedInt();
+    const hash3 = web3.utils.soliditySha3(winningPrice, salt3);
+    await voting.commitVote(identifier, time1, hash3, { from: account3 });
+
+    // Reveal the votes.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time1, losingPrice, salt1, { from: account1 });
+    await voting.revealVote(identifier, time1, winningPrice, salt2, { from: account2 });
+    await voting.revealVote(identifier, time1, winningPrice, salt3, { from: account3 });
+
+    // Move to the next round to begin retrieving rewards.
+    await moveToNextRound();
+
+    await voting.retrieveRewards({ from: account1 });
+    await voting.retrieveRewards({ from: account2 });
+    await voting.retrieveRewards({ from: account3 });
+    await voting.retrieveRewards({ from: account4 });
+
+    // account1 is not rewarded because account1 was wrong.
+    assert.equal((await votingToken.balanceOf(account1)).toString(), initialAccount1Balance.toString());
+
+    // Accounts 2 and 3 split the 100% token inflation since each contributed the same number of tokens to the correct
+    // answer.
+    assert.equal(
+      (await votingToken.balanceOf(account2)).toString(),
+      initialAccount2Balance.add(initialTotalSupply.divn(2)).toString()
+    );
+    assert.equal(
+      (await votingToken.balanceOf(account3)).toString(),
+      initialAccount3Balance.add(initialTotalSupply.divn(2)).toString()
+    );
+
+    // account4 is not rewarded because it did not participate.
+    assert.equal((await votingToken.balanceOf(account4)).toString(), initialAccount4Balance.toString());
+
+    // Reset the inflation rate to 0%.
+    await setNewInflationRate("0");
+  });
+
+  it("Reward on commit", async function() {
+    // Set the inflation rate to 100% (for ease of computation).
+    await setNewInflationRate(web3.utils.toWei("1", "ether"));
+
+    const identifier = web3.utils.utf8ToHex("reward-on-commit");
+    const time1 = "1000";
+
+    // Cache balances for later comparison.
+    const initialAccount1Balance = await votingToken.balanceOf(account1);
+    const initialTotalSupply = await votingToken.totalSupply();
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
+    await moveToNextRound();
+
+    // Commit.
+    const price1 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(price1, salt1);
+    await voting.commitVote(identifier, time1, hash1, { from: account1 });
+
+    // Reveal.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time1, price1, salt1, { from: account1 });
+
+    // Request new price to commit to next round.
+    const time2 = "1001";
+    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
+    await moveToNextRound();
+
+    // Commit, which should send the reward.
+    const price2 = getRandomSignedInt();
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(price2, salt2);
+    await voting.commitVote(identifier, time2, hash2, { from: account1 });
+
+    // Check balance after reward.
+    assert.equal(
+      (await votingToken.balanceOf(account1)).toString(),
+      initialAccount1Balance.add(initialTotalSupply).toString()
+    );
+
+    // A call to retrieval should not change the balance since the reward has already been retrieved.
+    await voting.retrieveRewards({ from: account1 });
+    assert.equal(
+      (await votingToken.balanceOf(account1)).toString(),
+      initialAccount1Balance.add(initialTotalSupply).toString()
+    );
+
+    // Clean up vote.
+    await moveToNextPhase();
+    await voting.revealVote(identifier, time2, price2, salt2, { from: account1 });
   });
 });

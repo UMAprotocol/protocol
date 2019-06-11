@@ -38,12 +38,26 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Voting token snapshot ID for this round. If this is 0, no snapshot has been taken.
         uint snapshotId;
+
+        // Inflation rate set for this round.
+        FixedPoint.Unsigned inflationRate;
+    }
+
+    // A particular voter's submission.
+    struct VoteSubmission {
+        // A bytes32 of `0` indicates no commit or a commit that was already revealed.
+        bytes32 committedHash;
+
+        // The value of the vote that was revealed.
+        int revealedVote;
+
+        // Whether the voter revealed their vote (this is to handle valid reveals for 0 prices).
+        bool didReveal;
     }
 
     struct VoteInstance {
-        // Maps (voterAddress) to their committed hash.
-        // A bytes32 of `0` indicates no commit or a commit that was already revealed.
-        mapping(address => bytes32) committedHashes;
+        // Maps (voterAddress) to their submission.
+        mapping(address => VoteSubmission) voteSubmissions;
 
         // The data structure containing the computed voting results.
         ResultComputation.Data resultComputation;
@@ -77,8 +91,17 @@ contract Voting is Testable, MultiRole, OracleInterface {
     // 1 == 100%.
     FixedPoint.Unsigned private gatPercentage;
 
+    // Global setting for the rate of inflation per vote. This is the percentage of the snapshotted total supply that
+    // should be split among the correct voters. Note: this value is used to set per-round inflation at the beginning
+    // of each round.
+    // 1 = 100%
+    FixedPoint.Unsigned private inflationRate;
+
     // Reference to the voting token.
     VotingToken private votingToken;
+
+    // Voter address -> last round that they voted in.
+    mapping(address => uint) private votersLastRound;
 
     // Reference to the Finder.
     Finder private finder;
@@ -86,7 +109,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
     enum Roles {
         // Can set the writer.
         Governance,
-        // Can change parameters and whitelists, such as adding new supported identifiers.
+        // Can change parameters and whitelists, such as adding new supported identifiers or changing the inflation
+        // rate.
+        // TODO: consider splitting this role into smaller roles with narrower permissions. 
         Writer
     }
 
@@ -105,12 +130,12 @@ contract Voting is Testable, MultiRole, OracleInterface {
     constructor(
         uint phaseLength,
         FixedPoint.Unsigned memory _gatPercentage,
+        FixedPoint.Unsigned memory _inflationRate,
         address _votingToken,
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
-        initializeOnce(phaseLength);
-        gatPercentage = _gatPercentage;
+        initializeOnce(phaseLength, _gatPercentage, _inflationRate);
         votingToken = VotingToken(_votingToken);
         finder = Finder(_finder);
     }
@@ -148,7 +173,12 @@ contract Voting is Testable, MultiRole, OracleInterface {
             "This (time, identifier) pair is not being voted on this round");
 
         VoteInstance storage voteInstance = priceResolution.votes[currentRoundId];
-        voteInstance.committedHashes[msg.sender] = hash;
+        voteInstance.voteSubmissions[msg.sender].committedHash = hash;
+
+        if (votersLastRound[msg.sender] != currentRoundId) {
+            retrieveRewards();
+            votersLastRound[msg.sender] = currentRoundId;
+        }
     }
 
     /**
@@ -166,13 +196,13 @@ contract Voting is Testable, MultiRole, OracleInterface {
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
 
         VoteInstance storage voteInstance = _getPriceResolution(identifier, time).votes[roundId];
-        bytes32 hash = voteInstance.committedHashes[msg.sender];
+        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+        bytes32 hash = voteSubmission.committedHash;
 
         // 0 hashes are disallowed in the commit phase, so they indicate a different error.
         require(hash != bytes32(0), "Cannot reveal an uncommitted or previously revealed hash");
-        require(keccak256(abi.encode(price, salt)) == voteInstance.committedHashes[msg.sender],
-                "Committed hash doesn't match revealed price and salt");
-        delete voteInstance.committedHashes[msg.sender];
+        require(keccak256(abi.encode(price, salt)) == hash, "Committed hash doesn't match revealed price and salt");
+        delete voteSubmission.committedHash;
 
         // Get or create a snapshot for this round.
         uint snapshotId = _getOrCreateSnapshotId(roundId);
@@ -180,6 +210,10 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
+
+        // Set the voter's submission.
+        voteSubmission.revealedVote = price;
+        voteSubmission.didReveal = true;
 
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
@@ -296,17 +330,105 @@ contract Voting is Testable, MultiRole, OracleInterface {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
+    /**
+     * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
+     * @dev This method is public because calldata structs are not currently supported by solidity.
+     */
+    function setInflationRate(FixedPoint.Unsigned memory _inflationRate) public onlyRoleHolder(uint(Roles.Writer)) {
+        inflationRate = _inflationRate;
+    }
+
+    /**
+     * @notice Retrieves any rewards the voter is owed.
+     */ 
+    function retrieveRewards() public {
+        uint blockTime = getCurrentTime();
+        uint roundId = votersLastRound[msg.sender];
+
+        if (roundId == voteTiming.computeCurrentRoundId(blockTime)) {
+            // If the last round the voter participated in is the current round, rewards cannot be dispatched until the
+            // round is over.
+            return;
+        }
+
+        // Round must be updated (if possible) for the voter to retrieve rewards.
+        // Note: this could be done only when the voter is trying to retrieve a reward for the most recently completed
+        // round, but it makes the logic a bit simpler to just do it in all cases.
+        _updateRound(blockTime);
+
+        Round storage round = rounds[roundId];
+        uint snapshotId = round.snapshotId;
+
+        // If no snapshot has been created for this round, there are no rewards to dispatch.
+        if (snapshotId == 0) {
+            return;
+        }
+
+        // Get the voter's snapshotted balance.
+        FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
+            votingToken.balanceOfAt(msg.sender, snapshotId));
+
+        // Compute the total amount of reward that will be issued for each of the votes in the round.
+        FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
+        FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
+
+        // Keep track of the voter's accumulated token reward.
+        FixedPoint.Unsigned memory totalRewardToIssue = FixedPoint.Unsigned(0);
+
+        // Loop over all price requests in the round to check for rewards.
+        PriceRequest[] storage priceRequests = round.priceRequests;
+        uint numPriceRequests = priceRequests.length;
+        for (uint i = 0; i < numPriceRequests; i++) {
+
+            // Grab references to the relevant parts of storage.
+            PriceResolution storage priceResolution = _getPriceResolution(
+                priceRequests[i].identifier, priceRequests[i].time);
+            VoteInstance storage voteInstance = priceResolution.votes[roundId];
+            VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+
+            if (priceResolution.lastVotingRound == roundId
+                && voteSubmission.didReveal
+                && voteInstance.resultComputation.wasVoteCorrect(voteSubmission.revealedVote)) {
+                // The price was successfully resolved during the voter's last voting round, the voter revealed and was
+                // correct, so they are elgible for a reward.
+                FixedPoint.Unsigned memory correctTokens = (voteInstance.resultComputation.
+                    getTotalCorrectlyVotedTokens());
+
+                // Compute the reward and add to the cumulative reward.
+                FixedPoint.Unsigned memory reward = snapshotBalance.mul(totalRewardPerVote).div(correctTokens);
+                totalRewardToIssue = totalRewardToIssue.add(reward);
+            }
+
+            // Delete the submission to capture any refund and clean up storage.
+            delete voteInstance.voteSubmissions[msg.sender];
+        }
+
+        // Issue any accumulated rewards.
+        if (totalRewardToIssue.isGreaterThan(0)) {
+            require(votingToken.mint(msg.sender, totalRewardToIssue.value));
+        }
+    }
+
     /*
      * @notice Do not call this function externally.
      * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
      * Will revert if called again.
      */
-    function initializeOnce(uint phaseLength) public {
+    function initializeOnce(
+        uint phaseLength,
+        FixedPoint.Unsigned memory _gatPercentage,
+        FixedPoint.Unsigned memory _inflationRate
+    )
+        public
+    {
         require(!initialized, "Only the constructor should call this method");
         initialized = true;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
         voteTiming.init(phaseLength);
+        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+        gatPercentage = _gatPercentage;
+        inflationRate = _inflationRate;
     }
 
     /*
@@ -457,8 +579,14 @@ contract Voting is Testable, MultiRole, OracleInterface {
             } else {
                 // If the vote cannot be resolved, push the request into the current round.
                 _addPriceRequestToRound(nextVotingRoundId, priceRequest);
+
+                // Zero out the price request to reduce gas costs.
+                delete lastActiveVotingRound.priceRequests[i];
             }
         }
+
+        // Set the round inflation rate to the current global inflation rate.
+        rounds[nextVotingRoundId].inflationRate = inflationRate;
 
         // Update the stored round to the current one.
         voteTiming.updateRoundId(blockTime);
