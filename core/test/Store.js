@@ -16,7 +16,7 @@ contract("Store", function(accounts) {
   const erc20TokenOwner = accounts[2];
 
   const identifier = web3.utils.utf8ToHex("id");
-  const tokenAddr = "0x249bB6CF1751c221058749a9B571F1Fb0a621443";
+  const arbitraryTokenAddr = web3.utils.randomHex(20);
 
   // TODO Add test final fee for test identifier
 
@@ -69,8 +69,8 @@ contract("Store", function(accounts) {
 
   it("Final fees", async function() {
     //Add final fee and confirm
-    await store.setFinalFee(tokenAddr, { value: web3.utils.toWei("5", "ether") }, { from: owner });
-    let fee = await store.computeFinalFee(tokenAddr);
+    await store.setFinalFee(arbitraryTokenAddr, { value: web3.utils.toWei("5", "ether") }, { from: owner });
+    const fee = await store.computeFinalFee(arbitraryTokenAddr);
     assert.equal(fee.value, web3.utils.toWei("5", "ether"));
   });
 
