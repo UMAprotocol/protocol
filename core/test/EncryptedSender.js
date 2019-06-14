@@ -98,8 +98,8 @@ contract("EncryptedSender", function(accounts) {
     const recoveredPublicKey = recoverPublicKey(web3, retrievedSignature, signatureMessage);
 
     // Prepare message to send.
-    const salt = getRandomUnsignedInt(web3).toString();
-    const price = getRandomSignedInt(web3).toString();
+    const salt = getRandomUnsignedInt().toString();
+    const price = getRandomSignedInt().toString();
     const messageToEncrypt = salt + "," + price;
 
     // Encrypt the message.
