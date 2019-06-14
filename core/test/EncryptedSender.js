@@ -4,7 +4,6 @@ const {
   signMessage,
   recoverAddress,
   recoverPublicKey,
-  encryptMessage,
   decryptMessage,
   encryptMessageFromSignature
 } = require("../utils/Crypto.js");
