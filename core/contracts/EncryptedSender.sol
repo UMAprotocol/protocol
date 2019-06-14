@@ -19,8 +19,6 @@ import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
  * not delete the previous message for a particular topic.
  */
 contract EncryptedSender {
-    event Log(bytes32 a, bytes32 b);
-
     struct Recipient {
         // This maps from a hash to an encrypted message.
         // Note: the hash is a hash of the "subject" or "topic" of the message.
