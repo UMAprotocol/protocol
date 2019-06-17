@@ -65,7 +65,7 @@ addPublicNetwork(networks, "mainnet", 1);
 // CI requires a specific port and network ID because of peculiarities of the environment.
 addLocalNetwork(networks, "ci", { port: 8545, network_id: 1234 });
 
-// Develop and test networks are exactly the same and both use the default parameters.
+// Develop and test networks are exactly the same and both use the default local parameters.
 addLocalNetwork(networks, "develop");
 addLocalNetwork(networks, "test");
 
