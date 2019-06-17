@@ -1,11 +1,6 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
-const {
-  decryptMessage,
-  encryptMessage,
-  addressFromPublicKey,
-  recoverPublicKey
-} = require("../utils/Crypto.js");
+const { decryptMessage, encryptMessage, addressFromPublicKey, recoverPublicKey } = require("../utils/Crypto.js");
 const EthCrypto = require("eth-crypto");
 
 const EncryptedSender = artifacts.require("EncryptedSender");
@@ -91,10 +86,7 @@ contract("EncryptedSender", function(accounts) {
     const message = salt + "," + price;
 
     // Encrypt the message.
-    const encryptedMessage = await encryptMessage(
-      receiverPubKey,
-      message
-    );
+    const encryptedMessage = await encryptMessage(receiverPubKey, message);
 
     // Hash topic for lookup.
     const identifier = web3.utils.utf8ToHex("identifier");
