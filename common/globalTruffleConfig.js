@@ -25,7 +25,7 @@ function addPublicNetwork(networks, name, networkId) {
     gasPrice: gasPx
   };
 
-  // Set GCS ManagedSecretProvider network.
+  // GCS ManagedSecretProvider network.
   networks[name] = {
     ...options,
     provider: new ManagedSecretProvider(GckmsConfig, `https://kovan.infura.io/v3/${infuraApiKey}`, 0, GckmsConfig.length)
