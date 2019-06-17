@@ -12,8 +12,8 @@ const mnemonic = process.env.MNEMONIC
 const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "9317010b1b6343558b7eff9d25934f38";
 
 // Default options
-const gasPx = 20000000000;
-const gas = 6720000;
+const gasPx = 20000000000; // 20 gwei
+const gas = 6720000; // Conservative estimate of the block gas limit.
 
 // Adds a public network.
 // Note: All public networks can be accessed using keys from GCS using the ManagedSecretProvider or using a mnemonic in the
