@@ -9,6 +9,10 @@
   },
   "author": "UMA Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UMAprotocol/protocol.git"
+  },
   "devDependencies": {
     "prettier": "^1.16.4",
     "solhint": "^1.5.0",
@@ -36,5 +40,8 @@
     "web3-core-promievent": "1.0.0-beta.37",
     "web3-eth-abi": "1.0.0-beta.37",
     "web3-utils": "1.0.0-beta.37"
+  },
+  "optionalDependencies": {
+    "solidity-docgen": "github:UMAprotocol/solidity-docgen#master"
   }
 }
