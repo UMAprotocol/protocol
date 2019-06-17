@@ -1,11 +1,10 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
 const {
-  signMessage,
-  recoverAddress,
-  recoverPublicKey,
   decryptMessage,
-  encryptMessageFromSignature
+  encryptMessage,
+  addressFromPublicKey,
+  recoverPublicKey
 } = require("../utils/Crypto.js");
 const EthCrypto = require("eth-crypto");
 
@@ -17,10 +16,9 @@ contract("EncryptedSender", function(accounts) {
   // The receiving account is created in before().
   let receiverAccount;
   let receiverPrivKey;
+  let receiverPubKey;
 
   let encryptedSender;
-
-  const signatureMessage = "EncryptedSender";
 
   before(async function() {
     encryptedSender = await EncryptedSender.new();
@@ -30,12 +28,19 @@ contract("EncryptedSender", function(accounts) {
     const newAccount = web3.eth.accounts.create();
     receiverPrivKey = newAccount.privateKey;
     receiverAccount = newAccount.address;
+    receiverPubKey = recoverPublicKey(receiverPrivKey);
     const password = "password";
     await web3.eth.personal.importRawKey(receiverPrivKey, password);
     assert.isTrue(await web3.eth.personal.unlockAccount(receiverAccount, password, 3600));
 
     // Fund the new account
     await web3.eth.sendTransaction({ from: accounts[9], to: receiverAccount, value: web3.utils.toWei("5", "ether") });
+  });
+
+  it("Encrypt Decrypt", async function() {
+    const message = web3.utils.randomHex(100);
+    const encryptedMessage = await encryptMessage(receiverPubKey, message);
+    assert.equal(await decryptMessage(receiverPrivKey, encryptedMessage), message);
   });
 
   it("Auth", async function() {
@@ -62,51 +67,33 @@ contract("EncryptedSender", function(accounts) {
     );
   });
 
-  it("Signature validation", async function() {
-    // Construct and send the expected signature to the EncryptedSender.
-    const validSignature = await signMessage(web3, receiverAccount, signatureMessage);
+  it("Key validation", async function() {
+    // Verify that the address can be correctly recovered offchain.
+    assert.equal(addressFromPublicKey(receiverPubKey), receiverAccount);
 
-    // If the valid signature is sent by the wrong address, the call should fail.
-    assert(await didContractThrow(encryptedSender.setSignature(validSignature, { from: senderAccount })));
+    // If the valid key is sent by the wrong address, the call should fail.
+    assert(await didContractThrow(encryptedSender.setPublicKey(receiverPubKey, { from: senderAccount })));
 
-    // If the incorrect message is signed, the call should fail.
-    const invalidMessageSignature = await signMessage(web3, receiverAccount, "InvalidMessage");
-    assert(await didContractThrow(encryptedSender.setSignature(invalidMessageSignature, { from: senderAccount })));
-
-    // Valid signature should succeed.
-    await encryptedSender.setSignature(validSignature, { from: receiverAccount });
+    // Valid key should succeed.
+    await encryptedSender.setPublicKey(receiverPubKey, { from: receiverAccount });
   });
 
   it("Send a message", async function() {
-    // This is the standard signed message required by the contract.
-    const standardSignedMessage = "EncryptedSender";
+    // // Set the public key for the receiver.
+    await encryptedSender.setPublicKey(receiverPubKey, { from: receiverAccount });
 
-    // Construct and send the expected signature to the EncryptedSender.
-    const signatureToSend = await signMessage(web3, receiverAccount, signatureMessage);
-    await encryptedSender.setSignature(signatureToSend, { from: receiverAccount });
-
-    // Verify the correct signature can be retrieved.
-    const retrievedSignature = await encryptedSender.getSignature(receiverAccount);
-    assert.equal(retrievedSignature, signatureToSend);
-
-    // Verify that the correct address is recovered from the signature.
-    const recoveredAddress = recoverAddress(web3, retrievedSignature, signatureMessage);
-    assert.equal(recoveredAddress, receiverAccount);
-
-    // Recover the public key from the signature.
-    const recoveredPublicKey = recoverPublicKey(web3, retrievedSignature, signatureMessage);
+    // Verify the correct public key can be retrieved.
+    assert.equal(await encryptedSender.getPublicKey(receiverAccount), receiverPubKey);
 
     // Prepare message to send.
     const salt = getRandomUnsignedInt().toString();
     const price = getRandomSignedInt().toString();
-    const messageToEncrypt = salt + "," + price;
+    const message = salt + "," + price;
 
     // Encrypt the message.
-    const encryptedMessage = await encryptMessageFromSignature(
-      web3,
-      retrievedSignature,
-      signatureMessage,
-      messageToEncrypt
+    const encryptedMessage = await encryptMessage(
+      receiverPubKey,
+      message
     );
 
     // Hash topic for lookup.
@@ -123,6 +110,6 @@ contract("EncryptedSender", function(accounts) {
     const decryptedMessage = await decryptMessage(receiverPrivKey, pulledMessage);
 
     // decryptedMessage should match the plaintext message from above.
-    assert.equal(decryptedMessage, messageToEncrypt);
+    assert.equal(decryptedMessage, message);
   });
 });
