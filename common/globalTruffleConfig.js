@@ -28,7 +28,12 @@ function addPublicNetwork(networks, name, networkId) {
   // GCS ManagedSecretProvider network.
   networks[name] = {
     ...options,
-    provider: new ManagedSecretProvider(GckmsConfig, `https://kovan.infura.io/v3/${infuraApiKey}`, 0, GckmsConfig.length)
+    provider: new ManagedSecretProvider(
+      GckmsConfig,
+      `https://kovan.infura.io/v3/${infuraApiKey}`,
+      0,
+      GckmsConfig.length
+    )
   };
 
   // Mnemonic network.
@@ -36,7 +41,7 @@ function addPublicNetwork(networks, name, networkId) {
     ...options,
     provider: new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/${infuraApiKey}`, 0, 2)
   };
-};
+}
 
 // Adds a local network.
 // Note: local networks generally have more varied parameters, so the user can override any network option by passing
@@ -47,13 +52,13 @@ function addLocalNetwork(networks, name, customOptions) {
     network_id: "*",
     port: 9545,
     gas: gas
-  }
+  };
 
   networks[name] = {
     ...defaultOptions,
     ...customOptions
-  }
-};
+  };
+}
 
 let networks = {};
 
