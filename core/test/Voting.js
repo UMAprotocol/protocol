@@ -1,5 +1,6 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { RegistryRolesEnum } = require("../utils/Enums.js");
+const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
@@ -21,19 +22,6 @@ contract("Voting", function(accounts) {
 
   const COMMIT_PHASE = "0";
   const REVEAL_PHASE = "1";
-
-  const getRandomSignedInt = () => {
-    // Generate a random unsigned 256 bit int.
-    const unsignedValue = web3.utils.toBN(web3.utils.randomHex(32));
-
-    // The signed range is just the unsigned range decreased by 2^255.
-    const signedOffset = web3.utils.toBN(2).pow(web3.utils.toBN(255));
-    return unsignedValue.sub(signedOffset);
-  };
-
-  const getRandomUnsignedInt = () => {
-    return web3.utils.toBN(web3.utils.randomHex(32));
-  };
 
   const moveToNextRound = async () => {
     const phase = await voting.getVotePhase();
