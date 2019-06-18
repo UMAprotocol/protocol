@@ -52,6 +52,7 @@ class VotingSystem {
 
 async function runVoting() {
   try {
+    console.log("Running Voting system");
     const voting = await Voting.deployed();
     const votingSystem = new VotingSystem(voting, {});
     await votingSystem.runIteration();
