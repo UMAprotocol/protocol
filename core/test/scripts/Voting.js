@@ -2,7 +2,8 @@ const VotingScript = require("../../scripts/Voting.js");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const Registry = artifacts.require("Registry");
-const { RegistryRolesEnum } = require("../../utils/Enums.js");
+const { RegistryRolesEnum, VotePhasesEnum } = require("../../utils/Enums.js");
+const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
 contract("scripts/Voting.js", function(accounts) {
   let voting;
@@ -11,19 +12,10 @@ contract("scripts/Voting.js", function(accounts) {
 
   const account1 = accounts[0];
 
-  const phaseLength = web3.utils.toBN(86400);
-
-  const moveToNextPhase = async () => {
-    const currentTime = await voting.getCurrentTime();
-    await voting.setCurrentTime(currentTime.add(phaseLength));
-  };
-
   before(async function() {
     voting = await Voting.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
-
-    await moveToNextPhase();
 
     // Register "derivative" with Registry, so we can make price requests in this test.
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, account1);
@@ -35,6 +27,11 @@ contract("scripts/Voting.js", function(accounts) {
     await votingToken.mint(account1, web3.utils.toWei("1", "ether"));
   });
 
+  beforeEach(async function() {
+    // Each test starts at the beginning of a fresh round.
+    await moveToNextRound(voting);
+  });
+
   it("basic case", async function() {
     const identifier = web3.utils.utf8ToHex("one-voter");
     const time = "1000";
@@ -42,7 +39,9 @@ contract("scripts/Voting.js", function(accounts) {
     // Request an Oracle price.
     await voting.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
-    await moveToNextPhase();
+
+    // Move to the round in which voters will vote on the requested price.
+    await moveToNextRound(voting);
 
     const pendingRequest = (await voting.getPendingRequests())[0];
     const roundId = await voting.getCurrentRoundId();
@@ -61,12 +60,14 @@ contract("scripts/Voting.js", function(accounts) {
     await votingSystem.runIteration();
     assert.equal(persistence[persistenceKey].price, hardcodedPrice);
 
-    await moveToNextPhase();
+    // Move to the reveal phase.
+    await moveToNextPhase(voting);
+
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
     assert.isFalse({ pendingRequest, roundId } in persistence);
 
-    await moveToNextPhase();
+    await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
     assert.equal(await voting.getPrice(identifier, time), hardcodedPrice);
   });
