@@ -264,7 +264,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         priceRequests[priceRequestId] = PriceRequest({
             identifier: identifier,
             time: time,
-            resolvedPrice: 0,
             lastVotingRound: nextRoundId
         });
 
@@ -467,7 +466,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
                 return (false, 0, "Price was never requested");
             }
 
-            VoteInstance storage voteInstance = priceResolution.votes[resolutionVotingRound];
+            // Grab the resolution voting round to compute the resolved price.
+            VoteInstance storage voteInstance = priceRequest.voteInstances[resolutionVotingRound];
             (, int pastResolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
                 _computeGat(resolutionVotingRound));
 
@@ -576,7 +576,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
             VoteInstance storage voteInstance = priceRequest.voteInstances[lastActiveVotingRoundId];
 
-            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+            (bool isResolved,) = voteInstance.resultComputation.getResolvedPrice(
                 _computeGat(lastActiveVotingRoundId));
 
             if (!isResolved) {
