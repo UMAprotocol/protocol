@@ -52,11 +52,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // A bytes32 of `0` indicates no commit or a commit that was already revealed.
         bytes32 commit;
 
-        // The value of the vote that was revealed.
-        int reveal;
-
-        // Whether the voter revealed their vote (this is to handle valid reveals for 0 prices).
-        bool didReveal;
+        // The hash of the value that was revealed.
+        // Note: this is only used for computation of rewards.
+        bytes32 revealHash;
     }
 
     struct Round {
@@ -214,8 +212,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
 
         // Set the voter's submission.
-        voteSubmission.reveal = price;
-        voteSubmission.didReveal = true;
+        voteSubmission.revealHash = keccak256(abi.encode(price));
 
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
@@ -399,11 +396,15 @@ contract Voting is Testable, MultiRole, OracleInterface {
             VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
             VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
-            // Note: The vote.didReveal condition checks two conditions.
-            // That the voter revealed their vote AND that the vote resolved this round.
-            // If the vote did not resolve, priceRequestIds[i] is 0x0 and vote.didReveal == false.
-            if (voteSubmission.didReveal &&
-                voteInstance.resultComputation.wasVoteCorrect(voteSubmission.reveal)) {
+            // Note: wasVoteCorrect effectively checks three conditions:
+            // 1. That the voter revealed their vote. If they did not, the hash will be 0x0 and there is no known input
+            //    to generate that hash output, so the whatever the resultComputation compares it to will be false.
+            // 2. That the vote was resolved. If the vote was not resolved, priceRequestIds[i] is 0x0, which means that
+            //    voteHash will be 0x0 (since that priceId was never used). As seen in 1, a 0x0 voteHash will always
+            //    produce a false output.
+            // 3. That the reveal was correct. If the reveal was incorrect, resultComputation should detect a hash
+            //    mismatch and return false.
+            if (voteInstance.resultComputation.wasVoteCorrect(voteSubmission.revealHash)) {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed and was
                 // correct, so they are elgible for a reward.
                 FixedPoint.Unsigned memory correctTokens = voteInstance.resultComputation.
@@ -415,8 +416,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
             }
 
             // Delete the submission to capture any refund and clean up storage.
-            delete voteSubmission.reveal;
-            delete voteSubmission.didReveal;
+            delete voteSubmission.revealHash;
         }
 
         // Issue any accumulated rewards.
