@@ -1,6 +1,7 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
-const { RegistryRolesEnum } = require("../utils/Enums.js");
+const { RegistryRolesEnum, VotePhasesEnum } = require("../utils/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
+const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
@@ -17,31 +18,6 @@ contract("Voting", function(accounts) {
   const account4 = accounts[3];
   const registeredDerivative = accounts[4];
   const unregisteredDerivative = accounts[5];
-
-  const secondsPerDay = web3.utils.toBN(86400);
-
-  const COMMIT_PHASE = "0";
-  const REVEAL_PHASE = "1";
-
-  const moveToNextRound = async () => {
-    const phase = await voting.getVotePhase();
-    const currentTime = await voting.getCurrentTime();
-    let timeIncrement;
-    if (phase.toString() === COMMIT_PHASE) {
-      // Commit phase, so it will take 2 days to move to the next round.
-      timeIncrement = secondsPerDay.muln(2);
-    } else {
-      // Reveal phase, so it will take 1 day to move to the next round.
-      timeIncrement = secondsPerDay;
-    }
-
-    await voting.setCurrentTime(currentTime.add(timeIncrement));
-  };
-
-  const moveToNextPhase = async () => {
-    const currentTime = await voting.getCurrentTime();
-    await voting.setCurrentTime(currentTime.add(secondsPerDay));
-  };
 
   const setNewInflationRate = async inflationRate => {
     await voting.setInflationRate({ value: inflationRate.toString() });
@@ -74,18 +50,18 @@ contract("Voting", function(accounts) {
 
   it("Vote phasing", async function() {
     // Reset the rounds.
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Rounds should start with Commit.
-    assert.equal((await voting.getVotePhase()).toString(), COMMIT_PHASE);
+    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
 
     // Shift of one phase should be Reveal.
-    await moveToNextPhase();
-    assert.equal((await voting.getVotePhase()).toString(), REVEAL_PHASE);
+    await moveToNextPhase(voting);
+    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.REVEAL);
 
     // A second shift should go back to commit.
-    await moveToNextPhase();
-    assert.equal((await voting.getVotePhase()).toString(), COMMIT_PHASE);
+    await moveToNextPhase(voting);
+    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
   });
 
   it("One voter, one request", async function() {
@@ -98,8 +74,8 @@ contract("Voting", function(accounts) {
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     assert.equal((await voting.getCurrentRoundId()).toString(), "2");
-    assert.equal((await voting.getVotePhase()).toString(), COMMIT_PHASE);
-    await moveToNextRound();
+    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
+    await moveToNextRound(voting);
 
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
@@ -123,7 +99,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
 
     // Move to the reveal phase.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
 
     // Can't commit during the reveal phase.
     assert(await didContractThrow(voting.commitVote(identifier, time, newHash)));
@@ -150,7 +126,7 @@ contract("Voting", function(accounts) {
     await voting.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     const price1 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
@@ -171,7 +147,7 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash3, { from: account3 });
 
     // Move to the reveal phase.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
 
     // They can't reveal each other's votes.
     assert(await didContractThrow(voting.revealVote(identifier, time, price2, salt2, { from: account1 })));
@@ -209,7 +185,7 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier2, time1, { from: registeredDerivative });
 
     // Move to voting round.
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     const price1 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
@@ -223,7 +199,7 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier2, time1, hash2);
 
     // Move to the reveal phase.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
 
     // Can't reveal the wrong combos.
     assert(await didContractThrow(voting.revealVote(identifier1, time2, price2, salt2)));
@@ -257,7 +233,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredDerivative })));
 
     // Move to the voting round.
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit vote 1.
     const price1 = getRandomSignedInt();
@@ -278,7 +254,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredDerivative })));
 
     // Move to the reveal phase of the voting period.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
 
     // Reveal both votes.
     await voting.revealVote(identifier1, time1, price1, salt1);
@@ -291,7 +267,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredDerivative })));
 
     // Move past the voting round.
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Note: all voting results are currently hardcoded to 1.
     assert.isTrue(await voting.hasPrice(identifier1, time1, { from: registeredDerivative }));
@@ -307,7 +283,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Future price requests disallowed", async function() {
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     const startingTime = await voting.getCurrentTime();
     const identifier = web3.utils.utf8ToHex("future-request");
@@ -325,19 +301,19 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier, timeSucceed, { from: registeredDerivative });
 
     // Finalize this vote.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
     await voting.commitVote(identifier, timeSucceed, hash);
 
     // Move to reveal phase and reveal vote.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, timeSucceed, price, salt);
   });
 
   it("Request timing", async function() {
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     const startingTime = await voting.getCurrentTime();
     const identifier = web3.utils.utf8ToHex("request-timing");
@@ -365,7 +341,7 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
 
     // Move to the voting round.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     const votingRoundTime = (await voting.getCurrentTime()).toNumber();
 
     // Expected resolution time should be after the
@@ -385,10 +361,10 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash);
 
     // Move to reveal phase and reveal vote.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt);
 
-    await moveToNextRound();
+    await moveToNextRound(voting);
     const postVoteTime = (await voting.getCurrentTime()).toNumber();
     assert.isAtMost(preRoundExpectedResolution, postVoteTime);
 
@@ -398,7 +374,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Retrieval timing", async function() {
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     const identifier = web3.utils.utf8ToHex("retrieval-timing");
     const time = "1000";
@@ -413,7 +389,7 @@ contract("Voting", function(accounts) {
     // Cannot get the price before the voting round begins.
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
 
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Cannot get the price while the voting is ongoing.
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
@@ -425,13 +401,13 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash);
 
     // Move to reveal phase and reveal vote.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt);
 
     // Cannot get the price during the reveal phase.
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
 
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // After the voting round is over, the price should be retrievable.
     assert.equal(
@@ -441,7 +417,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Pending Requests", async function() {
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     const startingTime = await voting.getCurrentTime();
     const identifier1 = web3.utils.utf8ToHex("pending-requests1");
@@ -464,7 +440,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getPendingRequests()).length, 0);
 
     // Pending requests should be have a single entry now that voting has started.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.equal((await voting.getPendingRequests()).length, 1);
 
     // Add a new request during the voting round.
@@ -474,7 +450,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getPendingRequests()).length, 1);
 
     // Move to next round and roll the first request over.
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Pending requests should be 2 because one vote was rolled over and the second was dispatched after the previous
     // voting round started.
@@ -492,7 +468,7 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier2, time2, hash2);
 
     // Pending requests should still have a single entry in the reveal phase.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     assert.equal((await voting.getPendingRequests()).length, 2);
 
     // Reveal vote.
@@ -500,7 +476,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier2, time2, price2, salt2);
 
     // Pending requests should be empty after the voting round ends and the price is resolved.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.equal((await voting.getPendingRequests()).length, 0);
   });
 
@@ -532,7 +508,7 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit vote.
     const price = 123;
@@ -541,12 +517,12 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash);
 
     // Reveal the vote.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt);
 
     // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
     // tokens to exceed the GAT.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.equal(
       (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
       price.toString()
@@ -562,7 +538,7 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit votes.
     const price1 = 123;
@@ -576,17 +552,17 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
     // Reveal the votes.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
     await voting.revealVote(identifier, time, price2, salt2, { from: account2 });
 
     // Should not have the price since the vote was equally split.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
 
     // Cleanup: resolve the vote this round.
     await voting.commitVote(identifier, time, hash1, { from: account1 });
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
   });
 
@@ -599,7 +575,7 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit votes.
     const losingPrice = 123;
@@ -619,13 +595,13 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash3, { from: account3 });
 
     // Reveal the votes.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
     await voting.revealVote(identifier, time, winningPrice, salt2, { from: account2 });
     await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
 
     // Price should resolve to the one that 2 and 3 voted for.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.equal(
       (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
       winningPrice.toString()
@@ -641,7 +617,7 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit vote.
     const price = 123;
@@ -650,11 +626,11 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash, { from: account4 });
 
     // Reveal the vote.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt, { from: account4 });
 
     // Since the GAT was not hit, the price should not resolve.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
 
     // With a larger vote, the GAT should be hit and the price should resolve.
@@ -663,11 +639,11 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash, { from: account1 });
 
     // Reveal votes.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt, { from: account4 });
     await voting.revealVote(identifier, time, price, salt, { from: account1 });
 
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.equal(
       (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
       price.toString()
@@ -683,7 +659,7 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit votes.
 
@@ -709,7 +685,7 @@ contract("Voting", function(accounts) {
     await votingToken.transfer(account3, web3.utils.toWei("0.6", "ether"), { from: account1 });
 
     // Move to the reveal phase, where the snapshot should be taken.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
 
     // account2's reveal should create a snapshot since it's the first action of the reveal.
     await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
@@ -722,7 +698,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
 
     // The resulting price should be the winningPrice that account3 voted for.
-    await moveToNextRound();
+    await moveToNextRound(voting);
     assert.equal(
       (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
       winningPrice.toString()
@@ -741,14 +717,14 @@ contract("Voting", function(accounts) {
 
     // Request the price and resolve the price.
     voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
     const winningPrice = 123;
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(winningPrice, salt);
     await voting.commitVote(identifier, time, hash, { from: account1 });
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Sanity check that registered derivatives can retrieve prices.
     assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
@@ -778,7 +754,7 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time1, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit votes.
     const losingPrice = 123;
@@ -798,13 +774,13 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time1, hash3, { from: account3 });
 
     // Reveal the votes.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time1, losingPrice, salt1, { from: account1 });
     await voting.revealVote(identifier, time1, winningPrice, salt2, { from: account2 });
     await voting.revealVote(identifier, time1, winningPrice, salt3, { from: account3 });
 
     // Move to the next round to begin retrieving rewards.
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     await voting.retrieveRewards({ from: account1 });
     await voting.retrieveRewards({ from: account2 });
@@ -848,7 +824,7 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time1, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit.
     const price1 = getRandomSignedInt();
@@ -857,13 +833,13 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time1, hash1, { from: account1 });
 
     // Reveal.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time1, price1, salt1, { from: account1 });
 
     // Request new price to commit to next round.
     const time2 = "1001";
     await voting.requestPrice(identifier, time2, { from: registeredDerivative });
-    await moveToNextRound();
+    await moveToNextRound(voting);
 
     // Commit, which should send the reward.
     const price2 = getRandomSignedInt();
@@ -885,7 +861,7 @@ contract("Voting", function(accounts) {
     );
 
     // Clean up vote.
-    await moveToNextPhase();
+    await moveToNextPhase(voting);
     await voting.revealVote(identifier, time2, price2, salt2, { from: account1 });
   });
 });
