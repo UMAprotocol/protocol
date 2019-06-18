@@ -588,6 +588,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
                 // Zero out the price request to reduce gas costs.
                 delete lastActiveVotingRound.priceRequestIds[i];
+
+                // Delete the result computation since it's no longer needed.
+                delete voteInstance.resultComputation;
             }
         }
 
