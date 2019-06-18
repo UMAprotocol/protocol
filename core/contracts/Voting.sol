@@ -448,11 +448,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
             }
 
             VoteInstance storage voteInstance = priceResolution.votes[resolutionVotingRound];
-            (, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+            (, int pastResolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
                 _computeGat(resolutionVotingRound));
 
             // Price has been resolved.
-            return (true, resolvedPrice, "");
+            return (true, pastResolvedPrice, "");
         } else {
             // Price has not yet been resolved.
 
