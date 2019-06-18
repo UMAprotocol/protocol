@@ -38,6 +38,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // The final result of a vote.
         // If lastVotingRound < voteTiming.getLastUpdatedRoundId, vote was resolved.
         int resolvedPrice;
+
+        // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
+        // this is the voting round where this price will be voted on, but not necessarily resolved.
         uint lastVotingRound;
     }
 
