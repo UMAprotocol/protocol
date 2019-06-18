@@ -21,7 +21,6 @@ const getJson = async url => {
 };
 
 async function fetchPrice(request) {
-
   const identifier = request.identifier;
   const time = request.time;
 
@@ -105,7 +104,7 @@ async function runVoting() {
 }
 
 run = async function(callback) {
-  var request = {identifier:{first:"BTC", second:"USD"}, time:"1560762000"};
+  var request = { identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
   await fetchPrice(request);
   callback();
 };
