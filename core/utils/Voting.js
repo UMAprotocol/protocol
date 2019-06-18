@@ -1,3 +1,5 @@
+const web3 = require("web3");
+
 const { VotePhasesEnum } = require("./Enums.js");
 
 const secondsPerDay = web3.utils.toBN(86400);
