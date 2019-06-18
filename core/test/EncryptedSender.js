@@ -16,7 +16,7 @@ contract("EncryptedSender", function(accounts) {
   let encryptedSender;
 
   before(async function() {
-    encryptedSender = await EncryptedSender.new();
+    encryptedSender = await EncryptedSender.deployed();
 
     // Note: nodes don't appear to provide direct client access to pre-generated account's private keys, so to get
     // access, we must create an account and grab the private key before adding it to the wallet.
