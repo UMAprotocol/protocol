@@ -35,10 +35,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // A map containing all votes for this price in various rounds.
         mapping(uint => VoteInstance) voteInstances;
 
-        // The final result of a vote.
-        // If lastVotingRound < voteTiming.getLastUpdatedRoundId, vote was resolved.
-        int resolvedPrice;
-
         // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
         // this is the voting round where this price will be voted on, but not necessarily resolved.
         uint lastVotingRound;
@@ -268,7 +264,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         priceRequests[priceRequestId] = PriceRequest({
             identifier: identifier,
             time: time,
-            resolvedPrice: 0,
             lastVotingRound: nextRoundId
         });
 
@@ -471,8 +466,13 @@ contract Voting is Testable, MultiRole, OracleInterface {
                 return (false, 0, "Price was never requested");
             }
 
+            // Grab the resolution voting round to compute the resolved price.
+            VoteInstance storage voteInstance = priceRequest.voteInstances[resolutionVotingRound];
+            (, int pastResolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(resolutionVotingRound));
+
             // Price has been resolved.
-            return (true, priceRequest.resolvedPrice, "");
+            return (true, pastResolvedPrice, "");
         } else {
             // Price has not yet been resolved.
 
@@ -576,12 +576,10 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
             VoteInstance storage voteInstance = priceRequest.voteInstances[lastActiveVotingRoundId];
 
-            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+            (bool isResolved,) = voteInstance.resultComputation.getResolvedPrice(
                 _computeGat(lastActiveVotingRoundId));
-            if (isResolved) {
-                // If the vote can be resolved, just set the resolved price.
-                priceRequest.resolvedPrice = resolvedPrice;
-            } else {
+
+            if (!isResolved) {
                 // If the vote cannot be resolved, push the request into the current round.
                 rounds[nextVotingRoundId].priceRequestIds.push(priceRequestId);
 
