@@ -67,9 +67,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // A map containing all votes for this price in various rounds.
         mapping(uint => VoteInstance) votes;
 
-        // The price that was resolved. 0 if it hasn't been resolved.
-        int resolvedPrice;
-
         // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
         // this is the voting round where this price will be voted on, but not necessarily resolved.
         uint lastVotingRound;
@@ -450,8 +447,12 @@ contract Voting is Testable, MultiRole, OracleInterface {
                 return (false, 0, "Price was never requested");
             }
 
+            VoteInstance storage voteInstance = priceResolution.votes[resolutionVotingRound];
+            (, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(resolutionVotingRound));
+
             // Price has been resolved.
-            return (true, priceResolution.resolvedPrice, "");
+            return (true, resolvedPrice, "");
         } else {
             // Price has not yet been resolved.
 
@@ -573,10 +574,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
             (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
                 _computeGat(lastActiveVotingRoundId));
-            if (isResolved) {
-                // If the vote can be resolved, just set the resolved price.
-                priceResolution.resolvedPrice = resolvedPrice;
-            } else {
+            if (!isResolved) {
                 // If the vote cannot be resolved, push the request into the current round.
                 _addPriceRequestToRound(nextVotingRoundId, priceRequest);
 
