@@ -1,8 +1,6 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { RegistryRolesEnum } = require("../utils/Enums.js");
-const Random = require("../utils/Random.js");
-const getRandomSignedInt = () => Random.getRandomSignedInt(web3);
-const getRandomUnsignedInt = () => Random.getRandomUnsignedInt(web3);
+const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");

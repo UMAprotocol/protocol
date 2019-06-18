@@ -5,6 +5,13 @@ const RegistryRolesEnum = {
   DERIVATIVE_CREATOR: "2"
 };
 
+// Corresponds to VoteTiming.Phase.
+const VotePhasesEnum = {
+  COMMIT: "0",
+  REVEAL: "1"
+};
+
 module.exports = {
-  RegistryRolesEnum
+  RegistryRolesEnum,
+  VotePhasesEnum
 };

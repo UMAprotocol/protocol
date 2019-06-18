@@ -1,4 +1,6 @@
-const getRandomSignedInt = web3 => {
+const web3 = require("web3");
+
+const getRandomSignedInt = () => {
   // Generate a random unsigned 256 bit int.
   const unsignedValue = web3.utils.toBN(web3.utils.randomHex(32));
 
@@ -7,7 +9,7 @@ const getRandomSignedInt = web3 => {
   return unsignedValue.sub(signedOffset);
 };
 
-const getRandomUnsignedInt = web3 => {
+const getRandomUnsignedInt = () => {
   return web3.utils.toBN(web3.utils.randomHex(32));
 };
 
