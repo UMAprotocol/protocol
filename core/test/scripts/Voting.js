@@ -58,7 +58,6 @@ contract("scripts/Voting.js", function(accounts) {
 
     // The vote should have been committed.
     await votingSystem.runIteration();
-
     assert.equal(persistence[persistenceKey].price, hardcodedPrice);
 
     // Move to the reveal phase.
