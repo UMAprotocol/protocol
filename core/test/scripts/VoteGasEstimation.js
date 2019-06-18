@@ -45,7 +45,7 @@ async function run() {
   await voting.setInflationRate({ value: web3.utils.toWei("0.01", "ether") });
   await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, owner);
 
-  if (!await registry.isDerivativeRegistered(registeredDerivative)) {
+  if (!(await registry.isDerivativeRegistered(registeredDerivative))) {
     await registry.registerDerivative([], registeredDerivative, { from: owner });
   }
 
@@ -115,20 +115,23 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
 
   await moveToNextPhase(voting);
 
-  for (var i = 0; i < 5; i++ ) {
+  for (var i = 0; i < 5; i++) {
     for (var j = 0; j < 5; j++) {
       const voter = await getVoter(accounts, j);
 
-      console.log("reveal", await voting.revealVote.estimateGas(identifier, time + i, price, salts[i][j], { from: voter }));
+      console.log(
+        "reveal",
+        await voting.revealVote.estimateGas(identifier, time + i, price, salts[i][j], { from: voter })
+      );
       await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });
     }
   }
-}
+};
 
 module.exports = async function(cb) {
   try {
     await run();
-  } catch(err) {
+  } catch (err) {
     console.log(err);
   }
 
