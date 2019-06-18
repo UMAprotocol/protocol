@@ -6,8 +6,6 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 
-const secondsPerDay = web3.utils.toBN(86400);
-
 const getVoter = (accounts, id) => {
   // Offset by 2, because owner == accounts[0] and registeredDerivative == accounts[1]
   return accounts[id + 2];
