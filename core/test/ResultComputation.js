@@ -68,8 +68,8 @@ contract("ResultComputation", function(accounts) {
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
     assert.isTrue(resolved.isResolved);
     assert.equal(resolved.price, zeroPrice);
-    assert.isTrue(await resultComputation.wrapWasVoteCorrect(zeroPrice));
-    assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.toWei("1")));
+    assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(zeroPrice)));
+    assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(web3.utils.toWei("1"))));
     assert.equal((await resultComputation.wrapGetTotalCorrectlyVotedTokens()).toString(), web3.utils.toWei("5"));
   });
 
