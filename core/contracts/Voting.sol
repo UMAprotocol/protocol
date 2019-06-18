@@ -32,7 +32,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
         bytes32 identifier;
         uint time;
 
-        mapping(uint => VoteInstance) votes;
+        mapping(uint => VoteRound) voteRounds;
 
         // The final result of a vote.
         // If lastVotingRound < voteTiming.getLastUpdatedRoundId, vote was resolved.
@@ -40,12 +40,16 @@ contract Voting is Testable, MultiRole, OracleInterface {
         uint lastVotingRound;
     }
 
-    struct VoteInstance {
-        mapping(address => bytes32) commits;
-        mapping(address => int) reveals;
-        mapping(address => bool) didReveal;
+    struct VoteRound {
+        mapping(address => Vote) votes;
 
         ResultComputation.Data resultComputation;
+    }
+
+    struct Vote {
+        bytes32 commit;
+        int reveal;
+        bool didReveal;
     }
 
     struct Round {
@@ -59,7 +63,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
         FixedPoint.Unsigned inflationRate;
     }
 
-    // View only struct when querying pending price requests.
+    // PendingRequest is only used as return values for view functions and
+    // therefore in-memory only.
     struct PendingRequest {
         bytes32 identifier;
         uint time;
@@ -161,8 +166,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
         require(priceRequest.lastVotingRound == currentRoundId,
             "This (time, identifier) pair is not being voted on this round");
 
-        VoteInstance storage voteInstance = priceRequest.votes[currentRoundId];
-        voteInstance.commits[msg.sender] = hash;
+        VoteRound storage voteRound = priceRequest.voteRounds[currentRoundId];
+        voteRound.votes[msg.sender].commit = hash;
 
         if (votersLastRound[msg.sender] != currentRoundId) {
             retrieveRewards();
@@ -185,13 +190,13 @@ contract Voting is Testable, MultiRole, OracleInterface {
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        VoteInstance storage voteInstance = priceRequest.votes[roundId];
-        bytes32 hash = voteInstance.commits[msg.sender];
+        VoteRound storage voteRound = priceRequest.voteRounds[roundId];
+        Vote storage vote = voteRound.votes[msg.sender];
 
         // 0 hashes are disallowed in the commit phase, so they indicate a different error.
-        require(hash != bytes32(0), "Cannot reveal an uncommitted or previously revealed hash");
-        require(keccak256(abi.encode(price, salt)) == hash, "Committed hash doesn't match revealed price and salt");
-        delete voteInstance.commits[msg.sender];
+        require(vote.commit != bytes32(0), "Cannot reveal an uncommitted or previously revealed hash");
+        require(keccak256(abi.encode(price, salt)) == vote.commit, "Committed hash doesn't match revealed price and salt");
+        delete vote.commit;
 
         // Get or create a snapshot for this round.
         uint snapshotId = _getOrCreateSnapshotId(roundId);
@@ -201,11 +206,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
 
         // Set the voter's submission.
-        voteInstance.reveals[msg.sender] = price;
-        voteInstance.didReveal[msg.sender] = true;
+        vote.reveal = price;
+        vote.didReveal = true;
 
         // Add vote to the results.
-        voteInstance.resultComputation.addVote(price, balance);
+        voteRound.resultComputation.addVote(price, balance);
     }
 
     function requestPrice(bytes32 identifier, uint time)
@@ -383,20 +388,18 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // Loop over all price requests in the round to check for rewards.
         bytes32[] storage priceRequestIds = round.priceRequestIds;
         for (uint i = 0; i < priceRequestIds.length; i++) {
-            // Skip if the slot was deleted due to the vote being rolled over.
-            if (priceRequestIds[i] == 0) {
-                continue;
-            }
-
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i]];
-            VoteInstance storage voteInstance = priceRequest.votes[roundId];
+            VoteRound storage voteRound = priceRequest.voteRounds[roundId];
+            Vote storage vote = voteRound.votes[msg.sender];
 
-            int reveal = voteInstance.reveals[msg.sender];
-            if (voteInstance.didReveal[msg.sender]
-                && voteInstance.resultComputation.wasVoteCorrect(reveal)) {
+            // Note: The vote.didReveal condition checks two conditions.
+            // That the voter revealed their vote AND that the vote successfully resolved.
+            // If the vote did not resolve and was rolled over, priceRequestIds[i] is 0x0, and vote.didReveal is always false.
+            if (vote.didReveal &&
+                voteRound.resultComputation.wasVoteCorrect(vote.reveal)) {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed and was
                 // correct, so they are elgible for a reward.
-                FixedPoint.Unsigned memory correctTokens = voteInstance.resultComputation.
+                FixedPoint.Unsigned memory correctTokens = voteRound.resultComputation.
                     getTotalCorrectlyVotedTokens();
 
                 // Compute the reward and add to the cumulative reward.
@@ -405,8 +408,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
             }
 
             // Delete the submission to capture any refund and clean up storage.
-            delete voteInstance.reveals[msg.sender];
-            delete voteInstance.didReveal[msg.sender];
+            delete vote.reveal;
+            delete vote.didReveal;
         }
 
         // Issue any accumulated rewards.
@@ -472,9 +475,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
             }
 
             // Attempt to resolve the vote immediately since the round has ended.
-            VoteInstance storage voteInstance = priceRequest.votes[resolutionVotingRound];
+            VoteRound storage voteRound = priceRequest.voteRounds[resolutionVotingRound];
 
-            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+            (bool isResolved, int resolvedPrice) = voteRound.resultComputation.getResolvedPrice(
                 _computeGat(resolutionVotingRound));
             if (!isResolved) {
                 return (false, 0, "Price was not resolved this voting round. It will require another round of voting");
@@ -515,9 +518,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
         for (uint i = 0; i < numPriceRequests; i++) {
             bytes32 priceRequestId = allPriceRequests[i];
             PriceRequest storage priceRequest = priceRequests[priceRequestId];
-            VoteInstance storage voteInstance = priceRequest.votes[roundId];
+            VoteRound storage voteRound = priceRequest.voteRounds[roundId];
 
-            (bool isResolved,) = voteInstance.resultComputation.getResolvedPrice(_computeGat(roundId));
+            (bool isResolved,) = voteRound.resultComputation.getResolvedPrice(_computeGat(roundId));
             if (!isResolved) {
                 rolloverPriceRequests[numRolloverPriceRequests++] = priceRequestId;
             }
@@ -559,9 +562,9 @@ contract Voting is Testable, MultiRole, OracleInterface {
             require(priceRequest.lastVotingRound == lastActiveVotingRoundId,
                 "Found price request that was incorrectly placed in a round");
 
-            VoteInstance storage voteInstance = priceRequest.votes[lastActiveVotingRoundId];
+            VoteRound storage voteRound = priceRequest.voteRounds[lastActiveVotingRoundId];
 
-            (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+            (bool isResolved, int resolvedPrice) = voteRound.resultComputation.getResolvedPrice(
                 _computeGat(lastActiveVotingRoundId));
             if (isResolved) {
                 // If the vote can be resolved, just set the resolved price.
