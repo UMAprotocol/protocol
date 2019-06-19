@@ -20,8 +20,8 @@ contract ResultComputationTest {
         return data.getResolvedPrice(FixedPoint.Unsigned(minVoteThreshold));
     }
 
-    function wrapWasVoteCorrect(int votePrice) external view returns (bool) {
-        return data.wasVoteCorrect(votePrice);
+    function wrapWasVoteCorrect(bytes32 revealHash) external view returns (bool) {
+        return data.wasVoteCorrect(revealHash);
     }
 
     function wrapGetTotalCorrectlyVotedTokens() external view returns (uint) {

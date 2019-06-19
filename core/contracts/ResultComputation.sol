@@ -59,11 +59,11 @@ library ResultComputation {
     }
 
     /**
-     * @dev Checks whether a `votePrice` is considered correct. Should only be called after a vote is resolved, i.e.,
+     * @dev Checks whether a `voteHash` is considered correct. Should only be called after a vote is resolved, i.e.,
      * via `getResolvedPrice`.
      */
-    function wasVoteCorrect(Data storage data, int votePrice) internal view returns (bool) {
-        return votePrice == data.currentMode;
+    function wasVoteCorrect(Data storage data, bytes32 voteHash) internal view returns (bool) {
+        return voteHash == keccak256(abi.encode(data.currentMode));
     }
 
     /**
