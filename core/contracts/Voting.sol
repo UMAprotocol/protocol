@@ -607,6 +607,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
             // There is no snapshot ID set, so create one.
             round.snapshotId = votingToken.snapshot();
         }
+
         return round.snapshotId;
     }
 
