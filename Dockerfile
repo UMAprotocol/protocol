@@ -1,3 +1,8 @@
+# Build this Docker container from `protocol` directory with:
+#   docker build -t <username>/<imagename> .
+# Execute the voting system with:
+#   docker run <username>/<imagename> --network=<network>
+
 # Fix node version due to high potential for incompatibilities.
 FROM node:11
 
@@ -7,7 +12,7 @@ WORKDIR protocol
 
 # Install dependencies and compile contracts.
 RUN npm install
-RUN /bin/bash scripts/buildContracts.sh
+RUN scripts/buildContracts.sh
 
 # Command to run Voting system. The setup above could probably be extracted to a base Docker image, but that may require
 # modifying the directory structure more.
