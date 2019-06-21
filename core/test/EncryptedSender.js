@@ -1,6 +1,6 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
-const { decryptMessage, encryptMessage, addressFromPublicKey, recoverPublicKey } = require("../utils/Crypto.js");
+const { decryptMessage, encryptMessage, addressFromPublicKey, recoverPublicKey, createVisibleAccount } = require("../utils/Crypto.js");
 const EthCrypto = require("eth-crypto");
 
 const EncryptedSender = artifacts.require("EncryptedSender");
@@ -18,15 +18,7 @@ contract("EncryptedSender", function(accounts) {
   before(async function() {
     encryptedSender = await EncryptedSender.deployed();
 
-    // Note: nodes don't appear to provide direct client access to pre-generated account's private keys, so to get
-    // access, we must create an account and grab the private key before adding it to the wallet.
-    const newAccount = web3.eth.accounts.create();
-    receiverPrivKey = newAccount.privateKey;
-    receiverAccount = newAccount.address;
-    receiverPubKey = recoverPublicKey(receiverPrivKey);
-    const password = "password";
-    await web3.eth.personal.importRawKey(receiverPrivKey, password);
-    assert.isTrue(await web3.eth.personal.unlockAccount(receiverAccount, password, 3600));
+    ({ pubKey: receiverPubKey, privKey: receiverPrivKey, address: receiverAccount } = await createVisibleAccount(web3)); 
 
     // Fund the new account
     await web3.eth.sendTransaction({ from: accounts[9], to: receiverAccount, value: web3.utils.toWei("5", "ether") });
@@ -43,18 +35,25 @@ contract("EncryptedSender", function(accounts) {
     const encryptedmessage = web3.utils.randomHex(64);
 
     // No accounts should be authorized to start.
+    assert.isFalse(await encryptedSender.isAuthorizedSender(senderAccount, receiverAccount));
     assert(
       await didContractThrow(
         encryptedSender.sendMessage(receiverAccount, topicHash, encryptedmessage, { from: senderAccount })
       )
     );
 
+    // Recipient should always be able to send to themselves.
+    assert.isTrue(await encryptedSender.isAuthorizedSender(receiverAccount, receiverAccount));
+    await encryptedSender.sendMessage(receiverAccount, topicHash, encryptedmessage, { from: receiverAccount });
+
     // Once the sender is added, the message should send.
     await encryptedSender.addAuthorizedSender(senderAccount, { from: receiverAccount });
+    assert.isTrue(await encryptedSender.isAuthorizedSender(senderAccount, receiverAccount));
     await encryptedSender.sendMessage(receiverAccount, topicHash, encryptedmessage, { from: senderAccount });
 
     // After the sender is removed, they should be unable to send a message.
     await encryptedSender.removeAuthorizedSender(senderAccount, { from: receiverAccount });
+    assert.isFalse(await encryptedSender.isAuthorizedSender(senderAccount, receiverAccount));
     assert(
       await didContractThrow(
         encryptedSender.sendMessage(receiverAccount, topicHash, encryptedmessage, { from: senderAccount })
