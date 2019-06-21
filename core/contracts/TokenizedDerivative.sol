@@ -761,7 +761,7 @@ library TokenizedDerivativeUtils {
 
         ExpandedIERC20 thisErc20Token = ExpandedIERC20(address(this));
 
-        thisErc20Token.mint(msg.sender, tokensToPurchase);
+        require(thisErc20Token.mint(msg.sender, tokensToPurchase), "Token minting failed");
         emit TokensCreated(s.fixedParameters.symbol, tokensToPurchase);
 
         s.nav = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
