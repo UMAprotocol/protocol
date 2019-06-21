@@ -27,13 +27,13 @@ contract("scripts/Voting.js", function(accounts) {
     let pubKey;
     ({ address: voter, privKey, pubKey } = await createVisibleAccount(web3));
     if (!web3.currentProvider.wallets) {
-        // If no wallets object has been created, create one.
-        web3.currentProvider.wallets = {};
+      // If no wallets object has been created, create one.
+      web3.currentProvider.wallets = {};
     }
     // Format the private and public keys for the wallet.
     web3.currentProvider.wallets[voter] = {
-        _privKey: Buffer.from(privKey.substr(2), "hex"),
-        _pubKey: Buffer.from(pubKey.substr(2), "hex")
+      _privKey: Buffer.from(privKey.substr(2), "hex"),
+      _pubKey: Buffer.from(pubKey.substr(2), "hex")
     };
 
     // Fund the voter account.

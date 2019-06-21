@@ -27,7 +27,7 @@ async function decryptMessage(privKey, encryptedMessage) {
   return await EthCrypto.decryptWithPrivateKey(privKey, encryptedMessageObject);
 }
 
-// Adds an account to web3 and returns all account "secrets" to the caller. 
+// Adds an account to web3 and returns all account "secrets" to the caller.
 // Note: This is primarily of use when attempting to use a node that comes preloaded with unlocked accounts. Since
 // there is no way for the user to access the private keys of these accounts over the node JSON-RPC api, the user must
 // manually generate an account and add it for the private key to be accessible.
@@ -35,7 +35,7 @@ async function createVisibleAccount(web3) {
   const newAccount = web3.eth.accounts.create();
   const password = "password";
   await web3.eth.personal.importRawKey(newAccount.privateKey, password);
-  if(!(await web3.eth.personal.unlockAccount(newAccount.address, password, 3600))) {
+  if (!(await web3.eth.personal.unlockAccount(newAccount.address, password, 3600))) {
     throw "Account could not be unlocked";
   }
 
@@ -43,7 +43,7 @@ async function createVisibleAccount(web3) {
     privKey: newAccount.privateKey,
     pubKey: recoverPublicKey(newAccount.privateKey),
     address: newAccount.address
-  }
+  };
 }
 
 module.exports = {

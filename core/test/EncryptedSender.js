@@ -1,6 +1,12 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
-const { decryptMessage, encryptMessage, addressFromPublicKey, recoverPublicKey, createVisibleAccount } = require("../utils/Crypto.js");
+const {
+  decryptMessage,
+  encryptMessage,
+  addressFromPublicKey,
+  recoverPublicKey,
+  createVisibleAccount
+} = require("../utils/Crypto.js");
 const EthCrypto = require("eth-crypto");
 
 const EncryptedSender = artifacts.require("EncryptedSender");
@@ -18,7 +24,7 @@ contract("EncryptedSender", function(accounts) {
   before(async function() {
     encryptedSender = await EncryptedSender.deployed();
 
-    ({ pubKey: receiverPubKey, privKey: receiverPrivKey, address: receiverAccount } = await createVisibleAccount(web3)); 
+    ({ pubKey: receiverPubKey, privKey: receiverPrivKey, address: receiverAccount } = await createVisibleAccount(web3));
 
     // Fund the new account
     await web3.eth.sendTransaction({ from: accounts[9], to: receiverAccount, value: web3.utils.toWei("5", "ether") });

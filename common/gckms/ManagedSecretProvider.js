@@ -106,7 +106,7 @@ class ManagedSecretProvider {
 
         // Make the internal wallets directly available to users.
         this.wallets = this.wrappedProvider.wallets;
-        
+
         return this.wrappedProvider;
       },
       reason => {

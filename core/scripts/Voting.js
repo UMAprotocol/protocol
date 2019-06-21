@@ -3,7 +3,6 @@ const EncryptedSender = artifacts.require("EncryptedSender");
 const { VotePhasesEnum } = require("../utils/Enums");
 const { decryptMessage, encryptMessage } = require("../utils/Crypto");
 
-
 // TODO(#492): Implement price fetching logic.
 async function fetchPrice(request) {
   return web3.utils.toWei("1.5");
@@ -17,7 +16,10 @@ class VotingSystem {
   }
 
   async readVote(request, roundId) {
-    const encryptedCommit = await this.encryptedSender.getMessage(this.account, this.computeTopicHash(request, roundId));
+    const encryptedCommit = await this.encryptedSender.getMessage(
+      this.account,
+      this.computeTopicHash(request, roundId)
+    );
 
     if (!encryptedCommit) {
       // Nothing has been published for this topic.
@@ -75,7 +77,9 @@ class VotingSystem {
     const persistedVote = await this.readVote(request, roundId);
     // If no vote was persisted and committed, then we can't reveal.
     if (persistedVote) {
-      await this.voting.revealVote(request.identifier, request.time, persistedVote.price, persistedVote.salt, { from: this.account });
+      await this.voting.revealVote(request.identifier, request.time, persistedVote.price, persistedVote.salt, {
+        from: this.account
+      });
     }
   }
 
@@ -102,9 +106,9 @@ class VotingSystem {
     // keys.
     const wallet = web3.currentProvider.wallets[this.account];
     return {
-      privKey: wallet._privKey.toString('hex'),
+      privKey: wallet._privKey.toString("hex"),
       // Note: the "0x" addition is because public keys are expected to be passed in a web3 friendly format.
-      pubKey: "0x" + wallet._pubKey.toString('hex')
+      pubKey: "0x" + wallet._pubKey.toString("hex")
     };
   }
 }
