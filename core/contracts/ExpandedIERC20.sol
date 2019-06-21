@@ -13,5 +13,5 @@ contract ExpandedIERC20 is IERC20 {
 
     // Mints tokens and adds them to the balance of the `to` address.
     // Note: this method should be permissioned to only allow designated parties to mint tokens.
-    function mint(address to, uint value) external;
+    function mint(address to, uint value) external returns (bool);
 }

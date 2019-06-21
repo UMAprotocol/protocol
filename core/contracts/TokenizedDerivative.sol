@@ -1241,8 +1241,9 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     }
 
     // Only allow calls from this contract or its libraries to mint tokens.
-    function mint(address to, uint256 value) external onlyThis {
+    function mint(address to, uint256 value) external onlyThis returns (bool) {
         _mint(to, value);
+        return true;
     }
 
     // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
