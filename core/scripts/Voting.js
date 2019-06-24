@@ -22,7 +22,7 @@ async function fetchCryptoComparePrice(request) {
 
   // Temporary price feed until we sort historical data.
   const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${identifier.second}&limit=3`;
-  console.log(`Querying with [${url}]`);
+  console.log(`\n    ***** \n Querying with [${url}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
   console.log(`Response [${JSON.stringify(jsonOutput)}]`);
 
@@ -105,6 +105,7 @@ async function runVoting() {
 
 run = async function(callback) {
   var request = { identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
+  await runVoting();
   await fetchPrice(request);
   await fetchCryptoComparePrice(request);
   callback();
