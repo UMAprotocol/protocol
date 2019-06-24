@@ -6,7 +6,7 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 
-const secondsPerDay = web3.utils.toBN(86400);
+const numPriceRequests = 5;
 
 const getVoter = (accounts, id) => {
   // Offset by 2, because owner == accounts[0] and registeredDerivative == accounts[1]
@@ -46,7 +46,7 @@ async function run() {
   }
 
   const now = await voting.getCurrentTime();
-  const max = now - 50;
+  const max = now - numPriceRequests * 5;
   // Pick a random time. Probabilistically, this won't request a duplicate time from a previous run.
   let time = Math.floor(Math.random() * max);
 
@@ -54,9 +54,8 @@ async function run() {
 
   for (var i = 0; i < 5; i++) {
     console.log("Round", i);
-    // Makes 5 price requests that are resolved by 5 voters
     await cycleRound(voting, votingToken, identifier, time, accounts);
-    time += 5;
+    time += numPriceRequests;
   }
 
   for (var i = 0; i < 5; i++) {
@@ -69,24 +68,24 @@ async function run() {
 }
 
 const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
-  for (var i = 0; i < 5; i++) {
-    console.log("requestPrice", await voting.requestPrice.estimateGas(identifier, time + i, { from: accounts[1] }));
-    await voting.requestPrice(identifier, time + i, { from: accounts[1] });
+  for (var i = 0; i < numPriceRequests; i++) {
+    const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
+    console.log("requestPrice", result.receipt.gasUsed);
   }
 
   await moveToNextRound(voting);
 
   const salts = {};
   const price = getRandomSignedInt();
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < numPriceRequests; i++) {
     for (var j = 0; j < 5; j++) {
       const salt = getRandomUnsignedInt();
       const hash = web3.utils.soliditySha3(price, salt);
 
       const voter = getVoter(accounts, j);
 
-      console.log("commit", await voting.commitVote.estimateGas(identifier, time + i, hash, { from: voter }));
-      await voting.commitVote(identifier, time + i, hash, { from: voter });
+      const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
+      console.log("commitVote", result.receipt.gasUsed);
 
       if (salts[i] == null) {
         salts[i] = {};
@@ -97,15 +96,12 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
 
   await moveToNextPhase(voting);
 
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < numPriceRequests; i++) {
     for (var j = 0; j < 5; j++) {
       const voter = getVoter(accounts, j);
 
-      console.log(
-        "reveal",
-        await voting.revealVote.estimateGas(identifier, time + i, price, salts[i][j], { from: voter })
-      );
-      await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });
+      const result = await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });
+      console.log("revealVote", result.receipt.gasUsed);
     }
   }
 };
