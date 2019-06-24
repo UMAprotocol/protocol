@@ -106,6 +106,7 @@ async function runVoting() {
 run = async function(callback) {
   var request = { identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
   await fetchPrice(request);
+  await fetchCryptoComparePrice(request);
   callback();
 };
 run.VotingSystem = VotingSystem;
