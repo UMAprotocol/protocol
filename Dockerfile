@@ -10,9 +10,18 @@ FROM node:11
 RUN git clone https://github.com/UMAprotocol/protocol.git
 WORKDIR protocol
 
+COPY core/scripts/Voting.js core/scripts
+COPY package.json ./
+COPY common/globalTruffleConfig.js common/
+
 # Install dependencies and compile contracts.
 RUN npm install
 RUN scripts/buildContracts.sh
+
+# Environment variables to set up email notifications.
+ENV SENDGRID_API_KEY=
+ENV NOTIFICATION_FROM_ADDRESS=
+ENV NOTIFICATION_TO_ADDRESS=
 
 # Command to run Voting system. The setup above could probably be extracted to a base Docker image, but that may require
 # modifying the directory structure more.

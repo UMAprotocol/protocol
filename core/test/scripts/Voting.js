@@ -5,6 +5,16 @@ const Registry = artifacts.require("Registry");
 const { RegistryRolesEnum, VotePhasesEnum } = require("../../utils/Enums.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
+class MockEmailSender {
+  constructor() {
+    this.emailsSent = 0;
+  }
+
+  sendEmailNotification() {
+    this.emailsSent += 1;
+  }
+}
+
 contract("scripts/Voting.js", function(accounts) {
   let voting;
   let votingToken;
@@ -54,10 +64,16 @@ contract("scripts/Voting.js", function(accounts) {
     assert.isFalse(await voting.hasPrice(identifier, time));
 
     const persistence = {};
-    const votingSystem = new VotingScript.VotingSystem(voting, persistence);
+    const emailSender = new MockEmailSender();
+    const votingSystem = new VotingScript.VotingSystem(voting, persistence, emailSender);
 
+    assert.equal(emailSender.emailsSent, 0);
     // The vote should have been committed.
     await votingSystem.runIteration();
+    assert.equal(emailSender.emailsSent, 1);
+    // Running again shouldn't send more emails.
+    await votingSystem.runIteration();
+    assert.equal(emailSender.emailsSent, 1);
     assert.equal(persistence[persistenceKey].price, hardcodedPrice);
 
     // Move to the reveal phase.
@@ -66,6 +82,10 @@ contract("scripts/Voting.js", function(accounts) {
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
     assert.isFalse({ pendingRequest, roundId } in persistence);
+    assert.equal(emailSender.emailsSent, 2);
+    // Running again shouldn't send more emails.
+    await votingSystem.runIteration();
+    assert.equal(emailSender.emailsSent, 2);
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
