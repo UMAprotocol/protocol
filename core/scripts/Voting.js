@@ -2,10 +2,6 @@ const Voting = artifacts.require("Voting");
 const { VotePhasesEnum } = require("../utils/Enums");
 const fetch = require("node-fetch");
 
-//require("dotenv").config();
-// Get API keys from environment variables or the `.env` file.
-// const cryptocompareKey = process.env.CRYPTO_COMPARE_KEY;
-
 function stripApiKey(str, key) {
   return str.replace(key, "{redacted}");
 }
@@ -20,7 +16,7 @@ const getJson = async url => {
   return json;
 };
 
-async function fetchPrice(request) {
+async function fetchCryptoComparePrice(request) {
   const identifier = request.identifier;
   const time = request.time;
 
@@ -46,7 +42,11 @@ async function fetchPrice(request) {
   const tradeTime = jsonOutput.Data[0].time;
   console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
 
-  return { price, tradeTime };
+  return { price };
+}
+
+async function fetchPrice(request) {
+  return web3.utils.toWei("1.5");
 }
 
 // TODO(#493): Implement persistance.
