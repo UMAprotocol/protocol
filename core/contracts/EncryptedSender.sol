@@ -68,8 +68,16 @@ contract EncryptedSender {
      */
     function sendMessage(address recipient_, bytes32 topicHash, bytes memory message) public {
         Recipient storage recipient = recipients[recipient_];
-        require(recipient.authorizedSenders[msg.sender], "Not authorized to send to this recipient");
+        require(isAuthorizedSender(msg.sender, recipient_), "Not authorized to send to this recipient");
         recipient.messages[topicHash] = message;
+    }
+
+    /**
+     * @notice Returns true if the `sender` is authorized to send to the `recipient`.
+     */
+    function isAuthorizedSender(address sender, address recipient) public view returns (bool) {
+        // Note: the recipient is always authorized to send messages to themselves.
+        return recipients[recipient].authorizedSenders[sender] || recipient == sender;
     }
 
     /**
@@ -77,7 +85,7 @@ contract EncryptedSender {
      */
     function setPublicKey(bytes memory publicKey) public {
         // Verify that the uploaded public key matches the sender.
-        require(_publicKeyToAddress(publicKey) == msg.sender);
+        require(_publicKeyToAddress(publicKey) == msg.sender, "Public key does not match the sender");
 
         // Set the public key if it passed verification.
         recipients[msg.sender].publicKey = publicKey;
