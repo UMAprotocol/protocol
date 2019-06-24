@@ -3,32 +3,45 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const {
-  getKeysForNetwork,
-  deployAndGet,
-  enableControllableTiming,
-  addToTdr
-} = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy, enableControllableTiming, addToTdr } = require("../../common/MigrationUtils.js");
+
+const ethAddress = "0x0000000000000000000000000000000000000000";
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
   // Deploy whitelists.
-  const sponsorWhitelist = await deployAndGet(deployer, AddressWhitelist, { from: keys.sponsorWhitelist });
-  const returnCalculatorWhitelist = await deployAndGet(deployer, AddressWhitelist, {
-    from: keys.returnCalculatorWhitelist
-  });
-  const marginCurrencyWhitelist = await deployAndGet(deployer, AddressWhitelist, {
-    from: keys.marginCurrencyWhitelist
-  });
+  const { contract: sponsorWhitelist, didDeploy: deployedSponsorWhitelist } = await deploy(
+    deployer,
+    network,
+    AddressWhitelist,
+    { from: keys.sponsorWhitelist }
+  );
+  const { contract: returnCalculatorWhitelist, didDeploy: deployedReturnCalculatorWhitelist } = await deploy(
+    deployer,
+    network,
+    AddressWhitelist,
+    {
+      from: keys.returnCalculatorWhitelist
+    }
+  );
+  const { contract: marginCurrencyWhitelist, didDeploy: deployedMarginCurrencyWhitelist } = await deploy(
+    deployer,
+    network,
+    AddressWhitelist,
+    {
+      from: keys.marginCurrencyWhitelist
+    }
+  );
 
   const finder = await Finder.deployed();
 
   // Link and deploy creator.
   await deployer.link(TokenizedDerivativeUtils, TokenizedDerivativeCreator);
-  const tokenizedDerivativeCreator = await deployAndGet(
+  await deploy(
     deployer,
+    network,
     TokenizedDerivativeCreator,
     finder.address,
     sponsorWhitelist.address,
@@ -37,7 +50,6 @@ module.exports = async function(deployer, network, accounts) {
     controllableTiming,
     { from: keys.deployer }
   );
-  await addToTdr(tokenizedDerivativeCreator, network);
 
   // Add the return calculator to the whitelist.
   const returnCalculator = await LeveragedReturnCalculator.deployed();
@@ -45,7 +57,6 @@ module.exports = async function(deployer, network, accounts) {
 
   if (!network.startsWith("mainnet") && !network.startsWith("ropsten")) {
     await sponsorWhitelist.addToWhitelist(accounts[1], { from: keys.sponsorWhitelist });
-    const ethAddress = "0x0000000000000000000000000000000000000000";
     await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
   }
 };
