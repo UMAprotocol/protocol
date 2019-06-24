@@ -1,7 +1,11 @@
 # Build this Docker container from `protocol` directory with:
 #   docker build -t <username>/<imagename> .
 # Execute the voting system with:
-#   docker run <username>/<imagename> --network=<network>
+#   docker run <username>/<imagename>
+#     --network=<network>
+#     --env SENDGRID_API_KEY=<key>
+#     --env NOTIFICATION_FROM_ADDRESS=<email address>
+#     --env NOTIFICATION_TO_ADDRESS=<email address>
 
 # Fix node version due to high potential for incompatibilities.
 FROM node:11
