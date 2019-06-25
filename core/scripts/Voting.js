@@ -50,7 +50,14 @@ async function fetchCryptoComparePrice(request) {
 }
 
 async function fetchPrice(request) {
-  return web3.utils.toWei("1.5");
+  switch (request.dataSource) {
+    case "CryptoCompare":
+      return await fetchCryptoComparePrice(request);
+    case "test":
+      console.log("something is working!");
+      return web3.utils.toWei("1.5");
+  }
+  return web3.utils.toWei("0");
 }
 
 class EmailSender {
@@ -189,7 +196,6 @@ async function runVoting() {
   try {
     console.log("Running Voting system");
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
-
     const voting = await Voting.deployed();
     const encryptedSender = await EncryptedSender.deployed();
     const account = (await web3.eth.getAccounts())[0];
@@ -201,10 +207,11 @@ async function runVoting() {
 }
 
 run = async function(callback) {
-  var request = { identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
+  var testRequest = { dataSource: "CryptoCompare", identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
+  var ccRequest = { dataSource:"test", identifier: "BTCUSD", time: "1560762000" };
   await runVoting();
-  await fetchPrice(request);
-  await fetchCryptoComparePrice(request);
+  await fetchPrice(ccRequest);
+  await fetchPrice(testRequest);
   callback();
 };
 run.VotingSystem = VotingSystem;
