@@ -208,7 +208,7 @@ async function runVoting() {
 
 run = async function(callback) {
   var testRequest = { dataSource: "CryptoCompare", identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
-  var ccRequest = { dataSource:"test", identifier: "BTCUSD", time: "1560762000" };
+  var ccRequest = { dataSource: "test", identifier: "BTCUSD", time: "1560762000" };
   await runVoting();
   await fetchPrice(ccRequest);
   await fetchPrice(testRequest);
