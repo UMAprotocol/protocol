@@ -2,6 +2,7 @@ const Voting = artifacts.require("Voting");
 const EncryptedSender = artifacts.require("EncryptedSender");
 const { VotePhasesEnum } = require("../utils/Enums");
 const { decryptMessage, encryptMessage } = require("../utils/Crypto");
+const sendgrid = require("@sendgrid/mail");
 
 const fetch = require("node-fetch");
 
@@ -52,11 +53,23 @@ async function fetchPrice(request) {
   return web3.utils.toWei("1.5");
 }
 
+class EmailSender {
+  async sendEmailNotification(subject, body) {
+    await sendgrid.send({
+      to: process.env.NOTIFICATION_TO_ADDRESS,
+      from: process.env.NOTIFICATION_FROM_ADDRESS,
+      subject,
+      text: body
+    });
+  }
+}
+
 class VotingSystem {
-  constructor(voting, encryptedSender, account) {
+  constructor(voting, encryptedSender, account, emailSender) {
     this.voting = voting;
     this.encryptedSender = encryptedSender;
     this.account = account;
+    this.emailSender = emailSender;
   }
 
   async readVote(request, roundId) {
@@ -105,7 +118,7 @@ class VotingSystem {
     // TODO: we may want to add a feature in the future where we ensure that the persisted vote matches the commit, and
     // if it does not, we commit the persisted vote.
     if (persistedVote) {
-      return;
+      return false;
     }
     const fetchedPrice = await fetchPrice(request);
     const salt = web3.utils.toBN(web3.utils.randomHex(32));
@@ -115,28 +128,43 @@ class VotingSystem {
 
     // Persist the vote only after the commit hash has been sent to the Voting contract.
     await this.writeVote(request, roundId, { price: fetchedPrice.toString(), salt: salt.toString() });
+    return true;
   }
 
   async runReveal(request, roundId) {
     const persistedVote = await this.readVote(request, roundId);
     // If no vote was persisted and committed, then we can't reveal.
-    if (persistedVote) {
-      await this.voting.revealVote(request.identifier, request.time, persistedVote.price, persistedVote.salt, {
-        from: this.account
-      });
+    if (!persistedVote) {
+      return false;
     }
+    await this.voting.revealVote(request.identifier, request.time, persistedVote.price, persistedVote.salt, {
+      from: this.account
+    });
+    return true;
   }
 
   async runIteration() {
     const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
+    const updatesMade = [];
     for (const request of pendingRequests) {
+      let didUpdate = false;
       if (phase == VotePhasesEnum.COMMIT) {
-        await this.runCommit(request, roundId);
+        didUpdate = await this.runCommit(request, roundId);
       } else {
-        await this.runReveal(request, roundId);
+        didUpdate = await this.runReveal(request, roundId);
       }
+      if (didUpdate) {
+        updatesMade.push(request);
+      }
+    }
+    if (updatesMade.length > 0) {
+      // TODO(ptare): Get email copies.
+      await this.emailSender.sendEmailNotification(
+        "Automated voting system update",
+        "Updated " + updatesMade.length + " price requests"
+      );
     }
   }
 
@@ -160,10 +188,12 @@ class VotingSystem {
 async function runVoting() {
   try {
     console.log("Running Voting system");
+    sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
+
     const voting = await Voting.deployed();
     const encryptedSender = await EncryptedSender.deployed();
     const account = (await web3.eth.getAccounts())[0];
-    const votingSystem = new VotingSystem(voting, encryptedSender, account);
+    const votingSystem = new VotingSystem(voting, encryptedSender, account, new EmailSender());
     await votingSystem.runIteration();
   } catch (error) {
     console.log(error);
