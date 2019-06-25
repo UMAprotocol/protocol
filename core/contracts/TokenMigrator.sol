@@ -6,6 +6,7 @@ import "./ExpandedIERC20.sol";
 import "./FixedPoint.sol";
 import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
 
+
 /**
  * @title Migration contract for VotingTokens.
  * @dev Handles migrating token holders from one token to the next.
@@ -13,10 +14,10 @@ import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
 contract TokenMigrator {
     using FixedPoint for FixedPoint.Unsigned;
 
-    ERC20Snapshot private oldToken;
-    ExpandedIERC20 private newToken;
-    uint snapshotId;
-    FixedPoint.Unsigned rate;
+    ERC20Snapshot public oldToken;
+    ExpandedIERC20 public newToken;
+    uint public snapshotId;
+    FixedPoint.Unsigned public rate;
     mapping(address => bool) public hasMigrated;
 
     /**
@@ -49,6 +50,6 @@ contract TokenMigrator {
         }
 
         FixedPoint.Unsigned memory newBalance = oldBalance.div(rate);
-        newToken.mint(tokenHolder, newBalance.value);
+        require(newToken.mint(tokenHolder, newBalance.value), "Mint failed");
     }
 }
