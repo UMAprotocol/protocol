@@ -345,16 +345,11 @@ contract Voting is Testable, MultiRole, OracleInterface {
     }
 
     /**
-     * @notice Whether the caller has a revealed vote in the current round.
+     * @notice Whether the caller has a revealed vote for the latest round that an (identifier, time) was in.
      */
     function hasRevealedVote(bytes32 identifier, uint time) external view returns (bool) {
-        uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
-            "Cannot reveal while in the commit phase");
-        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
-
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
+        VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
         return voteSubmission.revealHash != bytes32(0);

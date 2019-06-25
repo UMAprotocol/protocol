@@ -735,7 +735,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredDerivative })));
   });
 
-  it("View methods", async function() {
+  it.only("View methods", async function() {
     const identifier = web3.utils.utf8ToHex("view-methods");
     const time = "1000";
 
@@ -767,11 +767,11 @@ contract("Voting", function(accounts) {
     assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
     assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
 
-    // Can no longer check once in the next round.
+    // Can still check once in the next round, even if this behavior is useless to the voter.
     await moveToNextRound(voting);
-    assert(await didContractThrow(voting.hasRevealedVote(identifier, time, { from: account1 })));
-    assert(await didContractThrow(voting.hasRevealedVote(identifier, time, { from: account2 })));
-    assert(await didContractThrow(voting.hasRevealedVote(identifier, time, { from: account3 })));
+    assert.isTrue(await voting.hasRevealedVote(identifier, time, { from: account1 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
   });
 
   it("Basic Inflation", async function() {
