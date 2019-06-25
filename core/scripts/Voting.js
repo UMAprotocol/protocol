@@ -137,6 +137,11 @@ class VotingSystem {
     if (!persistedVote) {
       return false;
     }
+    const hasRevealedVote = await this.voting.hasRevealedVote(request.identifier, request.time, { from: this.account });
+      // If we've already revealed, no need to re-reveal.
+      if (hasRevealedVote) {
+          return false;
+      }
     await this.voting.revealVote(request.identifier, request.time, persistedVote.price, persistedVote.salt, {
       from: this.account
     });

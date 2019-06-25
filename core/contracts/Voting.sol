@@ -345,6 +345,22 @@ contract Voting is Testable, MultiRole, OracleInterface {
     }
 
     /**
+     * @notice Whether the caller has a revealed vote in the current round.
+     */
+    function hasRevealedVote(bytes32 identifier, uint time) external view returns (bool) {
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
+            "Cannot reveal while in the commit phase");
+        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
+
+        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+        VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
+        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+
+        return voteSubmission.revealHash != bytes32(0);
+    }
+
+    /**
      * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      */

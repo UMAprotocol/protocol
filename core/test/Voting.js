@@ -735,6 +735,45 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredDerivative })));
   });
 
+  it("View methods", async function() {
+    const identifier = web3.utils.utf8ToHex("view-methods");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await moveToNextRound(voting);
+
+    const price = 123;
+
+    // Accounts 1 and 2 commit votes.
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(price, salt1);
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(price, salt1);
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
+    await moveToNextPhase(voting);
+
+    // Account 1 reveals.
+    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
+
+    // Check if hasRevealedVote gives correct results for each voter.
+    assert.isTrue(await voting.hasRevealedVote(identifier, time, { from: account1 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
+
+    // Can no longer check once in the next round.
+    await moveToNextRound(voting);
+    assert(await didContractThrow(voting.hasRevealedVote(identifier, time, { from: account1 })));
+    assert(await didContractThrow(voting.hasRevealedVote(identifier, time, { from: account2 })));
+    assert(await didContractThrow(voting.hasRevealedVote(identifier, time, { from: account3 })));
+  });
+
   it("Basic Inflation", async function() {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
