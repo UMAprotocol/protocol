@@ -1,6 +1,7 @@
 pragma solidity ^0.5.0;
 
 import "./MultiRole.sol";
+import "./ExpandedIERC20.sol";
 
 import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
 
@@ -9,7 +10,7 @@ import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
  * @title UMA voting token
  * @dev Supports snapshotting and allows the Oracle to mint new tokens as rewards.
  */
-contract VotingToken is ERC20Snapshot, MultiRole {
+contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
 
     enum Roles {
         // Can set the minter and burner.
