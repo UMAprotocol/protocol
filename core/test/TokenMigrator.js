@@ -23,11 +23,11 @@ contract("TokenMigrator", function(accounts) {
     await oldToken.addMember(minterRoleEnumValue, owner, { from: owner });
   });
 
-  const createMigrator = async (rate) => {
+  const createMigrator = async rate => {
     const migrator = await TokenMigrator.new({ value: rate }, oldToken.address, newToken.address);
     await newToken.addMember(minterRoleEnumValue, migrator.address, { from: owner });
     return migrator;
-  }
+  };
 
   it("Snapshot Timing", async function() {
     // Mint tokenHolder1 a single old token to start.
