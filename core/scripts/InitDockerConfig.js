@@ -14,8 +14,10 @@ const processConfig = async function() {
   const config = await readDockerConfig();
 
   if ("mnemonic" in config) {
-    let envFile = await readFile("../.env", "utf8");
+    let envFile = await readFile("./.env", "utf8");
 
+    // Always append the new parameter to the end of the file.
+    // This overrides an existing parameter, if it exists, without overwriting it.
     if (envFile.length !== 0 && envFile[envFile.length - 1] != "\n") {
       envFile += "\n";
     }
