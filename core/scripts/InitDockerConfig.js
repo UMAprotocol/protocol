@@ -13,7 +13,7 @@ const readDockerConfig = async function() {
 const processConfig = async function() {
   const config = await readDockerConfig();
 
-  if ('mnemonic' in config) {
+  if ("mnemonic" in config) {
     let envFile = await readFile("../.env", "utf8");
 
     if (envFile.length !== 0 && envFile[envFile.length - 1] != "\n") {
