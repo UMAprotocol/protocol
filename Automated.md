@@ -16,7 +16,8 @@ you want to use to send emails.
    Instance` and configure it with the following steps.
    1. Click the box next to `Deploy a container image to this VM instance` and put in the URL for the UMA
 automated voting system Docker image `<TODO FILL IN>`.
-   2. Set the following environment variables: `<TODO FILL IN>`.
+   2. Under `Identity and API access`, put in the service account you created in step 2.
+   3. Set the following environment variables: `<TODO FILL IN>`.
 
 You'll receive an email notification when the system commits votes for a new round, at which point you'll be able to
 review those commits.
