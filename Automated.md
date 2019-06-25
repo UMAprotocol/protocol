@@ -14,9 +14,9 @@ you want to use to send emails.
 4. Get a SendGrid API key by clicking `Settings` -> `API Keys` -> `Create API Key`.
 5. Create a new `Compute Engine` instance [here](https://console.cloud.google.com/compute/instances) by clicking `Create
    Instance` and configure it with the following steps.
-   a. Click the box next to `Deploy a container image to this VM instance` and put in the URL for the UMA
+   1. Click the box next to `Deploy a container image to this VM instance` and put in the URL for the UMA
 automated voting system Docker image `<TODO FILL IN>`.
-   b. Set the following environment variables: `<TODO FILL IN>`.
+   2. Set the following environment variables: `<TODO FILL IN>`.
 
 ## Redeploying
 
