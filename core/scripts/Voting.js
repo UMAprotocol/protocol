@@ -55,9 +55,9 @@ async function fetchPrice(request) {
       return await fetchCryptoComparePrice(request);
     case "test":
       console.log("something is working!");
-      return web3.utils.toWei("1.5");
+      return web3.utils.toWei("1");
   }
-  return web3.utils.toWei("0");
+  return web3.utils.toWei("1.5");
 }
 
 class EmailSender {
