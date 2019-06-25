@@ -25,7 +25,9 @@ async function fetchCryptoComparePrice(request) {
   const time = request.time;
 
   // Temporary price feed until we sort historical data.
-  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${identifier.second}&limit=3`;
+  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${
+    identifier.second
+  }&limit=3`;
   console.log(`\n    ***** \n Querying with [${url}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
   console.log(`Response [${JSON.stringify(jsonOutput)}]`);
@@ -138,10 +140,10 @@ class VotingSystem {
       return false;
     }
     const hasRevealedVote = await this.voting.hasRevealedVote(request.identifier, request.time, { from: this.account });
-      // If we've already revealed, no need to re-reveal.
-      if (hasRevealedVote) {
-          return false;
-      }
+    // If we've already revealed, no need to re-reveal.
+    if (hasRevealedVote) {
+      return false;
+    }
     await this.voting.revealVote(request.identifier, request.time, persistedVote.price, persistedVote.salt, {
       from: this.account
     });
