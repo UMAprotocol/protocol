@@ -58,6 +58,15 @@ function addLocalNetwork(networks, name, customOptions) {
     ...defaultOptions,
     ...customOptions
   };
+
+  // Override custom options if environment variables are found
+  if ("LOCALHOST" in process.env) {
+    networks[name].host = process.env.LOCALHOST;
+  }
+
+  if ("LOCALPORT" in process.env) {
+    networks[name].port = process.env.LOCALPORT;
+  }
 }
 
 let networks = {};

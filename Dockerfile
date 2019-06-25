@@ -2,12 +2,13 @@
 #   docker build -t <username>/<imagename> .
 # Execute the voting system with:
 #   docker run
-#     --volume=<path-to-config-dir>:/protocol/core/docker-config:ro
-#     <username>/<imagename>
-#     --network=<network>
 #     --env SENDGRID_API_KEY=<key>
 #     --env NOTIFICATION_FROM_ADDRESS=<email address>
 #     --env NOTIFICATION_TO_ADDRESS=<email address>
+#     --env LOCALHOST=<ethereum host>
+#     --env LOCALPORT=<ethereum port>
+#     <username>/<imagename>
+#     --network=<network>
 
 # Fix node version due to high potential for incompatibilities.
 FROM node:11
@@ -20,13 +21,8 @@ WORKDIR protocol
 RUN npm install
 RUN scripts/buildContracts.sh
 
-# Environment variables to set up email notifications.
-ENV SENDGRID_API_KEY=
-ENV NOTIFICATION_FROM_ADDRESS=
-ENV NOTIFICATION_TO_ADDRESS=
-
 # Command to run Voting system. The setup above could probably be extracted to a base Docker image, but that may require
 # modifying the directory structure more.
 WORKDIR core/
-ENTRYPOINT ["/bin/bash", "scripts/runDockerVoting.sh"]
+ENTRYPOINT ["/bin/bash", "scripts/runVoting.sh"]
 CMD ["--network=test"]
