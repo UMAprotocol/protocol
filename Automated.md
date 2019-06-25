@@ -18,9 +18,11 @@ you want to use to send emails.
 automated voting system Docker image `<TODO FILL IN>`.
    2. Set the following environment variables: `<TODO FILL IN>`.
 
+You'll receive an email notification when the system commits votes for a new round, at which point you'll be able to
+review those commits.
+
 ## Redeploying
 
-You may need to redeploy under certain circumstances. For example, when a new identifier is supported. To do so, use the
-following steps:
-
-## Troubleshooting
+You may need to redeploy under certain circumstances. For example, you'll need to redeploy when a new identifier is
+supported. To do so, use the following steps:
+`<TODO FILL IN>`
