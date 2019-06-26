@@ -25,5 +25,7 @@ review those commits.
 ## Redeploying
 
 You may need to redeploy under certain circumstances. For example, you'll need to redeploy when a new identifier is
-supported. To do so, use the following steps:
-`<TODO FILL IN>`
+supported. To do so, restart the instance with the following steps:
+
+1. Go the `Compute Engine` instances [page](https://console.cloud.google.com/compute/instances).
+2. Select the instance running the automated voting system and hit `Stop` and then `Start`.
