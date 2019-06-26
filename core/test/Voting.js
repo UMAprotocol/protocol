@@ -735,7 +735,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredDerivative })));
   });
 
-  it.only("View methods", async function() {
+  it("View methods", async function() {
     const identifier = web3.utils.utf8ToHex("view-methods");
     const time = "1000";
 
