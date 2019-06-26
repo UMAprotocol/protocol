@@ -1,4 +1,7 @@
 # This docker container can be pulled from umaprotocol/voting on dockerhub.
+# To get the latest image, run:
+#   docker pull umaprotocol/voting
+#
 # Execute the voting system with:
 #   docker run umaprotocol/voting
 #     --network=<network>
