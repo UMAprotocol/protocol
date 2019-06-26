@@ -636,4 +636,16 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
         return snapshottedSupply.mul(gatPercentage);
     }
+
+    event CommitPhaseStarted(uint roundId);
+    event RevealPhaseStarted(uint roundId);
+
+    event VoteCommitted(address voter, bytes32 identifier, uint time, uint roundId);
+    event VoteRevealed(address voter, bytes32 identifier, uint time, uint roundId, int price, uint numTokens);
+    event RewardsRetrieved(address voter, uint rewardsRoundId, uint numTokens);
+
+    event PriceRequestAdded(bytes32 identifier, uint time, uint votingRoundId);
+    event PriceRequestRolledOver(bytes32 identifier, uint time, uint newRoundId);
+    event PriceResolved(bytes32 identifier, uint time, uint resolutionRoundId, int price);
+
 }
