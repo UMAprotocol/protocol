@@ -1,4 +1,4 @@
-# This dockerfile is automatically pushed to umaprotocol/voting.
+# This docker container can be pulled from umaprotocol/voting on dockerhub.
 # Execute the voting system with:
 #   docker run umaprotocol/voting
 #     --network=<network>
