@@ -648,4 +648,5 @@ contract Voting is Testable, MultiRole, OracleInterface {
     event PriceRequestRolledOver(bytes32 identifier, uint time, uint newRoundId);
     event PriceResolved(bytes32 identifier, uint time, uint resolutionRoundId, int price);
 
+    event SupportedIdentifierAdded(bytes32 identifier);
 }
