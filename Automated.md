@@ -28,4 +28,4 @@ You may need to redeploy under certain circumstances. For example, you'll need t
 supported. To do so, restart the instance with the following steps:
 
 1. Go the `Compute Engine` instances [page](https://console.cloud.google.com/compute/instances).
-2. Select the instance running the automated voting system and hit `Stop` and then `Start`.
+2. Select the instance running the automated voting system and hit `Reset`.
