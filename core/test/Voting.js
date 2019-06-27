@@ -2,6 +2,7 @@ const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { RegistryRolesEnum, VotePhasesEnum } = require("../utils/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
+const truffleAssert = require("truffle-assertions");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
@@ -735,7 +736,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredDerivative })));
   });
 
-  it.only("View methods", async function() {
+  it("View methods", async function() {
     const identifier = web3.utils.utf8ToHex("view-methods");
     const time = "1000";
 
@@ -902,5 +903,113 @@ contract("Voting", function(accounts) {
     // Clean up vote.
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time2, price2, salt2, { from: account1 });
+  });
+
+  it("Events", async function() {
+    // Set the inflation rate to 100% (for ease of computation).
+    await setNewInflationRate(web3.utils.toWei("1", "ether"));
+
+    const identifier = web3.utils.utf8ToHex("events");
+    const time = "1000";
+
+    // An event should be emitted when a new supported identifier is added (but not on repeated no-op calls).
+    let result = await voting.addSupportedIdentifier(identifier);
+    truffleAssert.eventEmitted(result, "SupportedIdentifierAdded", ev => {
+      return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier);
+    });
+    result = await voting.addSupportedIdentifier(identifier);
+    truffleAssert.eventNotEmitted(result, "SupportedIdentifierAdded");
+
+    await moveToNextRound(voting);
+    let currentRoundId = await voting.getCurrentRoundId();
+
+    // New price requests trigger events.
+    result = await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    truffleAssert.eventEmitted(result, "PriceRequestAdded", ev => {
+      return (
+        // The vote is added to the next round, so we have to add 1 to the current round id.
+        ev.votingRoundId.toString() == currentRoundId.addn(1).toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time.toString()
+      );
+    });
+
+    await moveToNextRound(voting);
+    currentRoundId = await voting.getCurrentRoundId();
+
+      // Repeated price requests don't trigger events.
+    result = await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    truffleAssert.eventNotEmitted(result, "PriceRequestAdded");
+
+    // Commit vote.
+    const price = 123;
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    result = await voting.commitVote(identifier, time, hash, { from: account4 });
+    truffleAssert.eventEmitted(result, "VoteCommitted", ev => {
+      return (
+        ev.voter.toString() == account4 &&
+        ev.roundId.toString() == currentRoundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time
+      );
+    });
+
+    await moveToNextPhase(voting);
+
+    const account4Balance = await votingToken.balanceOf(account4);
+    result = await voting.revealVote(identifier, time, price, salt, { from: account4 });
+    truffleAssert.eventEmitted(result, "VoteRevealed", ev => {
+      return (
+        ev.voter.toString() == account4 &&
+        ev.roundId.toString() == currentRoundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time &&
+        ev.price.toString() == price.toString() &&
+        ev.numTokens.toString() == account4Balance.toString()
+      );
+    });
+
+    await moveToNextRound(voting);
+    currentRoundId = await voting.getCurrentRoundId();
+    // Since none of the whales voted, the price couldn't be resolved.
+    result = await voting.retrieveRewards({ from: account4 });
+    truffleAssert.eventEmitted(result, "PriceRequestRolledOver", ev => {
+      return (
+        ev.newRoundId.toString() == currentRoundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time == time
+      );
+    });
+
+    // Now the whale votes and the vote resolves.
+    await voting.commitVote(identifier, time, hash, { from: account1 });
+    await moveToNextPhase(voting);
+    await voting.revealVote(identifier, time, price, salt, { from: account1 });
+    const initialTotalSupply = await votingToken.totalSupply();
+    await moveToNextRound(voting);
+
+    // When the round updates, the price request should be resolved.
+    result = await voting.retrieveRewards({ from: account1 });
+    truffleAssert.eventEmitted(result, "PriceResolved", ev => {
+      return (
+        ev.resolutionRoundId.toString() == currentRoundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time == time &&
+        ev.price.toString() == price.toString()
+      );
+    });
+    truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => {
+      return (
+        ev.voter.toString() == account1.toString() &&
+        ev.rewardsRoundId.toString() == currentRoundId.toString() &&
+        // Inflation is 100% and there was only one voter.
+        ev.numTokens.toString() == initialTotalSupply.toString()
+      );
+    });
+
+    // Events only get emitted if there were actually rewards issued. Is this the behavior we want?
+    result = await voting.retrieveRewards({ from: account4 });
+    truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
   });
 });
