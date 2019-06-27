@@ -1,12 +1,7 @@
 const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
-const {
-  getKeysForNetwork,
-  deployAndGet,
-  addToTdr,
-  enableControllableTiming
-} = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy, addToTdr, enableControllableTiming } = require("../../common/MigrationUtils.js");
 const { interfaceName } = require("../utils/Constants.js");
 
 module.exports = async function(deployer, network, accounts) {
@@ -26,8 +21,9 @@ module.exports = async function(deployer, network, accounts) {
   // Set phase length to one day.
   const secondsPerDay = "86400";
 
-  const voting = await deployAndGet(
+  const { contract: voting } = await deploy(
     deployer,
+    network,
     Voting,
     secondsPerDay,
     gatPercentage,
@@ -37,7 +33,6 @@ module.exports = async function(deployer, network, accounts) {
     controllableTiming,
     { from: keys.deployer }
   );
-  await addToTdr(voting, network);
 
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), voting.address, {
     from: keys.deployer
