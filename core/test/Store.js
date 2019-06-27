@@ -26,10 +26,10 @@ contract("Store", function(accounts) {
 
   it("Compute fees basic check", async function() {
     // Set fee to 10%
-    let newFee = { value: web3.utils.toWei("0.1", "ether") };
+    let newFee = { rawValue: web3.utils.toWei("0.1", "ether") };
     await store.setFixedOracleFeePerSecond(newFee, { from: owner });
 
-    let pfc = { value: web3.utils.toWei("2", "ether") };
+    let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
     // Wait one second, then check fees are correct
     let fees = await store.computeRegularFee(100, 101, pfc, {});
@@ -43,10 +43,10 @@ contract("Store", function(accounts) {
 
   it("Compute fees at 20%", async function() {
     // Change fee to 20%
-    let newFee = { value: web3.utils.toWei("0.2", "ether") };
+    let newFee = { rawValue: web3.utils.toWei("0.2", "ether") };
     await store.setFixedOracleFeePerSecond(newFee, { from: owner });
 
-    let pfc = { value: web3.utils.toWei("2", "ether") };
+    let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
     // Run time tests again
     let fees = await store.computeRegularFee(100, 101, pfc, {});
@@ -61,7 +61,7 @@ contract("Store", function(accounts) {
     assert(await didContractThrow(store.computeRegularFee(2, 1, 10)));
 
     // Disallow setting fees higher than 100%.
-    let highFee = { value: web3.utils.toWei("1", "ether") };
+    let highFee = { rawValue: web3.utils.toWei("1", "ether") };
     assert(await didContractThrow(store.setFixedOracleFeePerSecond(highFee, { from: owner })));
 
     // TODO Check that only permitted role can change the fee
@@ -69,9 +69,9 @@ contract("Store", function(accounts) {
 
   it("Final fees", async function() {
     //Add final fee and confirm
-    await store.setFinalFee(arbitraryTokenAddr, { value: web3.utils.toWei("5", "ether") }, { from: owner });
+    await store.setFinalFee(arbitraryTokenAddr, { rawValue: web3.utils.toWei("5", "ether") }, { from: owner });
     const fee = await store.computeFinalFee(arbitraryTokenAddr);
-    assert.equal(fee.value, web3.utils.toWei("5", "ether"));
+    assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
   });
 
   it("Pay fees in Ether", async function() {
