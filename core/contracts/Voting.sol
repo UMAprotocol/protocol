@@ -649,7 +649,14 @@ contract Voting is Testable, MultiRole, OracleInterface {
     }
 
     event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
-    event VoteRevealed(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time, int price, uint numTokens);
+    event VoteRevealed(
+        address indexed voter,
+        uint indexed roundId,
+        bytes32 indexed identifier,
+        uint time,
+        int price,
+        uint numTokens
+    );
     event RewardsRetrieved(address indexed voter, uint indexed rewardsRoundId, uint numTokens);
 
     event PriceRequestAdded(uint indexed votingRoundId, bytes32 indexed identifier, uint time);
