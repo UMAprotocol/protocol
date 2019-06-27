@@ -24,7 +24,7 @@ contract("TokenMigrator", function(accounts) {
   });
 
   const createMigrator = async rate => {
-    const migrator = await TokenMigrator.new({ value: rate }, oldToken.address, newToken.address);
+    const migrator = await TokenMigrator.new({ rawValue: rate }, oldToken.address, newToken.address);
     await newToken.addMember(minterRoleEnumValue, migrator.address, { from: owner });
     return migrator;
   };
