@@ -432,7 +432,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
-            require(votingToken.mint(msg.sender, totalRewardToIssue.value));
+            require(votingToken.mint(msg.sender, totalRewardToIssue.rawValue));
         }
     }
 

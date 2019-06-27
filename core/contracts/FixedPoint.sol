@@ -15,7 +15,7 @@ library FixedPoint {
     uint private constant FP_SCALING_FACTOR = 10**18;
 
     struct Unsigned {
-        uint value;
+        uint rawValue;
     }
 
     /** @dev Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`. */
@@ -25,37 +25,37 @@ library FixedPoint {
 
     /** @dev Whether `a` is greater than `b`. */
     function isGreaterThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
-        return a.value > b.value;
+        return a.rawValue > b.rawValue;
     }
 
     /** @dev Whether `a` is greater than `b`. */
     function isGreaterThan(Unsigned memory a, uint b) internal pure returns (bool) {
-        return a.value > fromUnscaledUint(b).value;
+        return a.rawValue > fromUnscaledUint(b).rawValue;
     }
 
     /** @dev Whether `a` is greater than `b`. */
     function isGreaterThan(uint a, Unsigned memory b) internal pure returns (bool) {
-        return fromUnscaledUint(a).value > b.value;
+        return fromUnscaledUint(a).rawValue > b.rawValue;
     }
 
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
-        return a.value < b.value;
+        return a.rawValue < b.rawValue;
     }
 
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(Unsigned memory a, uint b) internal pure returns (bool) {
-        return a.value < fromUnscaledUint(b).value;
+        return a.rawValue < fromUnscaledUint(b).rawValue;
     }
 
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(uint a, Unsigned memory b) internal pure returns (bool) {
-        return fromUnscaledUint(a).value < b.value;
+        return fromUnscaledUint(a).rawValue < b.rawValue;
     }
 
     /** @dev Adds two `Unsigned`s, reverting on overflow. */
     function add(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        return Unsigned(a.value.add(b.value));
+        return Unsigned(a.rawValue.add(b.rawValue));
     }
 
     /** @dev Adds an `Unsigned` to an unscaled uint, reverting on overflow. */
@@ -65,7 +65,7 @@ library FixedPoint {
 
     /** @dev Subtracts two `Unsigned`s, reverting on underflow. */
     function sub(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        return Unsigned(a.value.sub(b.value));
+        return Unsigned(a.rawValue.sub(b.rawValue));
     }
 
     /** @dev Subtracts an unscaled uint from an `Unsigned`, reverting on underflow. */
@@ -86,12 +86,12 @@ library FixedPoint {
         // 2. Results that can't be represented exactly are truncated not rounded. E.g., 1.4 * 2e-18 = 2.8e-18, which
         // would round to 3, but this computation produces the result 2.
         // No need to use SafeMath because FP_SCALING_FACTOR != 0.
-        return Unsigned(a.value.mul(b.value) / FP_SCALING_FACTOR);
+        return Unsigned(a.rawValue.mul(b.rawValue) / FP_SCALING_FACTOR);
     }
 
     /** @dev Multiplies an `Unsigned` by an unscaled uint, reverting on overflow. */
     function mul(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
-        return Unsigned(a.value.mul(b));
+        return Unsigned(a.rawValue.mul(b));
     }
 
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
@@ -101,12 +101,12 @@ library FixedPoint {
         // 10^41 is stored internally as a uint 10^59.
         // 2. Results that can't be represented exactly are truncated not rounded. E.g., 2 / 3 = 0.6 repeating, which
         // would round to 0.666666666666666667, but this computation produces the result 0.666666666666666666.
-        return Unsigned(a.value.mul(FP_SCALING_FACTOR).div(b.value));
+        return Unsigned(a.rawValue.mul(FP_SCALING_FACTOR).div(b.rawValue));
     }
 
     /** @dev Divides with truncation an `Unsigned` by an unscaled uint, reverting on division by 0. */
     function div(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
-        return Unsigned(a.value.div(b));
+        return Unsigned(a.rawValue.div(b));
     }
 
     /** @dev Divides with truncation an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */

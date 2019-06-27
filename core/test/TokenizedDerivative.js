@@ -127,11 +127,11 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   const setNewFixedOracleFee = async feePerSecond => {
-    await deployedStore.setFixedOracleFeePerSecond({ value: feePerSecond.toString() });
+    await deployedStore.setFixedOracleFeePerSecond({ rawValue: feePerSecond.toString() });
   };
 
   const setNewWeeklyDelayFee = async weeklyDelayFee => {
-    await deployedStore.setWeeklyDelayFee({ value: weeklyDelayFee.toString() });
+    await deployedStore.setWeeklyDelayFee({ rawValue: weeklyDelayFee.toString() });
   };
 
   const getRandomIntBetween = (min, max) => {
@@ -256,7 +256,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     const setOracleFinalFee = async finalFee => {
       const marginCurrencyAddress = (await derivativeContract.derivativeStorage()).externalAddresses.marginCurrency;
-      await deployedStore.setFinalFee(marginCurrencyAddress, { value: finalFee.toString() });
+      await deployedStore.setFinalFee(marginCurrencyAddress, { rawValue: finalFee.toString() });
     };
 
     const annotateTitle = title => {
