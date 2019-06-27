@@ -12,28 +12,15 @@ module.exports = async function(deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
 
   // Deploy whitelists.
-  const { contract: sponsorWhitelist } = await deploy(
-    deployer,
-    network,
-    AddressWhitelist,
-    { from: keys.sponsorWhitelist }
-  );
-  const { contract: returnCalculatorWhitelist } = await deploy(
-    deployer,
-    network,
-    AddressWhitelist,
-    {
-      from: keys.returnCalculatorWhitelist
-    }
-  );
-  const { contract: marginCurrencyWhitelist } = await deploy(
-    deployer,
-    network,
-    AddressWhitelist,
-    {
-      from: keys.marginCurrencyWhitelist
-    }
-  );
+  const { contract: sponsorWhitelist } = await deploy(deployer, network, AddressWhitelist, {
+    from: keys.sponsorWhitelist
+  });
+  const { contract: returnCalculatorWhitelist } = await deploy(deployer, network, AddressWhitelist, {
+    from: keys.returnCalculatorWhitelist
+  });
+  const { contract: marginCurrencyWhitelist } = await deploy(deployer, network, AddressWhitelist, {
+    from: keys.marginCurrencyWhitelist
+  });
 
   const finder = await Finder.deployed();
 
