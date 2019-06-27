@@ -71,7 +71,7 @@ contract("Store", function(accounts) {
     //Add final fee and confirm
     await store.setFinalFee(arbitraryTokenAddr, { rawValue: web3.utils.toWei("5", "ether") }, { from: owner });
     const fee = await store.computeFinalFee(arbitraryTokenAddr);
-    assert.equal(fee.value, web3.utils.toWei("5", "ether"));
+    assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
   });
 
   it("Pay fees in Ether", async function() {
