@@ -23,7 +23,8 @@ function shouldCommitDeployment(network) {
   return (
     network === "ci" || // Just for testing the process of saving deployments.
     network.startsWith("ropsten") ||
-    network.startsWith("mainnet")
+    network.startsWith("mainnet") ||
+    network.startsWith("kovan")
   );
 }
 
@@ -101,7 +102,7 @@ async function deploy(deployer, network, contractType, ...args) {
 
 // Maps key ordering to key names.
 function getKeysForNetwork(network, accounts) {
-  if (network === "ropsten" || network === "mainnet") {
+  if (network === "ropsten" || network === "mainnet" || network === "kovan") {
     return {
       deployer: accounts[0],
       registry: accounts[1],

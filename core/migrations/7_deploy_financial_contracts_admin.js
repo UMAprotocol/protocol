@@ -11,7 +11,7 @@ module.exports = async function(deployer, network, accounts) {
   });
 
   const remarginRole = "1"; // Corresponds to FinancialContractsAdmin.Roles.Remargin.
-  await financialContractsAdmin.addMember(remarginRole, keys.deployer);
+  await financialContractsAdmin.addMember(remarginRole, keys.deployer, { from: keys.deployer });
 
   const finder = await Finder.deployed();
   await finder.changeImplementationAddress(
