@@ -98,6 +98,9 @@ contract("scripts/Voting.js", function(accounts) {
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
     assert.equal(emailSender.emailsSent, 2);
+    // Running again shouldn't send more emails.
+    await votingSystem.runIteration();
+    assert.equal(emailSender.emailsSent, 2);
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
