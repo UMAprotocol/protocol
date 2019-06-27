@@ -3,8 +3,15 @@ const EncryptedSender = artifacts.require("EncryptedSender");
 const { VotePhasesEnum } = require("../utils/Enums");
 const { decryptMessage, encryptMessage } = require("../utils/Crypto");
 const sendgrid = require("@sendgrid/mail");
-
 const fetch = require("node-fetch");
+const SUPPORTED_IDENTIFIERS = {
+  BTCUSD: {
+    dataSource: "CryptoCompare",
+    identifiers: { first: "BTC", second: "USD" },
+    time: "1560762000"
+  },
+  test: { dataSource: "test" }
+};
 
 function stripApiKey(str, key) {
   return str.replace(key, "{redacted}");
@@ -52,10 +59,12 @@ async function fetchCryptoComparePrice(request) {
 async function fetchPrice(request) {
   switch (request.dataSource) {
     case "CryptoCompare":
-      return await fetchCryptoComparePrice(request);
+      return await fetchCryptoComparePrice({
+        identifier: { first: request.identifiers.first, second: request.identifiers.second },
+        time: request.time
+      });
     case "test":
-      console.log("something is working!");
-      return web3.utils.toWei("1");
+      return "1.5";
   }
   return web3.utils.toWei("1.5");
 }
@@ -207,11 +216,7 @@ async function runVoting() {
 }
 
 run = async function(callback) {
-  var testRequest = { dataSource: "CryptoCompare", identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
-  var ccRequest = { dataSource: "test", identifier: "BTCUSD", time: "1560762000" };
   await runVoting();
-  await fetchPrice(ccRequest);
-  await fetchPrice(testRequest);
   callback();
 };
 run.VotingSystem = VotingSystem;
