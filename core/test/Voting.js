@@ -937,7 +937,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     currentRoundId = await voting.getCurrentRoundId();
 
-      // Repeated price requests don't trigger events.
+    // Repeated price requests don't trigger events.
     result = await voting.requestPrice(identifier, time, { from: registeredDerivative });
     truffleAssert.eventNotEmitted(result, "PriceRequestAdded");
 
