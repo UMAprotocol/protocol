@@ -178,6 +178,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
             retrieveRewards();
             votersLastRound[msg.sender] = currentRoundId;
         }
+
+        emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
     }
 
     /**
@@ -216,6 +218,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
+
+        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
 
     function requestPrice(bytes32 identifier, uint time)
@@ -266,6 +270,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Add price request to the next round.
         rounds[nextRoundId].priceRequestIds.push(priceRequestId);
+        emit PriceRequestAdded(nextRoundId, identifier, time);
 
         // Estimate the end of next round and return the time.
         return voteTiming.computeEstimatedRoundEndTime(nextRoundId);
@@ -277,6 +282,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
     function addSupportedIdentifier(bytes32 identifier) external onlyRoleHolder(uint(Roles.Writer)) {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
+            emit SupportedIdentifierAdded(identifier);
         }
     }
 
@@ -433,6 +439,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
             require(votingToken.mint(msg.sender, totalRewardToIssue.rawValue));
+            emit RewardsRetrieved(msg.sender, roundId, totalRewardToIssue.rawValue);
         }
     }
 
@@ -587,7 +594,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
             VoteInstance storage voteInstance = priceRequest.voteInstances[lastActiveVotingRoundId];
 
-            (bool isResolved,) = voteInstance.resultComputation.getResolvedPrice(
+            (bool isResolved, int price) = voteInstance.resultComputation.getResolvedPrice(
                 _computeGat(lastActiveVotingRoundId));
 
             if (!isResolved) {
@@ -602,6 +609,10 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
                 // Delete the result computation since it's no longer needed.
                 delete voteInstance.resultComputation;
+
+                emit PriceRequestRolledOver(nextVotingRoundId, priceRequest.identifier, priceRequest.time);
+            } else {
+                emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, price);
             }
         }
 
@@ -636,4 +647,25 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
         return snapshottedSupply.mul(gatPercentage);
     }
+
+    event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
+
+    event VoteRevealed(
+        address indexed voter,
+        uint indexed roundId,
+        bytes32 indexed identifier,
+        uint time,
+        int price,
+        uint numTokens
+    );
+
+    event RewardsRetrieved(address indexed voter, uint indexed rewardsRoundId, uint numTokens);
+
+    event PriceRequestAdded(uint indexed votingRoundId, bytes32 indexed identifier, uint time);
+
+    event PriceRequestRolledOver(uint indexed newRoundId, bytes32 indexed identifier, uint time);
+
+    event PriceResolved(uint indexed resolutionRoundId, bytes32 indexed identifier, uint time, int price);
+
+    event SupportedIdentifierAdded(bytes32 indexed identifier);
 }
