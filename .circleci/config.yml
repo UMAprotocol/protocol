@@ -156,6 +156,57 @@ jobs:
       - run:
           name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
+  voter_dapp_test:
+    docker:
+      - image: circleci/node:11.5.0
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          keys: 
+            - v2-voter-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
+            - v2-voter-dapp-dep-cache-
+      - run:
+          name: Install Dependencies
+          working_directory: ~/protocol/voter-dapp
+          command: npm install
+      - save_cache:
+          key: v2-voter-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
+          paths:
+            - voter-dapp/node_modules
+      - save_cache:
+          key: voter-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/protocol
+      - run:
+          name: Test Voter DApp
+          working_directory: ~/protocol
+          command: ./ci/run_voter_dapp_tests.sh
+  voter_dapp_build:
+    docker:
+      - image: circleci/node:11.5.0
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: voter-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Apply Deployment Registry
+          working_directory: ~/protocol/core
+          command: $(npm bin)/apply-registry
+      - run:
+          name: Build Voter DApp
+          working_directory: ~/protocol/voter-dapp
+          command: npm run build
+      - store_artifacts:
+          path: ~/protocol/voter-dapp/build
+          destination: build
+      - save_cache:
+          key: voter-dapp-build-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - ~/protocol
 
 workflows:
   version: 2
@@ -178,3 +229,9 @@ workflows:
       - docs:
           requires:
             - checkout_and_install
+      - voter_dapp_test:
+          requires:
+            - build
+      - voter_dapp_build:
+          requires:
+            - voter_dapp_test
