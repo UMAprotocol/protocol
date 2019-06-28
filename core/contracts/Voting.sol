@@ -219,7 +219,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.value);
+        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
 
     function requestPrice(bytes32 identifier, uint time)
@@ -438,8 +438,8 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
-            require(votingToken.mint(msg.sender, totalRewardToIssue.value));
-            emit RewardsRetrieved(msg.sender, roundId, totalRewardToIssue.value);
+            require(votingToken.mint(msg.sender, totalRewardToIssue.rawValue));
+            emit RewardsRetrieved(msg.sender, roundId, totalRewardToIssue.rawValue);
         }
     }
 

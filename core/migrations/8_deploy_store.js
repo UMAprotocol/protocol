@@ -20,6 +20,6 @@ module.exports = async function(deployer, network, accounts) {
     const annualFee = web3.utils.toWei("0.005");
     const secondsPerYear = 31536000;
     const feePerSecond = web3.utils.toBN(annualFee).divn(secondsPerYear);
-    await store.setFixedOracleFeePerSecond({ value: feePerSecond.toString() }, { from: keys.store });
+    await store.setFixedOracleFeePerSecond({ rawValue: feePerSecond.toString() }, { from: keys.store });
   }
 };

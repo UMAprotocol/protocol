@@ -24,7 +24,7 @@ async function run() {
   const owner = accounts[0];
   const registeredDerivative = accounts[1];
 
-  await voting.setInflationRate({ value: web3.utils.toWei("0.01", "ether") });
+  await voting.setInflationRate({ rawValue: web3.utils.toWei("0.01", "ether") });
   await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, owner);
 
   if (!(await registry.isDerivativeRegistered(registeredDerivative))) {

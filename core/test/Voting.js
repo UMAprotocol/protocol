@@ -21,7 +21,7 @@ contract("Voting", function(accounts) {
   const unregisteredDerivative = accounts[5];
 
   const setNewInflationRate = async inflationRate => {
-    await voting.setInflationRate({ value: inflationRate.toString() });
+    await voting.setInflationRate({ rawValue: inflationRate.toString() });
   };
 
   before(async function() {

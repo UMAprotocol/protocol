@@ -832,7 +832,7 @@ library TokenizedDerivativeUtils {
             FixedPoint.Unsigned(_safeUintCast(pfc))
         );
         // TODO(ptare): Implement a keeper system, but for now, pay the delay fee to the Oracle.
-        uint expectedFeeAmount = regularFee.add(delayFee).value;
+        uint expectedFeeAmount = regularFee.add(delayFee).rawValue;
 
         // Ensure the fee returned can actually be paid by the short margin account.
         uint shortBalance = _safeUintCast(s.shortBalance);
@@ -890,7 +890,7 @@ library TokenizedDerivativeUtils {
         FixedPoint.Unsigned memory expectedFee = store.computeFinalFee(
             address(s.externalAddresses.marginCurrency)
         );
-        uint expectedFeeAmount = expectedFee.value;
+        uint expectedFeeAmount = expectedFee.rawValue;
         // Ensure the fee returned can actually be paid by the short margin account.
         uint shortBalanceUint = _safeUintCast(shortBalance);
         actualFeeAmount = (shortBalanceUint < expectedFeeAmount) ? shortBalanceUint : expectedFeeAmount;

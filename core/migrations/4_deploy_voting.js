@@ -9,10 +9,10 @@ module.exports = async function(deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
 
   // Set the GAT percentage to 5%
-  const gatPercentage = { value: web3.utils.toWei("0.05", "ether") };
+  const gatPercentage = { rawValue: web3.utils.toWei("0.05", "ether") };
 
   // Set the inflation rate.
-  const inflationRate = { value: web3.utils.toWei("0.05", "ether") };
+  const inflationRate = { rawValue: web3.utils.toWei("0.05", "ether") };
 
   // Get the previously deployed VotingToken and Finder.
   const votingToken = await VotingToken.deployed();
