@@ -7,7 +7,7 @@ const fetch = require("node-fetch");
 const SUPPORTED_IDENTIFIERS = {
   BTCUSD: {
     dataSource: "CryptoCompare",
-    identifiers: { first: "BTC", second: "USD" },
+    identifiers: { first: "BTC", second: "USD" }
   },
   test: { dataSource: "test" }
 };
@@ -66,7 +66,7 @@ async function fetchPrice(request) {
     case "test":
       return "1.5";
   }
-  throw "No known data source specified"
+  throw "No known data source specified";
   return web3.utils.toWei("1.5");
 }
 
