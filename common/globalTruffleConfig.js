@@ -30,7 +30,7 @@ function addPublicNetwork(networks, name, networkId) {
     ...options,
     provider: new ManagedSecretProvider(
       GckmsConfig,
-      `https://kovan.infura.io/v3/${infuraApiKey}`,
+      `https://${name}.infura.io/v3/${infuraApiKey}`,
       0,
       GckmsConfig.length
     )
@@ -39,7 +39,7 @@ function addPublicNetwork(networks, name, networkId) {
   // Mnemonic network.
   networks[name + "_mnemonic"] = {
     ...options,
-    provider: new HDWalletProvider(mnemonic, `https://ropsten.infura.io/v3/${infuraApiKey}`, 0, 2)
+    provider: new HDWalletProvider(mnemonic, `https://${name}.infura.io/v3/${infuraApiKey}`, 0, 2)
   };
 }
 
@@ -58,6 +58,15 @@ function addLocalNetwork(networks, name, customOptions) {
     ...defaultOptions,
     ...customOptions
   };
+
+  // Override custom options if environment variables are found
+  if ("LOCALHOST" in process.env) {
+    networks[name].host = process.env.LOCALHOST;
+  }
+
+  if ("LOCALPORT" in process.env) {
+    networks[name].port = process.env.LOCALPORT;
+  }
 }
 
 let networks = {};

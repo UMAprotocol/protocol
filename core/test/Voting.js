@@ -20,7 +20,7 @@ contract("Voting", function(accounts) {
   const unregisteredDerivative = accounts[5];
 
   const setNewInflationRate = async inflationRate => {
-    await voting.setInflationRate({ value: inflationRate.toString() });
+    await voting.setInflationRate({ rawValue: inflationRate.toString() });
   };
 
   before(async function() {
@@ -733,6 +733,45 @@ contract("Voting", function(accounts) {
     // Unregistered derivatives can't retrieve prices.
     assert(await didContractThrow(voting.hasPrice(identifier, time, { from: unregisteredDerivative })));
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredDerivative })));
+  });
+
+  it("View methods", async function() {
+    const identifier = web3.utils.utf8ToHex("view-methods");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await voting.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await moveToNextRound(voting);
+
+    const price = 123;
+
+    // Accounts 1 and 2 commit votes.
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(price, salt1);
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(price, salt1);
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
+    await moveToNextPhase(voting);
+
+    // Account 1 reveals.
+    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
+
+    // Check if hasRevealedVote gives correct results for each voter.
+    assert.isTrue(await voting.hasRevealedVote(identifier, time, { from: account1 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
+
+    // Can still check once in the next round, even if this behavior is useless to the voter.
+    await moveToNextRound(voting);
+    assert.isTrue(await voting.hasRevealedVote(identifier, time, { from: account1 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
   });
 
   it("Basic Inflation", async function() {

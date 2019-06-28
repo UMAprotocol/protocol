@@ -25,7 +25,7 @@ contract ResultComputationTest {
     }
 
     function wrapGetTotalCorrectlyVotedTokens() external view returns (uint) {
-        return data.getTotalCorrectlyVotedTokens().value;
+        return data.getTotalCorrectlyVotedTokens().rawValue;
     }
 }
 

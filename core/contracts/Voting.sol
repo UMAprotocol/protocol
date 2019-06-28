@@ -345,6 +345,17 @@ contract Voting is Testable, MultiRole, OracleInterface {
     }
 
     /**
+     * @notice Whether the caller has a revealed vote for the latest round that an (identifier, time) was in.
+     */
+    function hasRevealedVote(bytes32 identifier, uint time) external view returns (bool) {
+        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+        VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+
+        return voteSubmission.revealHash != bytes32(0);
+    }
+
+    /**
      * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      */
@@ -421,7 +432,7 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
-            require(votingToken.mint(msg.sender, totalRewardToIssue.value));
+            require(votingToken.mint(msg.sender, totalRewardToIssue.rawValue));
         }
     }
 

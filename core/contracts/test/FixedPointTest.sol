@@ -10,7 +10,7 @@ contract FixedPointTest {
     using SafeMath for uint;
 
     function wrapFromUnscaledUint(uint a) external pure returns (uint) {
-        return FixedPoint.fromUnscaledUint(a).value;
+        return FixedPoint.fromUnscaledUint(a).rawValue;
     }
 
     function wrapIsGreaterThan(uint a, uint b) external pure returns (bool) {
@@ -38,53 +38,53 @@ contract FixedPointTest {
     }
 
     function wrapAdd(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).add(FixedPoint.Unsigned(b)).value;
+        return FixedPoint.Unsigned(a).add(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedAdd(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).add(b).value;
+        return FixedPoint.Unsigned(a).add(b).rawValue;
     }
 
     function wrapSub(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).sub(FixedPoint.Unsigned(b)).value;
+        return FixedPoint.Unsigned(a).sub(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedSub(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).sub(b).value;
+        return FixedPoint.Unsigned(a).sub(b).rawValue;
     }
 
     // The second uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedSubOpposite(uint a, uint b) external pure returns (uint) {
-        return a.sub(FixedPoint.Unsigned(b)).value;
+        return a.sub(FixedPoint.Unsigned(b)).rawValue;
     }
 
     function wrapMul(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).mul(FixedPoint.Unsigned(b)).value;
+        return FixedPoint.Unsigned(a).mul(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedMul(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).mul(b).value;
+        return FixedPoint.Unsigned(a).mul(b).rawValue;
     }
 
     function wrapDiv(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).div(FixedPoint.Unsigned(b)).value;
+        return FixedPoint.Unsigned(a).div(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedDiv(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).div(b).value;
+        return FixedPoint.Unsigned(a).div(b).rawValue;
     }
 
     // The second uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedDivOpposite(uint a, uint b) external pure returns (uint) {
-        return a.div(FixedPoint.Unsigned(b)).value;
+        return a.div(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapPow(uint a, uint b) external pure returns (uint) {
-        return FixedPoint.Unsigned(a).pow(b).value;
+        return FixedPoint.Unsigned(a).pow(b).rawValue;
     }
 }

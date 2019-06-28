@@ -7,6 +7,8 @@ const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 
 const numPriceRequests = 5;
+const numVoters = 5;
+const numRounds = 5;
 
 const getVoter = (accounts, id) => {
   // Offset by 2, because owner == accounts[0] and registeredDerivative == accounts[1]
@@ -22,7 +24,7 @@ async function run() {
   const owner = accounts[0];
   const registeredDerivative = accounts[1];
 
-  await voting.setInflationRate({ value: web3.utils.toWei("0.01", "ether") });
+  await voting.setInflationRate({ rawValue: web3.utils.toWei("0.01", "ether") });
   await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, owner);
 
   if (!(await registry.isDerivativeRegistered(registeredDerivative))) {
@@ -35,7 +37,7 @@ async function run() {
   // Allow owner to mint new tokens
   await votingToken.addMember("1", owner);
 
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
     const balance = await votingToken.balanceOf(voter);
     const floorBalance = web3.utils.toBN(web3.utils.toWei("100", "ether"));
@@ -46,19 +48,19 @@ async function run() {
   }
 
   const now = await voting.getCurrentTime();
-  const max = now - numPriceRequests * 5;
+  const max = now - numPriceRequests * numRounds;
   // Pick a random time. Probabilistically, this won't request a duplicate time from a previous run.
   let time = Math.floor(Math.random() * max);
 
   console.log("total supply", (await votingToken.totalSupply()).toString());
 
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < numRounds; i++) {
     console.log("Round", i);
     await cycleRound(voting, votingToken, identifier, time, accounts);
     time += numPriceRequests;
   }
 
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
     console.log("balance", (await votingToken.balanceOf(voter)).toString());
   }
@@ -78,7 +80,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   const salts = {};
   const price = getRandomSignedInt();
   for (var i = 0; i < numPriceRequests; i++) {
-    for (var j = 0; j < 5; j++) {
+    for (var j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
       const hash = web3.utils.soliditySha3(price, salt);
 
@@ -97,7 +99,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   await moveToNextPhase(voting);
 
   for (var i = 0; i < numPriceRequests; i++) {
-    for (var j = 0; j < 5; j++) {
+    for (var j = 0; j < numVoters; j++) {
       const voter = getVoter(accounts, j);
 
       const result = await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });
