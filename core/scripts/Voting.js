@@ -8,7 +8,6 @@ const SUPPORTED_IDENTIFIERS = {
   BTCUSD: {
     dataSource: "CryptoCompare",
     identifiers: { first: "BTC", second: "USD" },
-    time: "1560762000"
   },
   test: { dataSource: "test" }
 };
@@ -57,15 +56,17 @@ async function fetchCryptoComparePrice(request) {
 }
 
 async function fetchPrice(request) {
-  switch (request.dataSource) {
+  const config = SUPPORTED_IDENTIFIERS[request.identifier];
+  switch (config.dataSource) {
     case "CryptoCompare":
       return await fetchCryptoComparePrice({
-        identifier: { first: request.identifiers.first, second: request.identifiers.second },
+        identifier: { first: config.identifiers.first, second: config.identifiers.second },
         time: request.time
       });
     case "test":
       return "1.5";
   }
+  throw "No known data source specified"
   return web3.utils.toWei("1.5");
 }
 
