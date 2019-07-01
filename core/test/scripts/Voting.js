@@ -65,7 +65,7 @@ contract("scripts/Voting.js", function(accounts) {
   });
 
   it("basic case", async function() {
-    const identifier = web3.utils.utf8ToHex("one-voter");
+    const identifier = web3.utils.utf8ToHex("test");
     const time = "1000";
 
     // Request an Oracle price.

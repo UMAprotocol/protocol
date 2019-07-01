@@ -9,7 +9,9 @@ const SUPPORTED_IDENTIFIERS = {
     dataSource: "CryptoCompare",
     identifiers: { first: "BTC", second: "USD" }
   },
-  test: { dataSource: "test" }
+  test: { dataSource: "test" },
+  overlapping1: { dataSource: "overlapping1" },
+  overlapping2: { dataSource: "overlapping2" }
 };
 
 function stripApiKey(str, key) {
@@ -64,10 +66,14 @@ async function fetchPrice(request) {
         time: request.time
       });
     case "test":
-      return "1.5";
+      return web3.utils.toWei("1.5");
+    case "overlapping1":
+      return web3.utils.toWei("1.5");
+    case "overlapping2":
+      return web3.utils.toWei("1.5");
     default:
       throw "No known data source specified";
-    }
+  }
 }
 
 class EmailSender {
