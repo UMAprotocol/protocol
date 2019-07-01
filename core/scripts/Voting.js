@@ -56,7 +56,7 @@ async function fetchCryptoComparePrice(request) {
 }
 
 async function fetchPrice(request) {
-  const config = SUPPORTED_IDENTIFIERS[request.identifier];
+  const config = SUPPORTED_IDENTIFIERS[web3.utils.hexToUtf8(request.identifier)];
   switch (config.dataSource) {
     case "CryptoCompare":
       return await fetchCryptoComparePrice({
@@ -65,9 +65,9 @@ async function fetchPrice(request) {
       });
     case "test":
       return "1.5";
-  }
-  throw "No known data source specified";
-  return web3.utils.toWei("1.5");
+    default:
+      throw "No known data source specified";
+    }
 }
 
 class EmailSender {
