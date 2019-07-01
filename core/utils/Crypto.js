@@ -27,23 +27,15 @@ async function decryptMessage(privKey, encryptedMessage) {
   return await EthCrypto.decryptWithPrivateKey(privKey, encryptedMessageObject);
 }
 
-// Adds an account to web3 and returns all account "secrets" to the caller.
-// Note: This is primarily of use when attempting to use a node that comes preloaded with unlocked accounts. Since
-// there is no way for the user to access the private keys of these accounts over the node JSON-RPC api, the user must
-// manually generate an account and add it for the private key to be accessible.
-async function createVisibleAccount(web3) {
-  const newAccount = web3.eth.accounts.create();
-  const password = "password";
-  await web3.eth.personal.importRawKey(newAccount.privateKey, password);
-  if (!(await web3.eth.personal.unlockAccount(newAccount.address, password, 3600))) {
-    throw "Account could not be unlocked";
-  }
-
-  return {
-    privKey: newAccount.privateKey,
-    pubKey: recoverPublicKey(newAccount.privateKey),
-    address: newAccount.address
-  };
+// Derives a private key from the signature of a particular message by a particular account.
+// Note: this is not meant to be used to generate private keys that hold ETH or any other high value assets. This is
+// meant to create a node/metamask friendly way of generating a temporary encryption/decryption key for sending private
+// messages.
+async function deriveKeyPairFromSignature(web3, messageToSign, signingAccount) {
+  const signature = await web3.eth.sign(messageToSign, signingAccount);
+  const privateKey = web3.utils.soliditySha3(signature).substr(2);
+  const publicKey = recoverPublicKey(privateKey);
+  return { publicKey, privateKey };
 }
 
 module.exports = {
@@ -51,5 +43,5 @@ module.exports = {
   addressFromPublicKey,
   decryptMessage,
   recoverPublicKey,
-  createVisibleAccount
+  deriveKeyPairFromSignature
 };

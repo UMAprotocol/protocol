@@ -15,16 +15,22 @@ pragma solidity ^0.5.0;
  * not delete the previous message for a particular topic.
  */
 contract EncryptedSender {
+    struct TopicData {
+        // An (optional) public key used to encrypt messages for this topic. This is only necessary if the sender will
+        // not have access to the public key offchain.
+        bytes publicKey;
+
+        // The encrypted message.
+        bytes message;
+    }
+
     struct Recipient {
-        // This maps from a hash to an encrypted message.
+        // This maps from a hash to the data for this topic.
         // Note: the hash is a hash of the "subject" or "topic" of the message.
-        mapping(bytes32 => bytes) messages;
+        mapping(bytes32 => TopicData) topics;
 
         // This contains the set of all authorized senders for this recipient.
         mapping(address => bool) authorizedSenders;
-
-        // A public key for the recipient that can be used to send messages to the recipient.
-        bytes publicKey;
     }
 
     mapping(address => Recipient) private recipients;
@@ -49,15 +55,17 @@ contract EncryptedSender {
      * function in core/utils/Crypto.js. 
      */
     function getMessage(address recipient, bytes32 topicHash) external view returns (bytes memory) {
-        return recipients[recipient].messages[topicHash];
+        return recipients[recipient].topics[topicHash].message;
     }
 
     /**
-     * @notice Gets the stored public key for `recipient`. Return value will be 0 length if no public key has been set.
-     * @dev Senders will need this public key to encrypt messages that only the `recipient` can read.
+     * @notice Gets the stored public key for a particular `recipient` and `topicHash`. Return value will be 0 length
+     * if no public key has been set.
+     * @dev Senders may need this public key to encrypt messages that only the `recipient` can read. If the public key
+     * is communicated offchain, this field may be left empty.
      */
-    function getPublicKey(address recipient) external view returns (bytes memory) {
-        return recipients[recipient].publicKey;
+    function getPublicKey(address recipient, bytes32 topicHash) external view returns (bytes memory) {
+        return recipients[recipient].topics[topicHash].publicKey;
     }
 
     /**
@@ -69,7 +77,18 @@ contract EncryptedSender {
     function sendMessage(address recipient_, bytes32 topicHash, bytes memory message) public {
         Recipient storage recipient = recipients[recipient_];
         require(isAuthorizedSender(msg.sender, recipient_), "Not authorized to send to this recipient");
-        recipient.messages[topicHash] = message;
+        recipient.topics[topicHash].message = message;
+    }
+
+    /**
+     * @notice Sets the public key for this caller and topicHash.
+     * @dev Note: setting the public key is optional - if the publicKey is communicated or can be derived offchain by
+     * the sender, there is no need to set it here. Because there are no specific requirements for the publicKey, there
+     * is also no verification of its validity other than its length.
+     */
+    function setPublicKey(bytes memory publicKey, bytes32 topicHash) public {
+        require(publicKey.length == 64, "Public key is the wrong length");
+        recipients[msg.sender].topics[topicHash].publicKey = publicKey;
     }
 
     /**
@@ -78,25 +97,5 @@ contract EncryptedSender {
     function isAuthorizedSender(address sender, address recipient) public view returns (bool) {
         // Note: the recipient is always authorized to send messages to themselves.
         return recipients[recipient].authorizedSenders[sender] || recipient == sender;
-    }
-
-    /**
-     * @notice Sets the caller's public key.
-     */
-    function setPublicKey(bytes memory publicKey) public {
-        // Verify that the uploaded public key matches the sender.
-        require(_publicKeyToAddress(publicKey) == msg.sender, "Public key does not match the sender");
-
-        // Set the public key if it passed verification.
-        recipients[msg.sender].publicKey = publicKey;
-    }
-
-    /**
-     * @notice Converts the public key to an address.
-     * @dev Conversion fails if the public key is not 64 bytes.
-     */
-    function _publicKeyToAddress(bytes memory publicKey) private pure returns (address) {
-        require(publicKey.length == 64, "Public key is the wrong length");
-        return address(uint256(keccak256(publicKey)));
     }
 }

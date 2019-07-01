@@ -24,30 +24,13 @@ contract("scripts/Voting.js", function(accounts) {
   let encryptedSender;
 
   const account1 = accounts[0];
-  let voter;
-  let privKey;
+  const voter = accounts[1];
 
   before(async function() {
     voting = await Voting.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
     encryptedSender = await EncryptedSender.deployed();
-
-    // Load the keys and add them to the wallets object on the provider.
-    let pubKey;
-    ({ address: voter, privKey, pubKey } = await createVisibleAccount(web3));
-    if (!web3.currentProvider.wallets) {
-      // If no wallets object has been created, create one.
-      web3.currentProvider.wallets = {};
-    }
-    // Format the private and public keys for the wallet.
-    web3.currentProvider.wallets[voter] = {
-      _privKey: Buffer.from(privKey.substr(2), "hex"),
-      _pubKey: Buffer.from(pubKey.substr(2), "hex")
-    };
-
-    // Fund the voter account.
-    await web3.eth.sendTransaction({ from: accounts[9], to: voter, value: web3.utils.toWei("5", "ether") });
 
     // Register "derivative" with Registry, so we can make price requests in this test.
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, account1);

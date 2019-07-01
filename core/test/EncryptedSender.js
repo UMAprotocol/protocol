@@ -5,7 +5,7 @@ const {
   encryptMessage,
   addressFromPublicKey,
   recoverPublicKey,
-  createVisibleAccount
+  deriveKeyPairFromSignature
 } = require("../utils/Crypto.js");
 const EthCrypto = require("eth-crypto");
 
@@ -13,27 +13,17 @@ const EncryptedSender = artifacts.require("EncryptedSender");
 
 contract("EncryptedSender", function(accounts) {
   const senderAccount = accounts[0];
-
-  // The receiving account is created in before().
-  let receiverAccount;
-  let receiverPrivKey;
-  let receiverPubKey;
-
-  let encryptedSender;
+  const receiverAccount = accounts[1];
 
   before(async function() {
     encryptedSender = await EncryptedSender.deployed();
-
-    ({ pubKey: receiverPubKey, privKey: receiverPrivKey, address: receiverAccount } = await createVisibleAccount(web3));
-
-    // Fund the new account
-    await web3.eth.sendTransaction({ from: accounts[9], to: receiverAccount, value: web3.utils.toWei("5", "ether") });
   });
 
   it("Encrypt Decrypt", async function() {
     const message = web3.utils.randomHex(100);
-    const encryptedMessage = await encryptMessage(receiverPubKey, message);
-    assert.equal(await decryptMessage(receiverPrivKey, encryptedMessage), message);
+    const { publicKey, privateKey } = await deriveKeyPairFromSignature(web3, "Some message to sign", receiverAccount);
+    const encryptedMessage = await encryptMessage(publicKey, message);
+    assert.equal(await decryptMessage(privateKey, encryptedMessage), message);
   });
 
   it("Auth", async function() {
@@ -67,23 +57,24 @@ contract("EncryptedSender", function(accounts) {
     );
   });
 
-  it("Key validation", async function() {
-    // Verify that the address can be correctly recovered offchain.
-    assert.equal(addressFromPublicKey(receiverPubKey), receiverAccount);
-
-    // If the valid key is sent by the wrong address, the call should fail.
-    assert(await didContractThrow(encryptedSender.setPublicKey(receiverPubKey, { from: senderAccount })));
-
-    // Valid key should succeed.
-    await encryptedSender.setPublicKey(receiverPubKey, { from: receiverAccount });
-  });
-
   it("Send a message", async function() {
-    // // Set the public key for the receiver.
-    await encryptedSender.setPublicKey(receiverPubKey, { from: receiverAccount });
+    // Hash topic for lookup.
+    const identifier = web3.utils.utf8ToHex("identifier");
+    const time = "1000";
+    const topicHash = web3.utils.soliditySha3(identifier, time);
+
+    // Derive the keypair for this topic hash.
+    const { publicKey, privateKey } = await deriveKeyPairFromSignature(
+      web3,
+      "Signed message for topic hash: " + topicHash,
+      receiverAccount
+    );
+
+    // Set the public key for the receiver.
+    await encryptedSender.setPublicKey(publicKey, topicHash, { from: receiverAccount });
 
     // Verify the correct public key can be retrieved.
-    assert.equal(await encryptedSender.getPublicKey(receiverAccount), receiverPubKey);
+    assert.equal(await encryptedSender.getPublicKey(receiverAccount, topicHash), publicKey);
 
     // Prepare message to send.
     const salt = getRandomUnsignedInt().toString();
@@ -91,12 +82,7 @@ contract("EncryptedSender", function(accounts) {
     const message = salt + "," + price;
 
     // Encrypt the message.
-    const encryptedMessage = await encryptMessage(receiverPubKey, message);
-
-    // Hash topic for lookup.
-    const identifier = web3.utils.utf8ToHex("identifier");
-    const time = "1000";
-    const topicHash = web3.utils.soliditySha3(identifier, time);
+    const encryptedMessage = await encryptMessage(publicKey, message);
 
     // Authorize senderAccount to send messages to receiverAccount via the EncryptedSender.
     await encryptedSender.addAuthorizedSender(senderAccount, { from: receiverAccount });
@@ -104,7 +90,7 @@ contract("EncryptedSender", function(accounts) {
 
     // Pull down the encrypted message and decrypt it.
     const pulledMessage = await encryptedSender.getMessage(receiverAccount, topicHash);
-    const decryptedMessage = await decryptMessage(receiverPrivKey, pulledMessage);
+    const decryptedMessage = await decryptMessage(privateKey, pulledMessage);
 
     // decryptedMessage should match the plaintext message from above.
     assert.equal(decryptedMessage, message);

@@ -1,7 +1,7 @@
 const Voting = artifacts.require("Voting");
 const EncryptedSender = artifacts.require("EncryptedSender");
 const { VotePhasesEnum } = require("../utils/Enums");
-const { decryptMessage, encryptMessage } = require("../utils/Crypto");
+const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../utils/Crypto");
 const sendgrid = require("@sendgrid/mail");
 
 const fetch = require("node-fetch");
@@ -83,8 +83,11 @@ class VotingSystem {
       return null;
     }
 
-    const { privKey } = this.getAccountKeys();
-    const decryptedMessage = await decryptMessage(privKey, encryptedCommit);
+    // Generate the one-time keypair for this round.
+    const { privateKey } = await deriveKeyPairFromSignature(web3, this.getKeyGenMessage(roundId), this.account);
+
+    // Decrypt message.
+    const decryptedMessage = await decryptMessage(privateKey, encryptedCommit);
     return JSON.parse(decryptedMessage);
   }
 
@@ -92,20 +95,11 @@ class VotingSystem {
     // TODO: if we want to authorize other accounts to send messages to the automated voting system, we should check
     // and authorize them here.
 
-    // Get the account's public key from the encryptedSender.
-    let pubKey = await this.encryptedSender.getPublicKey(this.account);
-
-    if (!pubKey) {
-      // If the public key isn't published, pull it from the local wallet.
-      pubKey = this.getAccountKeys().pubKey;
-
-      // Publish the public key so dApps or scripts that are authorized can write without direct access to this
-      // account's private key.
-      await this.encryptedSender.setPublicKey(pubKey, { from: this.account });
-    }
+    // Generate the one-time keypair for this round.
+    const { publicKey } = await deriveKeyPairFromSignature(web3, this.getKeyGenMessage(roundId), this.account);
 
     // Encrypt the vote using the public key.
-    const encryptedMessage = await encryptMessage(pubKey, JSON.stringify(vote));
+    const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
     // Upload the encrypted commit.
     const topicHash = this.computeTopicHash(request, roundId);
@@ -177,16 +171,9 @@ class VotingSystem {
     return web3.utils.soliditySha3(request.identifier, request.time, roundId);
   }
 
-  getAccountKeys() {
-    // Note: this assumes that current provider has a .wallets field that is keyed by wallet address.
-    // Each wallet in the wallets field is assumed to have ._privKey and ._pubKey fields that store buffers holding the
-    // keys.
-    const wallet = web3.currentProvider.wallets[this.account];
-    return {
-      privKey: wallet._privKey.toString("hex"),
-      // Note: the "0x" addition is because public keys are expected to be passed in a web3 friendly format.
-      pubKey: "0x" + wallet._pubKey.toString("hex")
-    };
+  getKeyGenMessage(roundId) {
+    // TODO: discuss dApp tradeoffs for changing this to a per-topic hash keypair.
+    return `UMA Protocol one time key for round: ${roundId.toString()}`;
   }
 }
 
