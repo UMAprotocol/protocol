@@ -96,7 +96,7 @@ class VotingSystem {
     // and authorize them here.
 
     // Generate the one-time keypair for this round.
-    const { publicKey } = await deriveKeyPairFromSignature(web3, this.getKeyGenMessage(roundId), this.account); 
+    const { publicKey } = await deriveKeyPairFromSignature(web3, this.getKeyGenMessage(roundId), this.account);
 
     // Encrypt the vote using the public key.
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));

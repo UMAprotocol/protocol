@@ -64,7 +64,11 @@ contract("EncryptedSender", function(accounts) {
     const topicHash = web3.utils.soliditySha3(identifier, time);
 
     // Derive the keypair for this topic hash.
-    const { publicKey, privateKey } = await deriveKeyPairFromSignature(web3, "Signed message for topic hash: " + topicHash, receiverAccount);
+    const { publicKey, privateKey } = await deriveKeyPairFromSignature(
+      web3,
+      "Signed message for topic hash: " + topicHash,
+      receiverAccount
+    );
 
     // Set the public key for the receiver.
     await encryptedSender.setPublicKey(publicKey, topicHash, { from: receiverAccount });

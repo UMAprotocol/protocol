@@ -24,7 +24,6 @@ contract EncryptedSender {
         bytes message;
     }
 
-
     struct Recipient {
         // This maps from a hash to the data for this topic.
         // Note: the hash is a hash of the "subject" or "topic" of the message.
