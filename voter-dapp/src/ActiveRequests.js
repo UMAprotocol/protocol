@@ -22,11 +22,6 @@ function formatDate(timestampInSeconds, web3) {
 
 function ActiveRequests() {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  drizzleReactHooks.useDrizzleState(drizzleState => {
-    return {
-      voting: drizzleState.voting
-    };
-  });
   const pendingRequests = useCacheCall("Voting", "getPendingRequests");
   if (!pendingRequests) {
     return <div>Looking up requests</div>;
