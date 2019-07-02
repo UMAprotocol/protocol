@@ -3,8 +3,19 @@ const EncryptedSender = artifacts.require("EncryptedSender");
 const { VotePhasesEnum } = require("../utils/Enums");
 const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../utils/Crypto");
 const sendgrid = require("@sendgrid/mail");
-
 const fetch = require("node-fetch");
+require("dotenv").config();
+
+const SUPPORTED_IDENTIFIERS = {
+  BTCUSD: {
+    dataSource: "CryptoCompare",
+    identifiers: { first: "BTC", second: "USD" }
+  }
+};
+
+const CC_API_KEY = process.env.CRYPTO_COMPARE_API_KEY
+  ? process.env.CRYPTO_COMPARE_API_KEY
+  : "6a5293dbbe836ea20b8bda991ee031443e7a4fe936afd8293f6985d358c1d2fc";
 
 function stripApiKey(str, key) {
   return str.replace(key, "{redacted}");
@@ -25,7 +36,8 @@ async function fetchCryptoComparePrice(request) {
   const time = request.time;
 
   // Temporary price feed until we sort historical data.
-  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${identifier.second}&limit=3`;
+  // CryptoCompare provides historical hourly prices for free. If we want minutes/seconds, we'll have to update later.
+  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${identifier.second}&toTs=${time}&limit=1&api_key=${CC_API_KEY}`;
   console.log(`\n    ***** \n Querying with [${url}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
   console.log(`Response [${JSON.stringify(jsonOutput)}]`);
@@ -46,11 +58,24 @@ async function fetchCryptoComparePrice(request) {
   const tradeTime = jsonOutput.Data[0].time;
   console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
 
-  return { price };
+  return web3.utils.toWei(price.toString());
 }
 
 async function fetchPrice(request) {
-  return web3.utils.toWei("1.5");
+  const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
+  if (plainTextIdentifier.startsWith("test")) {
+    return web3.utils.toWei("1.5");
+  }
+  const config = SUPPORTED_IDENTIFIERS[plainTextIdentifier];
+  switch (config.dataSource) {
+    case "CryptoCompare":
+      return await fetchCryptoComparePrice({
+        identifier: { first: config.identifiers.first, second: config.identifiers.second },
+        time: request.time
+      });
+    default:
+      throw "No known data source specified";
+  }
 }
 
 class EmailSender {
@@ -181,7 +206,6 @@ async function runVoting() {
   try {
     console.log("Running Voting system");
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
-
     const voting = await Voting.deployed();
     const encryptedSender = await EncryptedSender.deployed();
     const account = (await web3.eth.getAccounts())[0];
@@ -193,10 +217,7 @@ async function runVoting() {
 }
 
 run = async function(callback) {
-  var request = { identifier: { first: "BTC", second: "USD" }, time: "1560762000" };
   await runVoting();
-  await fetchPrice(request);
-  await fetchCryptoComparePrice(request);
   callback();
 };
 run.VotingSystem = VotingSystem;
