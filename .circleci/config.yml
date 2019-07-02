@@ -165,6 +165,10 @@ jobs:
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Deploy Contracts
+          working_directory: ~/protocol/core
+          command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
           keys: 
             - v2-voter-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
@@ -177,6 +181,10 @@ jobs:
           key: v2-voter-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
           paths:
             - voter-dapp/node_modules
+      - run:
+          name: Link Contracts
+          working_directory: ~/protocol/voter-dapp
+          command: npm run link-contracts
       - save_cache:
           key: voter-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
           paths:
