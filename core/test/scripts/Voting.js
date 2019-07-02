@@ -148,7 +148,7 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(await voting.getPrice(identifier2, time2), hardcodedPrice);
   });
 
-  it.only("CryptoCompare price", async function() {
+  it("CryptoCompare price", async function() {
     const identifier = web3.utils.utf8ToHex("BTCUSD");
     const time = "1560762000";
 
@@ -165,13 +165,8 @@ contract("scripts/Voting.js", function(accounts) {
     const emailSender = new MockEmailSender();
     let votingSystem = new VotingScript.VotingSystem(voting, encryptedSender, voter, emailSender);
 
-    assert.equal(emailSender.emailsSent, 0);
     // The vote should have been committed.
     await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 1);
-    // Running again shouldn't send more emails.
-    await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 1);
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
@@ -181,13 +176,9 @@ contract("scripts/Voting.js", function(accounts) {
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 2);
-    // Running again shouldn't send more emails.
-    await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 2);
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
-    //assert.equal(await voting.getPrice(identifier, time), web3.utils.toWei("10264.19"));
+    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("9155.05"));
   });
 });
