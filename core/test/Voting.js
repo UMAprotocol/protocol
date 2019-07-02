@@ -1,6 +1,6 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
-const { RegistryRolesEnum, VotePhasesEnum } = require("../utils/Enums.js");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
+const { RegistryRolesEnum, VotePhasesEnum } = require("../../common/Enums.js");
+const { getRandomSignedInt, getRandomUnsignedInt } = require("../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const truffleAssert = require("truffle-assertions");
 

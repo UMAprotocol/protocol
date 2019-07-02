@@ -3,9 +3,9 @@ const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const Registry = artifacts.require("Registry");
 const EncryptedSender = artifacts.require("EncryptedSender");
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../utils/Enums.js");
+const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { createVisibleAccount } = require("../../utils/Crypto");
+const { createVisibleAccount } = require("../../../common/Crypto");
 
 class MockEmailSender {
   constructor() {

@@ -52,7 +52,7 @@ contract EncryptedSender {
     /**
      * @notice Gets the current stored message corresponding to `recipient` and `topicHash`.
      * @dev To decrypt messages (this requires access to the recipient's private keys), use the decryptMessage()
-     * function in core/utils/Crypto.js. 
+     * function in common/Crypto.js. 
      */
     function getMessage(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].message;
@@ -71,7 +71,7 @@ contract EncryptedSender {
     /**
      * @notice Sends `message` to `recipient_` categorized by a particular `topicHash`. This will overwrite any
      * previous messages sent to this `recipient` with this `topicHash`.
-     * @dev To construct an encrypted message, use the encryptMessage() in core/utils/Crypto.js.
+     * @dev To construct an encrypted message, use the encryptMessage() in common/Crypto.js.
      * The public key for the recipient can be obtained using the getPublicKey() method.
      */
     function sendMessage(address recipient_, bytes32 topicHash, bytes memory message) public {
