@@ -8,7 +8,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const identifiers = require("../../config/identifiers");
 const { interfaceName } = require("../../utils/Constants.js");
-const { RegistryRolesEnum } = require("../../utils/Enums.js");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 const argv = require("minimist")(process.argv.slice());
 

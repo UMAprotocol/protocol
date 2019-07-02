@@ -1,7 +1,7 @@
 const Voting = artifacts.require("Voting");
 const EncryptedSender = artifacts.require("EncryptedSender");
-const { VotePhasesEnum } = require("../utils/Enums");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../utils/Crypto");
+const { VotePhasesEnum } = require("../../common/Enums");
+const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../../common/Crypto");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();

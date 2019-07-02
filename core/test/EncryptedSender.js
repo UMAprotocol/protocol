@@ -1,12 +1,12 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("../utils/Random.js");
+const { getRandomSignedInt, getRandomUnsignedInt } = require("../../common/Random.js");
 const {
   decryptMessage,
   encryptMessage,
   addressFromPublicKey,
   recoverPublicKey,
   deriveKeyPairFromSignature
-} = require("../utils/Crypto.js");
+} = require("../../common/Crypto.js");
 const EthCrypto = require("eth-crypto");
 
 const EncryptedSender = artifacts.require("EncryptedSender");
