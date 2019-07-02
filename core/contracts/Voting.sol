@@ -11,6 +11,7 @@ import "./ResultComputation.sol";
 import "./Testable.sol";
 import "./VoteTiming.sol";
 import "./VotingToken.sol";
+import "./VotingInterface.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -19,8 +20,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, MultiRole, OracleInterface {
-
+contract Voting is Testable, MultiRole, OracleInterface, VotingInterface {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -66,13 +66,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
 
         // Inflation rate set for this round.
         FixedPoint.Unsigned inflationRate;
-    }
-
-    // PendingRequest is only used as return values for view functions and
-    // therefore in-memory only.
-    struct PendingRequest {
-        bytes32 identifier;
-        uint time;
     }
 
     // Maps round numbers to the rounds.
@@ -145,11 +138,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         _;
     }
 
-    /**
-     * @notice Commit your vote for a price request for `identifier` at `time`.
-     * @dev (`identifier`, `time`) must correspond to a price request that's currently in the commit phase. `hash`
-     * should be the keccak256 hash of the price you want to vote for and a `int salt`. Commits can be changed.
-     */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external {
         require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
 
@@ -182,11 +170,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
     }
 
-    /**
-     * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with. Only the
-     * committer can reveal their vote.
-     */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
@@ -302,9 +285,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         return price;
     }
 
-    /**
-     * @notice Gets the queries that are being voted on this round.
-     */
     function getPendingRequests() external view returns (PendingRequest[] memory pendingRequests) {
         uint blockTime = getCurrentTime();
 
@@ -336,16 +316,10 @@ contract Voting is Testable, MultiRole, OracleInterface {
         }
     }
 
-    /**
-     * @notice Gets the current vote phase (commit or reveal) based on the current block time.
-     */
     function getVotePhase() external view returns (VoteTiming.Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
-    /**
-     * @notice Gets the current vote round id based on the current block time.
-     */
     function getCurrentRoundId() external view returns (uint) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
@@ -369,9 +343,6 @@ contract Voting is Testable, MultiRole, OracleInterface {
         inflationRate = _inflationRate;
     }
 
-    /**
-     * @notice Retrieves any rewards the voter is owed.
-     */
     function retrieveRewards() public {
         uint blockTime = getCurrentTime();
         uint roundId = votersLastRound[msg.sender];
