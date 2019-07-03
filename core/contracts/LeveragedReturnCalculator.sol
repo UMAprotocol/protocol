@@ -1,15 +1,17 @@
-/*
-  Leveraged Return Calculator.
-
-  Implements a return calculator that applies leverage to the input prices.
-*/
+/**
+ * Leveraged Return Calculator.
+ *
+ * Implements a return calculator that applies leverage to the input prices.
+ */
 pragma solidity ^0.5.0;
 
 import "./ReturnCalculatorInterface.sol";
 import "./Withdrawable.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 
-
+/**
+ * @title ERC20 interface that includes burn and mint methods.
+ */
 contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     using SignedSafeMath for int;
 

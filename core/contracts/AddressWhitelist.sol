@@ -5,14 +5,18 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-
+/**
+ * @title A contract to track a whitelist of addresses.
+ */
 contract AddressWhitelist is Ownable {
     enum Status { None, In, Out }
     mapping(address => Status) private whitelist;
 
     address[] private whitelistIndices;
 
-    // Adds an address to the whitelist
+    /**
+     * @notice Adds an address to the whitelist.
+     */
     function addToWhitelist(address newElement) external onlyOwner {
         // Ignore if address is already included
         if (whitelist[newElement] == Status.In) {
@@ -29,7 +33,9 @@ contract AddressWhitelist is Ownable {
         emit AddedToWhitelist(newElement);
     }
 
-    // Removes an address from the whitelist.
+    /**
+     * @notice Removes an address from the whitelist.
+     */
     function removeFromWhitelist(address elementToRemove) external onlyOwner {
         if (whitelist[elementToRemove] != Status.Out) {
             whitelist[elementToRemove] = Status.Out;
@@ -37,17 +43,20 @@ contract AddressWhitelist is Ownable {
         }
     }
 
-    // Checks whether an address is on the whitelist.
+    /**
+     * @notice Checks whether an address is on the whitelist.
+     */
     function isOnWhitelist(address elementToCheck) external view returns (bool) {
         return whitelist[elementToCheck] == Status.In;
     }
 
-    // Gets all addresses that are currently included in the whitelist
-    // Note: This method skips over, but still iterates through addresses.
-    // It is possible for this call to run out of gas if a large number of
-    // addresses have been removed. To prevent this unlikely scenario, we can
-    // modify the implementation so that when addresses are removed, the last addresses
-    // in the array is moved to the empty index.
+    /**
+     * @notice Gets all addresses that are currently included in the whitelist.
+     * @dev Note: This method skips over, but still iterates through addresses. It is possible for this call to run out
+     * of gas if a large number of addresses have been removed. To reduce the likelihood of this unlikely scenario, we
+     * can modify the implementation so that when addresses are removed, the last addresses in the array is moved to
+     * the empty index.
+     */
     function getWhitelist() external view returns (address[] memory activeWhitelist) {
         // Determine size of whitelist first
         uint activeCount = 0;

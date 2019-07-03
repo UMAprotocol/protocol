@@ -12,7 +12,9 @@ import "./Testable.sol";
 import "./Withdrawable.sol";
 
 
-// Implementation of PriceFeedInterface with the ability to push prices.
+/**
+ * @title Implementation of PriceFeedInterface with the ability to manually push prices.
+ */
 contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
 
     using SafeMath for uint;
@@ -45,8 +47,10 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
         createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
-    // Adds a new price to the series for a given identifier. The pushed publishTime must be later than the last time
-    // pushed so far.
+    /**
+     * @notice Adds a new price to the series for a given identifier.
+     * @dev The pushed publishTime must be later than the last time pushed so far.
+     */
     function pushLatestPrice(bytes32 identifier, uint publishTime, int newPrice) external
         onlyRoleHolder(uint(Roles.Writer)) {
         require(publishTime <= getCurrentTime().add(BLOCK_TIMESTAMP_TOLERANCE));
@@ -55,7 +59,9 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
         emit PriceUpdated(identifier, publishTime, newPrice);
     }
 
-    // Whether this feed has ever published any prices for this identifier.
+    /**
+     * @notice Whether this feed has ever published any prices for this identifier.
+     */
     function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported) {
         isSupported = _isIdentifierSupported(identifier);
     }

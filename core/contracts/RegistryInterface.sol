@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 
 /**
- * @title Interface for a registry of derivatives and derivative creators
+ * @title Interface for a registry of derivatives and derivative creators.
  */
 interface RegistryInterface {
     struct RegisteredDerivative {
@@ -18,7 +18,7 @@ interface RegistryInterface {
     function registerDerivative(address[] calldata counterparties, address derivativeAddress) external;
 
     /**
-     * @dev Returns whether the derivative has been registered with the registry (and is therefore an authorized
+     * @dev Returns whether the derivative has been registered with the registry (and is therefore an authorized.
      * participant in the UMA system).
      */
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered);
