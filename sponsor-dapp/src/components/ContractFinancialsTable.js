@@ -8,7 +8,7 @@ import Paper from "@material-ui/core/Paper";
 import { withStyles } from "@material-ui/core/styles";
 import grey from "@material-ui/core/colors/grey";
 
-import { formatDate, formatWei } from "../utils/FormattingUtils";
+import { formatDate, formatWei } from "../common/FormattingUtils";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 import DrizzleHelper from "../utils/DrizzleHelper";
 

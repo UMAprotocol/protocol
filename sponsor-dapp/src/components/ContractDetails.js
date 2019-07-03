@@ -8,7 +8,7 @@ import TokenPreapproval from "./TokenPreapproval.js";
 import ManualPriceFeed from "../contracts/ManualPriceFeed.json";
 import { ContractStateEnum, hasEthMarginCurrency, stateToString } from "../utils/TokenizedDerivativeUtils.js";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
-import { formatDate } from "../utils/FormattingUtils.js";
+import { formatDate } from "../common/FormattingUtils.js";
 import { withStyles } from "@material-ui/core/styles";
 import Typography from "@material-ui/core/Typography";
 import DrizzleHelper from "../utils/DrizzleHelper.js";
