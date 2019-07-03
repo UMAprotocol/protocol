@@ -1,12 +1,13 @@
-/*
-  Testable contract.
-
-  Base class that provides time overrides, but only if being run in test mode.
-*/
+/**
+ * Testable contract.
+ */
 
 pragma solidity ^0.5.0;
 
 
+/**
+ * @title Base class that provides time overrides, but only if being run in test mode.
+ */
 contract Testable {
     // Is the contract being run on the test network. Note: this variable should be set on construction and never
     // modified.
@@ -21,15 +22,26 @@ contract Testable {
         }
     }
 
+    /**
+     * @notice Reverts if not running in test mode.
+     */
     modifier onlyIfTest {
         require(isTest);
         _;
     }
 
+    /**
+     * @notice Sets the current time.
+     * @dev Will revert if not running in test mode.
+     */
     function setCurrentTime(uint _time) external onlyIfTest {
         currentTime = _time;
     }
 
+    /**
+     * @notice Gets the current time. Will return the last time set in `setCurrentTime` if running in test mode.
+     * Otherwise, it will return the block timestamp.
+     */
     function getCurrentTime() public view returns (uint) {
         if (isTest) {
             return currentTime;
