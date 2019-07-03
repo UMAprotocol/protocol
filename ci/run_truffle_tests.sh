@@ -24,6 +24,7 @@ check_deployment() {
         $(npm bin)/truffle exec ./scripts/CheckDeploymentValidity.js --network $network_name
     else
         echo "No ${network_name} deployment to verify."
+        exit 1
     fi
 }
 
@@ -34,13 +35,8 @@ run_tests() {
     # Test migration
     $(npm bin)/truffle migrate --reset --network ci
 
-    # Ensure the migration is recoverable with only the artifacts saved in networks/.
-    rm -rf build
-    $(npm bin)/truffle compile
-    $(npm bin)/apply-registry
-
-    # Verify the validity of the ci migration.
-    $(npm bin)/truffle exec ./scripts/CheckDeploymentValidity.js --network ci
+    # Check the ci deployment.
+    check_deployment ./ 1234 ci
 
     # Run standard truffle tests
     $(npm bin)/truffle test --network ci
@@ -48,3 +44,6 @@ run_tests() {
 
 # Run tests for core.
 run_tests $PROTOCOL_DIR/core
+
+# Check the Kovan deployment.
+check_deployment $PROTOCOL_DIR/core 42 kovan_mnemonic
