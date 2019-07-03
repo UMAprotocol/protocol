@@ -10,7 +10,7 @@
       "minDelay": "0",
       "numerator": {
         "dataSource": "Coinbase",
-        "assetName": "BTC"
+        "assetName": "BTC-USD"
       }
     }
   },
@@ -25,7 +25,7 @@
       "minDelay": "0",
       "numerator": {
         "dataSource": "Coinbase",
-        "assetName": "ETH"
+        "assetName": "ETH-USD"
       }
     }
   }
