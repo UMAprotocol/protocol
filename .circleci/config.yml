@@ -181,10 +181,6 @@ jobs:
           key: v2-voter-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
           paths:
             - voter-dapp/node_modules
-      - run:
-          name: Link Contracts
-          working_directory: ~/protocol/voter-dapp
-          command: npm run link-contracts
       - save_cache:
           key: voter-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
           paths:
