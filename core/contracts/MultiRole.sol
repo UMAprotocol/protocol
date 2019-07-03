@@ -53,6 +53,7 @@ library Shared {
     }
 }
 
+
 /**
  * @title Base class to manage permissions for the derived class.
  */

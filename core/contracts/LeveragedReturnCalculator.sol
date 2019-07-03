@@ -9,8 +9,9 @@ import "./ReturnCalculatorInterface.sol";
 import "./Withdrawable.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
 
+
 /**
- * @title ERC20 interface that includes burn and mint methods.
+ * @title Computes return values based on a fixed leverage.
  */
 contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     using SignedSafeMath for int;

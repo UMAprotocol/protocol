@@ -5,6 +5,7 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
+
 /**
  * @title A contract to track a whitelist of addresses.
  */
