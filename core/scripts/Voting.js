@@ -168,6 +168,7 @@ class VotingSystem {
   }
 
   async runIteration() {
+    console.log("Starting voting iteration");
     const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
@@ -190,6 +191,7 @@ class VotingSystem {
         "Updated " + updatesMade.length + " price requests"
       );
     }
+    console.log("Finished voting iteration");
   }
 
   computeTopicHash(request, roundId) {
