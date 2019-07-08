@@ -4,7 +4,7 @@ const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 const Registry = artifacts.require("Registry");
 const { interfaceName } = require("../../utils/Constants.js");
-const { RegistryRolesEnum } = require("../../utils/Enums.js");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 async function getDeployAddress() {
   const accounts = await web3.eth.getAccounts();
@@ -14,8 +14,12 @@ async function getDeployAddress() {
 async function registerDerivative(registry) {
   const deployAddress = await getDeployAddress();
 
-  await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, deployAddress);
-  console.log("Creator Added:", deployAddress);
+  if (!(await registry.holdsRole(RegistryRolesEnum.DERIVATIVE_CREATOR, deployAddress))) {
+    // Wrapping with an if isn't strictly necessary, but saves gas when script is used regularly.
+    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, deployAddress);
+    console.log("Creator Added:", deployAddress);
+  }
+
   if (!(await registry.isDerivativeRegistered(deployAddress))) {
     await registry.registerDerivative([], deployAddress);
     console.log("Registered derivative:", deployAddress);
