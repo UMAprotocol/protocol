@@ -7,7 +7,7 @@ import { withStyles } from "@material-ui/core/styles";
 import { ContractStateEnum, ReturnTypeEnum } from "../utils/TokenizedDerivativeUtils";
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
-import { formatWei, formatWithMaxDecimals } from "../utils/FormattingUtils";
+import { formatWei, formatWithMaxDecimals } from "../common/FormattingUtils";
 
 const BigNumber = require("bignumber.js");
 

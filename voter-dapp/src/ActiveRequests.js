@@ -6,19 +6,7 @@ import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 
-// TODO: Share this utility function with sponsor-dapp. React disallows imports outside of src/, so we'll need to find
-// some clever workaround.
-function formatDate(timestampInSeconds, web3) {
-  return new Date(
-    parseInt(
-      web3.utils
-        .toBN(timestampInSeconds)
-        .muln(1000)
-        .toString(),
-      10
-    )
-  ).toString();
-}
+import { formatDate } from "./common/FormattingUtils.js";
 
 function ActiveRequests() {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
