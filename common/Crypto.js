@@ -31,6 +31,7 @@ async function decryptMessage(privKey, encryptedMessage) {
 // Note: this is not meant to be used to generate private keys that hold ETH or any other high value assets. This is
 // meant to create a node/metamask friendly way of generating a temporary encryption/decryption key for sending private
 // messages.
+// TODO: Remove web3 as function parameter
 async function deriveKeyPairFromSignature(web3, messageToSign, signingAccount) {
   const signature = await web3.eth.sign(messageToSign, signingAccount);
   const privateKey = web3.utils.soliditySha3(signature).substr(2);
