@@ -1078,4 +1078,56 @@ contract("Voting", function(accounts) {
 
     assert.equal(secondEncryptedMessage, secondRetrievedEncryptedMessage);
   });
+
+  it("Batches multiple commits into one", async function() {
+    const numRequests = 5;
+    const priceRequests = [];
+
+    for (let i = 0; i < numRequests; i++) {
+      let identifier = web3.utils.utf8ToHex(`batch-request-${i}`);
+      priceRequests.push({
+        identifier,
+        time: "1000",
+        hash: web3.utils.soliditySha3(getRandomUnsignedInt()),
+        encryptedVote: web3.utils.utf8ToHex(`some encrypted message ${i}`)
+      });
+
+      await voting.addSupportedIdentifier(identifier);
+      await voting.requestPrice(identifier, "1000", { from: registeredDerivative });
+    }
+
+    await moveToNextRound(voting);
+
+    const roundId = await voting.getCurrentRoundId();
+    await voting.batchCommit(priceRequests);
+
+    // Test that the encrypted messages were stored properly
+    for (let i = 0; i < numRequests; i++) {
+      let priceRequest = priceRequests[i];
+      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
+      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+
+      assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
+    }
+
+    // Edit a single commit
+    const modifiedPriceRequest = priceRequests[0];
+    modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomUnsignedInt());
+    modifiedPriceRequest.encryptedVote = web3.utils.utf8ToHex(`some other encrypted message`);
+    await voting.commitAndPersistEncryptedVote(
+      modifiedPriceRequest.identifier,
+      modifiedPriceRequest.time,
+      modifiedPriceRequest.hash,
+      modifiedPriceRequest.encryptedVote
+    );
+
+    // Test that the encrypted messages are still correct
+    for (let i = 0; i < numRequests; i++) {
+      let priceRequest = priceRequests[i];
+      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
+      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+
+      assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
+    }
+  });
 });

@@ -150,7 +150,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     }
 
     function batchCommit(Commitment[] calldata commits) external {
-        for (uint i = 0; i < commits.length; commits[i]) {
+        for (uint i = 0; i < commits.length; i++) {
             // TODO: Call commitVote if `commits[i].encryptedVote` is empty?
             // TODO: Ensure revert strings in individual `commitVote` calls return useful information.
             commitAndPersistEncryptedVote(
