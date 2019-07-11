@@ -1081,24 +1081,45 @@ contract("Voting", function(accounts) {
 
   it("Batches multiple commits into one", async function() {
     const numRequests = 5;
+    const requestTime = "1000";
     const priceRequests = [];
 
     for (let i = 0; i < numRequests; i++) {
       let identifier = web3.utils.utf8ToHex(`batch-request-${i}`);
       priceRequests.push({
         identifier,
-        time: "1000",
+        time: requestTime,
         hash: web3.utils.soliditySha3(getRandomUnsignedInt()),
         encryptedVote: web3.utils.utf8ToHex(`some encrypted message ${i}`)
       });
 
       await voting.addSupportedIdentifier(identifier);
-      await voting.requestPrice(identifier, "1000", { from: registeredDerivative });
+      await voting.requestPrice(identifier, requestTime, { from: registeredDerivative });
     }
 
     await moveToNextRound(voting);
 
     const roundId = await voting.getCurrentRoundId();
+
+    // Commit without storing any encrypted messages
+    await voting.batchCommit(
+      priceRequests.map(request => ({
+        identifier: request.identifier,
+        time: request.time,
+        hash: request.hash,
+        encryptedVote: []
+      }))
+    );
+
+    // Verify that no messages were stored
+    for (let i = 0; i < numRequests; i++) {
+      let request = priceRequests[i];
+      let topicHash = computeTopicHash({ identifier: request.identifier, time: request.time }, roundId);
+
+      assert.isNull(await voting.getMessage(account1, topicHash));
+    }
+
+    // This time we commit while storing the encrypted messages
     await voting.batchCommit(priceRequests);
 
     // Test that the encrypted messages were stored properly

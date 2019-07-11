@@ -58,6 +58,9 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         bytes32 revealHash;
     }
 
+    // Captures the necessary data for making a commitment.
+    // Used as a parameter when making batch requests.
+    // Not used as a data structure for storage.
     struct Commitment {
         bytes32 identifier;
 
@@ -151,13 +154,16 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
     function batchCommit(Commitment[] calldata commits) external {
         for (uint i = 0; i < commits.length; i++) {
-            // TODO: Call commitVote if `commits[i].encryptedVote` is empty?
-            // TODO: Ensure revert strings in individual `commitVote` calls return useful information.
-            commitAndPersistEncryptedVote(
-                commits[i].identifier,
-                commits[i].time,
-                commits[i].hash,
-                commits[i].encryptedVote);
+            if (commits[i].encryptedVote.length == 0) {
+                commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
+            } else {
+                commitAndPersistEncryptedVote(
+                    commits[i].identifier,
+                    commits[i].time,
+                    commits[i].hash,
+                    commits[i].encryptedVote);
+            }
+
         }
     }
 
@@ -366,7 +372,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     ) public {
         commitVote(identifier, time, hash);
 
-        // TODO: Try to avoid recomputing roundId if called through `batchCommit`
         uint roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
         sendMessage(msg.sender, topicHash, encryptedVote);
