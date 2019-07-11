@@ -1015,7 +1015,7 @@ contract("Voting", function(accounts) {
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
   });
 
-  it("Commit and persist encrypted price in a single transaction", async function() {
+  it("Commit and persist the encrypted price", async function() {
     const identifier = web3.utils.utf8ToHex("commit-and-persist");
     const time = "1000";
     await voting.addSupportedIdentifier(identifier);
@@ -1049,7 +1049,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, retrievedVote.price, retrievedVote.salt);
   });
 
-  it("Commit and persist multiple messages", async function() {
+  it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
     const identifier = web3.utils.utf8ToHex("commit-and-persist2");
     const time = "1000";
     await voting.addSupportedIdentifier(identifier);
