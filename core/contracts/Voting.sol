@@ -59,7 +59,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     }
 
     // Captures the necessary data for making a commitment.
-    // Used as a parameter when making batch requests.
+    // Used as a parameter when making batch commitments.
     // Not used as a data structure for storage.
     struct Commitment {
         bytes32 identifier;
