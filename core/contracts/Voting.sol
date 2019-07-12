@@ -71,6 +71,19 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         bytes encryptedVote;
     }
 
+    // Captures the necessary data for revealing a vote.
+    // Used as a parameter when making batch reveals.
+    // Not used as a data structure for storage.
+    struct Reveal {
+        bytes32 identifier;
+
+        uint time;
+
+        int price;
+
+        int salt;
+    }
+
     struct Round {
         // The list of price requests that were/are being voted on this round.
         bytes32[] priceRequestIds;
@@ -152,56 +165,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         _;
     }
 
-    function batchCommit(Commitment[] calldata commits) external {
-        for (uint i = 0; i < commits.length; i++) {
-            if (commits[i].encryptedVote.length == 0) {
-                commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
-            } else {
-                commitAndPersistEncryptedVote(
-                    commits[i].identifier,
-                    commits[i].time,
-                    commits[i].hash,
-                    commits[i].encryptedVote);
-            }
-
-        }
-    }
-
-    function revealVote(bytes32 identifier, uint time, int price, int salt) external {
-        uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
-            "Cannot reveal while in the commit phase");
-
-        // Note: computing the current round is required to disallow people from revealing an old commit after the
-        // round is over.
-        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
-
-        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
-        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
-
-        // 0 hashes are disallowed in the commit phase, so they indicate a different error.
-        require(voteSubmission.commit != bytes32(0), "Cannot reveal an uncommitted or previously revealed hash");
-        require(keccak256(abi.encode(price, salt)) == voteSubmission.commit,
-                "Committed hash doesn't match revealed price and salt");
-        delete voteSubmission.commit;
-
-        // Get or create a snapshot for this round.
-        uint snapshotId = _getOrCreateSnapshotId(roundId);
-
-        // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
-        // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
-
-        // Set the voter's submission.
-        voteSubmission.revealHash = keccak256(abi.encode(price));
-
-        // Add vote to the results.
-        voteInstance.resultComputation.addVote(price, balance);
-
-        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
-    }
-
     function requestPrice(bytes32 identifier, uint time)
         external
         onlyRegisteredDerivative()
@@ -254,6 +217,27 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
         // Estimate the end of next round and return the time.
         return voteTiming.computeEstimatedRoundEndTime(nextRoundId);
+    }
+
+    function batchCommit(Commitment[] calldata commits) external {
+        for (uint i = 0; i < commits.length; i++) {
+            if (commits[i].encryptedVote.length == 0) {
+                commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
+            } else {
+                commitAndPersistEncryptedVote(
+                    commits[i].identifier,
+                    commits[i].time,
+                    commits[i].hash,
+                    commits[i].encryptedVote);
+            }
+
+        }
+    }
+
+    function batchReveal(Reveal[] calldata reveals) external {
+        for (uint i = 0; i < reveals.length; i++) {
+            revealVote(reveals[i].identifier, reveals[i].time, reveals[i].price, reveals[i].salt);
+        }
     }
 
     /**
@@ -362,6 +346,45 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         }
 
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
+    }
+
+    function revealVote(bytes32 identifier, uint time, int price, int salt) public {
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
+            "Cannot reveal while in the commit phase");
+
+        // Note: computing the current round is required to disallow people from revealing an old commit after the
+        // round is over.
+        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
+
+        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+        VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
+        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+
+        // 0 hashes are disallowed in the commit phase, so they indicate a different error.
+        require(voteSubmission.commit != bytes32(0), "Cannot reveal an uncommitted or previously revealed hash");
+        require(keccak256(abi.encode(price, salt)) == voteSubmission.commit,
+                "Committed hash doesn't match revealed price and salt");
+        delete voteSubmission.commit;
+
+        // Get or create a snapshot for this round.
+        uint snapshotId = _getOrCreateSnapshotId(roundId);
+
+        // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
+        // initialize the Unsigned value with the returned uint.
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
+
+        // Set the voter's submission.
+        voteSubmission.revealHash = keccak256(abi.encode(price));
+
+        // Add vote to the results.
+        voteInstance.resultComputation.addVote(price, balance);
+
+        // Remove the stored message for this price request, if it exsts.
+        bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
+        removeMessage(msg.sender, topicHash);
+
+        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
 
     function commitAndPersistEncryptedVote(

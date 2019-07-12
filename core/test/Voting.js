@@ -1046,7 +1046,14 @@ contract("Voting", function(accounts) {
     const retrievedVote = JSON.parse(decryptedMessage);
 
     assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomUnsignedInt())));
+
+    // Check that the message was not deleted.
+    assert.isNotNull(await voting.getMessage(account1, topicHash));
+
     await voting.revealVote(identifier, time, retrievedVote.price, retrievedVote.salt);
+
+    // Check that the message was deleted.
+    assert.isNull(await voting.getMessage(account1, topicHash));
   });
 
   it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
@@ -1150,5 +1157,78 @@ contract("Voting", function(accounts) {
 
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
+  });
+
+  it("Batch reveal multiple commits", async function() {
+    const identifier = web3.utils.utf8ToHex("batch-reveal");
+    const time1 = "1000";
+    const time2 = "1001";
+    await voting.addSupportedIdentifier(identifier);
+
+    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
+    await moveToNextRound(voting);
+
+    const price1 = getRandomSignedInt();
+    const price2 = getRandomSignedInt();
+    const salt1 = getRandomUnsignedInt();
+    const salt2 = getRandomUnsignedInt();
+    const hash1 = web3.utils.soliditySha3(price1, salt1);
+    const hash2 = web3.utils.soliditySha3(price2, salt2);
+    const roundId = await voting.getCurrentRoundId();
+
+    const { privateKey, publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), account1);
+    const vote = { price: price1.toString(), salt: salt2.toString() };
+    const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
+
+    await voting.commitAndPersistEncryptedVote(identifier, time1, hash1, encryptedMessage);
+    await voting.commitVote(identifier, time2, hash2);
+
+    const topicHash1 = computeTopicHash({ identifier, time: time1 }, roundId);
+    const topicHash2 = computeTopicHash({ identifier, time: time2 }, roundId);
+
+    // Check the encrypted message storage slot.
+    assert.isNotNull(await voting.getMessage(account1, topicHash1));
+    assert.isNull(await voting.getMessage(account1, topicHash2));
+
+    await moveToNextPhase(voting);
+
+    const result = await voting.batchReveal([
+      {
+        identifier,
+        time: time1,
+        price: price1.toString(),
+        salt: salt1.toString()
+      },
+      {
+        identifier,
+        time: time2,
+        price: price2.toString(),
+        salt: salt2.toString()
+      }
+    ]);
+
+    truffleAssert.eventEmitted(result, "VoteRevealed", ev => {
+      return (
+        ev.voter.toString() == account1 &&
+        ev.roundId.toString() == roundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time1 &&
+        ev.price.toString() == price1.toString()
+      );
+    });
+    truffleAssert.eventEmitted(result, "VoteRevealed", ev => {
+      return (
+        ev.voter.toString() == account1 &&
+        ev.roundId.toString() == roundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time2 &&
+        ev.price.toString() == price2.toString()
+      );
+    });
+
+    // Check that the encrypted message has been removed from storage
+    assert.isNull(await voting.getMessage(account1, topicHash1));
+    assert.isNull(await voting.getMessage(account1, topicHash2));
   });
 });
