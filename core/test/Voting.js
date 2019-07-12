@@ -1,7 +1,9 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { RegistryRolesEnum, VotePhasesEnum } = require("../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../common/Random.js");
+const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../../common/Crypto");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
+const { computeTopicHash, getKeyGenMessage } = require("../utils/EncryptionHelper.js");
 const truffleAssert = require("truffle-assertions");
 
 const Registry = artifacts.require("Registry");
@@ -1011,5 +1013,142 @@ contract("Voting", function(accounts) {
     // Events only get emitted if there were actually rewards issued. Is this the behavior we want?
     result = await voting.retrieveRewards({ from: account4 });
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
+  });
+
+  it("Commit and persist the encrypted price", async function() {
+    const identifier = web3.utils.utf8ToHex("commit-and-persist");
+    const time = "1000";
+    await voting.addSupportedIdentifier(identifier);
+
+    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await moveToNextRound(voting);
+
+    const price = getRandomSignedInt();
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    const roundId = await voting.getCurrentRoundId();
+
+    const { privateKey, publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), account1);
+    const vote = { price: price.toString(), salt: salt.toString() };
+    const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
+
+    await voting.commitAndPersistEncryptedVote(identifier, time, hash, encryptedMessage);
+
+    const topicHash = computeTopicHash({ identifier, time }, roundId);
+    const retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+
+    // Check that the stored message is correct.
+    assert.equal(encryptedMessage, retrievedEncryptedMessage);
+
+    await moveToNextPhase(voting);
+
+    const decryptedMessage = await decryptMessage(privateKey, retrievedEncryptedMessage);
+    const retrievedVote = JSON.parse(decryptedMessage);
+
+    assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomUnsignedInt())));
+    await voting.revealVote(identifier, time, retrievedVote.price, retrievedVote.salt);
+  });
+
+  it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
+    const identifier = web3.utils.utf8ToHex("commit-and-persist2");
+    const time = "1000";
+    await voting.addSupportedIdentifier(identifier);
+
+    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await moveToNextRound(voting);
+
+    const price = getRandomSignedInt();
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    const roundId = await voting.getCurrentRoundId();
+
+    const { privateKey, publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), account1);
+    const vote = { price: price.toString(), salt: salt.toString() };
+    const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
+
+    await voting.commitAndPersistEncryptedVote(identifier, time, hash, encryptedMessage);
+
+    const topicHash = computeTopicHash({ identifier, time }, roundId);
+    const retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+
+    const secondEncryptedMessage = web3.utils.toHex(getRandomUnsignedInt());
+
+    await voting.commitAndPersistEncryptedVote(identifier, time, hash, secondEncryptedMessage);
+    const secondRetrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+
+    assert.equal(secondEncryptedMessage, secondRetrievedEncryptedMessage);
+  });
+
+  it("Batches multiple commits into one", async function() {
+    const numRequests = 5;
+    const requestTime = "1000";
+    const priceRequests = [];
+
+    for (let i = 0; i < numRequests; i++) {
+      let identifier = web3.utils.utf8ToHex(`batch-request-${i}`);
+      priceRequests.push({
+        identifier,
+        time: requestTime,
+        hash: web3.utils.soliditySha3(getRandomUnsignedInt()),
+        encryptedVote: web3.utils.utf8ToHex(`some encrypted message ${i}`)
+      });
+
+      await voting.addSupportedIdentifier(identifier);
+      await voting.requestPrice(identifier, requestTime, { from: registeredDerivative });
+    }
+
+    await moveToNextRound(voting);
+
+    const roundId = await voting.getCurrentRoundId();
+
+    // Commit without storing any encrypted messages
+    await voting.batchCommit(
+      priceRequests.map(request => ({
+        identifier: request.identifier,
+        time: request.time,
+        hash: request.hash,
+        encryptedVote: []
+      }))
+    );
+
+    // Verify that no messages were stored
+    for (let i = 0; i < numRequests; i++) {
+      let request = priceRequests[i];
+      let topicHash = computeTopicHash({ identifier: request.identifier, time: request.time }, roundId);
+
+      assert.isNull(await voting.getMessage(account1, topicHash));
+    }
+
+    // This time we commit while storing the encrypted messages
+    await voting.batchCommit(priceRequests);
+
+    // Test that the encrypted messages were stored properly
+    for (let i = 0; i < numRequests; i++) {
+      let priceRequest = priceRequests[i];
+      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
+      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+
+      assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
+    }
+
+    // Edit a single commit
+    const modifiedPriceRequest = priceRequests[0];
+    modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomUnsignedInt());
+    modifiedPriceRequest.encryptedVote = web3.utils.utf8ToHex(`some other encrypted message`);
+    await voting.commitAndPersistEncryptedVote(
+      modifiedPriceRequest.identifier,
+      modifiedPriceRequest.time,
+      modifiedPriceRequest.hash,
+      modifiedPriceRequest.encryptedVote
+    );
+
+    // Test that the encrypted messages are still correct
+    for (let i = 0; i < numRequests; i++) {
+      let priceRequest = priceRequests[i];
+      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
+      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+
+      assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
+    }
   });
 });

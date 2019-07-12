@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./EncryptedSender.sol";
 import "./Finder.sol";
 import "./FixedPoint.sol";
 import "./MultiRole.sol";
@@ -20,7 +21,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, MultiRole, OracleInterface, VotingInterface {
+contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, EncryptedSender {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -55,6 +56,19 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface {
         // The hash of the value that was revealed.
         // Note: this is only used for computation of rewards.
         bytes32 revealHash;
+    }
+
+    // Captures the necessary data for making a commitment.
+    // Used as a parameter when making batch commitments.
+    // Not used as a data structure for storage.
+    struct Commitment {
+        bytes32 identifier;
+
+        uint time;
+
+        bytes32 hash;
+
+        bytes encryptedVote;
     }
 
     struct Round {
@@ -138,36 +152,19 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface {
         _;
     }
 
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) external {
-        require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
+    function batchCommit(Commitment[] calldata commits) external {
+        for (uint i = 0; i < commits.length; i++) {
+            if (commits[i].encryptedVote.length == 0) {
+                commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
+            } else {
+                commitAndPersistEncryptedVote(
+                    commits[i].identifier,
+                    commits[i].time,
+                    commits[i].hash,
+                    commits[i].encryptedVote);
+            }
 
-        // Current time is required for all vote timing queries.
-        uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit,
-            "Cannot commit while in the reveal phase");
-
-        // Should only update the round in the commit phase because a new round that's already in the reveal phase
-        // would be wasted.
-        _updateRound(blockTime);
-
-        // At this point, the computed and last updated round ID should be equal.
-        uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
-        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-
-        // This price request must be slated for this round.
-        require(priceRequest.lastVotingRound == currentRoundId,
-            "This (time, identifier) pair is not being voted on this round");
-
-        VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
-        voteInstance.voteSubmissions[msg.sender].commit = hash;
-
-        if (votersLastRound[msg.sender] != currentRoundId) {
-            retrieveRewards();
-            votersLastRound[msg.sender] = currentRoundId;
         }
-
-        emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
     }
 
     function revealVote(bytes32 identifier, uint time, int price, int salt) external {
@@ -333,6 +330,51 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface {
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
         return voteSubmission.revealHash != bytes32(0);
+    }
+
+    function commitVote(bytes32 identifier, uint time, bytes32 hash) public {
+        require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
+
+        // Current time is required for all vote timing queries.
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit,
+            "Cannot commit while in the reveal phase");
+
+        // Should only update the round in the commit phase because a new round that's already in the reveal phase
+        // would be wasted.
+        _updateRound(blockTime);
+
+        // At this point, the computed and last updated round ID should be equal.
+        uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+
+        PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+
+        // This price request must be slated for this round.
+        require(priceRequest.lastVotingRound == currentRoundId,
+            "This (time, identifier) pair is not being voted on this round");
+
+        VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
+        voteInstance.voteSubmissions[msg.sender].commit = hash;
+
+        if (votersLastRound[msg.sender] != currentRoundId) {
+            retrieveRewards();
+            votersLastRound[msg.sender] = currentRoundId;
+        }
+
+        emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
+    }
+
+    function commitAndPersistEncryptedVote(
+        bytes32 identifier,
+        uint time,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public {
+        commitVote(identifier, time, hash);
+
+        uint roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
+        sendMessage(msg.sender, topicHash, encryptedVote);
     }
 
     /**

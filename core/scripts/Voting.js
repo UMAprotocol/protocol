@@ -2,6 +2,7 @@ const Voting = artifacts.require("Voting");
 const EncryptedSender = artifacts.require("EncryptedSender");
 const { VotePhasesEnum } = require("../../common/Enums");
 const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../../common/Crypto");
+const { computeTopicHash, getKeyGenMessage } = require("../utils/EncryptionHelper");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
@@ -98,10 +99,7 @@ class VotingSystem {
   }
 
   async readVote(request, roundId) {
-    const encryptedCommit = await this.encryptedSender.getMessage(
-      this.account,
-      this.computeTopicHash(request, roundId)
-    );
+    const encryptedCommit = await this.encryptedSender.getMessage(this.account, computeTopicHash(request, roundId));
 
     if (!encryptedCommit) {
       // Nothing has been published for this topic.
@@ -109,7 +107,7 @@ class VotingSystem {
     }
 
     // Generate the one-time keypair for this round.
-    const { privateKey } = await deriveKeyPairFromSignature(web3, this.getKeyGenMessage(roundId), this.account);
+    const { privateKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), this.account);
 
     // Decrypt message.
     const decryptedMessage = await decryptMessage(privateKey, encryptedCommit);
@@ -121,13 +119,13 @@ class VotingSystem {
     // and authorize them here.
 
     // Generate the one-time keypair for this round.
-    const { publicKey } = await deriveKeyPairFromSignature(web3, this.getKeyGenMessage(roundId), this.account);
+    const { publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), this.account);
 
     // Encrypt the vote using the public key.
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
     // Upload the encrypted commit.
-    const topicHash = this.computeTopicHash(request, roundId);
+    const topicHash = computeTopicHash(request, roundId);
     await this.encryptedSender.sendMessage(this.account, topicHash, encryptedMessage, { from: this.account });
   }
 
@@ -192,15 +190,6 @@ class VotingSystem {
       );
     }
     console.log("Finished voting iteration");
-  }
-
-  computeTopicHash(request, roundId) {
-    return web3.utils.soliditySha3(request.identifier, request.time, roundId);
-  }
-
-  getKeyGenMessage(roundId) {
-    // TODO: discuss dApp tradeoffs for changing this to a per-topic hash keypair.
-    return `UMA Protocol one time key for round: ${roundId.toString()}`;
   }
 }
 
