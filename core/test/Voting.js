@@ -1193,6 +1193,7 @@ contract("Voting", function(accounts) {
 
     await moveToNextPhase(voting);
 
+    // NOTE: Signed integers inside structs must be supplied as a string rather than a BN.
     const result = await voting.batchReveal([
       {
         identifier,
