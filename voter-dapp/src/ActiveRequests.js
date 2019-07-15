@@ -41,7 +41,7 @@ function ActiveRequests() {
     // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
     // but the fetched value was null, e.g., no `comittedValue` existed.
     voteStatuses.every(
-      voteStatus => typeof voteStatus.committedValue !== "undefined" || typeof voteStatus.hasRevealed !== "undefined"
+      voteStatus => typeof voteStatus.committedValue !== "undefined" && typeof voteStatus.hasRevealed !== "undefined"
     );
 
   if (!initialFetchComplete || !subsequentFetchComplete) {
