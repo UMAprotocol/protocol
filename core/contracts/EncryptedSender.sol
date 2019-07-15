@@ -52,7 +52,7 @@ contract EncryptedSender {
     /**
      * @notice Gets the current stored message corresponding to `recipient` and `topicHash`.
      * @dev To decrypt messages (this requires access to the recipient's private keys), use the decryptMessage()
-     * function in common/Crypto.js. 
+     * function in common/Crypto.js.
      */
     function getMessage(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].message;
@@ -78,6 +78,12 @@ contract EncryptedSender {
         Recipient storage recipient = recipients[recipient_];
         require(isAuthorizedSender(msg.sender, recipient_), "Not authorized to send to this recipient");
         recipient.topics[topicHash].message = message;
+    }
+
+    function removeMessage(address recipient_, bytes32 topicHash) public {
+        Recipient storage recipient = recipients[recipient_];
+        require(isAuthorizedSender(msg.sender, recipient_), "Not authorized to remove message");
+        delete recipient.topics[topicHash].message;
     }
 
     /**
