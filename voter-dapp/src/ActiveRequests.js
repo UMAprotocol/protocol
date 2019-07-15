@@ -32,17 +32,17 @@ function ActiveRequests() {
         account,
         web3.utils.soliditySha3(request.identifier, request.time, currentRoundId)
       ),
-      // Technically this call can be avoided if `votePhase == COMMIT`.
-      hasRevealed: call("Voting", "hasRevealedVote", request.identifier, request.time)
+      hasRevealed:
+        votePhase.toString() === VotePhasesEnum.REVEAL
+          ? call("Voting", "hasRevealedVote", request.identifier, request.time)
+          : false
     }));
   });
   const subsequentFetchComplete =
-    Boolean(voteStatuses) &&
+    voteStatuses &&
     // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
     // but the fetched value was null, e.g., no `comittedValue` existed.
-    voteStatuses.every(
-      voteStatus => typeof voteStatus.committedValue !== "undefined" && typeof voteStatus.hasRevealed !== "undefined"
-    );
+    voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined && voteStatus.hasRevealed !== undefined);
 
   if (!initialFetchComplete || !subsequentFetchComplete) {
     return <div>Looking up requests</div>;
