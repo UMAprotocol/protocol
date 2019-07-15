@@ -4,6 +4,7 @@ const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 const Registry = artifacts.require("Registry");
 const { interfaceName } = require("../../utils/Constants.js");
+const { triggerOnRequest } = require("../../utils/Serving.js");
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 async function getDeployAddress() {
@@ -74,8 +75,19 @@ const runRequestOraclePrice = async function(callback) {
   }
 
   const finder = await Finder.deployed();
-  await run(finder, argv.identifier, argv.time);
-  callback();
+
+  const callRun = async () => {
+      await run(finder, argv.identifier, argv.time);
+      callback();
+    };
+
+  // Note: use ENV for port because in some cases GCP doesn't allow the user to change the docker args.
+  if (process.env.PORT) {
+    // Only trigger on request if PORT is in the ENV. Otherwise, we assume the user wants it called syncrhonously.
+    await triggerOnRequest(callRun);
+  } else {
+    await callRun();
+  }
 };
 
 // Attach this function to the exported function
