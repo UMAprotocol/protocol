@@ -77,9 +77,9 @@ const runRequestOraclePrice = async function(callback) {
   const finder = await Finder.deployed();
 
   const callRun = async () => {
-      await run(finder, argv.identifier, argv.time);
-      callback();
-    };
+    await run(finder, argv.identifier, argv.time);
+    callback();
+  };
 
   // Note: use ENV for port because in some cases GCP doesn't allow the user to change the docker args.
   if (process.env.PORT) {
