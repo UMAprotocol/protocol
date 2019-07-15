@@ -83,7 +83,7 @@ const runRequestOraclePrice = async function(callback) {
 
   // Note: use ENV for port because in some cases GCP doesn't allow the user to change the docker args.
   if (process.env.PORT) {
-    // Only trigger on request if PORT is in the ENV. Otherwise, we assume the user wants it called syncrhonously.
+    // Only trigger on request if PORT is in the ENV. Otherwise, we assume the user wants it called synchronously.
     await triggerOnRequest(callRun);
   } else {
     await callRun();
