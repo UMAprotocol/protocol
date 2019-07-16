@@ -10,8 +10,8 @@
 #     --env LOCALHOST=<ethereum host>
 #     --env LOCALPORT=<ethereum port>
 #     --env MNEMONIC=<mnemonic>
+#     --env COMMAND="while true; do $(npm bin)/truffle exec ./scripts/Voting.js --network=<your_network>; sleep 60; done"
 #     umaprotocol/voting
-#     --network=<network>
 #
 # To build the docker image locally, run the following command from the `protocol` directory:
 #   docker build -t <username>/<imagename> .
@@ -29,8 +29,11 @@ WORKDIR protocol
 RUN npm install
 RUN scripts/buildContracts.sh
 
-# Command to run Voting system. The setup above could probably be extracted to a base Docker image, but that may require
-# modifying the directory structure more.
+# The setup above could probably be extracted to a base Docker image, but that may require modifying the directory
+# structure more.
 WORKDIR core/
-ENTRYPOINT ["/bin/bash", "scripts/runVoting.sh"]
+
+# Command to run any command provided by the COMMAND env variable.
+# Use the command listed at the top to run the voting script repeatedly in a 60 second loop.
+ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
 CMD ["--network=test"]
