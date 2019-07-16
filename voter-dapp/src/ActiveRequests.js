@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
@@ -10,7 +10,7 @@ import { formatDate } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 
 function ActiveRequests() {
-  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
   const pendingRequests = useCacheCall("Voting", "getPendingRequests");
@@ -20,6 +20,12 @@ function ActiveRequests() {
     account: drizzleState.accounts[0]
   })).account;
   const initialFetchComplete = pendingRequests && currentRoundId && votePhase && account;
+
+  const revealEvents = useCacheEvents(
+    "Voting",
+    "VoteRevealed",
+    useMemo(() => ({ filter: { voter: account, roundId: currentRoundId }, fromBlock: 0 }), [account, currentRoundId])
+  );
 
   const voteStatuses = useCacheCall(["Voting"], call => {
     if (!initialFetchComplete) {
@@ -44,23 +50,35 @@ function ActiveRequests() {
     // but the fetched value was null, e.g., no `comittedValue` existed.
     voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined && voteStatus.hasRevealed !== undefined);
 
-  if (!initialFetchComplete || !subsequentFetchComplete) {
+  if (!initialFetchComplete || !subsequentFetchComplete || !revealEvents) {
     return <div>Looking up requests</div>;
   }
 
-  const statusStrings = voteStatuses.map(voteStatus => {
+  const toPriceRequestKey = (identifier, time) => time + "," + identifier;
+  const eventsMap = {};
+  for (const reveal of revealEvents) {
+    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = web3.utils.fromWei(
+      reveal.returnValues.price
+    );
+  }
+
+  const statusDetails = voteStatuses.map((voteStatus, index) => {
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {
-      return "Commit";
+      return { statusString: "Commit", currentVote: "TODO" };
     }
     // In the REVEAL phase.
     if (voteStatus.hasRevealed) {
-      return "Revealed";
+      const pendingRequest = pendingRequests[index];
+      return {
+        statusString: "Revealed",
+        currentVote: eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)]
+      };
     }
     // In the REVEAL phase, but the vote hasn't been revealed (yet).
     if (voteStatus.committedValue) {
-      return "Reveal";
+      return { statusString: "Reveal", currentVote: "TODO" };
     } else {
-      return "Cannot be revealed";
+      return { statusString: "Cannot be revealed", currentVote: "" };
     }
   });
   return (
@@ -70,6 +88,7 @@ function ActiveRequests() {
           <TableCell>Price Feed</TableCell>
           <TableCell>Timestamp</TableCell>
           <TableCell>Status</TableCell>
+          <TableCell>Current Vote</TableCell>
         </TableRow>
       </TableHead>
       <TableBody>
@@ -78,7 +97,8 @@ function ActiveRequests() {
             <TableRow key={index}>
               <TableCell>{drizzle.web3.utils.hexToUtf8(pendingRequest.identifier)}</TableCell>
               <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
-              <TableCell>{statusStrings[index]}</TableCell>
+              <TableCell>{statusDetails[index].statusString}</TableCell>
+              <TableCell>{statusDetails[index].currentVote}</TableCell>
             </TableRow>
           );
         })}
