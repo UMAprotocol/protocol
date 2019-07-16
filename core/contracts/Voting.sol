@@ -306,10 +306,17 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     }
 
     /**
-     * @notice Whether the caller has a revealed vote for the latest round that an (identifier, time) was in.
+     * @notice Whether the caller has a revealed vote for the current round for an (identifier, time).
+     * @dev If the price request was resolved in a previous round, this function will return `false` even if the caller
+     * did reveal a vote.
      */
     function hasRevealedVote(bytes32 identifier, uint time) external view returns (bool) {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
+        // This price request was last touched in a previous round, so the caller couldn't have revealed for the current
+        // round.
+        if (voteTiming.computeCurrentRoundId(getCurrentTime()) != priceRequest.lastVotingRound) {
+            return false;
+        }
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
