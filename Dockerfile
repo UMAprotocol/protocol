@@ -29,7 +29,11 @@ WORKDIR protocol
 RUN npm install
 RUN scripts/buildContracts.sh
 
-# Command to run any script in the UMA repository. To run the voting
+# The setup above could probably be extracted to a base Docker image, but that may require modifying the directory
+# structure more.
 WORKDIR core/
-ENTRYPOINT ["/bin/bash", "scripts/runCommand"]
+
+# Command to run any command provided by the COMMAND env variable.
+# Use the command listed at the top to run the voting script repeatedly in a 60 second loop.
+ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
 CMD ["--network=test"]
