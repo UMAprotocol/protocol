@@ -770,9 +770,9 @@ contract("Voting", function(accounts) {
     assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
     assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
 
-    // Can still check once in the next round, even if this behavior is useless to the voter.
+    // Once in the next round, no voter is considered to have revealed.
     await moveToNextRound(voting);
-    assert.isTrue(await voting.hasRevealedVote(identifier, time, { from: account1 }));
+    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account1 }));
     assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
     assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
   });
