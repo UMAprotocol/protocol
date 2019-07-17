@@ -46,7 +46,7 @@ async function run(deployedFinder, identifier, timeString) {
     let timeInSeconds = parseInt(timeString);
     if (timeInSeconds === 0) {
       // If time input is 0, use current time (less 2 minutes to ensure we don't jump in front of the block timestamp).
-      timeInSeconds = Math.floor((new Date()).getTime() / 10e2) - 120;
+      timeInSeconds = Math.floor(new Date().getTime() / 10e2) - 120;
       console.log(`User provided timestamp of 0, using current timestamp less 2 minutes: ${timeInSeconds}`);
     }
 
