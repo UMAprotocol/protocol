@@ -54,10 +54,6 @@
   {
     "contractName": "TokenizedDerivativeCreator",
     "address": "0xdc7298045665c72351D9cD3756DcC53d0e208A0d"
-  },
-  {
-    "contractName": "EncryptedSender",
-    "address": "0xf8a95aABc4Beb81C9AA388E85fcef16283C1F565"
   }
 ]
 

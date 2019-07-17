@@ -16,7 +16,7 @@ contract("EncryptedSender", function(accounts) {
   const receiverAccount = accounts[1];
 
   before(async function() {
-    encryptedSender = await EncryptedSender.deployed();
+    encryptedSender = await EncryptedSender.new();
   });
 
   it("Encrypt Decrypt", async function() {
