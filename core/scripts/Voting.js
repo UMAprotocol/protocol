@@ -121,17 +121,18 @@ class VotingSystem {
   async runBatchCommit(requests, roundId) {
     const commitments = [];
 
-    for (let i = 0; i < requests.length; i++) {
+    for (let request of requests) {
       // Skip commits if a message already exists for this request.
       // This does not check the existence of an actual commit.
-      if (await this.getMessage(requests[i], roundId)) {
+      if (await this.getMessage(request, roundId)) {
         continue;
       }
 
-      commitments.push(await this.constructCommitment(requests[i], roundId));
+      commitments.push(await this.constructCommitment(request, roundId));
     }
 
     // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
+    // TODO (#562): Handle case where tx exceeds gas limit.
     await this.voting.batchCommit(commitments, { from: this.account });
 
     return commitments.length;
@@ -162,20 +163,20 @@ class VotingSystem {
   async runBatchReveal(requests, roundId) {
     const reveals = [];
 
-    let reveal;
-    for (let i = 0; i < requests.length; i++) {
-      const encryptedCommit = await this.getMessage(requests[i], roundId);
+    for (let request of requests) {
+      const encryptedCommit = await this.getMessage(request, roundId);
       if (!encryptedCommit) {
         continue;
       }
 
-      reveal = await this.constructReveal(requests[i], roundId);
+      const reveal = await this.constructReveal(request, roundId);
       if (reveal) {
         reveals.push(reveal);
       }
     }
 
     // Always call `batchReveal`, even if there's only one reveal.
+    // TODO (#562): Handle case where tx exceeds gas limit.
     await this.voting.batchReveal(reveals, { from: this.account });
     return reveals.length;
   }
