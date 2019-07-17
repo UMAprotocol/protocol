@@ -13,7 +13,7 @@ async function triggerOnRequest(fn) {
   });
 
   app.listen(process.env.PORT, () => {
-    console.log("Listening on port", port);
+    console.log("Listening on port", process.env.PORT);
   });
 }
 
