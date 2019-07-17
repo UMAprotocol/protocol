@@ -4,11 +4,12 @@ const app = decorateApp(express());
 
 // Calls a function on every request.
 async function triggerOnRequest(fn) {
-  app.getAsync("/", async (req, res) => {
+  // GCP PubSub pushes come as POSTs.
+  app.postAsync("/", async (req, res) => {
     console.log("Received a request.");
 
     await fn();
-    res.send("Done.");
+    res.status(200).send("Done.");
     console.log("Finished processing request.");
   });
 

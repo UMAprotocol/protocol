@@ -34,7 +34,7 @@ async function registerDerivative(registry) {
 //   2. Registers the deployer's address as a derivative.
 //   3. Adds the specified identifier with Voting.
 //   4. Requests a price at the specified time.
-async function run(deployedFinder, identifier, timeInSeconds) {
+async function run(deployedFinder, identifier, timeString) {
   try {
     const deployedRegistry = await Registry.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry))
@@ -42,6 +42,14 @@ async function run(deployedFinder, identifier, timeInSeconds) {
     await registerDerivative(deployedRegistry);
 
     const identifierInBytes = web3.utils.fromAscii(identifier);
+
+    let timeInSeconds = parseInt(timeString);
+    if (timeInSeconds === 0) {
+      // If time input is 0, use current time (less 2 minutes to ensure we don't jump in front of the block timestamp).
+      timeInSeconds = Math.floor((new Date()).getTime() / 10e2) - 120;
+      console.log(`User provided timestamp of 0, using current timestamp less 2 minutes: ${timeInSeconds}`);
+    }
+
     const timeInBN = web3.utils.toBN(timeInSeconds);
     const time = new Date(timeInSeconds * 10e2);
 
@@ -78,7 +86,6 @@ const runRequestOraclePrice = async function(callback) {
 
   const callRun = async () => {
     await run(finder, argv.identifier, argv.time);
-    callback();
   };
 
   // Note: use ENV for port because in some cases GCP doesn't allow the user to change the docker args.
@@ -87,6 +94,10 @@ const runRequestOraclePrice = async function(callback) {
     await triggerOnRequest(callRun);
   } else {
     await callRun();
+
+    // Note: only call the callback in the non-server case. In the server case, the server is expected to run
+    // indefinitely.
+    callback();
   }
 };
 
