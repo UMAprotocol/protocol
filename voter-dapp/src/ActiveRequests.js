@@ -84,6 +84,7 @@ function ActiveRequests() {
     }
 
     getDecryptionKey();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, currentRoundId, decryptionKeys]);
   const decryptionKeyAcquired =
     decryptionKeys[account] &&
@@ -119,6 +120,7 @@ function ActiveRequests() {
     decryptAll(() => {
       didCancel = true;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subsequentFetchComplete, voteStatusesStringified, decryptionKeys, account]);
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
