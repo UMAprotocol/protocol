@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
@@ -8,6 +8,8 @@ import TableRow from "@material-ui/core/TableRow";
 
 import { formatDate } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
+import { decryptMessage, deriveKeyPairFromSignatureMetamask } from "./common/Crypto.js";
+const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
 
 function ActiveRequests() {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
@@ -49,8 +51,85 @@ function ActiveRequests() {
     // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
     // but the fetched value was null, e.g., no `comittedValue` existed.
     voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined && voteStatus.hasRevealed !== undefined);
+  // Future hook calls that depend on `voteStatuses` should use `voteStatusesStringified` in their dependencies array
+  // because `voteStatuses` will never compare equal after a re-render, even if no values in it actually changed.
+  // Also note that `JSON.stringify` doesn't distinguish `undefined` and `null`, but in Drizzle, those mean different
+  // things and should retrigger dependent hooks.
+  const voteStatusesStringified = JSON.stringify(voteStatuses, (k, v) => (v === undefined ? "undefined" : v));
 
-  if (!initialFetchComplete || !subsequentFetchComplete || !revealEvents) {
+  // The decryption key is a function of the account and `currentRoundId`, so we need the user to re-sign a message
+  // any time one of those changes. We also don't want to show multiple, identical notifications when this effect gets
+  // cleaned up on unrelated re-renders. The best solution I've come up with so far is to store the keys in a nested map
+  // (i.e., Object) from account => roundId => key. When a signing request is sent out (i.e., the user is shown a
+  // Metamask popup), we inject a special `messageSigningProcessingToken` at `decryptionKeys[account][currentRoundId]`
+  // to prevent resending that request. Note that in this approach, we don't disregard the result of this hook on
+  // component unmount.
+  const [decryptionKeys, setDecryptionKeys] = useState({});
+  const messageSigningProcessingToken = "processing";
+  useEffect(() => {
+    async function getDecryptionKey() {
+      if (!account || !currentRoundId) {
+        return;
+      }
+      if (decryptionKeys[account] && decryptionKeys[account][currentRoundId]) {
+        return;
+      }
+      setDecryptionKeys(prev => ({
+        ...prev,
+        [account]: { ...prev[account], [currentRoundId]: messageSigningProcessingToken }
+      }));
+      // TODO(ptare): Handle the user refusing to sign the message.
+      const { privateKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(currentRoundId), account);
+      setDecryptionKeys(prev => ({ ...prev, [account]: { ...prev[account], [currentRoundId]: privateKey } }));
+    }
+
+    getDecryptionKey();
+  }, [account, currentRoundId, decryptionKeys]);
+  const decryptionKeyAcquired =
+    decryptionKeys[account] &&
+    decryptionKeys[account][currentRoundId] &&
+    decryptionKeys[account][currentRoundId] !== messageSigningProcessingToken;
+
+  const [decryptedCommits, setDecryptedCommits] = useState([]);
+  useEffect(() => {
+    // If this effect got cleaned up and rerun while any async calls were pending, the results of those calls should be
+    // disregarded.
+    let didCancel = false;
+
+    async function decryptAll() {
+      if (!subsequentFetchComplete || !decryptionKeyAcquired) {
+        return;
+      }
+      const currentVotes = await Promise.all(
+        voteStatuses.map(async (voteStatus, index) => {
+          if (voteStatus.committedValue) {
+            return web3.utils.fromWei(
+              JSON.parse(await decryptMessage(decryptionKeys[account][currentRoundId], voteStatus.committedValue)).price
+            );
+          } else {
+            return "";
+          }
+        })
+      );
+      if (!didCancel) {
+        setDecryptedCommits(currentVotes);
+      }
+    }
+
+    decryptAll(() => {
+      didCancel = true;
+    });
+  }, [subsequentFetchComplete, voteStatusesStringified, decryptionKeys, account]);
+  const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
+
+  // NOTE: No calls to React hooks from this point forward.
+  if (
+    !initialFetchComplete ||
+    !subsequentFetchComplete ||
+    !revealEvents ||
+    !decryptionKeyAcquired ||
+    !decryptionComplete
+  ) {
     return <div>Looking up requests</div>;
   }
 
@@ -64,7 +143,7 @@ function ActiveRequests() {
 
   const statusDetails = voteStatuses.map((voteStatus, index) => {
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {
-      return { statusString: "Commit", currentVote: "TODO" };
+      return { statusString: "Commit", currentVote: decryptedCommits[index] };
     }
     // In the REVEAL phase.
     if (voteStatus.hasRevealed) {
@@ -76,7 +155,7 @@ function ActiveRequests() {
     }
     // In the REVEAL phase, but the vote hasn't been revealed (yet).
     if (voteStatus.committedValue) {
-      return { statusString: "Reveal", currentVote: "TODO" };
+      return { statusString: "Reveal", currentVote: decryptedCommits[index] };
     } else {
       return { statusString: "Cannot be revealed", currentVote: "" };
     }
