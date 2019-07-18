@@ -80,22 +80,30 @@ async function fetchPrice(request) {
   }
 }
 
-// Returns the URL prefix that comes before the transaction hash.
-// Returns an empty string if the network is not recognized/not public.
-function getEtherscanUrlPrefix(network) {
+// Returns an html link to the transaction.
+// If the network is not recognized/not public, just returns the txn hash in plaintext.
+function getTxnLink(network, txnHash) {
+  let url;
+
   if (network.startsWith("mainnet")) {
-    return "https://etherscan.io/tx/";
+    url = `https://etherscan.io/tx/${txnHash}`;
   }
 
   if (network.startsWith("kovan")) {
-    return "https://kovan.etherscan.io/tx/";
+    url = `https://kovan.etherscan.io/tx/${txnHash}`;
   }
 
   if (network.startsWith("ropsten")) {
-    return "https://ropsten.etherscan.io/tx/";
+    url = `https://ropsten.etherscan.io/tx/${txnHash}`;
   }
 
-  return "";
+  // If there is a valid URL, add a link HTML tag.
+  if (url) {
+    return `<a href="${url}">${txnHash}</a>`;
+  }
+
+  // If there is no etherscan link, just return the txn hash in plain text.
+  return txnHash;
 }
 
 class EmailSender {
@@ -216,7 +224,6 @@ class VotingSystem {
 
   constructEmail(updates, phase) {
     const phaseVerb = phase == VotePhasesEnum.COMMIT ? "committed" : "revealed";
-    const etherscanDomain = getEtherscanUrlPrefix(argv.network);
 
     // Sort the updates by timestamp for the email.
     updates.sort((a, b) => {
@@ -233,7 +240,7 @@ class VotingSystem {
         return 1;
       }
 
-      // 0 to keep preexisting ordering. 
+      // 0 to keep preexisting ordering.
       return 0;
     });
 
@@ -252,7 +259,7 @@ class VotingSystem {
       Request time: ${date.toUTCString()} (Unix timestamp: ${date.getTime() / 10e2})<br />
       Value ${phaseVerb}: ${web3.utils.fromWei(update.price)}<br />
       *Salt: ${update.salt}<br />
-      **Transaction: ${etherscanDomain}${update.txnHash}<br />
+      **Transaction: ${getTxnLink(argv.network, update.txnHash)}<br />
       `;
     });
 
@@ -260,7 +267,7 @@ class VotingSystem {
     const requestsText = blocks.join(`<br />`);
 
     // TODO: Add the following docs/links to the bottom of the email:
-    // <bold>Additional information and instructions:</bold> 
+    // <bold>Additional information and instructions:</bold>
     // How to manually reveal this vote on-chain: Link*
     // How to manually adjust this vote on-chain: Link
     // How to run this AVS software on your own machine: Link
@@ -300,10 +307,7 @@ class VotingSystem {
 
     if (updates.length > 0) {
       const email = this.constructEmail(updates, phase);
-      await this.emailSender.sendEmailNotification(
-        email.subject,
-        email.body
-      );
+      await this.emailSender.sendEmailNotification(email.subject, email.body);
     }
 
     console.log("Finished voting iteration");
