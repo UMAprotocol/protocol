@@ -6,6 +6,8 @@ const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
 
+const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
+
 const SUPPORTED_IDENTIFIERS = {
   BTCUSD: {
     dataSource: "CryptoCompare",
@@ -78,13 +80,31 @@ async function fetchPrice(request) {
   }
 }
 
+// Returns the URL prefix that comes before the transaction hash.
+// Returns an empty string if the network is not recognized/not public.
+function getEtherscanUrlPrefix(network) {
+  if (network.startsWith("mainnet")) {
+    return "https://etherscan.io/tx/";
+  }
+
+  if (network.startsWith("kovan")) {
+    return "https://kovan.etherscan.io/tx/";
+  }
+
+  if (network.startsWith("ropsten")) {
+    return "https://ropsten.etherscan.io/tx/";
+  }
+
+  return "";
+}
+
 class EmailSender {
   async sendEmailNotification(subject, body) {
     await sendgrid.send({
       to: process.env.NOTIFICATION_TO_ADDRESS,
       from: process.env.NOTIFICATION_FROM_ADDRESS,
       subject,
-      text: body
+      html: body
     });
   }
 }
@@ -114,14 +134,16 @@ class VotingSystem {
       identifier: request.identifier,
       time: request.time,
       hash,
-      encryptedVote
+      encryptedVote,
+      price: fetchedPrice,
+      salt
     };
   }
 
   async runBatchCommit(requests, roundId) {
     const commitments = [];
 
-    for (let request of requests) {
+    for (const request of requests) {
       // Skip commits if a message already exists for this request.
       // This does not check the existence of an actual commit.
       if (await this.getMessage(request, roundId)) {
@@ -133,9 +155,14 @@ class VotingSystem {
 
     // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
     // TODO (#562): Handle case where tx exceeds gas limit.
-    await this.voting.batchCommit(commitments, { from: this.account });
+    const { receipt } = await this.voting.batchCommit(commitments, { from: this.account });
 
-    return commitments.length;
+    // Add the batch transaction hash to each reveal.
+    commitments.forEach(commitment => {
+      commitment.txnHash = receipt.transactionHash;
+    });
+
+    return commitments;
   }
 
   async constructReveal(request, roundId) {
@@ -163,7 +190,7 @@ class VotingSystem {
   async runBatchReveal(requests, roundId) {
     const reveals = [];
 
-    for (let request of requests) {
+    for (const request of requests) {
       const encryptedCommit = await this.getMessage(request, roundId);
       if (!encryptedCommit) {
         continue;
@@ -177,8 +204,85 @@ class VotingSystem {
 
     // Always call `batchReveal`, even if there's only one reveal.
     // TODO (#562): Handle case where tx exceeds gas limit.
-    await this.voting.batchReveal(reveals, { from: this.account });
-    return reveals.length;
+    const { receipt } = await this.voting.batchReveal(reveals, { from: this.account });
+
+    // Add the batch transaction hash to each reveal.
+    reveals.forEach(reveal => {
+      reveal.txnHash = receipt.transactionHash;
+    });
+
+    return reveals;
+  }
+
+  constructEmail(updates, phase) {
+    const phaseVerb = phase == VotePhasesEnum.COMMIT ? "committed" : "revealed";
+    const etherscanDomain = getEtherscanUrlPrefix(argv.network);
+
+    // Sort the updates by timestamp for the email.
+    updates.sort((a, b) => {
+      const aTime = parseInt(a.time);
+      const bTime = parseInt(b.time);
+
+      // -1 to put a before b.
+      if (aTime < bTime) {
+        return -1;
+      }
+
+      // 1 to put b before a.
+      if (bTime < aTime) {
+        return 1;
+      }
+
+      // 0 to keep preexisting ordering. 
+      return 0;
+    });
+
+    // Subject tells the user what type of action the AVS took.
+    const subject = `AVS Update: price requests ${phaseVerb}`;
+
+    // Intro is bolded and tells the user how many requests were updated.
+    const intro = `<b>The AVS has ${phaseVerb} ${updates.length} price requests on-chain.</b>`;
+
+    // Construct information blocks for each request.
+    const blocks = updates.map((update, i) => {
+      const date = new Date(parseInt(update.time) * 10e2);
+      return `
+      <u>Price request ${i + 1}:</u><br />
+      Price feed: ${web3.utils.hexToUtf8(update.identifier)}<br />
+      Request time: ${date.toUTCString()} (Unix timestamp: ${date.getTime() / 10e2})<br />
+      Value ${phaseVerb}: ${web3.utils.fromWei(update.price)}<br />
+      *Salt: ${update.salt}<br />
+      **Transaction: ${etherscanDomain}${update.txnHash}<br />
+      `;
+    });
+
+    // Join the blocks (with a single line break between) to form the text that gives details on all the requests.
+    const requestsText = blocks.join(`<br />`);
+
+    // TODO: Add the following docs/links to the bottom of the email:
+    // <bold>Additional information and instructions:</bold> 
+    // How to manually reveal this vote on-chain: Link*
+    // How to manually adjust this vote on-chain: Link
+    // How to run this AVS software on your own machine: Link
+    // (Optional/later when built (include link): Use the UMA Voter Dapp to adjust or reveal votes)
+    // Footer explains particular fields in the request blocks.
+    const footer = `
+    *If you want to manually reveal your vote, you will need the salt. This should be done rarely, if ever.<br />
+    **The AVS attempts to batch commits and reveals to save gas, so it is common to see the same transaction hash for
+    multiple commits/reveals.<br />
+    `;
+
+    // Concatenate the sections with two line breaks between them.
+    const body = `
+    ${intro}<br /><br />
+    ${requestsText}<br /><br />
+    ${footer}
+    `;
+
+    return {
+      subject,
+      body
+    };
   }
 
   async runIteration() {
@@ -187,18 +291,18 @@ class VotingSystem {
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
 
-    let numUpdates = 0;
+    let updates = [];
     if (phase == VotePhasesEnum.COMMIT) {
-      numUpdates = await this.runBatchCommit(pendingRequests, roundId);
+      updates = await this.runBatchCommit(pendingRequests, roundId);
     } else {
-      numUpdates = await this.runBatchReveal(pendingRequests, roundId);
+      updates = await this.runBatchReveal(pendingRequests, roundId);
     }
 
-    if (numUpdates > 0) {
-      // TODO(ptare): Add granular email notifications.
+    if (updates.length > 0) {
+      const email = this.constructEmail(updates, phase);
       await this.emailSender.sendEmailNotification(
-        "Automated voting system update",
-        "Updated " + numUpdates + " price requests"
+        email.subject,
+        email.body
       );
     }
 
