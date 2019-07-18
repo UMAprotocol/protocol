@@ -230,7 +230,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
                     commits[i].hash,
                     commits[i].encryptedVote);
             }
-
         }
     }
 
