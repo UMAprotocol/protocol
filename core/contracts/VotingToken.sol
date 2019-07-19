@@ -22,8 +22,8 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     }
 
     // Standard ERC20 metadata.
-    string public name = "UMA Voting Token v1";
-    string public symbol = "UMA";
+    string public constant name = "UMA Voting Token v1"; // solhint-disable-line const-name-snakecase
+    string public constant symbol = "UMA"; // solhint-disable-line const-name-snakecase
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     constructor() public {
