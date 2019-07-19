@@ -5,6 +5,7 @@ const { computeTopicHash, getKeyGenMessage } = require("../utils/EncryptionHelpe
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
+const gmailSend = require("gmail-send")();
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
@@ -106,8 +107,58 @@ function getTxnLink(network, txnHash) {
   return txnHash;
 }
 
-class EmailSender {
-  async sendEmailNotification(subject, body) {
+function getNotifiers() {
+  const notifiers = [];
+
+  // Add email notifier.
+  if (process.env.GMAIL_USERNAME && process.env.GMAIL_API_PW) {
+    // Prefer gmail over sendgrid if env variables are available because gmail doesn't spoof the sender.
+    notifiers.push(new GmailNotifier());
+  } else if (process.env.SENDGRID_API_KEY) {
+    notifiers.push(new SendgridNotifier());
+  } else {
+    throw new Error("User did not pass any valid email credentials");
+  }
+
+  // Add a standard console notifier.
+  notifiers.push(new ConsoleNotifier());
+
+  return notifiers;
+}
+
+class ConsoleNotifier {
+  async sendNotification(subject, body) {
+    console.log(`Notification subject: ${subject}`);
+    console.log(`Notification body: ${body}`);
+  }
+}
+
+class GmailNotifier {
+  async sendNotification(subject, body) {
+    // Note: wrap gmail send in a promise since it uses a callback to notify when done.
+    await new Promise((resolve, reject) => {
+      gmailSend(
+        {
+          user: process.env.GMAIL_USERNAME,
+          pass: process.env.GMAIL_API_PW,
+          to: process.env.NOTIFICATION_TO_ADDRESS ? process.env.NOTIFICATION_TO_ADDRESS : process.env.GMAIL_USERNAME,
+          subject,
+          html: body
+        },
+        (err, res) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(res);
+          }
+        }
+      );
+    });
+  }
+}
+
+class SendgridNotifier {
+  async sendNotification(subject, body) {
     await sendgrid.send({
       to: process.env.NOTIFICATION_TO_ADDRESS,
       from: process.env.NOTIFICATION_FROM_ADDRESS,
@@ -118,10 +169,10 @@ class EmailSender {
 }
 
 class VotingSystem {
-  constructor(voting, account, emailSender) {
+  constructor(voting, account, notifiers) {
     this.voting = voting;
     this.account = account;
-    this.emailSender = emailSender;
+    this.notifiers = notifiers;
   }
 
   async getMessage(request, roundId) {
@@ -231,10 +282,10 @@ class VotingSystem {
     return reveals;
   }
 
-  constructEmail(updates, phase) {
+  constructNotification(updates, phase) {
     const phaseVerb = phase == VotePhasesEnum.COMMIT ? "committed" : "revealed";
 
-    // Sort the updates by timestamp for the email.
+    // Sort the updates by timestamp for the notification.
     updates.sort((a, b) => {
       const aTime = parseInt(a.time);
       const bTime = parseInt(b.time);
@@ -267,7 +318,7 @@ class VotingSystem {
     // Join the blocks (with a single line break between) to form the text that gives details on all the requests.
     const requestsText = blocks.join(`<br />`);
 
-    // TODO: Add the following docs/links to the bottom of the email:
+    // TODO: Add the following docs/links to the bottom of the notification:
     // <bold>Additional information and instructions:</bold>
     // How to manually reveal this vote on-chain: Link*
     // How to manually adjust this vote on-chain: Link
@@ -307,8 +358,8 @@ class VotingSystem {
     }
 
     if (updates.length > 0) {
-      const email = this.constructEmail(updates, phase);
-      await this.emailSender.sendEmailNotification(email.subject, email.body);
+      const notification = this.constructNotification(updates, phase);
+      await Promise.all(this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body)));
     }
 
     console.log("Finished voting iteration");
@@ -321,7 +372,7 @@ async function runVoting() {
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
     const voting = await Voting.deployed();
     const account = (await web3.eth.getAccounts())[0];
-    const votingSystem = new VotingSystem(voting, account, new EmailSender());
+    const votingSystem = new VotingSystem(voting, account, getNotifiers());
     await votingSystem.runIteration();
   } catch (error) {
     console.log(error);
