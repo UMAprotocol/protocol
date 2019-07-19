@@ -107,9 +107,10 @@ function ActiveRequests() {
       }
     }
 
-    decryptAll(() => {
+    decryptAll();
+    return () => {
       didCancel = true;
-    });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subsequentFetchComplete, voteStatusesStringified, decryptionKeys, account]);
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;

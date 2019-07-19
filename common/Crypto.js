@@ -41,8 +41,9 @@ async function getMessageSignatureMetamask(web3, messageToSign, signingAccount) 
 
 async function getMessageSignatureTruffle(web3, messageToSign, signingAccount) {
   const signature = await web3.eth.sign(messageToSign, signingAccount);
-  // It's probably a good idea to add a comment here explaining why we have to do this manipulation, but I don't
-  // actually understand why.
+  // The 65 byte signature consists of r (first 32 bytes), s (next 32 bytes), and v (final byte). 65 bytes is
+  // represented as 130 hex digits and the initial "0x". In order to produce a consistent signature with Metamask, we
+  // have to adjust the v value.
   const rAndS = signature.substring(0, 128 + 2);
   const v = signature.substring(128 + 2, 132);
   if (v === "00") {
