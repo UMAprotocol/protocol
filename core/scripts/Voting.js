@@ -163,13 +163,16 @@ class VotingSystem {
 
     // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
     // TODO (#562): Handle case where tx exceeds gas limit.
-    const { receipt } = await this.voting.batchCommit(commitments.map(commitment => {
-      // This filters out the parts of the commitment that we don't need to send to solidity.
-      // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
-      // the solidity struct.
-      const { price, salt, ...rest } = commitment;
-      return rest;
-    }), { from: this.account });
+    const { receipt } = await this.voting.batchCommit(
+      commitments.map(commitment => {
+        // This filters out the parts of the commitment that we don't need to send to solidity.
+        // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
+        // the solidity struct.
+        const { price, salt, ...rest } = commitment;
+        return rest;
+      }),
+      { from: this.account }
+    );
 
     // Add the batch transaction hash to each commitment.
     commitments.forEach(commitment => {
