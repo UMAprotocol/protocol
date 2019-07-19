@@ -21,6 +21,11 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
         Burner
     }
 
+    // Standard ERC20 metadata.
+    string public name = "UMA Voting Token v1";
+    string public symbol = "UMA";
+    uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
+
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createSharedRole(uint(Roles.Minter), uint(Roles.Governance), new address[](0));
