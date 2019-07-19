@@ -54,7 +54,8 @@ function ActiveRequests() {
   // Future hook calls that depend on `voteStatuses` should use `voteStatusesStringified` in their dependencies array
   // because `voteStatuses` will never compare equal after a re-render, even if no values in it actually changed.
   // Also note that `JSON.stringify` doesn't distinguish `undefined` and `null`, but in Drizzle, those mean different
-  // things and should retrigger dependent hooks.
+  // things and should retrigger dependent hooks. The replace function (the second argument) stringifies `undefined` to
+  // the string `"undefined"`, so that it can be distinguished from the string `"null"`.
   const voteStatusesStringified = JSON.stringify(voteStatuses, (k, v) => (v === undefined ? "undefined" : v));
 
   // The decryption key is a function of the account and `currentRoundId`, so we need the user to re-sign a message
@@ -65,19 +66,11 @@ function ActiveRequests() {
   // to prevent resending that request. Note that in this approach, we don't disregard the result of this hook on
   // component unmount.
   const [decryptionKeys, setDecryptionKeys] = useState({});
-  const messageSigningProcessingToken = "processing";
   useEffect(() => {
     async function getDecryptionKey() {
       if (!account || !currentRoundId) {
         return;
       }
-      if (decryptionKeys[account] && decryptionKeys[account][currentRoundId]) {
-        return;
-      }
-      setDecryptionKeys(prev => ({
-        ...prev,
-        [account]: { ...prev[account], [currentRoundId]: messageSigningProcessingToken }
-      }));
       // TODO(ptare): Handle the user refusing to sign the message.
       const { privateKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(currentRoundId), account);
       setDecryptionKeys(prev => ({ ...prev, [account]: { ...prev[account], [currentRoundId]: privateKey } }));
@@ -85,11 +78,8 @@ function ActiveRequests() {
 
     getDecryptionKey();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account, currentRoundId, decryptionKeys]);
-  const decryptionKeyAcquired =
-    decryptionKeys[account] &&
-    decryptionKeys[account][currentRoundId] &&
-    decryptionKeys[account][currentRoundId] !== messageSigningProcessingToken;
+  }, [account, currentRoundId]);
+  const decryptionKeyAcquired = decryptionKeys[account] && decryptionKeys[account][currentRoundId];
 
   const [decryptedCommits, setDecryptedCommits] = useState([]);
   useEffect(() => {
