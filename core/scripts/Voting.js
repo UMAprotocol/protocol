@@ -163,9 +163,15 @@ class VotingSystem {
 
     // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
     // TODO (#562): Handle case where tx exceeds gas limit.
-    const { receipt } = await this.voting.batchCommit(commitments, { from: this.account });
+    const { receipt } = await this.voting.batchCommit(commitments.map(commitment => {
+      // This filters out the parts of the commitment that we don't need to send to solidity.
+      // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
+      // the solidity struct.
+      const { price, salt, ...rest } = commitment;
+      return rest;
+    }), { from: this.account });
 
-    // Add the batch transaction hash to each reveal.
+    // Add the batch transaction hash to each commitment.
     commitments.forEach(commitment => {
       commitment.txnHash = receipt.transactionHash;
     });
@@ -230,18 +236,10 @@ class VotingSystem {
       const aTime = parseInt(a.time);
       const bTime = parseInt(b.time);
 
-      // -1 to put a before b.
-      if (aTime < bTime) {
-        return -1;
-      }
-
-      // 1 to put b before a.
-      if (bTime < aTime) {
-        return 1;
-      }
-
-      // 0 to keep preexisting ordering.
-      return 0;
+      // <0 a before b
+      // >0 b before a
+      // 0 keep a/b ordering
+      return aTime - bTime;
     });
 
     // Subject tells the user what type of action the AVS took.
