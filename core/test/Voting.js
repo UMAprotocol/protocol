@@ -3,7 +3,7 @@ const { RegistryRolesEnum, VotePhasesEnum } = require("../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../common/Random.js");
 const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../../common/Crypto");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
-const { computeTopicHash, getKeyGenMessage } = require("../utils/EncryptionHelper.js");
+const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper.js");
 const truffleAssert = require("truffle-assertions");
 
 const Registry = artifacts.require("Registry");
