@@ -86,19 +86,19 @@ async function fetchPrice(request) {
 function getTxnLink(txnHash) {
   let url;
 
-  switch(Voting.network_id) {
+  switch (Voting.network_id) {
     case "1":
-    // Mainnet
-    url = `https://etherscan.io/tx/${txnHash}`;
-    break;
+      // Mainnet
+      url = `https://etherscan.io/tx/${txnHash}`;
+      break;
     case "3":
-    // Ropsten
-    url = `https://ropsten.etherscan.io/tx/${txnHash}`;
-    break;
+      // Ropsten
+      url = `https://ropsten.etherscan.io/tx/${txnHash}`;
+      break;
     case "42":
-    // Kovan
-    url = `https://kovan.etherscan.io/tx/${txnHash}`;
-    break;
+      // Kovan
+      url = `https://kovan.etherscan.io/tx/${txnHash}`;
+      break;
   }
 
   // If there is a valid URL, add a link HTML tag.
@@ -362,7 +362,9 @@ class VotingSystem {
 
     if (updates.length > 0) {
       const notification = this.constructNotification(updates, phase);
-      await Promise.all(this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body)));
+      await Promise.all(
+        this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
+      );
     }
 
     console.log("Finished voting iteration");
