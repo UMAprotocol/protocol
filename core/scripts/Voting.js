@@ -39,9 +39,7 @@ async function fetchCryptoComparePrice(request) {
 
   // Temporary price feed until we sort historical data.
   // CryptoCompare provides historical hourly prices for free. If we want minutes/seconds, we'll have to update later.
-  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${
-    identifier.second
-  }&toTs=${time}&limit=1&api_key=${CC_API_KEY}`;
+  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${identifier.second}&toTs=${time}&limit=1&api_key=${CC_API_KEY}`;
   console.log(`\n    ***** \n Querying with [${url}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
   console.log(`Response [${JSON.stringify(jsonOutput)}]`);
