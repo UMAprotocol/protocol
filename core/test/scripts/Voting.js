@@ -7,13 +7,13 @@ const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { computeTopicHash } = require("../../utils/EncryptionHelper.js");
 const { createVisibleAccount } = require("../../../common/Crypto");
 
-class MockEmailSender {
+class MockNotifier {
   constructor() {
-    this.emailsSent = 0;
+    this.notificationsSent = 0;
   }
 
-  sendEmailNotification() {
-    this.emailsSent += 1;
+  async sendNotification() {
+    this.notificationsSent += 1;
   }
 }
 
@@ -59,29 +59,29 @@ contract("scripts/Voting.js", function(accounts) {
     // Sanity check.
     assert.isFalse(await voting.hasPrice(identifier, time));
 
-    const emailSender = new MockEmailSender();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    const notifier = new MockNotifier();
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
-    assert.equal(emailSender.emailsSent, 0);
+    assert.equal(notifier.notificationsSent, 0);
     // The vote should have been committed.
     await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 1);
+    assert.equal(notifier.notificationsSent, 1);
     // Running again shouldn't send more emails.
     await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 1);
+    assert.equal(notifier.notificationsSent, 1);
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
 
     // Replace the voting system object with a new one so the class can't persist the commit.
-    votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 2);
+    assert.equal(notifier.notificationsSent, 2);
     // Running again shouldn't send more emails.
     await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 2);
+    assert.equal(notifier.notificationsSent, 2);
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
@@ -100,13 +100,13 @@ contract("scripts/Voting.js", function(accounts) {
     // Move to the round in which voters will vote on the requested price.
     await moveToNextRound(voting);
 
-    const emailSender = new MockEmailSender();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    const notifier = new MockNotifier();
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
-    assert.equal(emailSender.emailsSent, 0);
+    assert.equal(notifier.notificationsSent, 0);
     // The vote should have been committed.
     await votingSystem.runIteration();
-    assert.equal(emailSender.emailsSent, 1);
+    assert.equal(notifier.notificationsSent, 1);
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
@@ -117,11 +117,11 @@ contract("scripts/Voting.js", function(accounts) {
     await voting.sendMessage(voter, topicHash, web3.utils.randomHex(64), { from: voter });
 
     // Replace the voting system object with a new one so the class can't persist the commit.
-    votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
     await votingSystem.runIteration();
 
     // Test that no emails were sent.
-    assert.equal(emailSender.emailsSent, 1);
+    assert.equal(notifier.notificationsSent, 1);
   });
 
   it("simultaneous and overlapping votes", async function() {
@@ -141,8 +141,8 @@ contract("scripts/Voting.js", function(accounts) {
 
     // Move to the round in which voters will vote on the requested prices.
     await moveToNextRound(voting);
-    const emailSender = new MockEmailSender();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    const notifier = new MockNotifier();
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // The votes should have been committed.
     await votingSystem.runIteration();
@@ -151,7 +151,7 @@ contract("scripts/Voting.js", function(accounts) {
     await moveToNextPhase(voting);
 
     // Replace the voting system object with a new one so the class can't persist the commits.
-    votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
@@ -178,8 +178,8 @@ contract("scripts/Voting.js", function(accounts) {
     // Sanity check.
     assert.isFalse(await voting.hasPrice(identifier, time));
 
-    const emailSender = new MockEmailSender();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    const notifier = new MockNotifier();
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // The vote should have been committed.
     await votingSystem.runIteration();
@@ -188,7 +188,7 @@ contract("scripts/Voting.js", function(accounts) {
     await moveToNextPhase(voting);
 
     // Replace the voting system object with a new one so the class can't persist the commit.
-    votingSystem = new VotingScript.VotingSystem(voting, voter, emailSender);
+    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
