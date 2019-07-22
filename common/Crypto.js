@@ -64,7 +64,7 @@ async function deriveKeyPairFromSignatureMetamask(web3, messageToSign, signingAc
 }
 
 // Derive a private key, that works *only* with Truffle.
-async function deriveKeyPairFromSignature(web3, messageToSign, signingAccount) {
+async function deriveKeyPairFromSignatureTruffle(web3, messageToSign, signingAccount) {
   return deriveKeyPair(web3, await getMessageSignatureTruffle(web3, messageToSign, signingAccount));
 }
 
@@ -73,6 +73,6 @@ module.exports = {
   addressFromPublicKey,
   decryptMessage,
   recoverPublicKey,
-  deriveKeyPairFromSignature,
+  deriveKeyPairFromSignatureTruffle,
   deriveKeyPairFromSignatureMetamask
 };

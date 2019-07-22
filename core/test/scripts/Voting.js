@@ -4,7 +4,7 @@ const VotingToken = artifacts.require("VotingToken");
 const Registry = artifacts.require("Registry");
 const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeTopicHash } = require("../../utils/EncryptionHelper.js");
+const { computeTopicHash } = require("../../../common/EncryptionHelper.js");
 const { createVisibleAccount } = require("../../../common/Crypto");
 
 class MockNotifier {

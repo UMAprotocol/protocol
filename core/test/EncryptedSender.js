@@ -5,7 +5,7 @@ const {
   encryptMessage,
   addressFromPublicKey,
   recoverPublicKey,
-  deriveKeyPairFromSignature
+  deriveKeyPairFromSignatureTruffle
 } = require("../../common/Crypto.js");
 const EthCrypto = require("eth-crypto");
 
@@ -21,7 +21,11 @@ contract("EncryptedSender", function(accounts) {
 
   it("Encrypt Decrypt", async function() {
     const message = web3.utils.randomHex(100);
-    const { publicKey, privateKey } = await deriveKeyPairFromSignature(web3, "Some message to sign", receiverAccount);
+    const { publicKey, privateKey } = await deriveKeyPairFromSignatureTruffle(
+      web3,
+      "Some message to sign",
+      receiverAccount
+    );
     const encryptedMessage = await encryptMessage(publicKey, message);
     assert.equal(await decryptMessage(privateKey, encryptedMessage), message);
   });
@@ -64,7 +68,7 @@ contract("EncryptedSender", function(accounts) {
     const topicHash = web3.utils.soliditySha3(identifier, time);
 
     // Derive the keypair for this topic hash.
-    const { publicKey, privateKey } = await deriveKeyPairFromSignature(
+    const { publicKey, privateKey } = await deriveKeyPairFromSignatureTruffle(
       web3,
       "Signed message for topic hash: " + topicHash,
       receiverAccount

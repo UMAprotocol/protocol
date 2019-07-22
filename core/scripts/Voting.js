@@ -1,6 +1,6 @@
 const Voting = artifacts.require("Voting");
 const { VotePhasesEnum } = require("../../common/Enums");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../../common/Crypto");
+const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../common/Crypto");
 const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
@@ -189,7 +189,7 @@ class VotingSystem {
     const hash = web3.utils.soliditySha3(fetchedPrice, salt);
 
     const vote = { price: fetchedPrice, salt };
-    const { publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), this.account);
+    const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
     const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
 
     return {
@@ -243,7 +243,7 @@ class VotingSystem {
 
     // Catch messages that are indecipherable and handle by skipping over the request.
     try {
-      const { privateKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), this.account);
+      const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
       vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
     } catch (e) {
       console.error("Failed to decrypt message:", encryptedCommit, "\n", e);

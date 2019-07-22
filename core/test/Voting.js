@@ -1,7 +1,7 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const { RegistryRolesEnum, VotePhasesEnum } = require("../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../common/Random.js");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignature } = require("../../common/Crypto");
+const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../common/Crypto");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper.js");
 const truffleAssert = require("truffle-assertions");
@@ -1028,7 +1028,11 @@ contract("Voting", function(accounts) {
     const hash = web3.utils.soliditySha3(price, salt);
     const roundId = await voting.getCurrentRoundId();
 
-    const { privateKey, publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), account1);
+    const { privateKey, publicKey } = await deriveKeyPairFromSignatureTruffle(
+      web3,
+      getKeyGenMessage(roundId),
+      account1
+    );
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
@@ -1069,7 +1073,11 @@ contract("Voting", function(accounts) {
     const hash = web3.utils.soliditySha3(price, salt);
     const roundId = await voting.getCurrentRoundId();
 
-    const { privateKey, publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), account1);
+    const { privateKey, publicKey } = await deriveKeyPairFromSignatureTruffle(
+      web3,
+      getKeyGenMessage(roundId),
+      account1
+    );
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
@@ -1177,7 +1185,11 @@ contract("Voting", function(accounts) {
     const hash2 = web3.utils.soliditySha3(price2, salt2);
     const roundId = await voting.getCurrentRoundId();
 
-    const { privateKey, publicKey } = await deriveKeyPairFromSignature(web3, getKeyGenMessage(roundId), account1);
+    const { privateKey, publicKey } = await deriveKeyPairFromSignatureTruffle(
+      web3,
+      getKeyGenMessage(roundId),
+      account1
+    );
     const vote = { price: price1.toString(), salt: salt2.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
