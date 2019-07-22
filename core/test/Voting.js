@@ -1086,7 +1086,7 @@ contract("Voting", function(accounts) {
     const topicHash = computeTopicHash({ identifier, time }, roundId);
     const retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
 
-    const secondEncryptedMessage = web3.utils.toHex(getRandomUnsignedInt());
+    const secondEncryptedMessage = await encryptMessage(publicKey, getRandomUnsignedInt());
 
     await voting.commitAndPersistEncryptedVote(identifier, time, hash, secondEncryptedMessage);
     const secondRetrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
