@@ -83,19 +83,22 @@ async function fetchPrice(request) {
 
 // Returns an html link to the transaction.
 // If the network is not recognized/not public, just returns the txn hash in plaintext.
-function getTxnLink(network, txnHash) {
+function getTxnLink(txnHash) {
   let url;
 
-  if (network.startsWith("mainnet")) {
+  switch(Voting.network_id) {
+    case "1":
+    // Mainnet
     url = `https://etherscan.io/tx/${txnHash}`;
-  }
-
-  if (network.startsWith("kovan")) {
-    url = `https://kovan.etherscan.io/tx/${txnHash}`;
-  }
-
-  if (network.startsWith("ropsten")) {
+    break;
+    case "3":
+    // Ropsten
     url = `https://ropsten.etherscan.io/tx/${txnHash}`;
+    break;
+    case "42":
+    // Kovan
+    url = `https://kovan.etherscan.io/tx/${txnHash}`;
+    break;
   }
 
   // If there is a valid URL, add a link HTML tag.
@@ -311,7 +314,7 @@ class VotingSystem {
       Request time: ${date.toUTCString()} (Unix timestamp: ${date.getTime() / 10e2})<br />
       Value ${phaseVerb}: ${web3.utils.fromWei(update.price)}<br />
       *Salt: ${update.salt}<br />
-      **Transaction: ${getTxnLink(argv.network, update.txnHash)}<br />
+      **Transaction: ${getTxnLink(update.txnHash)}<br />
       `;
     });
 
