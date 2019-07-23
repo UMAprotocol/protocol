@@ -1,59 +1,59 @@
 [
   {
     "contractName": "Migrations",
-    "address": "0x24E709F802d6a03A2588970F034D0192beA47beF"
+    "address": "0x37BEd72aD0C83646db4DBC66cE4402328d39858B"
   },
   {
     "contractName": "Finder",
-    "address": "0xa7e3ce87CE9010248C67284Af8221f8BEA63170C"
+    "address": "0xD779812DCdb92d00D045ea6Df806C83bf4570B50"
   },
   {
     "contractName": "VotingToken",
-    "address": "0xC19c06Ff30EBbF36fBdd2FeC1D40138F5a10172a"
+    "address": "0xFB651Dd4888fBc2cEcb486d46A10B096339c120f"
   },
   {
     "contractName": "Voting",
-    "address": "0x16aB1496b15a198c559A7F5F54c90FeA9eFf2856"
+    "address": "0xD6927938B7ed8Fc8e4062a9A08cfa7b0fBb2613d"
   },
   {
     "contractName": "Registry",
-    "address": "0x7990014FFB46f889D81D16e0A234408E04801F26"
+    "address": "0xF85b21a7041309e19D9d9a8D11aD30947d9a82c3"
   },
   {
     "contractName": "ManualPriceFeed",
-    "address": "0x0D217a78D66c6EF0096191AaAb93fEdaf1F6C078"
+    "address": "0x0623162C9a2CbA923A9b37F3DC812823aEa7F5f5"
   },
   {
     "contractName": "FinancialContractsAdmin",
-    "address": "0xE68c8e464a4C30a47dc4D255fF8867194f660c5d"
+    "address": "0x1E19d22A071001150fF66Df1d1668e6cedE7dBC9"
   },
   {
     "contractName": "Store",
-    "address": "0xF013b40f34f0fAd25314D8aAF33eFbB5e2D58Ffd"
+    "address": "0xF4697dd5166BFFee32e91c6a497573cF351A6b53"
   },
   {
     "contractName": "LeveragedReturnCalculator",
-    "address": "0x159bA9167a93018234577B2A97B8290C0875F29d"
+    "address": "0x93e2C1457e37F7361e097dF4d81e008B152979ee"
   },
   {
     "contractName": "TokenizedDerivativeUtils",
-    "address": "0x5B60fA77C2c2a693Fd55b9f398Ba9b1610EF8A4A"
+    "address": "0xA42C1886C6d16Ac51feEa67AF6F38D17008d5bf2"
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0xC63fc3D39a530c57B009a4813d5aaEeA15dbDC31"
+    "address": "0x79154cD175B7666098E183B4868d54B8A04d0359"
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0xd29b65A8e8E378B3434435af693d8b9FdeD1DD4A"
+    "address": "0x2521eBE2587652e42bb268e960e5ED58E544f88C"
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0x8De96f12b764bf98A684f0EbC1b5af2c30a98f86"
+    "address": "0x551Cd68a8B4b2b3E037A1351Ee7B6f65C2E5D76E"
   },
   {
     "contractName": "TokenizedDerivativeCreator",
-    "address": "0xdc7298045665c72351D9cD3756DcC53d0e208A0d"
+    "address": "0xCC690ddFe088De222D99Ea8235F04c0344fcEE8d"
   }
 ]
 
