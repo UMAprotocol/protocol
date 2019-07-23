@@ -35,7 +35,7 @@ function ResolvedRequests() {
           filter: { resolutionRoundId: currentRoundId - 1, voter: account },
           fromBlock: 0
         }),
-        [currentRoundId]
+        [currentRoundId, account]
       )
     ) || [];
 
