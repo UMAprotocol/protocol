@@ -356,8 +356,10 @@ class VotingSystem {
     let updates = [];
     if (phase == VotePhasesEnum.COMMIT) {
       updates = await this.runBatchCommit(pendingRequests, roundId);
+      console.log(`Completed ${updates.length} commits`);
     } else {
       updates = await this.runBatchReveal(pendingRequests, roundId);
+      console.log(`Completed ${updates.length} reveals`);
     }
 
     if (updates.length > 0) {
