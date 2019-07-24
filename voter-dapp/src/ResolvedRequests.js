@@ -8,6 +8,7 @@ import TableRow from "@material-ui/core/TableRow";
 import Typography from "@material-ui/core/Typography";
 
 import { formatDate } from "./common/FormattingUtils.js";
+import { MAX_UINT_VAL } from "./common/Constants.js";
 
 function ResolvedRequests() {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
@@ -23,20 +24,22 @@ function ResolvedRequests() {
     useCacheEvents(
       "Voting",
       "PriceResolved",
-      useMemo(() => ({ filter: { resolutionRoundId: currentRoundId - 1 }, fromBlock: 0 }), [currentRoundId])
+      useMemo(() => {
+        const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
+        return { filter: { resolutionRoundId: indexRoundId }};
+      }, [currentRoundId])
     ) || [];
 
   const revealedVoteEvents =
     useCacheEvents(
       "Voting",
       "VoteRevealed",
-      useMemo(
-        () => ({
-          filter: { resolutionRoundId: currentRoundId - 1, voter: account },
-          fromBlock: 0
-        }),
-        [currentRoundId, account]
-      )
+      useMemo(() => {
+        const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
+        return {
+          filter: { resolutionRoundId: indexRoundId, voter: account }
+        };
+      }, [currentRoundId, account])
     ) || [];
 
   return (
