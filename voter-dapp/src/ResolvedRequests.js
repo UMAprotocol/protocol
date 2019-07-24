@@ -26,7 +26,7 @@ function ResolvedRequests() {
       "PriceResolved",
       useMemo(() => {
         const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
-        return { filter: { resolutionRoundId: indexRoundId }};
+        return { filter: { resolutionRoundId: indexRoundId } };
       }, [currentRoundId])
     ) || [];
 
