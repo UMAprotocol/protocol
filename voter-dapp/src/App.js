@@ -1,25 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import "./App.css";
-import ActiveRequests from "./ActiveRequests.js";
-import ResolvedRequests from "./ResolvedRequests.js";
+import Dashboard from "./Dashboard";
+import DrizzleLogin from "./DrizzleLogin.js";
 
 function App() {
-  const drizzleState = drizzleReactHooks.useDrizzleState(drizzleState => {
-    return {
-      initialized: drizzleState.drizzleStatus.initialized
-    };
-  });
-  if (!drizzleState.initialized) {
-    return <div>Loading</div>;
-  } else {
+  const [drizzle, setDrizzle] = useState(null);
+
+  if (drizzle) {
     return (
-      <div>
-        Voter dApp
-        <ActiveRequests />
-        <ResolvedRequests />
-      </div>
+      <drizzleReactHooks.DrizzleProvider drizzle={drizzle}>
+        <Dashboard />
+      </drizzleReactHooks.DrizzleProvider>
     );
+  } else {
+    return <DrizzleLogin setParentDrizzle={setDrizzle} />;
   }
 }
 
