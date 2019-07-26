@@ -5,6 +5,7 @@ import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
+import Typography from "@material-ui/core/Typography";
 
 import { formatDate } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
@@ -18,9 +19,10 @@ function ActiveRequests() {
   const pendingRequests = useCacheCall("Voting", "getPendingRequests");
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
-  const account = drizzleReactHooks.useDrizzleState(drizzleState => ({
+  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
-  })).account;
+  }));
+
   const initialFetchComplete = pendingRequests && currentRoundId && votePhase && account;
 
   const revealEvents = useCacheEvents(
@@ -154,28 +156,33 @@ function ActiveRequests() {
     }
   });
   return (
-    <Table>
-      <TableHead>
-        <TableRow>
-          <TableCell>Price Feed</TableCell>
-          <TableCell>Timestamp</TableCell>
-          <TableCell>Status</TableCell>
-          <TableCell>Current Vote</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {pendingRequests.map((pendingRequest, index) => {
-          return (
-            <TableRow key={index}>
-              <TableCell>{drizzle.web3.utils.hexToUtf8(pendingRequest.identifier)}</TableCell>
-              <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
-              <TableCell>{statusDetails[index].statusString}</TableCell>
-              <TableCell>{statusDetails[index].currentVote}</TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <div>
+      <Typography variant="h6" component="h6">
+        Active Requests
+      </Typography>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Price Feed</TableCell>
+            <TableCell>Timestamp</TableCell>
+            <TableCell>Status</TableCell>
+            <TableCell>Current Vote</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {pendingRequests.map((pendingRequest, index) => {
+            return (
+              <TableRow key={index}>
+                <TableCell>{drizzle.web3.utils.hexToUtf8(pendingRequest.identifier)}</TableCell>
+                <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
+                <TableCell>{statusDetails[index].statusString}</TableCell>
+                <TableCell>{statusDetails[index].currentVote}</TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

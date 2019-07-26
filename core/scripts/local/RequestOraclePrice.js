@@ -27,7 +27,7 @@ async function registerDerivative(registry) {
   }
 }
 
-// Note: This script initiates a price request to CentralizedOracle.
+// Note: This script initiates a price request to the Voting contract.
 // Its primary purpose is test setup for `scripts/PushOraclePrice.js`
 // This script executes the following steps:
 //   1. Registers the migration deployer's address as a Derivative Creator.
