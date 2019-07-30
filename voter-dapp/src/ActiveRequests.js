@@ -195,7 +195,7 @@ function ActiveRequests() {
         <TableHead>
           <TableRow>
             <TableCell>Price Feed</TableCell>
-            <TableCell>Select</TableCell>
+            <TableCell><Checkbox disabled /></TableCell>
             <TableCell>Timestamp</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Current Vote</TableCell>
