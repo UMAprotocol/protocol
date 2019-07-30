@@ -14,9 +14,9 @@ import { decryptMessage, deriveKeyPairFromSignatureMetamask } from "./common/Cry
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
 
 function ActiveRequests() {
-  console.log("RENDER");
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+
   const [checkboxesChecked, setCheckboxesChecked] = useState({});
   const check = (index, event) => {
     setCheckboxesChecked(old => ({ ...old, [index]: event.target.checked }));
@@ -120,7 +120,7 @@ function ActiveRequests() {
   }, [subsequentFetchComplete, voteStatusesStringified, decryptionKeys, account]);
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
-  const { send: batchRevealFunction, TXObjects } = useCacheSend("Voting", "batchReveal");
+  const { send: batchRevealFunction, status } = useCacheSend("Voting", "batchReveal");
   const onClickHandler = () => {
     const reveals = [];
     for (const index of Object.keys(checkboxesChecked)) {
@@ -156,6 +156,7 @@ function ActiveRequests() {
     );
   }
 
+  const hasPendingTransactions = status === "pending";
   const statusDetails = voteStatuses.map((voteStatus, index) => {
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
@@ -176,7 +177,7 @@ function ActiveRequests() {
     }
     // In the REVEAL phase, but the vote hasn't been revealed (yet).
     if (voteStatus.committedValue) {
-      return { statusString: "Reveal", currentVote: currentVote, enabled: true };
+      return { statusString: "Reveal", currentVote: currentVote, enabled: !hasPendingTransactions };
     } else {
       return { statusString: "Cannot be revealed", currentVote: "", enabled: false };
     }
