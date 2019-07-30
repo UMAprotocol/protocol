@@ -9,7 +9,7 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Typography from "@material-ui/core/Typography";
 
-import { formatDate } from "./common/FormattingUtils.js";
+import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask } from "./common/Crypto.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
@@ -125,7 +125,7 @@ function ActiveRequests() {
   const { send: batchRevealFunction, status } = useCacheSend("Voting", "batchReveal");
   const onClickHandler = () => {
     const reveals = [];
-    for (const index of Object.keys(checkboxesChecked)) {
+    for (const index in checkboxesChecked) {
       if (checkboxesChecked[index]) {
         reveals.push({
           identifier: pendingRequests[index].identifier,
@@ -153,8 +153,9 @@ function ActiveRequests() {
   const toPriceRequestKey = (identifier, time) => time + "," + identifier;
   const eventsMap = {};
   for (const reveal of revealEvents) {
-    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = web3.utils.fromWei(
-      reveal.returnValues.price
+    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatWei(
+      reveal.returnValues.price,
+      web3
     );
   }
 
@@ -162,7 +163,7 @@ function ActiveRequests() {
   const statusDetails = voteStatuses.map((voteStatus, index) => {
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
-      currentVote = web3.utils.fromWei(decryptedCommits[index].price.toString());
+      currentVote = formatWei(decryptedCommits[index].price, web3);
     }
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {
       // TODO(ptare): Set up checkboxes and commit editing.
@@ -194,7 +195,7 @@ function ActiveRequests() {
         <TableHead>
           <TableRow>
             <TableCell>Price Feed</TableCell>
-            <TableCell>?</TableCell>
+            <TableCell>Select</TableCell>
             <TableCell>Timestamp</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Current Vote</TableCell>
