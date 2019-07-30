@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Button from "@material-ui/core/Button";
+import Checkbox from "@material-ui/core/Checkbox";
 import { drizzleReactHooks } from "drizzle-react";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
@@ -7,14 +9,19 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Typography from "@material-ui/core/Typography";
 
-import { formatDate } from "./common/FormattingUtils.js";
+import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask } from "./common/Crypto.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
 
 function ActiveRequests() {
-  const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
+  const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+
+  const [checkboxesChecked, setCheckboxesChecked] = useState({});
+  const check = (index, event) => {
+    setCheckboxesChecked(old => ({ ...old, [index]: event.target.checked }));
+  };
 
   const pendingRequests = useCacheCall("Voting", "getPendingRequests");
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
@@ -96,9 +103,7 @@ function ActiveRequests() {
       const currentVotes = await Promise.all(
         voteStatuses.map(async (voteStatus, index) => {
           if (voteStatus.committedValue) {
-            return web3.utils.fromWei(
-              JSON.parse(await decryptMessage(decryptionKeys[account][currentRoundId], voteStatus.committedValue)).price
-            );
+            return JSON.parse(await decryptMessage(decryptionKeys[account][currentRoundId], voteStatus.committedValue));
           } else {
             return "";
           }
@@ -117,6 +122,23 @@ function ActiveRequests() {
   }, [subsequentFetchComplete, voteStatusesStringified, decryptionKeys, account]);
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
+  const { send: batchRevealFunction, status } = useCacheSend("Voting", "batchReveal");
+  const onClickHandler = () => {
+    const reveals = [];
+    for (const index in checkboxesChecked) {
+      if (checkboxesChecked[index]) {
+        reveals.push({
+          identifier: pendingRequests[index].identifier,
+          time: pendingRequests[index].time,
+          price: decryptedCommits[index].price.toString(),
+          salt: web3.utils.hexToNumberString(decryptedCommits[index].salt)
+        });
+      }
+    }
+    batchRevealFunction(reveals);
+    setCheckboxesChecked({});
+  };
+
   // NOTE: No calls to React hooks from this point forward.
   if (
     !initialFetchComplete ||
@@ -131,30 +153,39 @@ function ActiveRequests() {
   const toPriceRequestKey = (identifier, time) => time + "," + identifier;
   const eventsMap = {};
   for (const reveal of revealEvents) {
-    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = web3.utils.fromWei(
-      reveal.returnValues.price
+    eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatWei(
+      reveal.returnValues.price,
+      web3
     );
   }
 
+  const hasPendingTransactions = status === "pending";
   const statusDetails = voteStatuses.map((voteStatus, index) => {
+    let currentVote = "";
+    if (voteStatus.committedValue && decryptedCommits[index].price) {
+      currentVote = formatWei(decryptedCommits[index].price, web3);
+    }
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {
-      return { statusString: "Commit", currentVote: decryptedCommits[index] };
+      // TODO(ptare): Set up checkboxes and commit editing.
+      return { statusString: "Commit", currentVote: currentVote, enabled: false };
     }
     // In the REVEAL phase.
     if (voteStatus.hasRevealed) {
       const pendingRequest = pendingRequests[index];
       return {
         statusString: "Revealed",
-        currentVote: eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)]
+        currentVote: eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)],
+        enabled: false
       };
     }
     // In the REVEAL phase, but the vote hasn't been revealed (yet).
     if (voteStatus.committedValue) {
-      return { statusString: "Reveal", currentVote: decryptedCommits[index] };
+      return { statusString: "Reveal", currentVote: currentVote, enabled: !hasPendingTransactions };
     } else {
-      return { statusString: "Cannot be revealed", currentVote: "" };
+      return { statusString: "Cannot be revealed", currentVote: "", enabled: false };
     }
   });
+  const revealButtonEnabled = statusDetails.some(statusDetail => statusDetail.enabled);
   return (
     <div>
       <Typography variant="h6" component="h6">
@@ -164,6 +195,9 @@ function ActiveRequests() {
         <TableHead>
           <TableRow>
             <TableCell>Price Feed</TableCell>
+            <TableCell>
+              <Checkbox disabled />
+            </TableCell>
             <TableCell>Timestamp</TableCell>
             <TableCell>Status</TableCell>
             <TableCell>Current Vote</TableCell>
@@ -174,6 +208,13 @@ function ActiveRequests() {
             return (
               <TableRow key={index}>
                 <TableCell>{drizzle.web3.utils.hexToUtf8(pendingRequest.identifier)}</TableCell>
+                <TableCell>
+                  <Checkbox
+                    disabled={!statusDetails[index].enabled}
+                    checked={checkboxesChecked[index] ? true : false}
+                    onChange={event => check(index, event)}
+                  />
+                </TableCell>
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
                 <TableCell>{statusDetails[index].currentVote}</TableCell>
@@ -182,6 +223,9 @@ function ActiveRequests() {
           })}
         </TableBody>
       </Table>
+      <Button disabled={!revealButtonEnabled} onClick={() => onClickHandler()}>
+        Reveal selected
+      </Button>
     </div>
   );
 }
