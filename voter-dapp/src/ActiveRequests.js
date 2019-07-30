@@ -7,6 +7,7 @@ import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
+import Typography from "@material-ui/core/Typography";
 
 import { formatDate } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
@@ -25,9 +26,10 @@ function ActiveRequests() {
   const pendingRequests = useCacheCall("Voting", "getPendingRequests");
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
-  const account = drizzleReactHooks.useDrizzleState(drizzleState => ({
+  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
-  })).account;
+  }));
+
   const initialFetchComplete = pendingRequests && currentRoundId && votePhase && account;
 
   const revealEvents = useCacheEvents(
@@ -185,6 +187,9 @@ function ActiveRequests() {
   const revealButtonEnabled = statusDetails.some(statusDetail => statusDetail.enabled);
   return (
     <div>
+      <Typography variant="h6" component="h6">
+        Active Requests
+      </Typography>
       <Table>
         <TableHead>
           <TableRow>

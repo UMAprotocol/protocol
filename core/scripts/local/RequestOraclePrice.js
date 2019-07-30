@@ -27,7 +27,7 @@ async function registerDerivative(registry) {
   }
 }
 
-// Note: This script initiates a price request to CentralizedOracle.
+// Note: This script initiates a price request to the Voting contract.
 // Its primary purpose is test setup for `scripts/PushOraclePrice.js`
 // This script executes the following steps:
 //   1. Registers the migration deployer's address as a Derivative Creator.
@@ -84,16 +84,24 @@ const runRequestOraclePrice = async function(callback) {
 
   const finder = await Finder.deployed();
 
-  const callRun = async () => {
-    await run(finder, argv.identifier, argv.time);
-  };
-
   // Note: use ENV for port because in some cases GCP doesn't allow the user to change the docker args.
   if (process.env.PORT) {
     // Only trigger on request if PORT is in the ENV. Otherwise, we assume the user wants it called synchronously.
-    await triggerOnRequest(callRun);
+    await triggerOnRequest(async () => {
+      // Clear the nonce cache on every new request so a long-running server doesn't use a stale nonce.
+      if (web3.currentProvider.engine && web3.currentProvider.engine._providers) {
+        for (const provider of web3.currentProvider.engine._providers) {
+          if (provider.nonceCache) {
+            provider.nonceCache = {};
+          }
+        }
+      }
+
+      // Request the price.
+      await run(finder, argv.identifier, argv.time);
+    });
   } else {
-    await callRun();
+    await run(finder, argv.identifier, argv.time);
 
     // Note: only call the callback in the non-server case. In the server case, the server is expected to run
     // indefinitely.

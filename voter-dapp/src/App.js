@@ -2,6 +2,7 @@ import React from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import "./App.css";
 import ActiveRequests from "./ActiveRequests.js";
+import ResolvedRequests from "./ResolvedRequests.js";
 
 function App() {
   const drizzleState = drizzleReactHooks.useDrizzleState(drizzleState => {
@@ -14,7 +15,9 @@ function App() {
   } else {
     return (
       <div>
-        Voter dApp <ActiveRequests />
+        Voter dApp
+        <ActiveRequests />
+        <ResolvedRequests />
       </div>
     );
   }
