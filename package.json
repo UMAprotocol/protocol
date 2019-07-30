@@ -40,10 +40,10 @@
     "truffle-assertions": "0.8.2",
     "truffle-contract": "4.0.19",
     "truffle-hdwallet-provider": "1.0.8",
-    "web3": "^1.2.0",
-    "web3-core-promievent": "^1.2.0",
-    "web3-eth-abi": "^1.2.0",
-    "web3-utils": "^1.2.0"
+    "web3": "1.0.0-beta.37",
+    "web3-core-promievent": "1.0.0-beta.37",
+    "web3-eth-abi": "1.0.0-beta.37",
+    "web3-utils": "1.0.0-beta.37"
   },
   "optionalDependencies": {
     "solidity-docgen": "github:UMAprotocol/solidity-docgen#master"
