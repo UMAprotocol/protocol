@@ -11,11 +11,6 @@ import { formatDate } from "./common/FormattingUtils.js";
 
 export default function Header() {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const drizzleState = drizzleReactHooks.useDrizzleState(drizzleState => {
-    return {
-      initialized: drizzleState.drizzleStatus.initialized
-    };
-  });
   const account = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
   })).account;
@@ -24,34 +19,34 @@ export default function Header() {
   const supply = useCacheCall("VotingToken", "totalSupply");
   let tokenBalance;
 
-  if (!drizzleState.initialized) {
-    tokenBalance = "Loading token balance...";
-  } else {
+  if (balance && supply) {
     tokenBalance = (
-      <li>
+      <div>
         {" "}
         {balance} tokens of {supply} supply is {!(balance / supply) ? 0 : (balance / supply) * 100}%{" "}
-      </li>
+      </div>
     );
+  } else {
+    tokenBalance = "Loading token balance...";
   }
 
   if (!logo) {
     return <div>Logo goes here</div>;
   }
   return (
-    <div className="navWrapper">
+    <div>
       <Grid container direction="row" alignItems="center">
-        <Grid item padding="3">
+        <Grid item>
           <img src={logo} alt="Logo" style={{ padding: 15 }} height="30" />
         </Grid>
         <Grid item>
           <h1>Vote Requests</h1>
         </Grid>
         <Grid item>
-          <ul id="nav-mobile" class="right hide-on-med-and-down" style={{ float: "right" }}>
-            <li>User Addr = {account}</li>
-            <li> {tokenBalance} </li>
-            <li> Current time: {formatDate(Date.now(), drizzle.web3)} </li>
+          <ul>
+            <div>User Addr = {account} </div>
+            <div>  {tokenBalance} </div>
+            <div> Current time: {formatDate(Date.now(), drizzle.web3)} </div>
           </ul>
         </Grid>
       </Grid>

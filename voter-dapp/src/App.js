@@ -5,7 +5,6 @@ import { drizzleReactHooks } from "drizzle-react";
 import "./App.css";
 import Header from "./Header.js";
 import ActiveRequests from "./ActiveRequests.js";
-import { red, grey } from "@material-ui/core/colors";
 import AppBar from "@material-ui/core/AppBar";
 
 function App() {
@@ -21,9 +20,6 @@ function App() {
     typography: {
       useNextVariants: true,
       fontFamily: "Verdana"
-    },
-    img: {
-      border: 3
     }
   });
 
