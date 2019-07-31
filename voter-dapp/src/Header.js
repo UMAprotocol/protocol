@@ -45,7 +45,7 @@ export default function Header() {
         <Grid item>
           <ul>
             <div>User Addr = {account} </div>
-            <div>  {tokenBalance} </div>
+            <div> {tokenBalance} </div>
             <div> Current time: {formatDate(Date.now(), drizzle.web3)} </div>
           </ul>
         </Grid>
