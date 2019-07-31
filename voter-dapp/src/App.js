@@ -4,7 +4,6 @@ import "./App.css";
 import Dashboard from "./Dashboard";
 import DrizzleLogin from "./DrizzleLogin.js";
 import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import Typography from "@material-ui/core/Typography";
 
 function App() {
   const theme = createMuiTheme({

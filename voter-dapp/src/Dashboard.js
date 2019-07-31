@@ -1,5 +1,6 @@
 import React from "react";
 import Header from "./Header.js";
+import AppBar from "@material-ui/core/AppBar";
 import ActiveRequests from "./ActiveRequests.js";
 import ResolvedRequests from "./ResolvedRequests.js";
 
