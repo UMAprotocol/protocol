@@ -1,11 +1,9 @@
-import React from "react";
-import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
-import Typography from "@material-ui/core/Typography";
+import React, { useState } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import "./App.css";
-import Header from "./Header.js";
-import ActiveRequests from "./ActiveRequests.js";
-import AppBar from "@material-ui/core/AppBar";
+import Dashboard from "./Dashboard";
+import DrizzleLogin from "./DrizzleLogin.js";
+import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
 
 function App() {
   const theme = createMuiTheme({
@@ -23,24 +21,20 @@ function App() {
     }
   });
 
-  const drizzleState = drizzleReactHooks.useDrizzleState(drizzleState => {
-    return {
-      initialized: drizzleState.drizzleStatus.initialized
-    };
-  });
-  if (!drizzleState.initialized) {
+  const [drizzle, setDrizzle] = useState(null);
+
+  if (drizzle) {
     return (
-      <MuiThemeProvider theme={theme}>
-        <Typography variant="body2">Loading...</Typography>
-      </MuiThemeProvider>
+      <drizzleReactHooks.DrizzleProvider drizzle={drizzle}>
+        <MuiThemeProvider theme={theme}>
+          <Dashboard />
+        </MuiThemeProvider>
+      </drizzleReactHooks.DrizzleProvider>
     );
   } else {
     return (
       <MuiThemeProvider theme={theme}>
-        <AppBar color="secondary">
-          <Header />
-        </AppBar>
-        Voter dApp <ActiveRequests />
+        <DrizzleLogin setParentDrizzle={setDrizzle} />
       </MuiThemeProvider>
     );
   }
