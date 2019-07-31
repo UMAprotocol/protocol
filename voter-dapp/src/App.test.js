@@ -14,9 +14,6 @@ const fakeEthereumObject = {
 it("renders without crashing", () => {
   global.ethereum = fakeEthereumObject;
   const div = document.createElement("div");
-  ReactDOM.render(
-      <App />,
-    div
-  );
+  ReactDOM.render(<App />, div);
   ReactDOM.unmountComponentAtNode(div);
 });
