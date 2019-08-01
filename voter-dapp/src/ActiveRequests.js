@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useReducer } from "react";
 import Button from "@material-ui/core/Button";
 import Checkbox from "@material-ui/core/Checkbox";
 import { drizzleReactHooks } from "drizzle-react";
@@ -14,6 +14,24 @@ import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
+
+const myReducer = (state, action) => {
+  console.log("::myReducer()");
+  switch (action.type) {
+    case "EDIT_COMMIT":
+      return { ...state, [action.index]: action.price };
+    case "EDIT_COMMITTED_VALUE":
+      return { ...state, [action.index]: action.price };
+    case "SUBMIT_COMMIT":
+      const newValues = state;
+      for (const index in action.indicesCommitted) {
+        newValues[index] = undefined;
+      }
+      return newValues;
+    default:
+      throw new Error();
+  }
+};
 
 function ActiveRequests() {
   console.log("RENDER");
@@ -150,27 +168,24 @@ function ActiveRequests() {
     setCheckboxesChecked({});
   };
 
-  const [commitsEdited, setCommitsEdited] = useState({});
+  // REDUCER VERSION!!
+  const [editState, dispatchEditState] = useReducer(myReducer, {});
   const editCommit = index => {
-    setCommitsEdited(old => ({ ...old, [index]: true }));
+    dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
   };
-
-  const [newCommitValues, setNewCommitValues] = useState({});
   const editCommittedValue = (index, event) => {
-    // React reuses the `event` object, so we have to capture `target.value` out.
-    const price = event.target.value;
-    setNewCommitValues(old => ({ ...old, [index]: price }));
+    dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
   };
 
   const { send: batchCommitFunction, status: commitStatus } = useCacheSend("Voting", "batchCommit");
   const onSaveHandler = async () => {
     const commits = [];
     const indicesCommitted = [];
-    for (const index in commitsEdited) {
-      if (!checkboxesChecked[index] || !newCommitValues[index]) {
+    for (const index in editState) {
+      if (!checkboxesChecked[index] || !editState[index]) {
         continue;
       }
-      const price = web3.utils.toWei(newCommitValues[index]);
+      const price = web3.utils.toWei(editState[index]);
       const salt = web3.utils.toBN(web3.utils.randomHex(32));
       const encryptedVote = await encryptMessage(
         decryptionKeys[account][currentRoundId].publicKey,
@@ -189,13 +204,7 @@ function ActiveRequests() {
     }
     batchCommitFunction(commits);
     setCheckboxesChecked({});
-    setCommitsEdited(old => {
-      const newValues = old;
-      for (const index in indicesCommitted) {
-        newValues[index] = undefined;
-      }
-      return newValues;
-    });
+    dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
   };
 
   // NOTE: No calls to React hooks from this point forward.
@@ -228,7 +237,7 @@ function ActiveRequests() {
       return {
         statusString: "Commit",
         currentVote: currentVote,
-        enabled: commitsEdited[index] && !hasPendingTransactions
+        enabled: editState[index] && !hasPendingTransactions
       };
     }
     // In the REVEAL phase.
@@ -285,7 +294,7 @@ function ActiveRequests() {
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
                 <TableCell>
-                  {!commitsEdited[index] ? (
+                  {!editState[index] ? (
                     <span>
                       {statusDetails[index].currentVote}{" "}
                       {saveButtonShown ? (
