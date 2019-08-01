@@ -15,8 +15,8 @@ import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
 
-const myReducer = (state, action) => {
-  console.log("::myReducer()");
+const editStateReducer = (state, action) => {
+  console.log("::editStateReducer()");
   switch (action.type) {
     case "EDIT_COMMIT":
       return { ...state, [action.index]: action.price };
@@ -168,8 +168,7 @@ function ActiveRequests() {
     setCheckboxesChecked({});
   };
 
-  // REDUCER VERSION!!
-  const [editState, dispatchEditState] = useReducer(myReducer, {});
+  const [editState, dispatchEditState] = useReducer(editStateReducer, {});
 
   const { send: batchCommitFunction, status: commitStatus } = useCacheSend("Voting", "batchCommit");
   const onSaveHandler = async () => {
@@ -256,11 +255,36 @@ function ActiveRequests() {
   const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
   const saveButtonEnabled = Object.values(checkboxesChecked).some(checked => checked);
 
+  // CURRENT VOTE CELL: Should this be its own component?
   const editCommit = index => {
     dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
   };
   const editCommittedValue = (index, event) => {
     dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
+  };
+  const getCurrentVoteCell = index => {
+    // If this cell is currently being edited.
+    if (editState[index]) {
+      return (
+        <TextField
+          defaultValue={statusDetails[index].currentVote}
+          onChange={event => editCommittedValue(index, event)}
+        />
+      );
+    } else {
+      return (
+        <span>
+          {statusDetails[index].currentVote}{" "}
+          {saveButtonShown ? (
+            <Button disabled={hasPendingTransactions} onClick={() => editCommit(index)}>
+              Edit
+            </Button>
+          ) : (
+            ""
+          )}
+        </span>
+      );
+    }
   };
 
   return (
@@ -294,27 +318,7 @@ function ActiveRequests() {
                 </TableCell>
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
-                <TableCell>
-                  {!editState[index] ? (
-                    <span>
-                      {statusDetails[index].currentVote}{" "}
-                      {saveButtonShown ? (
-                        <Button disabled={hasPendingTransactions} onClick={() => editCommit(index)}>
-                          Edit
-                        </Button>
-                      ) : (
-                        ""
-                      )}
-                    </span>
-                  ) : (
-                    <span>
-                      <TextField
-                        defaultValue={statusDetails[index].currentVote}
-                        onChange={event => editCommittedValue(index, event)}
-                      />
-                    </span>
-                  )}
-                </TableCell>
+                <TableCell>{getCurrentVoteCell(index)}</TableCell>
               </TableRow>
             );
           })}
