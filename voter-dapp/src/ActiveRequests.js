@@ -170,12 +170,6 @@ function ActiveRequests() {
 
   // REDUCER VERSION!!
   const [editState, dispatchEditState] = useReducer(myReducer, {});
-  const editCommit = index => {
-    dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
-  };
-  const editCommittedValue = (index, event) => {
-    dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
-  };
 
   const { send: batchCommitFunction, status: commitStatus } = useCacheSend("Voting", "batchCommit");
   const onSaveHandler = async () => {
@@ -261,6 +255,13 @@ function ActiveRequests() {
     votePhase.toString() === VotePhasesEnum.REVEAL && statusDetails.some(statusDetail => statusDetail.enabled);
   const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
   const saveButtonEnabled = Object.values(checkboxesChecked).some(checked => checked);
+
+  const editCommit = index => {
+    dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
+  };
+  const editCommittedValue = (index, event) => {
+    dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
+  };
 
   return (
     <div>
