@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useReducer } from "react";
 import Button from "@material-ui/core/Button";
 import Checkbox from "@material-ui/core/Checkbox";
 import { drizzleReactHooks } from "drizzle-react";
@@ -7,12 +7,31 @@ import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
+import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
 
 import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
-import { decryptMessage, deriveKeyPairFromSignatureMetamask } from "./common/Crypto.js";
+import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
+
+const editStateReducer = (state, action) => {
+  console.log("::editStateReducer()");
+  switch (action.type) {
+    case "EDIT_COMMIT":
+      return { ...state, [action.index]: action.price };
+    case "EDIT_COMMITTED_VALUE":
+      return { ...state, [action.index]: action.price };
+    case "SUBMIT_COMMIT":
+      const newValues = state;
+      for (const index in action.indicesCommitted) {
+        newValues[index] = undefined;
+      }
+      return newValues;
+    default:
+      throw new Error();
+  }
+};
 
 function ActiveRequests() {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
@@ -81,8 +100,15 @@ function ActiveRequests() {
         return;
       }
       // TODO(ptare): Handle the user refusing to sign the message.
-      const { privateKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(currentRoundId), account);
-      setDecryptionKeys(prev => ({ ...prev, [account]: { ...prev[account], [currentRoundId]: privateKey } }));
+      const { privateKey, publicKey } = await deriveKeyPairFromSignatureMetamask(
+        web3,
+        getKeyGenMessage(currentRoundId),
+        account
+      );
+      setDecryptionKeys(prev => ({
+        ...prev,
+        [account]: { ...prev[account], [currentRoundId]: { privateKey, publicKey } }
+      }));
     }
 
     getDecryptionKey();
@@ -103,7 +129,9 @@ function ActiveRequests() {
       const currentVotes = await Promise.all(
         voteStatuses.map(async (voteStatus, index) => {
           if (voteStatus.committedValue) {
-            return JSON.parse(await decryptMessage(decryptionKeys[account][currentRoundId], voteStatus.committedValue));
+            return JSON.parse(
+              await decryptMessage(decryptionKeys[account][currentRoundId].privateKey, voteStatus.committedValue)
+            );
           } else {
             return "";
           }
@@ -122,7 +150,7 @@ function ActiveRequests() {
   }, [subsequentFetchComplete, voteStatusesStringified, decryptionKeys, account]);
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
-  const { send: batchRevealFunction, status } = useCacheSend("Voting", "batchReveal");
+  const { send: batchRevealFunction, status: revealStatus } = useCacheSend("Voting", "batchReveal");
   const onClickHandler = () => {
     const reveals = [];
     for (const index in checkboxesChecked) {
@@ -137,6 +165,38 @@ function ActiveRequests() {
     }
     batchRevealFunction(reveals);
     setCheckboxesChecked({});
+  };
+
+  const [editState, dispatchEditState] = useReducer(editStateReducer, {});
+
+  const { send: batchCommitFunction, status: commitStatus } = useCacheSend("Voting", "batchCommit");
+  const onSaveHandler = async () => {
+    const commits = [];
+    const indicesCommitted = [];
+    for (const index in editState) {
+      if (!checkboxesChecked[index] || !editState[index]) {
+        continue;
+      }
+      const price = web3.utils.toWei(editState[index]);
+      const salt = web3.utils.toBN(web3.utils.randomHex(32));
+      const encryptedVote = await encryptMessage(
+        decryptionKeys[account][currentRoundId].publicKey,
+        JSON.stringify({ price, salt })
+      );
+      commits.push({
+        identifier: pendingRequests[index].identifier,
+        time: pendingRequests[index].time,
+        hash: web3.utils.soliditySha3(price, salt),
+        encryptedVote
+      });
+      indicesCommitted.push(index);
+    }
+    if (commits.length < 1) {
+      return;
+    }
+    batchCommitFunction(commits);
+    setCheckboxesChecked({});
+    dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
   };
 
   // NOTE: No calls to React hooks from this point forward.
@@ -159,15 +219,18 @@ function ActiveRequests() {
     );
   }
 
-  const hasPendingTransactions = status === "pending";
+  const hasPendingTransactions = revealStatus === "pending" || commitStatus === "pending";
   const statusDetails = voteStatuses.map((voteStatus, index) => {
     let currentVote = "";
     if (voteStatus.committedValue && decryptedCommits[index].price) {
       currentVote = formatWei(decryptedCommits[index].price, web3);
     }
     if (votePhase.toString() === VotePhasesEnum.COMMIT) {
-      // TODO(ptare): Set up checkboxes and commit editing.
-      return { statusString: "Commit", currentVote: currentVote, enabled: false };
+      return {
+        statusString: "Commit",
+        currentVote: currentVote,
+        enabled: editState[index] && !hasPendingTransactions
+      };
     }
     // In the REVEAL phase.
     if (voteStatus.hasRevealed) {
@@ -185,7 +248,42 @@ function ActiveRequests() {
       return { statusString: "Cannot be revealed", currentVote: "", enabled: false };
     }
   });
+  const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL;
   const revealButtonEnabled = statusDetails.some(statusDetail => statusDetail.enabled);
+  const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
+  const saveButtonEnabled = Object.values(checkboxesChecked).some(checked => checked);
+
+  const editCommit = index => {
+    dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
+  };
+  const editCommittedValue = (index, event) => {
+    dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
+  };
+  const getCurrentVoteCell = index => {
+    // If this cell is currently being edited.
+    if (editState[index]) {
+      return (
+        <TextField
+          defaultValue={statusDetails[index].currentVote}
+          onChange={event => editCommittedValue(index, event)}
+        />
+      );
+    } else {
+      return (
+        <span>
+          {statusDetails[index].currentVote}{" "}
+          {saveButtonShown ? (
+            <Button disabled={hasPendingTransactions} onClick={() => editCommit(index)}>
+              Edit
+            </Button>
+          ) : (
+            ""
+          )}
+        </span>
+      );
+    }
+  };
+
   return (
     <div>
       <Typography variant="h6" component="h6">
@@ -217,15 +315,26 @@ function ActiveRequests() {
                 </TableCell>
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>
                 <TableCell>{statusDetails[index].statusString}</TableCell>
-                <TableCell>{statusDetails[index].currentVote}</TableCell>
+                <TableCell>{getCurrentVoteCell(index)}</TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
-      <Button disabled={!revealButtonEnabled} onClick={() => onClickHandler()}>
-        Reveal selected
-      </Button>
+      {revealButtonShown ? (
+        <Button disabled={hasPendingTransactions || !revealButtonEnabled} onClick={() => onClickHandler()}>
+          Reveal selected
+        </Button>
+      ) : (
+        ""
+      )}
+      {saveButtonShown ? (
+        <Button disabled={hasPendingTransactions || !saveButtonEnabled} onClick={() => onSaveHandler()}>
+          Save
+        </Button>
+      ) : (
+        ""
+      )}
     </div>
   );
 }
