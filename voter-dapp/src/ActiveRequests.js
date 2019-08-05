@@ -34,7 +34,6 @@ const editStateReducer = (state, action) => {
 };
 
 function ActiveRequests() {
-  console.log("RENDER");
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
@@ -250,12 +249,10 @@ function ActiveRequests() {
     }
   });
   const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL;
-  const revealButtonEnabled =
-    votePhase.toString() === VotePhasesEnum.REVEAL && statusDetails.some(statusDetail => statusDetail.enabled);
+  const revealButtonEnabled = statusDetails.some(statusDetail => statusDetail.enabled);
   const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
   const saveButtonEnabled = Object.values(checkboxesChecked).some(checked => checked);
 
-  // CURRENT VOTE CELL: Should this be its own component?
   const editCommit = index => {
     dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
   };
