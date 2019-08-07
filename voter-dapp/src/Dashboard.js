@@ -7,10 +7,9 @@ import ResolvedRequests from "./ResolvedRequests.js";
 function Dashboard() {
   return (
     <div>
-      <AppBar color="secondary">
+      <AppBar color="secondary" position="static">
         <Header />
       </AppBar>
-      Voter dApp
       <ActiveRequests />
       <ResolvedRequests />
     </div>

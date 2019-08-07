@@ -5,6 +5,7 @@
   "dependencies": {
     "@material-ui/core": "^3.9.2",
     "@material-ui/icons": "^3.0.2",
+    "@material-ui/styles": "^4.3.0",
     "drizzle": "github:UMAprotocol/drizzle#1.4.0-fix2",
     "drizzle-react": "^1.3.0",
     "react": "^16.8.6",

@@ -7,12 +7,14 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Typography from "@material-ui/core/Typography";
 
+import { useTableStyles } from "./Styles.js";
 import { formatDate } from "./common/FormattingUtils.js";
 import { MAX_UINT_VAL } from "./common/Constants.js";
 
 function ResolvedRequests() {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+  const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
 
@@ -43,21 +45,21 @@ function ResolvedRequests() {
     ) || [];
 
   return (
-    <div>
+    <div className={classes.root}>
       <Typography variant="h6" component="h6">
         Resolved Requests
       </Typography>
       <Table>
-        <TableHead>
+        <TableHead className={classes.tableHeader}>
           <TableRow>
-            <TableCell>Price Feed</TableCell>
-            <TableCell>Timestamp</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Your Vote</TableCell>
-            <TableCell>Correct Vote</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Price Feed</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Timestamp</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Status</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Your Vote</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Correct Vote</TableCell>
           </TableRow>
         </TableHead>
-        <TableBody>
+        <TableBody className={classes.tableBody}>
           {resolvedEvents.map((event, index) => {
             const resolutionData = event.returnValues;
 
