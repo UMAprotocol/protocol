@@ -3,7 +3,8 @@ import { drizzleReactHooks } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./Dashboard";
 import DrizzleLogin from "./DrizzleLogin.js";
-import { MuiThemeProvider, createMuiTheme } from "@material-ui/core/styles";
+import { createMuiTheme } from "@material-ui/core/styles";
+import { ThemeProvider } from "@material-ui/styles";
 
 function App() {
   const theme = createMuiTheme({
@@ -18,6 +19,19 @@ function App() {
     typography: {
       useNextVariants: true,
       fontFamily: "Verdana"
+    },
+    overrides: {
+      MuiTableHead: {
+        root: {
+          background: "#b2b7bf",
+          fontWeight: "750"
+        }
+      },
+      MuiTable: {
+        root: {
+          background: "#e4e7ed"
+        }
+      }
     }
   });
 
@@ -26,16 +40,16 @@ function App() {
   if (drizzle) {
     return (
       <drizzleReactHooks.DrizzleProvider drizzle={drizzle}>
-        <MuiThemeProvider theme={theme}>
+        <ThemeProvider theme={theme}>
           <Dashboard />
-        </MuiThemeProvider>
+        </ThemeProvider>
       </drizzleReactHooks.DrizzleProvider>
     );
   } else {
     return (
-      <MuiThemeProvider theme={theme}>
+      <ThemeProvider theme={theme}>
         <DrizzleLogin setParentDrizzle={setDrizzle} />
-      </MuiThemeProvider>
+      </ThemeProvider>
     );
   }
 }

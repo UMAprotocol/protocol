@@ -297,7 +297,7 @@ function ActiveRequests() {
         Active Requests
       </Typography>
       <Table style={{ marginBottom: "10px" }}>
-        <TableHead className={classes.tableHeader}>
+        <TableHead>
           <TableRow>
             <TableCell className={classes.tableHeaderCell}>Price Feed</TableCell>
             <TableCell className={classes.tableHeaderCell}>
