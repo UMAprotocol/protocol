@@ -13,13 +13,13 @@ import Typography from "@material-ui/core/Typography";
 import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
+import { useTableStyles } from "./Styles.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
 
 const editStateReducer = (state, action) => {
-  console.log("::editStateReducer()");
   switch (action.type) {
     case "EDIT_COMMIT":
-      return { ...state, [action.index]: action.price };
+      return { ...state, [action.index]: action.price ? action.price : "0" };
     case "EDIT_COMMITTED_VALUE":
       return { ...state, [action.index]: action.price };
     case "SUBMIT_COMMIT":
@@ -36,6 +36,7 @@ const editStateReducer = (state, action) => {
 function ActiveRequests() {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+  const classes = useTableStyles();
 
   const [checkboxesChecked, setCheckboxesChecked] = useState({});
   const check = (index, event) => {
@@ -273,7 +274,13 @@ function ActiveRequests() {
         <span>
           {statusDetails[index].currentVote}{" "}
           {saveButtonShown ? (
-            <Button disabled={hasPendingTransactions} onClick={() => editCommit(index)}>
+            <Button
+              variant="contained"
+              color="primary"
+              style={{ marginLeft: "5px" }}
+              disabled={hasPendingTransactions}
+              onClick={() => editCommit(index)}
+            >
               Edit
             </Button>
           ) : (
@@ -285,23 +292,23 @@ function ActiveRequests() {
   };
 
   return (
-    <div>
+    <div className={classes.root}>
       <Typography variant="h6" component="h6">
         Active Requests
       </Typography>
-      <Table>
+      <Table style={{ marginBottom: "10px" }}>
         <TableHead>
           <TableRow>
-            <TableCell>Price Feed</TableCell>
-            <TableCell>
+            <TableCell className={classes.tableHeaderCell}>Price Feed</TableCell>
+            <TableCell className={classes.tableHeaderCell}>
               <Checkbox disabled />
             </TableCell>
-            <TableCell>Timestamp</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Current Vote</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Timestamp</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Status</TableCell>
+            <TableCell className={classes.tableHeaderCell}>Current Vote</TableCell>
           </TableRow>
         </TableHead>
-        <TableBody>
+        <TableBody className={classes.tableBody}>
           {pendingRequests.map((pendingRequest, index) => {
             return (
               <TableRow key={index}>
@@ -309,6 +316,7 @@ function ActiveRequests() {
                 <TableCell>
                   <Checkbox
                     disabled={!statusDetails[index].enabled}
+                    color="primary"
                     checked={checkboxesChecked[index] ? true : false}
                     onChange={event => check(index, event)}
                   />
@@ -322,14 +330,24 @@ function ActiveRequests() {
         </TableBody>
       </Table>
       {revealButtonShown ? (
-        <Button disabled={hasPendingTransactions || !revealButtonEnabled} onClick={() => onClickHandler()}>
+        <Button
+          variant="contained"
+          color="primary"
+          disabled={hasPendingTransactions || !revealButtonEnabled}
+          onClick={() => onClickHandler()}
+        >
           Reveal selected
         </Button>
       ) : (
         ""
       )}
       {saveButtonShown ? (
-        <Button disabled={hasPendingTransactions || !saveButtonEnabled} onClick={() => onSaveHandler()}>
+        <Button
+          variant="contained"
+          color="primary"
+          disabled={hasPendingTransactions || !saveButtonEnabled}
+          onClick={() => onSaveHandler()}
+        >
           Save
         </Button>
       ) : (
