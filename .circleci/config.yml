@@ -217,7 +217,7 @@ jobs:
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: sponsor-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+          key: voter-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Deploy Dapp
           command: ./ci/deploy_to_staging.sh
