@@ -12,8 +12,12 @@ sudo mkdir -p /usr/local/gcloud \
 # Adding the package path to local
 export PATH=$PATH:/usr/local/gcloud/google-cloud-sdk/bin
 
+# Save the gcloud credentials to a json file
+GCLOUD_FNAME=$(mktemp -q --suffix=.json)
+echo $GCLOUD_SERVICE_KEY > $GCLOUD_FNAME
+
 # Auth service account
-echo $GCLOUD_SERVICE_KEY | gcloud auth activate-service-account --key-file=-
+gcloud auth activate-service-account --key-file=$GCLOUD_FNAME
 gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
 gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 
