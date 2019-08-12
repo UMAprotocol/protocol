@@ -2,10 +2,10 @@
 set -e
 
 # Usage:
-# REACT_APP_MODE=default ./scripts/deploy_dapp.sh <your_file.yaml> <additional_args_for_gcloud_app_deploy>
+# REACT_APP_MODE=default ./scripts/deploy_dapp.sh <dapp_dir_name> <your_file.yaml> <additional_args_for_gcloud_app_deploy>
 
 # If you'd like to deploy the monitoring dapp:
-# REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh <your_file.yaml> <additional_args_for_gcloud_app_deploy>
+# REACT_APP_MODE=monitoring ./scripts/deploy_dapp.sh <dapp_dir_name> <your_file.yaml> <additional_args_for_gcloud_app_deploy>
 
 # Note: you must have the gcloud CLI tool installed and authenticated before using this script.
 
@@ -16,15 +16,19 @@ get_abs_filename() {
   echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 }
 
-# Grab the absolute path for the provided file.
-APP_YAML_PATH=$(get_abs_filename $1)
+
 PROTOCOL_DIR=$(pwd)
+DAPP_DIR=$PROTOCOL_DIR/$1/
+
+# Grab the absolute path for the provided file.
+APP_YAML_PATH=$(get_abs_filename $2)
 
 # Shift the arguments to provide to gcloud app deploy.
 shift
+shift
 
 # Move to the v0 directory for contract compilation.
-cd $PROTOCOL_DIR/v0
+cd $PROTOCOL_DIR/core
 
 # Compile contracts, load deployed addresses for mainnet and ropsten.
 echo "Compiling contracts."
@@ -50,21 +54,20 @@ fi
 set -e
 
 # Link the contracts dir to the dapp dir and build the dapp.
-cd $PROTOCOL_DIR/sponsor-dapp
-echo "Linking contracts to dapp."
-npm run link-contracts
+cd $DAPP_DIR
 echo "Building dapp."
 npm run build
 
 # Make sure to cleanup the temp directory for any exits after this line.
 function cleanup() {
   local protocol_directory=$1
+  local dapp_directory=$2
   # Clean up temporary directory.
   echo "Cleaning up."
   cd $protocol_directory
-  rm -rf $protocol_directory/sponsor-dapp/.gae_deploy
+  rm -rf $dapp_directory/.gae_deploy
 }
-trap "cleanup $PROTOCOL_DIR" EXIT
+trap "cleanup $PROTOCOL_DIR $DAPP_DIR" EXIT
 
 # Make a temporary directory to isolate the files to upload to GAE.
 # Note: otherwise, it will attempt to upload all files in all subdirectories.

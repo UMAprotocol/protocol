@@ -211,6 +211,16 @@ jobs:
           key: voter-dapp-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
+  deploy_to_staging:
+    docker:
+      - image: circleci/node:11.5.0
+    working_directory: ~/protocol
+    steps:
+      - restore_cache:
+          key: voter-dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Deploy Dapp
+          command: ./ci/deploy_to_staging.sh
 
 workflows:
   version: 2
@@ -239,3 +249,11 @@ workflows:
       - voter_dapp_build:
           requires:
             - voter_dapp_test
+      - deploy_to_staging:
+          context: gcloud
+          requires:
+            - voter_dapp_test
+            - test
+          filters:
+            branches:
+              only: master
