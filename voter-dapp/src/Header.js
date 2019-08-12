@@ -49,7 +49,7 @@ export default function Header() {
     return <div>Logo goes here</div>;
   }
 
-  const textAlign = {
+  const textStyle = {
     paddingRight: "10px",
     paddingBottom: "3px"
   };
@@ -75,13 +75,13 @@ export default function Header() {
         </Grid>
         <Grid item>
           <ul>
-            <div align="right" style={textAlign}>
+            <div align="right" style={textStyle}>
               Your Address: {account}
             </div>
-            <div align="right" style={textAlign}>
+            <div align="right" style={textStyle}>
               {tokenBalance}
             </div>
-            <div align="right" style={textAlign}>
+            <div align="right" style={textStyle}>
               Current Time: {new Date().toLocaleDateString(undefined, dateTimeOptions)}
             </div>
           </ul>
