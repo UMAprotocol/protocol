@@ -254,3 +254,6 @@ workflows:
           requires:
             - voter_dapp_test
             - test
+          filters:
+            branches:
+              only: master
