@@ -68,7 +68,7 @@ function ResolvedRequests() {
   });
 
   return (
-    <div className={classes.root} >
+    <div className={classes.root}>
       <Typography variant="h6" component="h6">
         Resolved Requests
       </Typography>
@@ -106,8 +106,7 @@ function ResolvedRequests() {
           })}
         </TableBody>
       </Table>
-      <Button onClick={clickShowAll} variant="contained"
-          color="primary">
+      <Button onClick={clickShowAll} variant="contained" color="primary">
         Show {showAllResolvedRequests ? "only recently" : "all"} resolved requests
       </Button>
     </div>
