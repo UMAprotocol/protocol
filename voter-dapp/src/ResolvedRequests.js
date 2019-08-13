@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
@@ -22,14 +22,17 @@ function ResolvedRequests() {
     account: drizzleState.accounts[0]
   }));
 
+  const [showAllResolvedRequests, setShowAllResolvedRequests] = useState(false);
+
   const resolvedEvents =
     useCacheEvents(
       "Voting",
       "PriceResolved",
       useMemo(() => {
         const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
-        return { filter: { resolutionRoundId: indexRoundId } };
-      }, [currentRoundId])
+        // If all resolved requests are being shown, don't filter by round id.
+        return { filter: { resolutionRoundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
+      }, [currentRoundId, showAllResolvedRequests])
     ) || [];
 
   const revealedVoteEvents =
@@ -38,11 +41,30 @@ function ResolvedRequests() {
       "VoteRevealed",
       useMemo(() => {
         const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
+        // If all resolved requests are being shown, don't filter by round id.
         return {
-          filter: { resolutionRoundId: indexRoundId, voter: account }
+          filter: { resolutionRoundId: showAllResolvedRequests ? undefined : indexRoundId, voter: account },
+          fromBlock: 0
         };
-      }, [currentRoundId, account])
+      }, [currentRoundId, account, showAllResolvedRequests])
     ) || [];
+
+  // Handler for when the user clicks the button to toggle showing all resolved requests.
+  const clickShowAll = useMemo(
+    () => () => {
+      console.log("clicked!");
+      setShowAllResolvedRequests(!showAllResolvedRequests);
+    },
+    [showAllResolvedRequests]
+  );
+
+  // TODO: add a resolved timestamp to the table so the sorting makes more sense to the user.
+  // Sort the resolved requests such that they are organized from most recent to least recent round.
+  const resolvedEventsSorted = resolvedEvents.sort((a, b) => {
+    const aRoundId = web3.utils.toBN(a.returnValues.resolutionRoundId);
+    const bRoundId = web3.utils.toBN(b.returnValues.resolutionRoundId);
+    return bRoundId.cmp(aRoundId);
+  });
 
   return (
     <div className={classes.root}>
@@ -60,7 +82,7 @@ function ResolvedRequests() {
           </TableRow>
         </TableHead>
         <TableBody className={classes.tableBody}>
-          {resolvedEvents.map((event, index) => {
+          {resolvedEventsSorted.map((event, index) => {
             const resolutionData = event.returnValues;
 
             const revealEvent = revealedVoteEvents.find(
@@ -83,6 +105,9 @@ function ResolvedRequests() {
           })}
         </TableBody>
       </Table>
+      <a href="#" onClick={clickShowAll}>
+        Show {showAllResolvedRequests ? "only recently" : "all"} resolved requests
+      </a>
     </div>
   );
 }
