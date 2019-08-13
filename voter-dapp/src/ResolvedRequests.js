@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { drizzleReactHooks } from "drizzle-react";
+import Button from "@material-ui/core/Button";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
@@ -67,11 +68,11 @@ function ResolvedRequests() {
   });
 
   return (
-    <div className={classes.root}>
+    <div className={classes.root} >
       <Typography variant="h6" component="h6">
         Resolved Requests
       </Typography>
-      <Table>
+      <Table style={{ marginBottom: "10px" }}>
         <TableHead className={classes.tableHeader}>
           <TableRow>
             <TableCell className={classes.tableHeaderCell}>Price Feed</TableCell>
@@ -105,9 +106,10 @@ function ResolvedRequests() {
           })}
         </TableBody>
       </Table>
-      <a href="#" onClick={clickShowAll}>
+      <Button onClick={clickShowAll} variant="contained"
+          color="primary">
         Show {showAllResolvedRequests ? "only recently" : "all"} resolved requests
-      </a>
+      </Button>
     </div>
   );
 }
