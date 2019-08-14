@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import * as drizzleReactHooksPromise from "./hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import "./App.css";
 import Dashboard from "./Dashboard";
@@ -40,9 +41,11 @@ function App() {
   if (drizzle) {
     return (
       <drizzleReactHooks.DrizzleProvider drizzle={drizzle}>
-        <ThemeProvider theme={theme}>
-          <Dashboard />
-        </ThemeProvider>
+        <drizzleReactHooksPromise.DrizzleProvider drizzle={drizzle}>
+          <ThemeProvider theme={theme}>
+            <Dashboard />
+          </ThemeProvider>
+        </drizzleReactHooksPromise.DrizzleProvider>
       </drizzleReactHooks.DrizzleProvider>
     );
   } else {
