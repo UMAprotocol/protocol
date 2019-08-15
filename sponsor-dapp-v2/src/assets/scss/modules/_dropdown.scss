@@ -1,0 +1,103 @@
+/* ------------------------------------------------------------ *\
+	Dropdown
+\* ------------------------------------------------------------ */
+
+.dropdown {
+	position: relative;
+
+	.dropdown__toggle {
+		appearance: none;
+		display: block;
+		background: transparent;
+		width: 100%;
+		appearance: none;
+		border: 2px solid #bebebe;
+		border-radius: 4px;
+		height: 60px;
+		font-weight: 400;
+		font-size: 20px;
+		color: #9b9b9b;
+		padding: 0 18px;
+		text-align: left;
+		position: relative;
+
+		.icon {
+			font-size: 0;
+			position: absolute;
+			top: 50%;
+			right: 28px;
+			margin-top: -3px;
+		}
+	}
+
+	.dropdown__menu {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		right: 0;
+		background: #fff;
+		color: $color-text;
+		margin-top: -4px;
+		opacity: 0;
+		visibility: hidden;
+		border: 2px solid $color-red;
+		border-top: none;
+
+		li {
+			height: 42px;
+			display: flex;
+			align-items: center;
+			padding: 0 16px;
+			font-weight: 400;
+			cursor: pointer;
+			position: relative;
+
+			&:hover {
+				background: #fff5f5;
+			}
+
+			&:after {
+				content: '•';
+				color: $color-red;
+				position: absolute;
+				top: 50%;
+				right: 20px;
+				font-size: 20px;
+				line-height: 1;
+				transform: translateY(-50%);
+				opacity: 0;
+				visibility: hidden;
+			}
+		}
+
+		.active {
+			color: $color-red;
+			font-weight: 600;
+
+			&:after {
+				opacity: 1;
+				visibility: visible;
+			}
+		}
+	}
+
+	&.open {
+		.dropdown__menu {
+			opacity: 1;
+			visibility: visible;
+		}
+		.dropdown__toggle {
+			border-color: $color-red;
+
+			.icon {
+				transform: rotate(180deg);
+			}
+		}
+	}
+
+	&.has-value {
+		.dropdown__toggle {
+			color: $color-red;
+		}
+	}
+}

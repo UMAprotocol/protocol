@@ -1,0 +1,256 @@
+/* ------------------------------------------------------------ *\
+	Helpers
+\* ------------------------------------------------------------ */
+
+/*  Clear  */
+
+.clear {
+	@util clearfix;
+}
+
+/*  Notext  */
+
+.notext {
+	@util text-hide;
+}
+
+/*  Hidden  */
+
+[hidden],
+.hidden {
+	display: none !important;
+}
+
+/*  Alignleft  */
+
+.alignleft {
+	float: left;
+}
+
+/*  Alignright  */
+
+.alignright {
+	float: right;
+}
+
+/*  Disabled  */
+
+[disabled],
+.disabled {
+	cursor: default;
+}
+
+/*  Grid  */
+
+.col {
+	max-width: 100%;
+	flex: 1;
+
+	&s {
+		display: flex;
+		flex-flow: row wrap;
+	}
+
+	&--1of2 {
+		max-width: 50%;
+		flex: 0 0 50%;
+	}
+}
+
+.material-icons {
+	display: inline-block;
+	vertical-align: middle;
+}
+
+/*  Responsive Helpers  */
+
+.visible-xs-block,
+.visible-xs-inline,
+.visible-xs-inline-block,
+.visible-sm-block,
+.visible-sm-inline,
+.visible-sm-inline-block,
+.visible-md-block,
+.visible-md-inline,
+.visible-md-inline-block,
+.visible-lg-block,
+.visible-lg-inline,
+.visible-lg-inline-block {
+	display: none !important;
+}
+
+@media (max-width: $responsive-xs) {
+	.hidden-xs {
+		display: none !important;
+	}
+	.visible-xs-block {
+		display: block !important;
+	}
+	.visible-xs-inline {
+		display: inline !important;
+	}
+	.visible-xs-inline-block {
+		display: inline-block !important;
+	}
+}
+
+@media (min-width: $responsive-xs + 1) and (max-width: $responsive-sm) {
+	.hidden-sm {
+		display: none !important;
+	}
+	.visible-sm-block {
+		display: block !important;
+	}
+	.visible-sm-inline {
+		display: inline !important;
+	}
+	.visible-sm-inline-block {
+		display: inline-block !important;
+	}
+}
+
+@media (min-width: $responsive-sm + 1) and (max-width: $responsive-md) {
+	.hidden-md {
+		display: none !important;
+	}
+	.visible-md-block {
+		display: block !important;
+	}
+	.visible-md-inline {
+		display: inline !important;
+	}
+	.visible-md-inline-block {
+		display: inline-block !important;
+	}
+}
+
+@media (min-width: $responsive-md + 1) {
+	.hidden-lg {
+		display: none !important;
+	}
+	.visible-lg-block {
+		display: block !important;
+	}
+	.visible-lg-inline {
+		display: inline !important;
+	}
+	.visible-lg-inline-block {
+		display: inline-block !important;
+	}
+}
+
+/* ------------------------------------------------------------ *\
+	Transitions
+\* ------------------------------------------------------------ */
+
+.transition-group {
+	position: relative;
+}
+
+.fade-enter {
+	opacity: 0.01;
+}
+
+.fade-enter.fade-enter-active {
+	opacity: 1;
+	transition: opacity 300ms ease-in;
+}
+
+.fade-exit {
+	opacity: 1;
+}
+
+.fade-exit.fade-exit-active {
+	opacity: 0.01;
+	transition: opacity 300ms ease-in;
+}
+
+
+/* ------------------------------------------------------------ *\
+	Loading Dots
+\* ------------------------------------------------------------ */
+
+/**
+ * ==============================================
+ * Dot Pulse
+ * ==============================================
+ */
+.dot-pulse {
+  position: relative;
+  display: block;
+  left: -9999px;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #fff;
+  color: #fff;
+  box-shadow: 9999px 0 0 -5px #fff;
+  animation: dotPulse 1.5s infinite linear;
+  animation-delay: .25s;
+  font-size: 0;
+}
+
+.dot-pulse::before, .dot-pulse::after {
+  content: '';
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background-color: #fff;
+  color: #fff;
+}
+
+.dot-pulse::before {
+  box-shadow: 9984px 0 0 -5px #fff;
+  animation: dotPulseBefore 1.5s infinite linear;
+  animation-delay: 0s;
+}
+
+.dot-pulse::after {
+  box-shadow: 10014px 0 0 -5px #fff;
+  animation: dotPulseAfter 1.5s infinite linear;
+  animation-delay: .5s;
+}
+
+@keyframes dotPulseBefore {
+  0% {
+    box-shadow: 9984px 0 0 -5px #fff;
+  }
+  30% {
+    box-shadow: 9984px 0 0 2px #fff;
+  }
+  60%,
+  100% {
+    box-shadow: 9984px 0 0 -5px #fff;
+  }
+}
+
+@keyframes dotPulse {
+  0% {
+    box-shadow: 9999px 0 0 -5px #fff;
+  }
+  30% {
+    box-shadow: 9999px 0 0 2px #fff;
+  }
+  60%,
+  100% {
+    box-shadow: 9999px 0 0 -5px #fff;
+  }
+}
+
+@keyframes dotPulseAfter {
+  0% {
+    box-shadow: 10014px 0 0 -5px #fff;
+  }
+  30% {
+    box-shadow: 10014px 0 0 2px #fff;
+  }
+  60%,
+  100% {
+    box-shadow: 10014px 0 0 -5px #fff;
+  }
+}
+

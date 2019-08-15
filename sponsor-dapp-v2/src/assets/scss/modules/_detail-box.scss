@@ -1,0 +1,61 @@
+/* ------------------------------------------------------------ *\
+	Detail Box
+\* ------------------------------------------------------------ */
+
+.detail-box {
+	background: #fff;
+	border-top: 2px solid $color-text;
+	padding: 10px 20px 3px;
+
+	.detail-box__head {
+		padding: 0 0 33px;
+	}
+
+	.detail-box__table {
+		text-align: left;
+		line-height: 1.2;
+		font-family: $font-halyard-display;
+
+		td {
+			font-size: 14px;
+			height: 85px;
+			line-height: 1.43;
+			font-weight: 400;
+			border-top: 2px solid #979797;
+			padding: 6px 0;
+			vertical-align: top;
+
+			&:first-child { width: 165px; }
+
+			&:nth-child(3) {
+				width: 416px;
+			}
+
+			strong {
+				font-family: $font-halyard-display;
+				font-weight: 600;
+				font-size: 20px;
+				line-height: 1.2;
+			}
+		}
+
+		.tooltip {
+			margin: -1px 0 0 10px;
+		}
+	}
+
+	.detail-box__actions {
+		border-top: 2px solid #979797;
+		display: flex;
+		padding: 13px 0 16px;
+
+		.btn {
+			padding-left: 10px;
+			padding-right: 10px;
+			width: 100%;
+			max-width: 276px;
+		}
+
+		.btn + .btn { max-width: 307px; margin-left: 13px; }
+	}
+}

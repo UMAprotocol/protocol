@@ -1,0 +1,57 @@
+/* ------------------------------------------------------------ *\
+	Form Group
+\* ------------------------------------------------------------ */
+
+.form-group {
+	.form__label {
+		white-space: nowrap;
+		margin-bottom: 16px;
+		display: block;
+		font-weight: 600;
+	}
+
+	.form__controls {
+		position: relative;
+
+		span {
+			position: absolute;
+			top: 50%;
+			right: 20px;
+			font-weight: 400;
+			color: #9b9b9b;
+			transform: translateY(-50%);
+		}
+	}
+
+	.form-hint {
+		font-weight: 400;
+		color: #9b9b9b; text-align: right;
+		padding: 18px 0 0;
+	}
+}
+
+/* ------------------------------------------------------------ *\
+	Form Borrow
+\* ------------------------------------------------------------ */
+
+.form-borrow {
+	width: 100%;
+	margin-bottom: 58px;
+
+	.form__row {
+		display: flex;
+		align-items: flex-start;
+	}
+
+	.form__label {
+		margin-bottom: 10px;
+	}
+
+	.form__col {
+		width: 100%;
+		max-width: 50%;
+		padding: 0 12px;
+	}
+
+
+}
