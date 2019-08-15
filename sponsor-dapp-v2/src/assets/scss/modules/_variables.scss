@@ -1,0 +1,33 @@
+/*/* ------------------------------------------------------------ *\
+	Variables
+\* ------------------------------------------------------------ */
+
+$font-family-sans-serif: Arial, sans-serif;
+$font-family-serif: Times, 'Times New Roman', serif;
+$font-halyard-display: 'halyard-display', sans-serif;
+$font-halyard-text: 'halyard-text', sans-serif;
+
+$font-size-base: 20px;
+$line-height-base: 1.5;
+
+$shell-max-width: 1080px;
+$shell-gutter: 10px;
+
+$responsive-xxs: 374px;
+$responsive-xs: 767px;
+$responsive-sm: 1023px;
+$responsive-md: 1200px;
+$responsive-lg: 1400px;
+
+$mobile-small: '(max-width: #{$responsive-xxs}) ';
+$mobile: '(max-width: #{$responsive-xs}) ';
+$tablet-portrait: '(max-width: #{$responsive-sm}) ';
+$small-desktop: '(max-width: #{$responsive-md}) ';
+$large-desktop: '(max-width: #{$responsive-lg}) ';
+$retina: '(min-resolution: 2dppx) ';
+
+// Usage
+// @media #{$small-desktop}
+
+$color-text: #493f4c;
+$color-red: #ff4a4a;

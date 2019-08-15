@@ -1,0 +1,132 @@
+/* ------------------------------------------------------------ *\
+	Section
+\* ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------ *\
+	Section About
+\* ------------------------------------------------------------ */
+
+.section--about {
+	font-weight: 600;
+	font-family: $font-halyard-display;
+	margin-bottom: 100px;
+
+	p ~ p {
+		margin-top: 10px;
+	}
+
+	.section__entry {
+		margin-bottom: 50px;
+	}
+}
+
+/* ------------------------------------------------------------ *\
+	Section Services
+\* ------------------------------------------------------------ */
+
+.section--service-items {
+	margin-bottom: 90px;
+
+	h2 {
+		margin-bottom: 15px;
+	}
+}
+
+/* ------------------------------------------------------------ *\
+	Section Intro
+\* ------------------------------------------------------------ */
+
+.section--intro {
+	padding: 40px 0;
+
+	.section__content {
+		margin-bottom: 85px;
+
+		h2 {
+			margin-bottom: 25px;
+		}
+	}
+
+	.section__actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 80px;
+
+		&-inner {
+			width: 100%;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+		}
+
+		.btn + .btn {
+			margin-left: 21px;
+		}
+	}
+
+	.section__entry {
+		padding: 20px 0 50px;
+
+		h2 + h2 {
+			margin-top: 130px;
+		}
+	}
+
+	&-alt {
+		.section__actions {
+			margin-bottom: 40px;
+		}
+	}
+}
+
+/* ------------------------------------------------------------ *\
+	Section edit
+\* ------------------------------------------------------------ */
+
+.section-edit {
+	padding: 53px 0 0;
+
+	.link-default {
+		font-family: $font-halyard-display;
+	}
+
+	.section__head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin: 28px 0 38px;
+
+		&-content {
+			width: 100%;
+			max-width: 436px;
+		}
+	}
+
+	.section__status {
+		font-family: $font-halyard-display;
+		display: flex;
+		align-items: center;
+
+		span {
+			font-weight: 600;
+		}
+
+		.indicator {
+			display: flex;
+			align-items: center;
+			font-weight: 400;
+			margin-left: 20px;
+
+			.icon {
+				width: 14px;
+				height: 14px;
+				border-radius: 50%;
+				background: #50e3c2;
+				margin-right: 5px;
+			}
+		}
+	}
+
+	.detail-box + .detail-box { margin-top: 26px; }
+}

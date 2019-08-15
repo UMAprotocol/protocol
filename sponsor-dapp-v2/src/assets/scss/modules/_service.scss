@@ -1,0 +1,25 @@
+/* ------------------------------------------------------------ *\
+	Service Items
+\* ------------------------------------------------------------ */
+
+.service-items {
+	counter-reset: items;
+
+	.service-item ~ .service-item {
+		margin-top: 70px;
+	}
+}
+
+.service-item {
+	counter-increment: items;
+
+	h3 {
+		margin-bottom: 25px;
+
+		&:before {
+			content: counter(items, decimal-leading-zero) '.';
+			color: $color-red;
+			margin-right: 5px;
+		}
+	}
+}

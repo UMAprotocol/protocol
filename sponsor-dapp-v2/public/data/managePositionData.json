@@ -1,0 +1,134 @@
+{
+    "contractStatus": {
+        "address": {
+            "display": "0x1019014Ebc7ffaD147Fe266c573EFc885dB22282",
+            "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885dB22282"
+        },
+        "statusText": "Live",
+        "statusColor": "green"
+    },
+    "details": [
+        {
+            "type": "timestamp",
+            "title": "Last contract valuation",
+            "timestamp": 1564576440
+        },
+        {
+            "type": "address",
+            "title": "Address",
+            "address": {
+                "display": "0x1019014Ebc7ffaD147Fe266c573EFc885dB22282",
+                "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885dB22282"
+            }
+        },
+        {
+            "type": "address",
+            "title": "Sponsor",
+            "address": {
+                "display": "0x1019014Ebc7ffaD147Fe266c573EFc885dB22282",
+                "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885dB22282"
+            }
+        },
+        {
+            "type": "timestamp",
+            "title": "Created",
+            "timestamp": 1564576440
+        },
+        {
+            "type": "timestamp",
+            "title": "Expiry",
+            "timestamp": 1564576440
+        },
+        {
+            "type": "address",
+            "title": "Price feed",
+            "address": {
+                "display": "0x1019014Ebc7ffaD147Fe266c573EFc885d018717",
+                "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885d018717"
+            }
+        },
+        {
+            "type": "namedAddress",
+            "title": "Denomination",
+            "name": "DAI",
+            "address": {
+                "display": "0x1019014Ebc7ffaD147Fe266c573EFc885dB22282",
+                "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885dB22282"
+            }
+        },
+        {
+            "type": "namedAddress",
+            "title": "Return calculator",
+            "name": "2x",
+            "address": {
+                "display": "0x1019014Ebc7ffaD147Fe266c573EFc885dB22282",
+                "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885dB22282"
+            }
+        }
+    ],
+    "assets": [
+        {
+            "type": "assetPrice",
+            "items": {
+                "value": "13,000"
+            }
+        },
+        {
+            "type": "value",
+            "items": {
+                "value": "13,000"
+            }
+        }
+    ],
+    "collateral": [
+        {
+            "type": "totalCollateral",
+            "items": {
+                "amount": {
+                    "absolute": "156,000",
+                    "percentage": "120"
+                },
+                "liquidation": "110%"
+            }
+        },
+        {
+            "type": "tokenDebt",
+            "items": {
+                "amount": {
+                    "absolute": "130,000"
+                },
+                "liquidation": ""
+            }
+        },
+        {
+            "type": "excessCollateral",
+            "items": {
+                "amount": {
+                    "absolute": "26,000"
+                },
+                "liquidation": "13,000"
+            }
+        }
+    ],
+    "tokens": [
+        {
+            "type": "tokenSupply",
+            "items": {
+                "amount": {
+                    "absolute": "10"
+                },
+                "value": ""
+            }
+        },
+        {
+            "type": "tokenSupply",
+            "items": {
+                "amount": {
+                    "absolute": "10",
+                    "percentage": "100"
+                },
+                "value": "130,000"
+            }
+        }
+    ]
+}

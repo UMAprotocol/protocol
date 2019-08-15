@@ -1,0 +1,80 @@
+{
+  "testnetEthFaucet": {
+    "displayButton": true,
+    "link": "https://faucet.rinkeby.io/"
+  },
+  "testnetDaiFaucet": {
+    "displayButton": true,
+    "link": "https://faucet.rinkeby.io/"
+  },
+  "positions": [
+    {
+      "address": {
+        "display": "0x05d2BA4Ebc7ffaD147Fe266c573EFc885dB20109",
+        "link": "https://etherscan.io/address/0x05d2BA4Ebc7ffaD147Fe266c573EFc885dB20109"
+      },
+      "tokenName": "1x BTC/USD 09C3",
+      "liquidationPrice": "$14,182",
+      "exposures": [
+        {
+          "type": "tokenFacility",
+          "items": {
+            "direction": "Short 1x BTC/USD",
+            "totalExposure": "10",
+            "yourExposure": "10"
+          }
+        },
+        {
+          "type": "tokens",
+          "items": {
+            "direction": "Long 1x BTC/USD",
+            "totalExposure": "10",
+            "yourExposure": "10"
+          }
+        },
+        {
+          "type": "netExposure",
+          "items": {
+            "direction": "Flat Risk",
+            "totalExposure": "",
+            "yourExposure": "0"
+          }
+        }
+      ]
+    },
+    {
+      "address": {
+        "display": "0x05d2BA4Ebc7ffaD147Fe266c573EFc885dB20109",
+        "link": "https://etherscan.io/address/0x05d2BA4Ebc7ffaD147Fe266c573EFc885dB20109"
+      },
+      "tokenName": "1x BTC/USD 09C3",
+      "liquidationPrice": "$14,182",
+      "exposures": [
+        {
+          "type": "tokenFacility",
+          "items": {
+            "direction": "Short 1x BTC/USD",
+            "totalExposure": "10",
+            "yourExposure": "10"
+          }
+        },
+        {
+          "type": "tokens",
+          "items": {
+            "direction": "Long 1x BTC/USD",
+            "totalExposure": "10",
+            "yourExposure": "10"
+          }
+        },
+        {
+          "type": "netExposure",
+          "items": {
+            "direction": "Flat Risk",
+            "totalExposure": "",
+            "yourExposure": "0"
+          }
+        }
+      ]
+    }
+  ]
+}

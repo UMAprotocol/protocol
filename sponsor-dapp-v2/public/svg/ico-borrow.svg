@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="115px" height="115px" viewBox="0 0 115 115" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 56.3 (81716) - https://sketch.com -->
+    <title>borrow icon</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round">
+        <g id="Landing" transform="translate(-763.000000, -707.000000)" stroke="#FF4A4A" stroke-width="4.5">
+            <g id="Borrow-synthetic-token" transform="translate(698.000000, 710.000000)">
+                <g id="borrow-icon" transform="translate(68.000000, 0.000000)">
+                    <path d="M87.2117453,15 L77.4439384,15 C74.3563799,15.0021694 71.7036908,17.2058998 71.1177885,20.2554703 C70.5318862,23.3050409 72.1772342,26.3444335 75.0416249,27.5038333 L84.9583751,31.4961667 C87.8227658,32.6555665 89.4681138,35.6949591 88.8822115,38.7445297 C88.2963092,41.7941002 85.6436201,43.9978306 82.5560616,44 L80.0048046,44" id="Shape"></path>
+                    <path d="M80,14.75 L80,11" id="Shape"></path>
+                    <path d="M83.6715112,58 C98.6393197,56.0309286 109.621806,42.9533922 108.972661,27.8723323 C108.323515,12.7912724 96.2579084,0.705578462 81.1762489,0.0296440449 C66.0945895,-0.646290372 52.9959653,10.3115854 51,25.2740959" id="Shape"></path>
+                    <path d="M73,73 C73,53.117749 56.882251,37 37,37" id="Shape"></path>
+                    <path d="M7.19195011,51 C-0.865748657,61.8084828 -2.2634934,76.1680451 3.55957267,88.316792 C9.38263874,100.465539 21.4722037,108.412476 34.9772283,108.968827 C48.4822529,109.525179 61.1894692,102.599768 68,90.971474" id="Shape"></path>
+                    <path d="M29,87 L29,58 L39.8,58 C43.7764502,58 47,61.2459356 47,65.25 C47,69.2540644 43.7764502,72.5 39.8,72.5 C43.7764502,72.5 47,75.7459356 47,79.75 C47,83.7540644 43.7764502,87 39.8,87 L29,87 Z" id="Shape"></path>
+                    <path d="M29,73 L40,73" id="Shape"></path>
+                    <path d="M36,58 L36,51" id="Shape"></path>
+                    <path d="M36,88 L36,95" id="Shape"></path>
+                    <polyline id="Shape" points="0 18 10.875 36 29 25.2"></polyline>
+                    <path d="M36,1 C21.8575238,5.9867579 12.8993097,19.4909951 14.109014,34" id="Shape"></path>
+                    <polyline id="Shape" points="109 91 98.125 73 80 83.8"></polyline>
+                    <path d="M73,108 C87.1391932,103.012746 96.096866,89.5098041 94.8917625,75" id="Shape"></path>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
