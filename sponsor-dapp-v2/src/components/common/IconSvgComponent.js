@@ -1,28 +1,19 @@
 /**
  * @ External Dependencies
  */
-import React from 'react';
-import ReactSVG from 'react-svg';
+import React from "react";
+import ReactSVG from "react-svg";
 
-const IconSvgComponent = ({
-	iconPath,
-	additionalClass
-}) => {
- 	let classAddition = ''
+const IconSvgComponent = ({ iconPath, additionalClass }) => {
+  let classAddition = "";
 
- 	if ( additionalClass !== undefined ) {
- 		classAddition = additionalClass
- 	} else {
- 		classAddition = ''
- 	}
+  if (additionalClass !== undefined) {
+    classAddition = additionalClass;
+  } else {
+    classAddition = "";
+  }
 
-
-	return (
-		<ReactSVG
-			src={iconPath}
-			className={`svg-icon ${classAddition}`}
-		 />
-	)
-}
+  return <ReactSVG src={iconPath} className={`svg-icon ${classAddition}`} />;
+};
 
 export default IconSvgComponent;

@@ -1,20 +1,20 @@
 /**
  * @ External Dependencies
  */
-import { handleActions } from 'redux-actions';
+import { handleActions } from "redux-actions";
 
 /**
  * @ Actions
  */
-import { setPageLock, showWelcomePopup } from './actions';
+import { setPageLock, showWelcomePopup } from "./actions";
 
 /**
  * @ Reducer
  */
 
 const defaultState = {
-	isLocked: false,
-	showWelcome: true
+  isLocked: false,
+  showWelcome: true
 };
 
 /**
@@ -23,17 +23,17 @@ const defaultState = {
  * @type       {Function}
  */
 const commonData = handleActions(
-	{
-		[setPageLock]: (state, { payload }) => ({
-			...state,
-			isLocked: payload
-		}),
-		[showWelcomePopup]: (state, { payload }) => ({
-			...state,
-			showWelcome: payload
-		})
-	},
-	defaultState
+  {
+    [setPageLock]: (state, { payload }) => ({
+      ...state,
+      isLocked: payload
+    }),
+    [showWelcomePopup]: (state, { payload }) => ({
+      ...state,
+      showWelcome: payload
+    })
+  },
+  defaultState
 );
 
 export default commonData;
