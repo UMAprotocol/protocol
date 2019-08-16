@@ -13,7 +13,7 @@ const routes = [
   { path: "/Start", component: StartScreen, exact: false },
   { path: "/Steps", component: Steps, exact: false },
   { path: "/ViewPositions", component: ViewPositions, exact: false },
-  { path: "/ManagePositions", component: ManagePositions, exact: false },
+  { path: "/ManagePositions/:tokenAddress", component: ManagePositions, exact: false },
   { path: "/Withdraw", component: Withdraw, exact: false },
   { path: "/Deposit", component: Deposit, exact: false },
   { path: "/Borrow", component: Borrow, exact: false },
