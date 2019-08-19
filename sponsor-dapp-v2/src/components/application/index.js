@@ -26,7 +26,18 @@ function App(props) {
   return (
     <div className="App">
       <TransitionGroup>
-        <CSSTransition key={location.key} timeout={{ enter: 300, exit: 300 }} classNames={"fade"}>
+        <CSSTransition
+          key={location.key}
+          timeout={{ enter: 300, exit: 300 }}
+          classNames={"fade"}
+          onExit={node => {
+            if (node) {
+              node.style.position = "fixed";
+              node.style.width = "100%";
+              node.style.top = -1 * window.scrollY + "px";
+            }
+          }}
+        >
           <Switch>
             {routes.map(route => (
               <Route key={route.path} {...route} />
