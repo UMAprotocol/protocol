@@ -43,7 +43,7 @@ function getStateDescription(derivativeStorage) {
         stateColor: "blue"
       };
     default:
-      throw new Error("oh no");
+      throw new Error("Contract is in unknown state: " + derivativeStorage.state);
   }
 }
 

@@ -5,7 +5,7 @@ function useDynamicallyAddedContract(contractAddress, abi) {
   const { drizzle } = drizzleReactHooks.useDrizzle();
   const { contract } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     contract: drizzleState.contracts[contractAddress]
-  }));
+  }), [contractAddress]);
 
   useEffect(() => {
     if (contract) {
@@ -15,7 +15,7 @@ function useDynamicallyAddedContract(contractAddress, abi) {
       contractName: contractAddress,
       web3Contract: new drizzle.web3.eth.Contract(abi, contractAddress)
     });
-  });
+  }, [contract, drizzle, abi, contractAddress]);
   return contract;
 }
 
