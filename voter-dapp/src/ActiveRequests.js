@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useReducer, useRef } from "react";
 import Button from "@material-ui/core/Button";
 import Checkbox from "@material-ui/core/Checkbox";
-import * as drizzleReactHooksPromise from "./hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
@@ -15,8 +14,6 @@ import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 import { useTableStyles } from "./Styles.js";
-import { createExpandedPromise } from "./hooks/ExpandedPromise.js";
-import useRerenderOnResolution from "./hooks/RerenderOnResolution.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
 
 const editStateReducer = (state, action) => {
@@ -37,8 +34,8 @@ const editStateReducer = (state, action) => {
 };
 
 function ActiveRequests() {
-  const { drizzle, useCacheCallPromise, useCacheEventsPromise } = drizzleReactHooksPromise.useDrizzle();
-  const { useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { drizzle, useCacheCallPromise, useCacheEventsPromise, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { createExpandedPromise, useRerenderOnResolution } = drizzleReactHooks;
   const { web3 } = drizzle;
   const classes = useTableStyles();
 
@@ -50,7 +47,7 @@ function ActiveRequests() {
   const pendingRequests = useCacheCallPromise("Voting", "getPendingRequests");
   const currentRoundId = useCacheCallPromise("Voting", "getCurrentRoundId");
   const votePhase = useCacheCallPromise("Voting", "getVotePhase");
-  const account = drizzleReactHooksPromise.useDrizzleStatePromise((drizzleState, resolvePromise) => {
+  const account = drizzleReactHooks.useDrizzleStatePromise((drizzleState, resolvePromise) => {
     if (drizzleState.accounts[0]) {
       resolvePromise(drizzleState.accounts[0]);
     }
