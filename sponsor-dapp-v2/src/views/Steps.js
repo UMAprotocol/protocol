@@ -154,6 +154,8 @@ class Steps extends Component {
                   assets="BTC/USD"
                   requirement="110%"
                   expiry="September 16, 2019 16:00:00 GMT"
+                  contractName="BTCUSD_Sep19_0x1234"
+                  tokenSymbol="BTC0x1234"
                   onNextStep={e => this.nextStep(e)}
                   onPrevStep={e => this.prevStep(e)}
                 />
