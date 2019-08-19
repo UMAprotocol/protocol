@@ -3,9 +3,12 @@ import { drizzleReactHooks } from "drizzle-react";
 
 function useDynamicallyAddedContract(contractAddress, abi) {
   const { drizzle } = drizzleReactHooks.useDrizzle();
-  const { contract } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    contract: drizzleState.contracts[contractAddress]
-  }), [contractAddress]);
+  const { contract } = drizzleReactHooks.useDrizzleState(
+    drizzleState => ({
+      contract: drizzleState.contracts[contractAddress]
+    }),
+    [contractAddress]
+  );
 
   useEffect(() => {
     if (contract) {
