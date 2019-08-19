@@ -55,3 +55,41 @@
 
 
 }
+
+/* ------------------------------------------------------------ *\
+	Form Edit
+\* ------------------------------------------------------------ */
+
+.form-edit {
+	margin-left: 5px;
+	line-height: 1;
+	flex-grow: 1;
+
+	form {
+		display: flex;
+		align-items: center;
+	}
+
+	.field {
+		height: 30px;
+		font-size: 20px;
+		padding: 0 10px;
+	}
+
+	.form__controls {
+		flex-grow: 1;
+	}
+
+	.form__btn {
+		appearance: none;
+		border: none;
+		border-radius: 0;
+		background: transparent;
+		font-size: 0;
+		padding: 0 5px;
+
+		svg {
+			g { stroke: $color-red; }
+		}
+	}
+}
