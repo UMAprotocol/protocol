@@ -40,20 +40,8 @@
 \* ------------------------------------------------------------ */
 
 .list-selections {
-	li {
-		display: flex;
-		align-items: center;
-		white-space: nowrap;
-	}
-
 	span {
 		font-weight: 400;
-		margin-left: 5px;
-	}
-
-	.text {
-		display: flex;
-		 align-items: center;
 	}
 }
 

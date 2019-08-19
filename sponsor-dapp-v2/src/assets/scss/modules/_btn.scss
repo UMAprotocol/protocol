@@ -110,21 +110,3 @@
 		color: #9b9b9b;
 	}
 }
-
-/* ------------------------------------------------------------ *\
-	Btn edit
-\* ------------------------------------------------------------ */
-
-.btn-edit {
-	appearance: none;
-	border: none;
-	border-radius: 0;
-	background: transparent;
-	font-size: 0;
-	margin-left: 5px;
-
-	svg {
-		width: 15px;
-		height: 15px;
-	}
-}
