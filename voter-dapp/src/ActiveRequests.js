@@ -23,7 +23,7 @@ const editStateReducer = (state, action) => {
     case "EDIT_COMMITTED_VALUE":
       return { ...state, [action.index]: action.price };
     case "SUBMIT_COMMIT":
-      const newValues = {...state};
+      const newValues = { ...state };
       for (const index of action.indicesCommitted) {
         newValues[index] = undefined;
       }
