@@ -1,7 +1,7 @@
 {
     "contractStatus": {
         "address": {
-            "display": "0x6C86b55672b91B0138b73A71D35687842F8E0fa8",
+            "display": "0x1019014Ebc7ffaD147Fe266c573EFc885dB22282",
             "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885dB22282"
         },
         "statusText": "Live",
@@ -17,7 +17,7 @@
             "type": "address",
             "title": "Address",
             "address": {
-                "display": "0x6C86b55672b91B0138b73A71D35687842F8E0fa8",
+                "display": "0x1019014Ebc7ffaD147Fe266c573EFc885dB22282",
                 "link": "https://etherscan.io/address/0x1019014Ebc7ffaD147Fe266c573EFc885dB22282"
             }
         },

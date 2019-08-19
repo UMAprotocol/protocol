@@ -19,9 +19,10 @@ function useDynamicallyAddedContract(contractAddress, abi) {
   return contract;
 }
 
-export const withAddedContract = (abi, extractDerivativeAddressFromProps) => WrappedComponent => {
+// Higher order component to wrap a given component with smart contract dynamically added to Drizzle.
+export const withAddedContract = (abi, extractDerivativeAddressFromPropsFn) => WrappedComponent => {
   return props => {
-    const contract = useDynamicallyAddedContract(extractDerivativeAddressFromProps(props), abi);
+    const contract = useDynamicallyAddedContract(extractDerivativeAddressFromPropsFn(props), abi);
     if (!contract) {
       return <div>Loading</div>;
     } else {

@@ -47,325 +47,337 @@ function getStateDescription(derivativeStorage) {
   }
 }
 
-function ManagePositions(props) {
-  const { managePosition } = props;
+// Returns an object that contains data about the financial contract (TokenizedDerivative) at `tokenAddress`. The
+// returned object contains a field `ready` that should be checked first.
+function useFinancialContractData(tokenAddress) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
-  const { tokenAddress } = props.match.params;
 
   const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
   }));
 
-  const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
+  const data = {};
 
-  const name = useCacheCall(tokenAddress, "name");
-  const symbol = useCacheCall(tokenAddress, "symbol");
+  data.derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
+  data.name = useCacheCall(tokenAddress, "name");
+  data.symbol = useCacheCall(tokenAddress, "symbol");
+  data.nav = useCacheCall(tokenAddress, "calcNAV");
+  data.tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
+  data.shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
+  data.excessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
+  // TODO(ptare): This may revert in certain cases (which are unlikely to come up now).
+  data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
 
-  // `nav` is also the long margin balance.
-  const nav = useCacheCall(tokenAddress, "calcNAV");
-  const tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
-  const shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
-  const excessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
-  // TODO(ptare): This may be revert in certain cases.
-  const updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  data.totalSupply = useCacheCall(tokenAddress, "totalSupply");
+  data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
-  const totalSupply = useCacheCall(tokenAddress, "totalSupply");
-  const tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
-
-  if (!managePosition) {
-    return null;
+  if (!Object.values(data).every(Boolean)) {
+    return { ready: false };
   }
-  const dataFetched =
-    derivativeStorage &&
-    name &&
-    symbol &&
-    tokenValue &&
-    shortMarginBalance &&
-    excessMargin &&
-    updatedUnderlyingPrice &&
-    totalSupply &&
-    tokenBalance;
-  if (!dataFetched) {
-    return <div>Loading</div>;
-  }
+  data.ready = true;
 
+  // Format financial contract data for display.
   const { toBN } = web3.utils;
-  const totalSupplyBn = toBN(totalSupply);
-  const tokenOwnershipPercentage = totalSupplyBn.isZero()
-    ? "0"
-    : toBN(tokenBalance)
-        .div(totalSupplyBn)
-        .muln(100);
-  // TODO: divide out by 1e18?
-  const tokenOwnershipValue = totalSupplyBn.mul(toBN(tokenValue));
+  const scalingFactor = toBN(web3.utils.toWei("1"));
+  const computeSafePercentage = (numerator, denominator) =>
+    denominator.isZero()
+      ? "0"
+      : toBN(numerator)
+          .div(denominator)
+          .muln(100);
 
-  const totalHoldings = toBN(nav).add(toBN(shortMarginBalance));
-  const collaterilizationRatio = toBN(nav).isZero()
-    ? "0"
-    : toBN(totalHoldings)
-        .div(toBN(nav))
-        .muln(100);
-  const minRequiredMargin = toBN(shortMarginBalance).sub(toBN(excessMargin));
+  const totalSupplyBn = toBN(data.totalSupply);
+  data.tokenOwnershipPercentage = computeSafePercentage(data.tokenBalance, totalSupplyBn);
+  data.tokenOwnershipValue = totalSupplyBn.mul(toBN(data.tokenValue)).div(scalingFactor);
+  const navBn = toBN(data.nav);
+  const shortMarginBalanceBn = toBN(data.shortMarginBalance);
+  data.totalHoldings = navBn.add(shortMarginBalanceBn);
+  data.collateralizationRatio = computeSafePercentage(data.totalHoldings, navBn);
+  data.minRequiredMargin = shortMarginBalanceBn.sub(toBN(data.excessMargin));
+  data.minCollateralizationPercentage = computeSafePercentage(data.minRequiredMargin.add(navBn), navBn);
+  const { stateText, stateColor } = getStateDescription(data.derivativeStorage);
+  data.stateText = stateText;
+  data.stateColor = stateColor;
+  // TODO(ptare): The following fields still need to be added: Created, Expiry, and Price feed.
+  data.detailsContent = [
+    { type: "timestamp", title: "Last contract valuation", timestamp: data.updatedUnderlyingPrice.time },
+    { type: "address", title: "Address", address: { display: tokenAddress } },
+    { type: "address", title: "Sponsor", address: { display: data.derivativeStorage.externalAddresses.sponsor } },
+    {
+      type: "namedAddress",
+      title: "Denomination",
+      name: "DAI",
+      address: { display: data.derivativeStorage.externalAddresses.marginCurrency }
+    },
+    {
+      type: "namedAddress",
+      title: "Return calculator",
+      name: "1x",
+      address: { display: data.derivativeStorage.externalAddresses.returnCalculator }
+    }
+  ];
 
-  const minCollPercentage = toBN(nav).isZero()
-    ? "0"
-    : minRequiredMargin
-        .add(nav)
-        .div(toBN(nav))
-        .muln(100);
-  const { stateText, stateColor } = getStateDescription(derivativeStorage);
+  return data;
+}
 
-  const { address } = managePosition.contractStatus;
+function ManagePositions(props) {
+  const {
+    drizzle: { web3 }
+  } = drizzleReactHooks.useDrizzle();
 
-  return (
-    <div className="wrapper">
-      <Header />
+  const data = useFinancialContractData(props.match.params.tokenAddress);
+  if (!data.ready) {
+    return <div>Loading data</div>;
+  }
 
-      <div className="main">
-        <div className="shell">
-          <section className="section-edit">
-            <Link to="/ViewPositions" className="link-default">
-              View all contracts
-            </Link>
+  const numDisplayedDecimals = 4;
+  const format = valInWei => formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, false);
 
-            <div className="section__head">
-              <div className="section__head-aside">
-                <div className="section__status">
-                  <span>
-                    {name} ({symbol})
-                  </span>
+  // This function is only added temporarily to make the diff more readable. Otherwise, github's diff tool isn't able
+  // to recognize that the JSX below is mostly unchanged.
+  function render() {
+    return (
+      <div className="wrapper">
+        <Header />
 
-                  <div className="indicator">
-                    <span
-                      className="icon"
-                      style={{
-                        backgroundColor: `${stateColor}`
-                      }}
-                    />
-                    {stateText}
+        <div className="main">
+          <div className="shell">
+            <section className="section-edit">
+              <Link to="/ViewPositions" className="link-default">
+                View all contracts
+              </Link>
+
+              <div className="section__head">
+                <div className="section__head-aside">
+                  <div className="section__status">
+                    <span>
+                      {data.name} ({data.symbol})
+                    </span>
+
+                    <div className="indicator">
+                      <span
+                        className="icon"
+                        style={{
+                          backgroundColor: `${data.stateColor}`
+                        }}
+                      />
+                      {data.stateText}
+                    </div>
+                  </div>
+                </div>
+
+                {data.detailsContent && (
+                  <div className="section__head-content">
+                    <ExpandBox title="Details" content={data.detailsContent} />
+                  </div>
+                )}
+              </div>
+
+              <div className="section__body">
+                <div className="detail-box">
+                  <div className="detail-box__head">
+                    <h4>Assets</h4>
+                  </div>
+
+                  <div className="detail-box__body">
+                    <div className="detail-box__table">
+                      <table>
+                        <tbody>
+                          <tr>
+                            <td>
+                              Asset price
+                              <Tooltip>
+                                <p>
+                                  {" "}
+                                  <span> Asset price </span>  is cash or equity in a margin trading account beyond what
+                                  is required to open or maintain the account.{" "}
+                                </p>
+                              </Tooltip>
+                            </td>
+
+                            <td>
+                              <strong>{format(data.updatedUnderlyingPrice.underlyingPrice)}</strong>
+                            </td>
+                          </tr>
+
+                          <tr>
+                            <td>
+                              Value
+                              <Tooltip>
+                                <p>
+                                  {" "}
+                                  <span> Value </span>  is cash or equity in a margin trading account beyond what is
+                                  required to open or maintain the account.{" "}
+                                </p>
+                              </Tooltip>
+                            </td>
+
+                            <td>
+                              <strong>{format(data.tokenValue)} DAI</strong>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-box">
+                  <div className="detail-box__head">
+                    <h4>Collateral</h4>
+                  </div>
+
+                  <div className="detail-box__body">
+                    <div className="detail-box__table">
+                      <table>
+                        <tbody>
+                          <tr>
+                            <td>
+                              Total collateral
+                              <Tooltip>
+                                <p>
+                                  {" "}
+                                  <span> Total collateral </span> Lorem ipsum dolor sit amet.
+                                </p>
+                              </Tooltip>
+                            </td>
+
+                            <td>
+                              <strong>
+                                {format(data.totalHoldings)} DAI ({data.collateralizationRatio}%)
+                              </strong>
+                            </td>
+
+                            <td>
+                              <strong>(min. {data.minCollateralizationPercentage}% needed to avoid liquidation)</strong>
+                            </td>
+                          </tr>
+
+                          <tr>
+                            <td>
+                              Token debt
+                              <Tooltip>
+                                <p>
+                                  <span>Token debt</span> Lorem ipsum dolor sit amet.
+                                </p>
+                              </Tooltip>
+                            </td>
+
+                            <td>
+                              <strong>{format(data.nav)} DAI</strong>
+                            </td>
+
+                            <td>&nbsp;</td>
+                          </tr>
+
+                          <tr>
+                            <td>
+                              Excess collateral
+                              <Tooltip>
+                                <p>
+                                  {" "}
+                                  <span>Excess collateral</span> Lorem ipsum dolor sit amet.
+                                </p>
+                              </Tooltip>
+                            </td>
+
+                            <td>
+                              <strong>{format(data.excessMargin)} DAI</strong>
+                            </td>
+
+                            <td>
+                              <strong>(min. {format(data.minRequiredMargin)} DAI needed to avoid liquidation)</strong>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="detail-box__actions">
+                      <Link to="/Withdraw" className="btn">
+                        <span>Withdraw collateral</span>
+                      </Link>
+
+                      <Link to="/Deposit" className="btn">
+                        <span>Deposit additional collateral</span>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-box">
+                  <div className="detail-box__head">
+                    <h4>Tokens</h4>
+                  </div>
+
+                  <div className="detail-box__body">
+                    <div className="detail-box__table">
+                      <table>
+                        <tbody>
+                          <tr>
+                            <td>
+                              Token supply
+                              <Tooltip>
+                                <p>
+                                  <span>Token supply</span> Lorem ipsum dolor sit amet.
+                                </p>
+                              </Tooltip>
+                            </td>
+
+                            <td>
+                              <strong>{format(data.totalSupply)} Tokens</strong>
+                            </td>
+
+                            <td>&nbsp;</td>
+                          </tr>
+
+                          <tr>
+                            <td>
+                              Your tokens
+                              <Tooltip>
+                                <p>
+                                  {" "}
+                                  <span>Your tokens</span> Lorem ipsum dolor sit amet.
+                                </p>
+                              </Tooltip>
+                            </td>
+
+                            <td>
+                              <strong>
+                                {format(data.tokenBalance)} ({data.tokenOwnershipPercentage}%)
+                              </strong>
+                            </td>
+
+                            <td>
+                              <strong>({format(data.tokenOwnershipValue)} DAI)</strong>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="detail-box__actions">
+                      <Link to="/Borrow" className="btn">
+                        <span>Borrow more tokens</span>
+                      </Link>
+
+                      <Link to="/Repay" className="btn">
+                        <span>Repay token debt</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {managePosition.details && (
-                <div className="section__head-content">
-                  <ExpandBox title="Details" content={managePosition.details} />
-                </div>
-              )}
-            </div>
-
-            <div className="section__body">
-              <div className="detail-box">
-                <div className="detail-box__head">
-                  <h4>Assets</h4>
-                </div>
-
-                <div className="detail-box__body">
-                  <div className="detail-box__table">
-                    <table>
-                      <tbody>
-                        <tr>
-                          <td>
-                            Asset price
-                            <Tooltip>
-                              <p>
-                                {" "}
-                                <span> Asset price </span>  is cash or equity in a margin trading account beyond what is
-                                required to open or maintain the account.{" "}
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>
-                              {formatWithMaxDecimals(formatWei(updatedUnderlyingPrice.underlyingPrice, web3), 4, false)}
-                            </strong>
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td>
-                            Value
-                            <Tooltip>
-                              <p>
-                                {" "}
-                                <span> Value </span>  is cash or equity in a margin trading account beyond what is
-                                required to open or maintain the account.{" "}
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>{formatWithMaxDecimals(formatWei(tokenValue, web3), 4, false)} DAI</strong>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-
-              <div className="detail-box">
-                <div className="detail-box__head">
-                  <h4>Collateral</h4>
-                </div>
-
-                <div className="detail-box__body">
-                  <div className="detail-box__table">
-                    <table>
-                      <tbody>
-                        <tr>
-                          <td>
-                            Total collateral
-                            <Tooltip>
-                              <p>
-                                {" "}
-                                <span> Total collateral </span> Lorem ipsum dolor sit amet.
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>
-                              {totalHoldings.toString()} DAI ({collaterilizationRatio}%)
-                            </strong>
-                          </td>
-
-                          <td>
-                            <strong>(min. {minCollPercentage}% needed to avoid liquidation)</strong>
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td>
-                            Token debt
-                            <Tooltip>
-                              <p>
-                                <span>Token debt</span> Lorem ipsum dolor sit amet.
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>{nav} DAI</strong>
-                          </td>
-
-                          <td>&nbsp;</td>
-                        </tr>
-
-                        <tr>
-                          <td>
-                            Excess collateral
-                            <Tooltip>
-                              <p>
-                                {" "}
-                                <span>Excess collateral</span> Lorem ipsum dolor sit amet.
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>{excessMargin.toString()} DAI</strong>
-                          </td>
-
-                          <td>
-                            <strong>(min. {minRequiredMargin.toString()} DAI needed to avoid liquidation)</strong>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="detail-box__actions">
-                    <Link to="/Withdraw" className="btn">
-                      <span>Withdraw collateral</span>
-                    </Link>
-
-                    <Link to="/Deposit" className="btn">
-                      <span>Deposit additional collateral</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <div className="detail-box">
-                <div className="detail-box__head">
-                  <h4>Tokens</h4>
-                </div>
-
-                <div className="detail-box__body">
-                  <div className="detail-box__table">
-                    <table>
-                      <tbody>
-                        <tr>
-                          <td>
-                            Token supply
-                            <Tooltip>
-                              <p>
-                                <span>Token supply</span> Lorem ipsum dolor sit amet.
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>{totalSupply} Tokens</strong>
-                          </td>
-
-                          <td>&nbsp;</td>
-                        </tr>
-
-                        <tr>
-                          <td>
-                            Your tokens
-                            <Tooltip>
-                              <p>
-                                {" "}
-                                <span>Your tokens</span> Lorem ipsum dolor sit amet.
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>
-                              {tokenBalance} ({tokenOwnershipPercentage}%)
-                            </strong>
-                          </td>
-
-                          <td>
-                            <strong>({tokenOwnershipValue.toString()} DAI)</strong>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="detail-box__actions">
-                    <Link to="/Borrow" className="btn">
-                      <span>Borrow more tokens</span>
-                    </Link>
-
-                    <Link to="/Repay" className="btn">
-                      <span>Repay token debt</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+  return render();
 }
 
 export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(
-  connect(
-    state => ({
-      managePosition: state.positionsData.managePositions
-    }),
-    {
-      // fetchAllPositions
-    }
-  )(ManagePositions)
+  connect()(ManagePositions)
 );

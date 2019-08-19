@@ -90,7 +90,7 @@ function Position(props) {
                       </td>
 
                       <td>
-                        <Link to={"/ManagePositions/"+position.address.display} className="btn">
+                        <Link to={"/ManagePositions/" + position.address.display} className="btn">
                           Manage position
                         </Link>
                       </td>
