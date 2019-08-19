@@ -4,6 +4,9 @@ import moment from "moment";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 
+// Corresponds to `~uint(0)` in Solidity.
+const UINT_MAX = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+
 class ExpandBox extends Component {
   state = {
     isActive: false
@@ -18,7 +21,11 @@ class ExpandBox extends Component {
     });
 
     const convertTimestamp = timestamp => {
-      return moment.unix(timestamp).format("YYYY-MM-DD, HH:MM:SS");
+      if (timestamp === UINT_MAX) {
+        return "None";
+      } else {
+        return moment.unix(timestamp).format("YYYY-MM-DD, HH:MM:SS");
+      }
     };
 
     const convertAddress = address => {
