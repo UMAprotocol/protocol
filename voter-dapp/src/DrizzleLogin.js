@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import DrizzleInit from "./DrizzleInit.js";
 import { drizzleReactHooks } from "drizzle-react";
 import { Drizzle, generateStore } from "drizzle";
 import drizzleOptions from "./drizzleOptions";
 import Button from "@material-ui/core/Button";
+import DrizzleInit from "./DrizzleInit.js";
 
 function DrizzleLogin(props) {
   const [isButtonDisabled, setButtonDisabled] = useState(false);
