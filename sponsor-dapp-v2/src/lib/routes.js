@@ -14,7 +14,7 @@ const routes = [
   { path: "/Steps", component: Steps, exact: false },
   { path: "/ViewPositions", component: ViewPositions, exact: false },
   { path: "/ManagePositions/:tokenAddress", component: ManagePositions, exact: false },
-  { path: "/Withdraw", component: Withdraw, exact: false },
+  { path: "/Withdraw/:tokenAddress", component: Withdraw, exact: false },
   { path: "/Deposit", component: Deposit, exact: false },
   { path: "/Borrow", component: Borrow, exact: false },
   { path: "/Repay", component: Repay, exact: false }

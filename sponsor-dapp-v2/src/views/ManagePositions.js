@@ -86,12 +86,14 @@ function useFinancialContractData(tokenAddress) {
     denominator.isZero()
       ? "0"
       : toBN(numerator)
-          .div(denominator)
-          .muln(100);
+          .muln(100)
+          .div(denominator);
 
   const totalSupplyBn = toBN(data.totalSupply);
   data.tokenOwnershipPercentage = computeSafePercentage(data.tokenBalance, totalSupplyBn);
-  data.tokenOwnershipValue = totalSupplyBn.mul(toBN(data.tokenValue)).div(scalingFactor);
+  data.tokenOwnershipValue = toBN(data.tokenBalance)
+    .mul(toBN(data.tokenValue))
+    .div(scalingFactor);
   const navBn = toBN(data.nav);
   const shortMarginBalanceBn = toBN(data.shortMarginBalance);
   data.totalHoldings = navBn.add(shortMarginBalanceBn);
@@ -130,7 +132,8 @@ function ManagePositions(props) {
     drizzle: { web3 }
   } = drizzleReactHooks.useDrizzle();
 
-  const data = useFinancialContractData(props.match.params.tokenAddress);
+  const { tokenAddress } = props.match.params;
+  const data = useFinancialContractData(tokenAddress);
   if (!data.ready) {
     return <div>Loading data</div>;
   }
@@ -246,12 +249,14 @@ function ManagePositions(props) {
 
                           <td>
                             <strong>
-                              {format(data.totalHoldings)} DAI ({data.collateralizationRatio}%)
+                              {format(data.totalHoldings)} DAI ({data.collateralizationRatio.toString()}%)
                             </strong>
                           </td>
 
                           <td>
-                            <strong>(min. {data.minCollateralizationPercentage}% needed to avoid liquidation)</strong>
+                            <strong>
+                              (min. {data.minCollateralizationPercentage.toString()}% needed to avoid liquidation)
+                            </strong>
                           </td>
                         </tr>
 
@@ -296,7 +301,7 @@ function ManagePositions(props) {
                   </div>
 
                   <div className="detail-box__actions">
-                    <Link to="/Withdraw" className="btn">
+                    <Link to={"/Withdraw/" + tokenAddress} className="btn">
                       <span>Withdraw collateral</span>
                     </Link>
 
@@ -346,7 +351,7 @@ function ManagePositions(props) {
 
                           <td>
                             <strong>
-                              {format(data.tokenBalance)} ({data.tokenOwnershipPercentage}%)
+                              {format(data.tokenBalance)} ({data.tokenOwnershipPercentage.toString()}%)
                             </strong>
                           </td>
 
