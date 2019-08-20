@@ -1,13 +1,24 @@
-import React, { Component } from "react";
-import { Link } from "react-router-dom";
+import React from "react";
+import { Link, Redirect } from "react-router-dom";
+import { useNumRegisteredContracts } from "lib/custom-hooks";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 
 import Header from "components/common/Header";
 import Footer from "components/common/Footer";
 
-class Landing extends Component {
-  render() {
+function Landing() {
+  const numContracts = useNumRegisteredContracts();
+
+  function render() {
+    if (numContracts === undefined) {
+      return null;
+    }
+
+    if (numContracts !== 0) {
+      return <Redirect to="/ViewPositions" />;
+    }
+
     return (
       <div className="wrapper">
         <Header />
@@ -85,6 +96,7 @@ class Landing extends Component {
       </div>
     );
   }
+  return render();
 }
 
 export default Landing;

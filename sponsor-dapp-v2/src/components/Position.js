@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import Tooltip from "components/common/Tooltip";
 
 function Position(props) {
-  const { position } = props;
+  const { position, index, totalLength } = props;
 
   return (
     <div className="position">
@@ -23,7 +23,9 @@ function Position(props) {
           <li>Liquidation price: {position.liquidationPrice}</li>
         </ul>
 
-        <span className="status">1 of 2</span>
+        <span className="status">
+          {index + 1} of {totalLength}
+        </span>
       </div>
 
       <div className="position__body">

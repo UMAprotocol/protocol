@@ -1,15 +1,21 @@
-import React, { Component } from "react";
+import React from "react";
 import { connect } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, Redirect } from "react-router-dom";
+import { useNumRegisteredContracts, useFaucetUrls } from "lib/custom-hooks";
 
 import Header from "components/common/Header";
 
-class StartScreen extends Component {
-  render() {
-    const { landingPositions } = this.props;
+function StartScreen() {
+  const numContracts = useNumRegisteredContracts();
+  const faucetUrls = useFaucetUrls();
 
-    if (!landingPositions) {
+  function render() {
+    if (numContracts === undefined) {
       return null;
+    }
+
+    if (numContracts !== 0) {
+      return <Redirect to="/ViewPositions" />;
     }
 
     return (
@@ -25,23 +31,27 @@ class StartScreen extends Component {
                 </Link>
 
                 <div className="section__actions-inner">
-                  <a
-                    href={landingPositions.testnetEthFaucet.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn--grey btn--size1"
-                  >
-                    Testnet ETH faucet
-                  </a>
+                  {faucetUrls.eth ? (
+                    <a
+                      href={faucetUrls.eth}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn--grey btn--size1"
+                    >
+                      Testnet ETH faucet
+                    </a>
+                  ) : null}
 
-                  <a
-                    href={landingPositions.testnetDaiFaucet.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn--grey btn--size1"
-                  >
-                    Testnet DAI faucet
-                  </a>
+                  {faucetUrls.dai ? (
+                    <a
+                      href={faucetUrls.dai}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn--grey btn--size1"
+                    >
+                      Testnet DAI faucet
+                    </a>
+                  ) : null}
                 </div>
               </div>
 
@@ -66,6 +76,8 @@ class StartScreen extends Component {
       </div>
     );
   }
+
+  return render();
 }
 
 export default connect(
