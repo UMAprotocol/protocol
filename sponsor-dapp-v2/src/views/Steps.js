@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React, { useState } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router-dom";
 import classNames from "classnames";
@@ -16,8 +16,8 @@ import Step4 from "components/Step4";
 import Step5 from "components/Step5";
 import Step6 from "components/Step6";
 
-class Steps extends Component {
-  state = {
+function Steps() {
+  const [state, setState] = useState({
     activeStepIndex: 0,
     steps: [
       {
@@ -41,9 +41,9 @@ class Steps extends Component {
         isCompleted: false
       }
     ]
-  };
+  });
 
-  nextStep(event) {
+  function nextStep(event) {
     event.preventDefault();
     const currentStepIndex = this.state.activeStepIndex;
     let nextStepIndex = currentStepIndex + 1;
@@ -74,7 +74,7 @@ class Steps extends Component {
     }
   }
 
-  prevStep(event) {
+  function prevStep(event) {
     event.preventDefault();
     const currentStepIndex = this.state.activeStepIndex;
     const prevStepIndex = currentStepIndex - 1;
@@ -88,13 +88,9 @@ class Steps extends Component {
       activeStepIndex: prevStepIndex,
       steps: stepsNav
     });
-  }
+  };
 
-  componentDidMount() {
-    this.props.fetchAllSteps();
-  }
-
-  render() {
+  function render() {
     let { firstSteps } = this.props;
     let { lastSteps } = this.props;
 
@@ -177,7 +173,9 @@ class Steps extends Component {
         </div>
       </div>
     );
-  }
+  };
+
+  render();
 }
 
 export default connect(
