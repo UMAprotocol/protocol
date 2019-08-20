@@ -9,73 +9,99 @@ import IconSvgComponent from "components/common/IconSvgComponent";
 import { withAddedContract } from "lib/contracts";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 
-function Withdraw(props) {
-  const { tokenAddress } = props.match.params;
+function useTextInput() {
+  const [amount, setAmount] = useState("");
+  const handleChangeAmount = event => {
+    // Check if regex number matches
+    if (/^(\s*|\d+)$/.test(event.target.value)) {
+      setAmount(event.target.value);
+    }
+  };
+  return { amount, handleChangeAmount };
+}
 
-  const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
-  const { web3 } = drizzle;
-  const { toBN, fromWei, toWei } = web3.utils;
+function useSendTransactionOnLink(cacheSend, amount, history) {
+  const { drizzle } = drizzleReactHooks.useDrizzle();
+  const { toWei } = drizzle.web3.utils;
 
   const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
   }));
 
-  const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
-  const nav = useCacheCall(tokenAddress, "calcNAV");
-  const shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
-
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const handleChangeAmount = event => {
-    // Check if regex number matches
-    if (/^(\s*|\d+)$/.test(event.target.value)) {
-      setWithdrawAmount(event.target.value);
-    }
-  };
-
-  const { send: withdraw, status: withdrawStatus } = useCacheSend(tokenAddress, "withdraw");
+  const { send, status } = cacheSend;
   const [linkedPage, setLinkedPage] = useState();
-  const handleWithdrawClick = event => {
+  const handleSubmit = event => {
     event.preventDefault();
 
     const linkedPage = event.currentTarget.getAttribute("href");
     setLinkedPage(linkedPage);
-    withdraw(toWei(withdrawAmount), { from: account });
+    send(toWei(amount), { from: account });
   };
   // If we've successfully withdrawn, reroute to the linkedPage whose `Link` the user clicked on (currently, this can only
   // ever be the `ManagePositions` linkedPage).
   useEffect(() => {
-    if (withdrawStatus === "success" && linkedPage) {
-      props.history.replace(linkedPage);
+    if (status === "success" && linkedPage) {
+      history.replace(linkedPage);
     }
-  }, [withdrawStatus, linkedPage, props.history]);
+  }, [status, linkedPage, history]);
+  return handleSubmit;
+}
 
-  const dataFetched = derivativeStorage && nav && shortMarginBalance;
+function useCollateralizationInformation(tokenAddress, changeInShortBalance) {
+  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const { web3 } = drizzle;
+  const { toBN, toWei } = web3.utils;
+  const data = {};
+  data.derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
+  data.nav = useCacheCall(tokenAddress, "calcNAV");
+  data.shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
+
+  const dataFetched = data.derivativeStorage && data.nav && data.shortMarginBalance;
   if (!dataFetched) {
-    return <div>Loading withdraw data</div>;
+    return { ready: false };
   }
 
-  const collateralizationRequirement = toBN(derivativeStorage.fixedParameters.supportedMove)
+  data.collateralizationRequirement = toBN(data.derivativeStorage.fixedParameters.supportedMove)
     .add(toBN(toWei("1")))
     .muln(100);
 
-  let currentCollateralization = "-- %";
-  let newCollateralizationAmount = "-- %";
-  const navBn = toBN(nav);
+  data.currentCollateralization = "-- %";
+  data.newCollateralizationAmount = "-- %";
+  const navBn = toBN(data.nav);
   if (!navBn.isZero()) {
-    const totalHoldings = navBn.add(toBN(shortMarginBalance));
-    currentCollateralization = totalHoldings.muln(100).div(navBn) + "%";
-    if (withdrawAmount !== "") {
-      newCollateralizationAmount =
-        totalHoldings
-          .sub(toBN(toWei(withdrawAmount)))
+    data.totalHoldings = navBn.add(toBN(data.shortMarginBalance));
+    data.currentCollateralization = data.totalHoldings.muln(100).div(navBn) + "%";
+    if (changeInShortBalance !== "") {
+      data.newCollateralizationAmount =
+        data.totalHoldings
+          .sub(toBN(toWei(changeInShortBalance)))
           .muln(100)
           .div(navBn) + "%";
     }
   }
+  data.ready = true;
+  return data;
+}
+
+function Withdraw(props) {
+  const { tokenAddress } = props.match.params;
+
+  const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { fromWei } = drizzle.web3.utils;
+
+  const { amount: withdrawAmount, handleChangeAmount } = useTextInput();
+
+  const { send, status } = useCacheSend(tokenAddress, "withdraw");
+  const handleWithdrawClick = useSendTransactionOnLink({ send, status }, withdrawAmount, props.history);
+
+  const data = useCollateralizationInformation(tokenAddress, withdrawAmount);
+  if (!data.ready) {
+    return <div>Loading withdraw data</div>;
+  }
 
   // TODO(ptare): Determine the right set of conditions to allow proceeding.
   const allowedToProceed = withdrawAmount !== "";
-  const isLoading = withdrawStatus === "pending";
+  const isLoading = status === "pending";
 
   const render = () => {
     return (
@@ -94,7 +120,7 @@ function Withdraw(props) {
               <div className="popup__head-entry">
                 <p>
                   <strong>
-                    Your facility has a {fromWei(collateralizationRequirement)}% collateralization requirement.
+                    Your facility has a {fromWei(data.collateralizationRequirement)}% collateralization requirement.
                   </strong>{" "}
                   You can withdraw collateral from your facility as long as you maintain this requirement.{" "}
                 </p>
@@ -135,12 +161,12 @@ function Withdraw(props) {
                   <ul>
                     <li>
                       <span>Current:</span>
-                      <span>{currentCollateralization}</span>
+                      <span>{data.currentCollateralization}</span>
                     </li>
 
                     <li className={classNames({ highlight: allowedToProceed })}>
                       <strong>New:</strong>
-                      <span>{newCollateralizationAmount}</span>
+                      <span>{data.newCollateralizationAmount}</span>
                     </li>
                   </ul>
                 </div>
