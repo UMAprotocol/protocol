@@ -72,6 +72,8 @@ function useFinancialContractData(tokenAddress) {
   data.totalSupply = useCacheCall(tokenAddress, "totalSupply");
   data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
+  data.priceFeedAddress = useCacheCall("Finder", "getImplementationAddress", web3.utils.utf8ToHex("PriceFeed"));
+
   if (!Object.values(data).every(Boolean)) {
     return { ready: false };
   }
@@ -99,11 +101,13 @@ function useFinancialContractData(tokenAddress) {
   const { stateText, stateColor } = getStateDescription(data.derivativeStorage);
   data.stateText = stateText;
   data.stateColor = stateColor;
-  // TODO(ptare): The following fields still need to be added: Created, Expiry, and Price feed.
   data.detailsContent = [
     { type: "timestamp", title: "Last contract valuation", timestamp: data.updatedUnderlyingPrice.time },
     { type: "address", title: "Address", address: { display: tokenAddress } },
     { type: "address", title: "Sponsor", address: { display: data.derivativeStorage.externalAddresses.sponsor } },
+    { type: "timestamp", title: "Created", timestamp: data.derivativeStorage.fixedParameters.creationTime },
+    { type: "timestamp", title: "Expiry", timestamp: data.derivativeStorage.endTime },
+    { type: "address", title: "Price feed", address: { display: data.priceFeedAddress } },
     {
       type: "namedAddress",
       title: "Denomination",

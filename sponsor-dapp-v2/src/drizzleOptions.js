@@ -1,7 +1,7 @@
-import Registry from "contracts/Registry.json";
+import Finder from "contracts/Finder.json";
 
 const options = {
-  contracts: [Registry],
+  contracts: [Finder],
   polls: {
     accounts: 3500,
     blocks: 3000
