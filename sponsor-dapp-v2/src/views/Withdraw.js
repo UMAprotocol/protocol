@@ -56,8 +56,7 @@ function useCollateralizationInformation(tokenAddress, changeInShortBalance) {
   data.nav = useCacheCall(tokenAddress, "calcNAV");
   data.shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
 
-  const dataFetched = data.derivativeStorage && data.nav && data.shortMarginBalance;
-  if (!dataFetched) {
+  if (!Object.values(data).every(Boolean)) {
     return { ready: false };
   }
 
