@@ -9,8 +9,7 @@ class Step1 extends Component {
     super(props);
 
     this.state = {
-      allowedToProceed: false,
-      selectedIdentifier: null
+      allowedToProceed: false
     };
 
     this.dropdown = React.createRef();
@@ -19,8 +18,7 @@ class Step1 extends Component {
   checkProceeding = (status, selectedIdentifier) => {
     this.props.chosenIdentifierRef.current = selectedIdentifier;
     this.setState({
-      allowedToProceed: status,
-      selectedIdentifier: selectedIdentifier
+      allowedToProceed: status
     });
   };
 
