@@ -1,68 +1,41 @@
-import React, { Component } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
+import { drizzleReactHooks } from "drizzle-react";
 
 import classNames from "classnames";
 
 import Header from "components/common/Header";
 import IconSvgComponent from "components/common/IconSvgComponent";
+import { withAddedContract } from "lib/contracts";
+import TokenizedDerivative from "contracts/TokenizedDerivative.json";
+import { useTextInput, useSendTransactionOnLink, useCollateralizationInformation } from "lib/custom-hooks";
 
-class Deposit extends Component {
-  constructor(props) {
-    super(props);
+function Deposit(props) {
+  const { tokenAddress } = props.match.params;
 
-    this.state = {
-      allowedToProceed: false,
-      depositAmount: "",
-      newAmount: "115 %",
-      isLoading: false
-    };
+  const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { fromWei } = drizzle.web3.utils;
+
+  const { amount: depositAmount, handleChangeAmount } = useTextInput();
+
+  const { send, status } = useCacheSend(tokenAddress, "deposit");
+  const handleDepositClick = useSendTransactionOnLink({ send, status }, depositAmount, props.history);
+
+  const data = useCollateralizationInformation(tokenAddress, depositAmount);
+  if (!data.ready) {
+    return <div>Loading deposit data</div>;
   }
 
-  checkProceeding = status => {
-    this.setState({
-      allowedToProceed: status
-    });
-  };
+  // TODO(ptare): Determine the right set of conditions to allow proceeding.
+  const allowedToProceed = depositAmount !== "";
+  const isLoading = status === "pending";
 
-  handleChangeAmount(event) {
-    // Check if regex number matches
-    if (/^(\s*|\d+)$/.test(event.target.value)) {
-      this.setState({ depositAmount: event.target.value }, () => {
-        this.checkFields();
-      });
-    }
-  }
-
-  checkFields() {
-    if (this.state.depositAmount.length > 0) {
-      this.checkProceeding(true);
-    } else {
-      this.checkProceeding(false);
-    }
-  }
-
-  delayRedirect = event => {
-    const {
-      history: { replace }
-    } = this.props;
-    event.preventDefault();
-
-    const page = event.currentTarget.getAttribute("href");
-
-    this.setState(
-      {
-        isLoading: true
-      },
-      () => setTimeout(() => replace(page), 5000)
-    );
-  };
-
-  render() {
+  const render = () => {
     return (
       <div className="popup">
         <Header />
 
-        <Link to="/ManagePositions" className="btn-close">
+        <Link to={"/ManagePositions/" + tokenAddress} className="btn-close">
           <IconSvgComponent iconPath="svg/ico-close.svg" additionalClass="ico-close" />
         </Link>
 
@@ -73,8 +46,10 @@ class Deposit extends Component {
 
               <div className="popup__head-entry">
                 <p>
-                  <strong>Your facility has a 110% collateralization requirement.</strong> You can withdraw collateral
-                  from your facility as long as you maintain this requirement.{" "}
+                  <strong>
+                    Your facility has a {fromWei(data.collateralizationRequirement)}% collateralization requirement.
+                  </strong>{" "}
+                  You can withdraw collateral from your facility as long as you maintain this requirement.{" "}
                 </p>
               </div>
             </div>
@@ -94,9 +69,9 @@ class Deposit extends Component {
                       name="field-withdraw"
                       maxLength="18"
                       autoComplete="off"
-                      disabled={this.state.isLoading}
-                      value={this.state.depositAmount}
-                      onChange={e => this.handleChangeAmount(e)}
+                      disabled={isLoading}
+                      value={depositAmount}
+                      onChange={e => handleChangeAmount(e)}
                     />
 
                     <span>DAI</span>
@@ -113,12 +88,12 @@ class Deposit extends Component {
                   <ul>
                     <li>
                       <span>Current:</span>
-                      <span>113.4%</span>
+                      <span>{data.currentCollateralization}</span>
                     </li>
 
-                    <li className={classNames({ highlight: this.state.allowedToProceed })}>
+                    <li className={classNames({ highlight: allowedToProceed })}>
                       <strong>New:</strong>
-                      <span>{!this.state.allowedToProceed ? "-- %" : this.state.newAmount}</span>
+                      <span>{data.newCollateralizationAmount}</span>
                     </li>
                   </ul>
                 </div>
@@ -127,26 +102,27 @@ class Deposit extends Component {
 
             <div className="popup__actions">
               <Link
-                to="/ManagePositions"
-                onClick={event => this.delayRedirect(event)}
+                to={"/ManagePositions/" + tokenAddress}
+                onClick={event => handleDepositClick(event)}
                 className={classNames(
                   "btn btn--size2 has-loading",
-                  { disabled: !this.state.allowedToProceed },
-                  { "is-loading": this.state.isLoading }
+                  { disabled: !allowedToProceed },
+                  { "is-loading": isLoading }
                 )}
               >
                 <span>Deposit</span>
 
                 <span className="loading-text">Processing</span>
 
-                <strong className="dot-pulse"></strong>
+                <strong className="dot-pulse" />
               </Link>
             </div>
           </div>
         </div>
       </div>
     );
-  }
+  };
+  return render();
 }
 
-export default Deposit;
+export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(Deposit);

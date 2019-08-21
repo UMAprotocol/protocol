@@ -305,7 +305,7 @@ function ManagePositions(props) {
                       <span>Withdraw collateral</span>
                     </Link>
 
-                    <Link to="/Deposit" className="btn">
+                    <Link to={"/Deposit/" + tokenAddress} className="btn">
                       <span>Deposit additional collateral</span>
                     </Link>
                   </div>
