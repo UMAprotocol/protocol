@@ -2,19 +2,13 @@ import React, { Component } from "react";
 
 import classNames from "classnames";
 
-import IconSvgComponent from "components/common/IconSvgComponent";
-
 class Step3 extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
       allowedToProceed: true,
-      isLoading: false,
-      contractName: this.props.contractName,
-      editingContractName: false,
-      tokenSymbol: this.props.tokenSymbol,
-      editingTokenSymbol: false
+      isLoading: false
     };
   }
 
@@ -35,40 +29,6 @@ class Step3 extends Component {
       () => this.props.onNextStep(event)
     );
   }
-
-  editContractName = () => {
-    this.setState({
-      editingContractName: true
-    });
-  };
-
-  saveContractName = event => {
-    event.preventDefault();
-
-    let val = this.refs.contractNameText.value;
-
-    this.setState({
-      contractName: val,
-      editingContractName: false
-    });
-  };
-
-  editTokenSymbol = () => {
-    this.setState({
-      editingTokenSymbol: true
-    });
-  };
-
-  saveTokenSymbol = event => {
-    event.preventDefault();
-
-    let val = this.refs.tokenSymbolText.value;
-
-    this.setState({
-      tokenSymbol: val,
-      editingTokenSymbol: false
-    });
-  };
 
   render() {
     return (
@@ -93,72 +53,6 @@ class Step3 extends Component {
 
               <li>
                 Expiry: <span>{this.props.expiry}</span>
-              </li>
-
-              <li>
-                Contract name:
-                {!this.state.editingContractName && (
-                  <span className="text">
-                    {this.state.contractName}
-
-                    <button type="button" className="btn-edit" onClick={this.editContractName}>
-                      <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
-                    </button>
-                  </span>
-                )}
-                {this.state.editingContractName && (
-                  <div className="form-edit">
-                    <form action="#" method="post" onSubmit={e => this.saveContractName(e)}>
-                      <div className="form__controls">
-                        <input
-                          type="text"
-                          className="field"
-                          ref="contractNameText"
-                          defaultValue={this.state.contractName}
-                        />
-                      </div>
-
-                      <div className="form__actions">
-                        <button type="submit" className="form__btn">
-                          <IconSvgComponent iconPath="svg/ico-check.svg" additionalClass="ico-check" />
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </li>
-
-              <li>
-                Token symbol:
-                {!this.state.editingTokenSymbol && (
-                  <span className="text">
-                    {this.state.tokenSymbol}
-
-                    <button type="button" className="btn-edit" onClick={this.editTokenSymbol}>
-                      <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
-                    </button>
-                  </span>
-                )}
-                {this.state.editingTokenSymbol && (
-                  <div className="form-edit">
-                    <form action="#" method="post" onSubmit={e => this.saveTokenSymbol(e)}>
-                      <div className="form__controls">
-                        <input
-                          type="text"
-                          className="field"
-                          ref="tokenSymbolText"
-                          defaultValue={this.state.tokenSymbol}
-                        />
-                      </div>
-
-                      <div className="form__actions">
-                        <button type="submit" className="form__btn">
-                          <IconSvgComponent iconPath="svg/ico-check.svg" additionalClass="ico-check" />
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
               </li>
             </ul>
           </div>
