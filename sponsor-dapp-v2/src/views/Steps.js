@@ -44,7 +44,7 @@ function useIdentifierConfig() {
   );
 }
 
-function useEnabledIdentifiers() {
+function useEnabledIdentifierConfig() {
   const {
     useCacheCallPromise,
     drizzle: { web3 }
@@ -89,7 +89,7 @@ function useEnabledIdentifiers() {
 }
 
 function Steps() {
-  const identifierConfig = useEnabledIdentifiers();
+  const identifierConfig = useEnabledIdentifierConfig();
 
   const chosenIdentifierRef = useRef(null);
   const chosenExpiryRef = useRef(null);
