@@ -1,10 +1,9 @@
-import React, { Component } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router-dom";
 import classNames from "classnames";
 import { CSSTransition } from "react-transition-group";
-
-import { fetchAllSteps } from "store/state/steps/actions";
+import { drizzleReactHooks } from "drizzle-react";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 
@@ -16,8 +15,100 @@ import Step4 from "components/Step4";
 import Step5 from "components/Step5";
 import Step6 from "components/Step6";
 
-class Steps extends Component {
-  state = {
+// TODO(mrice32): replace with some sort of global-ish config later.
+function useIdentifierConfig() {
+  return useMemo(
+    () => ({
+      "BTC/USD": {
+        supportedMove: "0.1",
+        collateralRequirement: "110%",
+        expiries: [1568649600, 1571241600]
+      },
+      "ETH/USD": {
+        supportedMove: "0.1",
+        collateralRequirement: "110%",
+        expiries: [1568649600, 1571241600]
+      },
+      "CoinMarketCap Top100 Index": {
+        supportedMove: "0.2",
+        collateralRequirement: "120%",
+        expiries: [1568649600, 1571241600]
+      },
+      "S&P500": {
+        supportedMove: "0.1",
+        collateralRequirement: "110%",
+        expiries: [1568649600, 1571241600]
+      }
+    }),
+    []
+  );
+}
+
+function useEnabledIdentifierConfig() {
+  const {
+    useCacheCallPromise,
+    drizzle: { web3 }
+  } = drizzleReactHooks.useDrizzle();
+  const { useRerenderOnResolution } = drizzleReactHooks;
+
+  const identifierConfig = useIdentifierConfig();
+
+  // Note: using the promisified useCacheCall to prevent unrelated changes from triggering rerenders.
+  const narrowedConfig = useCacheCallPromise(
+    "NotApplicable",
+    (callContract, resolvePromise, config) => {
+      let finished = true;
+      const call = (contractName, methodName, ...args) => {
+        const result = callContract(contractName, methodName, ...args);
+        if (result === undefined) {
+          finished = false;
+        }
+        return result;
+      };
+
+      const narrowedConfig = {};
+      for (const identifier in config) {
+        if (
+          call("Voting", "isIdentifierSupported", web3.utils.utf8ToHex(identifier)) &&
+          call("ManualPriceFeed", "isIdentifierSupported", web3.utils.utf8ToHex(identifier))
+        ) {
+          narrowedConfig[identifier] = config[identifier];
+        }
+      }
+
+      if (finished) {
+        resolvePromise(narrowedConfig);
+      }
+    },
+    identifierConfig
+  );
+
+  useRerenderOnResolution(narrowedConfig);
+
+  return narrowedConfig.isResolved ? narrowedConfig.resolvedValue : undefined;
+}
+
+function Steps() {
+  const identifierConfig = useEnabledIdentifierConfig();
+
+  const chosenIdentifierRef = useRef(null);
+  const chosenExpiryRef = useRef(null);
+
+  const lastSteps = {
+    tokenFacilityAddress: {
+      display: "0x05d2BA4Ebc7ffaD147Fe266c573EFc885dB20109",
+      link: "https://etherscan.io/address/0x05d2BA4Ebc7ffaD147Fe266c573EFc885dB20109"
+    },
+    collateralizationCurrency: {
+      name: "Dai",
+      symbol: "DAI"
+    },
+    identifier: "BTC/USD",
+    currentPrice: "$14,000",
+    minimumRatio: "110%"
+  };
+
+  const [state, setState] = useState({
     activeStepIndex: 0,
     steps: [
       {
@@ -41,17 +132,17 @@ class Steps extends Component {
         isCompleted: false
       }
     ]
-  };
+  });
 
-  nextStep(event) {
+  const nextStep = event => {
     event.preventDefault();
-    const currentStepIndex = this.state.activeStepIndex;
+    const currentStepIndex = state.activeStepIndex;
     let nextStepIndex = currentStepIndex + 1;
-    const stepsNav = [...this.state.steps];
+    const stepsNav = [...state.steps];
 
     // If Last step, next Step index is the last one
-    if (nextStepIndex === this.state.steps.length) {
-      nextStepIndex = this.state.steps.length;
+    if (nextStepIndex === state.steps.length) {
+      nextStepIndex = state.steps.length;
     } else {
       stepsNav[nextStepIndex].isActive = true;
     }
@@ -61,44 +152,40 @@ class Steps extends Component {
 
     if (currentStepIndex === 2 || currentStepIndex === 3 || currentStepIndex === 4) {
       setTimeout(() => {
-        this.setState({
+        setState(oldState => ({
+          ...oldState,
           activeStepIndex: nextStepIndex,
           steps: stepsNav
-        });
+        }));
       }, 5000);
     } else {
-      this.setState({
+      setState(oldState => ({
+        ...oldState,
         activeStepIndex: nextStepIndex,
         steps: stepsNav
-      });
+      }));
     }
-  }
+  };
 
-  prevStep(event) {
+  const prevStep = event => {
     event.preventDefault();
-    const currentStepIndex = this.state.activeStepIndex;
+    const currentStepIndex = state.activeStepIndex;
     const prevStepIndex = currentStepIndex - 1;
-    const stepsNav = [...this.state.steps];
+    const stepsNav = [...state.steps];
 
     stepsNav[currentStepIndex].isActive = false;
     stepsNav[prevStepIndex].isActive = true;
     stepsNav[prevStepIndex].isCompleted = false;
 
-    this.setState({
+    setState(oldState => ({
+      ...oldState,
       activeStepIndex: prevStepIndex,
       steps: stepsNav
-    });
-  }
+    }));
+  };
 
-  componentDidMount() {
-    this.props.fetchAllSteps();
-  }
-
-  render() {
-    let { firstSteps } = this.props;
-    let { lastSteps } = this.props;
-
-    if (!firstSteps || !lastSteps) {
+  const render = () => {
+    if (!identifierConfig || !lastSteps) {
       return null;
     }
 
@@ -118,7 +205,7 @@ class Steps extends Component {
 
             <div className="steps__nav">
               <ul>
-                {this.state.steps.map((item, index) => {
+                {state.steps.map((item, index) => {
                   return (
                     <li
                       key={`item-${index}`}
@@ -141,35 +228,45 @@ class Steps extends Component {
             </div>
 
             <div className="steps__body">
-              <CSSTransition in={this.state.activeStepIndex === 0} timeout={300} classNames="step-1" unmountOnExit>
-                <Step1 data={firstSteps} onNextStep={e => this.nextStep(e)} />
+              <CSSTransition in={state.activeStepIndex === 0} timeout={300} classNames="step-1" unmountOnExit>
+                <Step1
+                  identifierConfig={identifierConfig}
+                  chosenIdentifierRef={chosenIdentifierRef}
+                  onNextStep={e => nextStep(e)}
+                />
               </CSSTransition>
 
-              <CSSTransition in={this.state.activeStepIndex === 1} timeout={300} classNames="step-2" unmountOnExit>
-                <Step2 data={firstSteps} onNextStep={e => this.nextStep(e)} onPrevStep={e => this.prevStep(e)} />
+              <CSSTransition in={state.activeStepIndex === 1} timeout={300} classNames="step-2" unmountOnExit>
+                <Step2
+                  identifierConfig={identifierConfig}
+                  chosenIdentifier={chosenIdentifierRef.current}
+                  chosenExpiryRef={chosenExpiryRef}
+                  onNextStep={e => nextStep(e)}
+                  onPrevStep={e => prevStep(e)}
+                />
               </CSSTransition>
 
-              <CSSTransition in={this.state.activeStepIndex === 2} timeout={200} classNames="step-3" unmountOnExit>
+              <CSSTransition in={state.activeStepIndex === 2} timeout={200} classNames="step-3" unmountOnExit>
                 <Step3
                   assets="BTC/USD"
                   requirement="110%"
                   expiry="September 16, 2019 16:00:00 GMT"
                   contractName="BTCUSD_Sep19_0x1234"
                   tokenSymbol="BTC0x1234"
-                  onNextStep={e => this.nextStep(e)}
-                  onPrevStep={e => this.prevStep(e)}
+                  onNextStep={e => nextStep(e)}
+                  onPrevStep={e => prevStep(e)}
                 />
               </CSSTransition>
 
-              <CSSTransition in={this.state.activeStepIndex === 3} timeout={200} classNames="step-4" unmountOnExit>
-                <Step4 data={lastSteps} onNextStep={e => this.nextStep(e)} />
+              <CSSTransition in={state.activeStepIndex === 3} timeout={200} classNames="step-4" unmountOnExit>
+                <Step4 data={lastSteps} onNextStep={e => nextStep(e)} />
               </CSSTransition>
 
-              <CSSTransition in={this.state.activeStepIndex === 4} timeout={300} classNames="step-5" unmountOnExit>
-                <Step5 data={lastSteps} onNextStep={e => this.nextStep(e)} />
+              <CSSTransition in={state.activeStepIndex === 4} timeout={300} classNames="step-5" unmountOnExit>
+                <Step5 data={lastSteps} onNextStep={e => nextStep(e)} />
               </CSSTransition>
 
-              <CSSTransition in={this.state.activeStepIndex === 5} timeout={300} classNames="step-6" unmountOnExit>
+              <CSSTransition in={state.activeStepIndex === 5} timeout={300} classNames="step-6" unmountOnExit>
                 <Step6 data={lastSteps} tokens="10" />
               </CSSTransition>
             </div>
@@ -177,15 +274,9 @@ class Steps extends Component {
         </div>
       </div>
     );
-  }
+  };
+
+  return render();
 }
 
-export default connect(
-  state => ({
-    firstSteps: state.stepsData.firstSteps,
-    lastSteps: state.stepsData.lastSteps
-  }),
-  {
-    fetchAllSteps
-  }
-)(Steps);
+export default connect()(Steps);

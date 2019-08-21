@@ -16,17 +16,21 @@ class Step2 extends Component {
     this.dropdown = React.createRef();
   }
 
-  checkProceeding = status => {
+  checkProceeding = (status, selectedExpiry) => {
+    this.props.chosenExpiryRef.current = selectedExpiry;
     this.setState({
       allowedToProceed: status
     });
   };
 
   render() {
-    const { data } = this.props;
+    const { identifierConfig, chosenIdentifier } = this.props;
 
-    const timeline = data.expiries.map(expiry => {
-      return moment.unix(expiry.unixTimestamp).format("MMMM DD, YYYY LTS");
+    const timeline = identifierConfig[chosenIdentifier].expiries.map(expiry => {
+      return {
+        key: expiry,
+        value: moment.unix(expiry).format("MMMM DD, YYYY LTS")
+      };
     });
 
     return (
@@ -48,6 +52,7 @@ class Step2 extends Component {
               placeholder="Select settlement date"
               list={timeline}
               onChange={this.checkProceeding}
+              initialKeySelection={this.props.chosenExpiryRef.current}
             />
           </div>
 

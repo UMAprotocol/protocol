@@ -15,17 +15,21 @@ class Step1 extends Component {
     this.dropdown = React.createRef();
   }
 
-  checkProceeding = status => {
+  checkProceeding = (status, selectedIdentifier) => {
+    this.props.chosenIdentifierRef.current = selectedIdentifier;
     this.setState({
       allowedToProceed: status
     });
   };
 
   render() {
-    const { data } = this.props;
+    const { identifierConfig } = this.props;
 
-    const dropdownData = data.assets.map(asset => {
-      return `${asset.identifier} (${asset.collateralRequirement})`;
+    const dropdownData = Object.keys(identifierConfig).map(identifier => {
+      return {
+        key: identifier,
+        value: `${identifier} (${identifierConfig[identifier].collateralRequirement})`
+      };
     });
 
     return (
@@ -41,7 +45,7 @@ class Step1 extends Component {
 
           <p>
             <span>
-              Want something else? <a href={data.tellUsLink}>Tell us</a>
+              Want something else? <a href="mailto:hello@umaproject.org">Tell us</a>
             </span>
           </p>
         </div>
@@ -53,6 +57,7 @@ class Step1 extends Component {
               placeholder="Select synthetic asset"
               list={dropdownData}
               onChange={this.checkProceeding}
+              initialKeySelection={this.props.chosenIdentifierRef.current}
             />
           </div>
 

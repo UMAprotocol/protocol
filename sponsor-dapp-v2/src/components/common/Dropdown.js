@@ -7,12 +7,14 @@ class Dropdown extends Component {
   state = {
     isOpen: false,
     labelItem: null,
+    key: null,
     hasSelection: false
   };
-  chooseItem = value => {
+  chooseItem = item => {
     this.setState(
       {
-        labelItem: value,
+        labelItem: item.value,
+        key: item.key,
         hasSelection: true
       },
       () => {
@@ -30,14 +32,21 @@ class Dropdown extends Component {
   };
 
   applyChangeToParent = () => {
-    this.props.onChange(this.state.hasSelection);
+    this.props.onChange(this.state.hasSelection, this.state.key);
   };
 
   componentDidMount() {
-    const label = this.props.placeholder ? this.props.placeholder : this.props.list[0];
-    this.setState({
-      labelItem: label
-    });
+    const preselectedItem = this.props.list.find(item => item.key === this.props.initialKeySelection);
+
+    // Use loose equality so undefined and null will be false, but the number 0 will be true.
+    if (preselectedItem != null) {
+      this.chooseItem(preselectedItem);
+    } else {
+      const label = this.props.placeholder ? this.props.placeholder : this.props.list[0];
+      this.setState({
+        labelItem: label
+      });
+    }
   }
 
   render() {
@@ -63,14 +72,14 @@ class Dropdown extends Component {
           {list.map((item, index) => {
             return (
               <li
-                key={index}
+                key={item.key}
                 value={index}
                 className={classNames({
-                  active: this.state.labelItem === item
+                  active: this.state.key === item.key
                 })}
                 onClick={() => this.chooseItem(item)}
               >
-                <span>{item}</span>
+                <span>{item.value}</span>
               </li>
             );
           })}
