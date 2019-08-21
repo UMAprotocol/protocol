@@ -19,7 +19,7 @@ function Deposit(props) {
   const { amount: depositAmount, handleChangeAmount } = useTextInput();
 
   const { send, status } = useCacheSend(tokenAddress, "deposit");
-  const handleDepositClick = useSendTransactionOnLink({ send, status }, depositAmount, props.history);
+  const handleDepositClick = useSendTransactionOnLink({ send, status }, [depositAmount], props.history);
 
   const data = useCollateralizationInformation(tokenAddress, depositAmount);
   if (!data.ready) {

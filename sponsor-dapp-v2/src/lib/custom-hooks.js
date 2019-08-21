@@ -70,7 +70,7 @@ export function useTextInput() {
   return { amount, handleChangeAmount };
 }
 
-export function useSendTransactionOnLink(cacheSend, amount, history) {
+export function useSendTransactionOnLink(cacheSend, amounts, history) {
   const { drizzle } = drizzleReactHooks.useDrizzle();
   const { toWei } = drizzle.web3.utils;
 
@@ -85,7 +85,7 @@ export function useSendTransactionOnLink(cacheSend, amount, history) {
 
     const linkedPage = event.currentTarget.getAttribute("href");
     setLinkedPage(linkedPage);
-    send(toWei(amount), { from: account });
+    send(...amounts.map(val => toWei(val)), { from: account });
   };
   // If we've successfully withdrawn, reroute to the linkedPage whose `Link` the user clicked on (currently, this can only
   // ever be the `ManagePositions` linkedPage).

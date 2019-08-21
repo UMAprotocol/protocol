@@ -19,7 +19,7 @@ function Withdraw(props) {
   const { amount: withdrawAmount, handleChangeAmount } = useTextInput();
 
   const { send, status } = useCacheSend(tokenAddress, "withdraw");
-  const handleWithdrawClick = useSendTransactionOnLink({ send, status }, withdrawAmount, props.history);
+  const handleWithdrawClick = useSendTransactionOnLink({ send, status }, [withdrawAmount], props.history);
 
   const data = useCollateralizationInformation(
     tokenAddress,

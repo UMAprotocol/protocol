@@ -34,3 +34,7 @@ export function formatWithMaxDecimals(num, decimalPlaces, roundUp) {
   const fixedPrecisionFloat = BigNumber(fullPrecisionFloat.toFixed(decimalPlaces));
   return fixedPrecisionFloat.toString();
 }
+
+export function createFormatFunction(web3, numDisplayedDecimals) {
+  return valInWei => formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, false);
+}

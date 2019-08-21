@@ -1,78 +1,47 @@
-import React, { Component } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
+import { drizzleReactHooks } from "drizzle-react";
 
 import classNames from "classnames";
 
 import Header from "components/common/Header";
 import IconSvgComponent from "components/common/IconSvgComponent";
+import { withAddedContract } from "lib/contracts";
+import TokenizedDerivative from "contracts/TokenizedDerivative.json";
+import { useTextInput, useSendTransactionOnLink, useCollateralizationInformation } from "lib/custom-hooks";
+import { createFormatFunction } from "common/FormattingUtils";
 
-class Borrow extends Component {
-  constructor(props) {
-    super(props);
+function Borrow(props) {
+  const { tokenAddress } = props.match.params;
 
-    this.state = {
-      allowedToProceed: false,
-      borrowAmount: "",
-      tokens: "",
-      newAmount: "115 %",
-      isLoading: false
-    };
+  const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { fromWei } = drizzle.web3.utils;
+
+  const { amount: marginAmount, handleChangeAmount: handleChangeMarginAmount } = useTextInput();
+  const { amount: tokenAmount, handleChangeAmount: handleChangeTokenAmount } = useTextInput();
+
+  const { send, status } = useCacheSend(tokenAddress, "depositAndCreateTokens");
+  const handleCreateClick = useSendTransactionOnLink({ send, status }, [marginAmount, tokenAmount], props.history);
+
+  const data = useCollateralizationInformation(tokenAddress, "");
+  data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  if (!data.ready || !data.updatedUnderlyingPrice) {
+    return <div>Loading borrow data</div>;
   }
 
-  checkProceeding = status => {
-    this.setState({
-      allowedToProceed: status
-    });
-  };
+  // TODO(ptare): Determine the right set of conditions to allow proceeding.
+  const allowedToProceed = marginAmount !== "" && tokenAmount !== "";
+  const isLoading = status === "pending";
 
-  handleChangeAmount(event) {
-    // Check if regex number matches
-    if (/^(\s*|\d+)$/.test(event.target.value)) {
-      this.setState({ borrowAmount: event.target.value }, () => {
-        this.checkFields();
-      });
-    }
-  }
+  const format = createFormatFunction(drizzle.web3, 4);
 
-  handleChangeTokens(event) {
-    // Check if regex number matches
-    if (/^(\s*|\d+)$/.test(event.target.value)) {
-      this.setState({ tokens: event.target.value }, () => {
-        this.checkFields();
-      });
-    }
-  }
-
-  checkFields() {
-    if (this.state.borrowAmount.length > 0 && this.state.tokens.length > 0) {
-      this.checkProceeding(true);
-    } else {
-      this.checkProceeding(false);
-    }
-  }
-
-  delayRedirect = event => {
-    const {
-      history: { replace }
-    } = this.props;
-    event.preventDefault();
-
-    const page = event.currentTarget.getAttribute("href");
-
-    this.setState(
-      {
-        isLoading: true
-      },
-      () => setTimeout(() => replace(page), 5000)
-    );
-  };
-
-  render() {
+  // TODO(ptare): Add helper text with max tokens that can be created.
+  const render = () => {
     return (
       <div className="popup">
         <Header />
 
-        <Link to="/ManagePositions" className="btn-close">
+        <Link to={"/ManagePositions/" + tokenAddress} className="btn-close">
           <IconSvgComponent iconPath="svg/ico-close.svg" additionalClass="ico-close" />
         </Link>
 
@@ -95,11 +64,11 @@ class Borrow extends Component {
                       className="field"
                       id="field-borrow"
                       name="field-borrow"
-                      value={this.state.borrowAmount}
+                      value={marginAmount}
                       maxLength="18"
                       autoComplete="off"
-                      disabled={this.state.isLoading}
-                      onChange={e => this.handleChangeAmount(e)}
+                      disabled={isLoading}
+                      onChange={e => handleChangeMarginAmount(e)}
                     />
 
                     <span>DAI</span>
@@ -119,52 +88,46 @@ class Borrow extends Component {
                       className="field"
                       id="field-tokens"
                       name="field-tokens"
-                      value={this.state.tokens}
+                      value={tokenAmount}
                       maxLength="18"
                       autoComplete="off"
-                      disabled={this.state.isLoading}
-                      onChange={e => this.handleChangeTokens(e)}
+                      disabled={isLoading}
+                      onChange={e => handleChangeTokenAmount(e)}
                     />
 
                     <span>Tokens</span>
                   </div>
-
-                  {this.state.allowedToProceed && (
-                    <div className="form-hint">
-                      <p>(Max 1)</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
               <div className="popup__col">
                 <dl className="popup__description">
                   <dt>Liquidation price [BTC/USD]: 15,400</dt>
-                  <dd>Current price [BTC/USD]: 14,000 </dd>
+                  <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)} </dd>
                 </dl>
 
                 <dl className="popup__description">
-                  <dt>Collateralization ratio: 112%</dt>
-                  <dd>Minimum ratio: 110%</dd>
+                  <dt>Collateralization ratio: {data.currentCollateralization}</dt>
+                  <dd>Minimum ratio: {fromWei(data.collateralizationRequirement)}%</dd>
                 </dl>
               </div>
 
               <div className="popup__col">
                 <div className="popup__actions">
                   <Link
-                    to="/ManagePositions"
-                    onClick={event => this.delayRedirect(event)}
+                    to={"/ManagePositions/" + tokenAddress}
+                    onClick={event => handleCreateClick(event)}
                     className={classNames(
                       "btn btn--block has-loading",
-                      { disabled: !this.state.allowedToProceed },
-                      { "is-loading": this.state.isLoading }
+                      { disabled: !allowedToProceed },
+                      { "is-loading": isLoading }
                     )}
                   >
                     <span>Collateralize & borrow tokens</span>
 
                     <span className="loading-text">Processing</span>
 
-                    <strong className="dot-pulse"></strong>
+                    <strong className="dot-pulse" />
                   </Link>
                 </div>
               </div>
@@ -173,7 +136,8 @@ class Borrow extends Component {
         </div>
       </div>
     );
-  }
+  };
+  return render();
 }
 
-export default Borrow;
+export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(Borrow);
