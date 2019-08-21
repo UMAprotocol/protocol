@@ -63,7 +63,7 @@ export function useTextInput() {
   const [amount, setAmount] = useState("");
   const handleChangeAmount = event => {
     // Regular expression that matches a decimal, e.g., `2.5`.
-    if (/^(\d+\.?\d*)$/.test(event.target.value)) {
+    if (event.target.value === "" || /^(\d+\.?\d*)$/.test(event.target.value)) {
       setAmount(event.target.value);
     }
   };
