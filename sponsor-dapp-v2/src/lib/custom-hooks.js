@@ -62,8 +62,8 @@ export function useFaucetUrls() {
 export function useTextInput() {
   const [amount, setAmount] = useState("");
   const handleChangeAmount = event => {
-    // Check if regex number matches
-    if (/^(\s*|\d+)$/.test(event.target.value)) {
+    // Regular expression that matches a decimal, e.g., `2.5`.
+    if (/^(\d+\.?\d*)$/.test(event.target.value)) {
       setAmount(event.target.value);
     }
   };
