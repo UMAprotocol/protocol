@@ -12,9 +12,6 @@ module.exports = async function(deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
 
   // Deploy whitelists.
-  const { contract: sponsorWhitelist } = await deploy(deployer, network, AddressWhitelist, {
-    from: keys.sponsorWhitelist
-  });
   const { contract: returnCalculatorWhitelist } = await deploy(deployer, network, AddressWhitelist, {
     from: keys.returnCalculatorWhitelist
   });
@@ -31,7 +28,6 @@ module.exports = async function(deployer, network, accounts) {
     network,
     TokenizedDerivativeCreator,
     finder.address,
-    sponsorWhitelist.address,
     returnCalculatorWhitelist.address,
     marginCurrencyWhitelist.address,
     controllableTiming,
@@ -43,7 +39,6 @@ module.exports = async function(deployer, network, accounts) {
   await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address, { from: keys.returnCalculatorWhitelist });
 
   if (!network.startsWith("mainnet") && !network.startsWith("ropsten")) {
-    await sponsorWhitelist.addToWhitelist(accounts[1], { from: keys.sponsorWhitelist });
     await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
   }
 };
