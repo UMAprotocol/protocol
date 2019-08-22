@@ -13,7 +13,7 @@ const IconSvgComponent = ({ iconPath, additionalClass }) => {
     classAddition = "";
   }
 
-  return <ReactSVG src={iconPath} className={`svg-icon ${classAddition}`} />;
+  return <ReactSVG src={process.env.PUBLIC_URL.concat('/', iconPath)} className={`svg-icon ${classAddition}`} />;
 };
 
 export default IconSvgComponent;
