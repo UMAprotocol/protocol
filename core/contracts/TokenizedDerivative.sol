@@ -1319,18 +1319,15 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         string symbol;
     }
 
-    AddressWhitelist public sponsorWhitelist;
     AddressWhitelist public returnCalculatorWhitelist;
     AddressWhitelist public marginCurrencyWhitelist;
 
     constructor(
         address _finderAddress,
-        address _sponsorWhitelist,
         address _returnCalculatorWhitelist,
         address _marginCurrencyWhitelist,
         bool _isTest
     ) public ContractCreator(_finderAddress) Testable(_isTest) {
-        sponsorWhitelist = AddressWhitelist(_sponsorWhitelist);
         returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
         marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
     }
@@ -1356,7 +1353,6 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         returns (TokenizedDerivativeParams.ConstructorParams memory constructorParams)
     {
         // Copy and verify externally provided variables.
-        require(sponsorWhitelist.isOnWhitelist(msg.sender));
         constructorParams.sponsor = msg.sender;
 
         require(returnCalculatorWhitelist.isOnWhitelist(params.returnCalculator));
