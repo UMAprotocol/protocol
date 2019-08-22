@@ -2580,14 +2580,6 @@ contract("TokenizedDerivative", function(accounts) {
         )
       );
 
-      // Unapproved sponsor.
-      const unapprovedSponsorParams = defaultConstructorParams;
-      assert(
-        await didContractThrow(
-          tokenizedDerivativeCreator.createTokenizedDerivative(unapprovedSponsorParams, { from: thirdParty })
-        )
-      );
-
       // Unapproved returnCalculator.
       const unapprovedReturnCalculator = await LeveragedReturnCalculator.new(1);
       const unapprovedReturnCalculatorParams = {
