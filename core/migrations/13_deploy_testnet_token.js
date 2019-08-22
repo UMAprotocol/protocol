@@ -12,10 +12,10 @@ module.exports = async function(deployer, network, accounts) {
     preAssignedAddress = "0xB5E5D0F8C0cbA267CD3D7035d6AdC8eBA7Df7Cdd";
   } else if (network.startsWith("kovan")) {
     // Compound's fake DAI address on kovan.
-    preAssignedAddress = "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
+    preAssignedAddress = "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99";
   } else if (network.startsWith("rinkeby")) {
     // Compound's fake DAI address on rinkeby.
-    preAssignedAddress = "0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa"
+    preAssignedAddress = "0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa";
   }
 
   if (preAssignedAddress) {
