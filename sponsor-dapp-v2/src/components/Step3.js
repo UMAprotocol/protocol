@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 
 import classNames from "classnames";
+import moment from "moment";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 
@@ -8,13 +9,33 @@ class Step3 extends Component {
   constructor(props) {
     super(props);
 
+    const { name, symbol } = this.getContractNameAndSymbol();
+
     this.state = {
       allowedToProceed: true,
       isLoading: false,
-      contractName: this.props.contractName,
+      contractName: name,
       editingContractName: false,
-      tokenSymbol: this.props.tokenSymbol,
+      tokenSymbol: symbol,
       editingTokenSymbol: false
+    };
+  }
+
+  getContractNameAndSymbol() {
+    // The date is supposed to look like Sep19 in the token name.
+    const date = moment.unix(this.props.expiry).format("MMMDD");
+
+    // TODO(mrice32): figure out how this hash is supposed to be generated.
+    const hash = "0x1234";
+
+    // Strip the "/" character from the string, so it appears as BTCUSD rather than BTC/USD.
+    const asset = this.props.asset.replace("/", "");
+
+    const assetShort = asset.substr(0, 3);
+
+    return {
+      name: `${asset}_${date}_${hash}`,
+      symbol: `${assetShort}${hash}`
     };
   }
 
@@ -84,15 +105,16 @@ class Step3 extends Component {
           <div className="step__entry">
             <ul className="list-selections">
               <li>
-                Assets: <span>{this.props.assets}</span>
+                Asset: <span>{this.props.asset}</span>
               </li>
 
               <li>
-                Collateralization requirement: <span>{this.props.requirement}</span>
+                Collateralization requirement:{" "}
+                <span>{Math.round((Number(this.props.requirement) + 1) * 10000) / 100}%</span>
               </li>
 
               <li>
-                Expiry: <span>{this.props.expiry}</span>
+                Expiry: <span>{moment.unix(this.props.expiry).format("MMMM DD, YYYY LTS")}</span>
               </li>
 
               <li>

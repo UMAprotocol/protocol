@@ -248,11 +248,12 @@ function Steps() {
 
               <CSSTransition in={state.activeStepIndex === 2} timeout={200} classNames="step-3" unmountOnExit>
                 <Step3
-                  assets="BTC/USD"
-                  requirement="110%"
-                  expiry="September 16, 2019 16:00:00 GMT"
-                  contractName="BTCUSD_Sep19_0x1234"
-                  tokenSymbol="BTC0x1234"
+                  asset={chosenIdentifierRef.current}
+                  requirement={
+                    identifierConfig[chosenIdentifierRef.current] &&
+                    identifierConfig[chosenIdentifierRef.current].supportedMove
+                  }
+                  expiry={chosenExpiryRef.current}
                   onNextStep={e => nextStep(e)}
                   onPrevStep={e => prevStep(e)}
                 />
