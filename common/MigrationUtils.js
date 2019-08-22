@@ -100,6 +100,19 @@ async function deploy(deployer, network, contractType, ...args) {
   };
 }
 
+async function setToExistingAddress(network, contractType, address) {
+  // Set the contract address locally, which will be reflected in the truffle artifacts.
+  contractType.address = address;
+
+  // Get a contract instance to pass to tdr.
+  const instance = await contractType.at(address);
+
+  // Add to the registry.
+  await addToTdr(instance, network);
+
+  return instance;
+}
+
 // Maps key ordering to key names.
 function getKeysForNetwork(network, accounts) {
   if (network === "ropsten" || network === "mainnet" || network === "kovan") {
@@ -135,6 +148,7 @@ async function addToTdr(instance, network) {
 module.exports = {
   enableControllableTiming,
   deploy,
+  setToExistingAddress,
   getKeysForNetwork,
   addToTdr
 };

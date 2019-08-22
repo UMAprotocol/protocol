@@ -54,6 +54,10 @@
   {
     "contractName": "TokenizedDerivativeCreator",
     "address": "0xCC690ddFe088De222D99Ea8235F04c0344fcEE8d"
+  },
+  {
+    "contractName": "TestnetERC20",
+    "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
   }
 ]
 
