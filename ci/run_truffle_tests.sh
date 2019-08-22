@@ -47,6 +47,3 @@ run_tests $PROTOCOL_DIR/core
 
 # Check the Kovan deployment.
 check_deployment $PROTOCOL_DIR/core 42 kovan_mnemonic
-
-# Check the Ropsten deployment.
-check_deployment $PROTOCOL_DIR/core 3 ropsten_mnemonic
