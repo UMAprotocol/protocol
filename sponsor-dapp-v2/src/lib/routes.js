@@ -17,7 +17,7 @@ const routes = [
   { path: "/Withdraw/:tokenAddress", component: Withdraw, exact: false },
   { path: "/Deposit/:tokenAddress", component: Deposit, exact: false },
   { path: "/Borrow/:tokenAddress", component: Borrow, exact: false },
-  { path: "/Repay", component: Repay, exact: false }
+  { path: "/Repay/:tokenAddress", component: Repay, exact: false }
 ];
 
 export default routes;
