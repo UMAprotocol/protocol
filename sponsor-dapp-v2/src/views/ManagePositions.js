@@ -367,7 +367,7 @@ function ManagePositions(props) {
                       <span>Borrow more tokens</span>
                     </Link>
 
-                    <Link to="/Repay" className="btn">
+                    <Link to={"/Repay/" + tokenAddress} className="btn">
                       <span>Repay token debt</span>
                     </Link>
                   </div>
