@@ -8,7 +8,7 @@ import ExpandBox from "components/common/ExpandBox";
 import Tooltip from "components/common/Tooltip";
 import { withAddedContract } from "lib/contracts";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
-import { formatWei, formatWithMaxDecimals } from "common/FormattingUtils";
+import { createFormatFunction } from "common/FormattingUtils";
 
 function getStateDescription(derivativeStorage) {
   switch (derivativeStorage.state) {
@@ -138,8 +138,7 @@ function ManagePositions(props) {
     return <div>Loading data</div>;
   }
 
-  const numDisplayedDecimals = 4;
-  const format = valInWei => formatWithMaxDecimals(formatWei(valInWei, web3), numDisplayedDecimals, false);
+  const format = createFormatFunction(web3, 4);
 
   return (
     <div className="wrapper">
@@ -364,7 +363,7 @@ function ManagePositions(props) {
                   </div>
 
                   <div className="detail-box__actions">
-                    <Link to="/Borrow" className="btn">
+                    <Link to={"/Borrow/" + tokenAddress} className="btn">
                       <span>Borrow more tokens</span>
                     </Link>
 
