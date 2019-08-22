@@ -11,9 +11,9 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 contract TestnetERC20 is ERC20 {
 
     // Sample token information.
-    string public name = "Dai";
-    string public symbol = "DAI";
-    uint8 public decimals = 18;
+    string public constant name = "Dai"; // solhint-disable-line const-name-snakecase
+    string public constant symbol = "DAI"; // solhint-disable-line const-name-snakecase
+    uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     /**
      * @notice Mints value tokens to the owner address.
