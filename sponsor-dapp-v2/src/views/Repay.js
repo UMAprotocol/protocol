@@ -45,7 +45,11 @@ function Repay(props) {
   const { tokenAddress } = props.match.params;
 
   const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
-  const { fromWei } = drizzle.web3.utils;
+  const { fromWei, toBN, toWei } = drizzle.web3.utils;
+
+  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
+    account: drizzleState.accounts[0]
+  }));
 
   const { amount, handleChangeAmount } = useTextInput();
   const { send, status } = useCacheSend(tokenAddress, "redeemTokens");
@@ -54,22 +58,22 @@ function Repay(props) {
   const data = useCollateralizationInformation(tokenAddress, "");
   data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
   data.tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
+  data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
   const { ready: approvalDataReady, approveTokensHandler, isApproved, isLoadingApproval } = useTokenPreapproval(
     tokenAddress
   );
 
-  if (!data.ready || !data.updatedUnderlyingPrice || !approvalDataReady || !data.tokenValue) {
+  const dataFetched = approvalDataReady && Object.values(data).every(Boolean);
+  if (!dataFetched) {
     return <div>Loading redeem data</div>;
   }
 
   const isLoadingRedeem = status === "pending";
-  const allowedToProceed = amount !== "";
+  const allowedToProceed = amount !== "" && toBN(toWei(amount)).lte(toBN(data.tokenBalance));
 
   const format = createFormatFunction(drizzle.web3, 4);
 
-  // TODO(ptare): Add back help text containing max tokens that can be redeemed (and enable/disable the button
-  // accordingly).
   const render = () => {
     return (
       <div className="popup">
@@ -136,6 +140,12 @@ function Repay(props) {
 
                         <span>Tokens</span>
                       </div>
+
+                      {amount !== "" && (
+                        <div className="form-hint">
+                          <p>(Max {format(data.tokenBalance)})</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 

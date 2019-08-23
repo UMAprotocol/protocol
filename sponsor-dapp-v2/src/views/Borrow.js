@@ -11,11 +11,68 @@ import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { useTextInput, useSendTransactionOnLink, useCollateralizationInformation } from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
 
+function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
+  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const { toWei, toBN } = drizzle.web3.utils;
+
+  const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
+  const newExcessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
+  const updatedPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  const tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
+
+  const dataFetched = derivativeStorage && newExcessMargin && updatedPrice && tokenValue;
+  if (!dataFetched || marginAmount === "") {
+    return false;
+  }
+
+  const fpScalingFactor = toBN(toWei("1"));
+  // NOTE: I have very little faith in the calculation performed below.
+  // NOTE: Does not take leverage into account.
+  // The amount of margin sent in (`marginAmount`) can be allocated to either purchase new tokens (go to long margin)
+  // or to satisfy margin requirements to support new tokens (go to short margin).
+
+  // Every additional amount of margin allows us to purchase this many new tokens.
+  const purchaseLimitScalingFactor = fpScalingFactor.mul(fpScalingFactor).divRound(toBN(tokenValue));
+  // Every additional amount of margin allows us to support margin requirements for this many new tokens.
+  const marginLimitScalingFactor = fpScalingFactor
+    .mul(fpScalingFactor)
+    .mul(fpScalingFactor)
+    .mul(fpScalingFactor)
+    .divRound(toBN(derivativeStorage.fixedParameters.initialTokenUnderlyingRatio))
+    .divRound(toBN(updatedPrice.underlyingPrice))
+    .divRound(toBN(derivativeStorage.fixedParameters.supportedMove));
+
+  // `purchaseLimit` represents how many tokens could be purchased if all the sent margin was allocated to purchasing
+  // tokens. Note that the contract doesn't currently allow purchasing tokens via this method call by drawing down on
+  // excess short margin.
+  const purchaseLimit = toBN(toWei(marginAmount))
+    .mul(purchaseLimitScalingFactor)
+    .divRound(fpScalingFactor);
+  // `marginLimit` represents how many extra tokens the current excess margin can support.
+  const marginLimit = toBN(newExcessMargin)
+    .mul(marginLimitScalingFactor)
+    .divRound(fpScalingFactor);
+  // The following two statements handle the case where some amount of the sent margin must be allocated to increasing
+  // short margin.
+  const additionalAllocation = purchaseLimit
+    .sub(marginLimit)
+    .abs()
+    .mul(fpScalingFactor)
+    .divRound(purchaseLimitScalingFactor.add(marginLimitScalingFactor));
+  const limit = purchaseLimit.lte(marginLimit)
+    ? purchaseLimit
+    : marginLimit.add(additionalAllocation.mul(marginLimitScalingFactor).div(fpScalingFactor));
+
+  // The contract doesn't allow the sponsor to escape default and create tokens at once: they have to first
+  // deposit and then create. I.e., a negative `marginLimit` means that remargining would default the contract.
+  return marginLimit.isNeg() ? toBN("0") : limit;
+}
+
 function Borrow(props) {
   const { tokenAddress } = props.match.params;
 
   const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
-  const { fromWei } = drizzle.web3.utils;
+  const { fromWei, toBN, toWei } = drizzle.web3.utils;
 
   const { amount: marginAmount, handleChangeAmount: handleChangeMarginAmount } = useTextInput();
   const { amount: tokenAmount, handleChangeAmount: handleChangeTokenAmount } = useTextInput();
@@ -25,17 +82,17 @@ function Borrow(props) {
 
   const data = useCollateralizationInformation(tokenAddress, "");
   data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
-  if (!data.ready || !data.updatedUnderlyingPrice) {
+  const maxTokensThatCanBeCreated = useMaxTokensThatCanBeCreated(tokenAddress, marginAmount);
+  if (!data.ready || !data.updatedUnderlyingPrice || !maxTokensThatCanBeCreated) {
     return <div>Loading borrow data</div>;
   }
 
-  // TODO(ptare): Determine the right set of conditions to allow proceeding.
-  const allowedToProceed = marginAmount !== "" && tokenAmount !== "";
+  const allowedToProceed =
+    marginAmount !== "" && tokenAmount !== "" && toBN(toWei(tokenAmount)).lte(maxTokensThatCanBeCreated);
   const isLoading = status === "pending";
 
   const format = createFormatFunction(drizzle.web3, 4);
 
-  // TODO(ptare): Add helper text with max tokens that can be created.
   const render = () => {
     return (
       <div className="popup">
@@ -97,6 +154,12 @@ function Borrow(props) {
 
                     <span>Tokens</span>
                   </div>
+
+                  {tokenAmount !== "" && marginAmount !== "" && (
+                    <div className="form-hint">
+                      <p>(Max {format(maxTokensThatCanBeCreated)})</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
