@@ -1343,6 +1343,8 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
 
         _registerContract(parties, address(derivative));
 
+        emit CreatedTokenizedDerivative(address(derivative));
+
         return address(derivative);
     }
 
@@ -1376,4 +1378,6 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         constructorParams.finderAddress = finderAddress;
         constructorParams.creationTime = getCurrentTime();
     }
+
+    event CreatedTokenizedDerivative(address contractAddress);
 }

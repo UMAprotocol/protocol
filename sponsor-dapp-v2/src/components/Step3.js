@@ -1,11 +1,12 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 
 import classNames from "classnames";
 import moment from "moment";
 import web3 from "web3";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
-import { useIdentifierConfig } from "lib/custom-hooks";
+import { useIdentifierConfig, useDaiAddress } from "lib/custom-hooks";
+import { drizzleReactHooks } from "drizzle-react";
 
 function getContractNameAndSymbol(selections) {
   // The date is supposed to look like Sep19 in the token name.
@@ -23,6 +24,47 @@ function getContractNameAndSymbol(selections) {
   return {
     name: selections.name ? selections.name : `${asset}_${date}_${hash}`,
     symbol: selections.symbol ? selections.symbol : `${assetShort}${hash}`
+  };
+}
+
+function useCreateContract(userSelectionsRef, identifierConfig) {
+
+  const { toWei, utf8ToHex } = web3.utils;
+  const { identifier, expiry, name, symbol } = userSelectionsRef.current;
+  const { drizzle, useCacheSend, useCacheCall } = drizzleReactHooks.useDrizzle();
+
+
+  const currentPrice = useCacheCall("ManualPriceFeed", "latestPrice", utf8ToHex(identifier));
+  const daiAddress = useDaiAddress();
+
+  const { send, status, TXObjexts } = useCacheSend("TokenizedDerivativeCreator", "createTokenizedDerivative");
+
+  if (!currentPrice || !daiAddress) {
+    return null;
+  }
+
+  const sendFn = () => {
+    // 10^18 * 10^18, which represents 10^20%. This is large enough to never hit, but small enough that the numbers
+    // will never overflow when multiplying by a balance.
+    const withdrawLimit = "1000000000000000000000000000000000000";
+
+    send({
+      defaultPenalty: toWei("1"),
+      supportedMove: toWei(identifierConfig[identifier].supportedMove),
+      product: utf8ToHex(identifier),
+      fixedYearlyFee: "0",
+      disputeDeposit: toWei("1"),
+      returnCalculator: drizzle.contracts.LeveragedReturnCalculator.address,
+      startingTokenPrice: currentPrice,
+      expiry: expiry,
+      marginCurrency: daiAddress,
+      returnType: "0", // Linear
+      startingUnderlyingPrice: currentPrice,
+      name: name,
+      symbol: symbol
+    });
+
+
   };
 }
 
