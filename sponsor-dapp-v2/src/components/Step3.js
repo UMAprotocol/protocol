@@ -72,6 +72,8 @@ function Step3(props) {
     let val = contractNameTextRef.current.value;
 
     // Only persist the name at a higher level if it was changed.
+    // Note: the reason we do this is so that a new name is always generated when this page is mounted unless the user
+    // saved a change to this field at some point in the past.
     if (val !== state.contractName) {
       props.userSelectionsRef.current.name = val;
     }
@@ -96,6 +98,8 @@ function Step3(props) {
     let val = contractSymbolTextRef.current.value;
 
     // Only persist the symbol at a higher level if it was changed.
+    // Note: the reason we do this is so that a new symbol is always generated when this page is mounted unless the
+    // user saved a change to this field at some point in the past.
     if (val !== state.tokenSymbol) {
       props.userSelectionsRef.current.symbol = val;
     }
