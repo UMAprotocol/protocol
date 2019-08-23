@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 
 export function useNumRegisteredContracts() {
@@ -130,4 +130,77 @@ export function useCollateralizationInformation(tokenAddress, changeInShortBalan
   }
   data.ready = true;
   return data;
+}
+
+// TODO(mrice32): replace with some sort of global-ish config later.
+export function useIdentifierConfig() {
+  return useMemo(
+    () => ({
+      "BTC/USD": {
+        supportedMove: "0.1",
+        collateralRequirement: "110%",
+        expiries: [1568649600, 1571241600]
+      },
+      "ETH/USD": {
+        supportedMove: "0.1",
+        collateralRequirement: "110%",
+        expiries: [1568649600, 1571241600]
+      },
+      "CoinMarketCap Top100 Index": {
+        supportedMove: "0.2",
+        collateralRequirement: "120%",
+        expiries: [1568649600, 1571241600]
+      },
+      "S&P500": {
+        supportedMove: "0.1",
+        collateralRequirement: "110%",
+        expiries: [1568649600, 1571241600]
+      }
+    }),
+    []
+  );
+}
+
+export function useEnabledIdentifierConfig() {
+  const {
+    useCacheCallPromise,
+    drizzle: { web3 }
+  } = drizzleReactHooks.useDrizzle();
+  const { useRerenderOnResolution } = drizzleReactHooks;
+
+  const identifierConfig = useIdentifierConfig();
+
+  // Note: using the promisified useCacheCall to prevent unrelated changes from triggering rerenders.
+  const narrowedConfig = useCacheCallPromise(
+    "NotApplicable",
+    (callContract, resolvePromise, config) => {
+      let finished = true;
+      const call = (contractName, methodName, ...args) => {
+        const result = callContract(contractName, methodName, ...args);
+        if (result === undefined) {
+          finished = false;
+        }
+        return result;
+      };
+
+      const narrowedConfig = {};
+      for (const identifier in config) {
+        if (
+          call("Voting", "isIdentifierSupported", web3.utils.utf8ToHex(identifier)) &&
+          call("ManualPriceFeed", "isIdentifierSupported", web3.utils.utf8ToHex(identifier))
+        ) {
+          narrowedConfig[identifier] = config[identifier];
+        }
+      }
+
+      if (finished) {
+        resolvePromise(narrowedConfig);
+      }
+    },
+    identifierConfig
+  );
+
+  useRerenderOnResolution(narrowedConfig);
+
+  return narrowedConfig.isResolved ? narrowedConfig.resolvedValue : undefined;
 }

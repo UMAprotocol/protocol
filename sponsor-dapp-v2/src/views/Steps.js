@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router-dom";
 import classNames from "classnames";
 import { CSSTransition } from "react-transition-group";
-import { drizzleReactHooks } from "drizzle-react";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 
@@ -15,84 +14,13 @@ import Step4 from "components/Step4";
 import Step5 from "components/Step5";
 import Step6 from "components/Step6";
 
-// TODO(mrice32): replace with some sort of global-ish config later.
-function useIdentifierConfig() {
-  return useMemo(
-    () => ({
-      "BTC/USD": {
-        supportedMove: "0.1",
-        collateralRequirement: "110%",
-        expiries: [1568649600, 1571241600]
-      },
-      "ETH/USD": {
-        supportedMove: "0.1",
-        collateralRequirement: "110%",
-        expiries: [1568649600, 1571241600]
-      },
-      "CoinMarketCap Top100 Index": {
-        supportedMove: "0.2",
-        collateralRequirement: "120%",
-        expiries: [1568649600, 1571241600]
-      },
-      "S&P500": {
-        supportedMove: "0.1",
-        collateralRequirement: "110%",
-        expiries: [1568649600, 1571241600]
-      }
-    }),
-    []
-  );
-}
-
-function useEnabledIdentifierConfig() {
-  const {
-    useCacheCallPromise,
-    drizzle: { web3 }
-  } = drizzleReactHooks.useDrizzle();
-  const { useRerenderOnResolution } = drizzleReactHooks;
-
-  const identifierConfig = useIdentifierConfig();
-
-  // Note: using the promisified useCacheCall to prevent unrelated changes from triggering rerenders.
-  const narrowedConfig = useCacheCallPromise(
-    "NotApplicable",
-    (callContract, resolvePromise, config) => {
-      let finished = true;
-      const call = (contractName, methodName, ...args) => {
-        const result = callContract(contractName, methodName, ...args);
-        if (result === undefined) {
-          finished = false;
-        }
-        return result;
-      };
-
-      const narrowedConfig = {};
-      for (const identifier in config) {
-        if (
-          call("Voting", "isIdentifierSupported", web3.utils.utf8ToHex(identifier)) &&
-          call("ManualPriceFeed", "isIdentifierSupported", web3.utils.utf8ToHex(identifier))
-        ) {
-          narrowedConfig[identifier] = config[identifier];
-        }
-      }
-
-      if (finished) {
-        resolvePromise(narrowedConfig);
-      }
-    },
-    identifierConfig
-  );
-
-  useRerenderOnResolution(narrowedConfig);
-
-  return narrowedConfig.isResolved ? narrowedConfig.resolvedValue : undefined;
-}
-
 function Steps() {
-  const identifierConfig = useEnabledIdentifierConfig();
-
-  const chosenIdentifierRef = useRef(null);
-  const chosenExpiryRef = useRef(null);
+  const userSelectionsRef = useRef({
+    identifier: null,
+    expiry: null,
+    name: null,
+    symbol: null
+  });
 
   const lastSteps = {
     tokenFacilityAddress: {
@@ -185,7 +113,7 @@ function Steps() {
   };
 
   const render = () => {
-    if (!identifierConfig || !lastSteps) {
+    if (!lastSteps) {
       return null;
     }
 
@@ -229,18 +157,12 @@ function Steps() {
 
             <div className="steps__body">
               <CSSTransition in={state.activeStepIndex === 0} timeout={300} classNames="step-1" unmountOnExit>
-                <Step1
-                  identifierConfig={identifierConfig}
-                  chosenIdentifierRef={chosenIdentifierRef}
-                  onNextStep={e => nextStep(e)}
-                />
+                <Step1 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 1} timeout={300} classNames="step-2" unmountOnExit>
                 <Step2
-                  identifierConfig={identifierConfig}
-                  chosenIdentifier={chosenIdentifierRef.current}
-                  chosenExpiryRef={chosenExpiryRef}
+                  userSelectionsRef={userSelectionsRef}
                   onNextStep={e => nextStep(e)}
                   onPrevStep={e => prevStep(e)}
                 />
@@ -248,12 +170,7 @@ function Steps() {
 
               <CSSTransition in={state.activeStepIndex === 2} timeout={200} classNames="step-3" unmountOnExit>
                 <Step3
-                  asset={chosenIdentifierRef.current}
-                  requirement={
-                    identifierConfig[chosenIdentifierRef.current] &&
-                    identifierConfig[chosenIdentifierRef.current].supportedMove
-                  }
-                  expiry={chosenExpiryRef.current}
+                  userSelectionsRef={userSelectionsRef}
                   onNextStep={e => nextStep(e)}
                   onPrevStep={e => prevStep(e)}
                 />

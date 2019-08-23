@@ -1,97 +1,120 @@
-import React, { Component } from "react";
+import React, { useState, useRef } from "react";
 
 import classNames from "classnames";
 import moment from "moment";
+import web3 from "web3";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
+import { useIdentifierConfig } from "lib/custom-hooks";
 
-class Step3 extends Component {
-  constructor(props) {
-    super(props);
+function getContractNameAndSymbol(selections) {
+  // The date is supposed to look like Sep19 in the token name.
+  const date = moment.unix(selections.expiry).format("MMMDD");
 
-    const { name, symbol } = this.getContractNameAndSymbol();
+  // TODO(mrice32): nice to have - predict the first 4 digits of the deployed contract hash.
+  const hash = web3.utils.randomHex(2);
 
-    this.state = {
-      allowedToProceed: true,
-      isLoading: false,
-      contractName: name,
-      editingContractName: false,
-      tokenSymbol: symbol,
-      editingTokenSymbol: false
-    };
-  }
+  // Strip the "/" character from the string, so it appears as BTCUSD rather than BTC/USD.
+  const asset = selections.identifier.replace("/", "");
 
-  getContractNameAndSymbol() {
-    // The date is supposed to look like Sep19 in the token name.
-    const date = moment.unix(this.props.expiry).format("MMMDD");
+  const assetShort = asset.substr(0, 3);
 
-    // TODO(mrice32): figure out how this hash is supposed to be generated.
-    const hash = "0x1234";
-
-    // Strip the "/" character from the string, so it appears as BTCUSD rather than BTC/USD.
-    const asset = this.props.asset.replace("/", "");
-
-    const assetShort = asset.substr(0, 3);
-
-    return {
-      name: `${asset}_${date}_${hash}`,
-      symbol: `${assetShort}${hash}`
-    };
-  }
-
-  checkProceeding = status => {
-    this.setState({
-      allowedToProceed: status
-    });
+  // If either of these have been edited previously, use the previous value.
+  return {
+    name: selections.name ? selections.name : `${asset}_${date}_${hash}`,
+    symbol: selections.symbol ? selections.symbol : `${assetShort}${hash}`
   };
+}
 
-  handleClick(event) {
+function Step3(props) {
+  const {
+    userSelectionsRef: { current: selections }
+  } = props;
+
+  const { name, symbol } = getContractNameAndSymbol(selections);
+
+  const identifierConfig = useIdentifierConfig();
+
+  const [state, setState] = useState({
+    allowedToProceed: true,
+    isLoading: false,
+    contractName: name,
+    editingContractName: false,
+    tokenSymbol: symbol,
+    editingTokenSymbol: false
+  });
+
+  const contractNameTextRef = useRef(null);
+  const contractSymbolTextRef = useRef(null);
+
+  const handleClick = event => {
     event.preventDefault();
     event.persist();
 
-    this.setState(
-      {
-        isLoading: true
-      },
-      () => this.props.onNextStep(event)
-    );
-  }
+    setState(oldState => ({
+      ...oldState,
+      isLoading: true
+    }));
 
-  editContractName = () => {
-    this.setState({
-      editingContractName: true
-    });
+    props.onNextStep(event);
   };
 
-  saveContractName = event => {
+  const editContractName = () => {
+    setState(oldState => ({
+      ...oldState,
+      editingContractName: true
+    }));
+  };
+
+  const saveContractName = event => {
     event.preventDefault();
 
-    let val = this.refs.contractNameText.value;
+    let val = contractNameTextRef.current.value;
 
-    this.setState({
+    // Only persist the name at a higher level if it was changed.
+    if (val !== state.contractName) {
+      props.userSelectionsRef.current.name = val;
+    }
+
+    setState(oldState => ({
+      ...oldState,
       contractName: val,
       editingContractName: false
-    });
+    }));
   };
 
-  editTokenSymbol = () => {
-    this.setState({
+  const editTokenSymbol = () => {
+    setState(oldState => ({
+      ...oldState,
       editingTokenSymbol: true
-    });
+    }));
   };
 
-  saveTokenSymbol = event => {
+  const saveTokenSymbol = event => {
     event.preventDefault();
 
-    let val = this.refs.tokenSymbolText.value;
+    let val = contractSymbolTextRef.current.value;
 
-    this.setState({
+    // Only persist the symbol at a higher level if it was changed.
+    if (val !== state.tokenSymbol) {
+      props.userSelectionsRef.current.symbol = val;
+    }
+
+    setState(oldState => ({
+      ...oldState,
       tokenSymbol: val,
       editingTokenSymbol: false
-    });
+    }));
   };
 
-  render() {
+  const render = () => {
+    const { toBN, toWei, fromWei } = web3.utils;
+    // Use BN rather than JS number to avoid precision issues.
+    const collatReq = fromWei(
+      toBN(toWei(identifierConfig[selections.identifier].supportedMove))
+        .add(toBN(toWei("1")))
+        .muln(100)
+    );
     return (
       <div className="step step--tertiary">
         <div className="step__content">
@@ -105,38 +128,37 @@ class Step3 extends Component {
           <div className="step__entry">
             <ul className="list-selections">
               <li>
-                Asset: <span>{this.props.asset}</span>
+                Asset: <span>{selections.identifier}</span>
               </li>
 
               <li>
-                Collateralization requirement:{" "}
-                <span>{Math.round((Number(this.props.requirement) + 1) * 10000) / 100}%</span>
+                Collateralization requirement: <span>{collatReq}%</span>
               </li>
 
               <li>
-                Expiry: <span>{moment.unix(this.props.expiry).format("MMMM DD, YYYY LTS")}</span>
+                Expiry: <span>{moment.unix(selections.expiry).format("MMMM DD, YYYY LTS")}</span>
               </li>
 
               <li>
                 Contract name:
-                {!this.state.editingContractName && (
+                {!state.editingContractName && (
                   <span className="text">
-                    {this.state.contractName}
+                    {state.contractName}
 
-                    <button type="button" className="btn-edit" onClick={this.editContractName}>
+                    <button type="button" className="btn-edit" onClick={editContractName}>
                       <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
                     </button>
                   </span>
                 )}
-                {this.state.editingContractName && (
+                {state.editingContractName && (
                   <div className="form-edit">
-                    <form action="#" method="post" onSubmit={e => this.saveContractName(e)}>
+                    <form action="#" method="post" onSubmit={e => saveContractName(e)}>
                       <div className="form__controls">
                         <input
                           type="text"
                           className="field"
-                          ref="contractNameText"
-                          defaultValue={this.state.contractName}
+                          ref={contractNameTextRef}
+                          defaultValue={state.contractName}
                         />
                       </div>
 
@@ -152,24 +174,24 @@ class Step3 extends Component {
 
               <li>
                 Token symbol:
-                {!this.state.editingTokenSymbol && (
+                {!state.editingTokenSymbol && (
                   <span className="text">
-                    {this.state.tokenSymbol}
+                    {state.tokenSymbol}
 
-                    <button type="button" className="btn-edit" onClick={this.editTokenSymbol}>
+                    <button type="button" className="btn-edit" onClick={editTokenSymbol}>
                       <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
                     </button>
                   </span>
                 )}
-                {this.state.editingTokenSymbol && (
+                {state.editingTokenSymbol && (
                   <div className="form-edit">
-                    <form action="#" method="post" onSubmit={e => this.saveTokenSymbol(e)}>
+                    <form action="#" method="post" onSubmit={e => saveTokenSymbol(e)}>
                       <div className="form__controls">
                         <input
                           type="text"
                           className="field"
-                          ref="tokenSymbolText"
-                          defaultValue={this.state.tokenSymbol}
+                          ref={contractSymbolTextRef}
+                          defaultValue={state.tokenSymbol}
                         />
                       </div>
 
@@ -186,16 +208,16 @@ class Step3 extends Component {
           </div>
 
           <div className="step__actions">
-            <a href="test" className="btn btn--alt" onClick={this.props.onPrevStep}>
+            <a href="test" className="btn btn--alt" onClick={props.onPrevStep}>
               Back
             </a>
 
             <a
               href="test"
-              onClick={e => this.handleClick(e)}
+              onClick={e => handleClick(e)}
               className={classNames("btn has-loading", {
-                disabled: !this.state.allowedToProceed,
-                "is-loading": this.state.isLoading
+                disabled: !state.allowedToProceed,
+                "is-loading": state.isLoading
               })}
             >
               <span>Create Contract</span>
@@ -208,7 +230,8 @@ class Step3 extends Component {
         </div>
       </div>
     );
-  }
+  };
+  return render();
 }
 
 export default Step3;

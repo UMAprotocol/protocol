@@ -1,32 +1,35 @@
-import React, { Component } from "react";
+import React, { useState } from "react";
 
 import moment from "moment";
 import classNames from "classnames";
 
 import Dropdown from "components/common/Dropdown";
+import { useIdentifierConfig } from "lib/custom-hooks";
 
-class Step2 extends Component {
-  constructor(props) {
-    super(props);
+function Step2(props) {
+  const [state, setState] = useState({
+    allowedToProceed: false
+  });
 
-    this.state = {
-      allowedToProceed: false
-    };
-
-    this.dropdown = React.createRef();
-  }
-
-  checkProceeding = (status, selectedExpiry) => {
-    this.props.chosenExpiryRef.current = selectedExpiry;
-    this.setState({
+  const checkProceeding = (status, selectedExpiry) => {
+    props.userSelectionsRef.current.expiry = selectedExpiry;
+    setState({
       allowedToProceed: status
     });
   };
 
-  render() {
-    const { identifierConfig, chosenIdentifier } = this.props;
+  const identifierConfig = useIdentifierConfig();
 
-    const timeline = identifierConfig[chosenIdentifier].expiries.map(expiry => {
+  const render = () => {
+    if (!identifierConfig) {
+      return null;
+    }
+
+    const {
+      userSelectionsRef: { current: selection }
+    } = props;
+
+    const timeline = identifierConfig[selection.identifier].expiries.map(expiry => {
       return {
         key: expiry,
         value: moment.unix(expiry).format("MMMM DD, YYYY LTS")
@@ -48,24 +51,23 @@ class Step2 extends Component {
         <div className="step__aside">
           <div className="step__entry">
             <Dropdown
-              ref={this.dropdown}
               placeholder="Select settlement date"
               list={timeline}
-              onChange={this.checkProceeding}
-              initialKeySelection={this.props.chosenExpiryRef.current}
+              onChange={checkProceeding}
+              initialKeySelection={selection.expiry}
             />
           </div>
 
           <div className="step__actions">
-            <a href="test" className="btn btn--alt" onClick={this.props.onPrevStep}>
+            <a href="test" className="btn btn--alt" onClick={props.onPrevStep}>
               Back
             </a>
 
             <a
               href="test"
-              onClick={this.props.onNextStep}
+              onClick={props.onNextStep}
               className={classNames("btn", {
-                disabled: !this.state.allowedToProceed
+                disabled: !state.allowedToProceed
               })}
             >
               Next
@@ -74,7 +76,9 @@ class Step2 extends Component {
         </div>
       </div>
     );
-  }
+  };
+
+  return render();
 }
 
 export default Step2;
