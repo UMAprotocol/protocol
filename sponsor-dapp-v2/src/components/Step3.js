@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 
 import classNames from "classnames";
 import moment from "moment";
@@ -27,7 +27,7 @@ function getContractNameAndSymbol(selections) {
   };
 }
 
-function useCreateContract(userSelectionsRef, identifierConfig) {
+function useCreateContract(userSelectionsRef, identifierConfig, onNextStep) {
 
   const { toWei, utf8ToHex } = web3.utils;
   const { identifier, expiry, name, symbol } = userSelectionsRef.current;
@@ -37,18 +37,30 @@ function useCreateContract(userSelectionsRef, identifierConfig) {
   const currentPrice = useCacheCall("ManualPriceFeed", "latestPrice", utf8ToHex(identifier));
   const daiAddress = useDaiAddress();
 
-  const { send, status, TXObjexts } = useCacheSend("TokenizedDerivativeCreator", "createTokenizedDerivative");
+  const { send: rawSend, status, TXObjects } = useCacheSend("TokenizedDerivativeCreator", "createTokenizedDerivative");
+
+  useEffect(() => {
+    if (status === "success" && TXObjects && TXObjects.length > 0) {
+
+      // Pull the contract address from the logs and set it in the higher level component so it can be passed elsewhere.
+      const contractCreationLog = TXObjects[TXObjects.length - 1].receipt.logs.find(log => log.event === "CreatedTokenizedDerivative");
+      userSelectionsRef.current.contractAddress = contractCreationLog.args.contractAddress;
+
+      // Transition to the next step since the txn is complete.
+      onNextStep();
+    }
+  }, [status, TXObjects, userSelectionsRef, onNextStep]);
 
   if (!currentPrice || !daiAddress) {
     return null;
   }
 
-  const sendFn = () => {
+  const send = () => {
     // 10^18 * 10^18, which represents 10^20%. This is large enough to never hit, but small enough that the numbers
     // will never overflow when multiplying by a balance.
     const withdrawLimit = "1000000000000000000000000000000000000";
 
-    send({
+    rawSend({
       defaultPenalty: toWei("1"),
       supportedMove: toWei(identifierConfig[identifier].supportedMove),
       product: utf8ToHex(identifier),
@@ -63,9 +75,9 @@ function useCreateContract(userSelectionsRef, identifierConfig) {
       name: name,
       symbol: symbol
     });
-
-
   };
+
+  return { send, status };
 }
 
 function Step3(props) {
@@ -89,14 +101,14 @@ function Step3(props) {
   const contractNameTextRef = useRef(null);
   const contractSymbolTextRef = useRef(null);
 
+  const { send, status } = useCreateContract(props.userSelectionsRef, identifierConfig, props.onNextStep);
+
   const handleClick = event => {
     event.preventDefault();
     event.persist();
 
-    setState(oldState => ({
-      ...oldState,
-      isLoading: true
-    }));
+    // Send txn.
+    send();
 
     props.onNextStep(event);
   };
@@ -263,7 +275,7 @@ function Step3(props) {
               onClick={e => handleClick(e)}
               className={classNames("btn has-loading", {
                 disabled: !state.allowedToProceed,
-                "is-loading": state.isLoading
+                "is-loading": status === "pending"
               })}
             >
               <span>Create Contract</span>

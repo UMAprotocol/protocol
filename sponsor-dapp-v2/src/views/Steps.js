@@ -19,7 +19,8 @@ function Steps() {
     identifier: null,
     expiry: null,
     name: null,
-    symbol: null
+    symbol: null,
+    contractAddress: null
   });
 
   const lastSteps = {
@@ -63,7 +64,10 @@ function Steps() {
   });
 
   const nextStep = event => {
-    event.preventDefault();
+    if (event) {
+      event.preventDefault();
+    }
+    
     const currentStepIndex = state.activeStepIndex;
     let nextStepIndex = currentStepIndex + 1;
     const stepsNav = [...state.steps];
