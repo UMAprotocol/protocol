@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 import classNames from "classnames";
 import moment from "moment";
@@ -27,32 +27,30 @@ function getContractNameAndSymbol(selections) {
   };
 }
 
-function useCreateContract(userSelectionsRef, identifierConfig, onNextStep) {
-
+function useCreateContract(userSelectionsRef, identifierConfig, onNextStep, state) {
   const { toWei, utf8ToHex } = web3.utils;
-  const { identifier, expiry, name, symbol } = userSelectionsRef.current;
   const { drizzle, useCacheSend, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const { identifier, expiry } = userSelectionsRef.current;
 
-
-  const currentPrice = useCacheCall("ManualPriceFeed", "latestPrice", utf8ToHex(identifier));
+  const currentPrice = useCacheCall("ManualPriceFeed", "latestPrice", utf8ToHex(userSelectionsRef.current.identifier));
   const daiAddress = useDaiAddress();
 
   const { send: rawSend, status, TXObjects } = useCacheSend("TokenizedDerivativeCreator", "createTokenizedDerivative");
 
   useEffect(() => {
-    if (status === "success" && TXObjects && TXObjects.length > 0) {
-
+    if (status === "success") {
       // Pull the contract address from the logs and set it in the higher level component so it can be passed elsewhere.
-      const contractCreationLog = TXObjects[TXObjects.length - 1].receipt.logs.find(log => log.event === "CreatedTokenizedDerivative");
-      userSelectionsRef.current.contractAddress = contractCreationLog.args.contractAddress;
+      userSelectionsRef.current.contractAddress =
+        TXObjects[TXObjects.length - 1].receipt.events.CreatedTokenizedDerivative.returnValues.contractAddress;
 
       // Transition to the next step since the txn is complete.
       onNextStep();
     }
-  }, [status, TXObjects, userSelectionsRef, onNextStep]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   if (!currentPrice || !daiAddress) {
-    return null;
+    return {};
   }
 
   const send = () => {
@@ -65,15 +63,16 @@ function useCreateContract(userSelectionsRef, identifierConfig, onNextStep) {
       supportedMove: toWei(identifierConfig[identifier].supportedMove),
       product: utf8ToHex(identifier),
       fixedYearlyFee: "0",
+      withdrawLimit: withdrawLimit,
       disputeDeposit: toWei("1"),
       returnCalculator: drizzle.contracts.LeveragedReturnCalculator.address,
-      startingTokenPrice: currentPrice,
+      startingTokenPrice: currentPrice.price,
       expiry: expiry,
       marginCurrency: daiAddress,
       returnType: "0", // Linear
-      startingUnderlyingPrice: currentPrice,
-      name: name,
-      symbol: symbol
+      startingUnderlyingPrice: currentPrice.price,
+      name: state.contractName,
+      symbol: state.tokenSymbol
     });
   };
 
@@ -101,7 +100,7 @@ function Step3(props) {
   const contractNameTextRef = useRef(null);
   const contractSymbolTextRef = useRef(null);
 
-  const { send, status } = useCreateContract(props.userSelectionsRef, identifierConfig, props.onNextStep);
+  const { send, status } = useCreateContract(props.userSelectionsRef, identifierConfig, props.onNextStep, state);
 
   const handleClick = event => {
     event.preventDefault();
@@ -109,8 +108,6 @@ function Step3(props) {
 
     // Send txn.
     send();
-
-    props.onNextStep(event);
   };
 
   const editContractName = () => {
@@ -166,6 +163,10 @@ function Step3(props) {
   };
 
   const render = () => {
+    if (!send) {
+      return <div />;
+    }
+
     const { toBN, toWei, fromWei } = web3.utils;
     // Use BN rather than JS number to avoid precision issues.
     const collatReq = fromWei(
@@ -173,6 +174,7 @@ function Step3(props) {
         .add(toBN(toWei("1")))
         .muln(100)
     );
+
     return (
       <div className="step step--tertiary">
         <div className="step__content">

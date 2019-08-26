@@ -162,7 +162,6 @@ export function useIdentifierConfig() {
 }
 
 export function useDaiAddress() {
-
   const { drizzle } = drizzleReactHooks.useDrizzle();
 
   const networkId = drizzleReactHooks.useDrizzleState(drizzleState => {
@@ -175,7 +174,7 @@ export function useDaiAddress() {
   }
 
   // Otherwise, we'll use the same address that our faucet depends on.
-  return drizzle.TestnetERC20.address;
+  return drizzle.contracts.TestnetERC20.address;
 }
 
 export function useEnabledIdentifierConfig() {

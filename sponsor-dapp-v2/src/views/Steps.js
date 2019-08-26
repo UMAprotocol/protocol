@@ -67,7 +67,7 @@ function Steps() {
     if (event) {
       event.preventDefault();
     }
-    
+
     const currentStepIndex = state.activeStepIndex;
     let nextStepIndex = currentStepIndex + 1;
     const stepsNav = [...state.steps];
@@ -82,7 +82,7 @@ function Steps() {
     stepsNav[currentStepIndex].isActive = false;
     stepsNav[currentStepIndex].isCompleted = true;
 
-    if (currentStepIndex === 2 || currentStepIndex === 3 || currentStepIndex === 4) {
+    if (currentStepIndex === 3 || currentStepIndex === 4) {
       setTimeout(() => {
         setState(oldState => ({
           ...oldState,

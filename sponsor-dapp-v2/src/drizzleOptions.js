@@ -7,7 +7,15 @@ import LeveragedReturnCalculator from "contracts/LeveragedReturnCalculator.json"
 import TestnetERC20 from "contracts/TestnetERC20.json";
 
 const options = {
-  contracts: [Registry, Finder, Voting, ManualPriceFeed, TokenizedDerivativeCreator, LeveragedReturnCalculator, TestnetERC20],
+  contracts: [
+    Registry,
+    Finder,
+    Voting,
+    ManualPriceFeed,
+    TokenizedDerivativeCreator,
+    LeveragedReturnCalculator,
+    TestnetERC20
+  ],
   polls: {
     accounts: 3500,
     blocks: 3000
