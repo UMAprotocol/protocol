@@ -1,11 +1,12 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 import classNames from "classnames";
 import moment from "moment";
 import web3 from "web3";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
-import { useIdentifierConfig } from "lib/custom-hooks";
+import { useIdentifierConfig, useDaiAddress } from "lib/custom-hooks";
+import { drizzleReactHooks } from "drizzle-react";
 
 function getContractNameAndSymbol(selections) {
   // The date is supposed to look like Sep19 in the token name.
@@ -24,6 +25,58 @@ function getContractNameAndSymbol(selections) {
     name: selections.name ? selections.name : `${asset}_${date}_${hash}`,
     symbol: selections.symbol ? selections.symbol : `${assetShort}${hash}`
   };
+}
+
+function useCreateContract(userSelectionsRef, identifierConfig, onNextStep, state) {
+  const { toWei, utf8ToHex } = web3.utils;
+  const { drizzle, useCacheSend, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const { identifier, expiry } = userSelectionsRef.current;
+
+  const currentPrice = useCacheCall("ManualPriceFeed", "latestPrice", utf8ToHex(userSelectionsRef.current.identifier));
+  const daiAddress = useDaiAddress();
+
+  const { send: rawSend, status, TXObjects } = useCacheSend("TokenizedDerivativeCreator", "createTokenizedDerivative");
+
+  useEffect(() => {
+    if (status === "success") {
+      // Pull the contract address from the logs and set it in the higher level component so it can be passed elsewhere.
+      userSelectionsRef.current.contractAddress =
+        TXObjects[TXObjects.length - 1].receipt.events.CreatedTokenizedDerivative.returnValues.contractAddress;
+
+      // Transition to the next step since the txn is complete.
+      onNextStep();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  if (!currentPrice || !daiAddress) {
+    return {};
+  }
+
+  const send = () => {
+    // 10^18 * 10^18, which represents 10^20%. This is large enough to never hit, but small enough that the numbers
+    // will never overflow when multiplying by a balance.
+    const withdrawLimit = "1000000000000000000000000000000000000";
+
+    rawSend({
+      defaultPenalty: toWei("1"),
+      supportedMove: toWei(identifierConfig[identifier].supportedMove),
+      product: utf8ToHex(identifier),
+      fixedYearlyFee: "0",
+      withdrawLimit: withdrawLimit,
+      disputeDeposit: toWei("1"),
+      returnCalculator: drizzle.contracts.LeveragedReturnCalculator.address,
+      startingTokenPrice: currentPrice.price,
+      expiry: expiry,
+      marginCurrency: daiAddress,
+      returnType: "0", // Linear
+      startingUnderlyingPrice: currentPrice.price,
+      name: state.contractName,
+      symbol: state.tokenSymbol
+    });
+  };
+
+  return { send, status };
 }
 
 function Step3(props) {
@@ -47,16 +100,14 @@ function Step3(props) {
   const contractNameTextRef = useRef(null);
   const contractSymbolTextRef = useRef(null);
 
+  const { send, status } = useCreateContract(props.userSelectionsRef, identifierConfig, props.onNextStep, state);
+
   const handleClick = event => {
     event.preventDefault();
     event.persist();
 
-    setState(oldState => ({
-      ...oldState,
-      isLoading: true
-    }));
-
-    props.onNextStep(event);
+    // Send txn.
+    send();
   };
 
   const editContractName = () => {
@@ -112,6 +163,10 @@ function Step3(props) {
   };
 
   const render = () => {
+    if (!send) {
+      return <div />;
+    }
+
     const { toBN, toWei, fromWei } = web3.utils;
     // Use BN rather than JS number to avoid precision issues.
     const collatReq = fromWei(
@@ -119,6 +174,7 @@ function Step3(props) {
         .add(toBN(toWei("1")))
         .muln(100)
     );
+
     return (
       <div className="step step--tertiary">
         <div className="step__content">
@@ -221,7 +277,7 @@ function Step3(props) {
               onClick={e => handleClick(e)}
               className={classNames("btn has-loading", {
                 disabled: !state.allowedToProceed,
-                "is-loading": state.isLoading
+                "is-loading": status === "pending"
               })}
             >
               <span>Create Contract</span>

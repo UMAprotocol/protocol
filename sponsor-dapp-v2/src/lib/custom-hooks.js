@@ -161,6 +161,22 @@ export function useIdentifierConfig() {
   );
 }
 
+export function useDaiAddress() {
+  const { drizzle } = drizzleReactHooks.useDrizzle();
+
+  const networkId = drizzleReactHooks.useDrizzleState(drizzleState => {
+    return drizzleState.web3.networkId;
+  });
+
+  if (networkId.toString() === "1") {
+    // Real DAI address.
+    return "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359";
+  }
+
+  // Otherwise, we'll use the same address that our faucet depends on.
+  return drizzle.contracts.TestnetERC20.address;
+}
+
 export function useEnabledIdentifierConfig() {
   const {
     useCacheCallPromise,
