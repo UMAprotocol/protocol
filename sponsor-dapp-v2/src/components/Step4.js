@@ -2,9 +2,7 @@ import React, { useEffect } from "react";
 
 import classNames from "classnames";
 import { drizzleReactHooks } from "drizzle-react";
-
-// Corresponds to `~uint(0)` in Solidity.
-const UINT_MAX = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+import { MAX_UINT_VAL } from "common/Constants";
 
 function useApproveDai(onSuccess, addressToApprove) {
   const { useCacheSend } = drizzleReactHooks.useDrizzle();
@@ -19,7 +17,7 @@ function useApproveDai(onSuccess, addressToApprove) {
   }, [status]);
 
   const send = () => {
-    rawSend(addressToApprove, UINT_MAX);
+    rawSend(addressToApprove, MAX_UINT_VAL);
   };
 
   return { status, send };
