@@ -82,7 +82,7 @@ function Steps() {
     stepsNav[currentStepIndex].isActive = false;
     stepsNav[currentStepIndex].isCompleted = true;
 
-    if (currentStepIndex === 3 || currentStepIndex === 4) {
+    if (currentStepIndex === 4) {
       setTimeout(() => {
         setState(oldState => ({
           ...oldState,
@@ -181,7 +181,7 @@ function Steps() {
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 3} timeout={200} classNames="step-4" unmountOnExit>
-                <Step4 data={lastSteps} onNextStep={e => nextStep(e)} />
+                <Step4 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 4} timeout={300} classNames="step-5" unmountOnExit>

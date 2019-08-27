@@ -1,37 +1,45 @@
-import React, { Component } from "react";
+import React, { useEffect } from "react";
 
 import classNames from "classnames";
+import { drizzleReactHooks } from "drizzle-react";
+import { MAX_UINT_VAL } from "common/Constants";
 
-class Step4 extends Component {
-  constructor(props) {
-    super(props);
+function useApproveDai(onSuccess, addressToApprove) {
+  const { useCacheSend } = drizzleReactHooks.useDrizzle();
 
-    this.state = {
-      allowedToProceed: true,
-      isLoading: false
-    };
-  }
+  const { send: rawSend, status } = useCacheSend("TestnetERC20", "approve");
 
-  checkProceeding = status => {
-    this.setState({
-      allowedToProceed: status
-    });
+  useEffect(() => {
+    if (status === "success") {
+      onSuccess();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const send = () => {
+    rawSend(addressToApprove, MAX_UINT_VAL);
   };
 
-  handleClick(event) {
+  return { status, send };
+}
+
+function Step4(props) {
+  const { contractAddress } = props.userSelectionsRef.current;
+
+  const { status, send } = useApproveDai(props.onNextStep, contractAddress);
+
+  const handleClick = event => {
     event.preventDefault();
     event.persist();
 
-    this.setState(
-      {
-        isLoading: true
-      },
-      () => this.props.onNextStep(event)
-    );
-  }
+    // Send txn.
+    send();
+  };
 
-  render() {
-    const { data } = this.props;
+  const render = () => {
+    if (!send) {
+      return <div />;
+    }
 
     return (
       <div className="step">
@@ -39,7 +47,7 @@ class Step4 extends Component {
           <p>
             Your token facility was successfully created.
             <span>
-              (address: {data.tokenFacilityAddress.display.slice(0, 2)}
+              (address: {contractAddress.slice(0, 2)}
               .....)
             </span>
           </p>
@@ -56,10 +64,10 @@ class Step4 extends Component {
           <div className="step__actions">
             <a
               href="test"
-              onClick={e => this.handleClick(e)}
+              onClick={e => handleClick(e)}
               className={classNames("btn has-loading", {
-                disabled: !this.state.allowedToProceed,
-                "is-loading": this.state.isLoading
+                disabled: false,
+                "is-loading": status === "pending"
               })}
             >
               <span>Authorize contract</span>
@@ -72,7 +80,8 @@ class Step4 extends Component {
         </div>
       </div>
     );
-  }
+  };
+  return render();
 }
 
 export default Step4;
