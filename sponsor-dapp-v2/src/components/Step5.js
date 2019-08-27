@@ -1,68 +1,75 @@
-import React, { Component } from "react";
+import React, { useEffect } from "react";
 
 import classNames from "classnames";
+import { withAddedContract } from "lib/contracts";
+import { useTextInput, useCollateralizationInformation } from "lib/custom-hooks";
+import { drizzleReactHooks } from "drizzle-react";
+import TokenizedDerivative from "contracts/TokenizedDerivative.json";
+import { createFormatFunction } from "common/FormattingUtils";
 
-class Step5 extends Component {
-  constructor(props) {
-    super(props);
+function useBorrow(onSuccess, userSelectionsRef, ...args) {
+  const { useCacheSend, drizzle } = drizzleReactHooks.useDrizzle();
+  const { toWei } = drizzle.web3.utils;
 
-    this.state = {
-      allowedToProceed: false,
-      dai: "",
-      tokens: "",
-      isLoading: false
-    };
-  }
+  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
+    account: drizzleState.accounts[0]
+  }));
 
-  checkProceeding = status => {
-    this.setState({
-      allowedToProceed: status
-    });
+  const { send: rawSend, status, TXObjects } = useCacheSend(
+    userSelectionsRef.current.contractAddress,
+    "depositAndCreateTokens"
+  );
+
+  useEffect(() => {
+    if (status === "success") {
+      // Save the number of tokens that the user borrowed so it can be displayed on the next page.
+      userSelectionsRef.current.tokensBorrowed =
+        TXObjects[TXObjects.length - 1].receipt.events.TokensCreated.returnValues.numTokensCreated;
+      onSuccess();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const send = () => {
+    rawSend(...args.map(amount => toWei(amount)), { from: account });
   };
 
-  handleChangeDai(event) {
-    // Check if regex number matches
-    if (/^(\s*|\d+)$/.test(event.target.value)) {
-      this.setState({ dai: event.target.value }, () => {
-        this.checkFields();
-      });
-    }
-  }
+  return { status, send };
+}
 
-  handleChangeTokens(event) {
-    // Check if regex number matches
-    if (/^(\s*|\d+)$/.test(event.target.value)) {
-      this.setState({ tokens: event.target.value }, () => {
-        this.checkFields();
-      });
-    }
-  }
+function Step5(props) {
+  // Pull in relevant functions.
+  const { useCacheCall, drizzle } = drizzleReactHooks.useDrizzle();
+  const format = createFormatFunction(drizzle.web3, 4);
 
-  checkFields() {
-    if (this.state.dai.length > 0 && this.state.tokens.length > 0) {
-      this.checkProceeding(true);
-    } else {
-      this.checkProceeding(false);
-    }
-  }
+  // Get user inputs.
+  const { amount: dai, handleChangeAmount: handleChangeDai } = useTextInput();
+  const { amount: tokens, handleChangeAmount: handleChangeTokens } = useTextInput();
+  const { identifier, contractAddress } = props.userSelectionsRef.current;
 
-  handleClick(event) {
+  // Set up potential txn.
+  const { send, status } = useBorrow(props.onNextStep, props.userSelectionsRef, dai, tokens);
+
+  // Get data to display.
+  const { currentCollateralization, collateralizationRequirement } = useCollateralizationInformation(
+    contractAddress,
+    ""
+  );
+  const currentPrice = useCacheCall(contractAddress, "getUpdatedUnderlyingPrice");
+
+  const handleClick = event => {
     event.preventDefault();
     event.persist();
 
-    this.setState(
-      {
-        isLoading: true
-      },
-      () => this.props.onNextStep(event)
-    );
-  }
+    // Send txn.
+    send();
+  };
 
-  render() {
-    const { data } = this.props;
+  const allowedToProceed = dai !== "" && tokens !== "";
 
+  const render = () => {
     return (
-      <div className="step">
+      <div className="step step-5-enter-done">
         <div className="form-borrow">
           <form action="#" method="post">
             <div className="form__body">
@@ -79,11 +86,11 @@ class Step5 extends Component {
                         className="field"
                         id="field-dai"
                         name="field-dai"
-                        value={this.state.dai}
+                        value={dai}
                         maxLength="18"
                         autoComplete="off"
-                        disabled={this.state.isLoading}
-                        onChange={e => this.handleChangeDai(e)}
+                        disabled={status === "pending"}
+                        onChange={e => handleChangeDai(e)}
                       />
 
                       <span>DAI</span>
@@ -105,11 +112,10 @@ class Step5 extends Component {
                         className="field"
                         maxLength="18"
                         autoComplete="off"
-                        disabled={this.state.isLoading}
-                        value={this.state.tokens}
-                        onChange={e => this.handleChangeTokens(e)}
+                        disabled={status === "pending"}
+                        value={tokens}
+                        onChange={e => handleChangeTokens(e)}
                       />
-
                       <span>Tokens</span>
                     </div>
                   </div>
@@ -126,15 +132,15 @@ class Step5 extends Component {
         <div className="step__inner">
           <div className="step__content">
             <dl className="step__description">
-              <dt>Liquidation price [{data.identifier}]: N/A</dt>
+              <dt>Liquidation price [{identifier}]: N/A</dt>
               <dd>
-                Current price [{data.identifier}]: {data.currentPrice}
+                Current price [{identifier}]: ${currentPrice ? format(currentPrice.underlyingPrice) : " --"}
               </dd>
             </dl>
 
             <dl className="step__description">
-              <dt>Collateralization ratio: N/A</dt>
-              <dd>Minimum ratio: {data.minimumRatio}</dd>
+              <dt>Collateralization ratio: {currentCollateralization || "-- %"}</dt>
+              <dd>Minimum ratio: {collateralizationRequirement ? format(collateralizationRequirement) : "-- %"}%</dd>
             </dl>
           </div>
 
@@ -142,10 +148,10 @@ class Step5 extends Component {
             <div className="step__actions">
               <a
                 href="test"
-                onClick={e => this.handleClick(e)}
+                onClick={e => handleClick(e)}
                 className={classNames("btn has-loading", {
-                  disabled: !this.state.allowedToProceed,
-                  "is-loading": this.state.isLoading
+                  disabled: !allowedToProceed,
+                  "is-loading": status === "pending"
                 })}
               >
                 <span>Borrow tokens</span>
@@ -159,7 +165,11 @@ class Step5 extends Component {
         </div>
       </div>
     );
-  }
+  };
+
+  return render();
 }
 
-export default Step5;
+export default withAddedContract(TokenizedDerivative.abi, props => props.userSelectionsRef.current.contractAddress)(
+  Step5
+);

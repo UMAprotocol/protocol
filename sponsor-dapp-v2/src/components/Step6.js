@@ -1,32 +1,38 @@
-import React, { Component } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import classNames from "classnames";
+import { createFormatFunction } from "common/FormattingUtils";
+import { drizzleReactHooks } from "drizzle-react";
+import { useIdentifierConfig, useEtherscanUrl } from "lib/custom-hooks";
 
-class Step6 extends Component {
-  constructor(props) {
-    super(props);
+function Step6(props) {
+  // Grab functions to retrieve/compute displayed variables.
+  const {
+    drizzle: { web3 }
+  } = drizzleReactHooks.useDrizzle();
+  const format = createFormatFunction(web3, 4);
+  const { toWei, toBN } = web3.utils;
 
-    this.state = {
-      allowedToProceed: true
-    };
-  }
+  // Grab variables to display.
+  const { identifier, contractAddress, tokensBorrowed } = props.userSelectionsRef.current;
+  const etherscanUrl = useEtherscanUrl();
+  const {
+    [identifier]: { supportedMove }
+  } = useIdentifierConfig();
+  const collatReq = format(
+    toBN(toWei(supportedMove))
+      .add(toBN(toWei("1")))
+      .muln(100)
+  );
 
-  checkProceeding = status => {
-    this.setState({
-      allowedToProceed: status
-    });
-  };
-
-  render() {
-    const { data } = this.props;
-
+  const render = () => {
     return (
       <div className="step step--tertiary">
         <div className="step__content-alt">
           <p>
-            You have successfully borrowed {this.props.tokens} synthetic tokens tracking {data.identifier}! View token
+            You have successfully borrowed {format(tokensBorrowed)} synthetic tokens tracking {identifier}! View token
             details on{" "}
-            <a href={data.tokenFacilityAddress.link} target="_blank" rel="noopener noreferrer">
+            <a href={`${etherscanUrl}address/${contractAddress}`} target="_blank" rel="noopener noreferrer">
               Etherscan.
             </a>
           </p>
@@ -36,7 +42,7 @@ class Step6 extends Component {
           </p>
 
           <p>
-            <span>Maintain token facility collateralization greater than 110% to avoid liquidation.</span>
+            <span>Maintain token facility collateralization greater than {collatReq}% to avoid liquidation.</span>
           </p>
 
           <p>
@@ -52,7 +58,7 @@ class Step6 extends Component {
             <Link
               to="/ViewPositions"
               className={classNames("btn", {
-                disabled: !this.state.allowedToProceed
+                disabled: false
               })}
             >
               View my risk
@@ -61,7 +67,9 @@ class Step6 extends Component {
         </div>
       </div>
     );
-  }
+  };
+
+  return render();
 }
 
 export default Step6;
