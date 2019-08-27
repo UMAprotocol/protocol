@@ -20,7 +20,8 @@ function Steps() {
     expiry: null,
     name: null,
     symbol: null,
-    contractAddress: null
+    contractAddress: null,
+    tokensBorrowed: null
   });
 
   const lastSteps = {
@@ -82,21 +83,11 @@ function Steps() {
     stepsNav[currentStepIndex].isActive = false;
     stepsNav[currentStepIndex].isCompleted = true;
 
-    if (currentStepIndex === 4) {
-      setTimeout(() => {
-        setState(oldState => ({
-          ...oldState,
-          activeStepIndex: nextStepIndex,
-          steps: stepsNav
-        }));
-      }, 5000);
-    } else {
-      setState(oldState => ({
-        ...oldState,
-        activeStepIndex: nextStepIndex,
-        steps: stepsNav
-      }));
-    }
+    setState(oldState => ({
+      ...oldState,
+      activeStepIndex: nextStepIndex,
+      steps: stepsNav
+    }));
   };
 
   const prevStep = event => {
@@ -185,11 +176,11 @@ function Steps() {
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 4} timeout={300} classNames="step-5" unmountOnExit>
-                <Step5 data={lastSteps} onNextStep={e => nextStep(e)} />
+                <Step5 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 5} timeout={300} classNames="step-6" unmountOnExit>
-                <Step6 data={lastSteps} tokens="10" />
+                <Step6 userSelectionsRef={userSelectionsRef} />
               </CSSTransition>
             </div>
           </div>
