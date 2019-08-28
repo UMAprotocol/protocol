@@ -23,9 +23,7 @@ function enableControllableTiming(network) {
 
 function shouldCommitDeployment(network) {
   // ci is included here just for testing the process of saving deployments.
-  return (
-    network === "ci" || isPublicNetwork(network)
-  );
+  return network === "ci" || isPublicNetwork(network);
 }
 
 function isEmptyObject(obj) {
