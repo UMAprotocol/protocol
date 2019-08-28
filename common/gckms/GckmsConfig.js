@@ -29,7 +29,7 @@ function getDefaultStaticConfig() {
   //   locationId: Google Cloud location, e.g., 'global'.
   //   ciphertextBucket: ID of a Google Cloud storage bucket.
   //   ciphertextFilename: Name of a file within `ciphertextBucket`.
-  
+
   const defaultConfig = {
     private: {
       deployer: {},
@@ -51,7 +51,7 @@ function getDefaultStaticConfig() {
     }
   };
 
-   // Add a blank network config for all public networks so they don't fail to process but will fail if selected.
+  // Add a blank network config for all public networks so they don't fail to process but will fail if selected.
   const blankNetworkConfig = {
     deployer: {},
     registry: {},
@@ -70,11 +70,11 @@ function getDefaultStaticConfig() {
 }
 
 function getNetworkName() {
-    if (argv.network in publicNetworkNames) {
-      return argv.network;
-    }
+  if (argv.network in publicNetworkNames) {
+    return argv.network;
+  }
 
-    return "private";
+  return "private";
 }
 
 // Compose the exact config for this network.

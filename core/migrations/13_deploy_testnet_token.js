@@ -11,7 +11,7 @@ module.exports = async function(deployer, network, accounts) {
       return;
     }
   }
-    
+
   // Deploy if the network isn't public or if there was no listed DAI address.
   await deploy(deployer, network, TestnetERC20);
 };

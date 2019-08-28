@@ -91,7 +91,7 @@ function getTxnLink(txnHash) {
     const url = `${networkConfig.etherscan}tx/${txnHash}`;
     return `<a href="${url}">${txnHash}</a>`;
   }
-  
+
   // If there is no etherscan link, just return the plaintext txnHash.
   return txnHash;
 }

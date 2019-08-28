@@ -3,7 +3,13 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const { getKeysForNetwork, deploy, enableControllableTiming, addToTdr, isPublicNetwork } = require("../../common/MigrationUtils.js");
+const {
+  getKeysForNetwork,
+  deploy,
+  enableControllableTiming,
+  addToTdr,
+  isPublicNetwork
+} = require("../../common/MigrationUtils.js");
 
 const ethAddress = "0x0000000000000000000000000000000000000000";
 

@@ -23,8 +23,7 @@ function enableControllableTiming(network) {
 
 function shouldCommitDeployment(network) {
   return (
-    network === "ci" || // Just for testing the process of saving deployments.
-    isPublicNetwork(network) // Any public network.
+    network === "ci" || isPublicNetwork(network) // Just for testing the process of saving deployments. // Any public network.
   );
 }
 
