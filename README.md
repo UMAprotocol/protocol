@@ -11,11 +11,16 @@ Please use Slack for all technical questions and discussions.
 
 The v1 system is not yet deployed to mainnet.
 
+The below instructions will guide you through deploying a contract on your local testnet. This will require you to push prices to your price feed contract and act on behalf of the oracle that resolves any disputes. 
+
+If you wish to avoid this, you can skip to step 4 (" "), which will run the contracts on the testnet that UMA is using, Rinkeby. 
+
 ### Initial Setup
 
 Before attempting to do anything with the v1 system, please run the following commands:
 
-1. Install nodejs and npm
+1. Install nodejs v11.15.0 and ensure that npm is installed along with it.
+1. Go to the top-level directory in this repository. 
 1. Run `npm install`.
 1. Run `cd core`. You'll need to be in the `core` directory to run any truffle commands against the system. 
 1. Run `$(npm bin)/truffle compile` to compile the contracts.
@@ -36,6 +41,39 @@ $(npm bin)/truffle test --network test
 ```
 5. If you want to use the dapp with your Ganache deployment, make sure you plug the mnemonic that it generates into
 Metamask instead of your normal ETH account. NOTE: `sponsor-dapp` only with v0 for now.
+
+### Setting up a Price Feed
+
+To use an instance of these smart contracts, you will need to push prices to the price feed contract. 
+
+After deploying the contracts to your network of choice, you can upload prices to the `ManualPriceFeed` contract for
+use by any derivatives that you choose to deploy. The script defaults to publishing `ESM19` and `CBN19` every 15
+minutes. Depending on the types of price feeds configured in your `core/config/identifiers.json` file, you may need some
+API keys in your environment:
+- Crypto price feeds (like `BTCETH` or `ETHUSD`): no environment variables are required.
+- Futures price feeds (like `ESM19` or `CBN19`): a barchart key must be set as an environment variable called
+`BARCHART_API_KEY`. A barchart key is required whenever the key-value pair `"dataSource": "Barchart"` is present in
+`identifiers.json`.
+- Equities price feeds (like `SPY`): an AlphaVantage key must be set as an environment variable called
+`ALPHAVANTAGE_API_KEY`. An AlphaVantage key is equired whenever `"dataSource: AlphaVantageCurrency"` or
+`"dataSource: AlphaVantage"` is present in `identifiers.json`.
+
+
+You can run this script from the top level directory (e.g. core) using the following command:
+```
+./scripts/publishPrices.sh --network <network>
+```
+For the script to succeed, the `build` directory must contain the `ManualPriceFeed` address for the specified network.
+
+### Register the Identifier with the Voting Contract
+
+TBD
+
+### Deploy Tokenized Derivative Contract
+
+You can do this either by launching the "UMA Token Builder" dapp locally or by doing your own command line call. 
+
+TBD
 
 ## V0 System Deployment
 
