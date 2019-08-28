@@ -13,7 +13,7 @@ import { createFormatFunction } from "common/FormattingUtils";
 
 function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const { toWei, toBN } = drizzle.web3.utils;
+  const { fromWei, toWei, toBN } = drizzle.web3.utils;
 
   const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
   const newExcessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
@@ -29,46 +29,26 @@ function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
   }
 
   const fpScalingFactor = toBN(toWei("1"));
-  // NOTE: I have very little faith in the calculation performed below.
-  // NOTE: Does not take leverage into account.
-  // The amount of margin sent in (`marginAmount`) can be allocated to either purchase new tokens (go to long margin)
-  // or to satisfy margin requirements to support new tokens (go to short margin).
+  const sentAmount = toBN(toWei(marginAmount));
+  const supportedMove = toBN(derivativeStorage.fixedParameters.supportedMove);
+  const tokenValueBn = toBN(tokenValue);
 
-  // Every additional amount of margin allows us to purchase this many new tokens.
-  const purchaseLimitScalingFactor = fpScalingFactor.mul(fpScalingFactor).divRound(toBN(tokenValue));
-  // Every additional amount of margin allows us to support margin requirements for this many new tokens.
-  const marginLimitScalingFactor = fpScalingFactor
-    .mul(fpScalingFactor)
-    .mul(fpScalingFactor)
-    .mul(fpScalingFactor)
-    .divRound(toBN(derivativeStorage.fixedParameters.initialTokenUnderlyingRatio))
-    .divRound(toBN(updatedPrice.underlyingPrice))
-    .divRound(toBN(derivativeStorage.fixedParameters.supportedMove));
+  const mul = (a, b) => a.mul(b).divRound(fpScalingFactor);
+  const div = (a, b) => a.mul(fpScalingFactor).divRound(b);
 
-  // `purchaseLimit` represents how many tokens could be purchased if all the sent margin was allocated to purchasing
-  // tokens. Note that the contract doesn't currently allow purchasing tokens via this method call by drawing down on
-  // excess short margin.
-  const purchaseLimit = toBN(toWei(marginAmount))
-    .mul(purchaseLimitScalingFactor)
-    .divRound(fpScalingFactor);
-  // `marginLimit` represents how many extra tokens the current excess margin can support.
-  const marginLimit = toBN(newExcessMargin)
-    .mul(marginLimitScalingFactor)
-    .divRound(fpScalingFactor);
-  // The following two statements handle the case where some amount of the sent margin must be allocated to increasing
-  // short margin.
-  const additionalAllocation = purchaseLimit
-    .sub(marginLimit)
-    .abs()
-    .mul(fpScalingFactor)
-    .divRound(purchaseLimitScalingFactor.add(marginLimitScalingFactor));
-  const limit = purchaseLimit.lte(marginLimit)
-    ? purchaseLimit
-    : marginLimit.add(additionalAllocation.mul(marginLimitScalingFactor).div(fpScalingFactor));
-
-  // The contract doesn't allow the sponsor to escape default and create tokens at once: they have to first
-  // deposit and then create. I.e., a negative `marginLimit` means that remargining would default the contract.
-  return { ready: true, maxTokens: marginLimit.isNeg() ? toBN("0") : limit };
+  // `supportedTokenMarketCap` represents the extra token market cap that there is sufficient collateral for. Tokens can be purchased at
+  // `tokenValue` up to this amount.
+  const supportedTokenMarketCap = div(toBN(newExcessMargin), supportedMove);
+  if (sentAmount.lte(supportedTokenMarketCap)) {
+    // The amount of money being sent in is the limiting factor.
+    return { ready: true, maxTokens: div(sentAmount, tokenValueBn) };
+  } else {
+    // Tokens purchased beyond the value of `supportedTokenMarketCap` cost `(1 + supportedMove) * tokenValue`, because some of
+    // the money has to be diverted to support the margin requirement.
+    const costOfExtra = mul(tokenValueBn, fpScalingFactor.add(supportedMove));
+    const extra = sentAmount.sub(supportedTokenMarketCap);
+    return { ready: true, maxTokens: div(supportedTokenMarketCap, tokenValueBn).add(div(extra, costOfExtra)) };
+  }
 }
 
 function Borrow(props) {
