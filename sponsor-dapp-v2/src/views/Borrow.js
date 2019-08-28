@@ -13,7 +13,7 @@ import { createFormatFunction } from "common/FormattingUtils";
 
 function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const { fromWei, toWei, toBN } = drizzle.web3.utils;
+  const { toWei, toBN } = drizzle.web3.utils;
 
   const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
   const newExcessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
