@@ -2,6 +2,7 @@ const Voting = artifacts.require("Voting");
 const { VotePhasesEnum } = require("../../common/Enums");
 const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../common/Crypto");
 const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper");
+const publicNetworks = require("../../common/PublicNetworks");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
@@ -84,29 +85,14 @@ async function fetchPrice(request) {
 // Returns an html link to the transaction.
 // If the network is not recognized/not public, just returns the txn hash in plaintext.
 function getTxnLink(txnHash) {
-  let url;
-
-  switch (Voting.network_id) {
-    case "1":
-      // Mainnet
-      url = `https://etherscan.io/tx/${txnHash}`;
-      break;
-    case "3":
-      // Ropsten
-      url = `https://ropsten.etherscan.io/tx/${txnHash}`;
-      break;
-    case "42":
-      // Kovan
-      url = `https://kovan.etherscan.io/tx/${txnHash}`;
-      break;
-  }
-
-  // If there is a valid URL, add a link HTML tag.
-  if (url) {
+  const networkConfig = publicNetworks[Voting.network_id];
+  if (networkConfig && networkConfig.etherscan) {
+    // If there is an etherscan link, add it to the txn hash element.
+    const url = `${networkConfig.etherscan}tx/${txnHash}`;
     return `<a href="${url}">${txnHash}</a>`;
   }
-
-  // If there is no etherscan link, just return the txn hash in plain text.
+  
+  // If there is no etherscan link, just return the plaintext txnHash.
   return txnHash;
 }
 

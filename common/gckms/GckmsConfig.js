@@ -4,6 +4,9 @@
 const argv = require("minimist")(process.argv.slice());
 const fs = require("fs");
 
+// Grab the name property from each to get a list of the names of the public networks.
+const publicNetworkNames = Object.values(require("./PublicNetworks.js")).map(elt => elt.name);
+
 // Import the .GckmsOverride.js file if it exists.
 // Note: this file is expected to be present in the same directory as this script.
 let overrideFname = ".GckmsOverride.js";
@@ -26,25 +29,8 @@ function getDefaultStaticConfig() {
   //   locationId: Google Cloud location, e.g., 'global'.
   //   ciphertextBucket: ID of a Google Cloud storage bucket.
   //   ciphertextFilename: Name of a file within `ciphertextBucket`.
-  return {
-    main: {
-      deployer: {},
-      registry: {},
-      store: {},
-      priceFeed: {},
-      sponsorWhitelist: {},
-      returnCalculatorWhitelist: {},
-      marginCurrencyWhitelist: {}
-    },
-    ropsten: {
-      deployer: {},
-      registry: {},
-      store: {},
-      priceFeed: {},
-      sponsorWhitelist: {},
-      returnCalculatorWhitelist: {},
-      marginCurrencyWhitelist: {}
-    },
+  
+  const defaultConfig = {
     private: {
       deployer: {},
       registry: {},
@@ -53,6 +39,7 @@ function getDefaultStaticConfig() {
       sponsorWhitelist: {},
       returnCalculatorWhitelist: {},
       marginCurrencyWhitelist: {},
+      // This is an example to show you what a typical config for a gcloud-stored config might look like.
       example: {
         projectId: "project-name",
         locationId: "asia-east2",
@@ -63,17 +50,31 @@ function getDefaultStaticConfig() {
       }
     }
   };
+
+   // Add a blank network config for all public networks so they don't fail to process but will fail if selected.
+  const blankNetworkConfig = {
+    deployer: {},
+    registry: {},
+    store: {},
+    priceFeed: {},
+    sponsorWhitelist: {},
+    returnCalculatorWhitelist: {},
+    marginCurrencyWhitelist: {}
+  };
+
+  for (name of publicNetworkNames) {
+    defaultConfig[name] = blankNetworkConfig;
+  }
+
+  return defaultConfig;
 }
 
 function getNetworkName() {
-  switch (argv.network) {
-    case "mainnet":
-      return "main";
-    case "ropsten":
-      return "ropsten";
-    default:
-      return "private";
-  }
+    if (argv.network in publicNetworkNames) {
+      return argv.network;
+    }
+
+    return "private";
 }
 
 // Compose the exact config for this network.

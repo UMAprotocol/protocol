@@ -3,7 +3,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const { getKeysForNetwork, deploy, enableControllableTiming, addToTdr } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy, enableControllableTiming, addToTdr, isPublicNetwork } = require("../../common/MigrationUtils.js");
 
 const ethAddress = "0x0000000000000000000000000000000000000000";
 
@@ -38,7 +38,8 @@ module.exports = async function(deployer, network, accounts) {
   const returnCalculator = await LeveragedReturnCalculator.deployed();
   await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address, { from: keys.returnCalculatorWhitelist });
 
-  if (!network.startsWith("mainnet") && !network.startsWith("ropsten")) {
+  // For any test networks, automatically add ETH as an allowed margin currency.
+  if (!isPublicNetwork(network)) {
     await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
   }
 };

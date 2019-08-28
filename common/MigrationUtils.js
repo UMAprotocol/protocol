@@ -8,23 +8,23 @@ const tdr = require("truffle-deploy-registry");
 // Note: to keep all contracts intact (essentially a no-op), one would need to provide all the above arguments.
 const argv = require("minimist")(process.argv.slice(), { boolean: ["keep_finder", "keep_token", "keep_system"] });
 
+// Grab the name property from each to get a list of the names of the public networks.
+const publicNetworkNames = Object.values(require("./PublicNetworks.js")).map(elt => elt.name);
+
+function isPublicNetwork(network) {
+  return publicNetworkNames.some(name => network.startsWith(name));
+}
+
 // Determines whether the network requires timestamps to be manually controlled or not.
 function enableControllableTiming(network) {
-  return (
-    network === "test" ||
-    network === "develop" ||
-    network === "development" ||
-    network === "ci" ||
-    network === "coverage"
-  );
+  // Any non public network should have controllable timing.
+  return !isPublicNetwork(network);
 }
 
 function shouldCommitDeployment(network) {
   return (
     network === "ci" || // Just for testing the process of saving deployments.
-    network.startsWith("ropsten") ||
-    network.startsWith("mainnet") ||
-    network.startsWith("kovan")
+    isPublicNetwork(network) // Any public network.
   );
 }
 
@@ -115,7 +115,9 @@ async function setToExistingAddress(network, contractType, address) {
 
 // Maps key ordering to key names.
 function getKeysForNetwork(network, accounts) {
-  if (network === "ropsten" || network === "mainnet" || network === "kovan") {
+  // Must be exactly equal to a public network name to exclude the _mnemonic network configurations that don't use
+  // gcloud key encryption.
+  if (publicNetworkNames.some(name => name === network)) {
     return {
       deployer: accounts[0],
       registry: accounts[1],
@@ -150,5 +152,6 @@ module.exports = {
   deploy,
   setToExistingAddress,
   getKeysForNetwork,
-  addToTdr
+  addToTdr,
+  isPublicNetwork
 };
