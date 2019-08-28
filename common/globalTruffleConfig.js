@@ -73,7 +73,7 @@ function addLocalNetwork(networks, name, customOptions) {
 let networks = {};
 
 // Public networks that need both a mnemonic and GCS ManagedSecretProvider network.
-for (const [name, id] of Object.entries(publicNetworks)) {
+for (const [id, { name }] of Object.entries(publicNetworks)) {
   addPublicNetwork(networks, name, id);
 }
 

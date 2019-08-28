@@ -5,7 +5,7 @@ const argv = require("minimist")(process.argv.slice());
 const fs = require("fs");
 
 // Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(require("./PublicNetworks.js")).map(elt => elt.name);
+const publicNetworkNames = Object.values(require("../PublicNetworks.js")).map(elt => elt.name);
 
 // Import the .GckmsOverride.js file if it exists.
 // Note: this file is expected to be present in the same directory as this script.
