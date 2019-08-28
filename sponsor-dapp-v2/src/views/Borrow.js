@@ -17,10 +17,9 @@ function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
 
   const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
   const newExcessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
-  const updatedPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
   const tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
 
-  const dataFetched = derivativeStorage && newExcessMargin && updatedPrice && tokenValue;
+  const dataFetched = derivativeStorage && newExcessMargin && tokenValue;
   if (!dataFetched) {
     return { ready: false };
   }
