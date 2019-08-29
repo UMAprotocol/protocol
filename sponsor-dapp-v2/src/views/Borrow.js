@@ -74,114 +74,111 @@ function Borrow(props) {
 
   const format = createFormatFunction(drizzle.web3, 4);
 
-  const render = () => {
-    return (
-      <div className="popup">
-        <Header />
+  return (
+    <div className="popup">
+      <Header />
 
-        <Link to={"/ManagePositions/" + tokenAddress} className="btn-close">
-          <IconSvgComponent iconPath="svg/ico-close.svg" additionalClass="ico-close" />
-        </Link>
+      <Link to={"/ManagePositions/" + tokenAddress} className="btn-close">
+        <IconSvgComponent iconPath="svg/ico-close.svg" additionalClass="ico-close" />
+      </Link>
 
-        <div className="popup__inner">
-          <div className="shell">
-            <div className="popup__head">
-              <h3>Borrow additional tokens</h3>
+      <div className="popup__inner">
+        <div className="shell">
+          <div className="popup__head">
+            <h3>Borrow additional tokens</h3>
+          </div>
+
+          <div className="popup__body">
+            <div className="popup__col popup__col--offset-bottom">
+              <div className="form-group">
+                <label htmlFor="field-borrow" className="form__label">
+                  How much Dai would you like to collateralize?
+                </label>
+
+                <div className="form__controls">
+                  <input
+                    type="text"
+                    className="field"
+                    id="field-borrow"
+                    name="field-borrow"
+                    value={marginAmount}
+                    maxLength="18"
+                    autoComplete="off"
+                    disabled={isLoading}
+                    onChange={e => handleChangeMarginAmount(e)}
+                  />
+
+                  <span>DAI</span>
+                </div>
+              </div>
             </div>
 
-            <div className="popup__body">
-              <div className="popup__col popup__col--offset-bottom">
-                <div className="form-group">
-                  <label htmlFor="field-borrow" className="form__label">
-                    How much Dai would you like to collateralize?
-                  </label>
+            <div className="popup__col popup__col--offset-bottom">
+              <div className="form-group">
+                <label htmlFor="field-tokens" className="form__label">
+                  How many synthetic tokens do you want to borrow?
+                </label>
 
-                  <div className="form__controls">
-                    <input
-                      type="text"
-                      className="field"
-                      id="field-borrow"
-                      name="field-borrow"
-                      value={marginAmount}
-                      maxLength="18"
-                      autoComplete="off"
-                      disabled={isLoading}
-                      onChange={e => handleChangeMarginAmount(e)}
-                    />
+                <div className="form__controls">
+                  <input
+                    type="text"
+                    className="field"
+                    id="field-tokens"
+                    name="field-tokens"
+                    value={tokenAmount}
+                    maxLength="18"
+                    autoComplete="off"
+                    disabled={isLoading}
+                    onChange={e => handleChangeTokenAmount(e)}
+                  />
 
-                    <span>DAI</span>
-                  </div>
+                  <span>Tokens</span>
                 </div>
-              </div>
 
-              <div className="popup__col popup__col--offset-bottom">
-                <div className="form-group">
-                  <label htmlFor="field-tokens" className="form__label">
-                    How many synthetic tokens do you want to borrow?
-                  </label>
-
-                  <div className="form__controls">
-                    <input
-                      type="text"
-                      className="field"
-                      id="field-tokens"
-                      name="field-tokens"
-                      value={tokenAmount}
-                      maxLength="18"
-                      autoComplete="off"
-                      disabled={isLoading}
-                      onChange={e => handleChangeTokenAmount(e)}
-                    />
-
-                    <span>Tokens</span>
+                {tokenAmount !== "" && marginAmount !== "" && (
+                  <div className="form-hint">
+                    <p>(Max {format(maxTokens)})</p>
                   </div>
+                )}
+              </div>
+            </div>
 
-                  {tokenAmount !== "" && marginAmount !== "" && (
-                    <div className="form-hint">
-                      <p>(Max {format(maxTokens)})</p>
-                    </div>
+            <div className="popup__col">
+              <dl className="popup__description">
+                <dt>Liquidation price [BTC/USD]: 15,400</dt>
+                <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)} </dd>
+              </dl>
+
+              <dl className="popup__description">
+                <dt>Collateralization ratio: {data.currentCollateralization}</dt>
+                <dd>Minimum ratio: {fromWei(data.collateralizationRequirement)}%</dd>
+              </dl>
+            </div>
+
+            <div className="popup__col">
+              <div className="popup__actions">
+                <Link
+                  to={"/ManagePositions/" + tokenAddress}
+                  onClick={event => handleCreateClick(event)}
+                  className={classNames(
+                    "btn btn--block has-loading",
+                    { disabled: !allowedToProceed },
+                    { "is-loading": isLoading }
                   )}
-                </div>
-              </div>
+                >
+                  <span>Collateralize & borrow tokens</span>
 
-              <div className="popup__col">
-                <dl className="popup__description">
-                  <dt>Liquidation price [BTC/USD]: 15,400</dt>
-                  <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)} </dd>
-                </dl>
+                  <span className="loading-text">Processing</span>
 
-                <dl className="popup__description">
-                  <dt>Collateralization ratio: {data.currentCollateralization}</dt>
-                  <dd>Minimum ratio: {fromWei(data.collateralizationRequirement)}%</dd>
-                </dl>
-              </div>
-
-              <div className="popup__col">
-                <div className="popup__actions">
-                  <Link
-                    to={"/ManagePositions/" + tokenAddress}
-                    onClick={event => handleCreateClick(event)}
-                    className={classNames(
-                      "btn btn--block has-loading",
-                      { disabled: !allowedToProceed },
-                      { "is-loading": isLoading }
-                    )}
-                  >
-                    <span>Collateralize & borrow tokens</span>
-
-                    <span className="loading-text">Processing</span>
-
-                    <strong className="dot-pulse" />
-                  </Link>
-                </div>
+                  <strong className="dot-pulse" />
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </div>
-    );
-  };
-  return render();
+    </div>
+  );
 }
 
 export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(Borrow);

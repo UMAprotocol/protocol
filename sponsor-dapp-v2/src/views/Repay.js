@@ -74,123 +74,120 @@ function Repay(props) {
 
   const format = createFormatFunction(drizzle.web3, 4);
 
-  const render = () => {
-    return (
-      <div className="popup">
-        <Header />
+  return (
+    <div className="popup">
+      <Header />
 
-        <Link to={"/ManagePositions/" + tokenAddress} className="btn-close">
-          <IconSvgComponent iconPath="svg/ico-close.svg" additionalClass="ico-close" />
-        </Link>
+      <Link to={"/ManagePositions/" + tokenAddress} className="btn-close">
+        <IconSvgComponent iconPath="svg/ico-close.svg" additionalClass="ico-close" />
+      </Link>
 
-        <div className="popup__inner">
-          <div className="shell">
-            <div className="popup__head">
-              <h3>Repay token debt</h3>
-            </div>
+      <div className="popup__inner">
+        <div className="shell">
+          <div className="popup__head">
+            <h3>Repay token debt</h3>
+          </div>
 
-            <div className="popup__body">
-              <CSSTransition in={!isApproved} timeout={300} classNames="step-1" unmountOnExit>
-                <div className="popup__body-step">
-                  <div className="popup__col">
-                    <div className="popup__entry popup__entry-alt">
-                      <p>
-                        You must authorize your facility to redeem your tokens in exchange for DAI held in the smart
-                        contract. This is standard across ERC-20 contracts and you will only have to do this once.
-                      </p>
-                    </div>
+          <div className="popup__body">
+            <CSSTransition in={!isApproved} timeout={300} classNames="step-1" unmountOnExit>
+              <div className="popup__body-step">
+                <div className="popup__col">
+                  <div className="popup__entry popup__entry-alt">
+                    <p>
+                      You must authorize your facility to redeem your tokens in exchange for DAI held in the smart
+                      contract. This is standard across ERC-20 contracts and you will only have to do this once.
+                    </p>
+                  </div>
 
-                    <div className="popup__actions">
-                      <a
-                        href="should-never-trigger"
-                        className={classNames("btn btn--size2 has-loading", { "is-loading": isLoadingApproval })}
-                        onClick={e => approveTokensHandler(e)}
-                      >
-                        <span>Authorize contract</span>
+                  <div className="popup__actions">
+                    <a
+                      href="should-never-trigger"
+                      className={classNames("btn btn--size2 has-loading", { "is-loading": isLoadingApproval })}
+                      onClick={e => approveTokensHandler(e)}
+                    >
+                      <span>Authorize contract</span>
 
-                        <span className="loading-text">Processing</span>
+                      <span className="loading-text">Processing</span>
 
-                        <strong className="dot-pulse" />
-                      </a>
-                    </div>
+                      <strong className="dot-pulse" />
+                    </a>
                   </div>
                 </div>
-              </CSSTransition>
+              </div>
+            </CSSTransition>
 
-              <CSSTransition in={isApproved} timeout={300} classNames="step-1" unmountOnExit>
-                <div className="popup__body-step">
-                  <div className="popup__col popup__col--offset-bottom">
-                    <div className="form-group">
-                      <label htmlFor="field-tokens" className="form__label">
-                        How many tokens would you like to redeem?
-                      </label>
+            <CSSTransition in={isApproved} timeout={300} classNames="step-1" unmountOnExit>
+              <div className="popup__body-step">
+                <div className="popup__col popup__col--offset-bottom">
+                  <div className="form-group">
+                    <label htmlFor="field-tokens" className="form__label">
+                      How many tokens would you like to redeem?
+                    </label>
 
-                      <div className="form__controls">
-                        <input
-                          type="text"
-                          className="field"
-                          id="field-tokens"
-                          name="field-tokens"
-                          value={amount}
-                          maxLength="18"
-                          autoComplete="off"
-                          disabled={isLoadingRedeem}
-                          onChange={e => handleChangeAmount(e)}
-                        />
+                    <div className="form__controls">
+                      <input
+                        type="text"
+                        className="field"
+                        id="field-tokens"
+                        name="field-tokens"
+                        value={amount}
+                        maxLength="18"
+                        autoComplete="off"
+                        disabled={isLoadingRedeem}
+                        onChange={e => handleChangeAmount(e)}
+                      />
 
-                        <span>Tokens</span>
+                      <span>Tokens</span>
+                    </div>
+
+                    {amount !== "" && (
+                      <div className="form-hint">
+                        <p>(Max {format(data.tokenBalance)})</p>
                       </div>
-
-                      {amount !== "" && (
-                        <div className="form-hint">
-                          <p>(Max {format(data.tokenBalance)})</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="popup__col popup__col--offset-bottom">
-                    <div className="popup__entry">
-                      <dl className="popup__description">
-                        <dt>Redemption price: {format(data.tokenValue)}</dt>
-                        <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)}</dd>
-                      </dl>
-
-                      <dl className="popup__description">
-                        <dt>Collateralization ratio: {data.currentCollateralization}</dt>
-                        <dd>Minimum ratio: {fromWei(data.collateralizationRequirement)}% </dd>
-                      </dl>
-                    </div>
-                  </div>
-
-                  <div className="popup__col">
-                    <div className="popup__actions">
-                      <Link
-                        to={"/ManagePositions/" + tokenAddress}
-                        onClick={event => handleRedeemClick(event)}
-                        className={classNames(
-                          "btn btn--size2 has-loading",
-                          { disabled: !allowedToProceed },
-                          { "is-loading": isLoadingRedeem }
-                        )}
-                      >
-                        <span>Repay token debt</span>
-
-                        <span className="loading-text">Processing</span>
-
-                        <strong className="dot-pulse" />
-                      </Link>
-                    </div>
+                    )}
                   </div>
                 </div>
-              </CSSTransition>
-            </div>
+
+                <div className="popup__col popup__col--offset-bottom">
+                  <div className="popup__entry">
+                    <dl className="popup__description">
+                      <dt>Redemption price: {format(data.tokenValue)}</dt>
+                      <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)}</dd>
+                    </dl>
+
+                    <dl className="popup__description">
+                      <dt>Collateralization ratio: {data.currentCollateralization}</dt>
+                      <dd>Minimum ratio: {fromWei(data.collateralizationRequirement)}% </dd>
+                    </dl>
+                  </div>
+                </div>
+
+                <div className="popup__col">
+                  <div className="popup__actions">
+                    <Link
+                      to={"/ManagePositions/" + tokenAddress}
+                      onClick={event => handleRedeemClick(event)}
+                      className={classNames(
+                        "btn btn--size2 has-loading",
+                        { disabled: !allowedToProceed },
+                        { "is-loading": isLoadingRedeem }
+                      )}
+                    >
+                      <span>Repay token debt</span>
+
+                      <span className="loading-text">Processing</span>
+
+                      <strong className="dot-pulse" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </CSSTransition>
           </div>
         </div>
       </div>
-    );
-  };
-  return render();
+    </div>
+  );
 }
 
 export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(Repay);
