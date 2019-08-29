@@ -1,6 +1,7 @@
 const HDWalletProvider = require("truffle-hdwallet-provider");
 const GckmsConfig = require("./gckms/GckmsConfig.js");
 const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
+const publicNetworks = require("./PublicNetworks.js");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
@@ -72,9 +73,9 @@ function addLocalNetwork(networks, name, customOptions) {
 let networks = {};
 
 // Public networks that need both a mnemonic and GCS ManagedSecretProvider network.
-addPublicNetwork(networks, "kovan", 42);
-addPublicNetwork(networks, "ropsten", 3);
-addPublicNetwork(networks, "mainnet", 1);
+for (const [id, { name }] of Object.entries(publicNetworks)) {
+  addPublicNetwork(networks, name, id);
+}
 
 // CI requires a specific port and network ID because of peculiarities of the environment.
 addLocalNetwork(networks, "ci", { port: 8545, network_id: 1234 });
