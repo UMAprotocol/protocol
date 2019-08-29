@@ -70,7 +70,7 @@ function getDefaultStaticConfig() {
 }
 
 function getNetworkName() {
-  if (argv.network in publicNetworkNames) {
+  if (publicNetworkNames.some(name => argv.network === name)) {
     return argv.network;
   }
 
