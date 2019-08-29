@@ -30,26 +30,21 @@ function Step6(props) {
       <div className="step step--tertiary">
         <div className="step__content-alt">
           <p>
-            You have successfully borrowed {format(tokensBorrowed)} synthetic tokens tracking {identifier}! View token
-            details on{" "}
+            You now own a custom token facility and {format(tokensBorrowed)} synthetic tokens whose value tracks{" "}
+            {identifier}! View token details on
             <a href={`${etherscanUrl}address/${contractAddress}`} target="_blank" rel="noopener noreferrer">
               Etherscan.
             </a>
           </p>
 
           <p>
-            <span>Sell these tokens to begin your levered short risk exposure.</span>
+            <span>
+              Synthetic tokens given you long exposure to {identifier}. Your token facility gives you short exposure.
+            </span>
           </p>
 
           <p>
             <span>Maintain token facility collateralization greater than {collatReq}% to avoid liquidation.</span>
-          </p>
-
-          <p>
-            <span>
-              In order to take a position on the derivative you have create, you will need to Trade/Manage your
-              position.
-            </span>
           </p>
         </div>
 

@@ -180,7 +180,7 @@ function Step3(props) {
         <div className="step__content">
           <p>
             Launch token facility
-            <span>Confirm the parameters of the token facility </span>
+            <span>Confirm the parameters of your custom token facility </span>
           </p>
         </div>
 
@@ -188,7 +188,7 @@ function Step3(props) {
           <div className="step__entry">
             <ul className="list-selections">
               <li>
-                Asset: <span>{selections.identifier}</span>
+                Your tokens will track: <span>{selections.identifier}</span>
               </li>
 
               <li>

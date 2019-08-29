@@ -44,10 +44,10 @@ function Step1(props) {
       <div className="step step--primary">
         <div className="step__content">
           <p>
-            Choose an asset
+            Customize your token
             <span>
-              Select the synthetic asset that you’d like to borrow. Each synthetic asset has a different
-              collateralization requirement (CR). DAI is used as collateral for borrowing synthetics.{" "}
+              Select the price index that your token's value will track. Later, you can borrow synthetic tokens by
+              collateralizing with DAI and maintaining a collateralization requirement (CR).
             </span>
           </p>
 
@@ -61,7 +61,7 @@ function Step1(props) {
         <div className="step__aside">
           <div className="step__entry">
             <Dropdown
-              placeholder="Select synthetic asset"
+              placeholder="Select a price index"
               list={dropdownData}
               onChange={checkProceeding}
               initialKeySelection={props.userSelectionsRef.current.identifier}

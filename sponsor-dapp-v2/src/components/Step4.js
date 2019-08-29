@@ -54,8 +54,8 @@ function Step4(props) {
 
           <p>
             <span>
-              In order to fund and borrow your tokens, you must authorize your new facility to accept DAI as the
-              collateral. This is standard acrossERC-20 contracts and you will only have to do this once.{" "}
+              In order to create your tokens, you must authorize your new facility to accept DAI as collateral. This
+              authorization is standard across ERC-20 contracts and you will only have to do this once.
             </span>
           </p>
         </div>

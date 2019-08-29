@@ -180,7 +180,7 @@ function ManagePositions(props) {
             <div className="section__body">
               <div className="detail-box">
                 <div className="detail-box__head">
-                  <h4>Assets</h4>
+                  <h4>Price Index</h4>
                 </div>
 
                 <div className="detail-box__body">
@@ -189,12 +189,12 @@ function ManagePositions(props) {
                       <tbody>
                         <tr>
                           <td>
-                            Asset price
+                            Reference price index
                             <Tooltip>
                               <p>
                                 {" "}
-                                <span> Asset price </span>  is cash or equity in a margin trading account beyond what is
-                                required to open or maintain the account.{" "}
+                                <span> Reference price index </span> is the price index that each synthetic token's
+                                value references
                               </p>
                             </Tooltip>
                           </td>
@@ -206,12 +206,11 @@ function ManagePositions(props) {
 
                         <tr>
                           <td>
-                            Value
+                            Token value
                             <Tooltip>
                               <p>
                                 {" "}
-                                <span> Value </span>  is cash or equity in a margin trading account beyond what is
-                                required to open or maintain the account.{" "}
+                                <span> Token Value </span> is the value, in DAI, of each synthetic token
                               </p>
                             </Tooltip>
                           </td>
@@ -239,10 +238,7 @@ function ManagePositions(props) {
                           <td>
                             Total collateral
                             <Tooltip>
-                              <p>
-                                {" "}
-                                <span> Total collateral </span> Lorem ipsum dolor sit amet.
-                              </p>
+                              <p> The total amount of DAI that has been deposited into the custom token facility</p>
                             </Tooltip>
                           </td>
 
@@ -261,10 +257,10 @@ function ManagePositions(props) {
 
                         <tr>
                           <td>
-                            Token debt
+                            Value of token debt
                             <Tooltip>
                               <p>
-                                <span>Token debt</span> Lorem ipsum dolor sit amet.
+                                The value of all synthetic tokens that have been borrowed from the custom token facility
                               </p>
                             </Tooltip>
                           </td>
@@ -280,10 +276,7 @@ function ManagePositions(props) {
                           <td>
                             Excess collateral
                             <Tooltip>
-                              <p>
-                                {" "}
-                                <span>Excess collateral</span> Lorem ipsum dolor sit amet.
-                              </p>
+                              <p>Total Collateral minus Value of token debt</p>
                             </Tooltip>
                           </td>
 
@@ -325,7 +318,8 @@ function ManagePositions(props) {
                             Token supply
                             <Tooltip>
                               <p>
-                                <span>Token supply</span> Lorem ipsum dolor sit amet.
+                                <span>Token supply</span> is the total number of tokens that have been created with this
+                                token facility
                               </p>
                             </Tooltip>
                           </td>
@@ -341,10 +335,7 @@ function ManagePositions(props) {
                           <td>
                             Your tokens
                             <Tooltip>
-                              <p>
-                                {" "}
-                                <span>Your tokens</span> Lorem ipsum dolor sit amet.
-                              </p>
+                              <p> This is the number of tokens you currently own in your wallet</p>
                             </Tooltip>
                           </td>
 
