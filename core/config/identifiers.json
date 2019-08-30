@@ -7,7 +7,7 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "0",
+      "minDelay": "600",
       "numerator": {
         "dataSource": "Barchart",
         "assetName": "^BTCUSD"
@@ -22,7 +22,7 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "0",
+      "minDelay": "600",
       "numerator": {
         "dataSource": "Barchart",
         "assetName": "^ETHUSD"
@@ -127,7 +127,7 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "0",
       "numerator": {
         "dataSource": "Constant",
         "assetName": "100"
@@ -142,7 +142,7 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "0",
       "numerator": {
         "dataSource": "Constant",
         "assetName": "100"

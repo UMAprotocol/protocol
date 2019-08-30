@@ -127,19 +127,16 @@ export function useCollateralizationInformation(tokenAddress, changeInShortBalan
 }
 
 export function useIdentifierConfig() {
-  return useMemo(
-    () => {
-      const identifierConfig = {};
+  return useMemo(() => {
+    const identifierConfig = {};
 
-      // Extract the dappConfig from the global config.
-      for (const [identifier, { dappConfig }] of Object.entries(identifiers)) {
-        identifierConfig[identifier] = dappConfig;
-      }
+    // Extract the dappConfig from the global config.
+    for (const [identifier, { dappConfig }] of Object.entries(identifiers)) {
+      identifierConfig[identifier] = dappConfig;
+    }
 
-      return identifierConfig;
-    },
-    []
-  );
+    return identifierConfig;
+  }, []);
 }
 
 export function useDaiAddress() {

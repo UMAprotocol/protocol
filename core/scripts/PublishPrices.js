@@ -333,7 +333,9 @@ async function runExport() {
         await publishFeed(priceFeed);
         console.log("Done publishing for one feed.\n\n");
       } catch (error) {
-        console.log(stripApiKeys(error.toString(), [alphaVantageKey, barchartStandardKey, barchartEquitiesKey, cmcKey]));
+        console.log(
+          stripApiKeys(error.toString(), [alphaVantageKey, barchartStandardKey, barchartEquitiesKey, cmcKey])
+        );
       }
     }
     console.log("Done publishing for all feeds");
