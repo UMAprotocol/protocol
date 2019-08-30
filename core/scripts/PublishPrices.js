@@ -10,7 +10,9 @@ require("dotenv").config();
 
 // Get API keys from environment variables or the `.env` file.
 const alphaVantageKey = process.env.ALPHAVANTAGE_API_KEY;
-const barchartKey = process.env.BARCHART_API_KEY;
+const barchartStandardKey = process.env.BARCHART_API_KEY;
+const barchartEquitiesKey = process.env.BARCHART_EQUITIES_API_KEY;
+const cmcKey = process.env.CMC_PRO_API_KEY;
 
 function stripApiKey(str, key) {
   return str.replace(key, "{redacted}");
@@ -39,9 +41,9 @@ function getCurrentTime() {
   return web3.utils.toBN(Math.round(Date.now() / 1000));
 }
 
-async function getBarchartPrice(asset) {
-  const url = `https://ondemand.websol.barchart.com/getQuote.json?apikey=${barchartKey}&symbols=${asset}`;
-  console.log(`Querying Barchart with [${stripApiKey(url, barchartKey)}]`);
+async function getBarchartPrice(asset, domain, key) {
+  const url = `${domain}getQuote.json?apikey=${key}&symbols=${asset}`;
+  console.log(`Querying Barchart with [${stripApiKey(url, key)}]`);
   const jsonOutput = await getJson(url);
   console.log(`Barchart response [${JSON.stringify(jsonOutput)}]`);
 
@@ -53,7 +55,10 @@ async function getBarchartPrice(asset) {
     throw "Unexpected number of results in json response";
   }
 
-  if (jsonOutput.results[0].symbol !== asset) {
+  const returnedSymbol = jsonOutput.results[0].symbol;
+
+  // Additional case to handle the rolling front month case where *1 is replaced with the actual future expiry.
+  if (returnedSymbol !== asset && !returnedSymbol.startsWith(asset.replace("*1", ""))) {
     throw "Unexpected symbol in json response";
   }
 
@@ -71,6 +76,54 @@ async function getBarchartPrice(asset) {
   console.log(`Retrieved quote [${price}] at [${timestamp}] ([${tradeTime}]) from Barchart for asset [${asset}]`);
 
   return { price, timestamp };
+}
+
+// Just returns a constant price that is put in place of the "asset".
+async function getConstantPrice(constantPrice) {
+  return { price: constantPrice, timestamp: web3.utils.toBN(Math.round(new Date().getTime() / 1000)) };
+}
+
+// Gets the CoinMarketCap price.
+async function getCMCPrice(asset) {
+  const url = `https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest?CMC_PRO_API_KEY=${cmcKey}`;
+  console.log(`Querying CMC with [${stripApiKey(url, cmcKey)}]`);
+  const jsonOutput = await getJson(url);
+  console.log(`CMC response [${JSON.stringify(jsonOutput)}]`);
+
+  if (jsonOutput.status.error_code !== 0) {
+    throw "CMC request failed";
+  }
+
+  if (!jsonOutput.data || !jsonOutput.data.quote || !jsonOutput.data.quote.USD) {
+    throw "No data in response";
+  }
+
+  const price = jsonOutput.data.quote.USD[asset];
+  if (!price) {
+    throw "Failed to get valid price out of JSON response";
+  }
+
+  const updatedTime = jsonOutput.data.quote.USD.last_updated;
+  if (!updatedTime) {
+    throw "Failed to get last updated timestamp";
+  }
+
+  const timestamp = web3.utils.toBN(Math.round(new Date(updatedTime).getTime() / 1000));
+  if (!timestamp) {
+    throw `Failed to get valid timestamp out of JSON response last_updated field [${updatedTime}]`;
+  }
+
+  console.log(`Retrieved quote [${price}] at [${timestamp}] ([${updatedTime}]) from CMC for asset [${asset}]`);
+
+  return { price, timestamp };
+}
+
+async function getBarchartEquitiesPrice(asset) {
+  return await getBarchartPrice(asset, "https://marketdata.websol.barchart.com/", barchartEquitiesKey);
+}
+
+async function getBarchartStandardPrice(asset) {
+  return await getBarchartPrice(asset, "https://ondemand.websol.barchart.com/", barchartStandardKey);
 }
 
 // Gets the Coinbase price for an asset or throws.
@@ -118,7 +171,13 @@ async function getAlphaVantageCurrencyRate(asset) {
 async function fetchPrice(assetConfig) {
   switch (assetConfig.dataSource) {
     case "Barchart":
-      return await getBarchartPrice(assetConfig.assetName);
+      return await getBarchartStandardPrice(assetConfig.assetName);
+    case "Constant":
+      return await getConstantPrice(assetConfig.assetName);
+    case "BarchartEquities":
+      return await getBarchartEquitiesPrice(assetConfig.assetName);
+    case "CMC":
+      return await getCMCPrice(assetConfig.assetName);
     case "AlphaVantage":
       return await getAlphaVantageQuote(assetConfig.assetName);
     case "AlphaVantageCurrency":
@@ -274,7 +333,9 @@ async function runExport() {
         await publishFeed(priceFeed);
         console.log("Done publishing for one feed.\n\n");
       } catch (error) {
-        console.log(stripApiKeys(error.toString(), [alphaVantageKey, barchartKey]));
+        console.log(
+          stripApiKeys(error.toString(), [alphaVantageKey, barchartStandardKey, barchartEquitiesKey, cmcKey])
+        );
       }
     }
     console.log("Done publishing for all feeds");
