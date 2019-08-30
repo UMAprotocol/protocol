@@ -1,23 +1,98 @@
 {
-  "ESM19": {
+  "BTC/USD": {
     "dappConfig": {
-      "comment": "expiry: May 15, 2019 4:15pm ET, supportedMove: 0.085 corresponds to 8.5%",
-      "expiry": "1557951300",
-      "supportedMove": "0.085"
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.15 corresponds to 15%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.15"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "0",
+      "numerator": {
+        "dataSource": "Barchart",
+        "assetName": "^BTCUSD"
+      }
+    }
+  },
+  "ETH/USD": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.2 corresponds to 20%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.2"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "0",
+      "numerator": {
+        "dataSource": "Barchart",
+        "assetName": "^ETHUSD"
+      }
+    }
+  },
+  "CMC Total Market Cap": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.25 corresponds to 25%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.25"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "0",
+      "numerator": {
+        "dataSource": "CMC",
+        "assetName": "total_market_cap"
+      }
+    }
+  },
+  "S&P 500": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.05 corresponds to 5%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.05"
     },
     "uploaderConfig": {
       "publishInterval": "900",
       "minDelay": "600",
       "numerator": {
         "dataSource": "Barchart",
-        "assetName": "ESM19"
+        "assetName": "SP*1"
       }
     }
   },
-  "CBN19": {
+  "TSLA": {
     "dappConfig": {
-      "comment": "expiry: May 15, 2019 7:30pm BST, supportedMove: 0.1 corresponds to 10%",
-      "expiry": "1557945000",
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.1 corresponds to 10%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.1"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "600",
+      "numerator": {
+        "dataSource": "BarchartEquities",
+        "assetName": "TSLA"
+      }
+    }
+  },
+  "Gold (Rolling Future)": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.05 corresponds to 5%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.05"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "600",
+      "numerator": {
+        "dataSource": "Barchart",
+        "assetName": "GC*1"
+      }
+    }
+  },
+  "Crude Oil (Rolling Future)": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.1 corresponds to 10%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
       "supportedMove": "0.1"
     },
     "uploaderConfig": {
@@ -25,7 +100,52 @@
       "minDelay": "600",
       "numerator": {
         "dataSource": "Barchart",
-        "assetName": "CBN19"
+        "assetName": "CL*1"
+      }
+    }
+  },
+  "CNY/USD": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.02 corresponds to 2%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.02"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "600",
+      "numerator": {
+        "dataSource": "Barchart",
+        "assetName": "^CNYUSD"
+      }
+    }
+  },
+  "Telegram SAFT": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.1 corresponds to 10%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.1"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "600",
+      "numerator": {
+        "dataSource": "Constant",
+        "assetName": "100"
+      }
+    }
+  },
+  "Custom Index": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.1 corresponds to 10%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.1"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "600",
+      "numerator": {
+        "dataSource": "Constant",
+        "assetName": "100"
       }
     }
   }

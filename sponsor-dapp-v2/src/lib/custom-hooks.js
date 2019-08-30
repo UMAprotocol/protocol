@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import publicNetworks from "common/PublicNetworks";
+import identifiers from "identifiers.json";
 
 export function useNumRegisteredContracts() {
   const { useCacheCall } = drizzleReactHooks.useDrizzle();
@@ -125,31 +126,18 @@ export function useCollateralizationInformation(tokenAddress, changeInShortBalan
   return data;
 }
 
-// TODO(mrice32): replace with some sort of global-ish config later.
 export function useIdentifierConfig() {
   return useMemo(
-    () => ({
-      "BTC/USD": {
-        supportedMove: "0.1",
-        collateralRequirement: "110%",
-        expiries: [1568649600, 1571241600]
-      },
-      "ETH/USD": {
-        supportedMove: "0.1",
-        collateralRequirement: "110%",
-        expiries: [1568649600, 1571241600]
-      },
-      "CoinMarketCap Top100 Index": {
-        supportedMove: "0.2",
-        collateralRequirement: "120%",
-        expiries: [1568649600, 1571241600]
-      },
-      "S&P500": {
-        supportedMove: "0.1",
-        collateralRequirement: "110%",
-        expiries: [1568649600, 1571241600]
+    () => {
+      const identifierConfig = {};
+
+      // Extract the dappConfig from the global config.
+      for (const [identifier, { dappConfig }] of Object.entries(identifiers)) {
+        identifierConfig[identifier] = dappConfig;
       }
-    }),
+
+      return identifierConfig;
+    },
     []
   );
 }
