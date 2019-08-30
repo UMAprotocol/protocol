@@ -38,7 +38,7 @@ function Landing() {
             </div>
 
             <Link to="/Start" className="btn">
-              Get started
+              Get started 
             </Link>
           </section>
 
