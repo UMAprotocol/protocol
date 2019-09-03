@@ -41,8 +41,8 @@ function getCurrentTime() {
   return web3.utils.toBN(Math.round(Date.now() / 1000));
 }
 
-async function getBarchartPrice(asset, domain, key) {
-  const url = `${domain}getQuote.json?apikey=${key}&symbols=${asset}`;
+async function getBarchartPrice(asset, domain, api, key) {
+  const url = `${domain}${api}.json?apikey=${key}&symbols=${asset}`;
   console.log(`Querying Barchart with [${stripApiKey(url, key)}]`);
   const jsonOutput = await getJson(url);
   console.log(`Barchart response [${JSON.stringify(jsonOutput)}]`);
@@ -67,13 +67,13 @@ async function getBarchartPrice(asset, domain, key) {
     throw "Failed to get valid price out of JSON response";
   }
 
-  const tradeTime = jsonOutput.results[0].tradeTimestamp;
-  const timestamp = web3.utils.toBN(Math.round(new Date(tradeTime).getTime() / 1000));
+  const serverTime = jsonOutput.results[0].serverTimestamp;
+  const timestamp = web3.utils.toBN(Math.round(new Date(serverTime).getTime() / 1000));
   if (!timestamp) {
-    throw `Failed to get valid timestamp out of JSON response tradeTimestamp field [${tradeTime}]`;
+    throw `Failed to get valid timestamp out of JSON response serverTimestamp field [${serverTime}]`;
   }
 
-  console.log(`Retrieved quote [${price}] at [${timestamp}] ([${tradeTime}]) from Barchart for asset [${asset}]`);
+  console.log(`Retrieved quote [${price}] at [${timestamp}] ([${serverTime}]) from Barchart for asset [${asset}]`);
 
   return { price, timestamp };
 }
@@ -119,11 +119,15 @@ async function getCMCPrice(asset) {
 }
 
 async function getBarchartEquitiesPrice(asset) {
-  return await getBarchartPrice(asset, "https://marketdata.websol.barchart.com/", barchartEquitiesKey);
+  return await getBarchartPrice(asset, "https://marketdata.websol.barchart.com/", "getQuote", barchartEquitiesKey);
 }
 
 async function getBarchartStandardPrice(asset) {
-  return await getBarchartPrice(asset, "https://ondemand.websol.barchart.com/", barchartStandardKey);
+  return await getBarchartPrice(asset, "https://ondemand.websol.barchart.com/", "getQuote", barchartStandardKey);
+}
+
+async function getBarchartCryptoPrice(asset) {
+  return await getBarchartPrice(asset, "https://ondemand.websol.barchart.com/", "getCrypto", barchartStandardKey);
 }
 
 // Gets the Coinbase price for an asset or throws.
@@ -176,6 +180,8 @@ async function fetchPrice(assetConfig) {
       return await getConstantPrice(assetConfig.assetName);
     case "BarchartEquities":
       return await getBarchartEquitiesPrice(assetConfig.assetName);
+    case "BarchartCrypto":
+      return await getBarchartCryptoPrice(assetConfig.assetName);
     case "CMC":
       return await getCMCPrice(assetConfig.assetName);
     case "AlphaVantage":
@@ -324,23 +330,33 @@ function getPriceFeeds() {
 
 async function runExport() {
   // Wrap all the functionality in a try/catch, so that this function never throws.
+  const errors = [];
   try {
     // Get the list of price feeds to submit
     for (const priceFeed of getPriceFeeds()) {
       // Wrap each feed in a try/catch, so that a failure in one feed doesn't stop all the others from publishing.
       try {
-        console.log(`Publishing price feed for [${priceFeed.identifier}], with config [${JSON.stringify(priceFeed)}]`);
+        console.log(
+          `\n\nPublishing price feed for [${priceFeed.identifier}], with config [${JSON.stringify(priceFeed)}]`
+        );
         await publishFeed(priceFeed);
-        console.log("Done publishing for one feed.\n\n");
+        console.log("Done publishing for one feed.");
       } catch (error) {
         console.log(
           stripApiKeys(error.toString(), [alphaVantageKey, barchartStandardKey, barchartEquitiesKey, cmcKey])
         );
+        errors.push(error);
       }
     }
-    console.log("Done publishing for all feeds");
+    console.log("\n\nDone publishing for all feeds");
   } catch (error) {
     console.log(error);
+    errors.push(error);
+  }
+  if (errors.length) {
+    console.log("FAILURE:", errors);
+  } else {
+    console.log("SUCCESS");
   }
 }
 
