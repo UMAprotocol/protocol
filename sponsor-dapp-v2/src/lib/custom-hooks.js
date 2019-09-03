@@ -33,7 +33,7 @@ export function useEtherscanUrl() {
   return "https://etherscan.io/";
 }
 
-export function useFaucetUrls() {
+export function useEthFaucetUrl() {
   const networkId = drizzleReactHooks.useDrizzleState(drizzleState => {
     return drizzleState.web3.networkId;
   });
@@ -42,15 +42,34 @@ export function useFaucetUrls() {
 
   // The only networks that are both public and have an eth faucet should be testnets.
   if (networkConfig && networkConfig.ethFaucet) {
-    return {
-      eth: networkConfig.ethFaucet,
-      // TODO(mrice32): put a real DAI faucet link here.
-      dai: networkConfig.ethFaucet
-    };
+    return networkConfig.ethFaucet;
   }
 
   // Mainnet and private networks will default to this case.
-  return {};
+  return null;
+}
+
+export function useDaiFaucetRequest() {
+  const { useCacheSend, drizzle } = drizzleReactHooks.useDrizzle();
+
+  const { account, networkId } = drizzleReactHooks.useDrizzleState(drizzleState => ({
+    account: drizzleState.accounts[0],
+    networkId: drizzleState.web3.networkId
+  }));
+
+  const { send } = useCacheSend("TestnetERC20", "allocateTo");
+
+  // There is no DAI faucet for mainnet.
+  if (publicNetworks[networkId] && publicNetworks[networkId].name === "mainnet") {
+    return null;
+  }
+
+  return event => {
+    if (event) {
+      event.preventDefault();
+    }
+    send(account, drizzle.web3.utils.toWei("100"));
+  };
 }
 
 export function useTextInput() {

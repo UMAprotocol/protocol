@@ -1,13 +1,14 @@
 import React from "react";
 import { connect } from "react-redux";
 import { Link, Redirect } from "react-router-dom";
-import { useNumRegisteredContracts, useFaucetUrls } from "lib/custom-hooks";
+import { useNumRegisteredContracts, useEthFaucetUrl, useDaiFaucetRequest } from "lib/custom-hooks";
 
 import Header from "components/common/Header";
 
 function StartScreen() {
   const numContracts = useNumRegisteredContracts();
-  const faucetUrls = useFaucetUrls();
+  const ethFaucetUrl = useEthFaucetUrl();
+  const daiFaucetRequest = useDaiFaucetRequest();
 
   if (numContracts === undefined) {
     return null;
@@ -30,20 +31,16 @@ function StartScreen() {
               </Link>
 
               <div className="section__actions-inner">
-                {faucetUrls.eth ? (
-                  <a
-                    href={faucetUrls.eth}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn--grey btn--size1"
-                  >
+                {ethFaucetUrl ? (
+                  <a href={ethFaucetUrl} target="_blank" rel="noopener noreferrer" className="btn btn--grey btn--size1">
                     Testnet ETH faucet
                   </a>
                 ) : null}
 
-                {faucetUrls.dai ? (
+                {daiFaucetRequest ? (
                   <a
-                    href={faucetUrls.dai}
+                    href="test"
+                    onClick={daiFaucetRequest}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn--grey btn--size1"
