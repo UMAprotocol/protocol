@@ -7,6 +7,7 @@ import web3 from "web3";
 import IconSvgComponent from "components/common/IconSvgComponent";
 import { useIdentifierConfig, useDaiAddress } from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
+import { formatWei } from "common/FormattingUtils.js";
 
 function getContractNameAndSymbol(selections) {
   // The date is supposed to look like Sep19 in the token name.
@@ -167,12 +168,13 @@ function Step3(props) {
       return <div />;
     }
 
-    const { toBN, toWei, fromWei } = web3.utils;
+    const { toBN, toWei } = web3.utils;
     // Use BN rather than JS number to avoid precision issues.
-    const collatReq = fromWei(
+    const collatReq = formatWei(
       toBN(toWei(identifierConfig[selections.identifier].supportedMove))
         .add(toBN(toWei("1")))
-        .muln(100)
+        .muln(100),
+      web3
     );
 
     return (

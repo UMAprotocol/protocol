@@ -5,6 +5,7 @@ import web3 from "web3";
 
 import Dropdown from "components/common/Dropdown";
 import { useEnabledIdentifierConfig } from "lib/custom-hooks";
+import { formatWei } from "common/FormattingUtils.js";
 
 function Step1(props) {
   const [state, setState] = useState({
@@ -25,14 +26,15 @@ function Step1(props) {
       return null;
     }
 
-    const { toBN, toWei, fromWei } = web3.utils;
+    const { toBN, toWei } = web3.utils;
 
     const dropdownData = Object.keys(identifierConfig).map(identifier => {
       // Use BN rather than JS number to avoid precision issues.
-      const collatReq = fromWei(
+      const collatReq = formatWei(
         toBN(toWei(identifierConfig[identifier].supportedMove))
           .add(toBN(toWei("1")))
-          .muln(100)
+          .muln(100),
+        web3
       );
       return {
         key: identifier,
