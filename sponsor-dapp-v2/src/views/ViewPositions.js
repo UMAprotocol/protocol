@@ -4,7 +4,7 @@ import { Link, Redirect } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { formatWei, formatWithMaxDecimals } from "common/FormattingUtils";
-import { useEtherscanUrl, useFaucetUrls } from "lib/custom-hooks";
+import { useEtherscanUrl, useEthFaucetUrl, useDaiFaucetRequest } from "lib/custom-hooks";
 
 import Header from "components/common/Header";
 import Position from "components/Position";
@@ -133,7 +133,8 @@ function usePositionList() {
 
 function ViewPositions() {
   const positions = usePositionList();
-  const faucetUrls = useFaucetUrls();
+  const ethFaucetUrl = useEthFaucetUrl();
+  const daiFaucetRequest = useDaiFaucetRequest();
 
   // TODO(mrice32): should we have some sort of loading screen to show while data is being pulled?
   if (positions === undefined) {
@@ -159,20 +160,16 @@ function ViewPositions() {
               </Link>
 
               <div className="section__actions-inner">
-                {faucetUrls.eth ? (
-                  <a
-                    href={faucetUrls.eth}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn--grey btn--size1"
-                  >
+                {ethFaucetUrl ? (
+                  <a href={ethFaucetUrl} target="_blank" rel="noopener noreferrer" className="btn btn--grey btn--size1">
                     Testnet ETH faucet
                   </a>
                 ) : null}
 
-                {faucetUrls.dai ? (
+                {daiFaucetRequest ? (
                   <a
-                    href={faucetUrls.dai}
+                    href="test"
+                    onClick={daiFaucetRequest}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn--grey btn--size1"
