@@ -2,7 +2,12 @@ import React, { useEffect } from "react";
 
 import classNames from "classnames";
 import { withAddedContract } from "lib/contracts";
-import { useTextInput, useCollateralizationInformation, useMaxTokensThatCanBeCreated, useLiquidationPrice } from "lib/custom-hooks";
+import {
+  useTextInput,
+  useCollateralizationInformation,
+  useMaxTokensThatCanBeCreated,
+  useLiquidationPrice
+} from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
