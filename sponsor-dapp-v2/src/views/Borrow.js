@@ -12,7 +12,8 @@ import {
   useTextInput,
   useSendTransactionOnLink,
   useCollateralizationInformation,
-  useMaxTokensThatCanBeCreated
+  useMaxTokensThatCanBeCreated,
+  useLiquidationPrice
 } from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
 
@@ -29,6 +30,7 @@ function Borrow(props) {
   const handleCreateClick = useSendTransactionOnLink({ send, status }, [marginAmount, tokenAmount], props.history);
 
   const data = useCollateralizationInformation(tokenAddress, "");
+  const liquidationPrice = useLiquidationPrice(tokenAddress);
   data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
   const { ready, maxTokens } = useMaxTokensThatCanBeCreated(tokenAddress, marginAmount);
   if (!data.ready || !data.updatedUnderlyingPrice || !ready) {
@@ -111,7 +113,7 @@ function Borrow(props) {
 
             <div className="popup__col">
               <dl className="popup__description">
-                <dt>Liquidation price [BTC/USD]: 15,400</dt>
+                <dt>Liquidation price [BTC/USD]: {liquidationPrice ? format(liquidationPrice) : "--"}</dt>
                 <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)} </dd>
               </dl>
 

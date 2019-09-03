@@ -184,6 +184,38 @@ export function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
   }
 }
 
+export function useLiquidationPrice(tokenAddress) {
+  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const { toBN, toWei } = drizzle.web3.utils;
+  const navStr = useCacheCall(tokenAddress, "calcNAV");
+  const excessMarginStr = useCacheCall(tokenAddress, "calcExcessMargin");
+  const underlyingPriceTime = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+
+  if (!navStr || !excessMarginStr || !underlyingPriceTime) {
+    return undefined;
+  }
+
+  // Convert string outputs to BN.
+  const nav = toBN(navStr);
+  const excessMargin = toBN(excessMarginStr);
+  const underlyingPrice = toBN(underlyingPriceTime.underlyingPrice);
+
+  if (nav.isZero()) {
+    return null;
+  }
+
+  const fpScalingFactor = toBN(toWei("1"));
+
+  const mul = (a, b) => a.mul(b).divRound(fpScalingFactor);
+  const div = (a, b) => a.mul(fpScalingFactor).divRound(b);
+
+  const maxNav = nav.add(excessMargin);
+  const percentChange = div(maxNav, nav);
+  const liquidationPrice = mul(percentChange, underlyingPrice);
+
+  return liquidationPrice;
+}
+
 export function useIdentifierConfig() {
   return useMemo(() => {
     const identifierConfig = {};
