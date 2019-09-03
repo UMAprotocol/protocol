@@ -9,7 +9,7 @@
       "publishInterval": "900",
       "minDelay": "600",
       "numerator": {
-        "dataSource": "Barchart",
+        "dataSource": "BarchartCrypto",
         "assetName": "^BTCUSD"
       }
     }
@@ -24,7 +24,7 @@
       "publishInterval": "900",
       "minDelay": "600",
       "numerator": {
-        "dataSource": "Barchart",
+        "dataSource": "BarchartCrypto",
         "assetName": "^ETHUSD"
       }
     }
