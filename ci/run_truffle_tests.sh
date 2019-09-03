@@ -46,4 +46,4 @@ run_tests() {
 run_tests $PROTOCOL_DIR/core
 
 # Check the Kovan deployment.
-check_deployment $PROTOCOL_DIR/core 42 kovan_mnemonic
+check_deployment $PROTOCOL_DIR/core 4 rinkeby_mnemonic
