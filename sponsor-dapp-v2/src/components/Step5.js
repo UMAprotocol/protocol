@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 
 import classNames from "classnames";
 import { withAddedContract } from "lib/contracts";
-import { useTextInput, useCollateralizationInformation } from "lib/custom-hooks";
+import { useTextInput, useCollateralizationInformation, useLiquidationPrice } from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
@@ -56,6 +56,7 @@ function Step5(props) {
     ""
   );
   const currentPrice = useCacheCall(contractAddress, "getUpdatedUnderlyingPrice");
+  const liquidationPrice = useLiquidationPrice(contractAddress);
 
   const handleClick = event => {
     event.preventDefault();
@@ -132,7 +133,9 @@ function Step5(props) {
         <div className="step__inner">
           <div className="step__content">
             <dl className="step__description">
-              <dt>Liquidation price [{identifier}]: N/A</dt>
+              <dt>
+                Liquidation price [{identifier}]: {liquidationPrice ? format(liquidationPrice) : "--"}
+              </dt>
               <dd>
                 Current price [{identifier}]: ${currentPrice ? format(currentPrice.underlyingPrice) : " --"}
               </dd>
