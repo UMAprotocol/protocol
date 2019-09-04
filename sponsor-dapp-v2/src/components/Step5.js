@@ -2,12 +2,7 @@ import React, { useEffect } from "react";
 
 import classNames from "classnames";
 import { withAddedContract } from "lib/contracts";
-import {
-  useTextInput,
-  useCollateralizationInformation,
-  useMaxTokensThatCanBeCreated,
-  useLiquidationPrice
-} from "lib/custom-hooks";
+import { useTextInput, useCollateralizationInformation, useMaxTokensThatCanBeCreated } from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
@@ -56,12 +51,8 @@ function Step5(props) {
   const { send, status } = useBorrow(props.onNextStep, props.userSelectionsRef, dai, tokens);
 
   // Get data to display.
-  const { currentCollateralization, collateralizationRequirement } = useCollateralizationInformation(
-    contractAddress,
-    ""
-  );
+  const { collateralizationRequirement } = useCollateralizationInformation(contractAddress, "");
   const currentPrice = useCacheCall(contractAddress, "getUpdatedUnderlyingPrice");
-  const liquidationPrice = useLiquidationPrice(contractAddress);
 
   const { ready, maxTokens } = useMaxTokensThatCanBeCreated(contractAddress, dai);
 
@@ -145,16 +136,12 @@ function Step5(props) {
       <div className="step__inner">
         <div className="step__content">
           <dl className="step__description">
-            <dt>
-              Liquidation price [{identifier}]: {liquidationPrice ? format(liquidationPrice) : "--"}
-            </dt>
             <dd>
               Current price [{identifier}]: ${currentPrice ? format(currentPrice.underlyingPrice) : " --"}
             </dd>
           </dl>
 
           <dl className="step__description">
-            <dt>Collateralization ratio: {currentCollateralization || "-- %"}</dt>
             <dd>Minimum ratio: {collateralizationRequirement ? format(collateralizationRequirement) : "-- %"}%</dd>
           </dl>
         </div>

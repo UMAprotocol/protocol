@@ -25,13 +25,16 @@ function Landing() {
       <div className="main">
         <div className="shell">
           <section className="section section--about">
-            <h2>This is a developer tool that lets you:</h2>
+            <h2>UMA's Synthetic Token Builder lets you:</h2>
             <div className="section__entry">
-              <p>Demonstrate how you can use UMA infrastructure </p>
+              <p>
+                - Deploy a custom “token facility” smart contract to the Rinkeby testnet that will create a long and a
+                short exposure to anything with a price
+              </p>
 
-              <p>Deploy a custom token facility</p>
+              <p>- Borrow synthetic tokens that represent long price risk</p>
 
-              <p>Borrow synthetic ERC20 tokens and track the price of anything</p>
+              <p>- Manage your token facility, which represents short price risk</p>
             </div>
 
             <Link to="/Start" className="btn">
@@ -40,19 +43,17 @@ function Landing() {
           </section>
 
           <section className="section section--service-items">
-            <h2>How it works:</h2>
+            <h2>How to build a custom token:</h2>
 
             <div className="service-items">
               <div className="service-item">
-                <h3>Create a derivative</h3>
-
                 <ul className="list-examples">
                   <li>
                     <span className="icon">
                       <IconSvgComponent iconPath="svg/ico-open-door.svg" additionalClass="ico-open-door" />
                     </span>
 
-                    <p>Open up a facility</p>
+                    <p>Deploy a customized token facility</p>
                   </li>
 
                   <li>
@@ -68,21 +69,7 @@ function Landing() {
                       <IconSvgComponent iconPath="svg/ico-borrow.svg" additionalClass="ico-borrow" />
                     </span>
 
-                    <p>Borrow synthetic token</p>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="service-item">
-                <h3>Manage your risk</h3>
-
-                <ul className="list-examples">
-                  <li>
-                    <span className="icon">
-                      <IconSvgComponent iconPath="svg/ico-sell-tokens.svg" additionalClass="ico-sell-tokens" />
-                    </span>
-
-                    <p>Sell tokens to leverage risk exposure</p>
+                    <p>Borrow and sell synthetic tokens (tokens = long price risk)</p>
                   </li>
                 </ul>
               </div>
