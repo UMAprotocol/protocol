@@ -36,7 +36,7 @@ function Step2(props) {
   });
 
   return (
-    <div className="step step--secondary">
+    <>
       <div className="step__content">
         <p>
           Choose token expiry
@@ -73,7 +73,7 @@ function Step2(props) {
           </a>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

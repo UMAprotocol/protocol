@@ -76,7 +76,7 @@ function Step5(props) {
   const allowedToProceed = dai !== "" && tokens !== "";
 
   return (
-    <div className="step step-5-enter-done">
+    <>
       <div className="form-borrow">
         <form action="#" method="post">
           <div className="form__body">
@@ -178,7 +178,7 @@ function Step5(props) {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -177,7 +177,7 @@ function Step3(props) {
   );
 
   return (
-    <div className="step step--tertiary">
+    <>
       <div className="step__content">
         <p>
           Launch token facility
@@ -289,7 +289,7 @@ function Step3(props) {
           </a>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
