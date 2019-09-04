@@ -46,7 +46,7 @@ function Step4(props) {
         <p>
           Your token facility was successfully created.
           <span>
-            (address: {contractAddress.slice(0, 2)}
+            (address: {contractAddress.slice(0, 6)}
             .....)
           </span>
         </p>
