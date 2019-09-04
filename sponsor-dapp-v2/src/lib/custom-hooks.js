@@ -184,22 +184,20 @@ export function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
   }
 }
 
-export function useLiquidationPrice(tokenAddress) {
-  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const { toBN, toWei } = drizzle.web3.utils;
-  const navStr = useCacheCall(tokenAddress, "calcNAV");
-  const excessMarginStr = useCacheCall(tokenAddress, "calcExcessMargin");
-  const underlyingPriceTime = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+export function computeLiquidationPrice(web3, navString, excessMarginString, underlyingPriceTime) {
+  const { toBN, toWei } = web3.utils;
 
-  if (!navStr || !excessMarginStr || !underlyingPriceTime) {
+  // Return undefined (as drizzle would) if the blockchain values have not been received yet.
+  if (!navString || !excessMarginString || !underlyingPriceTime) {
     return undefined;
   }
 
   // Convert string outputs to BN.
-  const nav = toBN(navStr);
-  const excessMargin = toBN(excessMarginStr);
+  const nav = toBN(navString);
+  const excessMargin = toBN(excessMarginString);
   const underlyingPrice = toBN(underlyingPriceTime.underlyingPrice);
 
+  // Return null if there is no valid output that can be computed.
   if (nav.isZero()) {
     return null;
   }
@@ -214,6 +212,15 @@ export function useLiquidationPrice(tokenAddress) {
   const liquidationPrice = mul(percentChange, underlyingPrice);
 
   return liquidationPrice;
+}
+
+export function useLiquidationPrice(tokenAddress) {
+  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const navStr = useCacheCall(tokenAddress, "calcNAV");
+  const excessMarginStr = useCacheCall(tokenAddress, "calcExcessMargin");
+  const underlyingPriceTime = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+
+  return computeLiquidationPrice(drizzle.web3, navStr, excessMarginStr, underlyingPriceTime);
 }
 
 export function useIdentifierConfig() {
