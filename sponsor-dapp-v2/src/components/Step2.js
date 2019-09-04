@@ -20,65 +20,61 @@ function Step2(props) {
 
   const identifierConfig = useIdentifierConfig();
 
-  const render = () => {
-    if (!identifierConfig) {
-      return null;
-    }
+  if (!identifierConfig) {
+    return null;
+  }
 
-    const {
-      userSelectionsRef: { current: selection }
-    } = props;
+  const {
+    userSelectionsRef: { current: selection }
+  } = props;
 
-    const timeline = identifierConfig[selection.identifier].expiries.map(expiry => {
-      return {
-        key: expiry,
-        value: moment.unix(expiry).format("MMMM DD, YYYY LTS")
-      };
-    });
+  const timeline = identifierConfig[selection.identifier].expiries.map(expiry => {
+    return {
+      key: expiry,
+      value: moment.unix(expiry).format("MMMM DD, YYYY LTS")
+    };
+  });
 
-    return (
-      <div className="step step--secondary">
-        <div className="step__content">
-          <p>
-            Choose token expiry
-            <span>
-              Choose the token’s final settlement date. <br />
-              (you can repay early, too)
-            </span>
-          </p>
+  return (
+    <div className="step step--secondary">
+      <div className="step__content">
+        <p>
+          Choose token expiry
+          <span>
+            Choose the token’s final settlement date. <br />
+            (you can repay early, too)
+          </span>
+        </p>
+      </div>
+
+      <div className="step__aside">
+        <div className="step__entry">
+          <Dropdown
+            placeholder="Select settlement date"
+            list={timeline}
+            onChange={checkProceeding}
+            initialKeySelection={selection.expiry}
+          />
         </div>
 
-        <div className="step__aside">
-          <div className="step__entry">
-            <Dropdown
-              placeholder="Select settlement date"
-              list={timeline}
-              onChange={checkProceeding}
-              initialKeySelection={selection.expiry}
-            />
-          </div>
+        <div className="step__actions">
+          <a href="test" className="btn btn--alt" onClick={props.onPrevStep}>
+            Back
+          </a>
 
-          <div className="step__actions">
-            <a href="test" className="btn btn--alt" onClick={props.onPrevStep}>
-              Back
-            </a>
-
-            <a
-              href="test"
-              onClick={props.onNextStep}
-              className={classNames("btn", {
-                disabled: !state.allowedToProceed
-              })}
-            >
-              Next
-            </a>
-          </div>
+          <a
+            href="test"
+            onClick={props.onNextStep}
+            className={classNames("btn", {
+              disabled: !state.allowedToProceed
+            })}
+          >
+            Next
+          </a>
         </div>
       </div>
-    );
-  };
-
-  return render();
+    </div>
+  );
 }
 
 export default Step2;
