@@ -216,11 +216,11 @@ export function computeLiquidationPrice(web3, navString, excessMarginString, und
 
 export function useLiquidationPrice(tokenAddress) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const navStr = useCacheCall(tokenAddress, "calcNAV");
-  const excessMarginStr = useCacheCall(tokenAddress, "calcExcessMargin");
+  const nav = useCacheCall(tokenAddress, "calcNAV");
+  const excessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
   const underlyingPriceTime = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
 
-  return computeLiquidationPrice(drizzle.web3, navStr, excessMarginStr, underlyingPriceTime);
+  return computeLiquidationPrice(drizzle.web3, nav, excessMargin, underlyingPriceTime);
 }
 
 export function useIdentifierConfig() {
