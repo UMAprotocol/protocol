@@ -41,7 +41,7 @@ function Step4(props) {
   }
 
   return (
-    <div className="step">
+    <>
       <div className="step__content">
         <p>
           Your token facility was successfully created.
@@ -77,7 +77,7 @@ function Step4(props) {
           </a>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

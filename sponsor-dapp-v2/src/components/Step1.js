@@ -42,7 +42,7 @@ function Step1(props) {
   });
 
   return (
-    <div className="step step--primary">
+    <>
       <div className="step__content">
         <p>
           Choose an asset
@@ -81,7 +81,7 @@ function Step1(props) {
           </a>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -26,7 +26,7 @@ function Step6(props) {
   );
 
   return (
-    <div className="step step--tertiary">
+    <>
       <div className="step__content-alt">
         <p>
           You have successfully borrowed {format(tokensBorrowed)} synthetic tokens tracking {identifier}! View token
@@ -63,7 +63,7 @@ function Step6(props) {
           </Link>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
