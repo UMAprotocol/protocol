@@ -2,7 +2,12 @@ import React, { useEffect } from "react";
 
 import classNames from "classnames";
 import { withAddedContract } from "lib/contracts";
-import { useTextInput, useCollateralizationInformation, useLiquidationPrice } from "lib/custom-hooks";
+import {
+  useTextInput,
+  useCollateralizationInformation,
+  useMaxTokensThatCanBeCreated,
+  useLiquidationPrice
+} from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
@@ -57,6 +62,8 @@ function Step5(props) {
   );
   const currentPrice = useCacheCall(contractAddress, "getUpdatedUnderlyingPrice");
   const liquidationPrice = useLiquidationPrice(contractAddress);
+
+  const { ready, maxTokens } = useMaxTokensThatCanBeCreated(contractAddress, dai);
 
   const handleClick = event => {
     event.preventDefault();
@@ -119,6 +126,12 @@ function Step5(props) {
                       />
                       <span>Tokens</span>
                     </div>
+
+                    {tokens !== "" && dai !== "" && ready && (
+                      <div className="form-hint">
+                        <p>(Max {format(maxTokens)})</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

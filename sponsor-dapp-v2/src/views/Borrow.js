@@ -12,48 +12,10 @@ import {
   useTextInput,
   useSendTransactionOnLink,
   useCollateralizationInformation,
+  useMaxTokensThatCanBeCreated,
   useLiquidationPrice
 } from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
-
-function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
-  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const { toWei, toBN } = drizzle.web3.utils;
-
-  const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
-  const newExcessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
-  const tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
-
-  const dataFetched = derivativeStorage && newExcessMargin && tokenValue;
-  if (!dataFetched) {
-    return { ready: false };
-  }
-  if (marginAmount === "") {
-    return { ready: true, maxTokens: toBN("0") };
-  }
-
-  const fpScalingFactor = toBN(toWei("1"));
-  const sentAmount = toBN(toWei(marginAmount));
-  const supportedMove = toBN(derivativeStorage.fixedParameters.supportedMove);
-  const tokenValueBn = toBN(tokenValue);
-
-  const mul = (a, b) => a.mul(b).divRound(fpScalingFactor);
-  const div = (a, b) => a.mul(fpScalingFactor).divRound(b);
-
-  // `supportedTokenMarketCap` represents the extra token market cap that there is sufficient collateral for. Tokens can be purchased at
-  // `tokenValue` up to this amount.
-  const supportedTokenMarketCap = div(toBN(newExcessMargin), supportedMove);
-  if (sentAmount.lte(supportedTokenMarketCap)) {
-    // The amount of money being sent in is the limiting factor.
-    return { ready: true, maxTokens: div(sentAmount, tokenValueBn) };
-  } else {
-    // Tokens purchased beyond the value of `supportedTokenMarketCap` cost `(1 + supportedMove) * tokenValue`, because some of
-    // the money has to be diverted to support the margin requirement.
-    const costOfExtra = mul(tokenValueBn, fpScalingFactor.add(supportedMove));
-    const extra = sentAmount.sub(supportedTokenMarketCap);
-    return { ready: true, maxTokens: div(supportedTokenMarketCap, tokenValueBn).add(div(extra, costOfExtra)) };
-  }
-}
 
 function Borrow(props) {
   const { tokenAddress } = props.match.params;
