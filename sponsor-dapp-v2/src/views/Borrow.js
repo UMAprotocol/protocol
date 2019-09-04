@@ -21,7 +21,7 @@ function Borrow(props) {
   const { tokenAddress } = props.match.params;
 
   const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
-  const { fromWei, toBN, toWei } = drizzle.web3.utils;
+  const { fromWei, hexToUtf8, toBN, toWei } = drizzle.web3.utils;
 
   const { amount: marginAmount, handleChangeAmount: handleChangeMarginAmount } = useTextInput();
   const { amount: tokenAmount, handleChangeAmount: handleChangeTokenAmount } = useTextInput();
@@ -32,8 +32,9 @@ function Borrow(props) {
   const data = useCollateralizationInformation(tokenAddress, "");
   const liquidationPrice = useLiquidationPrice(tokenAddress);
   data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
   const { ready, maxTokens } = useMaxTokensThatCanBeCreated(tokenAddress, marginAmount);
-  if (!data.ready || !data.updatedUnderlyingPrice || !ready) {
+  if (!data.ready || !data.updatedUnderlyingPrice || !derivativeStorage || !ready) {
     return <div>Loading borrow data</div>;
   }
 
@@ -113,7 +114,10 @@ function Borrow(props) {
 
             <div className="popup__col">
               <dl className="popup__description">
-                <dt>Liquidation price [BTC/USD]: {liquidationPrice ? format(liquidationPrice) : "--"}</dt>
+                <dt>
+                  Liquidation price [{hexToUtf8(derivativeStorage.fixedParameters.product)}]:{" "}
+                  {liquidationPrice ? format(liquidationPrice) : "--"}
+                </dt>
                 <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)} </dd>
               </dl>
 
