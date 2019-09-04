@@ -27,6 +27,16 @@
 
 	.expand-box__content {
 		padding: 30px 0;
+
+        a {
+            color: $color-red;
+            font-weight: 600;
+            text-decoration: underline;
+
+            &:hover {
+                text-decoration: none;
+            }
+        }
 	}
 
 	.expand-box__body {

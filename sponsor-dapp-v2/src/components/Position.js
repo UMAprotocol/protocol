@@ -118,7 +118,7 @@ function Position(props) {
                       </td>
 
                       <td>
-                        <a href="test" className="btn">
+                        <a href="#" style={{ opacity: "0" }} className="btn">
                           Trade
                         </a>
                       </td>

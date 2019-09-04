@@ -181,7 +181,7 @@ function Step3(props) {
       <div className="step__content">
         <p>
           Launch token facility
-          <span>Confirm the parameters of your custom token facility </span>
+          <span>Confirm the parameters of your token facility </span>
         </p>
       </div>
 
@@ -197,7 +197,7 @@ function Step3(props) {
             </li>
 
             <li>
-              Expiry: <span>{moment.unix(selections.expiry).format("MMMM DD, YYYY LTS")}</span>
+              Settlement date: <span>{moment.unix(selections.expiry).format("MMMM DD, YYYY LTS")}</span>
             </li>
 
             <li>
@@ -281,7 +281,7 @@ function Step3(props) {
               "is-loading": status === "pending"
             })}
           >
-            <span>Create Contract</span>
+            <span>Create Facility</span>
 
             <span className="loading-text">Processing</span>
 

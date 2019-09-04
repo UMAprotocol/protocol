@@ -29,9 +29,14 @@ function Step6(props) {
     <>
       <div className="step__content-alt">
         <p>
-          You now own a custom token facility and {format(tokensBorrowed)} synthetic tokens whose value tracks{" "}
-          {identifier}! View token details on{" "}
-          <a href={`${etherscanUrl}address/${contractAddress}`} target="_blank" rel="noopener noreferrer">
+          You now own a custom token facility and {format(tokensBorrowed)} synthetic tokens tracking {identifier}! View
+          token details on{" "}
+          <a
+            className="btn__link-default"
+            href={`${etherscanUrl}address/${contractAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Etherscan.
           </a>
         </p>

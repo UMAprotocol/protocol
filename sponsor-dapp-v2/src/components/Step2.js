@@ -39,10 +39,10 @@ function Step2(props) {
     <>
       <div className="step__content">
         <p>
-          Choose token expiry
+          Determine token expiry
           <span>
             Choose the token’s final settlement date. <br />
-            (you can repay early, too)
+            You can repay early, too.
           </span>
         </p>
       </div>

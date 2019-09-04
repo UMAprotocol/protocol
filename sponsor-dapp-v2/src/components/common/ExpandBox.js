@@ -72,6 +72,17 @@ class ExpandBox extends Component {
                     </li>
                   );
                 }
+
+                  if (item.type === "link") {
+                      return (
+                          <li key={`detail-${itemIndex}`}>
+                            <a href={item.link.href} target="_blank" rel="noopener noreferrer">
+                            {item.link.text}
+                          </a>
+                          </li>
+                      );
+                  }
+
                 return <li key={`detail-${itemIndex}`}>No Data</li>;
               })}
             </ul>

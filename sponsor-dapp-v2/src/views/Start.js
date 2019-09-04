@@ -52,7 +52,10 @@ function StartScreen() {
             </div>
 
             <div className="section__entry">
-              <h2>You currently have no risk exposure.</h2>
+              <h2>Current risk exposure</h2>
+              <div style={{ marginTop: "100px", marginBottom: "100px", marginLeft: "100px", fontSize: "28px" }}>
+                No open token facilities*
+              </div>
 
               <h2>Ready to create a new position?</h2>
             </div>
