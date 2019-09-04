@@ -68,7 +68,7 @@ export function useDaiFaucetRequest() {
     if (event) {
       event.preventDefault();
     }
-    send(account, drizzle.web3.utils.toWei("100"));
+    send(account, drizzle.web3.utils.toWei("100000"));
   };
 }
 
