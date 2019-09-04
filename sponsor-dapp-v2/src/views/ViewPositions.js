@@ -4,7 +4,8 @@ import { Link, Redirect } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { formatWei, formatWithMaxDecimals } from "common/FormattingUtils";
-import { useEtherscanUrl, useEthFaucetUrl, useDaiFaucetRequest } from "lib/custom-hooks";
+import { useEtherscanUrl, useEthFaucetUrl, useDaiFaucetRequest, computeLiquidationPrice } from "lib/custom-hooks";
+import { createFormatFunction } from "common/FormattingUtils";
 
 import Header from "components/common/Header";
 import Position from "components/Position";
@@ -66,6 +67,8 @@ function usePositionList() {
         return callResult;
       };
 
+      const format = createFormatFunction(web3, 4);
+
       // Added a strange number as the fallback so it's obvious if this number ever makes it to the user.
       const formatTokenAmounts = valInWei =>
         valInWei ? formatWithMaxDecimals(formatWei(valInWei, web3), 4, false) : "-999999999";
@@ -78,14 +81,20 @@ function usePositionList() {
         const netPosition = BigNumber(yourSupply)
           .minus(BigNumber(totalSupply))
           .toString();
+
+        // These are needed to compute the liquidation price.
+        const nav = call(contractAddress, "calcNAV");
+        const excessMargin = call(contractAddress, "calcExcessMargin");
+        const underlyingPriceTime = call(contractAddress, "getUpdatedUnderlyingPrice");
+        const liquidationPrice = computeLiquidationPrice(web3, nav, excessMargin, underlyingPriceTime);
+
         return {
           address: {
             display: contractAddress,
             link: `${etherscanPrefix}/address/${contractAddress}`
           },
           tokenName: name,
-          // TODO(mrice32): compute real liquidation price rather than hardcoding.
-          liquidationPrice: "$14,000",
+          liquidationPrice: liquidationPrice ? format(liquidationPrice) : "--",
           exposures: [
             {
               type: "tokenFacility",
