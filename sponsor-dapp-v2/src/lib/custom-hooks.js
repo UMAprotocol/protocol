@@ -125,7 +125,8 @@ export function useCollateralizationInformation(tokenAddress, changeInShortBalan
 
   data.collateralizationRequirement = toBN(data.derivativeStorage.fixedParameters.supportedMove)
     .add(toBN(toWei("1")))
-    .muln(100);
+    .muln(100)
+    .toString();
 
   data.currentCollateralization = "-- %";
   data.newCollateralizationAmount = "-- %";
