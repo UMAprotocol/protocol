@@ -331,7 +331,7 @@ function ManagePositions(props) {
                           </td>
 
                           <td>
-                            <strong>{format(data.excessMargin)} DAI</strong>
+                            <strong>{format(data.shortMarginBalance)} DAI</strong>
                           </td>
 
                           <td>
