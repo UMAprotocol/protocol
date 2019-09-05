@@ -9,7 +9,7 @@
 .section--about {
 	font-weight: 600;
 	font-family: $font-halyard-display;
-	margin-bottom: 100px;
+	margin-bottom: 50px;
 
 	p ~ p {
 		margin-top: 10px;
@@ -17,6 +17,7 @@
 
 	.section__entry {
 		margin-bottom: 50px;
+        margin-top: 25px;
 	}
 }
 
@@ -51,7 +52,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 80px;
+		margin-bottom: 40px;
 
 		&-inner {
 			width: 100%;

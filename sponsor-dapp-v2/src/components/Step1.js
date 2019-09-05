@@ -37,7 +37,7 @@ function Step1(props) {
     );
     return {
       key: identifier,
-      value: `${identifier} (${collatReq}%)`
+      value: `${identifier} (CR = ${collatReq}%)`
     };
   });
 
@@ -45,16 +45,16 @@ function Step1(props) {
     <>
       <div className="step__content">
         <p>
-          Choose an asset
+          Choose your token's price index
           <span>
-            Select the synthetic asset that you’d like to borrow. Each synthetic asset has a different collateralization
-            requirement (CR). DAI is used as collateral for borrowing synthetics.{" "}
+            Select the price index that your token's value will track. Deposit DAI into the facility to borrow tokens
+            and/or maintain the collateralization requirement (CR).
           </span>
         </p>
 
         <p>
           <span>
-            Want something else? <a href="mailto:hello@umaproject.org">Tell us</a>
+            Want a different price index? <a href="mailto:hello+pxrequests@umaproject.org">Tell us</a>
           </span>
         </p>
       </div>
@@ -62,7 +62,7 @@ function Step1(props) {
       <div className="step__aside">
         <div className="step__entry">
           <Dropdown
-            placeholder="Select synthetic asset"
+            placeholder="Select a price index"
             list={dropdownData}
             onChange={checkProceeding}
             initialKeySelection={props.userSelectionsRef.current.identifier}

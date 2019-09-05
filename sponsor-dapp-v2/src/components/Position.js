@@ -6,6 +6,10 @@ import Tooltip from "components/common/Tooltip";
 function Position(props) {
   const { position, index, totalLength } = props;
 
+  const ignoreClick = e => {
+    e.preventDefault();
+  };
+
   return (
     <div className="position">
       <div className="position__head">
@@ -38,8 +42,7 @@ function Position(props) {
                   Direction of risk
                   <Tooltip>
                     <p>
-                      <span>Direction of risk</span> is cash or equity in a margin trading account beyond what is
-                      required to open or maintain the account.
+                      <span>Direction of risk</span> shows whether owning a position gives you long or short exposure.
                     </p>
                   </Tooltip>
                 </th>
@@ -48,7 +51,8 @@ function Position(props) {
                   Total exposure
                   <Tooltip>
                     <p>
-                      <span>Total exposure</span> is Lorem ipsum dolor sit amet.
+                      <span>Total exposure</span> is the amount of risk that has been created. The total amount of short
+                      (token facility) exposure always equals the total amount of long (tokens) exposure.
                     </p>
                   </Tooltip>
                 </th>
@@ -57,7 +61,7 @@ function Position(props) {
                   Your exposure
                   <Tooltip>
                     <p>
-                      <span>Your exposure</span> is Lorem ipsum dolor sit amet.
+                      <span>Your exposure</span> is how many units of risk that you own.
                     </p>
                   </Tooltip>
                 </th>
@@ -118,7 +122,7 @@ function Position(props) {
                       </td>
 
                       <td>
-                        <a href="test" className="btn">
+                        <a href="test" onClick={ignoreClick} style={{ opacity: "0" }} className="btn">
                           Trade
                         </a>
                       </td>

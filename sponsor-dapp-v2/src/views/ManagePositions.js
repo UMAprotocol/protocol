@@ -9,6 +9,7 @@ import Tooltip from "components/common/Tooltip";
 import { withAddedContract } from "lib/contracts";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
+import { useEtherscanUrl } from "lib/custom-hooks";
 
 function getStateDescription(derivativeStorage) {
   switch (derivativeStorage.state) {
@@ -52,6 +53,8 @@ function getStateDescription(derivativeStorage) {
 function useFinancialContractData(tokenAddress) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+
+  const etherscanUrl = useEtherscanUrl();
 
   const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
@@ -104,6 +107,7 @@ function useFinancialContractData(tokenAddress) {
   data.stateText = stateText;
   data.stateColor = stateColor;
   data.detailsContent = [
+    { type: "link", link: { href: `${etherscanUrl}address/${tokenAddress}`, text: "Etherscan" } },
     { type: "timestamp", title: "Last contract valuation", timestamp: data.updatedUnderlyingPrice.time },
     { type: "address", title: "Address", address: { display: tokenAddress } },
     { type: "address", title: "Sponsor", address: { display: data.derivativeStorage.externalAddresses.sponsor } },
@@ -180,7 +184,7 @@ function ManagePositions(props) {
             <div className="section__body">
               <div className="detail-box">
                 <div className="detail-box__head">
-                  <h4>Assets</h4>
+                  <h4>Tokens</h4>
                 </div>
 
                 <div className="detail-box__body">
@@ -189,12 +193,11 @@ function ManagePositions(props) {
                       <tbody>
                         <tr>
                           <td>
-                            Asset price
+                            Reference price index
                             <Tooltip>
                               <p>
-                                {" "}
-                                <span> Asset price </span>  is cash or equity in a margin trading account beyond what is
-                                required to open or maintain the account.{" "}
+                                <span> Reference price index </span> is the price index that each synthetic token's
+                                value references
                               </p>
                             </Tooltip>
                           </td>
@@ -202,16 +205,15 @@ function ManagePositions(props) {
                           <td>
                             <strong>{format(data.updatedUnderlyingPrice.underlyingPrice)}</strong>
                           </td>
+                          <td />
                         </tr>
 
                         <tr>
                           <td>
-                            Value
+                            Token value
                             <Tooltip>
                               <p>
-                                {" "}
-                                <span> Value </span>  is cash or equity in a margin trading account beyond what is
-                                required to open or maintain the account.{" "}
+                                <span> Token Value </span> is the value, in DAI, of each synthetic token
                               </p>
                             </Tooltip>
                           </td>
@@ -219,9 +221,56 @@ function ManagePositions(props) {
                           <td>
                             <strong>{format(data.tokenValue)} DAI</strong>
                           </td>
+                          <td />
+                        </tr>
+
+                        <tr>
+                          <td>
+                            Token supply
+                            <Tooltip>
+                              <p>
+                                <span>Token supply</span> is the total number of tokens that have been created with this
+                                token facility
+                              </p>
+                            </Tooltip>
+                          </td>
+
+                          <td>
+                            <strong>{format(data.totalSupply)} Tokens</strong>
+                          </td>
+
+                          <td>&nbsp;</td>
+                        </tr>
+
+                        <tr>
+                          <td>
+                            Your tokens
+                            <Tooltip>
+                              <p>This is the number of tokens you currently own in your wallet</p>
+                            </Tooltip>
+                          </td>
+
+                          <td>
+                            <strong>
+                              {format(data.tokenBalance)} ({data.tokenOwnershipPercentage.toString()}%)
+                            </strong>
+                          </td>
+
+                          <td>
+                            <strong>({format(data.tokenOwnershipValue)} DAI)</strong>
+                          </td>
                         </tr>
                       </tbody>
                     </table>
+                    <div className="detail-box__actions">
+                      <Link to={"/Borrow/" + tokenAddress} className="btn">
+                        <span>Borrow more tokens</span>
+                      </Link>
+
+                      <Link to={"/Repay/" + tokenAddress} className="btn">
+                        <span>Repay token debt</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -239,10 +288,7 @@ function ManagePositions(props) {
                           <td>
                             Total collateral
                             <Tooltip>
-                              <p>
-                                {" "}
-                                <span> Total collateral </span> Lorem ipsum dolor sit amet.
-                              </p>
+                              <p>The total amount of DAI that has been deposited into the custom token facility</p>
                             </Tooltip>
                           </td>
 
@@ -261,10 +307,10 @@ function ManagePositions(props) {
 
                         <tr>
                           <td>
-                            Token debt
+                            Value of token debt
                             <Tooltip>
                               <p>
-                                <span>Token debt</span> Lorem ipsum dolor sit amet.
+                                The value of all synthetic tokens that have been borrowed from the custom token facility
                               </p>
                             </Tooltip>
                           </td>
@@ -280,10 +326,7 @@ function ManagePositions(props) {
                           <td>
                             Excess collateral
                             <Tooltip>
-                              <p>
-                                {" "}
-                                <span>Excess collateral</span> Lorem ipsum dolor sit amet.
-                              </p>
+                              <p>Total collateral minus value of token debt</p>
                             </Tooltip>
                           </td>
 
@@ -306,69 +349,6 @@ function ManagePositions(props) {
 
                     <Link to={"/Deposit/" + tokenAddress} className="btn">
                       <span>Deposit additional collateral</span>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <div className="detail-box">
-                <div className="detail-box__head">
-                  <h4>Tokens</h4>
-                </div>
-
-                <div className="detail-box__body">
-                  <div className="detail-box__table">
-                    <table>
-                      <tbody>
-                        <tr>
-                          <td>
-                            Token supply
-                            <Tooltip>
-                              <p>
-                                <span>Token supply</span> Lorem ipsum dolor sit amet.
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>{format(data.totalSupply)} Tokens</strong>
-                          </td>
-
-                          <td>&nbsp;</td>
-                        </tr>
-
-                        <tr>
-                          <td>
-                            Your tokens
-                            <Tooltip>
-                              <p>
-                                {" "}
-                                <span>Your tokens</span> Lorem ipsum dolor sit amet.
-                              </p>
-                            </Tooltip>
-                          </td>
-
-                          <td>
-                            <strong>
-                              {format(data.tokenBalance)} ({data.tokenOwnershipPercentage.toString()}%)
-                            </strong>
-                          </td>
-
-                          <td>
-                            <strong>({format(data.tokenOwnershipValue)} DAI)</strong>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="detail-box__actions">
-                    <Link to={"/Borrow/" + tokenAddress} className="btn">
-                      <span>Borrow more tokens</span>
-                    </Link>
-
-                    <Link to={"/Repay/" + tokenAddress} className="btn">
-                      <span>Repay token debt</span>
                     </Link>
                   </div>
                 </div>

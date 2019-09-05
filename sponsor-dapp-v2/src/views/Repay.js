@@ -94,8 +94,8 @@ function Repay(props) {
                 <div className="popup__col">
                   <div className="popup__entry popup__entry-alt">
                     <p>
-                      You must authorize your facility to redeem your tokens in exchange for DAI held in the smart
-                      contract. This is standard across ERC-20 contracts and you will only have to do this once.
+                      You must authorize this facility to redeem created tokens for DAI held within the facility. This
+                      is standard across ERC-20 contracts and you will only have to do this once.
                     </p>
                   </div>
 
@@ -105,7 +105,7 @@ function Repay(props) {
                       className={classNames("btn btn--size2 has-loading", { "is-loading": isLoadingApproval })}
                       onClick={e => approveTokensHandler(e)}
                     >
-                      <span>Authorize contract</span>
+                      <span>Authorize facility</span>
 
                       <span className="loading-text">Processing</span>
 
@@ -151,7 +151,7 @@ function Repay(props) {
                 <div className="popup__col popup__col--offset-bottom">
                   <div className="popup__entry">
                     <dl className="popup__description">
-                      <dt>Redemption price: {format(data.tokenValue)}</dt>
+                      <dt>Redemption price: {format(data.tokenValue)} DAI</dt>
                       <dd>Current price: {format(data.updatedUnderlyingPrice.underlyingPrice)}</dd>
                     </dl>
 
