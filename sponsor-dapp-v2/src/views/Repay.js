@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
+import { useSendGaPageview } from "lib/google-analytics";
 
 import classNames from "classnames";
 import { CSSTransition } from "react-transition-group";
@@ -19,6 +20,7 @@ import { createFormatFunction } from "common/FormattingUtils";
 
 function Repay(props) {
   const { tokenAddress } = props.match.params;
+  useSendGaPageview("/Repay");
 
   const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { fromWei, toBN, toWei } = drizzle.web3.utils;

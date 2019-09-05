@@ -2,10 +2,12 @@ import React from "react";
 import { connect } from "react-redux";
 import { Link, Redirect } from "react-router-dom";
 import { useNumRegisteredContracts, useEthFaucetUrl, useDaiFaucetRequest } from "lib/custom-hooks";
+import { useSendGaPageview } from "lib/google-analytics";
 
 import Header from "components/common/Header";
 
 function StartScreen() {
+  useSendGaPageview("/Start");
   const numContracts = useNumRegisteredContracts();
   const ethFaucetUrl = useEthFaucetUrl();
   const daiFaucetRequest = useDaiFaucetRequest();

@@ -6,6 +6,7 @@ import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { formatWei, formatWithMaxDecimals } from "common/FormattingUtils";
 import { useEtherscanUrl, useEthFaucetUrl, useDaiFaucetRequest, computeLiquidationPrice } from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
+import { useSendGaPageview } from "lib/google-analytics";
 
 import Header from "components/common/Header";
 import Position from "components/Position";
@@ -141,6 +142,7 @@ function usePositionList() {
 }
 
 function ViewPositions() {
+  useSendGaPageview("/ViewPositions");
   const positions = usePositionList();
   const ethFaucetUrl = useEthFaucetUrl();
   const daiFaucetRequest = useDaiFaucetRequest();

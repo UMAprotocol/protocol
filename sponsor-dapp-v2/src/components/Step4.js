@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import classNames from "classnames";
 import { drizzleReactHooks } from "drizzle-react";
 import { MAX_UINT_VAL } from "common/Constants";
+import { sendGaEvent } from "lib/google-analytics.js";
 
 function useApproveDai(onSuccess, addressToApprove) {
   const { useCacheSend } = drizzleReactHooks.useDrizzle();
@@ -18,6 +19,7 @@ function useApproveDai(onSuccess, addressToApprove) {
 
   const send = () => {
     rawSend(addressToApprove, MAX_UINT_VAL);
+    sendGaEvent("TestnetERC20", "approveMarginCurrency");
   };
 
   return { status, send };

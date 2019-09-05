@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, Redirect } from "react-router-dom";
 import { useNumRegisteredContracts } from "lib/custom-hooks";
+import { useSendGaPageview } from "lib/google-analytics";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 
@@ -8,6 +9,7 @@ import Header from "components/common/Header";
 
 function Landing() {
   const numContracts = useNumRegisteredContracts();
+  useSendGaPageview("/Landing");
 
   if (numContracts === undefined) {
     return null;

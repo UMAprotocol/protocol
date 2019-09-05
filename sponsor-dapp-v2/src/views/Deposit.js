@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
+import { useSendGaPageview } from "lib/google-analytics";
 
 import classNames from "classnames";
 
@@ -12,6 +13,7 @@ import { useTextInput, useSendTransactionOnLink, useCollateralizationInformation
 
 function Deposit(props) {
   const { tokenAddress } = props.match.params;
+  useSendGaPageview("/Deposit");
 
   const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { fromWei } = drizzle.web3.utils;
