@@ -9,37 +9,13 @@ import Header from "components/common/Header";
 import IconSvgComponent from "components/common/IconSvgComponent";
 import { withAddedContract } from "lib/contracts";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
-import { useTextInput, useSendTransactionOnLink, useCollateralizationInformation } from "lib/custom-hooks";
+import {
+  useTextInput,
+  useSendTransactionOnLink,
+  useCollateralizationInformation,
+  useTokenPreapproval
+} from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
-import { MAX_UINT_VAL } from "common/Constants";
-
-function useTokenPreapproval(tokenAddress) {
-  const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
-  const { toBN } = drizzle.web3.utils;
-  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
-  }));
-
-  const allowance = useCacheCall(tokenAddress, "allowance", account, tokenAddress);
-  const allowanceAmount = toBN(MAX_UINT_VAL);
-  const minAllowanceAmount = allowanceAmount.divRound(toBN("2"));
-  const { send: approve, status: approvalStatus } = useCacheSend(tokenAddress, "approve");
-  const approveTokensHandler = e => {
-    e.preventDefault();
-    approve(tokenAddress, allowanceAmount.toString(), { from: account });
-  };
-
-  if (!allowance) {
-    return { ready: false };
-  }
-
-  return {
-    ready: true,
-    approveTokensHandler,
-    isApproved: toBN(allowance).gte(minAllowanceAmount),
-    isLoadingApproval: approvalStatus === "pending"
-  };
-}
 
 function Repay(props) {
   const { tokenAddress } = props.match.params;
@@ -61,6 +37,7 @@ function Repay(props) {
   data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
   const { ready: approvalDataReady, approveTokensHandler, isApproved, isLoadingApproval } = useTokenPreapproval(
+    tokenAddress,
     tokenAddress
   );
 

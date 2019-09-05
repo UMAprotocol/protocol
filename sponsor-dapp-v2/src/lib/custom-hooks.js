@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import publicNetworks from "common/PublicNetworks";
 import identifiers from "identifiers.json";
+import { MAX_UINT_VAL } from "common/Constants";
 
 export function useNumRegisteredContracts() {
   const { useCacheCall } = drizzleReactHooks.useDrizzle();
@@ -213,6 +214,34 @@ export function computeLiquidationPrice(web3, navString, excessMarginString, und
   const liquidationPrice = mul(percentChange, underlyingPrice);
 
   return liquidationPrice;
+}
+
+export function useTokenPreapproval(tokenContractName, addressToApprove) {
+  const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { toBN } = drizzle.web3.utils;
+  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
+    account: drizzleState.accounts[0]
+  }));
+
+  const allowance = useCacheCall(tokenContractName, "allowance", account, addressToApprove);
+  const allowanceAmount = toBN(MAX_UINT_VAL);
+  const minAllowanceAmount = allowanceAmount.divRound(toBN("2"));
+  const { send: approve, status: approvalStatus } = useCacheSend(tokenContractName, "approve");
+  const approveTokensHandler = e => {
+    e.preventDefault();
+    approve(addressToApprove, allowanceAmount.toString(), { from: account });
+  };
+
+  if (!allowance) {
+    return { ready: false };
+  }
+
+  return {
+    ready: true,
+    approveTokensHandler,
+    isApproved: toBN(allowance).gte(minAllowanceAmount),
+    isLoadingApproval: approvalStatus === "pending"
+  };
 }
 
 export function useLiquidationPrice(tokenAddress) {

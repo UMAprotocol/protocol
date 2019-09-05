@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 import Tooltip from "components/common/Tooltip";
+import ApproveOrDefault from "components/ApproveOrDefault";
 
 function Position(props) {
   const { position, index, totalLength } = props;
@@ -96,9 +97,14 @@ function Position(props) {
                       </td>
 
                       <td>
-                        <Link to={"/ManagePositions/" + position.address.display} className="btn">
-                          Manage position
-                        </Link>
+                        <ApproveOrDefault
+                          tokenContractName={"TestnetERC20"}
+                          addressToApprove={position.address.display}
+                        >
+                          <Link to={"/ManagePositions/" + position.address.display} className="btn">
+                            Manage position
+                          </Link>
+                        </ApproveOrDefault>
                       </td>
                     </tr>
                   );
