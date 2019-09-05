@@ -9,7 +9,12 @@ import Header from "components/common/Header";
 import IconSvgComponent from "components/common/IconSvgComponent";
 import { withAddedContract } from "lib/contracts";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
-import { useTextInput, useSendTransactionOnLink, useCollateralizationInformation, useTokenPreapproval } from "lib/custom-hooks";
+import {
+  useTextInput,
+  useSendTransactionOnLink,
+  useCollateralizationInformation,
+  useTokenPreapproval
+} from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
 
 function Repay(props) {
@@ -32,6 +37,7 @@ function Repay(props) {
   data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
   const { ready: approvalDataReady, approveTokensHandler, isApproved, isLoadingApproval } = useTokenPreapproval(
+    tokenAddress,
     tokenAddress
   );
 

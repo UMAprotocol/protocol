@@ -71,6 +71,8 @@
 	&.has-loading {
 		span { display: block; }
 
+		.default-text { display: block; }
+
 		.loading-text { display: none; }
 
 		.dot-pulse { display: none; }
@@ -84,6 +86,7 @@
 
 		span { display: none; }
 
+		.default-text { display: none; }
 		.loading-text { display: inline-block; margin-right: 25px; }
 		.dot-pulse { display: inline-block; }
 	}
