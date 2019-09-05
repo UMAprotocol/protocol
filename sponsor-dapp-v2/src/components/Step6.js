@@ -25,51 +25,46 @@ function Step6(props) {
       .muln(100)
   );
 
-  const render = () => {
-    return (
-      <div className="step step--tertiary">
-        <div className="step__content-alt">
-          <p>
-            You have successfully borrowed {format(tokensBorrowed)} synthetic tokens tracking {identifier}! View token
-            details on{" "}
-            <a href={`${etherscanUrl}address/${contractAddress}`} target="_blank" rel="noopener noreferrer">
-              Etherscan.
-            </a>
-          </p>
+  return (
+    <>
+      <div className="step__content-alt">
+        <p>
+          You have successfully borrowed {format(tokensBorrowed)} synthetic tokens tracking {identifier}! View token
+          details on{" "}
+          <a href={`${etherscanUrl}address/${contractAddress}`} target="_blank" rel="noopener noreferrer">
+            Etherscan.
+          </a>
+        </p>
 
-          <p>
-            <span>Sell these tokens to begin your levered short risk exposure.</span>
-          </p>
+        <p>
+          <span>Sell these tokens to begin your levered short risk exposure.</span>
+        </p>
 
-          <p>
-            <span>Maintain token facility collateralization greater than {collatReq}% to avoid liquidation.</span>
-          </p>
+        <p>
+          <span>Maintain token facility collateralization greater than {collatReq}% to avoid liquidation.</span>
+        </p>
 
-          <p>
-            <span>
-              In order to take a position on the derivative you have create, you will need to Trade/Manage your
-              position.
-            </span>
-          </p>
-        </div>
+        <p>
+          <span>
+            In order to take a position on the derivative you have create, you will need to Trade/Manage your position.
+          </span>
+        </p>
+      </div>
 
-        <div className="step__aside">
-          <div className="step__actions">
-            <Link
-              to="/ViewPositions"
-              className={classNames("btn", {
-                disabled: false
-              })}
-            >
-              View my risk
-            </Link>
-          </div>
+      <div className="step__aside">
+        <div className="step__actions">
+          <Link
+            to="/ViewPositions"
+            className={classNames("btn", {
+              disabled: false
+            })}
+          >
+            View my risk
+          </Link>
         </div>
       </div>
-    );
-  };
-
-  return render();
+    </>
+  );
 }
 
 export default Step6;

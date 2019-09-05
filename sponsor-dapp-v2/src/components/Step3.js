@@ -7,6 +7,7 @@ import web3 from "web3";
 import IconSvgComponent from "components/common/IconSvgComponent";
 import { useIdentifierConfig, useDaiAddress } from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
+import { formatWei } from "common/FormattingUtils.js";
 
 function getContractNameAndSymbol(selections) {
   // The date is supposed to look like Sep19 in the token name.
@@ -162,136 +163,134 @@ function Step3(props) {
     }));
   };
 
-  const render = () => {
-    if (!send) {
-      return <div />;
-    }
+  if (!send) {
+    return <div />;
+  }
 
-    const { toBN, toWei, fromWei } = web3.utils;
-    // Use BN rather than JS number to avoid precision issues.
-    const collatReq = fromWei(
-      toBN(toWei(identifierConfig[selections.identifier].supportedMove))
-        .add(toBN(toWei("1")))
-        .muln(100)
-    );
+  const { toBN, toWei } = web3.utils;
+  // Use BN rather than JS number to avoid precision issues.
+  const collatReq = formatWei(
+    toBN(toWei(identifierConfig[selections.identifier].supportedMove))
+      .add(toBN(toWei("1")))
+      .muln(100),
+    web3
+  );
 
-    return (
-      <div className="step step--tertiary">
-        <div className="step__content">
-          <p>
-            Launch token facility
-            <span>Confirm the parameters of the token facility </span>
-          </p>
+  return (
+    <>
+      <div className="step__content">
+        <p>
+          Launch token facility
+          <span>Confirm the parameters of the token facility </span>
+        </p>
+      </div>
+
+      <div className="step__aside">
+        <div className="step__entry">
+          <ul className="list-selections">
+            <li>
+              Asset: <span>{selections.identifier}</span>
+            </li>
+
+            <li>
+              Collateralization requirement: <span>{collatReq}%</span>
+            </li>
+
+            <li>
+              Expiry: <span>{moment.unix(selections.expiry).format("MMMM DD, YYYY LTS")}</span>
+            </li>
+
+            <li>
+              Contract name:
+              {!state.editingContractName && (
+                <span className="text">
+                  {state.contractName}
+
+                  <button type="button" className="btn-edit" onClick={editContractName}>
+                    <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
+                  </button>
+                </span>
+              )}
+              {state.editingContractName && (
+                <div className="form-edit">
+                  <form action="#" method="post" onSubmit={e => saveContractName(e)}>
+                    <div className="form__controls">
+                      <input
+                        type="text"
+                        className="field"
+                        ref={contractNameTextRef}
+                        defaultValue={state.contractName}
+                      />
+                    </div>
+
+                    <div className="form__actions">
+                      <button type="submit" className="form__btn">
+                        <IconSvgComponent iconPath="svg/ico-check.svg" additionalClass="ico-check" />
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </li>
+
+            <li>
+              Token symbol:
+              {!state.editingTokenSymbol && (
+                <span className="text">
+                  {state.tokenSymbol}
+
+                  <button type="button" className="btn-edit" onClick={editTokenSymbol}>
+                    <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
+                  </button>
+                </span>
+              )}
+              {state.editingTokenSymbol && (
+                <div className="form-edit">
+                  <form action="#" method="post" onSubmit={e => saveTokenSymbol(e)}>
+                    <div className="form__controls">
+                      <input
+                        type="text"
+                        className="field"
+                        ref={contractSymbolTextRef}
+                        defaultValue={state.tokenSymbol}
+                      />
+                    </div>
+
+                    <div className="form__actions">
+                      <button type="submit" className="form__btn">
+                        <IconSvgComponent iconPath="svg/ico-check.svg" additionalClass="ico-check" />
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </li>
+          </ul>
         </div>
 
-        <div className="step__aside">
-          <div className="step__entry">
-            <ul className="list-selections">
-              <li>
-                Asset: <span>{selections.identifier}</span>
-              </li>
+        <div className="step__actions">
+          <a href="test" className="btn btn--alt" onClick={props.onPrevStep}>
+            Back
+          </a>
 
-              <li>
-                Collateralization requirement: <span>{collatReq}%</span>
-              </li>
+          <a
+            href="test"
+            onClick={e => handleClick(e)}
+            className={classNames("btn has-loading", {
+              disabled: !state.allowedToProceed,
+              "is-loading": status === "pending"
+            })}
+          >
+            <span>Create Contract</span>
 
-              <li>
-                Expiry: <span>{moment.unix(selections.expiry).format("MMMM DD, YYYY LTS")}</span>
-              </li>
+            <span className="loading-text">Processing</span>
 
-              <li>
-                Contract name:
-                {!state.editingContractName && (
-                  <span className="text">
-                    {state.contractName}
-
-                    <button type="button" className="btn-edit" onClick={editContractName}>
-                      <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
-                    </button>
-                  </span>
-                )}
-                {state.editingContractName && (
-                  <div className="form-edit">
-                    <form action="#" method="post" onSubmit={e => saveContractName(e)}>
-                      <div className="form__controls">
-                        <input
-                          type="text"
-                          className="field"
-                          ref={contractNameTextRef}
-                          defaultValue={state.contractName}
-                        />
-                      </div>
-
-                      <div className="form__actions">
-                        <button type="submit" className="form__btn">
-                          <IconSvgComponent iconPath="svg/ico-check.svg" additionalClass="ico-check" />
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </li>
-
-              <li>
-                Token symbol:
-                {!state.editingTokenSymbol && (
-                  <span className="text">
-                    {state.tokenSymbol}
-
-                    <button type="button" className="btn-edit" onClick={editTokenSymbol}>
-                      <IconSvgComponent iconPath="svg/ico-edit.svg" additionalClass="ico-edit" />
-                    </button>
-                  </span>
-                )}
-                {state.editingTokenSymbol && (
-                  <div className="form-edit">
-                    <form action="#" method="post" onSubmit={e => saveTokenSymbol(e)}>
-                      <div className="form__controls">
-                        <input
-                          type="text"
-                          className="field"
-                          ref={contractSymbolTextRef}
-                          defaultValue={state.tokenSymbol}
-                        />
-                      </div>
-
-                      <div className="form__actions">
-                        <button type="submit" className="form__btn">
-                          <IconSvgComponent iconPath="svg/ico-check.svg" additionalClass="ico-check" />
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-              </li>
-            </ul>
-          </div>
-
-          <div className="step__actions">
-            <a href="test" className="btn btn--alt" onClick={props.onPrevStep}>
-              Back
-            </a>
-
-            <a
-              href="test"
-              onClick={e => handleClick(e)}
-              className={classNames("btn has-loading", {
-                disabled: !state.allowedToProceed,
-                "is-loading": status === "pending"
-              })}
-            >
-              <span>Create Contract</span>
-
-              <span className="loading-text">Processing</span>
-
-              <strong className="dot-pulse" />
-            </a>
-          </div>
+            <strong className="dot-pulse" />
+          </a>
         </div>
       </div>
-    );
-  };
-  return render();
+    </>
+  );
 }
 
 export default Step3;

@@ -152,35 +152,47 @@ function Steps() {
 
             <div className="steps__body">
               <CSSTransition in={state.activeStepIndex === 0} timeout={300} classNames="step-1" unmountOnExit>
-                <Step1 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
+                <div className="step step--primary">
+                  <Step1 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
+                </div>
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 1} timeout={300} classNames="step-2" unmountOnExit>
-                <Step2
-                  userSelectionsRef={userSelectionsRef}
-                  onNextStep={e => nextStep(e)}
-                  onPrevStep={e => prevStep(e)}
-                />
+                <div className="step step--secondary">
+                  <Step2
+                    userSelectionsRef={userSelectionsRef}
+                    onNextStep={e => nextStep(e)}
+                    onPrevStep={e => prevStep(e)}
+                  />
+                </div>
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 2} timeout={200} classNames="step-3" unmountOnExit>
-                <Step3
-                  userSelectionsRef={userSelectionsRef}
-                  onNextStep={e => nextStep(e)}
-                  onPrevStep={e => prevStep(e)}
-                />
+                <div className="step step--tertiary">
+                  <Step3
+                    userSelectionsRef={userSelectionsRef}
+                    onNextStep={e => nextStep(e)}
+                    onPrevStep={e => prevStep(e)}
+                  />
+                </div>
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 3} timeout={200} classNames="step-4" unmountOnExit>
-                <Step4 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
+                <div className="step">
+                  <Step4 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
+                </div>
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 4} timeout={300} classNames="step-5" unmountOnExit>
-                <Step5 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
+                <div className="step">
+                  <Step5 userSelectionsRef={userSelectionsRef} onNextStep={e => nextStep(e)} />
+                </div>
               </CSSTransition>
 
               <CSSTransition in={state.activeStepIndex === 5} timeout={300} classNames="step-6" unmountOnExit>
-                <Step6 userSelectionsRef={userSelectionsRef} />
+                <div className="step step--tertiary">
+                  <Step6 userSelectionsRef={userSelectionsRef} />
+                </div>
               </CSSTransition>
             </div>
           </div>

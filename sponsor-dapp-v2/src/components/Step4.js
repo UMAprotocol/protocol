@@ -36,52 +36,49 @@ function Step4(props) {
     send();
   };
 
-  const render = () => {
-    if (!send) {
-      return <div />;
-    }
+  if (!send) {
+    return <div />;
+  }
 
-    return (
-      <div className="step">
-        <div className="step__content">
-          <p>
-            Your token facility was successfully created.
-            <span>
-              (address: {contractAddress.slice(0, 2)}
-              .....)
-            </span>
-          </p>
+  return (
+    <>
+      <div className="step__content">
+        <p>
+          Your token facility was successfully created.
+          <span>
+            (address: {contractAddress.slice(0, 6)}
+            .....)
+          </span>
+        </p>
 
-          <p>
-            <span>
-              In order to fund and borrow your tokens, you must authorize your new facility to accept DAI as the
-              collateral. This is standard acrossERC-20 contracts and you will only have to do this once.{" "}
-            </span>
-          </p>
-        </div>
+        <p>
+          <span>
+            In order to fund and borrow your tokens, you must authorize your new facility to accept DAI as the
+            collateral. This is standard acrossERC-20 contracts and you will only have to do this once.{" "}
+          </span>
+        </p>
+      </div>
 
-        <div className="step__aside">
-          <div className="step__actions">
-            <a
-              href="test"
-              onClick={e => handleClick(e)}
-              className={classNames("btn has-loading", {
-                disabled: false,
-                "is-loading": status === "pending"
-              })}
-            >
-              <span>Authorize contract</span>
+      <div className="step__aside">
+        <div className="step__actions">
+          <a
+            href="test"
+            onClick={e => handleClick(e)}
+            className={classNames("btn has-loading", {
+              disabled: false,
+              "is-loading": status === "pending"
+            })}
+          >
+            <span>Authorize contract</span>
 
-              <span className="loading-text">Processing</span>
+            <span className="loading-text">Processing</span>
 
-              <strong className="dot-pulse" />
-            </a>
-          </div>
+            <strong className="dot-pulse" />
+          </a>
         </div>
       </div>
-    );
-  };
-  return render();
+    </>
+  );
 }
 
 export default Step4;

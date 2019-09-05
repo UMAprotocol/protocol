@@ -69,7 +69,7 @@ export function useDaiFaucetRequest() {
     if (event) {
       event.preventDefault();
     }
-    send(account, drizzle.web3.utils.toWei("100"));
+    send(account, drizzle.web3.utils.toWei("100000"));
   };
 }
 
@@ -126,7 +126,8 @@ export function useCollateralizationInformation(tokenAddress, changeInShortBalan
 
   data.collateralizationRequirement = toBN(data.derivativeStorage.fixedParameters.supportedMove)
     .add(toBN(toWei("1")))
-    .muln(100);
+    .muln(100)
+    .toString();
 
   data.currentCollateralization = "-- %";
   data.newCollateralizationAmount = "-- %";
@@ -146,22 +147,59 @@ export function useCollateralizationInformation(tokenAddress, changeInShortBalan
   return data;
 }
 
-export function useLiquidationPrice(tokenAddress) {
+export function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const { toBN, toWei } = drizzle.web3.utils;
-  const navStr = useCacheCall(tokenAddress, "calcNAV");
-  const excessMarginStr = useCacheCall(tokenAddress, "calcExcessMargin");
-  const underlyingPriceTime = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  const { toWei, toBN } = drizzle.web3.utils;
 
-  if (!navStr || !excessMarginStr || !underlyingPriceTime) {
+  const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
+  const newExcessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
+  const tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
+
+  const dataFetched = derivativeStorage && newExcessMargin && tokenValue;
+  if (!dataFetched) {
+    return { ready: false };
+  }
+  if (marginAmount === "") {
+    return { ready: true, maxTokens: toBN("0") };
+  }
+
+  const fpScalingFactor = toBN(toWei("1"));
+  const sentAmount = toBN(toWei(marginAmount));
+  const supportedMove = toBN(derivativeStorage.fixedParameters.supportedMove);
+  const tokenValueBn = toBN(tokenValue);
+
+  const mul = (a, b) => a.mul(b).divRound(fpScalingFactor);
+  const div = (a, b) => a.mul(fpScalingFactor).divRound(b);
+
+  // `supportedTokenMarketCap` represents the extra token market cap that there is sufficient collateral for. Tokens can be purchased at
+  // `tokenValue` up to this amount.
+  const supportedTokenMarketCap = div(toBN(newExcessMargin), supportedMove);
+  if (sentAmount.lte(supportedTokenMarketCap)) {
+    // The amount of money being sent in is the limiting factor.
+    return { ready: true, maxTokens: div(sentAmount, tokenValueBn) };
+  } else {
+    // Tokens purchased beyond the value of `supportedTokenMarketCap` cost `(1 + supportedMove) * tokenValue`, because some of
+    // the money has to be diverted to support the margin requirement.
+    const costOfExtra = mul(tokenValueBn, fpScalingFactor.add(supportedMove));
+    const extra = sentAmount.sub(supportedTokenMarketCap);
+    return { ready: true, maxTokens: div(supportedTokenMarketCap, tokenValueBn).add(div(extra, costOfExtra)) };
+  }
+}
+
+export function computeLiquidationPrice(web3, navString, excessMarginString, underlyingPriceTime) {
+  const { toBN, toWei } = web3.utils;
+
+  // Return undefined (as drizzle would) if the blockchain values have not been received yet.
+  if (!navString || !excessMarginString || !underlyingPriceTime) {
     return undefined;
   }
 
   // Convert string outputs to BN.
-  const nav = toBN(navStr);
-  const excessMargin = toBN(excessMarginStr);
+  const nav = toBN(navString);
+  const excessMargin = toBN(excessMarginString);
   const underlyingPrice = toBN(underlyingPriceTime.underlyingPrice);
 
+  // Return null if there is no valid output that can be computed.
   if (nav.isZero()) {
     return null;
   }
@@ -204,6 +242,15 @@ export function useTokenPreapproval(tokenContractName, addressToApprove) {
     isApproved: toBN(allowance).gte(minAllowanceAmount),
     isLoadingApproval: approvalStatus === "pending"
   };
+}
+
+export function useLiquidationPrice(tokenAddress) {
+  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const nav = useCacheCall(tokenAddress, "calcNAV");
+  const excessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
+  const underlyingPriceTime = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+
+  return computeLiquidationPrice(drizzle.web3, nav, excessMargin, underlyingPriceTime);
 }
 
 export function useIdentifierConfig() {
