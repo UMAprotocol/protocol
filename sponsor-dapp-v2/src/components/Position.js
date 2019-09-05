@@ -6,6 +6,10 @@ import Tooltip from "components/common/Tooltip";
 function Position(props) {
   const { position, index, totalLength } = props;
 
+  const ignoreClick = e => {
+    e.preventDefault();
+  };
+
   return (
     <div className="position">
       <div className="position__head">
@@ -118,7 +122,7 @@ function Position(props) {
                       </td>
 
                       <td>
-                        <a href="#" style={{ opacity: "0" }} className="btn">
+                        <a href="test" onClick={ignoreClick} style={{ opacity: "0" }} className="btn">
                           Trade
                         </a>
                       </td>

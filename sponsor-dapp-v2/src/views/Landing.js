@@ -5,7 +5,6 @@ import { useNumRegisteredContracts } from "lib/custom-hooks";
 import IconSvgComponent from "components/common/IconSvgComponent";
 
 import Header from "components/common/Header";
-import Footer from "components/common/Footer";
 
 function Landing() {
   const numContracts = useNumRegisteredContracts();
