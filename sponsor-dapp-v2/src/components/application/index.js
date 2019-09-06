@@ -19,7 +19,15 @@ function App(props) {
   })).initialized;
 
   if (!isDrizzleInitialized) {
-    return <div>Loading</div>;
+    return (
+      <>
+        <div>Loading</div>
+        <div style={{ marginTop: "50px" }}>
+          If this page doesn't refresh automatically, please make sure you're connected to the Rinkeby testnet and are
+          using Chrome and Metamask.
+        </div>
+      </>
+    );
   }
 
   const { location } = props;
