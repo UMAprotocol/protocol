@@ -2,6 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
+import { useSendGaPageview } from "lib/google-analytics";
 
 import Header from "components/common/Header";
 import ExpandBox from "components/common/ExpandBox";
@@ -132,6 +133,7 @@ function useFinancialContractData(tokenAddress) {
 }
 
 function ManagePositions(props) {
+  useSendGaPageview("/ManagePositions");
   const {
     drizzle: { web3 }
   } = drizzleReactHooks.useDrizzle();

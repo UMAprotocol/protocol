@@ -3,6 +3,7 @@ import { drizzleReactHooks } from "drizzle-react";
 import publicNetworks from "common/PublicNetworks";
 import identifiers from "identifiers.json";
 import { MAX_UINT_VAL } from "common/Constants";
+import { sendGaEvent } from "lib/google-analytics";
 
 export function useNumRegisteredContracts() {
   const { useCacheCall } = drizzleReactHooks.useDrizzle();
@@ -70,6 +71,7 @@ export function useDaiFaucetRequest() {
       event.preventDefault();
     }
     send(account, drizzle.web3.utils.toWei("100000"));
+    sendGaEvent("TestnetERC20", "allocateTo");
   };
 }
 
@@ -100,6 +102,7 @@ export function useSendTransactionOnLink(cacheSend, amounts, history) {
     const linkedPage = event.currentTarget.getAttribute("href");
     setLinkedPage(linkedPage);
     send(...amounts.map(val => toWei(val)), { from: account });
+    sendGaEvent("TokenizedDerivative", "Interaction");
   };
   // If we've successfully withdrawn, reroute to the linkedPage whose `Link` the user clicked on (currently, this can only
   // ever be the `ManagePositions` linkedPage).
@@ -230,6 +233,7 @@ export function useTokenPreapproval(tokenContractName, addressToApprove) {
   const approveTokensHandler = e => {
     e.preventDefault();
     approve(addressToApprove, allowanceAmount.toString(), { from: account });
+    sendGaEvent("TokenizedDerivative", "Approve");
   };
 
   if (!allowance) {

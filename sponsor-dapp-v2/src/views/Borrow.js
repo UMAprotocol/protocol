@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
+import { useSendGaPageview } from "lib/google-analytics";
 
 import classNames from "classnames";
 
@@ -19,6 +20,7 @@ import { createFormatFunction } from "common/FormattingUtils";
 
 function Borrow(props) {
   const { tokenAddress } = props.match.params;
+  useSendGaPageview("/Borrow");
 
   const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { fromWei, hexToUtf8, toBN, toWei } = drizzle.web3.utils;

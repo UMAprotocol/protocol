@@ -6,6 +6,7 @@ import { useTextInput, useCollateralizationInformation, useMaxTokensThatCanBeCre
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
+import { sendGaEvent } from "lib/google-analytics.js";
 
 function useBorrow(onSuccess, userSelectionsRef, ...args) {
   const { useCacheSend, drizzle } = drizzleReactHooks.useDrizzle();
@@ -32,6 +33,7 @@ function useBorrow(onSuccess, userSelectionsRef, ...args) {
 
   const send = () => {
     rawSend(...args.map(amount => toWei(amount)), { from: account });
+    sendGaEvent("TokenizedDerivative", "setupCreateTokens");
   };
 
   return { status, send };

@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router-dom";
 import classNames from "classnames";
 import { CSSTransition } from "react-transition-group";
+import { useSendGaPageview, sendGaEvent } from "lib/google-analytics";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 
@@ -15,6 +16,7 @@ import Step5 from "components/Step5";
 import Step6 from "components/Step6";
 
 function Steps() {
+  useSendGaPageview("/Steps");
   const userSelectionsRef = useRef({
     identifier: null,
     expiry: null,
@@ -82,6 +84,7 @@ function Steps() {
 
     stepsNav[currentStepIndex].isActive = false;
     stepsNav[currentStepIndex].isCompleted = true;
+    sendGaEvent("Setup", "Forward", nextStepIndex.toString());
 
     setState(oldState => ({
       ...oldState,
@@ -99,6 +102,7 @@ function Steps() {
     stepsNav[currentStepIndex].isActive = false;
     stepsNav[prevStepIndex].isActive = true;
     stepsNav[prevStepIndex].isCompleted = false;
+    sendGaEvent("Setup", "Backward", prevStepIndex.toString());
 
     setState(oldState => ({
       ...oldState,

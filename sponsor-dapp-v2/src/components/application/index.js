@@ -7,12 +7,14 @@ import routes from "lib/routes";
 
 import { fetchAllPositions } from "store/state/positions/actions";
 import { drizzleReactHooks } from "drizzle-react";
+import { useInitializeGoogleAnalytics } from "lib/google-analytics";
 
 function App(props) {
   const { fetchAllPositions } = props;
   useEffect(() => {
     fetchAllPositions();
   }, [fetchAllPositions]);
+  useInitializeGoogleAnalytics();
 
   const isDrizzleInitialized = drizzleReactHooks.useDrizzleState(drizzleState => ({
     initialized: drizzleState.drizzleStatus.initialized

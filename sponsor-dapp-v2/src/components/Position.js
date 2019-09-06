@@ -3,12 +3,14 @@ import { Link } from "react-router-dom";
 
 import Tooltip from "components/common/Tooltip";
 import ApproveOrDefault from "components/ApproveOrDefault";
+import { sendGaEvent } from "lib/google-analytics.js";
 
 function Position(props) {
   const { position, index, totalLength } = props;
 
   const ignoreClick = e => {
     e.preventDefault();
+    sendGaEvent("Position", "Trade");
   };
 
   return (

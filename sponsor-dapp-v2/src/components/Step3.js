@@ -8,6 +8,7 @@ import IconSvgComponent from "components/common/IconSvgComponent";
 import { useIdentifierConfig, useDaiAddress } from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import { formatWei } from "common/FormattingUtils.js";
+import { sendGaEvent } from "lib/google-analytics.js";
 
 function getContractNameAndSymbol(selections) {
   // The date is supposed to look like Sep19 in the token name.
@@ -75,6 +76,7 @@ function useCreateContract(userSelectionsRef, identifierConfig, onNextStep, stat
       name: state.contractName,
       symbol: state.tokenSymbol
     });
+    sendGaEvent("Creator", "createContract");
   };
 
   return { send, status };
