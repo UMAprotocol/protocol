@@ -41,6 +41,10 @@
       "numerator": {
         "dataSource": "CMC",
         "assetName": "total_market_cap"
+      },
+      "denominator": {
+        "dataSource": "Constant",
+        "assetName": "1000000000"
       }
     }
   },
