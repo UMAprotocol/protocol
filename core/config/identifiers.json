@@ -29,6 +29,25 @@
       }
     }
   },
+  "CMC Total Market Cap": {
+    "dappConfig": {
+      "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.25 corresponds to 25%",
+      "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
+      "supportedMove": "0.25"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "0",
+      "numerator": {
+        "dataSource": "CMC",
+        "assetName": "total_market_cap"
+      },
+      "denominator": {
+        "dataSource": "Constant",
+        "assetName": "1000000000"
+      }
+    }
+  },
   "S&P 500": {
     "dappConfig": {
       "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.05 corresponds to 5%",
