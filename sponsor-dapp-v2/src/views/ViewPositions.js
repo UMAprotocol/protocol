@@ -1,5 +1,4 @@
 import React from "react";
-import { connect } from "react-redux";
 import { Link, Redirect } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
@@ -228,11 +227,4 @@ function ViewPositions() {
   );
 }
 
-export default connect(
-  state => ({
-    landingPositions: state.positionsData.landingPositions
-  }),
-  {
-    // fetchAllPositions
-  }
-)(ViewPositions);
+export default ViewPositions;

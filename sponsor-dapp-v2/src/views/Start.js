@@ -1,5 +1,4 @@
 import React from "react";
-import { connect } from "react-redux";
 import { Link, Redirect } from "react-router-dom";
 import { useNumRegisteredContracts, useEthFaucetUrl, useDaiFaucetRequest } from "lib/custom-hooks";
 import { useSendGaPageview } from "lib/google-analytics";
@@ -78,11 +77,4 @@ function StartScreen() {
   );
 }
 
-export default connect(
-  state => ({
-    landingPositions: state.positionsData.landingPositions
-  }),
-  {
-    // fetchAllPositions
-  }
-)(StartScreen);
+export default StartScreen;

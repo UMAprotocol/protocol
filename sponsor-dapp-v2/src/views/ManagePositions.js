@@ -1,5 +1,4 @@
 import React from "react";
-import { connect } from "react-redux";
 import { Link } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
 import { useSendGaPageview } from "lib/google-analytics";
@@ -364,5 +363,5 @@ function ManagePositions(props) {
 }
 
 export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(
-  connect()(ManagePositions)
+  ManagePositions
 );
