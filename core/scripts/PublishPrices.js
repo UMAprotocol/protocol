@@ -226,12 +226,11 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
   }
   // For now, disregard denominator timestamp.
   const { priceInWei: denomInWei } = await getNonZeroPriceInWei(denominatorConfig);
-  const exchangeRate = web3.utils.toWei(
-    BigNumber(numInWei)
-      .div(BigNumber(denomInWei))
-      .integerValue(BigNumber.ROUND_FLOOR)
-      .toString()
-  );
+  const exchangeRate = BigNumber(numInWei)
+    .times(BigNumber(web3.utils.toWei("1")))
+    .div(BigNumber(denomInWei))
+    .integerValue(BigNumber.ROUND_FLOOR)
+    .toString();
   console.log(
     `Dividing numerator [${numInWei}] / denominator [${denomInWei}] = exchange rate (in Wei) [${exchangeRate}]`
   );

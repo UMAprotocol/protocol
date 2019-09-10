@@ -134,7 +134,7 @@
       }
     }
   },
-  "Custom Index (USD/ETH)": {
+  "USD/ETH": {
     "dappConfig": {
       "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST; supportedMove: 0.2 corresponds to 20%",
       "expiries": [1569873600, 1572552000, 1575061200, 1577826000],
@@ -142,10 +142,14 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "0",
+      "minDelay": "600",
       "numerator": {
         "dataSource": "Constant",
-        "assetName": "0.0057"
+        "assetName": "1"
+      },
+      "denominator": {
+        "dataSource": "BarchartCrypto",
+        "assetName": "^ETHUSD"
       }
     }
   },
