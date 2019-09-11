@@ -1,0 +1,10 @@
+runtime: python27
+api_version: 1
+threadsafe: true
+handlers:
+- url: /[^.]*$
+  static_files: build/index.html
+  upload: build/index.html
+- url: /
+  static_dir: build
+service: your-gae-service-name
