@@ -176,7 +176,7 @@
     "dappConfig": {
       "comment": "expiries: Sept 30, 2019 4:00PM EST, Oct 31st, 2019 4:00PM EST, Nov 29th, 2019 4:00PM EST, Dec 31st, 2019 4:00PM EST, Perpetual; supportedMove: 0.1 corresponds to 10%",
       "expiries": [1569873600, 1572552000, 1575061200, 1577826000, 0],
-      "supportedMove": "0.1"
+      "supportedMove": "0.2"
     },
     "uploaderConfig": {
       "publishInterval": "900",
