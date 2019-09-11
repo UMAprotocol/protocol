@@ -362,6 +362,4 @@ function ManagePositions(props) {
   );
 }
 
-export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(
-  ManagePositions
-);
+export default withAddedContract(TokenizedDerivative.abi, props => props.match.params.tokenAddress)(ManagePositions);
