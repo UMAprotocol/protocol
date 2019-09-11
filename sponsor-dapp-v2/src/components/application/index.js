@@ -1,19 +1,13 @@
-import React, { useEffect } from "react";
-import { connect } from "react-redux";
+import React from "react";
 import { Switch, Route, withRouter } from "react-router-dom";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 
 import routes from "lib/routes";
 
-import { fetchAllPositions } from "store/state/positions/actions";
 import { drizzleReactHooks } from "drizzle-react";
 import { useInitializeGoogleAnalytics } from "lib/google-analytics";
 
 function App(props) {
-  const { fetchAllPositions } = props;
-  useEffect(() => {
-    fetchAllPositions();
-  }, [fetchAllPositions]);
   useInitializeGoogleAnalytics();
 
   const isDrizzleInitialized = drizzleReactHooks.useDrizzleState(drizzleState => ({
@@ -59,15 +53,4 @@ function App(props) {
   );
 }
 
-export default withRouter(
-  connect(
-    state => ({
-      isLocked: state.commonData.isLocked,
-      landingPositions: state.positionsData.landingPositions,
-      managePositions: state.positionsData.managePositions
-    }),
-    {
-      fetchAllPositions
-    }
-  )(App)
-);
+export default withRouter(App);

@@ -1,5 +1,4 @@
 import React, { useState, useRef } from "react";
-import { connect } from "react-redux";
 import { Link } from "react-router-dom";
 import classNames from "classnames";
 import { CSSTransition } from "react-transition-group";
@@ -208,4 +207,4 @@ function Steps() {
   return render();
 }
 
-export default connect()(Steps);
+export default Steps;
