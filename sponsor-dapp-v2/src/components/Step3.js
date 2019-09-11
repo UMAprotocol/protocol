@@ -199,7 +199,10 @@ function Step3(props) {
             </li>
 
             <li>
-              Settlement date: <span>{moment.unix(selections.expiry).format("MMMM DD, YYYY LTS")}</span>
+              Settlement date:{" "}
+              <span>
+                {selections.expiry ? moment.unix(selections.expiry).format("MMMM DD, YYYY LTS") : "Perpetual"}
+              </span>
             </li>
 
             <li>

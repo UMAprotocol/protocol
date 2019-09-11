@@ -31,7 +31,7 @@ function Step2(props) {
   const timeline = identifierConfig[selection.identifier].expiries.map(expiry => {
     return {
       key: expiry,
-      value: moment.unix(expiry).format("MMMM DD, YYYY LTS")
+      value: expiry ? moment.unix(expiry).format("MMMM DD, YYYY LTS") : "Perpetual"
     };
   });
 
