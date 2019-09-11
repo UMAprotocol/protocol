@@ -34,6 +34,7 @@ function Step2(props) {
       value: moment.unix(expiry).format("MMMM DD, YYYY LTS")
     };
   });
+  timeline.push({ key: "0", value: "Perpetual" });
 
   return (
     <>
