@@ -69,15 +69,19 @@ function useFinancialContractData(tokenAddress) {
   data.tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
   data.shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
   data.excessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
-  // TODO(ptare): This may revert in certain cases (which are unlikely to come up now).
-  data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+
+  const updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+
+  // If the blockchain value === null, this means that the call reverted, so we just make its children null (to prevent access errors down the line).
+  data.updatedUnderlyingPrice =
+    updatedUnderlyingPrice !== null ? updatedUnderlyingPrice : { underlyingPrice: null, time: null };
 
   data.totalSupply = useCacheCall(tokenAddress, "totalSupply");
   data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
   data.priceFeedAddress = useCacheCall("Finder", "getImplementationAddress", web3.utils.utf8ToHex("PriceFeed"));
 
-  if (!Object.values(data).every(Boolean)) {
+  if (!Object.values(data).every(val => val !== undefined)) {
     return { ready: false };
   }
   data.ready = true;
@@ -94,15 +98,23 @@ function useFinancialContractData(tokenAddress) {
 
   const totalSupplyBn = toBN(data.totalSupply);
   data.tokenOwnershipPercentage = computeSafePercentage(data.tokenBalance, totalSupplyBn);
-  data.tokenOwnershipValue = toBN(data.tokenBalance)
-    .mul(toBN(data.tokenValue))
-    .div(scalingFactor);
-  const navBn = toBN(data.nav);
-  const shortMarginBalanceBn = toBN(data.shortMarginBalance);
-  data.totalHoldings = navBn.add(shortMarginBalanceBn);
-  data.collateralizationRatio = computeSafePercentage(data.totalHoldings, navBn);
-  data.minRequiredMargin = shortMarginBalanceBn.sub(toBN(data.excessMargin));
-  data.minCollateralizationPercentage = computeSafePercentage(data.minRequiredMargin.add(navBn), navBn);
+  data.totalHoldings = toBN(data.derivativeStorage.longBalance).add(toBN(data.derivativeStorage.shortBalance));
+
+  if (data.nav && data.shortMarginBalance && data.excessMargin && data.tokenValue) {
+    data.tokenOwnershipValue = toBN(data.tokenBalance)
+      .mul(toBN(data.tokenValue))
+      .div(scalingFactor);
+    const navBn = toBN(data.nav);
+    const shortMarginBalanceBn = toBN(data.shortMarginBalance);
+    data.collateralizationRatio = computeSafePercentage(data.totalHoldings, navBn);
+    data.minRequiredMargin = shortMarginBalanceBn.sub(toBN(data.excessMargin));
+    data.minCollateralizationPercentage = computeSafePercentage(data.minRequiredMargin.add(navBn), navBn);
+  } else {
+    data.tokenOwnershipValue = null;
+    data.collateralizationRatio = null;
+    data.minRequiredMargin = null;
+    data.minCollateralizationPercentage = null;
+  }
   const { stateText, stateColor } = getStateDescription(data.derivativeStorage);
   data.stateText = stateText;
   data.stateColor = stateColor;
@@ -143,7 +155,8 @@ function ManagePositions(props) {
     return <div>Loading data</div>;
   }
 
-  const format = createFormatFunction(web3, 4);
+  const formatValidValue = createFormatFunction(web3, 4);
+  const format = val => (val ? formatValidValue(val) : "--");
 
   return (
     <div className="wrapper">
@@ -295,13 +308,18 @@ function ManagePositions(props) {
 
                           <td>
                             <strong>
-                              {format(data.totalHoldings)} DAI ({data.collateralizationRatio.toString()}%)
+                              {format(data.totalHoldings)} DAI (
+                              {data.collateralizationRatio ? data.collateralizationRatio.toString() : "--"}%)
                             </strong>
                           </td>
 
                           <td>
                             <strong>
-                              (min. {data.minCollateralizationPercentage.toString()}% needed to avoid liquidation)
+                              (min.{" "}
+                              {data.minCollateralizationPercentage
+                                ? data.minCollateralizationPercentage.toString()
+                                : "--"}
+                              % needed to avoid liquidation)
                             </strong>
                           </td>
                         </tr>

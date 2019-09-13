@@ -21,7 +21,9 @@ class ExpandBox extends Component {
     });
 
     const convertTimestamp = timestamp => {
-      if (timestamp === UINT_MAX) {
+      if (timestamp == null) {
+        return "--";
+      } else if (timestamp === UINT_MAX) {
         return "None";
       } else {
         return moment.unix(timestamp).format("YYYY-MM-DD, HH:MM:SS");
