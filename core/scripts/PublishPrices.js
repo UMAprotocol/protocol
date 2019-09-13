@@ -327,6 +327,7 @@ function getPriceFeeds() {
   });
 }
 
+// Prints any errors and returns true if there were no errors, false otherwise.
 async function runExport() {
   // Wrap all the functionality in a try/catch, so that this function never throws.
   const errors = [];
@@ -354,8 +355,10 @@ async function runExport() {
   }
   if (errors.length) {
     console.log("FAILURE:", errors);
+    return false;
   } else {
     console.log("SUCCESS");
+    return true;
   }
 }
 
@@ -364,4 +367,5 @@ run = async function(callback) {
   callback();
 };
 run.verifyFeedConfig = verifyFeedConfig;
+run.runExport = runExport;
 module.exports = run;

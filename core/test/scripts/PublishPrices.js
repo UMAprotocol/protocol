@@ -50,4 +50,18 @@ contract("scripts/PublishPrices.js", function(accounts) {
       PublishPrices.verifyFeedConfig({ ...validConfig, denominator: { ...validConfig.denominator, assetName: null } })
     );
   });
+
+  it("TestRun", async function() {
+    const alphaVantageKey = process.env.ALPHAVANTAGE_API_KEY;
+    const barchartStandardKey = process.env.BARCHART_API_KEY;
+    const barchartEquitiesKey = process.env.BARCHART_EQUITIES_API_KEY;
+    const cmcKey = process.env.CMC_PRO_API_KEY;
+
+    if (cmcKey && barchartStandardKey && barchartEquitiesKey && alphaVantageKey) {
+      console.log("All API keys are defined in the environment. Running runExport().");
+      assert.isTrue(await PublishPrices.runExport());
+    } else {
+      console.log("Not running runExport() because all required API keys are not defined in the environment.");
+    }
+  });
 });
