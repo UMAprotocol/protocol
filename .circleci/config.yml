@@ -245,7 +245,7 @@ workflows:
           requires:
             - checkout_and_install
       - test:
-          context: infura
+          context: api_keys
           requires:
             - build
       - docs:
