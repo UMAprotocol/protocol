@@ -66,9 +66,9 @@ contract("scripts/Voting.js", function(accounts) {
     // The vote should have been committed.
     await votingSystem.runIteration();
     assert.equal(notifier.notificationsSent, 1);
-    // Running again shouldn't send more emails.
+    // Running again should send more emails.
     await votingSystem.runIteration();
-    assert.equal(notifier.notificationsSent, 1);
+    assert.equal(notifier.notificationsSent, 2);
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
@@ -78,10 +78,7 @@ contract("scripts/Voting.js", function(accounts) {
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     await votingSystem.runIteration();
-    assert.equal(notifier.notificationsSent, 2);
-    // Running again shouldn't send more emails.
-    await votingSystem.runIteration();
-    assert.equal(notifier.notificationsSent, 2);
+    assert.equal(notifier.notificationsSent, 3);
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
@@ -120,8 +117,8 @@ contract("scripts/Voting.js", function(accounts) {
     votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
     await votingSystem.runIteration();
 
-    // Test that no emails were sent.
-    assert.equal(notifier.notificationsSent, 1);
+    // Test that emails were sent.
+    assert.equal(notifier.notificationsSent, 2);
   });
 
   it("simultaneous and overlapping votes", async function() {
