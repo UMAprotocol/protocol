@@ -28,12 +28,18 @@ function Step2(props) {
     userSelectionsRef: { current: selection }
   } = props;
 
-  const timeline = identifierConfig[selection.identifier].expiries.map(expiry => {
-    return {
-      key: expiry,
-      value: expiry ? moment.unix(expiry).format("MMMM DD, YYYY LTS") : "Perpetual"
-    };
-  });
+  const currentTime = new Date().getTime() / 1000;
+  const timeline = identifierConfig[selection.identifier].expiries
+    .filter(expiry => {
+      // Remove any expiries that have already passed.
+      return !expiry || expiry > currentTime;
+    })
+    .map(expiry => {
+      return {
+        key: expiry,
+        value: expiry ? moment.unix(expiry).format("MMMM DD, YYYY LTS") : "Perpetual"
+      };
+    });
 
   return (
     <>
