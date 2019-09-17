@@ -32,6 +32,10 @@ const SUPPORTED_IDENTIFIERS = {
     dataSource: "IntrinioEquities",
     // TODO: TSLA not supported in sandbox, but presumably is supported in their prod instance.
     symbol: "AAPL"
+  },
+  "Gold (Rolling Future)": {
+    dataSource: "Barchart",
+    symbol: "GC*1"
   }
 };
 
@@ -128,6 +132,43 @@ async function fetchIntrinioEquitiesPrice(request, config) {
   return web3.utils.toWei(price.toString());
 }
 
+// Works for equities and futures (even though it uses the _EQUITIES_API_KEY).
+async function fetchBarchartPrice(request, config) {
+  // NOTE: this API only provides data up to a month in the past and only to minute granularities. If the requested
+  // `time` has a nonzero number of seconds (not a round minute) or is longer than 1 month in the past, this call will
+  // fail.
+  // The `endDate` param appears to have no effect on the result so we don't pass it.
+  const startDate = moment.unix(request.time).format("YYYYMMDD");
+  const key = process.env.BARCHART_EQUITIES_API_KEY;
+  const url = [
+    "https://marketdata.websol.barchart.com/getHistory.json?",
+    "key=" + key,
+    "&symbol=" + config.symbol,
+    "&type=minutes",
+    "&startDate=" + startDate
+  ].join("");
+  console.log(`\n    ***** \n Querying with [${stripApiKey(url, key)}]\n    ****** \n`);
+
+  const jsonOutput = await getJson(url);
+
+  if (jsonOutput.status.code != 200) {
+    console.log("Barchart response:", jsonOutput);
+    throw "Barchart request failed";
+  }
+
+  // The logic below looks for an _exact_ match between the request's timestamp and the returned data's timestamp.
+  // This approach is the safest, i.e., will not push an incorrect price.
+  const millis = request.time * 1000;
+  for (const result of jsonOutput.results) {
+    const timestamp = Date.parse(result.timestamp);
+    if (millis === timestamp) {
+      return web3.utils.toWei(result.open.toString());
+    }
+  }
+
+  throw "Failed to get a matching timestamp";
+}
+
 async function fetchPrice(request) {
   const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
   if (plainTextIdentifier.startsWith("test")) {
@@ -144,6 +185,8 @@ async function fetchPrice(request) {
       return await fetchConstantPrice(request, config);
     case "IntrinioEquities":
       return await fetchIntrinioEquitiesPrice(request, config);
+    case "Barchart":
+      return await fetchBarchartPrice(request, config);
     default:
       throw "No known data source specified";
   }
