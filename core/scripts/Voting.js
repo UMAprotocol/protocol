@@ -16,9 +16,17 @@ const SUPPORTED_IDENTIFIERS = {
     dataSource: "CryptoCompare",
     identifiers: { first: "BTC", second: "USD" }
   },
-  "Custom Index (84.3)": {
+  "Telegram SAFT": {
     dataSource: "Constant",
-    value: "84.3"
+    value: "100"
+  },
+  "Custom Index (1)": {
+    dataSource: "Constant",
+    value: "1"
+  },
+  "Custom Index (100)": {
+    dataSource: "Constant",
+    value: "100"
   },
   TSLA: {
     dataSource: "IntrinioEquities",

@@ -196,7 +196,7 @@ contract("scripts/Voting.js", function(accounts) {
   });
 
   it("Constant price", async function() {
-    const identifier = web3.utils.utf8ToHex("Custom Index (84.3)");
+    const identifier = web3.utils.utf8ToHex("Custom Index (1)");
     const time = "1560762000";
 
     // Request an Oracle price.
@@ -210,6 +210,6 @@ contract("scripts/Voting.js", function(accounts) {
     await votingSystem.runIteration();
     await moveToNextRound(voting);
 
-    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("84.3"));
+    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("1"));
   });
 });
