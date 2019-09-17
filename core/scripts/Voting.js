@@ -7,6 +7,7 @@ const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
 const gmailSend = require("gmail-send")();
+const moment = require("moment");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
@@ -18,6 +19,11 @@ const SUPPORTED_IDENTIFIERS = {
   "Custom Index (84.3)": {
     dataSource: "Constant",
     value: "84.3"
+  },
+  TSLA: {
+    dataSource: "IntrinioEquities",
+    // TODO: TSLA not supported in sandbox, but presumably is supported in their prod instance.
+    symbol: "AAPL"
   }
 };
 
@@ -46,7 +52,7 @@ async function fetchCryptoComparePrice(request) {
   // Temporary price feed until we sort historical data.
   // CryptoCompare provides historical hourly prices for free. If we want minutes/seconds, we'll have to update later.
   const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${identifier.second}&toTs=${time}&limit=1&api_key=${CC_API_KEY}`;
-  console.log(`\n    ***** \n Querying with [${url}]\n    ****** \n`);
+  console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
   console.log(`Response [${JSON.stringify(jsonOutput)}]`);
 
@@ -78,6 +84,42 @@ function fetchConstantPrice(request, config) {
   return web3.utils.toWei(config.value);
 }
 
+async function fetchIntrinioEquitiesPrice(request, config) {
+  const requestMoment = moment.unix(request.time);
+  const startDate = requestMoment.format("YYYY-MM-DD");
+  const startTime = requestMoment.format("HH:mm:ss");
+
+  // How to determine this time window? Picked 10000 seconds arbitrarily.
+  const timeWindowSeconds = 10000;
+  const endMoment = moment.unix(Number(request.time) + timeWindowSeconds);
+  const endDate = endMoment.format("YYYY-MM-DD");
+  const endTime = endMoment.format("HH:mm:ss");
+
+  const url = [
+    "https://api-v2.intrinio.com/securities/",
+    config.symbol,
+    "/prices/intraday?",
+    "start_date=" + startDate,
+    "&start_time=" + startTime,
+    "&end_date=" + endDate,
+    "&end_time=" + endTime,
+    "&api_key=" + process.env.INTRINIO_API_KEY
+  ].join("");
+  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  const jsonOutput = await getJson(url);
+
+  if (!jsonOutput.intraday_prices || jsonOutput.intraday_prices.length === 0) {
+    // The JSON output can be large when it succeeds, so we only print it in cases of failure.
+    console.log("Intrinio response:", jsonOutput);
+    throw "Failed to get data from Intrinio";
+  }
+
+  const price = jsonOutput.intraday_prices[0].last_price;
+  const time = jsonOutput.intraday_prices[0].time;
+  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  return web3.utils.toWei(price.toString());
+}
+
 async function fetchPrice(request) {
   const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
   if (plainTextIdentifier.startsWith("test")) {
@@ -92,6 +134,8 @@ async function fetchPrice(request) {
       });
     case "Constant":
       return await fetchConstantPrice(request, config);
+    case "IntrinioEquities":
+      return await fetchIntrinioEquitiesPrice(request, config);
     default:
       throw "No known data source specified";
   }
@@ -219,6 +263,7 @@ class VotingSystem {
       try {
         commitments.push(await this.constructCommitment(request, roundId));
       } catch (error) {
+        console.log("Failed", error);
         failures.push({ request, error });
       }
     }
