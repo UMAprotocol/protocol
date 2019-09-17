@@ -190,15 +190,22 @@ class VotingSystem {
 
   async runBatchCommit(requests, roundId) {
     const commitments = [];
+    const skipped = [];
+    const failures = [];
 
     for (const request of requests) {
       // Skip commits if a message already exists for this request.
       // This does not check the existence of an actual commit.
       if (await this.getMessage(request, roundId)) {
+        skipped.push(request);
         continue;
       }
 
-      commitments.push(await this.constructCommitment(request, roundId));
+      try {
+        commitments.push(await this.constructCommitment(request, roundId));
+      } catch (error) {
+        failures.push({ request, error });
+      }
     }
 
     // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
@@ -219,7 +226,7 @@ class VotingSystem {
       commitment.txnHash = receipt.transactionHash;
     });
 
-    return commitments;
+    return { commitments, skipped, failures };
   }
 
   async constructReveal(request, roundId) {
@@ -271,7 +278,7 @@ class VotingSystem {
     return reveals;
   }
 
-  constructNotification(updates, phase) {
+  constructNotification(updates, skipped, failures, phase) {
     const phaseVerb = phase == VotePhasesEnum.COMMIT ? "committed" : "revealed";
 
     // Sort the updates by timestamp for the notification.
@@ -286,15 +293,16 @@ class VotingSystem {
     });
 
     // Subject tells the user what type of action the AVS took.
-    const subject = `AVS Update: price requests ${phaseVerb}`;
+    const subject = `AVS Update: price requests ${phaseVerb}` + (failures.length > 0 ? " [ACTION REQUIRED]" : "");
 
     // Intro is bolded and tells the user how many requests were updated.
-    const intro = `<b>The AVS has ${phaseVerb} ${updates.length} price requests on-chain.</b>`;
+    const intro = `<b>The AVS has ${phaseVerb} ${updates.length} price requests, skipped ${skipped.length}, and failed ${failures.length} on-chain.</b>`;
 
     // Construct information blocks for each request.
-    const blocks = updates.map((update, i) => {
-      const date = new Date(parseInt(update.time) * 10e2);
-      return `
+    const blocks = updates
+      .map((update, i) => {
+        const date = new Date(parseInt(update.time) * 10e2);
+        return `
       <u>Price request ${i + 1}:</u><br />
       Price feed: ${web3.utils.hexToUtf8(update.identifier)}<br />
       Request time: ${date.toUTCString()} (Unix timestamp: ${date.getTime() / 10e2})<br />
@@ -302,7 +310,29 @@ class VotingSystem {
       *Salt: ${update.salt}<br />
       **Transaction: ${getTxnLink(update.txnHash)}<br />
       `;
-    });
+      })
+      .concat(
+        skipped.map(skipped => {
+          const date = new Date(parseInt(skipped.time) * 10e2);
+          return `
+        <u>Skipped</u><br />
+        Price feed: ${web3.utils.hexToUtf8(skipped.identifier)}<br />
+        Request time: ${date.toUTCString()} (Unix timestamp: ${date.getTime() / 10e2})<br />
+        `;
+        })
+      )
+      .concat(
+        failures.map(failure => {
+          const date = new Date(parseInt(failure.request.time) * 10e2);
+          return `
+        <u>ACTION REQUIRED: FAILURE!<u/><br />
+        Commit a value for this request manually via the dApp.<br />
+        Price feed: ${web3.utils.hexToUtf8(failure.request.identifier)}<br />
+        Request time: ${date.toUTCString()} (Unix timestamp: ${date.getTime() / 10e2})<br />
+        Error: ${failure.error}<br />
+        `;
+        })
+      );
 
     // Join the blocks (with a single line break between) to form the text that gives details on all the requests.
     const requestsText = blocks.join(`<br />`);
@@ -340,20 +370,22 @@ class VotingSystem {
     const pendingRequests = await this.voting.getPendingRequests();
 
     let updates = [];
+    let skipped = [];
+    let failures = [];
     if (phase == VotePhasesEnum.COMMIT) {
-      updates = await this.runBatchCommit(pendingRequests, roundId);
-      console.log(`Completed ${updates.length} commits`);
+      ({ commitments: updates, skipped, failures } = await this.runBatchCommit(pendingRequests, roundId));
+      console.log(
+        `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${failures.length} commits`
+      );
     } else {
       updates = await this.runBatchReveal(pendingRequests, roundId);
       console.log(`Completed ${updates.length} reveals`);
     }
 
-    if (updates.length > 0) {
-      const notification = this.constructNotification(updates, phase);
-      await Promise.all(
-        this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
-      );
-    }
+    const notification = this.constructNotification(updates, skipped, failures, phase);
+    await Promise.all(
+      this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
+    );
 
     console.log("Finished voting iteration");
   }
