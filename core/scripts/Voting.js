@@ -14,6 +14,10 @@ const SUPPORTED_IDENTIFIERS = {
   BTCUSD: {
     dataSource: "CryptoCompare",
     identifiers: { first: "BTC", second: "USD" }
+  },
+  "Custom Index (84.3)": {
+    dataSource: "Constant",
+    value: "84.3"
   }
 };
 
@@ -65,6 +69,15 @@ async function fetchCryptoComparePrice(request) {
   return web3.utils.toWei(price.toString());
 }
 
+function fetchConstantPrice(request, config) {
+  console.log(
+    `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
+      request.identifier
+    )}]`
+  );
+  return web3.utils.toWei(config.value);
+}
+
 async function fetchPrice(request) {
   const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
   if (plainTextIdentifier.startsWith("test")) {
@@ -77,6 +90,8 @@ async function fetchPrice(request) {
         identifier: { first: config.identifiers.first, second: config.identifiers.second },
         time: request.time
       });
+    case "Constant":
+      return await fetchConstantPrice(request, config);
     default:
       throw "No known data source specified";
   }

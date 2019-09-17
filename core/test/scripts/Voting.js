@@ -194,4 +194,22 @@ contract("scripts/Voting.js", function(accounts) {
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
     assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("9155.05"));
   });
+
+  it("Constant price", async function() {
+    const identifier = web3.utils.utf8ToHex("Custom Index (84.3)");
+    const time = "1560762000";
+
+    // Request an Oracle price.
+    await voting.addSupportedIdentifier(identifier);
+    await voting.requestPrice(identifier, time);
+
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [new MockNotifier()]);
+    await moveToNextRound(voting);
+    await votingSystem.runIteration();
+    await moveToNextPhase(voting);
+    await votingSystem.runIteration();
+    await moveToNextRound(voting);
+
+    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("84.3"));
+  });
 });
