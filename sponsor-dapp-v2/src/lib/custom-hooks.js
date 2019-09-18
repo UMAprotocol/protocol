@@ -4,6 +4,7 @@ import publicNetworks from "common/PublicNetworks";
 import identifiers from "identifiers.json";
 import { MAX_UINT_VAL } from "common/Constants";
 import { sendGaEvent } from "lib/google-analytics";
+import { ContractStateEnum } from "common/TokenizedDerivativeUtils";
 
 export function useNumRegisteredContracts() {
   const { useCacheCall } = drizzleReactHooks.useDrizzle();
@@ -217,6 +218,95 @@ export function computeLiquidationPrice(web3, navString, excessMarginString, und
   const liquidationPrice = mul(percentChange, underlyingPrice);
 
   return liquidationPrice;
+}
+
+export function useIsContractSponsor(contractAddress) {
+  const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
+  const { toChecksumAddress } = drizzle.web3.utils;
+
+  const account = drizzleReactHooks.useDrizzleState(drizzleState => drizzleState.accounts[0]);
+  const derivativeStorage = useCacheCall(contractAddress, "derivativeStorage");
+
+  return (
+    derivativeStorage && toChecksumAddress(account) === toChecksumAddress(derivativeStorage.externalAddresses.sponsor)
+  );
+}
+
+export function useSettle(contractAddress) {
+  const { useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const account = drizzleReactHooks.useDrizzleState(drizzleState => drizzleState.accounts[0]);
+
+  const canBeSettled = useCacheCall(contractAddress, "canBeSettled");
+  const derivativeStorage = useCacheCall(contractAddress, "derivativeStorage");
+  const canCallRemargin = useIsContractSponsor(contractAddress);
+
+  const { send: remargin, status: remarginStatus } = useCacheSend(contractAddress, "remargin");
+  const { send: settle, status: settleStatus } = useCacheSend(contractAddress, "settle");
+
+  let send;
+
+  const settleHandler = e => {
+    e.preventDefault();
+    send({ from: account });
+    sendGaEvent("TokenizedDerivative", "Settle");
+  };
+
+  if (canBeSettled === undefined || !derivativeStorage) {
+    return { ready: false };
+  }
+
+  if (derivativeStorage.state.toString() === ContractStateEnum.LIVE) {
+    // Handle edge case where user can go directly from live to settled via a remargin.
+    send = remargin;
+    return {
+      ready: true,
+      canCallSettle: canBeSettled && canCallRemargin,
+      settleHandler,
+      isLoadingSettle: remarginStatus === "pending"
+    };
+  } else {
+    send = settle;
+    return {
+      ready: true,
+      canCallSettle: canBeSettled,
+      settleHandler,
+      isLoadingSettle: settleStatus === "pending"
+    };
+  }
+}
+
+export function useExpire(contractAddress, identifier) {
+  const { drizzle, useCacheCall, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { toBN, utf8ToHex } = drizzle.web3.utils;
+  const account = drizzleReactHooks.useDrizzleState(drizzleState => drizzleState.accounts[0]);
+
+  const canCallRemargin = useIsContractSponsor(contractAddress);
+  const derivativeStorage = useCacheCall(contractAddress, "derivativeStorage");
+  const underlyingPriceTime = useCacheCall("ManualPriceFeed", "latestPrice", utf8ToHex(identifier));
+
+  const { send: remargin, status: remarginStatus } = useCacheSend(contractAddress, "remargin");
+
+  if (canCallRemargin === undefined || !underlyingPriceTime || !derivativeStorage) {
+    return { ready: false };
+  }
+
+  const canCallExpire =
+    canCallRemargin &&
+    derivativeStorage.state === ContractStateEnum.LIVE &&
+    toBN(underlyingPriceTime.publishTime).gte(toBN(derivativeStorage.endTime));
+
+  const expireHandler = e => {
+    e.preventDefault();
+    remargin({ from: account });
+    sendGaEvent("TokenizedDerivative", "Expire");
+  };
+
+  return {
+    ready: true,
+    canCallExpire,
+    expireHandler,
+    isLoadingExpire: remarginStatus === "pending"
+  };
 }
 
 export function useTokenPreapproval(tokenContractName, addressToApprove) {
