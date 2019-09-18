@@ -195,6 +195,33 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("9155.05"));
   });
 
+  it("Notification on crash", async function() {
+    // Force a Solidity revert by returning an invalid hash in the soliditySha3 function.
+    const temp = web3.utils.soliditySha3;
+    web3.utils.soliditySha3 = () => {
+      return "0x0";
+    };
+
+    const identifier = web3.utils.utf8ToHex("Custom Index (1)");
+    const time = "1560762000";
+
+    // Request an Oracle price.
+    await voting.addSupportedIdentifier(identifier);
+    await voting.requestPrice(identifier, time);
+
+    // Run an iteration, which should crash.
+    const notifier = new MockNotifier();
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
+    await moveToNextRound(voting);
+    await votingSystem.runIteration();
+
+    // A notification email should be sent.
+    assert.equal(notifier.notificationsSent, 1);
+
+    // Restore the soliditySha3 function.
+    web3.utils.soliditySha3 = temp;
+  });
+
   it("Constant price", async function() {
     const identifier = web3.utils.utf8ToHex("Custom Index (1)");
     const time = "1560762000";

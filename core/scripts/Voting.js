@@ -474,8 +474,13 @@ class VotingSystem {
     };
   }
 
-  async runIteration() {
-    console.log("Starting voting iteration");
+  constructErrorNotification(error) {
+    const subject = "Fatal error running AVS [ACTION REQUIRED]";
+    const body = "AVS failed with the following error:<br />" + error;
+    return { subject, body };
+  }
+
+  async innerRunIteration() {
     const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
@@ -497,6 +502,20 @@ class VotingSystem {
     await Promise.all(
       this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
     );
+  }
+
+  async runIteration() {
+    console.log("Starting voting iteration");
+    try {
+      await this.innerRunIteration();
+    } catch (error) {
+      // A catch-all error handler, so the user gets notified if the AVS crashes. Note that errors fetching prices for
+      // some feeds is not considered a crash, and the user will be sent a more detailed message in that case.
+      const notification = this.constructErrorNotification(error);
+      await Promise.all(
+        this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
+      );
+    }
 
     console.log("Finished voting iteration");
   }
