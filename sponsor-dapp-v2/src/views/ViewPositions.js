@@ -15,6 +15,7 @@ const BigNumber = require("bignumber.js");
 function usePositionList() {
   const { drizzle, useCacheCallPromise } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+  const { hexToUtf8 } = web3.utils;
   const account = drizzleReactHooks.useDrizzleStatePromise((drizzleState, resolvePromise) => {
     if (drizzleState.accounts[0]) {
       resolvePromise(drizzleState.accounts[0]);
@@ -87,6 +88,7 @@ function usePositionList() {
         const excessMargin = call(contractAddress, "calcExcessMargin");
         const underlyingPriceTime = call(contractAddress, "getUpdatedUnderlyingPrice");
         const liquidationPrice = computeLiquidationPrice(web3, nav, excessMargin, underlyingPriceTime);
+        const derivativeStorage = call(contractAddress, "derivativeStorage");
 
         return {
           address: {
@@ -95,6 +97,7 @@ function usePositionList() {
           },
           tokenName: name,
           liquidationPrice: liquidationPrice ? format(liquidationPrice) : "--",
+          identifier: derivativeStorage ? hexToUtf8(derivativeStorage.fixedParameters.product) : undefined,
           exposures: [
             {
               type: "tokenFacility",
@@ -140,7 +143,8 @@ function usePositionList() {
   return positions.isResolved ? positions.resolvedValue : undefined;
 }
 
-function ViewPositions() {
+function ViewPositions(props) {
+  const { history } = props;
   useSendGaPageview("/ViewPositions");
   const positions = usePositionList();
   const ethFaucetUrl = useEthFaucetUrl();
@@ -201,6 +205,7 @@ function ViewPositions() {
                       position={position}
                       index={pIdx}
                       totalLength={positionsArr.length}
+                      history={history}
                     />
                   );
                 })}

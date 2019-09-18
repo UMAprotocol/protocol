@@ -4,7 +4,7 @@ import InputAdornment from "@material-ui/core/InputAdornment";
 import TextField from "@material-ui/core/TextField";
 import { withStyles } from "@material-ui/core/styles";
 
-import { ContractStateEnum, ReturnTypeEnum } from "../utils/TokenizedDerivativeUtils";
+import { ContractStateEnum, ReturnTypeEnum } from "../common/TokenizedDerivativeUtils";
 import DrizzleHelper from "../utils/DrizzleHelper";
 import { currencyAddressToName } from "../utils/ParameterLookupUtils.js";
 import { formatWei, formatWithMaxDecimals } from "../common/FormattingUtils";

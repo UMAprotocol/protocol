@@ -1,12 +1,11 @@
 import React from "react";
-import { Link } from "react-router-dom";
 
 import Tooltip from "components/common/Tooltip";
-import ApproveOrDefault from "components/ApproveOrDefault";
+import ManagePositionButton from "components/ManagePositionButton";
 import { sendGaEvent } from "lib/google-analytics.js";
 
 function Position(props) {
-  const { position, index, totalLength } = props;
+  const { position, index, totalLength, history } = props;
 
   const ignoreClick = e => {
     e.preventDefault();
@@ -99,14 +98,11 @@ function Position(props) {
                       </td>
 
                       <td>
-                        <ApproveOrDefault
-                          tokenContractName={"TestnetERC20"}
-                          addressToApprove={position.address.display}
-                        >
-                          <Link to={"/ManagePositions/" + position.address.display} className="btn">
-                            Manage position
-                          </Link>
-                        </ApproveOrDefault>
+                        <ManagePositionButton
+                          contractAddress={position.address.display}
+                          history={history}
+                          identifier={position.identifier}
+                        />
                       </td>
                     </tr>
                   );

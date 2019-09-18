@@ -1,7 +1,7 @@
 import React from "react";
 import DerivativeListTable from "./DerivativeListTable.js";
 import TokenizedDerivative from "../contracts/TokenizedDerivative.json";
-import { stateToString } from "../utils/TokenizedDerivativeUtils.js";
+import { stateToString } from "../common/TokenizedDerivativeUtils.js";
 import { formatDate } from "../common/FormattingUtils.js";
 
 class DerivativeList extends React.Component {
