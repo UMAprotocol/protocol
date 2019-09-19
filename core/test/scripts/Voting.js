@@ -10,10 +10,14 @@ const { createVisibleAccount } = require("../../../common/Crypto");
 class MockNotifier {
   constructor() {
     this.notificationsSent = 0;
+    this.lastSubject = null;
+    this.lastBody = null;
   }
 
-  async sendNotification() {
+  async sendNotification(subject, body) {
     this.notificationsSent += 1;
+    this.lastSubject = subject;
+    this.lastBody = body;
   }
 }
 
@@ -193,6 +197,41 @@ contract("scripts/Voting.js", function(accounts) {
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
     assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("9155.05"));
+  });
+
+  it("Notification on crash", async function() {
+    const identifier = web3.utils.utf8ToHex("Custom Index (1)");
+    const time = "1560762000";
+
+    // Request an Oracle price.
+    await voting.addSupportedIdentifier(identifier);
+    await voting.requestPrice(identifier, time);
+
+    const notifier = new MockNotifier();
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
+
+    // Simulate the commit reverting.
+    const temp = votingSystem.voting.batchCommit;
+    const errorMessage = "ABCDEF";
+    votingSystem.voting.batchCommit = () => {
+      throw errorMessage;
+    };
+    await moveToNextRound(voting);
+
+    // Run an iteration, which should crash.
+    await votingSystem.runIteration();
+
+    // A notification email should be sent.
+    assert.equal(notifier.notificationsSent, 1);
+    assert(notifier.lastSubject.startsWith("Fatal error"));
+    assert(notifier.lastBody.includes(errorMessage));
+
+    // Restore the commit function and resolve the price request.
+    votingSystem.voting.batchCommit = temp;
+    await votingSystem.runIteration();
+    await moveToNextPhase(voting);
+    await votingSystem.runIteration();
+    await moveToNextRound(voting);
   });
 
   it("Constant price", async function() {
