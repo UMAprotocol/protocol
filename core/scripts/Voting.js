@@ -13,29 +13,41 @@ const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
 const SUPPORTED_IDENTIFIERS = {
   BTCUSD: {
-    dataSource: "CryptoCompare",
-    identifiers: { first: "BTC", second: "USD" }
+    numerator: {
+      dataSource: "CryptoCompare",
+      identifiers: { first: "BTC", second: "USD" }
+    }
   },
   "Telegram SAFT": {
-    dataSource: "Constant",
-    value: "100"
+    numerator: {
+      dataSource: "Constant",
+      value: "100"
+    }
   },
   "Custom Index (1)": {
-    dataSource: "Constant",
-    value: "1"
+    numerator: {
+      dataSource: "Constant",
+      value: "1"
+    }
   },
   "Custom Index (100)": {
-    dataSource: "Constant",
-    value: "100"
+    numerator: {
+      dataSource: "Constant",
+      value: "100"
+    }
   },
   TSLA: {
-    dataSource: "IntrinioEquities",
-    // TODO: TSLA not supported in sandbox, but presumably is supported in their prod instance.
-    symbol: "AAPL"
+    numerator: {
+      dataSource: "IntrinioEquities",
+      // TODO: TSLA not supported in sandbox, but presumably is supported in their prod instance.
+      symbol: "AAPL"
+    }
   },
   "Gold (Rolling Future)": {
-    dataSource: "Barchart",
-    symbol: "GC*1"
+    numerator: {
+      dataSource: "Barchart",
+      symbol: "GC*1"
+    }
   }
 };
 
@@ -169,12 +181,7 @@ async function fetchBarchartPrice(request, config) {
   throw "Failed to get a matching timestamp";
 }
 
-async function fetchPrice(request) {
-  const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
-  if (plainTextIdentifier.startsWith("test")) {
-    return web3.utils.toWei("1.5");
-  }
-  const config = SUPPORTED_IDENTIFIERS[plainTextIdentifier];
+async function fetchPriceInner(request, config) {
   switch (config.dataSource) {
     case "CryptoCompare":
       return await fetchCryptoComparePrice({
@@ -189,6 +196,25 @@ async function fetchPrice(request) {
       return await fetchBarchartPrice(request, config);
     default:
       throw "No known data source specified";
+  }
+}
+
+async function fetchPrice(request) {
+  const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
+  if (plainTextIdentifier.startsWith("test")) {
+    return web3.utils.toWei("1.5");
+  }
+  const config = SUPPORTED_IDENTIFIERS[plainTextIdentifier];
+  const numerator = await fetchPriceInner(request, config.numerator);
+  if (config.denominator) {
+    const denominator = await fetchPriceInner(request, config.denominator);
+    return web3.utils
+      .toBN(numerator)
+      .mul(web3.utils.toBN(web3.utils.toWei("1")))
+      .div(web3.utils.toBN(denominator))
+      .toString();
+  } else {
+    return numerator;
   }
 }
 
@@ -540,4 +566,9 @@ run = async function(callback) {
 };
 
 run.VotingSystem = VotingSystem;
+// TODO(ptare): Another way to allow modifying SUPPORTED_IDENTIFIERS for unit testing purposes is to wrap all the fetch*
+// functions into a class HistoricalPriceFetcher that gets passed to VotingSystem. HistoricalPriceFetcher takes in a config as a param.
+// That would turn this code into Java, not sure how we'd feel about that.
+// DO NOT SUBMIT without resolving this todo.
+run.SUPPORTED_IDENTIFIERS = SUPPORTED_IDENTIFIERS;
 module.exports = run;
