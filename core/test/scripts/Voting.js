@@ -251,4 +251,32 @@ contract("scripts/Voting.js", function(accounts) {
 
     assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("1"));
   });
+
+  it("Numerator/Denominator", async function() {
+    const identifier = web3.utils.utf8ToHex("0.5");
+    const time = "1560762000";
+
+    VotingScript.SUPPORTED_IDENTIFIERS["0.5"] = {
+      numerator: {
+        dataSource: "Constant",
+        value: "1"
+      },
+      denominator: {
+        dataSource: "Constant",
+        value: "2"
+      }
+    };
+    // Request an Oracle price.
+    await voting.addSupportedIdentifier(identifier);
+    await voting.requestPrice(identifier, time);
+
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [new MockNotifier()]);
+    await moveToNextRound(voting);
+    await votingSystem.runIteration();
+    await moveToNextPhase(voting);
+    await votingSystem.runIteration();
+    await moveToNextRound(voting);
+
+    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("0.5"));
+  });
 });
