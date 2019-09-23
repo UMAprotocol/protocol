@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
 import { useSendGaPageview } from "lib/google-analytics";
+import classNames from "classnames";
 
 import Header from "components/common/Header";
 import ExpandBox from "components/common/ExpandBox";
@@ -10,6 +11,7 @@ import { withAddedContract } from "lib/contracts";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
 import { useEtherscanUrl } from "lib/custom-hooks";
+import { ContractStateEnum } from "common/TokenizedDerivativeUtils";
 
 function getStateDescription(derivativeStorage) {
   switch (derivativeStorage.state) {
@@ -87,7 +89,9 @@ function useFinancialContractData(tokenAddress) {
   data.ready = true;
 
   // Format financial contract data for display.
-  const { toBN } = web3.utils;
+  const { toBN, toChecksumAddress } = web3.utils;
+  data.isTokenSponsor =
+    toChecksumAddress(account) === toChecksumAddress(data.derivativeStorage.externalAddresses.sponsor);
   const scalingFactor = toBN(web3.utils.toWei("1"));
   const computeSafePercentage = (numerator, denominator) =>
     denominator.isZero()
@@ -109,11 +113,13 @@ function useFinancialContractData(tokenAddress) {
     data.collateralizationRatio = computeSafePercentage(data.totalHoldings, navBn);
     data.minRequiredMargin = shortMarginBalanceBn.sub(toBN(data.excessMargin));
     data.minCollateralizationPercentage = computeSafePercentage(data.minRequiredMargin.add(navBn), navBn);
+    data.frozen = false;
   } else {
     data.tokenOwnershipValue = null;
     data.collateralizationRatio = null;
     data.minRequiredMargin = null;
     data.minCollateralizationPercentage = null;
+    data.frozen = true;
   }
   const { stateText, stateColor } = getStateDescription(data.derivativeStorage);
   data.stateText = stateText;
@@ -139,6 +145,18 @@ function useFinancialContractData(tokenAddress) {
       address: { display: data.derivativeStorage.externalAddresses.returnCalculator }
     }
   ];
+
+  // The user must be the token sponsor, the contract must be in the live state (and not be ready to expire) for the
+  // manage buttons to be enabled.
+  data.canManagePosition =
+    data.isTokenSponsor && !data.frozen && data.derivativeStorage.state === ContractStateEnum.LIVE;
+
+  // There are two cases where the redeem button should be enabled:
+  // 1. The contract is in a live (not ready to expire) state and the user is the token sponsor.
+  // 2. The contract is settled.
+  data.canRedeem =
+    (!data.frozen && data.isTokenSponsor && data.derivativeStorage.state === ContractStateEnum.LIVE) ||
+    data.derivativeStorage.state === ContractStateEnum.SETTLED;
 
   return data;
 }
@@ -277,11 +295,21 @@ function ManagePositions(props) {
                       </tbody>
                     </table>
                     <div className="detail-box__actions">
-                      <Link to={"/Borrow/" + tokenAddress} className="btn">
+                      <Link
+                        to={"/Borrow/" + tokenAddress}
+                        className={classNames("btn", {
+                          disabled: !data.canManagePosition
+                        })}
+                      >
                         <span>Borrow more tokens</span>
                       </Link>
 
-                      <Link to={"/Repay/" + tokenAddress} className="btn">
+                      <Link
+                        to={"/Repay/" + tokenAddress}
+                        className={classNames("btn", {
+                          disabled: !data.canRedeem
+                        })}
+                      >
                         <span>Repay token debt</span>
                       </Link>
                     </div>
@@ -362,11 +390,21 @@ function ManagePositions(props) {
                   </div>
 
                   <div className="detail-box__actions">
-                    <Link to={"/Withdraw/" + tokenAddress} className="btn">
+                    <Link
+                      to={"/Withdraw/" + tokenAddress}
+                      className={classNames("btn", {
+                        disabled: !data.canManagePosition
+                      })}
+                    >
                       <span>Withdraw collateral</span>
                     </Link>
 
-                    <Link to={"/Deposit/" + tokenAddress} className="btn">
+                    <Link
+                      to={"/Deposit/" + tokenAddress}
+                      className={classNames("btn", {
+                        disabled: !data.canManagePosition
+                      })}
+                    >
                       <span>Deposit additional collateral</span>
                     </Link>
                   </div>
