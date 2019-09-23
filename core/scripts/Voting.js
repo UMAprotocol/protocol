@@ -39,8 +39,7 @@ const SUPPORTED_IDENTIFIERS = {
   TSLA: {
     numerator: {
       dataSource: "IntrinioEquities",
-      // TODO: TSLA not supported in sandbox, but presumably is supported in their prod instance.
-      symbol: "AAPL"
+      symbol: "TSLA"
     }
   },
   "Gold (Rolling Future)": {
@@ -127,6 +126,7 @@ async function fetchIntrinioEquitiesPrice(request, config) {
     "&start_time=" + startTime,
     "&end_date=" + endDate,
     "&end_time=" + endTime,
+    "&source=bats",
     "&api_key=" + process.env.INTRINIO_API_KEY
   ].join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
@@ -566,9 +566,5 @@ run = async function(callback) {
 };
 
 run.VotingSystem = VotingSystem;
-// TODO(ptare): Another way to allow modifying SUPPORTED_IDENTIFIERS for unit testing purposes is to wrap all the fetch*
-// functions into a class HistoricalPriceFetcher that gets passed to VotingSystem. HistoricalPriceFetcher takes in a config as a param.
-// That would turn this code into Java, not sure how we'd feel about that.
-// DO NOT SUBMIT without resolving this todo.
 run.SUPPORTED_IDENTIFIERS = SUPPORTED_IDENTIFIERS;
 module.exports = run;
