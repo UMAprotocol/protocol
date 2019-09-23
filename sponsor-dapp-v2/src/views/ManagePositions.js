@@ -152,11 +152,12 @@ function useFinancialContractData(tokenAddress) {
     data.isTokenSponsor && !data.frozen && data.derivativeStorage.state === ContractStateEnum.LIVE;
 
   // There are two cases where the redeem button should be enabled:
-  // 1. The contract is in a live (not ready to expire) state and the user is the token sponsor.
+  // 1. General contract management is enabled for this user.
   // 2. The contract is settled.
-  data.canRedeem =
-    (!data.frozen && data.isTokenSponsor && data.derivativeStorage.state === ContractStateEnum.LIVE) ||
-    data.derivativeStorage.state === ContractStateEnum.SETTLED;
+  data.canRedeem = data.canManagePosition || data.derivativeStorage.state === ContractStateEnum.SETTLED;
+
+  // The user can withdraw whenever they can redeem as long as they are the token sponsor.
+  data.canWithdraw = data.canRedeem && data.isTokenSponsor;
 
   return data;
 }
@@ -393,7 +394,7 @@ function ManagePositions(props) {
                     <Link
                       to={"/Withdraw/" + tokenAddress}
                       className={classNames("btn", {
-                        disabled: !data.canManagePosition
+                        disabled: !data.canWithdraw
                       })}
                     >
                       <span>Withdraw collateral</span>
