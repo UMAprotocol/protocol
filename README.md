@@ -2,7 +2,7 @@
 
 ## Contact
 
-- [Slack](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LTM4ODg0NGZhYWZkNjkzMDE4MjU0ZGFlYWQzZTFiZWFlZjI2NDE4OGI2NWY3OTdhYjYyZjg0MjAzMTgwODVhZTE): to join, use this
+- [Slack](https://umaprotocol.slack.com): to join, use this
 [invite link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LTM4ODg0NGZhYWZkNjkzMDE4MjU0ZGFlYWQzZTFiZWFlZjI2NDE4OGI2NWY3OTdhYjYyZjg0MjAzMTgwODVhZTE).
 Please use Slack for all technical questions and discussions.
 - [Email](mailto:hello@umaproject.org): for anything non-technical.
