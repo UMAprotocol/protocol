@@ -586,9 +586,7 @@ class VotingSystem {
     const subject = `AVS Update: price requests ${phaseVerb}` + (failures.length > 0 ? " [ACTION REQUIRED]" : "");
 
     // Intro is bolded and tells the user how many requests were updated.
-    const intro = `<b>The AVS has ${phaseVerb} ${updates.length} price requests, skipped ${
-      skipped.length
-    }, and failed ${failures.length} on-chain.</b>`;
+    const intro = `<b>The AVS has ${phaseVerb} ${updates.length} price requests, skipped ${skipped.length}, and failed ${failures.length} on-chain.</b>`;
 
     // Construct information blocks for each request.
     const blocks = updates
