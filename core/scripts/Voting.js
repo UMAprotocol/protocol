@@ -140,9 +140,14 @@ async function fetchCryptoComparePrice(request) {
 
   // Temporary price feed until we sort historical data.
   // CryptoCompare provides historical hourly prices for free. If we want minutes/seconds, we'll have to update later.
-  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${
-    identifier.second
-  }&toTs=${time}&limit=1&api_key=${CC_API_KEY}`;
+  const url = [
+    "https://min-api.cryptocompare.com/data/histohour?",
+    "fsym=" + identifier.first,
+    "&tsym=" + identifier.second,
+    "&toTs=" + time,
+    "&limit=1",
+    "&api_key=" + CC_API_KEY
+  ].join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
   console.log(`Response [${JSON.stringify(jsonOutput)}]`);
@@ -218,7 +223,7 @@ async function fetchIntrinioForexPrice(request, config) {
   const url = [
     "https://api-v2.intrinio.com/forex/prices/",
     config.symbol,
-    "/m1/?",
+    "/m1?",
     "api_key=" + process.env.INTRINIO_API_KEY
   ]
     .concat(getIntrinioTimeArguments(request.time))
@@ -268,8 +273,8 @@ async function fetchCmcPrice(request, config) {
     "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical?",
     "CMC_PRO_API_KEY=" + process.env.CMC_PRO_API_KEY,
     "&symbol=" + config.symbol,
-    "&time_start" + request.time,
-    "&time_end" + (Number(request.time) + 1000)
+    "&time_start=" + request.time,
+    "&time_end=" + (Number(request.time) + 1000)
   ].join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.CMC_PRO_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
@@ -390,7 +395,7 @@ function getNotifiers() {
   } else if (process.env.SENDGRID_API_KEY) {
     notifiers.push(new SendgridNotifier());
   } else {
-    throw new Error("User did not pass any valid email credentials");
+    // throw new Error("User did not pass any valid email credentials");
   }
 
   // Add a standard console notifier.
