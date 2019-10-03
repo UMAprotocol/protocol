@@ -237,7 +237,7 @@ async function fetchIntrinioForexPrice(request, config) {
     throw "Failed to get data from Intrinio";
   }
 
-  // No prices!?
+  // TODO(ptare): Forex quotes don't appear to have trade prices!?
   const price = jsonOutput.prices[0].open_bid;
   const time = jsonOutput.prices[0].occurred_at;
   console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
