@@ -2,7 +2,7 @@
  * AdministrateeInterface contract.
  * The interface that enumerates the functionality that derivative contracts expose to the admin.
  */
-pragma solidity ^0.5.0;
+pragma solidity 0.5.0;
 
 
 /**

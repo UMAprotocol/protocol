@@ -2,7 +2,7 @@
  * ExpandedIERC20 contract.
  * Interface that expands IERC20 to include burning and minting tokens.
  */
-pragma solidity ^0.5.0;
+pragma solidity 0.5.0;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
