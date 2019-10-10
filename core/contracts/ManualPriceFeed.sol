@@ -3,7 +3,7 @@
 
  Implementation of PriceFeedInterface that allows manually updating prices.
 */
-pragma solidity 0.5.0;
+pragma solidity 0.5.11;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/ownership/Ownable.sol";

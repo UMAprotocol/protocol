@@ -1,4 +1,4 @@
-pragma solidity 0.5.0;
+pragma solidity 0.5.11;
 
 import "./MultiRole.sol";
 import "./ExpandedIERC20.sol";

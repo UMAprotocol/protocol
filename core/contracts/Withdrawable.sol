@@ -2,7 +2,7 @@
  * Withdrawable contract.
  */
 
-pragma solidity 0.5.0;
+pragma solidity 0.5.11;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./MultiRole.sol";

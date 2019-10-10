@@ -1,7 +1,7 @@
 /*
   EncryptedSender contract for sending encrypted messages via the EVM.
 */
-pragma solidity 0.5.0;
+pragma solidity 0.5.11;
 
 
 /**

@@ -1,4 +1,4 @@
-pragma solidity 0.5.0;
+pragma solidity 0.5.11;
 
 import "./AdministrateeInterface.sol";
 import "./MultiRole.sol";
