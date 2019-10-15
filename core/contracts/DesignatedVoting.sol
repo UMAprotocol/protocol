@@ -5,6 +5,7 @@ import "./MultiRole.sol";
 import "./Withdrawable.sol";
 import "./Voting.sol";
 
+
 /**
  * @title Designated Voting
  * @dev Allows a UMA token holder to designate another address to vote on their behalf. Each voter must deploy their own
