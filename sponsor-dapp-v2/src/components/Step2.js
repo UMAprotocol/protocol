@@ -37,7 +37,7 @@ function Step2(props) {
     .map(expiry => {
       return {
         key: expiry,
-        value: expiry ? moment.unix(expiry).format("MMMM DD, YYYY LTS") : "Perpetual"
+        value: expiry ? moment.unix(expiry).format("MMMM DD, YYYY LTS") : "Perpetual (alpha)"
       };
     });
 
