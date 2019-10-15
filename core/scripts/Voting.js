@@ -60,15 +60,20 @@ const SUPPORTED_IDENTIFIERS = {
   },
   "Gold (Rolling Future)": {
     numerator: {
-      dataSource: "Barchart",
-      symbol: "GC*1"
+      dataSource: "IntrinioEquities",
+      symbol: "GLD",
+      source: "bats"
+    },
+    denominator: {
+      dataSource: "Constant",
+      value: "0.1"
     }
   },
   "Crude Oil (Rolling Future)": {
     numerator: {
       dataSource: "IntrinioEquities",
       symbol: "OIL",
-      source: "iex"
+      source: "bats"
     },
     denominator: {
       dataSource: "Constant",
