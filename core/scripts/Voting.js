@@ -205,16 +205,16 @@ async function fetchIntrinioEquitiesPrice(request, config) {
     config.symbol,
     "/prices/intraday?",
     "api_key=" + process.env.INTRINIO_API_KEY,
-    "&source=" + config.source
+    "&source=" + config.source,
+    "&page_size=1",
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
+  console.log("Intrinio response:", jsonOutput);
 
   if (!jsonOutput.intraday_prices || jsonOutput.intraday_prices.length === 0) {
-    // The JSON output can be large when it succeeds, so we only print it in cases of failure.
-    console.log("Intrinio response:", jsonOutput);
     throw "Failed to get data from Intrinio";
   }
 
@@ -229,16 +229,16 @@ async function fetchIntrinioForexPrice(request, config) {
     "https://api-v2.intrinio.com/forex/prices/",
     config.symbol,
     "/m1?",
-    "api_key=" + process.env.INTRINIO_API_KEY
+    "api_key=" + process.env.INTRINIO_API_KEY,
+    "&page_size=1"
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
+  console.log("Intrinio response:", jsonOutput);
 
   if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
-    // The JSON output can be large when it succeeds, so we only print it in cases of failure.
-    console.log("Intrinio response:", jsonOutput);
     throw "Failed to get data from Intrinio";
   }
 
@@ -254,16 +254,16 @@ async function fetchIntrinioCryptoPrice(request, config) {
     "https://api-v2.intrinio.com/crypto/prices?",
     "api_key=" + process.env.INTRINIO_API_KEY,
     "&currency=" + config.symbol,
+    "&page_size=1",
     "&timeframe=m1"
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
+  console.log("Intrinio response:", jsonOutput);
 
   if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
-    // The JSON output can be large when it succeeds, so we only print it in cases of failure.
-    console.log("Intrinio response:", jsonOutput);
     throw "Failed to get data from Intrinio";
   }
 
