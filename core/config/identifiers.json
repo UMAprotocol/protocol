@@ -7,10 +7,10 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "0",
       "numerator": {
-        "dataSource": "BarchartCrypto",
-        "assetName": "^BTCUSD"
+        "dataSource": "CMCCrypto",
+        "assetName": "BTC"
       }
     }
   },
@@ -22,10 +22,10 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "0",
       "numerator": {
-        "dataSource": "BarchartCrypto",
-        "assetName": "^ETHUSD"
+        "dataSource": "CMCCrypto",
+        "assetName": "ETH"
       }
     }
   },
@@ -39,7 +39,7 @@
       "publishInterval": "900",
       "minDelay": "0",
       "numerator": {
-        "dataSource": "CMC",
+        "dataSource": "CMCGlobalMetric",
         "assetName": "total_market_cap"
       },
       "denominator": {
@@ -56,10 +56,14 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "900",
       "numerator": {
-        "dataSource": "Barchart",
-        "assetName": "SP*1"
+        "dataSource": "IntrinioEquities",
+        "assetName": "SPY"
+      },
+      "denominator": {
+        "dataSource": "Constant",
+        "assetName": "0.1"
       }
     }
   },
@@ -71,9 +75,9 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "900",
       "numerator": {
-        "dataSource": "BarchartEquities",
+        "dataSource": "IntrinioEquities",
         "assetName": "TSLA"
       }
     }
@@ -86,10 +90,10 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "900",
       "numerator": {
-        "dataSource": "Barchart",
-        "assetName": "GC*1"
+        "dataSource": "IntrinioEquities",
+        "assetName": "GLD"
       }
     }
   },
@@ -101,10 +105,10 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "900",
       "numerator": {
-        "dataSource": "Barchart",
-        "assetName": "CL*1"
+        "dataSource": "IntrinioEquities",
+        "assetName": "OIL"
       }
     }
   },
@@ -116,10 +120,14 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "0",
       "numerator": {
-        "dataSource": "Barchart",
-        "assetName": "^CNYUSD"
+        "dataSource": "Constant",
+        "assetName": "1"
+      },
+      "denominator": {
+        "dataSource": "IntrinioForex",
+        "assetName": "USDCNH"
       }
     }
   },
@@ -146,14 +154,14 @@
     },
     "uploaderConfig": {
       "publishInterval": "900",
-      "minDelay": "600",
+      "minDelay": "0",
       "numerator": {
         "dataSource": "Constant",
         "assetName": "1"
       },
       "denominator": {
-        "dataSource": "BarchartCrypto",
-        "assetName": "^ETHUSD"
+        "dataSource": "CMCCrypto",
+        "assetName": "ETH"
       }
     }
   },
