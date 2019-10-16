@@ -94,6 +94,10 @@
       "numerator": {
         "dataSource": "IntrinioEquities",
         "assetName": "GLD"
+      },
+      "denominator": {
+        "dataSource": "Constant",
+        "assetName": "0.1"
       }
     }
   },
@@ -109,6 +113,10 @@
       "numerator": {
         "dataSource": "IntrinioEquities",
         "assetName": "OIL"
+      },
+      "denominator": {
+        "dataSource": "Constant",
+        "assetName": "0.1"
       }
     }
   },
