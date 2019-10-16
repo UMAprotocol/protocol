@@ -13,6 +13,7 @@ const alphaVantageKey = process.env.ALPHAVANTAGE_API_KEY;
 const barchartStandardKey = process.env.BARCHART_API_KEY;
 const barchartEquitiesKey = process.env.BARCHART_EQUITIES_API_KEY;
 const cmcKey = process.env.CMC_PRO_API_KEY;
+const intrinioApiKey = process.env.INTRINIO_API_KEY;
 
 function stripApiKey(str, key) {
   return str.replace(key, "{redacted}");
@@ -36,9 +37,13 @@ const getJson = async url => {
   return json;
 };
 
+function dateToBN(date) {
+  return web3.utils.toBN(Math.round(date.getTime() / 1000));
+}
+
 // Gets the current time as BN.
 function getCurrentTime() {
-  return web3.utils.toBN(Math.round(Date.now() / 1000));
+  return dateToBN(new Date());
 }
 
 async function getBarchartPrice(asset, domain, api, key) {
@@ -84,7 +89,7 @@ async function getConstantPrice(constantPrice) {
 }
 
 // Gets the CoinMarketCap price.
-async function getCMCPrice(asset) {
+async function getCMCGlobalMetricPrice(asset) {
   const url = `https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest?CMC_PRO_API_KEY=${cmcKey}`;
   console.log(`Querying CMC with [${stripApiKey(url, cmcKey)}]`);
   const jsonOutput = await getJson(url);
@@ -108,7 +113,42 @@ async function getCMCPrice(asset) {
     throw "Failed to get last updated timestamp";
   }
 
-  const timestamp = web3.utils.toBN(Math.round(new Date(updatedTime).getTime() / 1000));
+  const timestamp = dateToBN(new Date(updatedTime));
+  if (!timestamp) {
+    throw `Failed to get valid timestamp out of JSON response last_updated field [${updatedTime}]`;
+  }
+
+  console.log(`Retrieved quote [${price}] at [${timestamp}] ([${updatedTime}]) from CMC for asset [${asset}]`);
+
+  return { price, timestamp };
+}
+
+async function getCMCCryptoPrice(asset) {
+  const url = [
+    "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?",
+    `symbol=${asset}`,
+    `&CMC_PRO_API_KEY=${cmcKey}`
+  ].join("");
+
+  console.log(`Querying CMC with [${stripApiKey(url, cmcKey)}]`);
+  const jsonOutput = await getJson(url);
+  console.log(`CMC response [${JSON.stringify(jsonOutput)}]`);
+
+  if (jsonOutput.status.error_code !== 0) {
+    throw "CMC request failed";
+  }
+
+  const price = jsonOutput.data[asset].quote.USD.price;
+  if (!price) {
+    throw "Failed to get valid price out of JSON response";
+  }
+
+  const updatedTime = jsonOutput.data[asset].quote.USD.last_updated;
+  if (!updatedTime) {
+    throw "Failed to get last updated timestamp";
+  }
+
+  const timestamp = dateToBN(new Date(updatedTime));
   if (!timestamp) {
     throw `Failed to get valid timestamp out of JSON response last_updated field [${updatedTime}]`;
   }
@@ -172,8 +212,52 @@ async function getAlphaVantageCurrencyRate(asset) {
   return { price: rate, timestamp: getCurrentTime() };
 }
 
+async function getIntrinioEquitiesPrice(asset) {
+  const url = [
+    "https://api-v2.intrinio.com/securities/",
+    asset,
+    "/prices/intraday?",
+    "source=bats",
+    "&page_size=1",
+    `&api_key=${intrinioApiKey}`
+  ].join("");
+
+  console.log(`Querying Intrinio with [${stripApiKey(url, intrinioApiKey)}]`);
+  const jsonOutput = await getJson(url);
+  console.log(`Intrinio response [${JSON.stringify(jsonOutput)}]`);
+  const intraday_value = jsonOutput.intraday_prices[0];
+  const timestamp = dateToBN(new Date(intraday_value.time));
+  const price = intraday_value.last_price;
+  console.log(`Retrieved price [${price}] from Intrinio for asset [${asset}]`);
+  return { price, timestamp };
+}
+
+async function getIntrinioForexPrice(asset) {
+  const url = [
+    "https://api-v2.intrinio.com/forex/prices/",
+    asset,
+    "/m1?",
+    "timezone=UTC",
+    "&page_size=1",
+    `&api_key=${intrinioApiKey}`
+  ].join("");
+
+  console.log(`Querying Intrinio with [${stripApiKey(url, intrinioApiKey)}]`);
+  const jsonOutput = await getJson(url);
+  console.log(`Intrinio response [${JSON.stringify(jsonOutput)}]`);
+  const intraday_value = jsonOutput.prices[0];
+  const timestamp = dateToBN(new Date(intraday_value.occurred_at));
+  const price = intraday_value.open_bid;
+  console.log(`Retrieved price [${price}] from Intrinio for asset [${asset}]`);
+  return { price, timestamp };
+}
+
 async function fetchPrice(assetConfig) {
   switch (assetConfig.dataSource) {
+    case "IntrinioEquities":
+      return await getIntrinioEquitiesPrice(assetConfig.assetName);
+    case "IntrinioForex":
+      return await getIntrinioForexPrice(assetConfig.assetName);
     case "Barchart":
       return await getBarchartStandardPrice(assetConfig.assetName);
     case "Constant":
@@ -182,8 +266,10 @@ async function fetchPrice(assetConfig) {
       return await getBarchartEquitiesPrice(assetConfig.assetName);
     case "BarchartCrypto":
       return await getBarchartCryptoPrice(assetConfig.assetName);
-    case "CMC":
-      return await getCMCPrice(assetConfig.assetName);
+    case "CMCCrypto":
+      return await getCMCCryptoPrice(assetConfig.assetName);
+    case "CMCGlobalMetric":
+      return await getCMCGlobalMetricPrice(assetConfig.assetName);
     case "AlphaVantage":
       return await getAlphaVantageQuote(assetConfig.assetName);
     case "AlphaVantageCurrency":
@@ -230,7 +316,7 @@ async function getExchangeRate(numeratorConfig, denominatorConfig) {
     .times(BigNumber(web3.utils.toWei("1")))
     .div(BigNumber(denomInWei))
     .integerValue(BigNumber.ROUND_FLOOR)
-    .toString();
+    .toFixed();
   console.log(
     `Dividing numerator [${numInWei}] / denominator [${denomInWei}] = exchange rate (in Wei) [${exchangeRate}]`
   );
