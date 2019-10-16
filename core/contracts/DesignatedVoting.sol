@@ -16,8 +16,6 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     enum Roles {
         // Can set the Voter and Withdrawer roles.
         Owner,
-        // Can withdraw tokens from this contract.
-        Withdraw,
         // Can vote through this contract.
         Voter
     }
@@ -29,11 +27,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     constructor(address finderAddress) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), msg.sender);
-        // TODO(ptare): In this contract, a separate withdraw role doesn't make sense. Our choices are to:
-        // 1. Add a method to Withdrawable `setWithdrawRole()` to allow setting the owner as the withdrawer.
-        // 2. Not extend Withdrawable.
-        // 3. Leave as-is.
-        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Owner), msg.sender);
+        setWithdrawRole(uint(Roles.Owner));
 
         finder = Finder(finderAddress);
     }

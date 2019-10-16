@@ -22,7 +22,7 @@ contract("DesignatedVoting", function(accounts) {
   let tokenBalance;
 
   // Corresponds to DesignatedVoting.Roles.Voter.
-  const voterRole = "2";
+  const voterRole = "1";
 
   before(async function() {
     voting = await Voting.deployed();
