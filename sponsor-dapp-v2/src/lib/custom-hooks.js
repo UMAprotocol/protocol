@@ -31,6 +31,8 @@ export function revertWrapper(result) {
       }
     }
   }
+
+  return result;
 }
 
 export function useNumRegisteredContracts() {
