@@ -10,7 +10,7 @@ import Tooltip from "components/common/Tooltip";
 import { withAddedContract } from "lib/contracts";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
-import { useEtherscanUrl } from "lib/custom-hooks";
+import { useEtherscanUrl, revertWrapper } from "lib/custom-hooks";
 import { ContractStateEnum } from "common/TokenizedDerivativeUtils";
 
 function getStateDescription(derivativeStorage) {
@@ -67,12 +67,12 @@ function useFinancialContractData(tokenAddress) {
   data.derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
   data.name = useCacheCall(tokenAddress, "name");
   data.symbol = useCacheCall(tokenAddress, "symbol");
-  data.nav = useCacheCall(tokenAddress, "calcNAV");
-  data.tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
-  data.shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
-  data.excessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
+  data.nav = revertWrapper(useCacheCall(tokenAddress, "calcNAV"));
+  data.tokenValue = revertWrapper(useCacheCall(tokenAddress, "calcTokenValue"));
+  data.shortMarginBalance = revertWrapper(useCacheCall(tokenAddress, "calcShortMarginBalance"));
+  data.excessMargin = revertWrapper(useCacheCall(tokenAddress, "calcExcessMargin"));
 
-  const updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  const updatedUnderlyingPrice = revertWrapper(useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice"));
 
   // If the blockchain value === null, this means that the call reverted, so we just make its children null (to prevent access errors down the line).
   data.updatedUnderlyingPrice =

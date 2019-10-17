@@ -6,6 +6,33 @@ import { MAX_UINT_VAL } from "common/Constants";
 import { sendGaEvent } from "lib/google-analytics";
 import { ContractStateEnum } from "common/TokenizedDerivativeUtils";
 
+// This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
+// See https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211 for more
+// info.
+export function revertWrapper(result) {
+  if (!result) {
+    return null;
+  }
+
+  let revertValue = "3963877391197344453575983046348115674221700746820753546331534351508065746944";
+  if (result.toString() === revertValue) {
+    return null;
+  }
+
+  const isObject = obj => {
+    return obj === Object(obj);
+  };
+
+  if (isObject(result)) {
+    // Iterate over the properties of the object and see if any match the revert value.
+    for (let prop in result) {
+      if (result[prop].toString() === revertValue) {
+        return null;
+      }
+    }
+  }
+}
+
 export function useNumRegisteredContracts() {
   const { useCacheCall } = drizzleReactHooks.useDrizzle();
   const account = drizzleReactHooks.useDrizzleState(drizzleState => {
@@ -121,8 +148,8 @@ export function useCollateralizationInformation(tokenAddress, changeInShortBalan
   const { toBN, toWei } = web3.utils;
   const data = {};
   data.derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
-  data.nav = useCacheCall(tokenAddress, "calcNAV");
-  data.shortMarginBalance = useCacheCall(tokenAddress, "calcShortMarginBalance");
+  data.nav = revertWrapper(useCacheCall(tokenAddress, "calcNAV"));
+  data.shortMarginBalance = revertWrapper(useCacheCall(tokenAddress, "calcShortMarginBalance"));
 
   if (!Object.values(data).every(Boolean)) {
     return { ready: false };
@@ -156,8 +183,8 @@ export function useMaxTokensThatCanBeCreated(tokenAddress, marginAmount) {
   const { toWei, toBN } = drizzle.web3.utils;
 
   const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
-  const newExcessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
-  const tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
+  const newExcessMargin = revertWrapper(useCacheCall(tokenAddress, "calcExcessMargin"));
+  const tokenValue = revertWrapper(useCacheCall(tokenAddress, "calcTokenValue"));
 
   const dataFetched = derivativeStorage && newExcessMargin && tokenValue;
   if (!dataFetched) {
@@ -340,9 +367,9 @@ export function useTokenPreapproval(tokenContractName, addressToApprove) {
 
 export function useLiquidationPrice(tokenAddress) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const nav = useCacheCall(tokenAddress, "calcNAV");
-  const excessMargin = useCacheCall(tokenAddress, "calcExcessMargin");
-  const underlyingPriceTime = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  const nav = revertWrapper(useCacheCall(tokenAddress, "calcNAV"));
+  const excessMargin = revertWrapper(useCacheCall(tokenAddress, "calcExcessMargin"));
+  const underlyingPriceTime = revertWrapper(useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice"));
 
   return computeLiquidationPrice(drizzle.web3, nav, excessMargin, underlyingPriceTime);
 }

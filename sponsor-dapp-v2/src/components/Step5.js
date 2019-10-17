@@ -2,7 +2,12 @@ import React, { useEffect } from "react";
 
 import classNames from "classnames";
 import { withAddedContract } from "lib/contracts";
-import { useTextInput, useCollateralizationInformation, useMaxTokensThatCanBeCreated } from "lib/custom-hooks";
+import {
+  useTextInput,
+  useCollateralizationInformation,
+  useMaxTokensThatCanBeCreated,
+  revertWrapper
+} from "lib/custom-hooks";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
@@ -54,7 +59,7 @@ function Step5(props) {
 
   // Get data to display.
   const { collateralizationRequirement } = useCollateralizationInformation(contractAddress, "");
-  const currentPrice = useCacheCall(contractAddress, "getUpdatedUnderlyingPrice");
+  const currentPrice = revertWrapper(useCacheCall(contractAddress, "getUpdatedUnderlyingPrice"));
 
   const { ready, maxTokens } = useMaxTokensThatCanBeCreated(contractAddress, dai);
 
