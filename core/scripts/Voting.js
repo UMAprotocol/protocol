@@ -72,7 +72,7 @@ const SUPPORTED_IDENTIFIERS = {
   "Crude Oil (Rolling Future)": {
     numerator: {
       dataSource: "IntrinioEquities",
-      symbol: "OIL",
+      symbol: "USO",
       source: "bats"
     },
     denominator: {
@@ -187,16 +187,12 @@ function fetchConstantPrice(request, config) {
 
 function getIntrinioTimeArguments(time) {
   const requestMoment = moment.unix(time);
-  const startDate = requestMoment.format("YYYY-MM-DD");
-  const startTime = requestMoment.format("HH:mm:ss");
+  const requestDate = requestMoment.format("YYYY-MM-DD");
+  const requestTime = requestMoment.format("HH:mm:ss");
 
-  // How to determine this time window? Picked 10000 seconds arbitrarily.
-  const timeWindowSeconds = 10000;
-  const endMoment = moment.unix(Number(time) + timeWindowSeconds);
-  const endDate = endMoment.format("YYYY-MM-DD");
-  const endTime = endMoment.format("HH:mm:ss");
-
-  return ["&start_date=" + startDate, "&start_time=" + startTime, "&end_date=" + endDate, "&end_time=" + endTime];
+  // If we don't specify a `start_time` or `start_date`, Intrinio APIs return data in reverse chronological order, up to
+  // `end_time`.
+  return ["&end_date=" + requestDate, "&end_time=" + requestTime];
 }
 
 async function fetchIntrinioEquitiesPrice(request, config) {
@@ -206,7 +202,7 @@ async function fetchIntrinioEquitiesPrice(request, config) {
     "/prices/intraday?",
     "api_key=" + process.env.INTRINIO_API_KEY,
     "&source=" + config.source,
-    "&page_size=1",
+    "&page_size=1"
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
@@ -400,7 +396,7 @@ function getNotifiers() {
   } else if (process.env.SENDGRID_API_KEY) {
     notifiers.push(new SendgridNotifier());
   } else {
-    throw new Error("User did not pass any valid email credentials");
+    // throw new Error("User did not pass any valid email credentials");
   }
 
   // Add a standard console notifier.
