@@ -32,10 +32,20 @@ contract Withdrawable is MultiRole {
 
     /**
      * @notice Internal method that allows derived contracts to create a role for withdrawal.
-     * @dev This method must be called by the derived class for this contract to function properly.
+     * @dev Either this method or `setWithdrawRole` must be called by the derived class for this contract to function
+     * properly.
      */
     function createWithdrawRole(uint roleId, uint managingRoleId, address owner) internal {
         _roleId = roleId;
         _createExclusiveRole(roleId, managingRoleId, owner);
+    }
+
+    /**
+     * @notice Internal method that allows derived contracts to choose the role for withdrawal.
+     * @dev The role `roleId` must exist. Either this method or `createWithdrawRole` must be called by the derived class
+     * for this contract to function properly.
+     */
+    function setWithdrawRole(uint roleId) internal {
+        _roleId = roleId;
     }
 }
