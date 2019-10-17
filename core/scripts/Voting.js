@@ -226,6 +226,7 @@ async function fetchIntrinioForexPrice(request, config) {
     config.symbol,
     "/m1?",
     "api_key=" + process.env.INTRINIO_API_KEY,
+    "&timezone=UTC",
     "&page_size=1"
   ]
     .concat(getIntrinioTimeArguments(request.time))
@@ -396,7 +397,7 @@ function getNotifiers() {
   } else if (process.env.SENDGRID_API_KEY) {
     notifiers.push(new SendgridNotifier());
   } else {
-    throw new Error("User did not pass any valid email credentials");
+    // throw new Error("User did not pass any valid email credentials");
   }
 
   // Add a standard console notifier.
