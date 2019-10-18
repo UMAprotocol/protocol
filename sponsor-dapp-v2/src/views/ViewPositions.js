@@ -3,7 +3,13 @@ import { Link, Redirect } from "react-router-dom";
 import { drizzleReactHooks } from "drizzle-react";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { formatWei, formatWithMaxDecimals } from "common/FormattingUtils";
-import { useEtherscanUrl, useEthFaucetUrl, useDaiFaucetRequest, computeLiquidationPrice } from "lib/custom-hooks";
+import {
+  useEtherscanUrl,
+  useEthFaucetUrl,
+  useDaiFaucetRequest,
+  computeLiquidationPrice,
+  revertWrapper
+} from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
 import { useSendGaPageview } from "lib/google-analytics";
 
@@ -84,9 +90,9 @@ function usePositionList() {
           .toString();
 
         // These are needed to compute the liquidation price.
-        const nav = call(contractAddress, "calcNAV");
-        const excessMargin = call(contractAddress, "calcExcessMargin");
-        const underlyingPriceTime = call(contractAddress, "getUpdatedUnderlyingPrice");
+        const nav = revertWrapper(call(contractAddress, "calcNAV"));
+        const excessMargin = revertWrapper(call(contractAddress, "calcExcessMargin"));
+        const underlyingPriceTime = revertWrapper(call(contractAddress, "getUpdatedUnderlyingPrice"));
         const liquidationPrice = computeLiquidationPrice(web3, nav, excessMargin, underlyingPriceTime);
         const derivativeStorage = call(contractAddress, "derivativeStorage");
 

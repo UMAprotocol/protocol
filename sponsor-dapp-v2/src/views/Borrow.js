@@ -14,7 +14,8 @@ import {
   useSendTransactionOnLink,
   useCollateralizationInformation,
   useMaxTokensThatCanBeCreated,
-  useLiquidationPrice
+  useLiquidationPrice,
+  revertWrapper
 } from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
 
@@ -33,7 +34,7 @@ function Borrow(props) {
 
   const data = useCollateralizationInformation(tokenAddress, "");
   const liquidationPrice = useLiquidationPrice(tokenAddress);
-  data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
+  data.updatedUnderlyingPrice = revertWrapper(useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice"));
   const derivativeStorage = useCacheCall(tokenAddress, "derivativeStorage");
   const { ready, maxTokens } = useMaxTokensThatCanBeCreated(tokenAddress, marginAmount);
   if (!data.ready || !data.updatedUnderlyingPrice || !derivativeStorage || !ready) {

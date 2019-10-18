@@ -14,7 +14,8 @@ import {
   useTextInput,
   useSendTransactionOnLink,
   useCollateralizationInformation,
-  useTokenPreapproval
+  useTokenPreapproval,
+  revertWrapper
 } from "lib/custom-hooks";
 import { createFormatFunction } from "common/FormattingUtils";
 
@@ -34,8 +35,8 @@ function Repay(props) {
   const handleRedeemClick = useSendTransactionOnLink({ send, status }, [amount], props.history);
 
   const data = useCollateralizationInformation(tokenAddress, "");
-  data.updatedUnderlyingPrice = useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice");
-  data.tokenValue = useCacheCall(tokenAddress, "calcTokenValue");
+  data.updatedUnderlyingPrice = revertWrapper(useCacheCall(tokenAddress, "getUpdatedUnderlyingPrice"));
+  data.tokenValue = revertWrapper(useCacheCall(tokenAddress, "calcTokenValue"));
   data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
   const { ready: approvalDataReady, approveTokensHandler, isApproved, isLoadingApproval } = useTokenPreapproval(
