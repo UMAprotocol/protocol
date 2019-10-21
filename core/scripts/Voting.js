@@ -20,20 +20,17 @@ const SUPPORTED_IDENTIFIERS = {
   },
   "BTC/USD": {
     numerator: {
-      dataSource: "IntrinioCrypto",
-      symbol: "btcusd"
+      dataSource: "Manual"
     }
   },
   "ETH/USD": {
     numerator: {
-      dataSource: "IntrinioCrypto",
-      symbol: "ethusd"
+      dataSource: "Manual",
     }
   },
   "CMC Total Market Cap": {
     numerator: {
-      dataSource: "CMC",
-      symbol: "total_market_cap"
+      dataSource: "Manual",
     },
     denominator: {
       dataSource: "Constant",
@@ -270,29 +267,6 @@ async function fetchIntrinioCryptoPrice(request, config) {
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchCmcPrice(request, config) {
-  const url = [
-    "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical?",
-    "CMC_PRO_API_KEY=" + process.env.CMC_PRO_API_KEY,
-    "&symbol=" + config.symbol,
-    "&time_start=" + request.time,
-    "&time_end=" + (Number(request.time) + 1000)
-  ].join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.CMC_PRO_API_KEY)}]\n    ****** \n`);
-  const jsonOutput = await getJson(url);
-
-  if (!jsonOutput.data || !jsonOutput.data.quotes || jsonOutput.data.quotes.length === 0) {
-    // The JSON output can be large when it succeeds, so we only print it in cases of failure.
-    console.log("CMC response:", jsonOutput);
-    throw "Failed to get data from CMC";
-  }
-
-  const price = jsonOutput.data.quotes[0].quote.USD.price;
-  const time = jsonOutput.data.quotes[0].quote.USD.timestamp;
-  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
-  return web3.utils.toWei(price.toString());
-}
-
 // Works for equities and futures (even though it uses the _EQUITIES_API_KEY).
 async function fetchBarchartPrice(request, config) {
   // NOTE: this API only provides data up to a month in the past and only to minute granularities. If the requested
@@ -341,14 +315,12 @@ async function fetchPriceInner(request, config) {
       return await fetchConstantPrice(request, config);
     case "IntrinioEquities":
       return await fetchIntrinioEquitiesPrice(request, config);
-    case "IntrinioCrypto":
-      return await fetchIntrinioCryptoPrice(request, config);
     case "IntrinioForex":
       return await fetchIntrinioForexPrice(request, config);
-    case "CMC":
-      return await fetchCmcPrice(request, config);
     case "Barchart":
       return await fetchBarchartPrice(request, config);
+    case "Manual":
+      throw "Unsupported config. Please vote manually using the dApp";
     default:
       throw "No known data source specified";
   }
