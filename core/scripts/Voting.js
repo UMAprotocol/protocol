@@ -25,12 +25,12 @@ const SUPPORTED_IDENTIFIERS = {
   },
   "ETH/USD": {
     numerator: {
-      dataSource: "Manual",
+      dataSource: "Manual"
     }
   },
   "CMC Total Market Cap": {
     numerator: {
-      dataSource: "Manual",
+      dataSource: "Manual"
     },
     denominator: {
       dataSource: "Constant",
