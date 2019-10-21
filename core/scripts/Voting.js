@@ -18,10 +18,90 @@ const SUPPORTED_IDENTIFIERS = {
       identifiers: { first: "BTC", second: "USD" }
     }
   },
+  "BTC/USD": {
+    numerator: {
+      dataSource: "Manual"
+    }
+  },
+  "ETH/USD": {
+    numerator: {
+      dataSource: "Manual"
+    }
+  },
+  "CMC Total Market Cap": {
+    numerator: {
+      dataSource: "Manual"
+    },
+    denominator: {
+      dataSource: "Constant",
+      value: "1000000000"
+    }
+  },
+  "S&P 500": {
+    numerator: {
+      dataSource: "IntrinioEquities",
+      symbol: "SPY",
+      source: "bats"
+    },
+    denominator: {
+      dataSource: "Constant",
+      value: "0.1"
+    }
+  },
+  TSLA: {
+    numerator: {
+      dataSource: "IntrinioEquities",
+      symbol: "TSLA",
+      source: "bats"
+    }
+  },
+  "Gold (Rolling Future)": {
+    numerator: {
+      dataSource: "IntrinioEquities",
+      symbol: "GLD",
+      source: "bats"
+    },
+    denominator: {
+      dataSource: "Constant",
+      value: "0.1"
+    }
+  },
+  "Crude Oil (Rolling Future)": {
+    numerator: {
+      dataSource: "IntrinioEquities",
+      symbol: "USO",
+      source: "bats"
+    },
+    denominator: {
+      dataSource: "Constant",
+      value: "0.1"
+    }
+  },
+  "CNY/USD": {
+    numerator: {
+      dataSource: "Constant",
+      value: "1"
+    },
+    denominator: {
+      dataSource: "IntrinioForex",
+      // Intrinio doesn't provide a CNHUSD quote, so we take the reciprocal of the USDCNH quote.
+      symbol: "USDCNH"
+    }
+  },
   "Telegram SAFT": {
     numerator: {
       dataSource: "Constant",
       value: "100"
+    }
+  },
+  "USD/ETH": {
+    numerator: {
+      dataSource: "Constant",
+      value: "1"
+    },
+    denominator: {
+      dataSource: "IntrinioCrypto",
+      symbol: "ethusd"
     }
   },
   "Custom Index (1)": {
@@ -34,18 +114,6 @@ const SUPPORTED_IDENTIFIERS = {
     numerator: {
       dataSource: "Constant",
       value: "100"
-    }
-  },
-  TSLA: {
-    numerator: {
-      dataSource: "IntrinioEquities",
-      symbol: "TSLA"
-    }
-  },
-  "Gold (Rolling Future)": {
-    numerator: {
-      dataSource: "Barchart",
-      symbol: "GC*1"
     }
   }
 };
@@ -74,7 +142,14 @@ async function fetchCryptoComparePrice(request) {
 
   // Temporary price feed until we sort historical data.
   // CryptoCompare provides historical hourly prices for free. If we want minutes/seconds, we'll have to update later.
-  const url = `https://min-api.cryptocompare.com/data/histohour?fsym=${identifier.first}&tsym=${identifier.second}&toTs=${time}&limit=1&api_key=${CC_API_KEY}`;
+  const url = [
+    "https://min-api.cryptocompare.com/data/histohour?",
+    "fsym=" + identifier.first,
+    "&tsym=" + identifier.second,
+    "&toTs=" + time,
+    "&limit=1",
+    "&api_key=" + CC_API_KEY
+  ].join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
   console.log(`Response [${JSON.stringify(jsonOutput)}]`);
@@ -107,39 +182,87 @@ function fetchConstantPrice(request, config) {
   return web3.utils.toWei(config.value);
 }
 
+function getIntrinioTimeArguments(time) {
+  const requestMoment = moment.unix(time);
+  const requestDate = requestMoment.format("YYYY-MM-DD");
+  const requestTime = requestMoment.format("HH:mm:ss");
+
+  // If we don't specify a `start_time` or `start_date`, Intrinio APIs return data in reverse chronological order, up to
+  // `end_time`.
+  return ["&end_date=" + requestDate, "&end_time=" + requestTime];
+}
+
 async function fetchIntrinioEquitiesPrice(request, config) {
-  const requestMoment = moment.unix(request.time);
-  const startDate = requestMoment.format("YYYY-MM-DD");
-  const startTime = requestMoment.format("HH:mm:ss");
-
-  // How to determine this time window? Picked 10000 seconds arbitrarily.
-  const timeWindowSeconds = 10000;
-  const endMoment = moment.unix(Number(request.time) + timeWindowSeconds);
-  const endDate = endMoment.format("YYYY-MM-DD");
-  const endTime = endMoment.format("HH:mm:ss");
-
   const url = [
     "https://api-v2.intrinio.com/securities/",
     config.symbol,
     "/prices/intraday?",
-    "start_date=" + startDate,
-    "&start_time=" + startTime,
-    "&end_date=" + endDate,
-    "&end_time=" + endTime,
-    "&source=bats",
-    "&api_key=" + process.env.INTRINIO_API_KEY
-  ].join("");
+    "api_key=" + process.env.INTRINIO_API_KEY,
+    "&source=" + config.source,
+    "&page_size=1"
+  ]
+    .concat(getIntrinioTimeArguments(request.time))
+    .join("");
   console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
+  console.log("Intrinio response:", jsonOutput);
 
   if (!jsonOutput.intraday_prices || jsonOutput.intraday_prices.length === 0) {
-    // The JSON output can be large when it succeeds, so we only print it in cases of failure.
-    console.log("Intrinio response:", jsonOutput);
     throw "Failed to get data from Intrinio";
   }
 
   const price = jsonOutput.intraday_prices[0].last_price;
   const time = jsonOutput.intraday_prices[0].time;
+  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  return web3.utils.toWei(price.toString());
+}
+
+async function fetchIntrinioForexPrice(request, config) {
+  const url = [
+    "https://api-v2.intrinio.com/forex/prices/",
+    config.symbol,
+    "/m1?",
+    "api_key=" + process.env.INTRINIO_API_KEY,
+    "&timezone=UTC",
+    "&page_size=1"
+  ]
+    .concat(getIntrinioTimeArguments(request.time))
+    .join("");
+  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  const jsonOutput = await getJson(url);
+  console.log("Intrinio response:", jsonOutput);
+
+  if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
+    throw "Failed to get data from Intrinio";
+  }
+
+  // TODO(ptare): Forex quotes don't appear to have trade prices!?
+  const price = jsonOutput.prices[0].open_bid;
+  const time = jsonOutput.prices[0].occurred_at;
+  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  return web3.utils.toWei(price.toString());
+}
+
+async function fetchIntrinioCryptoPrice(request, config) {
+  const url = [
+    "https://api-v2.intrinio.com/crypto/prices?",
+    "api_key=" + process.env.INTRINIO_API_KEY,
+    "&currency=" + config.symbol,
+    "&page_size=1",
+    "&timeframe=m1"
+  ]
+    .concat(getIntrinioTimeArguments(request.time))
+    .join("");
+  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  const jsonOutput = await getJson(url);
+  console.log("Intrinio response:", jsonOutput);
+
+  if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
+    throw "Failed to get data from Intrinio";
+  }
+
+  const price = jsonOutput.prices[0].open;
+  const time = jsonOutput.prices[0].time;
   console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
   return web3.utils.toWei(price.toString());
 }
@@ -192,8 +315,12 @@ async function fetchPriceInner(request, config) {
       return await fetchConstantPrice(request, config);
     case "IntrinioEquities":
       return await fetchIntrinioEquitiesPrice(request, config);
+    case "IntrinioForex":
+      return await fetchIntrinioForexPrice(request, config);
     case "Barchart":
       return await fetchBarchartPrice(request, config);
+    case "Manual":
+      throw "Unsupported config. Please vote manually using the dApp";
     default:
       throw "No known data source specified";
   }
