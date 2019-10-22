@@ -143,9 +143,11 @@ use by any derivatives that you choose to deploy. The script defaults to publish
 minutes. Depending on the types of price feeds configured in your `v0/config/identifiers.json` file, you may need some
 API keys in your environment:
 - Crypto price feeds (like `BTCETH` or `ETHUSD`): no environment variables are required.
+
 - Futures price feeds (like `ESM19` or `CBN19`): a barchart key must be set as an environment variable called
 `BARCHART_API_KEY`. A barchart key is required whenever the key-value pair `"dataSource": "Barchart"` is present in
 `identifiers.json`.
+
 - Equities price feeds (like `SPY`): an AlphaVantage key must be set as an environment variable called
 `ALPHAVANTAGE_API_KEY`. An AlphaVantage key is equired whenever `"dataSource: AlphaVantageCurrency"` or
 `"dataSource: AlphaVantage"` is present in `identifiers.json`.
@@ -161,16 +163,25 @@ For the script to succeed, the `build` directory must contain the `ManualPriceFe
 
 After deploying to Ganache, ropsten, or mainnet (or any combination of those), you can run the Sponsor Dapp against the
 contracts. Before running the dApp, make sure you have done the following:
+
 - Make sure that you have [Metamask](https://metamask.io/) installed.
+
 - Make sure you've provided your ETH account mnemonic to metamask.
+
     - If you're using the Ganache GUI, this should be available near the top of the page in the accounts (default) tab.
+
     - If you're using Ganache CLI, this should be printed when you start it.
+
     - If you're running against mainnet or testnet, you should use your own mnemonic.
+
 - Make sure you select the correct account.
+
     - If you're using Ganache, the only account that will be whitelisted will be the second account associated with
     your mnemonic. If you only have one account in Metamask, you can use the `Create Account` button to create a
     second. You will need to select the second account if you'd like to launch contracts in the dapp.
+
 - Make sure you have the correct network selected in metamask.
+
     - If you're using Ganache, you'll need to create a custom RPC with the following URL: `http://127.0.0.1:9545`.
 
 Once you've done the above, you can start the dapp by running the following commands from the `protocol` (top level)

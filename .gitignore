@@ -7,6 +7,9 @@ coverage.json
 out.log
 .GckmsOverride.js
 docs
+modules
+public
+.DS_Store
 
 # GAE deployment files and directories for GAE deployments.
 app.yaml

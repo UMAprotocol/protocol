@@ -54,7 +54,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Generate Docs
-          command: ./ci/docgen.sh
+          command: ./scripts/build_docs_site.sh
       - store_artifacts:
           path: docs
   slither:
