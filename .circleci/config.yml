@@ -63,10 +63,6 @@ jobs:
     working_directory: ~/protocol
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - v3-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v3-sec-toolbox-deps-
       - run:
           name: Change user
           command: sudo su ethsec
@@ -76,10 +72,6 @@ jobs:
       - run:
           name: Install Dependencies
           command: npm install --quiet
-      - save_cache:
-          key: v3-sec-toolbox-deps-{{ checksum "package.json" }}
-          paths:
-            - node_modules
       - run:
           name: Slither
           command: ./ci/run_slither.sh
@@ -136,10 +128,6 @@ jobs:
     working_directory: ~/protocol	
     steps:
       - checkout	
-      - restore_cache:
-          keys:
-            - v3-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v3-sec-toolbox-deps-
       - run:
           name: Change user
           command: sudo su ethsec
@@ -149,10 +137,6 @@ jobs:
       - run:
           name: Install Dependencies
           command: npm install --quiet
-      - save_cache:
-          key: v3-sec-toolbox-deps-{{ checksum "package.json" }}
-          paths:
-            - node_modules
       - run:
           name: Run Echidna Tests
           command: ./ci/run_echidna_tests.sh
