@@ -68,6 +68,9 @@ jobs:
             - v3-sec-toolbox-deps-{{ checksum "package.json" }}
             - v3-sec-toolbox-deps-
       - run:
+          name: Install node and NPM
+          command: ./ci/install_node_npm.sh
+      - run:
           name: Change user
           command: sudo su ethsec
       - run:
@@ -140,6 +143,9 @@ jobs:
           keys:
             - v3-sec-toolbox-deps-{{ checksum "package.json" }}
             - v3-sec-toolbox-deps-
+      - run:
+          name: Install node and NPM
+          command: ./ci/install_node_npm.sh
       - run:
           name: Change user
           command: sudo su ethsec
