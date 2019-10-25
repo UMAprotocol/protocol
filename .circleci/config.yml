@@ -65,19 +65,22 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v3-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v3-sec-toolbox-deps-
+            - v4-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v4-sec-toolbox-deps-
+      - run:
+          name: Install node and NPM
+          command: ./ci/install_node_npm.sh
       - run:
           name: Change user
           command: sudo su ethsec
       - run:
           name: Reclaim ownership
-          command: sudo chown -R $(whoami) ~/.npm
+          command: sudo chown -R $(whoami) ~/.npm ~/.config
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v3-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v4-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -138,8 +141,11 @@ jobs:
       - checkout	
       - restore_cache:
           keys:
-            - v3-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v3-sec-toolbox-deps-
+            - v4-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v4-sec-toolbox-deps-
+      - run:
+          name: Install node and NPM
+          command: ./ci/install_node_npm.sh
       - run:
           name: Change user
           command: sudo su ethsec
@@ -150,7 +156,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v3-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v4-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
