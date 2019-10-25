@@ -75,7 +75,7 @@ jobs:
           command: sudo su ethsec
       - run:
           name: Reclaim ownership
-          command: sudo chown -R $(whoami) ~/.npm && sudo chown -R $(whoami) ~/.config
+          command: sudo chown -R $(whoami) ~/.npm ~/.config
       - run:
           name: Install Dependencies
           command: npm install --quiet
