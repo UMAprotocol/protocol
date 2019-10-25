@@ -1,4 +1,4 @@
-# Basic Tutorial
+# Creating tokens locally
 
 In this tutorial, we'll create a BTC/USD token collateralized with an ERC-20 token (a stand in for DAI) via the
 UMA token builder. We will spin up the system locally on Ganache, push a price for BTC/USD, and create a token.
@@ -8,6 +8,11 @@ UMA token builder. We will spin up the system locally on Ganache, push a price f
 All of our tutorials require that you complete the steps in `prerequisites.md`.
 
 ## Deploy smart contracts to Ganache
+
+First, we'll start a blockchain locally using Ganache and deploy the UMA smart contracts to it. The underlying products
+we can track are configured via a json file `identifiers.json`.
+
+TODO: Add detailed doc on identifiers.json.
 
 Run all commands in this section from the `core/` directory.
 

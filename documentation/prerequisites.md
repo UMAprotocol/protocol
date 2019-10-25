@@ -30,7 +30,7 @@ cd core
 $(npm bin)/truffle test --network test
 ```
 
-All tests should pass.
+These tests will take a while to finish, but if set up correctly, all tests should pass.
 
 ## UMA token builder
 
