@@ -32,3 +32,7 @@ gsutil cp gs://staging-deployment-configuration/sponsor-v2-app.yaml sponsor-dapp
 
 # Deploy sponsor-dapp-v2
 ./scripts/deploy_dapp.sh sponsor-dapp-v2 sponsor-dapp-v2/app.yaml -q
+
+# Deploy docs
+./scripts/deploy_docs.sh documentation/gae_app.yaml -q
+
