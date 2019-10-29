@@ -8,13 +8,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v2-dependency-cache-{{ checksum "package.json" }}
-            - v2-dependency-cache-
+            - v3-dependency-cache-{{ checksum "package.json" }}
+            - v3-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v2-dependency-cache-{{ checksum "package.json" }}
+          key: v3-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
