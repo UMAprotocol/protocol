@@ -40,7 +40,6 @@
     "node-fetch": "^2.3.0",
     "openzeppelin-solidity": "2.3.0",
     "secp256k1": "^3.7.1",
-    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork",
     "truffle": "5.0.21",
     "truffle-assertions": "0.8.2",
     "truffle-contract": "4.0.19",
@@ -49,5 +48,8 @@
     "web3-core-promievent": "1.0.0-beta.37",
     "web3-eth-abi": "1.0.0-beta.37",
     "web3-utils": "1.0.0-beta.37"
+  },
+  "optionalDependencies": {
+    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork"
   }
 }
