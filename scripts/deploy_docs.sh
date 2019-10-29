@@ -27,6 +27,7 @@ npm install
 
 # Prepare for gcloud deploy.
 echo "Moving files."
+rm -rf build/docs
 mkdir -p build/docs
 cp -R build/site build/docs/www
 cp $APP_YAML_PATH build/docs/
