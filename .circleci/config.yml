@@ -56,7 +56,7 @@ jobs:
           name: Generate Docs
           command: ./scripts/build_docs_site.sh
       - store_artifacts:
-          path: docs
+          path: build/site
   slither:
     docker:
       - image: trailofbits/eth-security-toolbox
