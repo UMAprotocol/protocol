@@ -12,12 +12,15 @@ just smart contracts that need an asset price and have some amount of money that
 
 ## VotingToken
 
-The VotingToken is a simple ERC20 contract that represents a voter's stake in the UMA DVM.
+The VotingToken is a simple ERC20 contract whose ownership allows a voter to respond to price requests.
 
 ## Voting
 
 The DVM is powered by voters. Each price request from a financial contract must be voted on. The relative weighting
 of votes is determined by how many VoteTokens each participant holds.
+
+The Voting contract maintains a whitelist of identifiers (price feeds) that financial contracts can request prices for.
+This list is currently controlled by the contract admin, but will eventually be voter-controlled.
 
 After a request is received, a voting period begins. Voters follow a typical commit-reveal cycle to provide their votes
 to the Voting contract.
@@ -61,3 +64,9 @@ The Registry maintains two lists:
 
 - Approved financial contracts: these contracts have been registered by an approved contract creator and are allowed to
 make price requests to the Voting contract.
+
+## Store
+
+The Store contract helps contracts compute their fees and collects those fees from contracts. The Store's funds are to
+be used to buy back and burn tokens. Right now, the funds can be withdrawn by the contract admin to do this offchain.
+In the future, this buyback may be accomplished on-chain as a part of the contract logic.
