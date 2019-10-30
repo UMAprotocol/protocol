@@ -1206,8 +1206,8 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     }
 
     /**
-     * @notice Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between long and
-     * short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
+     * @notice Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between
+     * long and short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
      */
     function remargin() external {
         derivativeStorage._remargin();
@@ -1308,8 +1308,8 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     }
 
     /**
-     * @notice Returns the expected short margin in excess of the margin requirement using the latest available Price Feed
-     * price.
+     * @notice Returns the expected short margin in excess of the margin requirement using the latest available Price
+     * Feed price.
      * @dev Value will be negative if the short margin is expected to be below the margin requirement.
      */
     function calcExcessMargin() external view returns (int excessMargin) {
