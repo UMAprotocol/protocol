@@ -35,7 +35,7 @@ contract TokenMigrator {
     }
 
     /**
-     * @notice Migrates `tokenHolder`'s old tokens to new tokens.
+     * @notice Migrates the tokenHolder's old tokens to new tokens.
      * @dev This function can only be called once per `tokenHolder`. Anyone can call this method on behalf of any other
      * token holder since there is no disadvantage to receiving the tokens earlier.
      */

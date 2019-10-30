@@ -1,0 +1,13 @@
+site:
+  title: UMA Docs
+  url: https://docs.umaproject.org
+  keys:
+    google_analytics: 'UA-130599982-5'
+  start_page: uma::index.adoc
+content:
+  sources:
+    - url: .
+      branches: HEAD
+ui:
+  bundle:
+    url: ./documentation/ui/build/uma-docs-ui.zip

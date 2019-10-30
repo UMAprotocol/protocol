@@ -9,8 +9,11 @@ pragma solidity ^0.5.0;
  * @dev This contract uses topic hashes as keys and can store a single arbitrary encrypted message per topic at any
  * given time. Note: there's technically nothing that requires the topics hashed or for the messages to be encrypted.
  * This contract is built for the following specific use case:
+ *
  * - The sender and recipient know the topics ahead of time. This can either be communicated elsewhere or be implicit.
+ *
  * - Only one message per topic is stored at any given time.
+ *
  * - Only addresses that are authorized by the recipient can send messages. These authorized parties can overwrite, but
  * not delete the previous message for a particular topic.
  */

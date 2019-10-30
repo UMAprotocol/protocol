@@ -8,13 +8,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v2-dependency-cache-{{ checksum "package.json" }}
-            - v2-dependency-cache-
+            - v3-dependency-cache-{{ checksum "package.json" }}
+            - v3-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v2-dependency-cache-{{ checksum "package.json" }}
+          key: v3-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -53,10 +53,16 @@ jobs:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
+          name: Install Pandoc
+          command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
+      - run:
+          name: Untar Pandoc
+          command: sudo tar xvzf pandoc-2.7.3-linux.tar.gz --strip-components 1 -C /usr/local
+      - run:
           name: Generate Docs
-          command: ./ci/docgen.sh
+          command: ./scripts/build_docs_site.sh
       - store_artifacts:
-          path: docs
+          path: build/site
   slither:
     docker:
       - image: trailofbits/eth-security-toolbox
@@ -232,6 +238,12 @@ jobs:
     steps:
       - restore_cache:
           key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Install Pandoc
+          command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
+      - run:
+          name: Untar Pandoc
+          command: sudo tar xvzf pandoc-2.7.3-linux.tar.gz --strip-components 1 -C /usr/local
       - run:
           name: Deploy Dapp
           command: ./ci/deploy_to_staging.sh
