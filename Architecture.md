@@ -8,7 +8,7 @@ by no means an exhaustive explanation of the system.
 ## Purpose
 
 The purpose of the DVM is to provide prices for assets. The DVM provides these prices to financial contracts, which are
-just smart contracts that need an asset price and have some amount of money that depends on that price.
+smart contracts that need an asset price and have some amount of money that depends on that price.
 
 ## VotingToken
 
