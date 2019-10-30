@@ -1140,7 +1140,7 @@ library TokenizedDerivativeUtils {
 
 
 /**
- * @title Tokenized derivative
+ * @title A synthetic token whose value tracks an arbitrary price feed.
  */
 contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     using TokenizedDerivativeUtils for TDS.Storage;
