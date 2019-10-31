@@ -14,12 +14,17 @@ md_to_adoc() {
     # Convert headings to the correct level before converting.
     cp $infile $tmpfile
     
+
+    # Note: the .bak file is only generated because this is the only BSD/GNU compatible way to do an in place sed.
     # Ensures that markdown headers are correctly converted to the right level in asciidoc.
-    sed -i '' 's/^#[[:space:]]/= /' $tmpfile
-    sed -i '' 's/^##/#/' $tmpfile
+    sed -i.bak 's/^#[[:space:]]/= /' $tmpfile
+    sed -i.bak 's/^##/#/' $tmpfile
 
     # Changes markdown file interlink extensions to html so they continue to work when the site is rendered.
-    sed -i '' 's/\.md)/.html)/' $tmpfile
+    sed -i.bak 's/\.md)/.html)/' $tmpfile
+
+    # Remove backup file.
+    rm -rf $tmpfile.bak
 
     # Use pandoc to do the remainder of the conversion.
     pandoc --atx-headers --verbose --wrap=none --toc --reference-links -f gfm -s -o $outfile -t asciidoc $tmpfile
