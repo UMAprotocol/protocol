@@ -18,7 +18,7 @@ md_to_adoc() {
     sed -i '' 's/^#[[:space:]]/= /' $tmpfile
     sed -i '' 's/^##/#/' $tmpfile
 
-    # Changes markdown file interlink extensions to html so interlinks continue to work when the site is rendered.
+    # Changes markdown file interlink extensions to html so they continue to work when the site is rendered.
     sed -i '' 's/\.md)/.html)/' $tmpfile
 
     # Use pandoc to do the remainder of the conversion.
