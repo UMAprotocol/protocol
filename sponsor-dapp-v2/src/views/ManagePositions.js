@@ -81,13 +81,12 @@ function useFinancialContractData(tokenAddress) {
   data.totalSupply = useCacheCall(tokenAddress, "totalSupply");
   data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
-
   if (!Object.values(data).every(val => val !== undefined)) {
     return { ready: false };
   }
   data.ready = true;
 
-  data.priceFeedAddress = derivativeStorage.externalAddresses.priceFeedAddress;
+  data.priceFeedAddress = data.derivativeStorage.externalAddresses.priceFeedAddress;
 
   // Format financial contract data for display.
   const { toBN, toChecksumAddress } = web3.utils;
