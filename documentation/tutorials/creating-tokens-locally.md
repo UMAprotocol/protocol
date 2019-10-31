@@ -5,7 +5,7 @@ UMA token builder. We will spin up the system locally on Ganache, push a price f
 
 ## Prerequisites
 
-All of our tutorials require that you complete the steps in `prerequisites.md`.
+All of our tutorials require that you complete the steps in [Prerequisites](./prerequisites.md).
 
 ## Deploy smart contracts to Ganache
 
