@@ -1,8 +1,3 @@
-/*
-  ManualPriceFeed implementation.
-
- Implementation of PriceFeedInterface that allows manually updating prices.
-*/
 pragma solidity ^0.5.0;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
