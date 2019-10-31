@@ -7,7 +7,7 @@ import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
 
 
 /**
- * @title UMA voting token
+ * @title Ownership of this token allows a voter to respond to price requests.
  * @dev Supports snapshotting and allows the Oracle to mint new tokens as rewards.
  */
 contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {

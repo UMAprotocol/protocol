@@ -1,8 +1,3 @@
-/*
-  Store implementation.
- 
-  An implementation of StoreInterface with a fee per second and withdraw functions for the owner.
-*/
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 

@@ -1,7 +1,3 @@
-/*
-  StoreInterface contract.
-  An interface that allows derivative contracts to pay oracle fees.
-*/
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
@@ -10,7 +6,7 @@ import "./FixedPoint.sol";
 
 
 /**
- * @title Interface alforlows derivative contracts to pay oracle fees for their use of the system.
+ * @title Interface that allows derivative contracts to pay oracle fees for their use of the system.
  */
 interface StoreInterface {
 

@@ -4,9 +4,8 @@ import "./MultiRole.sol";
 
 
 /**
- * @title Implementation finder
- * @dev Provides addresses of the live contracts implementing certain interfaces. Examples are the Oracle or Store
- * interfaces.
+ * @title Provides addresses of the live contracts implementing certain interfaces. 
+ * @dev Examples are the Oracle or Store interfaces.
  */
 contract Finder is MultiRole {
 
