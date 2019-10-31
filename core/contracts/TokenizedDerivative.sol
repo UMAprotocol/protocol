@@ -1,8 +1,3 @@
-/*
-  Tokenized Derivative implementation
-
-  Implements a simplified version of tokenized Product/ETH Products.
-*/
 pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
@@ -52,7 +47,10 @@ library TokenizedDerivativeParams {
 }
 
 
-// TokenizedDerivativeStorage: this library name is shortened due to it being used so often.
+/**
+ * @title Tokenized Derivative Storage
+ * @dev This library name is shortened due to it being used so often.
+ */
 library TDS {
     enum State {
         // The contract is active, and tokens can be created and redeemed. Margin can be added and withdrawn (as long as
@@ -161,6 +159,9 @@ library TDS {
 }
 
 
+/**
+ * @dev Implements the functionality of `TokenizedDerivative` by operating on the data contained in a `TDS.Storage`.
+ */
 library TokenizedDerivativeUtils {
     using TokenizedDerivativeUtils for TDS.Storage;
     using SafeMath for uint;
@@ -1138,7 +1139,9 @@ library TokenizedDerivativeUtils {
 }
 
 
-// TODO(mrice32): make this and TotalReturnSwap derived classes of a single base to encap common functionality.
+/**
+ * @title A synthetic token whose value tracks an arbitrary price feed.
+ */
 contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     using TokenizedDerivativeUtils for TDS.Storage;
 
@@ -1162,68 +1165,99 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
         derivativeStorage._initialize(params, _symbol);
     }
 
-    // Creates tokens with sent margin and returns additional margin.
+    /**
+     * @notice Creates tokens with sent margin and sends the caller back any additional margin.
+     * @param marginForPurchase Maximum amount of margin currency to use to create tokens.
+     * @param tokensToPurchase Number of tokens to create.
+     */
     function createTokens(uint marginForPurchase, uint tokensToPurchase) external payable {
         derivativeStorage._createTokens(marginForPurchase, tokensToPurchase);
     }
 
-    // Creates tokens with sent margin and deposits additional margin in short account.
+    /**
+     * @notice Creates tokens with sent margin and deposits additional margin in short account.
+     * @param marginForPurchase Maximum amount of margin currency to use to create tokens.
+     * @param tokensToPurchase Number of tokens to create.
+     */
     function depositAndCreateTokens(uint marginForPurchase, uint tokensToPurchase) external payable {
         derivativeStorage._depositAndCreateTokens(marginForPurchase, tokensToPurchase);
     }
 
-    // Redeems tokens for margin currency.
+    /**
+     * @notice Redeems tokens for margin currency.
+     */
     function redeemTokens(uint tokensToRedeem) external {
         derivativeStorage._redeemTokens(tokensToRedeem);
     }
 
-    // Triggers a price dispute for the most recent remargin time.
+    /**
+     * @notice Triggers a price dispute for the most recent remargin time.
+     * @param depositMargin Must be at least `disputeDeposit` percent of the required margin.
+     */
     function dispute(uint depositMargin) external payable {
         derivativeStorage._dispute(depositMargin);
     }
 
-    // Withdraws `amount` from short margin account.
+    /**
+     * @notice Withdraws `amount` from short margin account.
+     */
     function withdraw(uint amount) external {
         derivativeStorage._withdraw(amount);
     }
 
-    // Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between long and
-    // short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
+    /**
+     * @notice Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between
+     * long and short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
+     */
     function remargin() external {
         derivativeStorage._remargin();
     }
 
-    // Forgo the Oracle verified price and settle the contract with last remargin price. This method is only callable on
-    // contracts in the `Defaulted` state, and the default penalty is always transferred from the short to the long
-    // account.
+    /**
+     * @notice Forgo the Oracle verified price and settle the contract with last remargin price. 
+     * @dev This method is only callable on contracts in the `Defaulted` state, and the default penalty is always
+     * transferred from the short to the long account.
+     */
     function acceptPriceAndSettle() external {
         derivativeStorage._acceptPriceAndSettle();
     }
 
-    // Assigns an address to be the contract's Delegate AP. Replaces previous value. Set to 0x0 to indicate there is no
-    // Delegate AP.
+    /**
+     * @notice Assigns an address to be the contract's Delegate AP that can create and redeem.
+     * @dev Replaces previous value. Set to 0x0 to indicate there is no Delegate AP.
+     */
     function setApDelegate(address apDelegate) external {
         derivativeStorage._setApDelegate(apDelegate);
     }
 
-    // Moves the contract into the Emergency state, where it waits on an Oracle price for the most recent remargin time.
+    /**
+     * @notice Moves the contract into the Emergency state, where it waits on an Oracle price for the most recent
+     * remargin time.
+     */
     function emergencyShutdown() external {
         derivativeStorage._emergencyShutdown();
     }
 
-    // When an Oracle price becomes available, performs a final remargin, assesses any penalties, and moves the contract
-    // into the `Settled` state.
+    /**
+     * @notice Performs a final remargin, assesses any penalties, and moves the contract into the `Settled` state. An
+     * Oracle price must be available.
+     */
     function settle() external {
         derivativeStorage._settle();
     }
 
-    // Adds the margin sent along with the call (or in the case of an ERC20 margin currency, authorized before the call)
-    // to the short account.
+    /**
+     * @notice Adds the margin to the short account.
+     * @dev For ETH-margined contracts, send ETH along with the call. In the case of an ERC20 margin currency, authorize
+     * before calling this method.
+     */
     function deposit(uint amountToDeposit) external payable {
         derivativeStorage._deposit(amountToDeposit);
     }
 
-    // Allows the sponsor to withdraw any ERC20 balance that is not the margin token.
+    /**
+     * @notice Withdraw any ERC20 balance that is not the margin token. Only callable by the sponsor.
+     */
     function withdrawUnexpectedErc20(address erc20Address, uint amount) external {
         derivativeStorage._withdrawUnexpectedErc20(erc20Address, amount);
     }
@@ -1234,54 +1268,75 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
         _;
     }
 
-    // Only allow calls from this contract or its libraries to burn tokens.
+    /**
+     * @notice Destroys `value` tokens from the caller.
+     * @dev Only this contract or its libraries are allowed to burn tokens.
+     */
     function burn(uint value) external onlyThis {
-        // Only allow calls from this contract or its libraries to burn tokens.
         _burn(msg.sender, value);
     }
 
-    // Only allow calls from this contract or its libraries to mint tokens.
+    /**
+     * @notice Creates `value` tokens and assigns them to `to`, increasing the total supply.
+     * @dev Only this contract or its libraries are allowed to mint tokens.
+     */
     function mint(address to, uint256 value) external onlyThis returns (bool) {
         _mint(to, value);
         return true;
     }
 
-    // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
+    /**
+     * @notice Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
+     */
     function calcNAV() external view returns (int navNew) {
         return derivativeStorage._calcNAV();
     }
 
-    // Returns the expected value of each the outstanding tokens of the contract using the latest available Price Feed
-    // price.
+    /**
+     * @notice Returns the expected value of each the outstanding tokens of the contract using the latest available
+     * Price Feed price.
+     */
     function calcTokenValue() external view returns (int newTokenValue) {
         return derivativeStorage._calcTokenValue();
     }
 
-    // Returns the expected balance of the short margin account using the latest available Price Feed price.
+    /**
+     * @notice Returns the expected balance of the short margin account using the latest available Price Feed price.
+     */
     function calcShortMarginBalance() external view returns (int newShortMarginBalance) {
         return derivativeStorage._calcShortMarginBalance();
     }
 
-    // Returns the expected short margin in excess of the margin requirement using the latest available Price Feed
-    // price.  Value will be negative if the short margin is expected to be below the margin requirement.
+    /**
+     * @notice Returns the expected short margin in excess of the margin requirement using the latest available Price
+     * Feed price.
+     * @dev Value will be negative if the short margin is expected to be below the margin requirement.
+     */
     function calcExcessMargin() external view returns (int excessMargin) {
         return derivativeStorage._calcExcessMargin();
     }
 
-    // Returns the required margin, as of the last remargin. Note that `calcExcessMargin` uses updated values using the
-    // latest available Price Feed price.
+    /**
+     * @notice Returns the required margin, as of the last remargin.
+     * @dev Note that `calcExcessMargin` uses updated values using the latest available Price Feed price.
+     */
     function getCurrentRequiredMargin() external view returns (int requiredMargin) {
         return derivativeStorage._getCurrentRequiredMargin();
     }
 
-    // Returns whether the contract can be settled, i.e., is it valid to call settle() now.
+    /**
+     * @notice Returns whether the contract can be settled, i.e., is it valid to call settle() now.
+     */
     function canBeSettled() external view returns (bool canContractBeSettled) {
         return derivativeStorage._canBeSettled();
     }
 
-    // Returns the updated underlying price that was used in the calc* methods above. It will be a price feed price if
-    // the contract is Live and will remain Live, or an Oracle price if the contract is settled/about to be settled.
-    // Reverts if no Oracle price is available but an Oracle price is required.
+    /**
+     * @notice Returns the updated underlying price that was used in the calc* methods above.
+     * @dev It will be a price feed price if the contract is Live and will remain Live, or an Oracle price if the
+     * contract is settled/about to be settled.  Reverts if no Oracle price is available but an Oracle price is
+     * required.
+     */
     function getUpdatedUnderlyingPrice() external view returns (int underlyingPrice, uint time) {
         return derivativeStorage._getUpdatedUnderlyingPrice();
     }
@@ -1301,6 +1356,9 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
 }
 
 
+/**
+ * @title Contract creator for TokenizedDerivative.
+ */
 contract TokenizedDerivativeCreator is ContractCreator, Testable {
     struct Params {
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
@@ -1332,6 +1390,9 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
     }
 
+    /**
+     * @notice Creates a new instance of `TokenizedDerivative` with the provided `params`.
+     */
     function createTokenizedDerivative(Params memory params)
         public
         returns (address derivativeAddress)
