@@ -51,6 +51,7 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
     // Create derivative
     const params = {
       sponsor: sponsor,
+      priceFeedAddress: priceFeed.address,
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
       supportedMove: web3.utils.toWei("0.1", "ether"),
       product: identifierBytes,

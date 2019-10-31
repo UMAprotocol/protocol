@@ -78,6 +78,7 @@ const initializeSystem = async function(callback) {
 
     const defaultConstructorParams = {
       sponsor: sponsor,
+      priceFeedAddress: deployedManualPriceFeed.address,
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
       supportedMove: web3.utils.toWei("0.1", "ether"),
       product: identifierBytes,

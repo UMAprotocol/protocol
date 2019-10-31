@@ -159,7 +159,7 @@ contract("TokenizedDerivative", function(accounts) {
       const startTime = (await deployedManualPriceFeed.latestPrice(identifierBytes))[0];
 
       let defaultConstructorParams = {
-        sponsor: sponsor,
+        priceFeedAddress: deployedManualPriceFeed.address,
         defaultPenalty: web3.utils.toWei("0.5", "ether"),
         supportedMove: web3.utils.toWei("0.1", "ether"),
         product: identifierBytes,
@@ -2488,7 +2488,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     it(annotateTitle("Constructor assertions"), async function() {
       const defaultConstructorParams = {
-        sponsor: sponsor,
+        priceFeedAddress: deployedManualPriceFeed.address,
         defaultPenalty: web3.utils.toWei("0.5", "ether"),
         supportedMove: web3.utils.toWei("0.1", "ether"),
         product: identifierBytes,
@@ -2504,6 +2504,8 @@ contract("TokenizedDerivative", function(accounts) {
         name: "1x coin",
         symbol: web3.utils.utf8ToHex("BTCETH")
       };
+
+      await pushPrice(web3.utils.toWei("1", "ether"));
 
       // Verify that the defaults work.
       await tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor });

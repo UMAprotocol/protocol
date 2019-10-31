@@ -61,6 +61,7 @@ function useCreateContract(userSelectionsRef, identifierConfig, onNextStep, stat
     const withdrawLimit = "1000000000000000000000000000000000000";
 
     rawSend({
+      priceFeedAddress: drizzle.contracts.ManualPriceFeed.address,
       defaultPenalty: toWei("1"),
       supportedMove: toWei(identifierConfig[identifier].supportedMove),
       product: utf8ToHex(identifier),
