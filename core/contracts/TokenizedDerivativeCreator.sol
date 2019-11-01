@@ -13,6 +13,7 @@ import "./Testable.sol";
  */
 contract TokenizedDerivativeCreator is ContractCreator, Testable {
     struct Params {
+        address priceFeedAddress;
         uint defaultPenalty; // Percentage of mergin requirement * 10^18
         uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
         bytes32 product;
@@ -76,6 +77,7 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         require(marginCurrencyWhitelist.isOnWhitelist(params.marginCurrency));
         constructorParams.marginCurrency = params.marginCurrency;
 
+        constructorParams.priceFeedAddress = params.priceFeedAddress;
         constructorParams.defaultPenalty = params.defaultPenalty;
         constructorParams.supportedMove = params.supportedMove;
         constructorParams.product = params.product;

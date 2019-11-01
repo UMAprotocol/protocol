@@ -2,7 +2,6 @@
 const interfaceName = {
   FinancialContractsAdmin: "FinancialContractsAdmin",
   Oracle: "Oracle",
-  PriceFeed: "PriceFeed",
   Registry: "Registry",
   Store: "Store"
 };

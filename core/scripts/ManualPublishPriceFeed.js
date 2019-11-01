@@ -1,7 +1,6 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "price", "time"] });
 const { interfaceName } = require("../utils/Constants.js");
 
-const Finder = artifacts.require("Finder");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 
 async function run(account, identifier, priceAsString, time) {
@@ -9,11 +8,7 @@ async function run(account, identifier, priceAsString, time) {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
     const price = web3.utils.toWei(priceAsString);
 
-    const deployedFinder = await Finder.deployed();
-    const priceFeed = await ManualPriceFeed.at(
-      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.PriceFeed))
-    );
-
+    const priceFeed = await ManualPriceFeed.deployed();
     await priceFeed.pushLatestPrice(identifierBytes, time, price, { from: account });
     console.log(`Published price for ${identifier} @ ${time}: ${priceAsString}`);
   } catch (e) {

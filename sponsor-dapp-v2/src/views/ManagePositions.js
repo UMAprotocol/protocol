@@ -81,8 +81,6 @@ function useFinancialContractData(tokenAddress) {
   data.totalSupply = useCacheCall(tokenAddress, "totalSupply");
   data.tokenBalance = useCacheCall(tokenAddress, "balanceOf", account);
 
-  data.priceFeedAddress = useCacheCall("Finder", "getImplementationAddress", web3.utils.utf8ToHex("PriceFeed"));
-
   if (!Object.values(data).every(val => val !== undefined)) {
     return { ready: false };
   }
@@ -131,7 +129,7 @@ function useFinancialContractData(tokenAddress) {
     { type: "address", title: "Sponsor", address: { display: data.derivativeStorage.externalAddresses.sponsor } },
     { type: "timestamp", title: "Created", timestamp: data.derivativeStorage.fixedParameters.creationTime },
     { type: "timestamp", title: "Expiry", timestamp: data.derivativeStorage.endTime },
-    { type: "address", title: "Price feed", address: { display: data.priceFeedAddress } },
+    { type: "address", title: "Price feed", address: { display: data.derivativeStorage.externalAddresses.priceFeed } },
     {
       type: "namedAddress",
       title: "Denomination",
