@@ -3,8 +3,6 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "./AdministrateeInterface.sol";
-import "./AddressWhitelist.sol";
-import "./ContractCreator.sol";
 import "./ExpandedIERC20.sol";
 import "./Finder.sol";
 import "./FixedPoint.sol";
@@ -12,7 +10,6 @@ import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 import "./StoreInterface.sol";
-import "./Testable.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
@@ -30,7 +27,6 @@ library TokenizedDerivativeParams {
     struct ConstructorParams {
         address sponsor;
         address finderAddress;
-        address priceFeedAddress;
         uint defaultPenalty; // Percentage of margin requirement * 10^18
         uint supportedMove; // Expected percentage move in the underlying price that the long is protected against.
         bytes32 product;
@@ -126,7 +122,6 @@ library TDS {
         address sponsor;
         address apDelegate;
         Finder finder;
-        PriceFeedInterface priceFeed;
         ReturnCalculatorInterface returnCalculator;
         IERC20 marginCurrency;
     }
@@ -491,7 +486,7 @@ library TokenizedDerivativeUtils {
         require(params.startingTokenPrice <= UINT_FP_SCALING_FACTOR.mul(10**9));
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
+        (uint latestTime, int latestUnderlyingPrice) = PriceFeedInterface(_getPriceFeedAddress(s)).latestPrice(
             s.fixedParameters.product);
 
         // If nonzero, take the user input as the starting price.
@@ -528,6 +523,11 @@ library TokenizedDerivativeUtils {
     function _getStoreAddress(TDS.Storage storage s) internal view returns (address) {
         bytes32 storeInterface = "Store";
         return s.externalAddresses.finder.getImplementationAddress(storeInterface);
+    }
+
+    function _getPriceFeedAddress(TDS.Storage storage s) internal view returns (address) {
+        bytes32 priceFeedInterface = "PriceFeed";
+        return s.externalAddresses.finder.getImplementationAddress(priceFeedInterface);
     }
 
     function _getAdminAddress(TDS.Storage storage s) internal view returns (address) {
@@ -644,12 +644,11 @@ library TokenizedDerivativeUtils {
 
         s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
         s.externalAddresses.finder = Finder(params.finderAddress);
-        s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeedAddress);
 
         // Verify that the price feed and Oracle support the given s.fixedParameters.product.
         OracleInterface oracle = OracleInterface(_getOracleAddress(s));
         require(oracle.isIdentifierSupported(params.product));
-        require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
+        require(PriceFeedInterface(_getPriceFeedAddress(s)).isIdentifierSupported(params.product));
 
         s.externalAddresses.sponsor = params.sponsor;
     }
@@ -896,7 +895,8 @@ library TokenizedDerivativeUtils {
     }
 
     function _getLatestPrice(TDS.Storage storage s) internal view returns (uint latestTime, int latestUnderlyingPrice) {
-        (latestTime, latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
+        (latestTime, latestUnderlyingPrice) = PriceFeedInterface(
+            _getPriceFeedAddress(s)).latestPrice(s.fixedParameters.product);
         require(latestTime != 0);
     }
 
@@ -1350,94 +1350,4 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     event TokensRedeemed(string symbol, uint numTokensRedeemed);
     event Deposited(string symbol, uint amount);
     event Withdrawal(string symbol, uint amount);
-}
-
-
-/**
- * @title Contract creator for TokenizedDerivative.
- */
-contract TokenizedDerivativeCreator is ContractCreator, Testable {
-    struct Params {
-        address priceFeedAddress;
-        uint defaultPenalty; // Percentage of mergin requirement * 10^18
-        uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
-        bytes32 product;
-        uint fixedYearlyFee; // Percentage of nav * 10^18
-        uint disputeDeposit; // Percentage of mergin requirement * 10^18
-        address returnCalculator;
-        uint startingTokenPrice;
-        uint expiry;
-        address marginCurrency;
-        uint withdrawLimit; // Percentage of shortBalance * 10^18
-        TokenizedDerivativeParams.ReturnType returnType;
-        uint startingUnderlyingPrice;
-        string name;
-        string symbol;
-    }
-
-    AddressWhitelist public returnCalculatorWhitelist;
-    AddressWhitelist public marginCurrencyWhitelist;
-
-    constructor(
-        address _finderAddress,
-        address _returnCalculatorWhitelist,
-        address _marginCurrencyWhitelist,
-        bool _isTest
-    ) public ContractCreator(_finderAddress) Testable(_isTest) {
-        returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
-        marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
-    }
-
-    /**
-     * @notice Creates a new instance of `TokenizedDerivative` with the provided `params`.
-     */
-    function createTokenizedDerivative(Params memory params)
-        public
-        returns (address derivativeAddress)
-    {
-        TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params), params.name, params.symbol);
-
-        address[] memory parties = new address[](1);
-        parties[0] = msg.sender;
-
-        _registerContract(parties, address(derivative));
-
-        emit CreatedTokenizedDerivative(address(derivative));
-
-        return address(derivative);
-    }
-
-    // Converts createTokenizedDerivative params to TokenizedDerivative constructor params.
-    function _convertParams(Params memory params)
-        private
-        view
-        returns (TokenizedDerivativeParams.ConstructorParams memory constructorParams)
-    {
-        // Copy and verify externally provided variables.
-        constructorParams.sponsor = msg.sender;
-
-        require(returnCalculatorWhitelist.isOnWhitelist(params.returnCalculator));
-        constructorParams.returnCalculator = params.returnCalculator;
-
-        require(marginCurrencyWhitelist.isOnWhitelist(params.marginCurrency));
-        constructorParams.marginCurrency = params.marginCurrency;
-
-        constructorParams.priceFeedAddress = params.priceFeedAddress;
-        constructorParams.defaultPenalty = params.defaultPenalty;
-        constructorParams.supportedMove = params.supportedMove;
-        constructorParams.product = params.product;
-        constructorParams.fixedYearlyFee = params.fixedYearlyFee;
-        constructorParams.disputeDeposit = params.disputeDeposit;
-        constructorParams.startingTokenPrice = params.startingTokenPrice;
-        constructorParams.expiry = params.expiry;
-        constructorParams.withdrawLimit = params.withdrawLimit;
-        constructorParams.returnType = params.returnType;
-        constructorParams.startingUnderlyingPrice = params.startingUnderlyingPrice;
-
-        // Copy internal variables.
-        constructorParams.finderAddress = finderAddress;
-        constructorParams.creationTime = getCurrentTime();
-    }
-
-    event CreatedTokenizedDerivative(address contractAddress);
 }
