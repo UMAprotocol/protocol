@@ -11,7 +11,7 @@ explanation of the philosophy behind the self-enforcing financial contract templ
 ## Tutorials
 
 If you'd like to start working with the UMA platform, we have a variety of tutorials that should help you get familiar
-with the technology. A good place to start is the [Prerequisites](./tutorials/prerequisites.md), which will be required
+with the technology. A good place to start is the [prerequisites](./tutorials/prerequisites.md), which will be required
 before working through any of the other tutorials.
 
 
