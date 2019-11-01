@@ -7,7 +7,7 @@ import "./Voting.sol";
 
 
 /**
- * @title Designated Voting
+ * @title Proxy to allow voting from another address
  * @dev Allows a UMA token holder to designate another address to vote on their behalf. Each voter must deploy their own
  * instance of this contract.
  */

@@ -1,11 +1,8 @@
-/*
-  EncryptedSender contract for sending encrypted messages via the EVM.
-*/
 pragma solidity ^0.5.0;
 
 
 /**
- * @title Simple keyed encrypted message sender.
+ * @title Contract for sending keyed encrypted messages via the EVM
  * @dev This contract uses topic hashes as keys and can store a single arbitrary encrypted message per topic at any
  * given time. Note: there's technically nothing that requires the topics hashed or for the messages to be encrypted.
  * This contract is built for the following specific use case:

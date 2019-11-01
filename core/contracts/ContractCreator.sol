@@ -5,6 +5,9 @@ import "./Registry.sol";
 
 
 // TODO(ptare): Make this (and all contracts) Withdrawable.
+/**
+ * @title Base contract for all financial contract creators
+ */
 contract ContractCreator {
     address internal finderAddress;
 

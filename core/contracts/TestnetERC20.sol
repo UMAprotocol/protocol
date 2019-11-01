@@ -4,10 +4,9 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 
 /**
- * @title TestnetERC20
- * @dev This is just an implementation that has the same interface as the Compound project's testnet tokens (mainly
- * DAI). This contract can be deployed or the interface can be used to communicate with Compound's ERC20 tokens.
- * Note: this token should never be used to store real value since it allows permissionless minting.
+ * @title An implementation of ERC20 with the same interface as the Compound project's testnet tokens (mainly DAI)
+ * @dev This contract can be deployed or the interface can be used to communicate with Compound's ERC20 tokens.  Note:
+ * this token should never be used to store real value since it allows permissionless minting.
  */
 contract TestnetERC20 is ERC20 {
 
