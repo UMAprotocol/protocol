@@ -2,6 +2,6 @@ name: uma
 title: UMA
 version: master
 nav:
-  - modules/ROOT/nav.adoc
+  - modules/tutorials/nav.adoc
   - modules/explainers/nav.adoc
   - modules/contracts/nav.adoc
