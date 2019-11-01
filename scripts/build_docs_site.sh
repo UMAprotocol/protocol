@@ -41,7 +41,12 @@ npm run bundle
 
 cd $START_DIR
 mkdir -p $START_DIR/modules/ROOT/pages
+mkdir -p $START_DIR/modules/tutorials/pages
+mkdir -p $START_DIR/modules/explainers/pages
+mkdir -p $START_DIR/modules/explainers/assets/images
 mkdir -p $START_DIR/modules/contracts/pages
+
+cp $START_DIR/documentation/explainers/*.jpeg $START_DIR/modules/explainers/assets/images/
 
 $START_DIR/ci/docgen.sh
 cp $START_DIR/docs/*.adoc $START_DIR/modules/contracts/pages/
@@ -51,11 +56,19 @@ shopt -s nullglob
 for FNAME in $START_DIR/documentation/tutorials/*.md
 do
     BNAME=$(basename "$FNAME" .md)
-    md_to_adoc $FNAME $START_DIR/modules/ROOT/pages/$BNAME.adoc
+    md_to_adoc $FNAME $START_DIR/modules/tutorials/pages/$BNAME.adoc
 done
 
-node $START_DIR/scripts/gen-nav.js $START_DIR/modules/ROOT/pages Tutorials > $START_DIR/modules/ROOT/nav.adoc
+for FNAME in $START_DIR/documentation/explainers/*.md
+do
+    BNAME=$(basename "$FNAME" .md)
+    md_to_adoc $FNAME $START_DIR/modules/explainers/pages/$BNAME.adoc
+done
 
-md_to_adoc $START_DIR/documentation/intro.md $START_DIR/modules/ROOT/pages/index.adoc
+touch $START_DIR/modules/ROOT/nav.adoc
+node $START_DIR/scripts/gen-nav.js $START_DIR/modules/tutorials/pages Tutorials > $START_DIR/modules/tutorials/nav.adoc
+node $START_DIR/scripts/gen-nav.js $START_DIR/modules/explainers/pages Explainers > $START_DIR/modules/explainers/nav.adoc
+
+md_to_adoc $START_DIR/documentation/index.md $START_DIR/modules/ROOT/pages/index.adoc
 $(npm bin)/antora playbook.yml
 
