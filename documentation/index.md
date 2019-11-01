@@ -23,4 +23,4 @@ works, please see the [architecture overview](./explainers/architecture.md).
 
 ## Contracts
 
-For a more detailed view, API documentation is available for all smart contracts.
+For a more detailed view, API documentation is available for all UMA smart contracts.
