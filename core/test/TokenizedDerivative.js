@@ -2636,6 +2636,8 @@ contract("TokenizedDerivative", function(accounts) {
           tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor })
         )
       );
+      // Reset the price feed for remaining assertions.
+      await pushPrice(web3.utils.toWei("1", "ether"));
 
       // Invalid returnType.
       const invalidReturnTypeParams = { ...defaultConstructorParams, returnType: "2" };
