@@ -74,6 +74,14 @@
 
 {{natspec.devdoc}}
 
+{{#if natspec.params}}
+Parameters:
+{{#each natspec.params}}
+
+* `{{param}}`: {{description}}
+
+{{/each}}
+{{/if}}
 {{/each}}
 
 {{#each functions}}
@@ -85,6 +93,14 @@
 
 {{natspec.devdoc}}
 
+{{#if natspec.params}}
+Parameters:
+{{#each natspec.params}}
+
+* `{{param}}`: {{description}}
+
+{{/each}}
+{{/if}}
 {{/each}}
 
 {{#each events}}
@@ -96,4 +112,12 @@
 
 {{natspec.devdoc}}
 
+{{#if natspec.params}}
+Parameters:
+{{#each natspec.params}}
+
+* `{{param}}`: {{description}}
+
+{{/each}}
+{{/if}}
 {{/each}}
