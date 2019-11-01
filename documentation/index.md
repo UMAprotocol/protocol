@@ -3,7 +3,7 @@
 UMA builds decentralized infrastructure to allow developers to build financial applications. There are two primary
 parts of this infrastructure: the decentralized oracle (DVM) and the financial contract templates that depend on it.
 
-This documentation will explain the code, as it exists today. For a more theoretical explanation of the UMA DVM, see
+This documentation will explain the code as it exists today. For a more theoretical explanation of the UMA DVM, see
 the [DVM whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-DVM-oracle-whitepaper.pdf). For a deeper
 explanation of the philosophy behind the self-enforcing financial contract templates, see the
 [financial contract template whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-whitepaper.pdf).
