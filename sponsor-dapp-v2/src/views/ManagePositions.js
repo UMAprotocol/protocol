@@ -86,8 +86,6 @@ function useFinancialContractData(tokenAddress) {
   }
   data.ready = true;
 
-  data.priceFeedAddress = data.derivativeStorage.externalAddresses.priceFeedAddress;
-
   // Format financial contract data for display.
   const { toBN, toChecksumAddress } = web3.utils;
   data.isTokenSponsor =
@@ -131,7 +129,7 @@ function useFinancialContractData(tokenAddress) {
     { type: "address", title: "Sponsor", address: { display: data.derivativeStorage.externalAddresses.sponsor } },
     { type: "timestamp", title: "Created", timestamp: data.derivativeStorage.fixedParameters.creationTime },
     { type: "timestamp", title: "Expiry", timestamp: data.derivativeStorage.endTime },
-    { type: "address", title: "Price feed", address: { display: data.priceFeedAddress } },
+    { type: "address", title: "Price feed", address: { display: data.derivativeStorage.externalAddresses.priceFeed } },
     {
       type: "namedAddress",
       title: "Denomination",

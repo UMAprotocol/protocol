@@ -32,9 +32,7 @@ const initializeSystem = async function(callback) {
     const deployedVoting = await Voting.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     );
-    const deployedManualPriceFeed = await ManualPriceFeed.at(
-      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.PriceFeed))
-    );
+    const deployedManualPriceFeed = await ManualPriceFeed.deployed();
 
     const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     const noLeverageCalculator = await LeveragedReturnCalculator.deployed();
@@ -77,7 +75,6 @@ const initializeSystem = async function(callback) {
     const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
 
     const defaultConstructorParams = {
-      sponsor: sponsor,
       priceFeedAddress: deployedManualPriceFeed.address,
       defaultPenalty: web3.utils.toWei("0.5", "ether"),
       supportedMove: web3.utils.toWei("0.1", "ether"),
