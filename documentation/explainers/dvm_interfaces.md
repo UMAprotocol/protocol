@@ -154,8 +154,8 @@ Reveals a vote that the voter committed to during the commit period.
 
 This method takes the `identifier` and `time` to identify the price request.
 
-So the reveal can be verified on-chain, the voter must also provide the `price` and `salt` that they used to compute the
-`hash` that they passed to `commitVote`.
+So the reveal can be verified on-chain, the voter must also provide the `price` and `salt` that they used to compute
+the `hash` that they passed to `commitVote`.
 
 Note: the voter's token balance is important for computing how much their vote impacts the outcome and how many newly
 minted tokens they receive as a reward for voting correctly. For that purpose, all voters' balances are snapshotted
