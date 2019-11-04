@@ -14,7 +14,7 @@ available.
 
 The Oracle Interface is used by financial contracts to retrieve prices. This interface can only be used by financial
 contracts that request prices _sparingly_. This is dependent on the specifics of the financial contract, but, in
-general, prices should only be requested to resolve disputes resolution and settlement.
+general, prices should only be requested for dispute resolution and contract settlement.
 
 There are four methods that make up the Oracle Interface: `isIdentifierSupported`, `requestPrice`, `hasPrice`, and
 `getPrice`.
@@ -64,7 +64,8 @@ financial contract pays a percentage of its _profit from corruption_ (PfC) for e
 the maximum amount of money someone could steal from the contract if they were able to modify the price that the DVM
 provides. The contract must pay the regular fee each time the contract's PfC changes. There is a penalty added to the
 regular fee if the contract goes for more than a week (subject to change) without paying it. The more the payment is
-delayed, the larger the penalty.
+delayed, the larger the penalty. Depending on the specifics of the financial contract, the penalty can go to a keeper
+to incentivize them to call a public fee-payment method or it can go to the Store Interface.
 
 The final fee is a simpler mechanism. It is a flat fee charged for each price request that the contract sends.
 
@@ -75,7 +76,13 @@ should pay. This method takes a `startTime` and `endTime` that designate the per
 Usually `startTime` should be the last time it paid the fee or the creation time of the contract if it has never paid
 it. `endTime` should generally be the current time. It also takes a `pfc`, which is the PfC for the period.
 
-This function returns the amount of margin currency that the contract should pay the Store Interface.
+This function returns two values:
+
+- The amount of margin currency that the contract should pay the Store Interface as the normal fee.
+
+- The amount of margin currency charged as a penalty. This amount should generally be paid to a keeper as a reward for
+calling a public fee-payment method. If that isn't possible in the context of a particular financial contract, then it
+should be paod to the Store Interface in addition to the normal fee.
 
 ### `computeFinalFee`
 
