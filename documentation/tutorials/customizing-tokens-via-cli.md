@@ -11,13 +11,13 @@ The financial engineering of this token is _complicated_, because the creator is
 ## Prerequisites
 
 All of our tutorials require that you complete the steps in [Prerequisites](./prerequisites.md). If you are new to the UMA
-system, start with [Creating tokens locally[(./creating-tokens-locally.md) to get a gentle introduction.
+system, start with [Creating tokens locally](./creating-tokens-locally.md) to get a gentle introduction.
 
 Make sure you have testnet ETH or are running locally. All commands should be run from the `core` directory.
 
 ## Token creation
 
-First launch truffle console:
+First, launch the Truffle console:
 
 ```
 $(npm bin)/truffle console --network=<networok>
@@ -25,7 +25,7 @@ $(npm bin)/truffle console --network=<networok>
 
 Pass `--network=test` for local runs. We'll type the rest of the commands in this document into the Truffle console.
 
-We'll first grab an instance of the `Voting` contract.
+We'll grab an instance of the `Voting` contract.
 
 ```
 > const voting = await Voting.deployed()
