@@ -13,8 +13,8 @@ available.
 ## The Oracle Interface
 
 The Oracle Interface is used by financial contracts to retrieve prices. This interface can only be used by financial
-contracts that request prices _sparingly_. This is somewhat dependent on the specifics of the financial contract, but,
-in general, prices should only be requested to resolve disputes resolution and settlement.
+contracts that request prices _sparingly_. This is dependent on the specifics of the financial contract, but, in
+general, prices should only be requested to resolve disputes resolution and settlement.
 
 There are four methods that make up the Oracle Interface: `isIdentifierSupported`, `requestPrice`, `hasPrice`, and
 `getPrice`.
@@ -72,9 +72,8 @@ The final fee is a simpler mechanism. It is a flat fee charged for each price re
 
 A financial contract should use `computeRegularFee` whenever it needs to pay the regular fee to determine how much it
 should pay. This method takes a `startTime` and `endTime` that designate the period that the contract is paying for.
-Usually `startTime` should be the creation time of the contract if it has never paid a regular fee or the
-the last time it paid it. `endTime` should generally be the current time. It also takes a `pfc`, which is the PfC for
-the period.
+Usually `startTime` should be the last time it paid the fee or the creation time of the contract if it has never paid
+it. `endTime` should generally be the current time. It also takes a `pfc`, which is the PfC for the period.
 
 This function returns the amount of margin currency that the contract should pay the Store Interface.
 
@@ -97,4 +96,72 @@ the amount that was approved.
 
 ## The Voting Interface
 
-TODO
+The Voting Interface is used by _token holders_ to vote on prices for pending price requests. When we say token holders
+in this section, we are referring to UMA tokens, which should not be confused with synthetic tokens that are produced
+by financial contracts that use the UMA DVM.
+
+When a price is requested, voting starts when the next voting round begins. If multiple price requests are submitted,
+voters can submit votes for each price request in the next voting round.
+
+Voting rounds last 48 hours (subject to change). The first 24 hours is the commit period, where voters submit commit
+hashes that bind them to a particular vote without revealing it. The second 24 hours is the reveal period, where voters
+reveal the vote (and salt) that generated the commit hash.
+
+After the reveal period ends, the price is considered resolved if enough voters submitted a vote. Once resolved, voters
+can request their newly minted vote tokens as a reward for them voting with the majority.
+
+### `getVotePhase`
+
+Allows voters to check whether the contract is currently in the commit or reveal phase of voting. Note:
+this will return commit or reveal even if there is nothing to vote on this round.
+
+### `getCurrentRoundId`
+
+Allows voters to check the current round id. This method isn't necessary for voters, but is
+provided for informational purposes. The round ID is unique for every round where at least one vote is cast.
+
+### `getPendingRequests`
+
+Returns the list of price requests that are currently being voted on. Voters should use this at the beginning of the
+round to determine what prices they need to look up and submit.
+
+### `commitVote`
+
+Submits a hash that binds a voter to a particular vote on a price request.
+
+This method takes the `identifier` and `time` that uniquely identify the price request. This call will only work if a
+price request for that `identifier` and `time` is returned from `getPendingRequests` and `getVotePhase` returns
+`Commit`.
+
+It also takes the `hash` that the voter wishes to commit to. The `hash` is created by computing
+`keccak256(price, salt)`, where price is the `int256` price value that they wish to submit and `salt` is a random
+`int256` value. The voter must remember the `price` and `salt` that they submitted so they can reveal their commit
+later - otherwise, the commit cannot be revealed and the vote won't be counted.
+
+A few notes:
+
+- A voter can call this method multiple times during the commit period if they wish to change their commitment.
+It becomes locked in once the commit period ends.
+
+- There are other commit methods that allow voters to batch and/or store encrypted salts/prices on chain. Those are
+not detailed here because they are unnecessary to understand the core Voting Interface.
+
+- This method will automatically attempt to retrieve any pending rewards on the voter's behalf.
+
+### `revealVote`
+
+Reveals a vote that the voter committed to during the commit period.
+
+This method takes the `identifier` and `time` to identify the price request.
+
+So the reveal can be verified on-chain, the voter must also provide the `price` and `salt` that they used to compute the
+`hash` that they passed to `commitVote`.
+
+Note: the voter's token balance is important for computing how much their vote impacts the outcome and how many newly
+minted tokens they receive as a reward for voting correctly. For that purpose, all voters' balances are snapshotted
+when the first voter calls `revealVote` during a voting round.
+
+### `retrieveRewards`
+
+Retrieves any tokens that the voter has earned from voting, but hasn't yet withdrawn.
+
