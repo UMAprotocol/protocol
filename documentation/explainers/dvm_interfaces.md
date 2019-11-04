@@ -80,9 +80,9 @@ This function returns two values:
 
 - The amount of margin currency that the contract should pay the Store Interface as the normal fee.
 
-- The amount of margin currency charged as a penalty. This amount should generally be paid to a keeper as a reward for
-calling a public fee-payment method. If that isn't possible in the context of a particular financial contract, then it
-should be paod to the Store Interface in addition to the normal fee.
+- The amount of margin currency charged as a late penalty. This amount should generally be paid to a keeper as a reward
+for calling a public fee-payment method. If that isn't possible in the context of a particular financial contract, then
+it should be paid to the Store Interface in addition to the normal fee.
 
 ### `computeFinalFee`
 
