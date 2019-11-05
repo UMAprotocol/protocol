@@ -20,10 +20,12 @@ Make sure you have testnet ETH or are running locally. All commands should be ru
 First, launch the Truffle console:
 
 ```
-$(npm bin)/truffle console --network=<networok>
+$(npm bin)/truffle console --network=<network>
 ```
 
-Pass `--network=test` for local runs. We'll type the rest of the commands in this document into the Truffle console.
+Pass `--network=test` for local runs. For the UMA testnet deployment on Rinkeby, pass `--network=rinkeby_mnemonic` and
+provide your mnemonic in an environment variable `MNEMONIC`. We'll type the rest of the commands in this document into
+the Truffle console.
 
 We'll grab an instance of the `Voting` contract.
 
@@ -66,6 +68,15 @@ We're all set the create the token now. Note that there are large number of cust
 > const params = { priceFeedAddress: priceFeed.address, defaultPenalty: web3.utils.toWei("0.5", "ether"), supportedMove: web3.utils.toWei("0.1", "ether"), product: web3.utils.utf8ToHex("BTC/USD"), fixedYearlyFee: web3.utils.toWei("0.01", "ether"), disputeDeposit: web3.utils.toWei("0.5", "ether"), returnCalculator: noLeverageCalculator.address, startingTokenPrice: web3.utils.toWei("1", "ether"), expiry: 0, marginCurrency: "0x0000000000000000000000000000000000000000", withdrawLimit: web3.utils.toWei("0.33", "ether"), returnType: "1", startingUnderlyingPrice: "0", name: "Name", symbol: "SYM" }
 > await creator.createTokenizedDerivative(params)
 ```
+
+Note, in particular, the following two fields in params:
+
+```
+marginCurrency: "0x0000000000000000000000000000000000000000",
+product: web3.utils.utf8ToHex("BTC/USD")
+```
+
+Those choose the margin currency and the underlying asset.
 
 If all went well, we'll see a large transaction receipt, and in particular, in the event `logs`, there'll be an event
 named `CreatedTokenizedDerivative` with an `address` field. That's the address of our newly deployed token.
