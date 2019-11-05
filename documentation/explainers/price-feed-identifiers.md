@@ -4,16 +4,38 @@ This document explains how price feed identifiers are configured and how they ar
 
 ## What is an identifier
 
-An identifier is the term we use to refer to an underlying asset whose price a derivative tracks. Examples of underlying assets
-are the price of Bitcoin in US dollars, the spot price of gold, or the daily high temperature in New York City.
+An identifier is the term we use to refer to an underlying asset whose price a derivative tracks. Examples of underlying
+assets are the price of Bitcoin in US dollars, the spot price of gold in US dollars, or the daily high temperature in
+New York City.
 
 ## Configuration file
 
 Price feed identifiers are configured in [identifiers.json](`https://github.com/UMAprotocol/protocol/blob/master/core/config/identifiers.json`).
 This json file contains a list of entries for each supported identifier, with two bits of configuration information:
-1. `dappConfig`: configuration for the Sponsor dApp.
-2. `uploaderConfig`: configuration for UMA's price feed uploader.
-See the sections below for details on these configurations.
+1. `dappConfig`: configuration for the Sponsor dApp. See the [Sponsor dApp](#sponsor-dapp) section for more details.
+2. `uploaderConfig`: configuration for UMA's price feed uploader. See the [Uploader](#uploader) section for more details.
+
+The configuration will look like:
+```
+{
+    "IDENTIFIER": {
+        "dappConfig": {
+            ...
+        },
+        "uploaderConfig": {
+            ...
+        }
+    },
+    "IDENTIFIER2": {
+        "dappConfig": {
+            ...
+        },
+        "uploaderConfig": {
+            ...
+        }
+    }
+}
+```
 
 To support a new identifier, follow these steps:
 1. Add an entry to `identifiers.json` with both `dappConfig` and `uploaderConfig`.
@@ -42,6 +64,14 @@ To support a new identifier, follow these steps:
 The [Sponsor dApp](https://github.com/UMAprotocol/protocol/tree/master/sponsor-dapp-v2) references the `dappConfig` field.
 If the identifier is supported, the dApp allows you to select it as the index for your synthetic token.
 
+An example config looks like:
+```
+"dappConfig: {
+    "expiries": [1572552000, 1575061200, 1577826000, 0],
+    "supportedMove": "0.15"
+}
+```
+
 The `dappConfig` section contains two fields:
 1. `expiries`: timestamps of expirations supported in the dApp for synthetic tokens tracking this index. A value of `0`
    indicates no expiry (i.e., a perpetual product). Expiries are configured per identifier.
@@ -49,18 +79,35 @@ The `dappConfig` section contains two fields:
    `supportedMove`. Financial contract templates use this value to reduce the probability of liquidation by making sure
    they hold on to enough collateral to support a move of this size.
 
-If you want to use a different expiry or a different supported move, you can configure your token via the command line.
+If you want to use a different expiry or a different supported move, you can either modify `identifiers.json` for local
+runs or configure your token via the command line.
 
 ## Uploader
 
 UMA's price feed uploader script [PublishPrices.js](https://github.com/UMAprotocol/protocol/blob/master/core/scripts/PublishPrices.js)
 references the `uploaderConfig` field. If you bring your own price feed, you can configure it your own way.
 
+An example config looks like:
+```
+"uploaderConfig": {
+    "publishInterval": "900",
+    "minDelay": "0",
+    "numerator": {
+        "dataSource": "CMCGlobalMetric",
+        "assetName": "total_market_cap"
+    },
+    "denominator": {
+        "dataSource": "Constant",
+        "assetName": "1000000000"
+    }
+}
+```
+
 The actual price fetching logic is divided into `numerator` and `denominator`, each of which configures a price fetch
 from a data source. The actual pushed price is `numerator/denominator` if `denominator` is specified, otherwise just
 `numerator`. Both `numerator` and `denominator` have two fields:
 1. `dataSource`: string identifying where to fetch data from. The script `PublishPrices.js` supports several data
-   sources. Each data source requires custom code to handle the data fetch.
+   sources. Each data source requires custom code to handle the data fetch, and some data sources also require API keys.
 2. `assetName`: name of the asset that the data source should be queried with. For example, on crypto exchange
    `MyExchange`, bitcoin might be `BTC` but on crypto exchange `YourExchange`, it might be `BTCUSD`.
 
