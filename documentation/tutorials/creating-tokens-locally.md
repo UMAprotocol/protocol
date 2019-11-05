@@ -18,7 +18,7 @@ Run all commands in this section from the `core/` directory.
 
 1. Start the Ganache UI.
 1. Switch to a test identifier config:
-```
+```console
 mv core/config/identifiersTest.json core/config/identifiers.json
 ```
 1. Deploy smart contracts to the locally running Ganache instance via:
