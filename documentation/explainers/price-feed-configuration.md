@@ -10,7 +10,7 @@ New York City.
 
 ## Configuration file
 
-Price feed identifiers are configured in [identifiers.json](`https://github.com/UMAprotocol/protocol/blob/master/core/config/identifiers.json`).
+Price feed identifiers are configured in [identifiers.json](https://github.com/UMAprotocol/protocol/blob/master/core/config/identifiers.json).
 This json file contains a list of entries for each supported identifier, with two bits of configuration information:
 1. `dappConfig`: configuration for the Sponsor dApp. See the [Sponsor dApp](#sponsor-dapp) section for more details.
 2. `uploaderConfig`: configuration for UMA's price feed uploader. See the [Uploader](#uploader) section for more details.
