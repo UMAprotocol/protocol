@@ -18,11 +18,11 @@ Run all commands in this section from the `core/` directory.
 
 1. Start the Ganache UI.
 1. Switch to a test identifier config:
-```console
+```bash
 mv core/config/identifiersTest.json core/config/identifiers.json
 ```
 1. Deploy smart contracts to the locally running Ganache instance via:
-```
+```bash
 $(npm bin)/truffle migrate --reset --network test
 ```
 
@@ -37,14 +37,14 @@ blockchain. An example of such a script is `core/scripts/PublishPrices.js`.
 
 Locally, however, let's skip the step of setting up a data feed and manually push a price for `BTCUSD` via:
 
-```
+```bash
 $(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier BTCUSD --price <price> --time <time>
 ```
 
 where `<price>` is the current price of Bitcoin in USD and `<time>` is the current UNIX timestamp in seconds.
 
 For example, if the price of Bitcoin were `$8,923` at 10/21/2019 15:40 EDT, run:
-```
+```bash
 $(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier BTCUSD --price 8293 --time 1571686800
 ```
 

@@ -11,7 +11,7 @@ Start in the top-level directory in this repository, `protocol/`.
 
 We should be able to compile the smart contracts from `protocol/core`:
 
-```
+```bash
 cd core
 $(npm bin)/truffle compile
 ```
@@ -25,7 +25,7 @@ If everything worked, we should see the line "> Compiled successfully using:" in
 
 If everything was setup correctly, we should be able to run automated tests from `protocol/core`:
 
-```
+```bash
 cd core
 $(npm bin)/truffle test --network test
 ```
