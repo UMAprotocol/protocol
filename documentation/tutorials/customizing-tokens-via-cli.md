@@ -1,12 +1,26 @@
 # Customizing tokens via CLI
 
 In this tutorial, we'll dig into more details and go beyond what the dApp allows.
-We'll customize the parameters of synthetic tokens via the command line by creating a BTC token
+We'll customize the parameters of synthetic tokens via the command line by creating a BTC/USD token
 margined in ETH and interacting with it via the command line.
 
 ## Financial engineering note
 
-The financial engineering of this token is _complicated_, because the creator is exposed to both Bitcoin and ETH price moves.
+The financial engineering of this token is _complicated_:
+
+* If the price of BTC/USD is 10,000, the token facility will require that at least (10,000 * Collateralization Ratio)
+  ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token facility will require that
+  at least 10,000 * 1.25 = 12,500 ETH are in the token facility.
+
+* If the price of BTC/USD goes from 10,000 to 12,000, the token facility will require that at least (12,000 *
+  Collateralization Ratio) ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token
+  facility will require that at least 12,000 * 1.25 = 15,000 ETH are in the token facility.
+
+* If the price of BTC/USD goes from 10,000 to 8,000, the token facility will require that at least (8,000 *
+  Collateralization Ratio) ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token
+  facility will require that at least 8,000 * 1.25 = 10,000 ETH are in the token facility.
+
+* The token facility will require these minimum collateralization amounts, no matter what the price of ETH/USD is.
 
 ## Prerequisites
 
