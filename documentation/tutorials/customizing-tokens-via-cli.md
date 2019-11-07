@@ -1,24 +1,26 @@
 # Customizing tokens via CLI
 
-In this tutorial, we'll dig into more details and go beyond what the dApp allows.
+In this tutorial, we'll dig into more details and go beyond what the [Synthetic Token Builder dApp](http://tokenbuilder.umaproject.org/) allows.
 We'll customize the parameters of synthetic tokens via the command line by creating a BTC/USD token
-margined in ETH and interacting with it via the command line.
+collateralized in ETH and interacting with it via the command line. This is a token where payouts are 
+in ETH, and depend upon the price of BTC/USD.
 
 ## Financial engineering note
 
-The financial engineering of this token is _complicated_:
+* Every token facility has a Collateralization Ratio parameter, which you can set.
 
-* If the price of BTC/USD is 10,000, the token facility will require that at least (10,000 * Collateralization Ratio)
+* If the price of BTC/USD is $10,000, the token facility will require that at least (10,000 * Collateralization Ratio)
   ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token facility will require that
-  at least 10,000 * 1.25 = 12,500 ETH are in the token facility.
-
-* If the price of BTC/USD goes from 10,000 to 12,000, the token facility will require that at least (12,000 *
-  Collateralization Ratio) ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token
-  facility will require that at least 12,000 * 1.25 = 15,000 ETH are in the token facility.
-
-* If the price of BTC/USD goes from 10,000 to 8,000, the token facility will require that at least (8,000 *
-  Collateralization Ratio) ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token
-  facility will require that at least 8,000 * 1.25 = 10,000 ETH are in the token facility.
+  at least 10,000 * 1.25 = 12,500 ETH are in the token facility. 
+  
+* The Collateralization Ratio remains constant while the total amount of ETH required changes with the price of BTC/USD.
+  See table below for reference. 
+  
+| BTC/USD Index | Amount of ETH Required |
+|---------------|------------------------|
+| $8,000        | $10,000                |
+| $10,000       | $12,500                |
+| $12,000       | $15,000                |
 
 * The token facility will require these minimum collateralization amounts, no matter what the price of ETH/USD is.
 
