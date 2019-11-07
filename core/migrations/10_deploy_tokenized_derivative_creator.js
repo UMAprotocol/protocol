@@ -40,10 +40,6 @@ module.exports = async function(deployer, network, accounts) {
     { from: keys.deployer }
   );
 
-  // Add the return calculator to the whitelist.
-  const returnCalculator = await LeveragedReturnCalculator.deployed();
-  await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address, { from: keys.returnCalculatorWhitelist });
-
   // For any test networks, automatically add ETH as an allowed margin currency.
   await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
 };
