@@ -45,7 +45,5 @@ module.exports = async function(deployer, network, accounts) {
   await returnCalculatorWhitelist.addToWhitelist(returnCalculator.address, { from: keys.returnCalculatorWhitelist });
 
   // For any test networks, automatically add ETH as an allowed margin currency.
-  if (!isPublicNetwork(network)) {
-    await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
-  }
+  await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
 };
