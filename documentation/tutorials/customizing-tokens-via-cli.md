@@ -7,8 +7,6 @@ in ETH, and depend upon the price of BTC/USD.
 
 ## Financial engineering note
 
-The financial engineering of this token is _complicated_:
-
 * Every token facility has a Collateralization Ratio parameter, which you can set.
 
 * If the price of BTC/USD is $10,000, the token facility will require that at least (10,000 * Collateralization Ratio)
