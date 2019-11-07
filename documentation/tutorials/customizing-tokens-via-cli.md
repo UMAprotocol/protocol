@@ -33,7 +33,7 @@ Make sure you have testnet ETH or are running locally. All commands should be ru
 
 First, launch the Truffle console:
 
-```
+```bash
 $(npm bin)/truffle console --network=<network>
 ```
 
@@ -43,51 +43,54 @@ the Truffle console.
 
 We'll grab an instance of the `Voting` contract.
 
-```
-> const voting = await Voting.deployed()
+```js
+const voting = await Voting.deployed()
 ```
 
 Next, we'll verify that the identifier `BTC/USD` is supported (note that `isIdentifierSupported` takes a bytes32 not a
 string):
 
-```
-> await voting.isIdentifierSupported(web3.utils.utf8ToHex("BTC/USD"))
-*true*
+```js
+await voting.isIdentifierSupported(web3.utils.utf8ToHex("BTC/USD"))
+// returns true
 ```
 
 As an example, the identifier `UNSUPPORTED` is not supported and we'd see:
-```
+
+```js
 > await voting.isIdentifierSupported(web3.utils.utf8ToHex("UNSUPPORTED"))
-*false*
+// returns false
 ```
 
 The contract `TokenizedDerivativeCreator` maintains a margin currency whitelist.  We'll check that the margin currency
 we want to use, `ETH`, is whitelisted. We represent `ETH` via the special address
 `0x0000000000000000000000000000000000000000`.
 
-```
-> const creator = await TokenizedDerivativeCreator.deployed()
-> const whitelistAddress = await creator.marginCurrencyWhitelist()
-> const whitelist = await AddressWhitelist.at(whitelistAddress)
-> await whitelist.isOnWhitelist("0x0000000000000000000000000000000000000000");
-*true*
+```js
+const creator = await TokenizedDerivativeCreator.deployed()
+const whitelistAddress = await creator.marginCurrencyWhitelist()
+const whitelist = await AddressWhitelist.at(whitelistAddress)
+await whitelist.isOnWhitelist("0x0000000000000000000000000000000000000000");
+// returns true
 ```
 
 We're all set the create the token now. Note that there are large number of customization options for
 `TokenizedDerivative`: this tutorial only scratches the surface.
 
-```
-> const priceFeed = await ManualPriceFeed.deployed()
-> const noLeverageCalculator = await LeveragedReturnCalculator.deployed()
-> const params = { priceFeedAddress: priceFeed.address, defaultPenalty: web3.utils.toWei("0.5", "ether"), supportedMove: web3.utils.toWei("0.1", "ether"), product: web3.utils.utf8ToHex("BTC/USD"), fixedYearlyFee: web3.utils.toWei("0.01", "ether"), disputeDeposit: web3.utils.toWei("0.5", "ether"), returnCalculator: noLeverageCalculator.address, startingTokenPrice: web3.utils.toWei("1", "ether"), expiry: 0, marginCurrency: "0x0000000000000000000000000000000000000000", withdrawLimit: web3.utils.toWei("0.33", "ether"), returnType: "1", startingUnderlyingPrice: "0", name: "Name", symbol: "SYM" }
-> await creator.createTokenizedDerivative(params)
+```js
+const priceFeed = await ManualPriceFeed.deployed()
+const noLeverageCalculator = await LeveragedReturnCalculator.deployed()
+const params = { priceFeedAddress: priceFeed.address, defaultPenalty: web3.utils.toWei("0.5", "ether"), supportedMove: web3.utils.toWei("0.1", "ether"), product: web3.utils.utf8ToHex("BTC/USD"), fixedYearlyFee: web3.utils.toWei("0.01", "ether"), disputeDeposit: web3.utils.toWei("0.5", "ether"), returnCalculator: noLeverageCalculator.address, startingTokenPrice: web3.utils.toWei("1", "ether"), expiry: 0, marginCurrency: "0x0000000000000000000000000000000000000000", withdrawLimit: web3.utils.toWei("0.33", "ether"), returnType: "1", startingUnderlyingPrice: "0", name: "Name", symbol: "SYM" }
+await creator.createTokenizedDerivative(params)
 ```
 
 Note, in particular, the following two fields in params:
 
-```
-marginCurrency: "0x0000000000000000000000000000000000000000",
-product: web3.utils.utf8ToHex("BTC/USD")
+```js
+{
+    marginCurrency: "0x0000000000000000000000000000000000000000",
+    product: web3.utils.utf8ToHex("BTC/USD")
+}
 ```
 
 Those choose the margin currency and the underlying asset.
@@ -96,8 +99,9 @@ If all went well, we'll see a large transaction receipt, and in particular, in t
 named `CreatedTokenizedDerivative` with an `address` field. That's the address of our newly deployed token.
 
 Let's grab our token so we can interact with it further:
-```
-const tokenizedDerivative = await TokenizedDerivative.at(<whatever your address was>)
+
+```js
+const tokenizedDerivative = await TokenizedDerivative.at(/*whatever your address was*/)
 ```
 
 ## Token interaction
@@ -105,13 +109,13 @@ const tokenizedDerivative = await TokenizedDerivative.at(<whatever your address 
 Let's deposit 100 ETH in our token. All numbers are represented in the contract as Wei, i.e., 10**18, so `5` is
 represented as `5e18`.
 
-```
+```js
 await tokenizedDerivative.deposit(web3.utils.toWei("100"), { value: web3.utils.toWei("100") })
 ```
 
 And create some tokens:
 
-```
+```js
 await tokenizedDerivative.createTokens(web3.utils.toWei("1000"), web3.utils.toWei("1"), { value: web3.utils.toWei("1000") })
 ```
 
