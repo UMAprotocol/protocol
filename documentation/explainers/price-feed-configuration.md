@@ -16,22 +16,22 @@ This json file contains a list of entries for each supported identifier, with tw
 2. `uploaderConfig`: configuration for UMA's price feed uploader. See the [Uploader](#uploader) section for more details.
 
 The configuration will look like:
-```
+```js
 {
     "IDENTIFIER": {
         "dappConfig": {
-            ...
+            // ...
         },
         "uploaderConfig": {
-            ...
+            // ...
         }
     },
     "IDENTIFIER2": {
         "dappConfig": {
-            ...
+            // ...
         },
         "uploaderConfig": {
-            ...
+            // ...
         }
     }
 }
@@ -41,19 +41,19 @@ To support a new identifier, follow these steps:
 1. Add an entry to `identifiers.json` with both `dappConfig` and `uploaderConfig`.
 2. Approve the identifier in the Oracle. Locally, you can run:
 
-   ```
+   ```bash
    $(npm bin)/truffle exec scripts/local/ApproveIdentifiers.js --network=test
    ```
 
 3. Push at least one price. Locally, you can manually push a price:
 
-   ```
+   ```bash
    $(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier <identifier> --price <price> --time <time> --network=test
    ```
 
    Or you can run UMA's price feed uploader:
 
-   ```
+   ```bash
    $(npm bin)/truffle exec scripts/PublishPrices.js --network=test
    ```
 
@@ -65,8 +65,8 @@ The [Sponsor dApp](https://github.com/UMAprotocol/protocol/tree/master/sponsor-d
 If the identifier is supported, the dApp allows you to select it as the index for your synthetic token.
 
 An example config looks like:
-```
-"dappConfig: {
+```json
+"dappConfig": {
     "expiries": [1572552000, 1575061200, 1577826000, 0],
     "supportedMove": "0.15"
 }
@@ -88,7 +88,7 @@ UMA's price feed uploader script [PublishPrices.js](https://github.com/UMAprotoc
 references the `uploaderConfig` field. If you bring your own price feed, you can configure it your own way.
 
 An example config looks like:
-```
+```json
 "uploaderConfig": {
     "publishInterval": "900",
     "minDelay": "0",
