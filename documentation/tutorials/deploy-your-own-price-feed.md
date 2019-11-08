@@ -1,124 +1,112 @@
-# Price feed configuration
+# Deploy your own price feed
 
-This document explains how price feed identifiers are configured and how they are used.
+In this tutorial, we'll deploy our own price feed for use with synthetic tokens on testnet. Note: this will be
+necessary if the identifier (or underlying asset) you want to track isn't supported. For a list of supported
+identifiers, see [identifiers.json](https://github.com/UMAprotocol/protocol/blob/master/core/config/identifiers.json).
 
-## What is an identifier
+If you'd like more information on what an identifier is and how to configure a price feed, please see
+[our explainer](../explainers/price-feed-configuration.md).
 
-An identifier is the term we use to refer to an underlying asset whose price a derivative tracks. Examples of underlying
-assets are the price of Bitcoin in US dollars, the spot price of gold in US dollars, or the daily high temperature in
-New York City.
+## Prerequisites
 
-## Configuration file
+All of our tutorials require that you complete the steps in [Prerequisites](./prerequisites.md).
 
-Price feed identifiers are configured in [identifiers.json](https://github.com/UMAprotocol/protocol/blob/master/core/config/identifiers.json).
-This json file contains a list of entries for each supported identifier, with two bits of configuration information:
-1. `dappConfig`: configuration for the Sponsor dApp. See the [Sponsor dApp](#sponsor-dapp) section for more details.
-2. `uploaderConfig`: configuration for UMA's price feed uploader. See the [Uploader](#uploader) section for more details.
+## Deploy the contract to rinkeby
 
-The configuration will look like:
-```
-{
-    "IDENTIFIER": {
-        "dappConfig": {
-            ...
-        },
-        "uploaderConfig": {
-            ...
-        }
-    },
-    "IDENTIFIER2": {
-        "dappConfig": {
-            ...
-        },
-        "uploaderConfig": {
-            ...
-        }
-    }
-}
+The UMA testnet contracts are deployed to rinkeby, so for the rest of the tutorial, it's assumed you'll be interacting
+with that network.
+
+A few notes on the wallet you should use to interact with the Rinkeby testnet:
+
+- You should not do this with a wallet that holds mainnet assets.
+
+- You should make sure that this wallet has Rinkeby ETH. If not, you can use [this faucet](https://faucet.rinkeby.io/)
+to get some.
+
+- You'll need the mnemonic (seed phrase) for this wallet to add it to truffle, so make sure it's generated from a
+mnemonic. If you create the wallet through Metamask, for example, it will give you a mnemonic to write down.
+
+You'll need to add this wallet to your environment by entering the following command replacing `your mnemonic here`
+with your mnemonic:
+
+```bash
+export MNEMONIC="your mnemonic here"
 ```
 
-To support a new identifier, follow these steps:
-1. Add an entry to `identifiers.json` with both `dappConfig` and `uploaderConfig`.
-2. Approve the identifier in the Oracle. Locally, you can run:
+You'll need to open the truffle console to directly send commands to the blockchain. To do so, run the following
+command from the `core/` directory:
 
-   ```
-   $(npm bin)/truffle exec scripts/local/ApproveIdentifiers.js --network=test
-   ```
-
-3. Push at least one price. Locally, you can manually push a price:
-
-   ```
-   $(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier <identifier> --price <price> --time <time> --network=test
-   ```
-
-   Or you can run UMA's price feed uploader:
-
-   ```
-   $(npm bin)/truffle exec scripts/PublishPrices.js --network=test
-   ```
-
-   Note that running the price feed may require several API keys to be provided as environment variables.
-
-## Sponsor dApp
-
-The [Sponsor dApp](https://github.com/UMAprotocol/protocol/tree/master/sponsor-dapp-v2) references the `dappConfig` field.
-If the identifier is supported, the dApp allows you to select it as the index for your synthetic token.
-
-An example config looks like:
-```
-"dappConfig: {
-    "expiries": [1572552000, 1575061200, 1577826000, 0],
-    "supportedMove": "0.15"
-}
+```bash
+$(npm bin)/truffle console --network rinkeby_mnemonic
 ```
 
-The `dappConfig` section contains two fields:
-1. `expiries`: timestamps of expirations supported in the dApp for synthetic tokens tracking this index. A value of `0`
-   indicates no expiry (i.e., a perpetual product). Expiries are configured per identifier.
-2. `supportedMove`: fraction of move in the underlying price. Higher volatility assets should have a higher
-   `supportedMove`. Financial contract templates use this value to reduce the probability of liquidation by making sure
-   they hold on to enough collateral to support a move of this size.
-
-If you want to use a different expiry or a different supported move, you can either modify `identifiers.json` for local
-runs or configure your token via the command line.
-
-## Uploader
-
-UMA's price feed uploader script [PublishPrices.js](https://github.com/UMAprotocol/protocol/blob/master/core/scripts/PublishPrices.js)
-references the `uploaderConfig` field. If you bring your own price feed, you can configure it your own way.
-
-An example config looks like:
-```
-"uploaderConfig": {
-    "publishInterval": "900",
-    "minDelay": "0",
-    "numerator": {
-        "dataSource": "CMCGlobalMetric",
-        "assetName": "total_market_cap"
-    },
-    "denominator": {
-        "dataSource": "Constant",
-        "assetName": "1000000000"
-    }
-}
+Now that you're in the truffle console, you can deploy your new price feed contract:
+```js
+> let price_feed = await ManualPriceFeed.new(false)
 ```
 
-The actual price fetching logic is divided into `numerator` and `denominator`, each of which configures a price fetch
-from a data source. The actual pushed price is `numerator/denominator` if `denominator` is specified, otherwise just
-`numerator`. Both `numerator` and `denominator` have two fields:
-1. `dataSource`: string identifying where to fetch data from. The script `PublishPrices.js` supports several data
-   sources. Each data source requires custom code to handle the data fetch, and some data sources also require API keys.
-2. `assetName`: name of the asset that the data source should be queried with. For example, on crypto exchange
-   `MyExchange`, bitcoin might be `BTC` but on crypto exchange `YourExchange`, it might be `BTCUSD`.
+Next, you'll want to print out the address of your new contract, so you can point your scripts and contracts at it:
+```js
+> price_feed.address
+```
 
-The other two fields are used in conjuction to determine the rate at which new prices are published to the blockchain
-and also to limit the frequency with which data APIs are queried.
-1. `publishInterval`: number of seconds between price pushes, e.g., `900` means push a new price every 15 minutes.
-2. `minDelay`: number of seconds the fetched data is delayed by, e.g., `900` means that fetched data has a built-in 15
-   minutes delay.
+You should see the price feed address printed in the console. Copy and paste that address somewhere so you have it on
+hand. You can now exit the console by pressing ctrl-c a few times.
 
-## AVS
+## Add your price feed to your local configuration
 
-The automated voting system uses its own configuration, which is currently hardcoded in
-[Voting.js](https://github.com/UMAprotocol/protocol/blob/master/core/scripts/Voting.js). We have purposely kept it separate
-from the other configuration, because the DVM and its scaffolding are separate from the financial contracts and their scaffolding.
+To use your price feed with any of the UMA scripts, you'll need to add it to the configuration. To do so, open the file
+`core/networks/4.json`. Find the follwing lines near the end of that file:
+
+```json
+  {
+    "contractName": "LeveragedReturnCalculator",
+    "address": "0x756B875Da7c30B8Ab15fa05cFEc28a9d7065abeA"
+  }
+```
+
+Once you've found those lines, change them to the following replacing `PRICE_FEED_ADDRESS_HERE` with the address for
+the price feed contract you deployed above:
+```json
+  {
+    "contractName": "LeveragedReturnCalculator",
+    "address": "0x756B875Da7c30B8Ab15fa05cFEc28a9d7065abeA"
+  },
+  {
+    "contractName": "ManualPriceFeed",
+    "address": "PRICE_FEED_ADDRESS_HERE"
+  }
+```
+
+Save the file, and run the following command from the `core/` directory:
+```bash
+$(npm bin)/apply-registry
+```
+
+You've now updated the configuration to use your price feed contract.
+
+## Upload prices to your price feed contract:
+
+To use your price feed, you'll need to add a price to it. You'll need to add a price for one of the identifiers that's
+already approved in the testnet DVM. We reccomend using the identifier `Custom Index (1)`.
+
+To push a price, you'll need to know the price you want to push and the unix timestamp (must be now or in the past).
+Run the following command (from the `core/` directory) replacing <price> with your price and <time> with the unix
+timestamp:
+```bash
+$(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier 'Custom Index (1)' --price <price> --time <time> --network=rinkeby_mnemonic
+```
+
+Some notes:
+
+- The price will be multiplied by 10^18 to convert it to a fixed point integer that Solidity can understand.
+
+- You can repeat this command whenever you want to change the price. You'll only need to make sure that the timestamp
+is greater than the previous timestamp you provided, but not in the future.
+
+## Deploy a TokenizedDerivative instance that deplends on this price feed
+
+To deploy a Tokenized Derivative that depends on your price feed, you'll want to change the `priceFeedAddress`
+parameter to your price feed address from above and the `product` parameter to `Custom Index (1)` (converted to
+`bytes32`). The specific instructions for how to deploy a custom TokenizedDerivative are in
+[this tutorial](./customizing-tokens-via-cli.md).
