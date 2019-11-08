@@ -51,7 +51,7 @@ Next, you'll want to print out the address of your new contract, so you can poin
 ```
 
 You should see the price feed address printed in the console. Copy and paste that address somewhere so you have it on
-hand. You can now exit the console by pressing ctrl-c a few times.
+hand. You can now exit the truffle console by pressing ctrl-c a few times.
 
 ## Add your price feed to your local configuration
 
