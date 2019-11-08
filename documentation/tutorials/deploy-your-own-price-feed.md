@@ -85,7 +85,7 @@ $(npm bin)/apply-registry
 
 You've now updated the configuration to use your price feed contract.
 
-## Upload prices to your price feed contract:
+## Upload prices to your price feed contract
 
 To use your price feed, you'll need to add a price to it. You'll need to add a price for one of the identifiers that's
 already approved in the testnet DVM. We reccomend using the identifier `Custom Index (1)`.
