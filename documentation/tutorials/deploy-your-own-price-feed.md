@@ -91,7 +91,7 @@ To use your price feed, you'll need to add a price to it. You'll need to add a p
 already approved in the testnet DVM. We reccomend using the identifier `Custom Index (1)`.
 
 To push a price, you'll need to know the price you want to push and the unix timestamp (must be now or in the past).
-Run the following command (from the `core/` directory) replacing <price> with your price and <time> with the unix
+Run the following command (from the `core/` directory) replacing `<price>` with your price and `<time>` with the unix
 timestamp:
 ```bash
 $(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier 'Custom Index (1)' --price <price> --time <time> --network=rinkeby_mnemonic
