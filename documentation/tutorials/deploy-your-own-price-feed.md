@@ -106,7 +106,7 @@ is greater than the previous timestamp you provided, but not in the future.
 
 ## Deploy a TokenizedDerivative instance that deplends on this price feed
 
-To deploy a Tokenized Derivative that depends on your price feed, you'll want to change the `priceFeedAddress`
-parameter to your price feed address from above and the `product` parameter to `Custom Index (1)` (converted to
-`bytes32`). The specific instructions for how to deploy a custom TokenizedDerivative are in
+To deploy a Tokenized Derivative that uses your price feed, you'll want to change the `priceFeedAddress` parameter to
+your price feed address from above and the `product` parameter to `Custom Index (1)` (converted to `bytes32`). The
+specific instructions for how to deploy a custom TokenizedDerivative are in
 [this tutorial](./customizing-tokens-via-cli.md) - you'll just need to remember these two parameters.
