@@ -97,7 +97,7 @@ timestamp:
 $(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier 'Custom Index (1)' --price <price> --time <time> --network=rinkeby_mnemonic
 ```
 
-Some notes:
+Some notes on using this command:
 
 - The price will be multiplied by 10^18 to convert it to a fixed point integer that Solidity can understand.
 
@@ -109,4 +109,4 @@ is greater than the previous timestamp you provided, but not in the future.
 To deploy a Tokenized Derivative that depends on your price feed, you'll want to change the `priceFeedAddress`
 parameter to your price feed address from above and the `product` parameter to `Custom Index (1)` (converted to
 `bytes32`). The specific instructions for how to deploy a custom TokenizedDerivative are in
-[this tutorial](./customizing-tokens-via-cli.md).
+[this tutorial](./customizing-tokens-via-cli.md) - you'll just need to remember these two parameters.
