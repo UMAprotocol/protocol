@@ -9,7 +9,9 @@ Please use Slack for all technical questions and discussions.
 
 ## Documentation
 
-Our docs site is [here](https://docs.umaproject.org). It contains tutorials, explainers, and smart contract documentation. If you'd like to view these docs on github instead, check out the [documentation folder](./documentation).
+Our docs site is [here](https://docs.umaproject.org). It contains tutorials, explainers, and smart contract
+documentation. If you'd like to view these docs on github instead, check out the
+[documentation folder](./documentation).
 
 ## Security and Bug Bounty
 
