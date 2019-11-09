@@ -2,7 +2,7 @@
   "BTCETH": {
     "dappConfig": {
       "comment": "expiry: January 1st, 2020 12:00 AM UTC, supportedMove: 0.2 corresponds to 20%",
-      "expiry": "1577836800",
+      "expiries": [1577836800, 0],
       "supportedMove": "0.2"
     },
     "uploaderConfig": {
