@@ -12,12 +12,6 @@ const moment = require("moment");
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
 const SUPPORTED_IDENTIFIERS = {
-  BTCUSD: {
-    numerator: {
-      dataSource: "CryptoCompare",
-      identifiers: { first: "BTC", second: "USD" }
-    }
-  },
   "BTC/USD": {
     numerator: {
       dataSource: "Manual"
@@ -96,12 +90,7 @@ const SUPPORTED_IDENTIFIERS = {
   },
   "USD/ETH": {
     numerator: {
-      dataSource: "Constant",
-      value: "1"
-    },
-    denominator: {
-      dataSource: "IntrinioCrypto",
-      symbol: "ethusd"
+      dataSource: "Manual"
     }
   },
   "Custom Index (1)": {
