@@ -20,15 +20,19 @@ not created using Metamask, we do not currently support it.
 on running this on Kovan, you’ll only need Kovan ETH. You can get Kovan ETH by logging into this gitter chat with your
 github chat and pasting your address into the chat.
 
-- Your account must have Voting Tokens for your vote to impact the outcome - to get testnet vote tokens, please send an
+- Your account must have Voting Tokens for your vote to impact the outcome. To get testnet vote tokens, please send an
 email to [hello@umaproject.org](mailto:hello@umaproject.org). To check your token balance:
 
     1. Go [here](https://ethereum.stackexchange.com/a/17101) to find the network id for the network you're using.
+
     2. Find the file named [YOUR_NETWORK_ID].json in
        [this folder](https://github.com/UMAprotocol/protocol/tree/master/core/networks). If the file doesn't exist,
        there is no UMA deployment on that network.
+
     3. Find the line in that file that says `"contractName": "VotingToken",`.
+
     4. The next line should have an address on it - that's the address for the Voting Token.
+
     5. You can add the Voting token to metamask or find it on Etherscan to check your balance.
 
 - It’s recommended that you get a free Infura API key. Do so by going to https://www.infura.io/, creating an account,
@@ -58,12 +62,12 @@ must have 2 factor authentication enabled on your gmail account. We recommend gm
 
 2. Log in to your gmail account if necessary.
 
-3. Select “Mail” from the first dropdown and “Other” from the second dropdown. Type AVS into the text field that
+3. Select “Mail” from the first dropdown and “Other” from the second dropdown. Type `AVS` into the text field that
 appears.
 
 4. Copy the 16 characters that appear, they are your app password - you will need to provide them later.
 
-5. Go back to cloud.google.com when you’re done.
+5. Go back to [Google Cloud](https://cloud.google.com/) when you’re done.
 
 
 ### SendGrid
@@ -80,7 +84,7 @@ redirect you to your dashboard on the SendGrid website.
 
 5. Click the “Create API Key” button.
 
-6. Name the API key “AVS testing-[firstname]”and select its level of access.
+6. Name the API key something like `AVS testing-[firstname]` and select its level of access.
 
 7. You can either give the API key Full Access or give it custom access where at least “Mail Send” is enabled.
 
@@ -90,7 +94,8 @@ redirect you to your dashboard on the SendGrid website.
 
 10. Click “Done”.
 
-11. Feel free to close the tab and return to your google cloud tab or just go to cloud.google.com in your current tab.
+11. Feel free to close the tab and return to your google cloud tab or just go to
+[Google Cloud](https://cloud.google.com/) in your current tab.
 
 ## Create your AVS Node
 
@@ -103,7 +108,7 @@ vote on our behalf.
 
 3. Click the “Create Instance Template” button.
 
-4. Name your template something memorable, like “voting-[firstname]”.
+4. Name your template something memorable, like `voting-[firstname]`.
 
 5. Pick your machine configuration. We recommend n1-standard-1, but feel free to try with a smaller instance to save on
 costs - we haven’t tested with them, so they may not have enough memory to run the voting image.
