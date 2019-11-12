@@ -821,13 +821,16 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time1, winningPrice, salt2, { from: account2 });
     await voting.revealVote(identifier, time1, winningPrice, salt3, { from: account3 });
 
+    const roundId = await voting.getCurrentRoundId();
+
     // Move to the next round to begin retrieving rewards.
     await moveToNextRound(voting);
 
-    await voting.retrieveRewards({ from: account1 });
-    await voting.retrieveRewards({ from: account2 });
-    await voting.retrieveRewards({ from: account3 });
-    await voting.retrieveRewards({ from: account4 });
+    const req = [{ identifier: identifier, time: time1 }];
+    await voting.retrieveRewards(roundId, req, { from: account1 });
+    await voting.retrieveRewards(roundId, req, { from: account2 });
+    await voting.retrieveRewards(roundId, req, { from: account3 });
+    await voting.retrieveRewards(roundId, req, { from: account4 });
 
     // account1 is not rewarded because account1 was wrong.
     assert.equal((await votingToken.balanceOf(account1)).toString(), initialAccount1Balance.toString());
@@ -848,63 +851,6 @@ contract("Voting", function(accounts) {
 
     // Reset the inflation rate to 0%.
     await setNewInflationRate("0");
-  });
-
-  it("Reward on commit", async function() {
-    // Set the inflation rate to 100% (for ease of computation).
-    await setNewInflationRate(web3.utils.toWei("1", "ether"));
-
-    const identifier = web3.utils.utf8ToHex("reward-on-commit");
-    const time1 = "1000";
-
-    // Cache balances for later comparison.
-    const initialAccount1Balance = await votingToken.balanceOf(account1);
-    const initialTotalSupply = await votingToken.totalSupply();
-
-    // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
-
-    // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
-    await moveToNextRound(voting);
-
-    // Commit.
-    const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1);
-    await voting.commitVote(identifier, time1, hash1, { from: account1 });
-
-    // Reveal.
-    await moveToNextPhase(voting);
-    await voting.revealVote(identifier, time1, price1, salt1, { from: account1 });
-
-    // Request new price to commit to next round.
-    const time2 = "1001";
-    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
-    await moveToNextRound(voting);
-
-    // Commit, which should send the reward.
-    const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2);
-    await voting.commitVote(identifier, time2, hash2, { from: account1 });
-
-    // Check balance after reward.
-    assert.equal(
-      (await votingToken.balanceOf(account1)).toString(),
-      initialAccount1Balance.add(initialTotalSupply).toString()
-    );
-
-    // A call to retrieval should not change the balance since the reward has already been retrieved.
-    await voting.retrieveRewards({ from: account1 });
-    assert.equal(
-      (await votingToken.balanceOf(account1)).toString(),
-      initialAccount1Balance.add(initialTotalSupply).toString()
-    );
-
-    // Clean up vote.
-    await moveToNextPhase(voting);
-    await voting.revealVote(identifier, time2, price2, salt2, { from: account1 });
   });
 
   it("Events", async function() {
@@ -975,24 +921,17 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     currentRoundId = await voting.getCurrentRoundId();
     // Since none of the whales voted, the price couldn't be resolved.
-    result = await voting.retrieveRewards({ from: account4 });
-    truffleAssert.eventEmitted(result, "PriceRequestRolledOver", ev => {
-      return (
-        ev.newRoundId.toString() == currentRoundId.toString() &&
-        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
-        ev.time == time
-      );
-    });
 
     // Now the whale votes and the vote resolves.
     await voting.commitVote(identifier, time, hash, { from: account1 });
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt, { from: account1 });
     const initialTotalSupply = await votingToken.totalSupply();
+    const roundId = await voting.getCurrentRoundId();
     await moveToNextRound(voting);
 
     // When the round updates, the price request should be resolved.
-    result = await voting.retrieveRewards({ from: account1 });
+    result = await voting.retrieveRewards(roundId, [{ identifier, time }], { from: account1 });
     truffleAssert.eventEmitted(result, "PriceResolved", ev => {
       return (
         ev.resolutionRoundId.toString() == currentRoundId.toString() &&
@@ -1011,7 +950,7 @@ contract("Voting", function(accounts) {
     });
 
     // Events only get emitted if there were actually rewards issued. Is this the behavior we want?
-    result = await voting.retrieveRewards({ from: account4 });
+    result = await voting.retrieveRewards(roundId, [{ identifier, time }], { from: account4 });
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
   });
 

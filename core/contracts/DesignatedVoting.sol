@@ -1,9 +1,12 @@
 pragma solidity ^0.5.0;
 
+pragma experimental ABIEncoderV2;
+
 import "./Finder.sol";
 import "./MultiRole.sol";
 import "./Withdrawable.sol";
 import "./Voting.sol";
+import "./VotingInterface.sol";
 
 
 /**
@@ -49,8 +52,11 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     /**
      * @notice Forwards a reward retrieval to Voting.
      */
-    function retrieveRewards() external onlyRoleHolder(uint(Roles.Voter)) {
-        _getVotingAddress().retrieveRewards();
+    function retrieveRewards(uint roundId, VotingInterface.PendingRequest[] memory toRetrieve)
+        public
+        onlyRoleHolder(uint(Roles.Voter))
+    {
+        _getVotingAddress().retrieveRewards(roundId, toRetrieve);
     }
 
     function _getVotingAddress() private view returns (Voting) {
