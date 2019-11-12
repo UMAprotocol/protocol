@@ -17,8 +17,8 @@ these by going to Settings -> Security & Privacy and pressing the “Reveal Seed
 not created using Metamask, we do not currently support it.
 
 - Your account must have enough ETH to run voting transactions - we suggest having at least 1 ETH. If you are planning
-on running this on Kovan, you’ll only need Kovan ETH. You can get Kovan ETH by logging into this gitter chat with your
-github chat and pasting your address into the chat.
+on running this on Kovan, you’ll only need Kovan ETH. You can get Kovan ETH using
+[this faucet](https://faucet.kovan.network/).
 
 - Your account must have Voting Tokens for your vote to impact the outcome. To get testnet vote tokens, please send an
 email to [hello@umaproject.org](mailto:hello@umaproject.org). To check your token balance:
