@@ -1,8 +1,8 @@
-# Automated Voting System setup instructions for Google Cloud
+# Running the AVS
 
-These are instructions to set up the Automated Voting System that UMA has created on a Google Cloud account. If you
-like, you can set it up with another cloud service (AWS, Azure); just point your cloud computing instance to the docker
-image provided here: `docker.io/umaprotocol/voting`.
+These are instructions to set up the Automated Voting System on a Google Cloud account. If you like, you can set it up
+with another cloud service (AWS, Azure); just point your cloud computing instance to the docker image provided here:
+`docker.io/umaprotocol/voting`.
 
 Note: these instructions are meant to be used on testnet with accounts that control no mainnet assets. Future versions
 will incorperate a delegation mechanism so your tokens are not at risk when using them with this type of system.
