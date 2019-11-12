@@ -165,7 +165,7 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(await voting.getPrice(identifier2, time2), hardcodedPrice);
   });
 
-  it.only("Intrinio price", async function() {
+  it("Intrinio price", async function() {
     const identifier = web3.utils.utf8ToHex("TSLA");
     const time = "1573513368";
 
