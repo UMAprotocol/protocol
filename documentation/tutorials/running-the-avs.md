@@ -119,6 +119,7 @@ should appear below that box.
 
 10. Under “Environment Variables”, click “Add variable” for each of the values in the table below that you decide to
 add:
+
 | Name                      | Value                                                                                                                  | Notes                                                                                                         | Example                                                                                                  |
 |---------------------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
 | GMAIL_USERNAME            | YOUR_GMAIL_EMAIL_ADDRESS                                                                                               | Only required if you are using Gmail for notifications                                                        | example.sender@gmail.com                                                                                 |
