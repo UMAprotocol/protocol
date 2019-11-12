@@ -173,8 +173,8 @@ function fetchConstantPrice(request, config) {
 
 function getIntrinioTimeArguments(time) {
   const requestMoment = moment.unix(time);
-  const requestDate = requestMoment.format("YYYY-MM-DD");
-  const requestTime = requestMoment.format("HH:mm:ss");
+  const requestDate = requestMoment.utc().format("YYYY-MM-DD");
+  const requestTime = requestMoment.utc().format("HH:mm:ss");
 
   // If we don't specify a `start_time` or `start_date`, Intrinio APIs return data in reverse chronological order, up to
   // `end_time`.
