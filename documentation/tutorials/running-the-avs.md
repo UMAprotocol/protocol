@@ -38,7 +38,7 @@ email to [hello@umaproject.org](mailto:hello@umaproject.org). To check your toke
 - It’s recommended that you get a free Infura API key. Do so by going to https://www.infura.io/, creating an account,
 creating a project, and grabbing the project ID (we call this the INFURA_API_KEY) for use later in this tutorial.
 
-- It's reccomended that you get an [Intrinio API key](https://intrinio.com/) with access to their bats equities
+- It's recommended that you get an [Intrinio API key](https://intrinio.com/) with access to their bats equities
 historical data and historical Forex data.
 
 ## Sign into Google Cloud
