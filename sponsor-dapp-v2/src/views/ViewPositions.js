@@ -125,7 +125,7 @@ function usePositionList() {
             {
               type: "netExposure",
               items: {
-                direction: "Flat Risk",
+                direction: "",
                 totalExposure: "",
                 yourExposure: netPosition
               }
