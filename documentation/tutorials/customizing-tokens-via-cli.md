@@ -16,11 +16,11 @@ in ETH, and depend upon the price of BTC/USD.
 * The Collateralization Ratio remains constant while the total amount of ETH required changes with the price of BTC/USD.
   See table below for reference. 
   
-| BTC/USD Index | Amount of ETH Required |
-|---------------|------------------------|
-| $8,000        | $10,000                |
-| $10,000       | $12,500                |
-| $12,000       | $15,000                |
+    | BTC/USD Index | Amount of ETH Required |
+    |---------------|------------------------|
+    | $8,000        | $10,000                |
+    | $10,000       | $12,500                |
+    | $12,000       | $15,000                |
 
 * The token facility will require these minimum collateralization amounts, no matter what the price of ETH/USD is.
 
