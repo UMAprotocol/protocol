@@ -253,7 +253,8 @@ workflows:
   build_and_test:
     jobs:
       - checkout_and_install
-      - coverage
+      - coverage:
+          context: api_keys
       - slither
       - echidna
       - build:
