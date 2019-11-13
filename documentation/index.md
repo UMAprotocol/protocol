@@ -24,3 +24,8 @@ works, please see the [architecture overview](./explainers/architecture.md).
 ## Contracts
 
 For a more detailed view, API documentation is available for all UMA smart contracts.
+
+## Contact us
+
+If you have any questions or want to reach out, please join our [Slack](https://umaprotocol.slack.com/) using this
+[invite link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LTM4ODg0NGZhYWZkNjkzMDE4MjU0ZGFlYWQzZTFiZWFlZjI2NDE4OGI2NWY3OTdhYjYyZjg0MjAzMTgwODVhZTE).
