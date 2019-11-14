@@ -2,7 +2,7 @@ const HDWalletProvider = require("truffle-hdwallet-provider");
 const GckmsConfig = require("./gckms/GckmsConfig.js");
 const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
 const publicNetworks = require("./PublicNetworks.js");
-const LedgerWalletProvider = require('@deconet/truffle-ledger-provider');
+const LedgerWalletProvider = require("@deconet/truffle-ledger-provider");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
