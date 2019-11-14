@@ -30,7 +30,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     Finder private finder;
 
     constructor(address finderAddress) public {
-        initializeOnce();
+        initializeOnce(finderAddress);
     }
 
     /**
