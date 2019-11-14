@@ -23,7 +23,6 @@
     "@antora/cli": "^2.1.2",
     "@antora/site-generator-default": "^2.1.2",
     "@awaitjs/express": "^0.3.0",
-    "@deconet/truffle-ledger-provider": "0.0.5",
     "@google-cloud/kms": "^0.3.0",
     "@google-cloud/storage": "^2.4.2",
     "@sendgrid/mail": "^6.4.0",
@@ -51,6 +50,7 @@
     "web3-utils": "1.0.0-beta.37"
   },
   "optionalDependencies": {
-    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork"
+    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork",
+    "@deconet/truffle-ledger-provider": "0.0.5"
   }
 }
