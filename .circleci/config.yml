@@ -10,9 +10,11 @@ jobs:
           keys:
             - va-dependency-cache-{{ checksum "package.json" }}
             - va-dependency-cache-
+      - run: Install Prereqs
+          command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
       - run:
           name: Install Dependencies
-          command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev && npm install --quiet
+          command: npm install --quiet
       - save_cache:
           key: va-dependency-cache-{{ checksum "package.json" }}
           paths:
@@ -82,9 +84,11 @@ jobs:
       - run:
           name: Reclaim ownership
           command: sudo chown -R $(whoami) ~/.npm ~/.config
+      - run: Install Prereqs
+          command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command:  npm install --quiet
       - save_cache:
           key: v4-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
@@ -122,7 +126,7 @@ jobs:
       - checkout
       - run:
           name: Install System Packages
-          command: apk update && apk add make git python g++ curl ca-certificates openssl && update-ca-certificates
+          command: apk update && apk add make git python g++ curl ca-certificates openssl libusb-dev eudev-dev && update-ca-certificates
       - restore_cache:
           keys:
             - v2-coverage-dependency-cache-{{ checksum "package.json" }}
@@ -158,6 +162,8 @@ jobs:
       - run:
           name: Reclaim ownership
           command: sudo chown -R $(whoami) ~/.npm
+      - run: Install Prereqs
+          command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
       - run:
           name: Install Dependencies
           command: npm install --quiet
