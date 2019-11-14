@@ -10,7 +10,8 @@ jobs:
           keys:
             - va-dependency-cache-{{ checksum "package.json" }}
             - va-dependency-cache-
-      - run: Install Prereqs
+      - run:
+          name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
       - run:
           name: Install Dependencies
@@ -84,7 +85,8 @@ jobs:
       - run:
           name: Reclaim ownership
           command: sudo chown -R $(whoami) ~/.npm ~/.config
-      - run: Install Prereqs
+      - run:
+          name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
       - run:
           name: Install Dependencies
@@ -162,7 +164,8 @@ jobs:
       - run:
           name: Reclaim ownership
           command: sudo chown -R $(whoami) ~/.npm
-      - run: Install Prereqs
+      - run:
+          name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
       - run:
           name: Install Dependencies
