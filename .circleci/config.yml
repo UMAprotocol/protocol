@@ -90,7 +90,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
       - run:
           name: Install Dependencies
-          command:  npm install --quiet
+          command: npm install --quiet
       - save_cache:
           key: v4-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
