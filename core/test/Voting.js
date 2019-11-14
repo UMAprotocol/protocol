@@ -327,9 +327,11 @@ contract("Voting", function(accounts) {
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
-    const preRoundExpectedResolution = (await voting.requestPrice.call(identifier, time, {
-      from: registeredDerivative
-    })).toNumber();
+    const preRoundExpectedResolution = (
+      await voting.requestPrice.call(identifier, time, {
+        from: registeredDerivative
+      })
+    ).toNumber();
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     const requestRoundTime = (await voting.getCurrentTime()).toNumber();
 
