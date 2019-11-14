@@ -12,12 +12,6 @@ const moment = require("moment");
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
 const SUPPORTED_IDENTIFIERS = {
-  BTCUSD: {
-    numerator: {
-      dataSource: "CryptoCompare",
-      identifiers: { first: "BTC", second: "USD" }
-    }
-  },
   "BTC/USD": {
     numerator: {
       dataSource: "Manual"
@@ -96,12 +90,7 @@ const SUPPORTED_IDENTIFIERS = {
   },
   "USD/ETH": {
     numerator: {
-      dataSource: "Constant",
-      value: "1"
-    },
-    denominator: {
-      dataSource: "IntrinioCrypto",
-      symbol: "ethusd"
+      dataSource: "Manual"
     }
   },
   "Custom Index (1)": {
@@ -184,8 +173,8 @@ function fetchConstantPrice(request, config) {
 
 function getIntrinioTimeArguments(time) {
   const requestMoment = moment.unix(time);
-  const requestDate = requestMoment.format("YYYY-MM-DD");
-  const requestTime = requestMoment.format("HH:mm:ss");
+  const requestDate = requestMoment.utc().format("YYYY-MM-DD");
+  const requestTime = requestMoment.utc().format("HH:mm:ss");
 
   // If we don't specify a `start_time` or `start_date`, Intrinio APIs return data in reverse chronological order, up to
   // `end_time`.
