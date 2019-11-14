@@ -12,7 +12,7 @@ jobs:
             - va-dependency-cache-
       - run:
           name: Install Dependencies
-          command: sudo apt-get update && sudo apt-get install libudev-dev libusb && npm install --quiet
+          command: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev && npm install --quiet
       - save_cache:
           key: va-dependency-cache-{{ checksum "package.json" }}
           paths:
