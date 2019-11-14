@@ -12,7 +12,7 @@ jobs:
             - va-dependency-cache-
       - run:
           name: Install Dependencies
-          command: npm install --quiet
+          command: apk add eudev-dev && npm install --quiet
       - save_cache:
           key: va-dependency-cache-{{ checksum "package.json" }}
           paths:
