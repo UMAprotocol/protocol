@@ -176,6 +176,7 @@ function Step5(props) {
   );
 }
 
-export default withAddedContract(TokenizedDerivative.abi, props => props.userSelectionsRef.current.contractAddress)(
-  Step5
-);
+export default withAddedContract(
+  TokenizedDerivative.abi,
+  props => props.userSelectionsRef.current.contractAddress
+)(Step5);
