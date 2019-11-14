@@ -72,5 +72,5 @@ with the following command:
 $(npm bin)/truffle console --network mainnet_ledger
 ```
 
-Note: outgoing transactions will require your approval manual approval on the ledger device. If you fail to approve,
-the command will hang.
+Note: outgoing transactions will require manual approval on the ledger device. If you fail to approve, the command will
+hang.
