@@ -6,6 +6,7 @@ const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper.js");
 const truffleAssert = require("truffle-assertions");
 
+const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
@@ -49,6 +50,23 @@ contract("Voting", function(accounts) {
     // Register derivative with Registry.
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, account1);
     await registry.registerDerivative([], registeredDerivative, { from: account1 });
+  });
+
+  it("Constructor", async function() {
+    const invalidGat = { rawValue: web3.utils.toWei("5") };
+    const finder = await Finder.deployed();
+    assert(
+      await didContractThrow(
+        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, votingToken.address, finder.address, true)
+      )
+    );
+
+    // Make sure initializeOnce() can only be called once.
+    assert(
+      await didContractThrow(
+        voting.initializeOnce(5, { rawValue: web3.utils.toWei("0.5") }, { rawValue: web3.utils.toWei("1") })
+      )
+    );
   });
 
   it("Vote phasing", async function() {
@@ -331,6 +349,13 @@ contract("Voting", function(accounts) {
       from: registeredDerivative
     })).toNumber();
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    // Calling request price again should be face and should return the same value.
+    const recheckedExpectedResolution = await voting.requestPrice.call(identifier, time, {
+      from: registeredDerivative
+    });
+    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    assert.equal(recheckedExpectedResolution.toString(), preRoundExpectedResolution.toString());
+
     const requestRoundTime = (await voting.getCurrentTime()).toNumber();
 
     // The expected resolution time should be after all times in the request round.
@@ -511,12 +536,17 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    await moveToNextRound(voting);
 
-    // Commit vote.
     const price = 123;
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
+
+    // Can't commit without advancing the round forward.
+    assert(await didContractThrow(voting.commitVote(identifier, time, hash)));
+
+    await moveToNextRound(voting);
+
+    // Commit vote.
     await voting.commitVote(identifier, time, hash);
 
     // Reveal the vote.
@@ -745,8 +775,17 @@ contract("Voting", function(accounts) {
     // Make the Oracle support this identifier.
     await voting.addSupportedIdentifier(identifier);
 
+    // Verify view methods `hasPrice` and `getPrice` for a price was that was never requested.
+    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
+
+    // Verify view methods `hasPrice` and `getPrice` for a price scheduled for the next round.
+    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+
     await moveToNextRound(voting);
 
     const price = 123;
