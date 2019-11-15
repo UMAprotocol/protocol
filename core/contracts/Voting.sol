@@ -580,7 +580,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) {
             return RequestStatus.Active;
-        } else if (priceRequest.lastVotingRound > currentRoundId) {
+        } else {
+            // Means than priceRequest.lastVotingRound > currentRoundId
             return RequestStatus.Future;
         }
     }

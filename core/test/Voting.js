@@ -349,7 +349,7 @@ contract("Voting", function(accounts) {
       from: registeredDerivative
     })).toNumber();
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
-    // Calling request price again should be face and should return the same value.
+    // Calling request price again should be safe and should return the same value.
     const recheckedExpectedResolution = await voting.requestPrice.call(identifier, time, {
       from: registeredDerivative
     });
@@ -661,10 +661,16 @@ contract("Voting", function(accounts) {
     // Reveal the vote.
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt, { from: account4 });
+    const initialRoundId = await voting.getCurrentRoundId();
 
     // Since the GAT was not hit, the price should not resolve.
     await moveToNextRound(voting);
+    const newRoundId = await voting.getCurrentRoundId();
     assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
+
+    // Can't claim rewards if the price wasn't resolved.
+    const req = [{ identifier: identifier, time: time }];
+    assert(await didContractThrow(voting.retrieveRewards(initialRoundId, req, { from: account4 })));
 
     // With a larger vote, the GAT should be hit and the price should resolve.
     // Commit votes.
@@ -681,6 +687,10 @@ contract("Voting", function(accounts) {
       (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
       price.toString()
     );
+
+    // Must specify the right roundId when retrieving rewards.
+    assert(await didContractThrow(voting.retrieveRewards(initialRoundId, req, { from: account4 })));
+    await voting.retrieveRewards(newRoundId, req, { from: account4 });
   });
 
   it("Basic Snapshotting", async function() {
@@ -862,12 +872,18 @@ contract("Voting", function(accounts) {
 
     const roundId = await voting.getCurrentRoundId();
 
+    const req = [{ identifier: identifier, time: time1 }];
+    // Can't claim rewards for current round (even if the request will definitely be resolved).
+    assert(await didContractThrow(voting.retrieveRewards(roundId, req, { from: account1 })));
+
     // Move to the next round to begin retrieving rewards.
     await moveToNextRound(voting);
 
-    const req = [{ identifier: identifier, time: time1 }];
     await voting.retrieveRewards(roundId, req, { from: account1 });
     await voting.retrieveRewards(roundId, req, { from: account2 });
+
+    // Voters can wait until the next round to claim rewards.
+    await moveToNextRound(voting);
     await voting.retrieveRewards(roundId, req, { from: account3 });
     await voting.retrieveRewards(roundId, req, { from: account4 });
 
