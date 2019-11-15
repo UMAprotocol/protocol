@@ -40,9 +40,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         // this is the voting round where this price will be voted on, but not necessarily resolved.
         uint lastVotingRound;
 
-        // These two variables are needed to track when this price request first gets resolved, so we can emit an
-        // appropriate event. Other approaches are definitely possible here instead.
-        bool isResolved;
+        // The index in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX means that
+        // this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
         uint index;
     }
 
@@ -95,6 +94,18 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
         // Inflation rate set for this round.
         FixedPoint.Unsigned inflationRate;
+    }
+
+    // Represents the status a price request has.
+    enum RequestStatus {
+        // Was never requested.
+        NotRequested,
+        // Is being voted on in the current round.
+        Active,
+        // Was resolved in a previous round.
+        Resolved,
+        // Is scheduled to be voted on in a future round.
+        Future
     }
 
     // Maps round numbers to the rounds.
@@ -182,30 +193,18 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
-        uint priceResolutionRound = priceRequest.lastVotingRound;
-
-        VoteInstance storage voteInstance = priceRequest.voteInstances[priceResolutionRound];
-        (bool isResolved, ) = voteInstance.resultComputation.getResolvedPrice(
-            _computeGat(priceResolutionRound));
-
-        // Price has been resolved.
-        if (isResolved) {
-            return 0;
-        }
-
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-        // Being voted on this round!
-        if (priceResolutionRound != 0 && priceResolutionRound <= currentRoundId) {
-            return voteTiming.computeEstimatedRoundEndTime(currentRoundId);
-        }
 
-        // Price is already slated to be resolved in some future round.
-        if (priceResolutionRound > currentRoundId) {
-            return voteTiming.computeEstimatedRoundEndTime(priceResolutionRound);
+        RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+        if (requestStatus == RequestStatus.Active) {
+            return voteTiming.computeEstimatedRoundEndTime(currentRoundId);
+        } else if (requestStatus == RequestStatus.Resolved) {
+            return 0;
+        } else if (requestStatus == RequestStatus.Future) {
+            return voteTiming.computeEstimatedRoundEndTime(priceRequest.lastVotingRound);
         }
 
         // Price has never been requested.
-
         // Price requests always go in the next round, so add 1 to the computed current round.
         uint nextRoundId = currentRoundId.add(1);
 
@@ -213,7 +212,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
             identifier: identifier,
             time: time,
             lastVotingRound: nextRoundId,
-            isResolved: false,
             index: pendingPriceRequests.length
         });
         pendingPriceRequests.push(priceRequestId);
@@ -280,7 +278,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
         for (uint i = 0; i < pendingPriceRequests.length; i++) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
-            if (_isActive(priceRequest, currentRoundId)) {
+            if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequest(
                     { identifier: priceRequest.identifier, time: priceRequest.time });
                 numUnresolved++;
@@ -308,9 +306,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
      */
     function hasRevealedVote(bytes32 identifier, uint time) external view returns (bool) {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        // This price request was last touched in a previous round, so the caller couldn't have revealed for the current
-        // round.
-        if (voteTiming.computeCurrentRoundId(getCurrentTime()) != priceRequest.lastVotingRound) {
+        uint currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Active) {
             return false;
         }
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -335,11 +332,10 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        require(_isActive(priceRequest, currentRoundId), "haha");
+        require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active,
+                "Cannot commit on inactive request");
 
-        if (priceRequest.lastVotingRound < currentRoundId) {
-            priceRequest.lastVotingRound = currentRoundId;
-        }
+        priceRequest.lastVotingRound = currentRoundId;
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[msg.sender].commit = hash;
 
@@ -409,6 +405,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     function retrieveRewards(uint roundId, PendingRequest[] memory toRetrieve) public {
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
+        uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        require(roundId < currentRoundId);
 
         Round storage round = rounds[roundId];
         uint snapshotId = round.snapshotId;
@@ -486,44 +484,21 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         returns (bool _hasPrice, int price, string memory err)
     {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        if (priceRequest.lastVotingRound == 0) {
+        uint currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+
+        RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+        if (requestStatus == RequestStatus.Active) {
+            return (false, 0, "The current voting round has not ended");
+        } else if (requestStatus == RequestStatus.Resolved) {
+            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            (, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(priceRequest.lastVotingRound));
+            return (true, resolvedPrice, "");
+        } else if (requestStatus == RequestStatus.Future) {
+            return (false, 0, "Price will be voted on in the future");
+        } else {
             return (false, 0, "Price was never requested");
         }
-        
-        uint currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        if (priceRequest.lastVotingRound == currentRoundId) {
-            return (false, 0, "The current voting round has not ended");
-        }
-        if (priceRequest.lastVotingRound > currentRoundId) {
-            return (false, 0, "Price will be voted on in the future");
-        }
-        VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-
-        (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
-            _computeGat(priceRequest.lastVotingRound));
-        if (!isResolved) {
-            return (false, 0, "Price was not resolved this voting round. It will require another round of voting");
-        } else {
-            return (true, resolvedPrice, "");
-        }
-    }
-
-    function _isActive(PriceRequest storage priceRequest, uint currentRoundId) private view returns (bool) {
-        // Price request is for a future round -> definitely inactive.
-        if (priceRequest.lastVotingRound > currentRoundId) {
-            return false;
-        }
-
-        // Price request is for current round -> definitely active.
-        if (priceRequest.lastVotingRound == currentRoundId) {
-            return true;
-        }
-
-        // Price request is for a previous round -> active only if it hasn't been resolved.
-        VoteInstance storage lastVoteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-        (bool isResolved, ) = lastVoteInstance.resultComputation.getResolvedPrice(
-            _computeGat(priceRequest.lastVotingRound));
-        return !isResolved;
     }
 
     function _getPriceRequest(bytes32 identifier, uint time) private view returns (PriceRequest storage) {
@@ -545,15 +520,12 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     }
 
     function _resolvePriceRequest(PriceRequest storage priceRequest, VoteInstance storage voteInstance) private {
-        if (priceRequest.isResolved) {
+        if (priceRequest.index == UINT_MAX) {
             return;
         }
         (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
             _computeGat(priceRequest.lastVotingRound));
-        require(isResolved, "Can't claim reward for unresolved price request");
-
-        emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, resolvedPrice);
-        priceRequest.isResolved = isResolved;
+        require(isResolved, "Can't resolve an unresolved price request");
 
         // Delete the resolved price request from pendingPriceRequests.
         uint lastIndex = pendingPriceRequests.length - 1;
@@ -561,7 +533,9 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         lastPriceRequest.index = priceRequest.index;
         pendingPriceRequests[priceRequest.index] = pendingPriceRequests[lastIndex];
         delete pendingPriceRequests[lastIndex];
-        priceRequest.index = 0;
+
+        priceRequest.index = UINT_MAX;
+        emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, resolvedPrice);
     }
 
     function _updateRound(uint blockTime) private {
@@ -592,6 +566,25 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         return snapshottedSupply.mul(gatPercentage);
     }
 
+    function _getRequestStatus(PriceRequest storage priceRequest, uint currentRoundId)
+        private
+        view
+        returns (RequestStatus)
+    {
+        if (priceRequest.lastVotingRound == 0) {
+            return RequestStatus.NotRequested;
+        } else if (priceRequest.lastVotingRound < currentRoundId) {
+            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            (bool isResolved, ) = voteInstance.resultComputation.getResolvedPrice(
+                _computeGat(priceRequest.lastVotingRound));
+            return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
+        } else if (priceRequest.lastVotingRound == currentRoundId) {
+            return RequestStatus.Active;
+        } else if (priceRequest.lastVotingRound > currentRoundId) {
+            return RequestStatus.Future;
+        }
+    }
+
     event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
 
     event VoteRevealed(
@@ -610,6 +603,4 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     event PriceResolved(uint indexed resolutionRoundId, bytes32 indexed identifier, uint time, int price);
 
     event SupportedIdentifierAdded(bytes32 indexed identifier);
-
-    event Log(uint a, uint b);
 }
