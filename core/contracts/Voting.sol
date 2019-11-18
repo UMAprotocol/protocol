@@ -406,7 +406,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-        require(roundId < currentRoundId, "Can only retrieve rewards for completed rounds");
+        require(roundId < currentRoundId);
 
         Round storage round = rounds[roundId];
         uint snapshotId = round.snapshotId;
