@@ -110,13 +110,18 @@ contract("DesignatedVoting", function(accounts) {
     assert(await didContractThrow(designatedVoting.revealVote(identifier, time, price, salt, { from: umaAdmin })));
 
     // Check the resolved price.
+    const roundId = await voting.getCurrentRoundId();
     await moveToNextRound(voting);
     assert.equal((await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(), price);
 
     // Retrieve rewards and check that rewards accrued to the `designatedVoting` contract.
-    await designatedVoting.retrieveRewards({ from: voter });
-    assert(await didContractThrow(designatedVoting.retrieveRewards({ from: tokenOwner })));
-    assert(await didContractThrow(designatedVoting.retrieveRewards({ from: umaAdmin })));
+    await designatedVoting.retrieveRewards(roundId, [{ identifier, time }], { from: voter });
+    assert(
+      await didContractThrow(designatedVoting.retrieveRewards(roundId, [{ identifier, time }], { from: tokenOwner }))
+    );
+    assert(
+      await didContractThrow(designatedVoting.retrieveRewards(roundId, [{ identifier, time }], { from: umaAdmin }))
+    );
 
     // Expected inflation = token balance * inflation rate = 1 * 0.5
     const expectedInflation = web3.utils.toWei("0.5");
