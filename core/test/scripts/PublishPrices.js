@@ -59,6 +59,7 @@ contract("scripts/PublishPrices.js", function(accounts) {
 
     if (cmcKey && barchartStandardKey && barchartEquitiesKey && alphaVantageKey) {
       console.log("All API keys are defined in the environment. Running runExport().");
+
       assert.isTrue(await PublishPrices.runExport());
     } else {
       console.log("Not running runExport() because all required API keys are not defined in the environment.");
