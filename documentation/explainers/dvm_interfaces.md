@@ -153,8 +153,6 @@ It becomes locked in once the commit period ends.
 - There are other commit methods that allow voters to batch and/or store encrypted salts/prices on chain. Those are
 not detailed here because they are unnecessary to understand the core Voting Interface.
 
-- This method will automatically attempt to retrieve any pending rewards on the voter's behalf.
-
 ### `revealVote`
 
 Reveals a vote that the voter committed to during the commit period.
@@ -170,5 +168,15 @@ when the first voter calls `revealVote` during a voting round.
 
 ### `retrieveRewards`
 
-Retrieves any tokens that the voter has earned from voting, but hasn't yet withdrawn.
+Retrieves tokens that the voter has earned from voting, but hasn't yet withdrawn.
 
+This method takes an array of `PendingRequest` objects that a voter can claim rewards for (i.e., voted correctly and
+haven't already claimed rewards). All of those price requests must be part of the same `roundId`.
+
+A few notes:
+
+- It is not necessary to claim rewards in ascending order of round ids.
+
+- A voter can call this method multiple times with the same `roundId` as long as price requests are different.
+
+- The event `PriceResolved` is emitted on the first voter to retrieve rewards for a price request.

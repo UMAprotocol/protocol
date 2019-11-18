@@ -44,7 +44,7 @@ contract VotingInterface {
     function getCurrentRoundId() external view returns (uint);
 
     /**
-     * @notice Retrieves any rewards the voter is owed.
+     * @notice Retrieves rewards owed for a set of resolved price requests.
      */
     function retrieveRewards(uint roundId, PendingRequest[] memory) public;
 }
