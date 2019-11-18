@@ -406,7 +406,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-        require(roundId < currentRoundId);
+        require(roundId < currentRoundId, "Can only retrieve rewards for completed rounds");
 
         Round storage round = rounds[roundId];
         uint snapshotId = round.snapshotId;
@@ -427,7 +427,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
             require(priceRequest.lastVotingRound == roundId, "Only retrieve rewards for votes resolved in same round");
 
-            // TODO(ptare): Decide where we want to handle resolving price requests.
             _resolvePriceRequest(priceRequest, voteInstance);
 
             if (voteInstance.resultComputation.wasVoteCorrect(voteSubmission.revealHash)) {
