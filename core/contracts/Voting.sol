@@ -153,6 +153,25 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     // Max value of an unsigned integer.
     uint constant private UINT_MAX = ~uint(0);
 
+    event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
+
+    event VoteRevealed(
+        address indexed voter,
+        uint indexed roundId,
+        bytes32 indexed identifier,
+        uint time,
+        int price,
+        uint numTokens
+    );
+
+    event RewardsRetrieved(address indexed voter, uint indexed rewardsRoundId, uint numTokens);
+
+    event PriceRequestAdded(uint indexed votingRoundId, bytes32 indexed identifier, uint time);
+
+    event PriceResolved(uint indexed resolutionRoundId, bytes32 indexed identifier, uint time, int price);
+
+    event SupportedIdentifierAdded(bytes32 indexed identifier);
+
     /**
      * @notice Construct the Voting contract.
      * @param phaseLength length of the commit and reveal phases in seconds.
@@ -584,23 +603,4 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
             return RequestStatus.Future;
         }
     }
-
-    event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
-
-    event VoteRevealed(
-        address indexed voter,
-        uint indexed roundId,
-        bytes32 indexed identifier,
-        uint time,
-        int price,
-        uint numTokens
-    );
-
-    event RewardsRetrieved(address indexed voter, uint indexed rewardsRoundId, uint numTokens);
-
-    event PriceRequestAdded(uint indexed votingRoundId, bytes32 indexed identifier, uint time);
-
-    event PriceResolved(uint indexed resolutionRoundId, bytes32 indexed identifier, uint time, int price);
-
-    event SupportedIdentifierAdded(bytes32 indexed identifier);
 }

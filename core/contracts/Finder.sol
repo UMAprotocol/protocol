@@ -18,6 +18,8 @@ contract Finder is MultiRole {
 
     mapping(bytes32 => address) public interfacesImplemented;
 
+    event InterfaceImplementationChanged(bytes32 indexed interfaceName, address indexed newImplementationAddress);
+
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
@@ -45,6 +47,4 @@ contract Finder is MultiRole {
         implementationAddress = interfacesImplemented[interfaceName];
         require(implementationAddress != address(0x0), "No implementation for interface found");
     }
-
-    event InterfaceImplementationChanged(bytes32 indexed interfaceName, address indexed newImplementationAddress);
 }

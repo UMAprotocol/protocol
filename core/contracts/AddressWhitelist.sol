@@ -12,6 +12,9 @@ contract AddressWhitelist is Ownable {
 
     address[] private whitelistIndices;
 
+    event AddedToWhitelist(address indexed addedAddress);
+    event RemovedFromWhitelist(address indexed removedAddress);
+
     /**
      * @notice Adds an address to the whitelist.
      */
@@ -75,7 +78,4 @@ contract AddressWhitelist is Ownable {
             }
         }
     }
-
-    event AddedToWhitelist(address indexed addedAddress);
-    event RemovedFromWhitelist(address indexed removedAddress);
 }
