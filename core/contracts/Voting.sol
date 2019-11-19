@@ -148,8 +148,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         Writer
     }
 
-    bool private initialized;
-
     // Max value of an unsigned integer.
     uint constant private UINT_MAX = ~uint(0);
 
@@ -187,7 +185,12 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
-        initializeOnce(phaseLength, _gatPercentage, _inflationRate);
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+        voteTiming.init(phaseLength);
+        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+        gatPercentage = _gatPercentage;
+        inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
         finder = Finder(_finder);
     }
@@ -468,28 +471,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
             require(votingToken.mint(msg.sender, totalRewardToIssue.rawValue));
             emit RewardsRetrieved(msg.sender, roundId, totalRewardToIssue.rawValue);
         }
-    }
-
-    /*
-     * @notice Do not call this function externally.
-     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
-     * Will revert if called again.
-     */
-    function initializeOnce(
-        uint phaseLength,
-        FixedPoint.Unsigned memory _gatPercentage,
-        FixedPoint.Unsigned memory _inflationRate
-    )
-        public
-    {
-        require(!initialized, "Only the constructor should call this method");
-        initialized = true;
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
-        voteTiming.init(phaseLength);
-        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
-        gatPercentage = _gatPercentage;
-        inflationRate = _inflationRate;
     }
 
     /*
