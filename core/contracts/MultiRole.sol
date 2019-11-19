@@ -172,7 +172,7 @@ contract MultiRole {
      * initialized.
      */
     function _createSharedRole(uint roleId, uint managingRoleId, address[] memory initialMembers)
-        public
+        internal
         onlyInvalidRole(roleId)
     {
         Role storage role = roles[roleId];
@@ -190,7 +190,7 @@ contract MultiRole {
      * initialized.
      */
     function _createExclusiveRole(uint roleId, uint managingRoleId, address initialMember)
-        public
+        internal
         onlyInvalidRole(roleId)
     {
         Role storage role = roles[roleId];
