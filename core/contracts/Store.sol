@@ -31,6 +31,8 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
     // Figure out what's going wrong with coverage to necessitate this hack.
     bool private rolesInitialized;
 
+    event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
+
     constructor() public {
         initializeRolesOnce();
     }
@@ -112,7 +114,4 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         rolesInitialized = true;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
     }
-
-    event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
-
 }
