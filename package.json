@@ -8,7 +8,7 @@
     "prettier_vanilla": "prettier --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'sponsor-dapp/src/**/*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js'"
   },
   "author": "UMA Team",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/UMAprotocol/protocol.git"
@@ -23,10 +23,10 @@
     "@antora/cli": "^2.1.2",
     "@antora/site-generator-default": "^2.1.2",
     "@awaitjs/express": "^0.3.0",
-    "@deconet/truffle-ledger-provider": "0.0.5",
     "@google-cloud/kms": "^0.3.0",
     "@google-cloud/storage": "^2.4.2",
     "@sendgrid/mail": "^6.4.0",
+    "@umaprotocol/truffle-ledger-provider": "^1.0.3",
     "bignumber.js": "^8.0.1",
     "dotenv": "^6.2.0",
     "eslint": "5.16.0",
