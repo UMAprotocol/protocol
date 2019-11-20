@@ -91,9 +91,10 @@ module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // for more about customizing your Truffle configuration!
   networks: networks,
+  plugins: ["solidity-coverage"],
   compilers: {
     solc: {
-      version: "0.5.8"
+      version: "0.5.13"
     }
   }
 };

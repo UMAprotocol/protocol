@@ -30,7 +30,7 @@ library VoteTiming {
      * @dev This method should generally only be run once, but it can also be used to reset the data structure to its
      * initial values.
      */
-    function init(Data storage data, uint phaseLength) public {
+    function init(Data storage data, uint phaseLength) internal {
         data.phaseLength = phaseLength;
         data.roundId = 1;
         data.roundStartTime = 0;
