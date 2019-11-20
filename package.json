@@ -40,7 +40,7 @@
     "node-fetch": "^2.3.0",
     "openzeppelin-solidity": "2.3.0",
     "secp256k1": "^3.7.1",
-    "truffle": "^5.0.21",
+    "truffle": "^5.1.0",
     "truffle-assertions": "^0.8.2",
     "truffle-contract": "^4.0.19",
     "truffle-hdwallet-provider": "^1.0.8",
