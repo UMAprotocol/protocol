@@ -33,6 +33,8 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
     AddressWhitelist public returnCalculatorWhitelist;
     AddressWhitelist public marginCurrencyWhitelist;
 
+    event CreatedTokenizedDerivative(address contractAddress);
+
     constructor(
         address _finderAddress,
         address _returnCalculatorWhitelist,
@@ -93,6 +95,4 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         constructorParams.finderAddress = finderAddress;
         constructorParams.creationTime = getCurrentTime();
     }
-
-    event CreatedTokenizedDerivative(address contractAddress);
 }
