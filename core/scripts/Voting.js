@@ -623,7 +623,7 @@ class VotingSystem {
   }
 
   async innerRunIteration() {
-    const phase = await this.voting.getVotePhase()
+    const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
 
