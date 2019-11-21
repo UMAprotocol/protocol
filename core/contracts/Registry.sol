@@ -56,6 +56,8 @@ contract Registry is RegistryInterface, MultiRole {
     // coverage to necessitate this hack.
     bool private rolesInitialized;
 
+    event NewDerivativeRegistered(address indexed derivativeAddress, address[] parties);
+
     constructor() public {
         initializeRolesOnce();
     }
@@ -132,6 +134,4 @@ contract Registry is RegistryInterface, MultiRole {
         // Start with no derivative creators registered.
         _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
     }
-
-    event NewDerivativeRegistered(address indexed derivativeAddress, address[] parties);
 }
