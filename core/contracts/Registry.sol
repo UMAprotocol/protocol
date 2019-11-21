@@ -52,14 +52,13 @@ contract Registry is RegistryInterface, MultiRole {
     // Maps from derivative address to the set of parties that are involved in that derivative.
     mapping(address => PartiesMap) private derivativesToParties;
 
-    // TODO(ptare): Used to make doubly sure that roles are initialized only once. Figure out what's going wrong with
-    // coverage to necessitate this hack.
-    bool private rolesInitialized;
-
     event NewDerivativeRegistered(address indexed derivativeAddress, address[] parties);
 
     constructor() public {
-        initializeRolesOnce();
+        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+        // Start with no derivative creators registered.
+        _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
     }
 
     function registerDerivative(address[] calldata parties, address derivativeAddress)
@@ -119,19 +118,5 @@ contract Registry is RegistryInterface, MultiRole {
 
     function getAllRegisteredDerivatives() external view returns (RegisteredDerivative[] memory derivatives) {
         return registeredDerivatives;
-    }
-
-    /*
-     * @notice Do not call this function externally.
-     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
-     * Will revert if called again.
-     */
-    function initializeRolesOnce() public {
-        require(!rolesInitialized, "Only the constructor should call this method");
-        rolesInitialized = true;
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
-        // Start with no derivative creators registered.
-        _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
     }
 }

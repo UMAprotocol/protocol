@@ -25,11 +25,6 @@ contract("Registry", function(accounts) {
     return address1.toLowerCase() === address2.toLowerCase();
   };
 
-  it("Initialize roles", async function() {
-    // Calling public initializeRolesOnce method fails.
-    assert(await didContractThrow(registry.initializeRolesOnce()));
-  });
-
   it("Derivative creation", async function() {
     // No creators should be registered initially.
     assert.isNotTrue(await registry.holdsRole(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1));

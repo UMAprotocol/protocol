@@ -96,15 +96,16 @@ addLocalNetwork(networks, "develop");
 addLocalNetwork(networks, "test");
 
 // Coverage requires specific parameters to allow very high cost transactions.
-addLocalNetwork(networks, "coverage", { port: 8545, gas: 0xfffffffffff, gasPrice: 0x01 });
+addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
 
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // for more about customizing your Truffle configuration!
   networks: networks,
+  plugins: ["solidity-coverage"],
   compilers: {
     solc: {
-      version: "0.5.8"
+      version: "0.5.13"
     }
   }
 };

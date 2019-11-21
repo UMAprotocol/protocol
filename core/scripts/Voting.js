@@ -500,7 +500,7 @@ class VotingSystem {
       identifier: request.identifier,
       time: request.time,
       price: vote.price.toString(),
-      salt: web3.utils.hexToNumberString(vote.salt)
+      salt: web3.utils.hexToNumberString("0x" + vote.salt.toString())
     };
   }
 
