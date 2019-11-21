@@ -2,6 +2,7 @@ const HDWalletProvider = require("truffle-hdwallet-provider");
 const GckmsConfig = require("./gckms/GckmsConfig.js");
 const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
 const publicNetworks = require("./PublicNetworks.js");
+const LedgerWalletProvider = require("@umaprotocol/truffle-ledger-provider");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
@@ -41,6 +42,16 @@ function addPublicNetwork(networks, name, networkId) {
   networks[name + "_mnemonic"] = {
     ...options,
     provider: new HDWalletProvider(mnemonic, `https://${name}.infura.io/v3/${infuraApiKey}`, 0, 2)
+  };
+
+  const ledgerOptions = {
+    networkId: networkId
+  }; // default options
+
+  // Ledger wallet network
+  networks[name + "_ledger"] = {
+    ...options,
+    provider: new LedgerWalletProvider(ledgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`)
   };
 }
 
