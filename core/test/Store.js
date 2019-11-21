@@ -37,7 +37,7 @@ contract("Store", function(accounts) {
     assert.equal(fees.latePenalty.toString(), "0");
 
     // Wait 10 seconds, then check fees are correct
-    fees = await store.computeRegularFee(100, 110, pfc, {});
+    fees = await store.computeRegularFee(100, 110, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
   });
 
