@@ -25,7 +25,7 @@ contract Registry is RegistryInterface, MultiRole {
         DerivativeCreator
     }
 
-    // Array of all registeredDerivatives that are approved to use the UMA Oracle.
+    // Array A of all registeredDerivatives that are approved to use the UMA Oracle.
     RegisteredDerivative[] private registeredDerivatives;
 
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.

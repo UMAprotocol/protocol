@@ -383,6 +383,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
                 "Committed hash doesn't match revealed price and salt");
         delete voteSubmission.commit;
 
+        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
+
         // Get or create a snapshot for this round.
         uint snapshotId = _getOrCreateSnapshotId(roundId);
 
@@ -399,8 +401,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         // Remove the stored message for this price request, if it exists.
         bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
         removeMessage(msg.sender, topicHash);
-
-        emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
 
     function commitAndPersistEncryptedVote(
