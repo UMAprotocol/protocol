@@ -9,7 +9,6 @@ pragma experimental ABIEncoderV2;
 interface RegistryInterface {
     struct RegisteredDerivative {
         address derivativeAddress;
-        address derivativeCreator;
     }
 
     /**

@@ -52,7 +52,7 @@ contract Registry is RegistryInterface, MultiRole {
     // Maps from derivative address to the set of parties that are involved in that derivative.
     mapping(address => PartiesMap) private derivativesToParties;
 
-    event NewDerivativeRegistered(address indexed derivativeAddress, address[] parties);
+    event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
 
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
@@ -73,7 +73,7 @@ contract Registry is RegistryInterface, MultiRole {
         require(pointer.valid == PointerValidity.Invalid);
         pointer.valid = PointerValidity.Valid;
 
-        registeredDerivatives.push(RegisteredDerivative(derivativeAddress, msg.sender));
+        registeredDerivatives.push(RegisteredDerivative(derivativeAddress));
 
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
         pointer.index = uint128(registeredDerivatives.length.sub(1));
@@ -85,7 +85,7 @@ contract Registry is RegistryInterface, MultiRole {
         }
 
         address[] memory partiesForEvent = parties;
-        emit NewDerivativeRegistered(derivativeAddress, partiesForEvent);
+        emit NewDerivativeRegistered(derivativeAddress, msg.sender, partiesForEvent);
     }
 
     function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
