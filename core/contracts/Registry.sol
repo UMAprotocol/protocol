@@ -25,8 +25,8 @@ contract Registry is RegistryInterface, MultiRole {
         DerivativeCreator
     }
 
-    // Array of all registeredDerivatives that are approved to use the UMA Oracle.
-    RegisteredDerivative[] private registeredDerivatives;
+    // Array of all derivatives that are approved to use the UMA Oracle.
+    address[] private registeredDerivatives;
 
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.
     enum PointerValidity {
@@ -39,10 +39,10 @@ contract Registry is RegistryInterface, MultiRole {
         uint128 index;
     }
 
-    // Maps from derivative address to a pointer that refers to that RegisteredDerivative in registeredDerivatives.
+    // Maps from derivative address to a pointer that refers to that registered derivative in `registeredDerivatives`.
     mapping(address => Pointer) private derivativePointers;
 
-    // Note: this must be stored outside of the RegisteredDerivative because mappings cannot be deleted and copied
+    // Note: this must be stored outside of `registeredDerivatives` because mappings cannot be deleted and copied
     // like normal data. This could be stored in the Pointer struct, but storing it there would muddy the purpose
     // of the Pointer struct and break separation of concern between referential data and data.
     struct PartiesMap {
@@ -73,7 +73,7 @@ contract Registry is RegistryInterface, MultiRole {
         require(pointer.valid == PointerValidity.Invalid);
         pointer.valid = PointerValidity.Valid;
 
-        registeredDerivatives.push(RegisteredDerivative(derivativeAddress));
+        registeredDerivatives.push(derivativeAddress);
 
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
         pointer.index = uint128(registeredDerivatives.length.sub(1));
@@ -92,17 +92,17 @@ contract Registry is RegistryInterface, MultiRole {
         return derivativePointers[derivative].valid == PointerValidity.Valid;
     }
 
-    function getRegisteredDerivatives(address party) external view returns (RegisteredDerivative[] memory derivatives) {
+    function getRegisteredDerivatives(address party) external view returns (address[] memory derivatives) {
         // This is not ideal - we must statically allocate memory arrays. To be safe, we make a temporary array as long
         // as registeredDerivatives. We populate it with any derivatives that involve the provided party. Then, we copy
         // the array over to the return array, which is allocated using the correct size. Note: this is done by double
         // copying each value rather than storing some referential info (like indices) in memory to reduce the number
         // of storage reads. This is because storage reads are far more expensive than extra memory space (~100:1).
-        RegisteredDerivative[] memory tmpDerivativeArray = new RegisteredDerivative[](registeredDerivatives.length);
+        address[] memory tmpDerivativeArray = new address[](registeredDerivatives.length);
         uint outputIndex = 0;
         for (uint i = 0; i < registeredDerivatives.length; i = i.add(1)) {
-            RegisteredDerivative storage derivative = registeredDerivatives[i];
-            if (derivativesToParties[derivative.derivativeAddress].parties[party]) {
+            address derivative = registeredDerivatives[i];
+            if (derivativesToParties[derivative].parties[party]) {
                 // Copy selected derivative to the temporary array.
                 tmpDerivativeArray[outputIndex] = derivative;
                 outputIndex = outputIndex.add(1);
@@ -110,13 +110,13 @@ contract Registry is RegistryInterface, MultiRole {
         }
 
         // Copy the temp array to the return array that is set to the correct size.
-        derivatives = new RegisteredDerivative[](outputIndex);
+        derivatives = new address[](outputIndex);
         for (uint j = 0; j < outputIndex; j = j.add(1)) {
             derivatives[j] = tmpDerivativeArray[j];
         }
     }
 
-    function getAllRegisteredDerivatives() external view returns (RegisteredDerivative[] memory derivatives) {
+    function getAllRegisteredDerivatives() external view returns (address[] memory derivatives) {
         return registeredDerivatives;
     }
 }
