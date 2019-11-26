@@ -1,4 +1,4 @@
-const HDWalletProvider = require("truffle-hdwallet-provider");
+const HDWalletProvider = require("@truffle/hdwallet-provider");
 const kms = require("@google-cloud/kms");
 const { readFileSync } = require("fs");
 const { Storage } = require("@google-cloud/storage");
