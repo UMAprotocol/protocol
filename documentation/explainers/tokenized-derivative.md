@@ -115,7 +115,8 @@ progresses.
 when the TokenizedDerivative is deployed. If set to a nonzero value, the contract will treat this value as the initial
 value that the price feed returned.
 
-- `expiry`: Unix timestamp for when the token should expire. Setting this to 0 will cause the token to be perpetual.
+- `expiry`: Unix timestamp specifying when the token will expire. Setting this to 0 will cause the token to be
+perpetual.
 
 ### Other parameters
 
