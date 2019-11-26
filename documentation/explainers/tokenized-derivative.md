@@ -61,6 +61,8 @@ prices. Generally, there's an UMA-provided price feed contract deployed along wi
 prices for all DVM-approved identifiers. A user might want to deploy their own Price Feed contract if they'd like to
 inject custom prices for their token.
 
+- `marginCurrency`: The address of the ERC20 currency used to collateralize the token. `0x0` is used to represent ETH.
+
 ### Numerical Parameters
 
 All of these numerical parameters are decimal numbers using a fixed point representation with 18 decimal places.
@@ -96,4 +98,36 @@ to pay the token holders in the case of a liquidation. For example, if the colla
 `defaultPenalty` was 0.5, the token holders would be awarded 10% of the token price as a penalty in the case of a
 liquidation.
 
-- `supportedMove` 
+- `disputeDeposit`: the percentage of the required margin (or collateralization ratio - 1) that is posted by the token
+sponsor if they wish to initiate a price dispute over the price that the price feed reported. If the price feed is
+deemed correct by the DVM, then this deposit is paid to token holders.
+
+- `fixedYearlyFee`: the percentage of the token value that is taken as a fee each year and paid to the token sponsor.
+Must be set to 0 if `returnType` is set to Linear.
+
+- `withdrawLimit`: the percentage of the token value that the sponsor can withdraw every 24 hours. Note: the 24 hour
+window is non-rolling, meaning the allocation is set at the first withdrawal of the period and drawn down as the period
+progresses.
+
+- `startingTokenPrice`: the initial price for a token.
+
+- `startingUnderlyingPrice`: If set to 0, the underlying price will be set to the price that the price feed returns
+when the TokenizedDerivative is deployed. If set to a nonzero value, the contract will treat this value as the initial
+value that the price feed returned.
+
+- `expiry`: Unix timestamp for when the token should expire. Setting this to 0 will cause the token to be perpetual.
+
+### Other parameters
+
+- `product`: Represents the underlying asset that the token price is based on. This `bytes32` value is used to identify
+this asset when communicating with the DVM and price contracts.
+
+- `returnType`: This can either be `Linear` (represented by 0) or `Compound` (represented by 1). Linear means that
+returns are always computed using the initial underlying price as a base. Compound means that returns are computed
+using the most recent underlying price as a base. Note: this distinction only impacts the token price if the leverage
+is not 1.
+
+## Interacting with a Tokenized Derivative
+
+Please see the [Tokenized Derivative Documentation](https://docs.umaproject.org/uma/contracts/TokenizedDerivative.html)
+for an explanation of its API.
