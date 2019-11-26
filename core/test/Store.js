@@ -32,12 +32,12 @@ contract("Store", function(accounts) {
     let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
     // Wait one second, then check fees are correct
-    let fees = await store.computeRegularFee(100, 101, pfc, {});
+    let fees = await store.computeRegularFee(100, 101, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.2", "ether"));
     assert.equal(fees.latePenalty.toString(), "0");
 
     // Wait 10 seconds, then check fees are correct
-    fees = await store.computeRegularFee(100, 110, pfc, {});
+    fees = await store.computeRegularFee(100, 110, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
   });
 
@@ -49,10 +49,10 @@ contract("Store", function(accounts) {
     let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
     // Run time tests again
-    let fees = await store.computeRegularFee(100, 101, pfc, {});
+    let fees = await store.computeRegularFee(100, 101, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.4", "ether"));
 
-    fees = await store.computeRegularFee(100, 110, pfc, {});
+    fees = await store.computeRegularFee(100, 110, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("4", "ether"));
   });
 

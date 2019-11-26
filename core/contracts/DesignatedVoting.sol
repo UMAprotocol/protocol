@@ -23,14 +23,16 @@ contract DesignatedVoting is MultiRole, Withdrawable {
         Voter
     }
 
-    bool private initialized;
-
     // Reference to the UMA Finder contract, allowing Voting upgrades to be performed without requiring any calls to
     // this contract.
     Finder private finder;
 
     constructor(address finderAddress) public {
-        initializeOnce(finderAddress);
+        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), msg.sender);
+        setWithdrawRole(uint(Roles.Owner));
+
+        finder = Finder(finderAddress);
     }
 
     /**
@@ -55,21 +57,6 @@ contract DesignatedVoting is MultiRole, Withdrawable {
         onlyRoleHolder(uint(Roles.Voter))
     {
         _getVotingAddress().retrieveRewards(roundId, toRetrieve);
-    }
-
-    /*
-     * @notice Do not call this function externally.
-     * @dev Only called from the constructor, and only extracted to a separate method to make the coverage tool work.
-     * Will revert if called again.
-     */
-    function initializeOnce(address finderAddress) public {
-        require(!initialized, "Only the constructor should call this method");
-        initialized = true;
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), msg.sender);
-        setWithdrawRole(uint(Roles.Owner));
-
-        finder = Finder(finderAddress);
     }
 
     function _getVotingAddress() private view returns (Voting) {

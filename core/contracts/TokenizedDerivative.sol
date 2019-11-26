@@ -173,6 +173,29 @@ library TokenizedDerivativeUtils {
     uint private constant UINT_FP_SCALING_FACTOR = 10**18;
     int private constant INT_FP_SCALING_FACTOR = 10**18;
 
+    // Note that we can't have the symbol parameter be `indexed` due to:
+    // TypeError: Indexed reference types cannot yet be used with ABIEncoderV2.
+    // An event emitted when the NAV of the contract changes.
+    event NavUpdated(string symbol, int newNav, int newTokenPrice);
+    // An event emitted when the contract enters the Default state on a remargin.
+    event Default(string symbol, uint defaultTime, int defaultNav);
+    // An event emitted when the contract settles.
+    event Settled(string symbol, uint settleTime, int finalNav);
+    // An event emitted when the contract expires.
+    event Expired(string symbol, uint expiryTime);
+    // An event emitted when the contract's NAV is disputed by the sponsor.
+    event Disputed(string symbol, uint timeDisputed, int navDisputed);
+    // An event emitted when the contract enters emergency shutdown.
+    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
+    // An event emitted when tokens are created.
+    event TokensCreated(string symbol, uint numTokensCreated);
+    // An event emitted when tokens are redeemed.
+    event TokensRedeemed(string symbol, uint numTokensRedeemed);
+    // An event emitted when margin currency is deposited.
+    event Deposited(string symbol, uint amount);
+    // An event emitted when margin currency is withdrawn.
+    event Withdrawal(string symbol, uint amount);
+
     modifier onlySponsor(TDS.Storage storage s) {
         require(msg.sender == s.externalAddresses.sponsor);
         _;
@@ -1107,29 +1130,6 @@ library TokenizedDerivativeUtils {
         require(value >= 0);
         return uint(value);
     }
-
-    // Note that we can't have the symbol parameter be `indexed` due to:
-    // TypeError: Indexed reference types cannot yet be used with ABIEncoderV2.
-    // An event emitted when the NAV of the contract changes.
-    event NavUpdated(string symbol, int newNav, int newTokenPrice);
-    // An event emitted when the contract enters the Default state on a remargin.
-    event Default(string symbol, uint defaultTime, int defaultNav);
-    // An event emitted when the contract settles.
-    event Settled(string symbol, uint settleTime, int finalNav);
-    // An event emitted when the contract expires.
-    event Expired(string symbol, uint expiryTime);
-    // An event emitted when the contract's NAV is disputed by the sponsor.
-    event Disputed(string symbol, uint timeDisputed, int navDisputed);
-    // An event emitted when the contract enters emergency shutdown.
-    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
-    // An event emitted when tokens are created.
-    event TokensCreated(string symbol, uint numTokensCreated);
-    // An event emitted when tokens are redeemed.
-    event TokensRedeemed(string symbol, uint numTokensRedeemed);
-    // An event emitted when margin currency is deposited.
-    event Deposited(string symbol, uint amount);
-    // An event emitted when margin currency is withdrawn.
-    event Withdrawal(string symbol, uint amount);
 }
 
 
@@ -1145,6 +1145,19 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     TDS.Storage public derivativeStorage;
+
+    // These events are actually emitted by TokenizedDerivativeUtils, but we unfortunately have to define the events
+    // here as well.
+    event NavUpdated(string symbol, int newNav, int newTokenPrice);
+    event Default(string symbol, uint defaultTime, int defaultNav);
+    event Settled(string symbol, uint settleTime, int finalNav);
+    event Expired(string symbol, uint expiryTime);
+    event Disputed(string symbol, uint timeDisputed, int navDisputed);
+    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
+    event TokensCreated(string symbol, uint numTokensCreated);
+    event TokensRedeemed(string symbol, uint numTokensRedeemed);
+    event Deposited(string symbol, uint amount);
+    event Withdrawal(string symbol, uint amount);
 
     constructor(
         TokenizedDerivativeParams.ConstructorParams memory params,
@@ -1334,17 +1347,4 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     function getUpdatedUnderlyingPrice() external view returns (int underlyingPrice, uint time) {
         return derivativeStorage._getUpdatedUnderlyingPrice();
     }
-
-    // These events are actually emitted by TokenizedDerivativeUtils, but we unfortunately have to define the events
-    // here as well.
-    event NavUpdated(string symbol, int newNav, int newTokenPrice);
-    event Default(string symbol, uint defaultTime, int defaultNav);
-    event Settled(string symbol, uint settleTime, int finalNav);
-    event Expired(string symbol, uint expiryTime);
-    event Disputed(string symbol, uint timeDisputed, int navDisputed);
-    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
-    event TokensCreated(string symbol, uint numTokensCreated);
-    event TokensRedeemed(string symbol, uint numTokensRedeemed);
-    event Deposited(string symbol, uint amount);
-    event Withdrawal(string symbol, uint amount);
 }

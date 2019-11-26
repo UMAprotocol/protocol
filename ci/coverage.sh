@@ -8,6 +8,4 @@ PROTOCOL_DIR=$(pwd)
 
 # $1 is the truffle directory over which we want to run the coverage tool.
 cd $TRUFFLE_DIR
-cp -R $PROTOCOL_DIR/common ./
-cp -R $PROTOCOL_DIR/node_modules ./
-$(npm bin)/solidity-coverage
+$(npm bin)/truffle run coverage --network coverage

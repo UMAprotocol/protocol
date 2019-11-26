@@ -60,13 +60,6 @@ contract("Voting", function(accounts) {
         Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, votingToken.address, finder.address, true)
       )
     );
-
-    // Make sure initializeOnce() can only be called once.
-    assert(
-      await didContractThrow(
-        voting.initializeOnce(5, { rawValue: web3.utils.toWei("0.5") }, { rawValue: web3.utils.toWei("1") })
-      )
-    );
   });
 
   it("Vote phasing", async function() {
