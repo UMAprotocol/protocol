@@ -13,7 +13,7 @@ If you'd like to take a look at the code for this contract, it's located
 
 All Tokenized Derivative deployments must be sent through the
 [Tokenized Derivative Creator contract](https://github.com/UMAprotocol/protocol/blob/master/core/contracts/TokenizedDerivativeCreator.sol).
-This creator contract is responsible for constructing the a user's Tokenized Derivative. In other words, the Tokenized
+This creator contract is responsible for constructing the user's Tokenized Derivative. In other words, the Tokenized
 Derivative Creator is just a Tokenized Derivative factory. To understand why this factory pattern is necessary, please
 see the [architecture explainer](./architecture.md).
 
