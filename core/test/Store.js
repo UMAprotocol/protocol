@@ -1,8 +1,8 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 
-const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
+const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleAssert = require("truffle-assertions");
-const truffleContract = require("truffle-contract");
+const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 const Store = artifacts.require("Store");
