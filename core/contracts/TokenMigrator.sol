@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "./ExpandedIERC20.sol";
 import "./FixedPoint.sol";
-import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
+import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
 
 
 /**

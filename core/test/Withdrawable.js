@@ -3,8 +3,8 @@ const { didContractThrow } = require("../../common/SolidityTestUtils.js");
 const WithdrawableTest = artifacts.require("WithdrawableTest");
 
 // Pull in contracts from dependencies.
-const ERC20MintableData = require("openzeppelin-solidity/build/contracts/ERC20Mintable.json");
-const truffleContract = require("truffle-contract");
+const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
+const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 

@@ -1,4 +1,4 @@
-const HDWalletProvider = require("truffle-hdwallet-provider");
+const HDWalletProvider = require("@truffle/hdwallet-provider");
 const GckmsConfig = require("./gckms/GckmsConfig.js");
 const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
 const publicNetworks = require("./PublicNetworks.js");

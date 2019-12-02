@@ -14,7 +14,7 @@ import "./VoteTiming.sol";
 import "./VotingToken.sol";
 import "./VotingInterface.sol";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 
 /**
