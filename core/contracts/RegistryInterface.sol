@@ -7,11 +7,6 @@ pragma experimental ABIEncoderV2;
  * @title Interface for a registry of derivatives and derivative creators.
  */
 interface RegistryInterface {
-    struct RegisteredDerivative {
-        address derivativeAddress;
-        address derivativeCreator;
-    }
-
     /**
      * @dev Registers a new derivative. Only authorized derivative creators can call this method.
      */
@@ -26,10 +21,10 @@ interface RegistryInterface {
     /**
      * @dev Returns a list of all derivatives that are associated with a particular party.
      */
-    function getRegisteredDerivatives(address party) external view returns (RegisteredDerivative[] memory derivatives);
+    function getRegisteredDerivatives(address party) external view returns (address[] memory derivatives);
 
     /**
      * @dev Returns all registered derivatives.
      */
-    function getAllRegisteredDerivatives() external view returns (RegisteredDerivative[] memory derivatives);
+    function getAllRegisteredDerivatives() external view returns (address[] memory derivatives);
 }

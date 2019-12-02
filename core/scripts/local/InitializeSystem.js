@@ -94,7 +94,7 @@ const initializeSystem = async function(callback) {
     await tokenizedDerivativeCreator.createTokenizedDerivative(defaultConstructorParams, { from: sponsor });
 
     const derivatives = await deployedRegistry.getRegisteredDerivatives(sponsor);
-    console.log("Registered derivative at: " + derivatives[0].derivativeAddress);
+    console.log("Registered derivative at: " + derivatives[0]);
 
     console.log("INITIALIZED!");
   } catch (e) {

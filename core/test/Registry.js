@@ -58,7 +58,10 @@ contract("Registry", function(accounts) {
 
     // Make sure a NewDerivativeRegistered event is emitted.
     truffleAssert.eventEmitted(result, "NewDerivativeRegistered", ev => {
-      return web3.utils.toChecksumAddress(ev.derivativeAddress) === web3.utils.toChecksumAddress(arbitraryContract);
+      return (
+        web3.utils.toChecksumAddress(ev.derivativeAddress) === web3.utils.toChecksumAddress(arbitraryContract) &&
+        web3.utils.toChecksumAddress(ev.creator) === web3.utils.toChecksumAddress(creator1)
+      );
     });
 
     // Remove the derivative creator.
@@ -104,29 +107,22 @@ contract("Registry", function(accounts) {
     // Query that derivative by party and ensure all parties see their correct derivatives.
     const party1Derivatives = await registry.getRegisteredDerivatives(party1);
     assert.equal(party1Derivatives.length, 1);
-    assert.isTrue(areAddressesEqual(party1Derivatives[0].derivativeAddress, derivative1));
-    assert.isTrue(areAddressesEqual(party1Derivatives[0].derivativeCreator, creator1));
+    assert.isTrue(areAddressesEqual(party1Derivatives[0], derivative1));
 
     const party2Derivatives = await registry.getRegisteredDerivatives(party2);
     assert.equal(party2Derivatives.length, 2);
-    assert.isTrue(areAddressesEqual(party2Derivatives[0].derivativeAddress, derivative1));
-    assert.isTrue(areAddressesEqual(party2Derivatives[0].derivativeCreator, creator1));
-    assert.isTrue(areAddressesEqual(party2Derivatives[1].derivativeAddress, derivative2));
-    assert.isTrue(areAddressesEqual(party2Derivatives[1].derivativeCreator, creator2));
+    assert.isTrue(areAddressesEqual(party2Derivatives[0], derivative1));
+    assert.isTrue(areAddressesEqual(party2Derivatives[1], derivative2));
 
     const party3Derivatives = await registry.getRegisteredDerivatives(party3);
     assert.equal(party3Derivatives.length, 1);
-    assert.isTrue(areAddressesEqual(party3Derivatives[0].derivativeAddress, derivative2));
-    assert.isTrue(areAddressesEqual(party3Derivatives[0].derivativeCreator, creator2));
+    assert.isTrue(areAddressesEqual(party3Derivatives[0], derivative2));
 
     const allDerivatives = await registry.getAllRegisteredDerivatives();
     assert.equal(allDerivatives.length, 3);
-    assert.isTrue(areAddressesEqual(allDerivatives[0].derivativeAddress, derivative1));
-    assert.isTrue(areAddressesEqual(allDerivatives[0].derivativeCreator, creator1));
-    assert.isTrue(areAddressesEqual(allDerivatives[1].derivativeAddress, derivative2));
-    assert.isTrue(areAddressesEqual(allDerivatives[1].derivativeCreator, creator2));
-    assert.isTrue(areAddressesEqual(allDerivatives[2].derivativeAddress, derivative3));
-    assert.isTrue(areAddressesEqual(allDerivatives[2].derivativeCreator, creator1));
+    assert.isTrue(areAddressesEqual(allDerivatives[0], derivative1));
+    assert.isTrue(areAddressesEqual(allDerivatives[1], derivative2));
+    assert.isTrue(areAddressesEqual(allDerivatives[2], derivative3));
   });
 
   it("Double-register derivative", async function() {
