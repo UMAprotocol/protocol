@@ -187,7 +187,7 @@ contract("TokenizedDerivative", function(accounts) {
       await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: sponsor });
 
       const derivativeArray = await deployedRegistry.getRegisteredDerivatives(sponsor);
-      const derivativeAddress = derivativeArray[derivativeArray.length - 1].derivativeAddress;
+      const derivativeAddress = derivativeArray[derivativeArray.length - 1];
       derivativeContract = await TokenizedDerivative.at(derivativeAddress);
 
       const feesPerSecond = web3.utils.toBN(
