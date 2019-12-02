@@ -35,12 +35,11 @@ function usePositionList() {
       let finished = true;
 
       for (const registeredContract of registeredContractsResolved) {
-        const contractAddress = registeredContract.derivativeAddress;
-        if (!drizzleState.contracts[contractAddress]) {
+        if (!drizzleState.contracts[registeredContract]) {
           finished = false;
           drizzle.addContract({
-            contractName: contractAddress,
-            web3Contract: new drizzle.web3.eth.Contract(TokenizedDerivative.abi, contractAddress)
+            contractName: registeredContract,
+            web3Contract: new drizzle.web3.eth.Contract(TokenizedDerivative.abi, registeredContract)
           });
         }
       }
@@ -81,25 +80,24 @@ function usePositionList() {
         valInWei ? formatWithMaxDecimals(formatWei(valInWei, web3), 4, false) : "-999999999";
 
       const positions = registeredContractsResolved.map(registeredContract => {
-        const contractAddress = registeredContract.derivativeAddress;
-        const name = call(contractAddress, "name");
-        const totalSupply = formatTokenAmounts(call(contractAddress, "totalSupply"));
-        const yourSupply = formatTokenAmounts(call(contractAddress, "balanceOf", accountResolved));
+        const name = call(registeredContract, "name");
+        const totalSupply = formatTokenAmounts(call(registeredContract, "totalSupply"));
+        const yourSupply = formatTokenAmounts(call(registeredContract, "balanceOf", accountResolved));
         const netPosition = BigNumber(yourSupply)
           .minus(BigNumber(totalSupply))
           .toString();
 
         // These are needed to compute the liquidation price.
-        const nav = revertWrapper(call(contractAddress, "calcNAV"));
-        const excessMargin = revertWrapper(call(contractAddress, "calcExcessMargin"));
-        const underlyingPriceTime = revertWrapper(call(contractAddress, "getUpdatedUnderlyingPrice"));
+        const nav = revertWrapper(call(registeredContract, "calcNAV"));
+        const excessMargin = revertWrapper(call(registeredContract, "calcExcessMargin"));
+        const underlyingPriceTime = revertWrapper(call(registeredContract, "getUpdatedUnderlyingPrice"));
         const liquidationPrice = computeLiquidationPrice(web3, nav, excessMargin, underlyingPriceTime);
-        const derivativeStorage = call(contractAddress, "derivativeStorage");
+        const derivativeStorage = call(registeredContract, "derivativeStorage");
 
         return {
           address: {
-            display: contractAddress,
-            link: `${etherscanPrefix}/address/${contractAddress}`
+            display: registeredContract,
+            link: `${etherscanPrefix}/address/${registeredContract}`
           },
           tokenName: name,
           liquidationPrice: liquidationPrice ? format(liquidationPrice) : "--",
