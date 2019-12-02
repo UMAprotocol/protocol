@@ -71,7 +71,7 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
 
     // Retrieve the derivative we just created
     const derivatives = await registry.getRegisteredDerivatives(sponsor);
-    const derivativeAddress = derivatives[derivatives.length - 1].derivativeAddress;
+    const derivativeAddress = derivatives[derivatives.length - 1];
     derivativeContract = await TokenizedDerivative.at(derivativeAddress);
   });
 
