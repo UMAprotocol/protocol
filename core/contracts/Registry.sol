@@ -3,7 +3,7 @@ pragma solidity ^0.5.0;
 import "./MultiRole.sol";
 import "./RegistryInterface.sol";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 pragma experimental ABIEncoderV2;
 

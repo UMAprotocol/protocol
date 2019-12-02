@@ -2,7 +2,7 @@ pragma solidity ^0.5.0;
 
 import "./ReturnCalculatorInterface.sol";
 import "./Withdrawable.sol";
-import "openzeppelin-solidity/contracts/drafts/SignedSafeMath.sol";
+import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
 
 
 /**

@@ -3,7 +3,7 @@ pragma solidity ^0.5.0;
 import "./MultiRole.sol";
 import "./ExpandedIERC20.sol";
 
-import "openzeppelin-solidity/contracts/drafts/ERC20Snapshot.sol";
+import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
 
 
 /**
