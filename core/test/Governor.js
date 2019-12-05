@@ -29,7 +29,7 @@ contract("Governor", function(accounts) {
 
   const constructTransferTransaction = (destination, amount) => {
     return testToken.contract.methods.transfer(destination, amount).encodeABI();
-  }
+  };
 
   before(async function() {
     voting = await Voting.deployed();
@@ -68,7 +68,7 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
 
-    // Check that the proposal shows up and that the identifier is constructed correctly. 
+    // Check that the proposal shows up and that the identifier is constructed correctly.
     assert.equal(pendingRequests.length, 1);
     const request = pendingRequests[0];
     assert.equal(web3.utils.hexToUtf8(request.identifier), `Admin ${id}`);
@@ -120,19 +120,11 @@ contract("Governor", function(accounts) {
     assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
   });
 
-  it("Unsuccessful proposal", async function() {
+  it("Unsuccessful proposal", async function() {});
 
-  });
+  it("Unresolved vote", async function() {});
 
-  it("Unresolved vote", async function() {
+  it("Failed transaction", async function() {});
 
-  });
-
-  it("Failed transaction", async function() {
-
-  });
-
-  it("Events", async function() {
-
-  });
+  it("Events", async function() {});
 });

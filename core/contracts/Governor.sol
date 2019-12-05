@@ -104,8 +104,10 @@ contract Governor is MultiRole, Testable {
         private
         returns (bool success)
     {
-        // Mostly copied from: 
+        // Mostly copied from:
+        // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)
@@ -119,9 +121,8 @@ contract Governor is MultiRole, Testable {
 
     function _uintToBytes(uint v) private pure returns (bytes32 ret) {
         if (v == 0) {
-            ret = '0';
-        }
-        else {
+            ret = "0";
+        } else {
             while (v > 0) {
                 ret = bytes32(uint(ret) / (2 ** 8));
                 ret |= bytes32(((v % 10) + 48) * 2 ** (8 * 31));
