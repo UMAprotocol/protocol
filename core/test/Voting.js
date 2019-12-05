@@ -665,7 +665,7 @@ contract("Voting", function(accounts) {
 
     // Can't claim rewards if the price wasn't resolved.
     const req = [{ identifier: identifier, time: time }];
-    assert(await didContractThrow(voting.retrieveRewards(initialRoundId, req, { from: account4 })));
+    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
 
     // With a larger vote, the GAT should be hit and the price should resolve.
     // Commit votes.
@@ -684,8 +684,8 @@ contract("Voting", function(accounts) {
     );
 
     // Must specify the right roundId when retrieving rewards.
-    assert(await didContractThrow(voting.retrieveRewards(initialRoundId, req, { from: account4 })));
-    await voting.retrieveRewards(newRoundId, req, { from: account4 });
+    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
+    await voting.retrieveRewards(account4, newRoundId, req);
   });
 
   it("Basic Snapshotting", async function() {
@@ -869,18 +869,18 @@ contract("Voting", function(accounts) {
 
     const req = [{ identifier: identifier, time: time1 }];
     // Can't claim rewards for current round (even if the request will definitely be resolved).
-    assert(await didContractThrow(voting.retrieveRewards(roundId, req, { from: account1 })));
+    assert(await didContractThrow(voting.retrieveRewards(account1, roundId, req)));
 
     // Move to the next round to begin retrieving rewards.
     await moveToNextRound(voting);
 
-    await voting.retrieveRewards(roundId, req, { from: account1 });
-    await voting.retrieveRewards(roundId, req, { from: account2 });
+    await voting.retrieveRewards(account1, roundId, req);
+    await voting.retrieveRewards(account2, roundId, req);
 
     // Voters can wait until the next round to claim rewards.
     await moveToNextRound(voting);
-    await voting.retrieveRewards(roundId, req, { from: account3 });
-    await voting.retrieveRewards(roundId, req, { from: account4 });
+    await voting.retrieveRewards(account3, roundId, req);
+    await voting.retrieveRewards(account4, roundId, req);
 
     // account1 is not rewarded because account1 was wrong.
     assert.equal((await votingToken.balanceOf(account1)).toString(), initialAccount1Balance.toString());
@@ -981,7 +981,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
 
     // When the round updates, the price request should be resolved.
-    result = await voting.retrieveRewards(roundId, [{ identifier, time }], { from: account1 });
+    result = await voting.retrieveRewards(account1, roundId, [{ identifier, time }]);
     truffleAssert.eventEmitted(result, "PriceResolved", ev => {
       return (
         ev.resolutionRoundId.toString() == currentRoundId.toString() &&
@@ -1000,7 +1000,7 @@ contract("Voting", function(accounts) {
     });
 
     // Events only get emitted if there were actually rewards issued. Is this the behavior we want?
-    result = await voting.retrieveRewards(roundId, [{ identifier, time }], { from: account4 });
+    result = await voting.retrieveRewards(account4, roundId, [{ identifier, time }]);
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
   });
 

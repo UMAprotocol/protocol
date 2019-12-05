@@ -424,16 +424,15 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         inflationRate = _inflationRate;
     }
 
-    function retrieveRewards(uint roundId, PendingRequest[] memory toRetrieve) public {
+    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve) public {
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
-        uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-        require(roundId < currentRoundId);
+        require(roundId < voteTiming.computeCurrentRoundId(blockTime));
 
         Round storage round = rounds[roundId];
         uint snapshotId = round.snapshotId;
         FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
-            votingToken.balanceOfAt(msg.sender, snapshotId));
+            votingToken.balanceOfAt(voterAddress, snapshotId));
 
         // Compute the total amount of reward that will be issued for each of the votes in the round.
         FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
@@ -445,7 +444,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         for (uint i = 0; i < toRetrieve.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time);
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+            VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voterAddress];
 
             require(priceRequest.lastVotingRound == roundId, "Only retrieve rewards for votes resolved in same round");
 
@@ -468,8 +467,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
-            require(votingToken.mint(msg.sender, totalRewardToIssue.rawValue));
-            emit RewardsRetrieved(msg.sender, roundId, totalRewardToIssue.rawValue);
+            require(votingToken.mint(voterAddress, totalRewardToIssue.rawValue));
+            emit RewardsRetrieved(voterAddress, roundId, totalRewardToIssue.rawValue);
         }
     }
 

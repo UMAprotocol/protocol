@@ -46,5 +46,5 @@ contract VotingInterface {
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
      */
-    function retrieveRewards(uint roundId, PendingRequest[] memory) public;
+    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory) public;
 }
