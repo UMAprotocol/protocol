@@ -139,6 +139,10 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     // Reference to the Finder.
     Finder private finder;
 
+    // If non-zero, this contract has been migrated to this address. All voters and financial contracts should query the
+    // new address only.
+    address private migratedAddress;
+
     enum Roles {
         // Can set the writer.
         Governance,
@@ -196,8 +200,12 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     }
 
     modifier onlyRegisteredDerivative() {
-        Registry registry = Registry(finder.getImplementationAddress("Registry"));
-        require(registry.isDerivativeRegistered(msg.sender), "Must be registered derivative");
+        if (migratedAddress != address(0)) {
+            require(msg.sender == migratedAddress, "Only migrated Voting can invoke methods");
+        } else {
+            Registry registry = Registry(finder.getImplementationAddress("Registry"));
+            require(registry.isDerivativeRegistered(msg.sender), "Must be registered derivative");
+        }
         _;
     }
 
@@ -261,6 +269,10 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         for (uint i = 0; i < reveals.length; i++) {
             revealVote(reveals[i].identifier, reveals[i].time, reveals[i].price, reveals[i].salt);
         }
+    }
+
+    function setMigrated(address newVotingAddress) external onlyRoleHolder(uint(Roles.Writer)) {
+        migratedAddress = newVotingAddress;
     }
 
     /**
@@ -424,22 +436,24 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         inflationRate = _inflationRate;
     }
 
-    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve) public {
+    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
+        public
+        returns (FixedPoint.Unsigned memory totalRewardToIssue)
+    {
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
         require(roundId < voteTiming.computeCurrentRoundId(blockTime));
 
         Round storage round = rounds[roundId];
-        uint snapshotId = round.snapshotId;
         FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
-            votingToken.balanceOfAt(voterAddress, snapshotId));
+            votingToken.balanceOfAt(voterAddress, round.snapshotId));
 
         // Compute the total amount of reward that will be issued for each of the votes in the round.
-        FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
+        FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(round.snapshotId));
         FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
 
         // Keep track of the voter's accumulated token reward.
-        FixedPoint.Unsigned memory totalRewardToIssue = FixedPoint.Unsigned(0);
+        totalRewardToIssue = FixedPoint.Unsigned(0);
 
         for (uint i = 0; i < toRetrieve.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time);

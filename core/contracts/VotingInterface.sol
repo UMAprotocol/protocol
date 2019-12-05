@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "./FixedPoint.sol";
 import "./VoteTiming.sol";
 
 
@@ -46,5 +47,6 @@ contract VotingInterface {
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
      */
-    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory) public;
+    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory) public returns
+    (FixedPoint.Unsigned memory);
 }
