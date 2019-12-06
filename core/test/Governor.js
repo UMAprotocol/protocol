@@ -59,29 +59,38 @@ contract("Governor", function(accounts) {
     const txnData = constructTransferTransaction(account1, "0");
 
     // The id is the number of proposals before sending.
-    const id = await governor.numProposals();
+    const id1 = await governor.numProposals();
 
     // Send the proposal.
     await governor.propose(testToken.address, 0, txnData, { from: account1 });
 
-    // The proposal should show up in the pending requests in the *next* round.
+    // Send a second proposal.
+    const id2 = await governor.numProposals();
+    await governor.propose(testToken.address, 0, txnData, { from: account1 });
+
+    // The proposals should show up in the pending requests in the *next* round.
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
 
-    // Check that the proposal shows up and that the identifier is constructed correctly.
-    assert.equal(pendingRequests.length, 1);
-    const request = pendingRequests[0];
-    assert.equal(web3.utils.hexToUtf8(request.identifier), `Admin ${id}`);
+    // Check that the proposals shows up and that the identifiers are constructed correctly.
+    //assert.equal(pendingRequests.length, 2);
+    const request1 = pendingRequests[0];
+    const request2 = pendingRequests[1];
+    assert.equal(web3.utils.hexToUtf8(request1.identifier), `Admin ${id1}`);
+    assert.equal(web3.utils.hexToUtf8(request2.identifier), `Admin ${id2}`);
 
-    // Execute the proposal to clean up.
+    // Execute the proposals to clean up.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(vote, salt);
-    await voting.commitVote(request.identifier, request.time, hash);
+    await voting.commitVote(request1.identifier, request1.time, hash);
+    await voting.commitVote(request2.identifier, request2.time, hash);
     await moveToNextPhase(voting);
-    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await voting.revealVote(request1.identifier, request1.time, vote, salt);
+    await voting.revealVote(request2.identifier, request2.time, vote, salt);
     await moveToNextRound(voting);
-    await governor.executeProposal(id);
+    await governor.executeProposal(id1);
+    await governor.executeProposal(id2);
   });
 
   it("Successful transaction", async function() {
@@ -119,6 +128,8 @@ contract("Governor", function(accounts) {
     await governor.executeProposal(id);
     assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
   });
+
+  it("No repeated executions", async function() {});
 
   it("Unsuccessful proposal", async function() {});
 

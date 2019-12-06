@@ -125,14 +125,14 @@ contract Governor is MultiRole, Testable {
         return Voting(finder.getImplementationAddress("Oracle"));
     }
 
-    // This method is pulled from here: https://ethereum.stackexchange.com/a/6613/47801.
+    // This method is based off of this code: https://ethereum.stackexchange.com/a/6613/47801.
     function _uintToBytes(uint v) private pure returns (bytes32 ret) {
         if (v == 0) {
             ret = "0";
         } else {
             while (v > 0) {
-                ret = bytes32(uint(ret) / (2 ** 8));
-                ret |= bytes32(((v % 10) + 48) * 2 ** (8 * 31));
+                ret = ret >> 8;
+                ret |= bytes32((v % 10) + 48) << (31 * 8);
                 v /= 10;
             }
         }
@@ -140,7 +140,7 @@ contract Governor is MultiRole, Testable {
     }
 
     function _addPrefix(bytes32 input, bytes32 prefix, uint prefixLength) private pure returns (bytes32 output) {
-        bytes32 shiftedInput = bytes32(uint(input) / (2 ** (8 * prefixLength)));
+        bytes32 shiftedInput = input >> (prefixLength * 8);
         return shiftedInput | prefix;
     }
 }
