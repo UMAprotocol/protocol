@@ -271,6 +271,9 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         }
     }
 
+    /**
+     * @notice Disables this Voting contract in favor of the migrated one.
+     */
     function setMigrated(address newVotingAddress) external onlyRoleHolder(uint(Roles.Writer)) {
         migratedAddress = newVotingAddress;
     }
@@ -440,6 +443,9 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         public
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
+        if (migratedAddress != address(0)) {
+            require(msg.sender == migratedAddress, "Only migrated Voting can invoke methods");
+        }
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
         require(roundId < voteTiming.computeCurrentRoundId(blockTime));
@@ -449,7 +455,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
             votingToken.balanceOfAt(voterAddress, round.snapshotId));
 
         // Compute the total amount of reward that will be issued for each of the votes in the round.
-        FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(round.snapshotId));
+        FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(
+            votingToken.totalSupplyAt(round.snapshotId));
         FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
 
         // Keep track of the voter's accumulated token reward.
