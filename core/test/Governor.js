@@ -1,9 +1,6 @@
 const { didContractThrow } = require("../../common/SolidityTestUtils.js");
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../common/Enums.js");
-const { getRandomSignedInt, getRandomUnsignedInt } = require("../../common/Random.js");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../common/Crypto");
+const { getRandomUnsignedInt } = require("../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
-const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper.js");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
@@ -13,7 +10,7 @@ const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 
 // Extract web3 functions into primary namespace.
-const { toBN, toWei } = web3.utils;
+const { toBN, toWei, toChecksumAddress } = web3.utils;
 
 contract("Governor", function(accounts) {
   let voting;
@@ -51,6 +48,11 @@ contract("Governor", function(accounts) {
     await setNewInflationRate("0");
   });
 
+  it("Proposal permissions", async function() {
+    const txnData = constructTransferTransaction(account1, "0");
+    assert(await didContractThrow(governor.propose(testToken.address, 0, txnData, { from: account2 })));
+  });
+
   it("Identifier construction", async function() {
     // Reset the rounds.
     await moveToNextRound(voting);
@@ -62,18 +64,18 @@ contract("Governor", function(accounts) {
     const id1 = await governor.numProposals();
 
     // Send the proposal.
-    await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    await governor.propose(testToken.address, 0, txnData);
 
-    // Send a second proposal.
+    // Send a second proposal. Note: a second proposal is necessary to ensure we test at least one nonzero id.
     const id2 = await governor.numProposals();
-    await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    await governor.propose(testToken.address, 0, txnData);
 
     // The proposals should show up in the pending requests in the *next* round.
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
 
     // Check that the proposals shows up and that the identifiers are constructed correctly.
-    //assert.equal(pendingRequests.length, 2);
+    assert.equal(pendingRequests.length, 2);
     const request1 = pendingRequests[0];
     const request2 = pendingRequests[1];
     assert.equal(web3.utils.hexToUtf8(request1.identifier), `Admin ${id1}`);
@@ -103,13 +105,9 @@ contract("Governor", function(accounts) {
     // Construct the transaction data to send the newly minted tokens to account1.
     const txnData = constructTransferTransaction(account1, toWei("1"));
 
-    // The id is the number of proposals before sending.
-    const id = await governor.numProposals();
-
     // Send the proposal.
-    await governor.propose(testToken.address, 0, txnData, { from: account1 });
-
-    // The proposal should show up in the pending requests.
+    const id = await governor.numProposals();
+    await governor.propose(testToken.address, 0, txnData);
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
@@ -129,13 +127,161 @@ contract("Governor", function(accounts) {
     assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
   });
 
-  it("No repeated executions", async function() {});
+  it("No repeated executions", async function() {
+    // Setup
+    await moveToNextRound(voting);
+    const txnData = constructTransferTransaction(account1, "0");
+    const id = await governor.numProposals();
+    await governor.propose(testToken.address, 0, txnData);
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
 
-  it("Unsuccessful proposal", async function() {});
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
 
-  it("Unresolved vote", async function() {});
+    // First execution should succeed.
+    await governor.executeProposal(id);
 
-  it("Failed transaction", async function() {});
+    // Second should fail.
+    assert(await didContractThrow(governor.executeProposal(id)));
+  });
 
-  it("Events", async function() {});
+  it("Unsuccessful proposal", async function() {
+    // Reset the rounds.
+    await moveToNextRound(voting);
+
+    // Issue some test tokens to the governor address.
+    await testToken.allocateTo(governor.address, toWei("1"));
+
+    // Construct the transaction data to send the newly minted tokens to account1.
+    const txnData = constructTransferTransaction(account1, toWei("1"));
+
+    // Send the proposal.
+    const id = await governor.numProposals();
+    await governor.propose(testToken.address, 0, txnData);
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote down the proposal.
+    const vote = "0";
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Check to make sure that the execution fails and no tokens get transferred.
+    const startingBalance = await testToken.balanceOf(account1);
+    assert(await didContractThrow(governor.executeProposal(id)));
+    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
+  });
+
+  it("Unresolved vote", async function() {
+    // Reset the rounds.
+    await moveToNextRound(voting);
+
+    // Issue some test tokens to the governor address.
+    await testToken.allocateTo(governor.address, toWei("1"));
+
+    // Construct the transaction data to send the newly minted tokens to account1.
+    const txnData = constructTransferTransaction(account1, toWei("1"));
+
+    // Send the proposal.
+    const id = await governor.numProposals();
+    await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote on the proposal, but don't reach the GAT.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash, { from: account2 });
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt, { from: account2 });
+    await moveToNextRound(voting);
+
+    // Check to make sure that the execution fails and no tokens get transferred.
+    const startingBalance = await testToken.balanceOf(account1);
+    assert(await didContractThrow(governor.executeProposal(id)));
+    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
+
+    // Resolve the vote to clean up.
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+  });
+
+  it("Failed transaction", async function() {
+    // Reset the rounds.
+    await moveToNextRound(voting);
+
+    // Construct a transaction that will obviously fail.
+    const txnData = constructTransferTransaction(account1, toWei("1000"));
+
+    // Send the proposal.
+    const id = await governor.numProposals();
+    await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Check to make sure that the execution fails and no tokens get transferred.
+    const startingBalance = await testToken.balanceOf(account1);
+    assert(await didContractThrow(governor.executeProposal(id)));
+    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
+  });
+
+  it("Events", async function() {
+    // Reset the rounds.
+    await moveToNextRound(voting);
+
+    // Construct the transaction data to send the newly minted tokens to account1.
+    const txnData = constructTransferTransaction(account1, toWei("0"));
+
+    // Send the proposal and verify that an event is produced.
+    const id = await governor.numProposals();
+    let receipt = await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    truffleAssert.eventEmitted(receipt, "NewProposal", ev => {
+      return ev.id.toString() === id.toString() && ev.to === testToken.address && ev.value.toString() === "0" && ev.data === txnData;
+    });
+
+    // Vote the proposal through.
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Verify execute event.
+    receipt = await governor.executeProposal(id);
+    truffleAssert.eventEmitted(receipt, "ProposalExecuted", ev => {
+      return ev.id.toString() === id.toString();
+    });
+  });
 });
