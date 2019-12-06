@@ -76,7 +76,7 @@ contract Governor is MultiRole, Testable {
         voting.addSupportedIdentifier(identifier);
 
         // Note: this check is only here to appease slither.
-        require(voting.requestPrice(identifier, time) != ~uint(0);, "Proposal will never be considered");
+        require(voting.requestPrice(identifier, time) != ~uint(0), "Proposal will never be considered");
         voting.removeSupportedIdentifier(identifier);
 
         emit NewProposal(id, to, value, data);
