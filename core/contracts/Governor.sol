@@ -57,6 +57,8 @@ contract Governor is MultiRole, Testable {
      * ```
      */
     function propose(address to, uint value, bytes calldata data) external onlyRoleHolder(uint(Roles.Proposer)) {
+        require(to != address(0), "The to address cannot be 0x0");
+
         uint id = proposals.length;
         uint time = getCurrentTime();
 
@@ -85,8 +87,12 @@ contract Governor is MultiRole, Testable {
         Proposal storage proposal = proposals[id];
         int price = _getVoting().getPrice(_constructIdentifier(id), proposal.requestTime);
 
-        require(price != 0, "Cannot execute, proposal was voted down.");
-        require(_executeCall(proposal.to, proposal.value, proposal.data), "Proposal execution failed.");
+        require(proposal.to != address(0), "Proposal has already been executed");
+        require(price != 0, "Cannot execute, proposal was voted down");
+        require(_executeCall(proposal.to, proposal.value, proposal.data), "Proposal execution failed");
+
+        // Delete the proposal.
+        delete proposals[id];
 
         emit ProposalExecuted(id);
     }
