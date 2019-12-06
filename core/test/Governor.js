@@ -263,7 +263,12 @@ contract("Governor", function(accounts) {
     const id = await governor.numProposals();
     let receipt = await governor.propose(testToken.address, 0, txnData, { from: account1 });
     truffleAssert.eventEmitted(receipt, "NewProposal", ev => {
-      return ev.id.toString() === id.toString() && ev.to === testToken.address && ev.value.toString() === "0" && ev.data === txnData;
+      return (
+        ev.id.toString() === id.toString() &&
+        ev.to === testToken.address &&
+        ev.value.toString() === "0" &&
+        ev.data === txnData
+      );
     });
 
     // Vote the proposal through.
