@@ -125,6 +125,7 @@ contract Governor is MultiRole, Testable {
         return Voting(finder.getImplementationAddress("Oracle"));
     }
 
+    // This method is pulled from here: https://ethereum.stackexchange.com/a/6613/47801.
     function _uintToBytes(uint v) private pure returns (bytes32 ret) {
         if (v == 0) {
             ret = "0";
