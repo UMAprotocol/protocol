@@ -74,7 +74,9 @@ contract Governor is MultiRole, Testable {
         // Request a vote on this proposal in the DVM.
         Voting voting = _getVoting();
         voting.addSupportedIdentifier(identifier);
-        voting.requestPrice(identifier, time);
+
+        // Note: this check is only here to appease slither.
+        require(voting.requestPrice(identifier, time) != ~uint(0);, "Proposal will never be considered");
         voting.removeSupportedIdentifier(identifier);
 
         emit NewProposal(id, to, value, data);
