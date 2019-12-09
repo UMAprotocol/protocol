@@ -55,8 +55,9 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     function retrieveRewards(uint roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public
         onlyRoleHolder(uint(Roles.Voter))
+        returns (FixedPoint.Unsigned memory rewardsIssued)
     {
-        _getVotingAddress().retrieveRewards(roundId, toRetrieve);
+        return _getVotingAddress().retrieveRewards(address(this), roundId, toRetrieve);
     }
 
     function _getVotingAddress() private view returns (Voting) {

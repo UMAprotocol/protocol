@@ -22,6 +22,7 @@ contract("Voting", function(accounts) {
   const account4 = accounts[3];
   const registeredDerivative = accounts[4];
   const unregisteredDerivative = accounts[5];
+  const migratedVoting = accounts[6];
 
   const setNewInflationRate = async inflationRate => {
     await voting.setInflationRate({ rawValue: inflationRate.toString() });
@@ -666,7 +667,7 @@ contract("Voting", function(accounts) {
 
     // Can't claim rewards if the price wasn't resolved.
     const req = [{ identifier: identifier, time: time }];
-    assert(await didContractThrow(voting.retrieveRewards(initialRoundId, req, { from: account4 })));
+    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
 
     // With a larger vote, the GAT should be hit and the price should resolve.
     // Commit votes.
@@ -685,8 +686,8 @@ contract("Voting", function(accounts) {
     );
 
     // Must specify the right roundId when retrieving rewards.
-    assert(await didContractThrow(voting.retrieveRewards(initialRoundId, req, { from: account4 })));
-    await voting.retrieveRewards(newRoundId, req, { from: account4 });
+    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
+    await voting.retrieveRewards(account4, newRoundId, req);
   });
 
   it("Basic Snapshotting", async function() {
@@ -870,34 +871,42 @@ contract("Voting", function(accounts) {
 
     const req = [{ identifier: identifier, time: time1 }];
     // Can't claim rewards for current round (even if the request will definitely be resolved).
-    assert(await didContractThrow(voting.retrieveRewards(roundId, req, { from: account1 })));
+    assert(await didContractThrow(voting.retrieveRewards(account1, roundId, req)));
 
     // Move to the next round to begin retrieving rewards.
     await moveToNextRound(voting);
 
-    await voting.retrieveRewards(roundId, req, { from: account1 });
-    await voting.retrieveRewards(roundId, req, { from: account2 });
+    const account1Rewards = await voting.retrieveRewards.call(account1, roundId, req);
+    await voting.retrieveRewards(account1, roundId, req);
+    const account2Rewards = await voting.retrieveRewards.call(account2, roundId, req);
+    await voting.retrieveRewards(account2, roundId, req);
 
     // Voters can wait until the next round to claim rewards.
     await moveToNextRound(voting);
-    await voting.retrieveRewards(roundId, req, { from: account3 });
-    await voting.retrieveRewards(roundId, req, { from: account4 });
+    const account3Rewards = await voting.retrieveRewards.call(account3, roundId, req);
+    await voting.retrieveRewards(account3, roundId, req);
+    const account4Rewards = await voting.retrieveRewards.call(account4, roundId, req);
+    await voting.retrieveRewards(account4, roundId, req);
 
     // account1 is not rewarded because account1 was wrong.
+    assert.equal(account1Rewards.toString(), "0");
     assert.equal((await votingToken.balanceOf(account1)).toString(), initialAccount1Balance.toString());
 
     // Accounts 2 and 3 split the 100% token inflation since each contributed the same number of tokens to the correct
     // answer.
+    assert.equal(account2Rewards.toString(), initialTotalSupply.divn(2).toString());
     assert.equal(
       (await votingToken.balanceOf(account2)).toString(),
       initialAccount2Balance.add(initialTotalSupply.divn(2)).toString()
     );
+    assert.equal(account3Rewards.toString(), initialTotalSupply.divn(2).toString());
     assert.equal(
       (await votingToken.balanceOf(account3)).toString(),
       initialAccount3Balance.add(initialTotalSupply.divn(2)).toString()
     );
 
     // account4 is not rewarded because it did not participate.
+    assert.equal(account4Rewards.toString(), "0");
     assert.equal((await votingToken.balanceOf(account4)).toString(), initialAccount4Balance.toString());
 
     // Reset the inflation rate to 0%.
@@ -982,7 +991,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
 
     // When the round updates, the price request should be resolved.
-    result = await voting.retrieveRewards(roundId, [{ identifier, time }], { from: account1 });
+    result = await voting.retrieveRewards(account1, roundId, [{ identifier, time }]);
     truffleAssert.eventEmitted(result, "PriceResolved", ev => {
       return (
         ev.resolutionRoundId.toString() == currentRoundId.toString() &&
@@ -1001,7 +1010,7 @@ contract("Voting", function(accounts) {
     });
 
     // Events only get emitted if there were actually rewards issued. Is this the behavior we want?
-    result = await voting.retrieveRewards(roundId, [{ identifier, time }], { from: account4 });
+    result = await voting.retrieveRewards(account4, roundId, [{ identifier, time }]);
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
 
     // An event should be emitted when a new supported identifier is added (but not on repeated no-op calls).
@@ -1241,5 +1250,45 @@ contract("Voting", function(accounts) {
     // Check that the encrypted message has been removed from storage
     assert.isNull(await voting.getMessage(account1, topicHash1));
     assert.isNull(await voting.getMessage(account1, topicHash2));
+  });
+
+  it("Migration", async function() {
+    const identifier = web3.utils.utf8ToHex("migration");
+    const time1 = "1000";
+    const time2 = "2000";
+    // Deploy our own voting because this test case will migrate it.
+    const voting = await Voting.new(
+      "86400",
+      { rawValue: "0" },
+      { rawValue: "0" },
+      votingToken.address,
+      (await Finder.deployed()).address,
+      true
+    );
+    await voting.addSupportedIdentifier(identifier);
+
+    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
+    await moveToNextRound(voting);
+    const price = 123;
+    const salt = getRandomSignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time1, hash, { from: account1 });
+    await moveToNextPhase(voting);
+    await voting.revealVote(identifier, time1, price, salt, { from: account1 });
+    await moveToNextRound(voting);
+
+    // New voting can only call methods after the migration, not before.
+    assert(await voting.hasPrice(identifier, time1, { from: registeredDerivative }));
+    assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: migratedVoting })));
+
+    // Need permissions to migrate.
+    assert(await didContractThrow(voting.setMigrated(migratedVoting, { from: migratedVoting })));
+    await voting.setMigrated(migratedVoting);
+
+    // Now only new voting can call methods.
+    assert(await voting.hasPrice(identifier, time1, { from: migratedVoting }));
+    assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: registeredDerivative })));
+    assert(await didContractThrow(voting.commitVote(identifier, time2, hash, { from: account1 })));
   });
 });
