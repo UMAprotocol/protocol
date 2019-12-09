@@ -1252,7 +1252,7 @@ contract("Voting", function(accounts) {
     assert.isNull(await voting.getMessage(account1, topicHash2));
   });
 
-  it.only("Migration", async function() {
+  it("Migration", async function() {
     const identifier = web3.utils.utf8ToHex("migration");
     const time1 = "1000";
     const time2 = "2000";

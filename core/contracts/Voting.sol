@@ -201,7 +201,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         _createSharedRole(uint(Roles.Writer), uint(Roles.Governance), initialMembers);
 
         voteTiming.init(phaseLength);
-        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+        // TODO(#779): GAT percentage must be < 100%
+        require(_gatPercentage.isLessThan(1));
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
@@ -213,15 +214,14 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
             require(msg.sender == migratedAddress);
         } else {
             Registry registry = Registry(finder.getImplementationAddress("Registry"));
-            require(registry.isDerivativeRegistered(msg.sender), "Must be registered derivative");
+            // TODO(#779): Must be registered derivative
+            require(registry.isDerivativeRegistered(msg.sender));
         }
         _;
     }
 
-    modifier onlyNewVotingIfMigrated() {
-        if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress);
-        }
+    modifier onlyIfNotMigrated() {
+        require(migratedAddress == address(0));
         _;
     }
 
@@ -231,8 +231,10 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         returns (uint expectedTime)
     {
         uint blockTime = getCurrentTime();
-        require(time < blockTime, "Price request must be for a time in the past");
-        require(supportedIdentifiers[identifier], "Price request for unsupported identifier");
+        // TODO(#779): Price request must be for a time in the past
+        require(time < blockTime);
+        // TODO(#779): Price request for unsupported identifier
+        require(supportedIdentifiers[identifier]);
 
         // Must ensure the round is updated here so the requested price will be voted on in the next commit cycle.
         _updateRound(blockTime);
@@ -327,7 +329,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     function getPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (int) {
         (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
-        // If the price wasn't available, revert with the provided message.
+        // TODO(#779): If the price wasn't available, revert with the provided message.
         require(_hasPrice, message);
         return price;
     }
@@ -381,13 +383,14 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         return voteSubmission.revealHash != bytes32(0);
     }
 
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) public onlyNewVotingIfMigrated() {
-        require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
+    function commitVote(bytes32 identifier, uint time, bytes32 hash) public onlyIfNotMigrated() {
+        // TODO(#779): Committed hash of 0 is disallowed, choose a different salt
+        require(hash != bytes32(0));
 
         // Current time is required for all vote timing queries.
         uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit,
-            "Cannot commit while in the reveal phase");
+        // TODO(#779): Cannot commit while in the reveal phase
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit);
 
         // Should only update the round in the commit phase because a new round that's already in the reveal phase
         // would be wasted.
@@ -397,8 +400,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active,
-                "Cannot commit on inactive request");
+        // TODO(#779): Cannot commit on inactive request
+        require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active);
 
         priceRequest.lastVotingRound = currentRoundId;
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
@@ -407,7 +410,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
     }
 
-    function revealVote(bytes32 identifier, uint time, int price, int salt) public onlyNewVotingIfMigrated() {
+    function revealVote(bytes32 identifier, uint time, int price, int salt) public onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
             "Cannot reveal while in the commit phase");
@@ -469,9 +472,11 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
-        onlyNewVotingIfMigrated()
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
+        if (migratedAddress != address(0)) {
+            require(msg.sender == migratedAddress);
+        }
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
         require(roundId < voteTiming.computeCurrentRoundId(blockTime));
