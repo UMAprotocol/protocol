@@ -1290,6 +1290,5 @@ contract("Voting", function(accounts) {
     assert(await voting.hasPrice(identifier, time1, { from: migratedVoting }));
     assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: registeredDerivative })));
     assert(await didContractThrow(voting.commitVote(identifier, time2, hash, { from: account1 })));
-    voting.commitVote(identifier, time2, hash, { from: account1 });
   });
 });
