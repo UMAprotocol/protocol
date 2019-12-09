@@ -1243,9 +1243,10 @@ contract("Voting", function(accounts) {
     assert.isNull(await voting.getMessage(account1, topicHash2));
   });
 
-  it("Migration", async function() {
+  it.only("Migration", async function() {
     const identifier = web3.utils.utf8ToHex("migration");
     const time1 = "1000";
+    const time2 = "2000";
     // Deploy our own voting because this test case will migrate it.
     const voting = await Voting.new(
       "86400",
@@ -1258,6 +1259,7 @@ contract("Voting", function(accounts) {
     await voting.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time1, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
     await moveToNextRound(voting);
     const price = 123;
     const salt = getRandomSignedInt();
@@ -1278,5 +1280,7 @@ contract("Voting", function(accounts) {
     // Now only new voting can call methods.
     assert(await voting.hasPrice(identifier, time1, { from: migratedVoting }));
     assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: registeredDerivative })));
+    assert(await didContractThrow(voting.commitVote(identifier, time2, hash, { from: account1 })));
+    voting.commitVote(identifier, time2, hash, { from: account1 });
   });
 });

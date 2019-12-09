@@ -201,10 +201,17 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
     modifier onlyRegisteredDerivative() {
         if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress, "Only migrated Voting can invoke methods");
+            require(msg.sender == migratedAddress);
         } else {
             Registry registry = Registry(finder.getImplementationAddress("Registry"));
             require(registry.isDerivativeRegistered(msg.sender), "Must be registered derivative");
+        }
+        _;
+    }
+
+    modifier onlyNewVotingIfMigrated() {
+        if (migratedAddress != address(0)) {
+            require(msg.sender == migratedAddress);
         }
         _;
     }
@@ -353,7 +360,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         return voteSubmission.revealHash != bytes32(0);
     }
 
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) public {
+    function commitVote(bytes32 identifier, uint time, bytes32 hash) public onlyNewVotingIfMigrated() {
         require(hash != bytes32(0), "Committed hash of 0 is disallowed, choose a different salt");
 
         // Current time is required for all vote timing queries.
@@ -379,7 +386,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
     }
 
-    function revealVote(bytes32 identifier, uint time, int price, int salt) public {
+    function revealVote(bytes32 identifier, uint time, int price, int salt) public onlyNewVotingIfMigrated() {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
             "Cannot reveal while in the commit phase");
@@ -441,11 +448,9 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
+        onlyNewVotingIfMigrated()
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
-        if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress, "Only migrated Voting can invoke methods");
-        }
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
         require(roundId < voteTiming.computeCurrentRoundId(blockTime));
