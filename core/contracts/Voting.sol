@@ -174,6 +174,8 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
 
     event SupportedIdentifierAdded(bytes32 indexed identifier);
 
+    event SupportedIdentifierRemoved(bytes32 indexed identifier);
+
     /**
      * @notice Construct the Voting contract.
      * @param phaseLength length of the commit and reveal phases in seconds.
@@ -189,8 +191,15 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
+        // Set up governance role.
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+
+        // TODO: this is only shared to allow the governor to share these permissions with an Admin until we decide
+        // exactly which permissions will be delegated to the governor.
+        address[] memory initialMembers = new address[](1);
+        initialMembers[0] = msg.sender;
+        _createSharedRole(uint(Roles.Writer), uint(Roles.Governance), initialMembers);
+
         voteTiming.init(phaseLength);
         require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = _gatPercentage;
@@ -286,12 +295,24 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     }
 
     /**
-     * @notice Adds the provided identifier as a supported identifier.
+     * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will be
+     * succeed after this call.
      */
     function addSupportedIdentifier(bytes32 identifier) external onlyRoleHolder(uint(Roles.Writer)) {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
             emit SupportedIdentifierAdded(identifier);
+        }
+    }
+
+    /**
+     * @notice Removes the identifier from the whitelist. Price requests using this identifier will no longer succeed
+     * after this call.
+     */
+    function removeSupportedIdentifier(bytes32 identifier) external onlyRoleHolder(uint(Roles.Writer)) {
+        if (supportedIdentifiers[identifier]) {
+            supportedIdentifiers[identifier] = false;
+            emit SupportedIdentifierRemoved(identifier);
         }
     }
 

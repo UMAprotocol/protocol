@@ -508,19 +508,20 @@ contract("Voting", function(accounts) {
     const voting = await Voting.deployed();
 
     const supported = web3.utils.utf8ToHex("supported");
-    const unsupported = web3.utils.utf8ToHex("unsupported");
 
     // No identifiers are originally suppported.
     assert.isFalse(await voting.isIdentifierSupported(supported));
-    assert.isFalse(await voting.isIdentifierSupported(unsupported));
 
     // Verify that supported identifiers can be added.
     await voting.addSupportedIdentifier(supported);
     assert.isTrue(await voting.isIdentifierSupported(supported));
-    assert.isFalse(await voting.isIdentifierSupported(unsupported));
+
+    // Verify that supported identifiers can be removed.
+    await voting.removeSupportedIdentifier(supported);
+    assert.isFalse(await voting.isIdentifierSupported(supported));
 
     // Can't request prices for unsupported identifiers.
-    assert(await didContractThrow(voting.requestPrice(unsupported, "0", { from: registeredDerivative })));
+    assert(await didContractThrow(voting.requestPrice(supported, "0", { from: registeredDerivative })));
   });
 
   it("Simple vote resolution", async function() {
@@ -1011,6 +1012,14 @@ contract("Voting", function(accounts) {
     // Events only get emitted if there were actually rewards issued. Is this the behavior we want?
     result = await voting.retrieveRewards(account4, roundId, [{ identifier, time }]);
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
+
+    // An event should be emitted when a new supported identifier is added (but not on repeated no-op calls).
+    result = await voting.removeSupportedIdentifier(identifier);
+    truffleAssert.eventEmitted(result, "SupportedIdentifierRemoved", ev => {
+      return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier);
+    });
+    result = await voting.removeSupportedIdentifier(identifier);
+    truffleAssert.eventNotEmitted(result, "SupportedIdentifierRemoved");
   });
 
   it("Commit and persist the encrypted price", async function() {
