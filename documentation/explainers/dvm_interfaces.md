@@ -10,6 +10,9 @@ available.
 
 - The _Voting Interface_ is used by voters to vote for prices to resolve pending price requests.
 
+Voters and financial contracts should only interact with the `Voting` instance registered in the `Finder` contract as
+the `Oracle` interface.
+
 ## The Oracle Interface
 
 The Oracle Interface is used by financial contracts to retrieve prices. This interface can only be used by financial
@@ -173,6 +176,9 @@ Retrieves tokens that the voter has earned from voting, but hasn't yet withdrawn
 This method takes an array of `PendingRequest` objects that a voter can claim rewards for (i.e., voted correctly and
 haven't already claimed rewards). All of those price requests must be part of the same `roundId`.
 
+This method takes a `voterAddress` to identify the voter that will be rewarded. Any one can call this method for any
+voter.
+
 A few notes:
 
 - It is not necessary to claim rewards in ascending order of round ids.
@@ -180,3 +186,5 @@ A few notes:
 - A voter can call this method multiple times with the same `roundId` as long as price requests are different.
 
 - The event `PriceResolved` is emitted on the first voter to retrieve rewards for a price request.
+
+- For convenience, returns the number of tokens minted and awarded.
