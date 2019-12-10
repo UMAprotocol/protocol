@@ -72,36 +72,30 @@ contract("Governor", function(accounts) {
     const zeroAddress = "0x0000000000000000000000000000000000000000";
     assert(
       await didContractThrow(
-        governor.propose(
-          [
-            {
-              to: zeroAddress,
-              value: 0,
-              data: txnData
-            }
-          ],
-          { from: account1 }
-        )
+        governor.propose([
+          {
+            to: zeroAddress,
+            value: 0,
+            data: txnData
+          }
+        ])
       )
     );
 
     assert(
       await didContractThrow(
-        governor.propose(
-          [
-            {
-              to: testToken.address,
-              value: 0,
-              data: txnData
-            },
-            {
-              to: zeroAddress,
-              value: 0,
-              data: txnData
-            }
-          ],
-          { from: account1 }
-        )
+        governor.propose([
+          {
+            to: testToken.address,
+            value: 0,
+            data: txnData
+          },
+          {
+            to: zeroAddress,
+            value: 0,
+            data: txnData
+          }
+        ])
       )
     );
   });
