@@ -3,6 +3,7 @@ const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
+const { RegistryRolesEnum } = require("../../common/Enums.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
@@ -14,10 +15,9 @@ module.exports = async function(deployer, network, accounts) {
 
   // Add governor to registry so it can send price requests.
   const registry = await Registry.deployed();
-  const derivativeCreatorRole = 2;
-  await registry.addMember(derivativeCreatorRole, keys.deployer, { from: keys.deployer });
+  await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, keys.deployer, { from: keys.deployer });
   await registry.registerDerivative([], governor.address, { from: keys.deployer });
-  await registry.removeMember(derivativeCreatorRole, keys.deployer, { from: keys.deployer });
+  await registry.removeMember(RegistryRolesEnum.DERIVATIVE_CREATOR, keys.deployer, { from: keys.deployer });
 
   // Make the governor a writer in the Voting contract.
   const voting = await Voting.deployed();

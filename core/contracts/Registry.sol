@@ -17,10 +17,8 @@ contract Registry is RegistryInterface, MultiRole {
     using SafeMath for uint;
 
     enum Roles {
-        // The ultimate owner-type role that can change the writer.
-        Governance,
-        // Can add or remove DerivativeCreators.
-        Writer,
+        // The owner manages the set of DerivativeCreators.
+        Owner,
         // Can register derivatives.
         DerivativeCreator
     }
@@ -55,10 +53,9 @@ contract Registry is RegistryInterface, MultiRole {
     event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
 
     constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         // Start with no derivative creators registered.
-        _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Writer), new address[](0));
+        _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Owner), new address[](0));
     }
 
     function registerDerivative(address[] calldata parties, address derivativeAddress)

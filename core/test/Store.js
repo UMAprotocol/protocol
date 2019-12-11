@@ -14,6 +14,7 @@ contract("Store", function(accounts) {
   const owner = accounts[0];
   const derivative = accounts[1];
   const erc20TokenOwner = accounts[2];
+  const rando = accounts[3];
 
   const identifier = web3.utils.utf8ToHex("id");
   const arbitraryTokenAddr = web3.utils.randomHex(20);
@@ -176,5 +177,23 @@ contract("Store", function(accounts) {
     secondTokenBalanceInStore = await secondMarginToken.balanceOf(store.address);
     assert.equal(secondTokenBalanceInOwner.toString(), web3.utils.toWei("20", "ether"));
     assert.equal(secondTokenBalanceInStore.toString(), web3.utils.toWei("0", "ether"));
+  });
+
+  it("Withdraw permissions", async function() {
+    const withdrawRole = "1";
+    await store.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
+
+    // Rando cannot initially withdraw.
+    assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: rando })));
+
+    // Owner can delegate the withdraw permissions to rando, allowing them to withdraw.
+    await store.resetMember(withdrawRole, rando, { from: owner });
+    await store.withdraw(web3.utils.toWei("0.5", "ether"), { from: rando });
+
+    // Owner can no longer withdraw since that permission has been moved to rando.
+    assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: owner })));
+
+    // Change withdraw back to owner.
+    await store.resetMember(withdrawRole, owner, { from: owner });
   });
 });

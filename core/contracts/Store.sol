@@ -18,7 +18,8 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
     using FixedPoint for uint;
 
     enum Roles {
-        Governance
+        Owner,
+        Withdrawer
     }
 
     FixedPoint.Unsigned private fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
@@ -30,7 +31,8 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
     event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
 
     constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
+        createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
     }
 
     function payOracleFees() external payable {
@@ -72,7 +74,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      */ 
     function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee) 
         public 
-        onlyRoleHolder(uint(Roles.Governance)) 
+        onlyRoleHolder(uint(Roles.Owner)) 
     {
         // Oracle fees at or over 100% don't make sense.
         require(newOracleFee.isLessThan(1));
@@ -85,7 +87,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      */ 
     function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) 
         public 
-        onlyRoleHolder(uint(Roles.Governance)) 
+        onlyRoleHolder(uint(Roles.Owner)) 
     {
         weeklyDelayFee = newWeeklyDelayFee;
     }
@@ -95,7 +97,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      */ 
     function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee) 
         public 
-        onlyRoleHolder(uint(Roles.Governance))
+        onlyRoleHolder(uint(Roles.Owner))
     {
         finalFees[currency] = finalFee;
     }

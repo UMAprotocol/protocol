@@ -1,34 +1,19 @@
 pragma solidity ^0.5.0;
 
 import "./AdministrateeInterface.sol";
-import "./MultiRole.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 
 /**
  * @title Admin for financial contracts in the UMA system.
  * @dev Allows appropriately permissioned admin roles to interact with financial contracts.
  */
-contract FinancialContractsAdmin is MultiRole {
-
-    enum Roles {
-        // Can set the `Remargin` and `EmergencyShutdown` roles.
-        Governance,
-        // Is authorized to call `remargin()` on any financial contract in the system.
-        Remargin,
-        // Is authorized to shutdown any financial contract in the system.
-        EmergencyShutdown
-    }
-
-    constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createSharedRole(uint(Roles.Remargin), uint(Roles.Governance), new address[](0));
-        _createExclusiveRole(uint(Roles.EmergencyShutdown), uint(Roles.Governance), msg.sender);
-    }
+contract FinancialContractsAdmin is Ownable {
 
     /**
      * @dev Calls emergency shutdown on the provided financial contract.
      */
-    function callEmergencyShutdown(address financialContract) external onlyRoleHolder(uint(Roles.EmergencyShutdown)) {
+    function callEmergencyShutdown(address financialContract) external onlyOwner {
         AdministrateeInterface administratee = AdministrateeInterface(financialContract);
         administratee.emergencyShutdown();
     }
@@ -36,7 +21,7 @@ contract FinancialContractsAdmin is MultiRole {
     /**
      * @dev Calls remargin on the provided financial contract.
      */
-    function callRemargin(address financialContract) external onlyRoleHolder(uint(Roles.Remargin)) {
+    function callRemargin(address financialContract) external onlyOwner {
         AdministrateeInterface administratee = AdministrateeInterface(financialContract);
         administratee.remargin();
     }

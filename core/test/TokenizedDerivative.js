@@ -70,8 +70,6 @@ contract("TokenizedDerivative", function(accounts) {
     const oracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex("Oracle"));
     await deployedFinder.changeImplementationAddress(oracleInterfaceName, mockOracle.address);
 
-    await deployedAdmin.addMember(adminRemarginRole, owner);
-
     // Create an arbitrary ERC20 margin token.
     marginToken = await ERC20Mintable.new({ from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
