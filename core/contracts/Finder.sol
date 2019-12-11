@@ -1,36 +1,24 @@
 pragma solidity ^0.5.0;
 
-import "./MultiRole.sol";
+import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 
 /**
  * @title Provides addresses of the live contracts implementing certain interfaces. 
  * @dev Examples are the Oracle or Store interfaces.
  */
-contract Finder is MultiRole {
-
-    enum Roles {
-        // Can set the writer.
-        Governance,
-        // Can update/write the addresses which implement a given interface.
-        Writer
-    }
+contract Finder is Ownable {
 
     mapping(bytes32 => address) public interfacesImplemented;
 
     event InterfaceImplementationChanged(bytes32 indexed interfaceName, address indexed newImplementationAddress);
-
-    constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
-    }
 
     /**
      * @dev Updates the address of the contract that implements `interfaceName`.
      */
     function changeImplementationAddress(bytes32 interfaceName, address implementationAddress)
         external
-        onlyRoleHolder(uint(Roles.Writer))
+        onlyOwner
     {
         interfacesImplemented[interfaceName] = implementationAddress;
         emit InterfaceImplementationChanged(interfaceName, implementationAddress);
