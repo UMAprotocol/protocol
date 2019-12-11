@@ -27,9 +27,9 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     // this contract.
     Finder private finder;
 
-    constructor(address finderAddress) public {
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), msg.sender);
+    constructor(address finderAddress, address ownerAddress, address voterAddress) public {
+        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
+        _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), voterAddress);
         setWithdrawRole(uint(Roles.Owner));
 
         finder = Finder(finderAddress);
