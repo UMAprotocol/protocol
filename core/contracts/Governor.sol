@@ -1,16 +1,22 @@
 pragma solidity ^0.5.0;
 
+pragma experimental ABIEncoderV2;
+
 import "./Finder.sol";
 import "./MultiRole.sol";
 import "./FixedPoint.sol";
 import "./Voting.sol";
 import "./Testable.sol";
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
 contract Governor is MultiRole, Testable {
+
+    using SafeMath for uint;
 
     enum Roles {
         // Can set the proposer.
@@ -19,25 +25,29 @@ contract Governor is MultiRole, Testable {
         Proposer
     }
 
-    struct Proposal {
+    struct Transaction {
         address to;
         uint value;
         bytes data;
+    }
+
+    struct Proposal {
+        Transaction[] transactions;
         uint requestTime;
     }
 
-    Finder internal finder;
+    Finder private finder;
     Proposal[] public proposals;
 
     /**
      * @notice Emitted when a new proposal is created.
      */
-    event NewProposal(uint indexed id, address indexed to, uint value, bytes data);
+    event NewProposal(uint indexed id, Transaction[] transactions);
 
     /**
      * @notice Emitted when an existing proposal is executed.
      */
-    event ProposalExecuted(uint indexed id);
+    event ProposalExecuted(uint indexed id, uint transactionIndex);
 
     constructor(address _finderAddress, bool _isTest) public Testable(_isTest) {
         finder = Finder(_finderAddress);
@@ -46,28 +56,72 @@ contract Governor is MultiRole, Testable {
     }
 
     /**
+     * @notice Executes a proposed governance action that has been approved by voters. This can be called by anyone.
+     */
+    function executeProposal(uint id, uint transactionIndex) external {
+        Proposal storage proposal = proposals[id];
+        int price = _getVoting().getPrice(_constructIdentifier(id), proposal.requestTime);
+
+        Transaction storage transaction = proposal.transactions[transactionIndex];
+
+        require(transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
+            "Previous transaction has not been executed");
+        require(transaction.to != address(0), "Transaction has already been executed");
+        require(price != 0, "Cannot execute, proposal was voted down");
+        require(_executeCall(transaction.to, transaction.value, transaction.data), "Transaction execution failed");
+
+        // Delete the transaction.
+        delete proposal.transactions[transactionIndex];
+
+        emit ProposalExecuted(id, transactionIndex);
+    }
+
+    /**
+     * @notice Gets the total number of proposals (includes executed and non-executed).
+     */
+    function numProposals() external view returns (uint) {
+        return proposals.length;
+    }
+
+    /**
+     * @notice Gets the proposal data for a particular id.
+     * Note: after a proposal is executed, its data will be zeroed out.
+     */
+    function getProposal(uint id) external view returns (Proposal memory proposal) {
+        return proposals[id];
+    }
+
+    /**
      * @notice Proposes a new governance action. Can only be called by the holder of the Proposer role.
-     * @param to the address to call.
-     * @param value the ETH value to attach to the call.
-     * @param data the transaction data to attach to the call.
-     * @dev You can create the data portion of the transaction by doing the following:
+     * @param transactions the list of transactions that are being proposed.
+     * @dev You can create the data portion of each transaction by doing the following:
      * ```
      * const truffleContractInstance = await TruffleContract.deployed()
      * const data = truffleContractInstance.methods.methodToCall(arg1, arg2).encodeABI()
      * ```
+     * Note: this method must be public because of a solidity limitation that disallows structs arrays to be passed to
+     * external functions.
      */
-    function propose(address to, uint value, bytes calldata data) external onlyRoleHolder(uint(Roles.Proposer)) {
-        require(to != address(0), "The to address cannot be 0x0");
-
+    function propose(Transaction[] memory transactions) public onlyRoleHolder(uint(Roles.Proposer)) {
         uint id = proposals.length;
         uint time = getCurrentTime();
 
-        proposals.push(Proposal({
-            to: to,
-            value: value,
-            data: data,
-            requestTime: time
-        }));
+        // Note: doing all of this array manipulation manually is necessary because directly setting an array of
+        // structs in storage to an an array of structs in memory is currently not implemented in solidity :/.
+
+        // Add an element to the proposals array.
+        proposals.length = proposals.length.add(1);
+
+        // Initialize the new proposal.
+        Proposal storage proposal = proposals[id];
+        proposal.requestTime = time;
+
+        // Initialize the transaction array.
+        proposal.transactions.length = transactions.length;
+        for (uint i = 0; i < transactions.length; i++) {
+            require(transactions[i].to != address(0), "The to address cannot be 0x0");
+            proposal.transactions[i] = transactions[i];
+        }
 
         bytes32 identifier = _constructIdentifier(id);
 
@@ -79,28 +133,7 @@ contract Governor is MultiRole, Testable {
         require(voting.requestPrice(identifier, time) != ~uint(0), "Proposal will never be considered");
         voting.removeSupportedIdentifier(identifier);
 
-        emit NewProposal(id, to, value, data);
-    }
-
-    /**
-     * @notice Executes a proposed governance action that has been approved by voters. This can be called by anyone.
-     */
-    function executeProposal(uint id) external {
-        Proposal storage proposal = proposals[id];
-        int price = _getVoting().getPrice(_constructIdentifier(id), proposal.requestTime);
-
-        require(proposal.to != address(0), "Proposal has already been executed");
-        require(price != 0, "Cannot execute, proposal was voted down");
-        require(_executeCall(proposal.to, proposal.value, proposal.data), "Proposal execution failed");
-
-        // Delete the proposal.
-        delete proposals[id];
-
-        emit ProposalExecuted(id);
-    }
-
-    function numProposals() external view returns (uint) {
-        return proposals.length;
+        emit NewProposal(id, transactions);
     }
 
     function _constructIdentifier(uint id) private pure returns (bytes32 identifier) {

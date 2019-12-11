@@ -50,7 +50,54 @@ contract("Governor", function(accounts) {
 
   it("Proposal permissions", async function() {
     const txnData = constructTransferTransaction(account1, "0");
-    assert(await didContractThrow(governor.propose(testToken.address, 0, txnData, { from: account2 })));
+    assert(
+      await didContractThrow(
+        governor.propose(
+          [
+            {
+              to: testToken.address,
+              value: 0,
+              data: txnData
+            }
+          ],
+          { from: account2 }
+        )
+      )
+    );
+  });
+
+  it("Cannot send to 0x0", async function() {
+    const txnData = constructTransferTransaction(account1, "0");
+
+    const zeroAddress = "0x0000000000000000000000000000000000000000";
+    assert(
+      await didContractThrow(
+        governor.propose([
+          {
+            to: zeroAddress,
+            value: 0,
+            data: txnData
+          }
+        ])
+      )
+    );
+
+    assert(
+      await didContractThrow(
+        governor.propose([
+          {
+            to: testToken.address,
+            value: 0,
+            data: txnData
+          },
+          {
+            to: zeroAddress,
+            value: 0,
+            data: txnData
+          }
+        ])
+      )
+    );
   });
 
   it("Identifier construction", async function() {
@@ -64,11 +111,23 @@ contract("Governor", function(accounts) {
     const id1 = await governor.numProposals();
 
     // Send the proposal.
-    await governor.propose(testToken.address, 0, txnData);
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
 
     // Send a second proposal. Note: a second proposal is necessary to ensure we test at least one nonzero id.
     const id2 = await governor.numProposals();
-    await governor.propose(testToken.address, 0, txnData);
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
 
     // The proposals should show up in the pending requests in the *next* round.
     await moveToNextRound(voting);
@@ -91,11 +150,11 @@ contract("Governor", function(accounts) {
     await voting.revealVote(request1.identifier, request1.time, vote, salt);
     await voting.revealVote(request2.identifier, request2.time, vote, salt);
     await moveToNextRound(voting);
-    await governor.executeProposal(id1);
-    await governor.executeProposal(id2);
+    await governor.executeProposal(id1, 0);
+    await governor.executeProposal(id2, 0);
   });
 
-  it("Successful transaction", async function() {
+  it("Successful proposal", async function() {
     // Reset the rounds.
     await moveToNextRound(voting);
 
@@ -107,7 +166,13 @@ contract("Governor", function(accounts) {
 
     // Send the proposal.
     const id = await governor.numProposals();
-    await governor.propose(testToken.address, 0, txnData);
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
@@ -123,8 +188,57 @@ contract("Governor", function(accounts) {
 
     // Check to make sure that the tokens get transferred at the time of execution.
     const startingBalance = await testToken.balanceOf(account1);
-    await governor.executeProposal(id);
+    await governor.executeProposal(id, 0);
     assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
+  });
+
+  it("Successful multi-transaction proposal", async function() {
+    // Reset the rounds.
+    await moveToNextRound(voting);
+
+    // Issue some test tokens to the governor address.
+    await testToken.allocateTo(governor.address, toWei("2"));
+
+    // Construct two transactions to send the newly minted tokens to different accounts.
+    const txnData1 = constructTransferTransaction(account1, toWei("1"));
+    const txnData2 = constructTransferTransaction(account2, toWei("1"));
+
+    // Send the proposal with multiple transactions.
+    const id = await governor.numProposals();
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData1
+      },
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData2
+      }
+    ]);
+
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Check to make sure that the tokens get transferred at the time of each successive execution.
+    const startingBalance1 = await testToken.balanceOf(account1);
+    await governor.executeProposal(id, 0);
+    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance1.add(toBN(toWei("1"))).toString());
+
+    const startingBalance2 = await testToken.balanceOf(account2);
+    await governor.executeProposal(id, 1);
+    assert.equal((await testToken.balanceOf(account2)).toString(), startingBalance2.add(toBN(toWei("1"))).toString());
   });
 
   it("No repeated executions", async function() {
@@ -132,7 +246,13 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const txnData = constructTransferTransaction(account1, "0");
     const id = await governor.numProposals();
-    await governor.propose(testToken.address, 0, txnData);
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
@@ -147,10 +267,48 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
 
     // First execution should succeed.
-    await governor.executeProposal(id);
+    await governor.executeProposal(id, 0);
 
     // Second should fail.
-    assert(await didContractThrow(governor.executeProposal(id)));
+    assert(await didContractThrow(governor.executeProposal(id, 0)));
+  });
+
+  it("No out of order executions", async function() {
+    // Setup
+    await moveToNextRound(voting);
+    const txnData = constructTransferTransaction(account1, "0");
+    const id = await governor.numProposals();
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      },
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Index 1 cannot be executed before index 0.
+    assert(await didContractThrow(governor.executeProposal(id, 1)));
+
+    // Once done in order, both should succeed.
+    await governor.executeProposal(id, 0);
+    await governor.executeProposal(id, 1);
   });
 
   it("Unsuccessful proposal", async function() {
@@ -165,7 +323,13 @@ contract("Governor", function(accounts) {
 
     // Send the proposal.
     const id = await governor.numProposals();
-    await governor.propose(testToken.address, 0, txnData);
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
@@ -181,7 +345,7 @@ contract("Governor", function(accounts) {
 
     // Check to make sure that the execution fails and no tokens get transferred.
     const startingBalance = await testToken.balanceOf(account1);
-    assert(await didContractThrow(governor.executeProposal(id)));
+    assert(await didContractThrow(governor.executeProposal(id, 0)));
     assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
   });
 
@@ -197,7 +361,13 @@ contract("Governor", function(accounts) {
 
     // Send the proposal.
     const id = await governor.numProposals();
-    await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
@@ -213,7 +383,7 @@ contract("Governor", function(accounts) {
 
     // Check to make sure that the execution fails and no tokens get transferred.
     const startingBalance = await testToken.balanceOf(account1);
-    assert(await didContractThrow(governor.executeProposal(id)));
+    assert(await didContractThrow(governor.executeProposal(id, 0)));
     assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
 
     // Resolve the vote to clean up.
@@ -232,7 +402,13 @@ contract("Governor", function(accounts) {
 
     // Send the proposal.
     const id = await governor.numProposals();
-    await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
@@ -248,7 +424,7 @@ contract("Governor", function(accounts) {
 
     // Check to make sure that the execution fails and no tokens get transferred.
     const startingBalance = await testToken.balanceOf(account1);
-    assert(await didContractThrow(governor.executeProposal(id)));
+    assert(await didContractThrow(governor.executeProposal(id, 0)));
     assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
   });
 
@@ -261,13 +437,20 @@ contract("Governor", function(accounts) {
 
     // Send the proposal and verify that an event is produced.
     const id = await governor.numProposals();
-    let receipt = await governor.propose(testToken.address, 0, txnData, { from: account1 });
+    let receipt = await governor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
     truffleAssert.eventEmitted(receipt, "NewProposal", ev => {
       return (
         ev.id.toString() === id.toString() &&
-        ev.to === testToken.address &&
-        ev.value.toString() === "0" &&
-        ev.data === txnData
+        ev.transactions.length === 1 &&
+        ev.transactions[0].to === testToken.address &&
+        ev.transactions[0].value.toString() === "0" &&
+        ev.transactions[0].data === txnData
       );
     });
 
@@ -284,9 +467,9 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
 
     // Verify execute event.
-    receipt = await governor.executeProposal(id);
+    receipt = await governor.executeProposal(id, 0);
     truffleAssert.eventEmitted(receipt, "ProposalExecuted", ev => {
-      return ev.id.toString() === id.toString();
+      return ev.id.toString() === id.toString() && ev.transactionIndex.toString() === "0";
     });
   });
 });
