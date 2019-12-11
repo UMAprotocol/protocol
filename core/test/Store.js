@@ -184,22 +184,14 @@ contract("Store", function(accounts) {
     await store.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
 
     // Rando cannot initially withdraw.
-    assert(
-      await didContractThrow(
-        store.withdraw(web3.utils.toWei("0.5", "ether"), { from: rando })
-      )
-    );
+    assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: rando })));
 
     // Owner can delegate the withdraw permissions to rando, allowing them to withdraw.
     await store.resetMember(withdrawRole, rando, { from: owner });
     await store.withdraw(web3.utils.toWei("0.5", "ether"), { from: rando });
 
     // Owner can no longer withdraw since that permission has been moved to rando.
-    assert(
-      await didContractThrow(
-        store.withdraw(web3.utils.toWei("0.5", "ether"), { from: owner })
-      )
-    );
+    assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: owner })));
 
     // Change withdraw back to owner.
     await store.resetMember(withdrawRole, owner, { from: owner });

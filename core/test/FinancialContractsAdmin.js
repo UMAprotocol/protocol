@@ -37,9 +37,7 @@ contract("FinancialContractsAdmin", function(accounts) {
 
     // Can't call emergencyShutdown without being the owner.
     assert(
-      await didContractThrow(
-        financialContractsAdmin.callEmergencyShutdown(mockAdministratee.address, { from: rando })
-      )
+      await didContractThrow(financialContractsAdmin.callEmergencyShutdown(mockAdministratee.address, { from: rando }))
     );
 
     // Change the owner and verify that emergencyShutdown can be called.

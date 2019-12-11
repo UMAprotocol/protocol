@@ -74,9 +74,7 @@ contract("Registry", function(accounts) {
     await registry.resetMember(RegistryRolesEnum.OWNER, rando1, { from: owner });
 
     // The owner can no longer add or remove derivative creators.
-    assert(
-      await didContractThrow(registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: owner }))
-    );
+    assert(await didContractThrow(registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: owner })));
     assert(
       await didContractThrow(registry.removeMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: owner }))
     );
