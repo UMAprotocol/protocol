@@ -36,4 +36,12 @@ contract DesignatedVotingFactory is Withdrawable {
         designatedVoting = new DesignatedVoting(finder, ownerAddress, msg.sender);
         designatedVotingContracts[msg.sender] = designatedVoting;
     }
+
+    /**
+     * @notice Associates a `DesignatedVoting` instance with `msg.sender`.
+     */
+    function setDesignatedVoting(address designatedVotingAddress) external {
+        require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
+        designatedVotingContracts[msg.sender] = DesignatedVoting(designatedVotingAddress);
+    }
 }
