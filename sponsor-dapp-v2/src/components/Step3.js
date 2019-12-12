@@ -67,7 +67,7 @@ function useCreateContract(userSelectionsRef, identifierConfig, onNextStep, stat
       product: utf8ToHex(identifier),
       fixedYearlyFee: "0",
       withdrawLimit: withdrawLimit,
-      disputeDeposit: toWei("1"),
+      disputeDeposit: toWei("0"),
       returnCalculator: drizzle.contracts.LeveragedReturnCalculator.address,
       startingTokenPrice: currentPrice.price,
       expiry: expiry,

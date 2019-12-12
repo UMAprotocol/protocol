@@ -19,10 +19,10 @@ module.exports = async function(deployer, network, accounts) {
 
   // Deploy whitelists.
   const { contract: returnCalculatorWhitelist } = await deploy(deployer, network, AddressWhitelist, {
-    from: keys.returnCalculatorWhitelist
+    from: keys.deployer
   });
   const { contract: marginCurrencyWhitelist } = await deploy(deployer, network, AddressWhitelist, {
-    from: keys.marginCurrencyWhitelist
+    from: keys.deployer
   });
 
   const finder = await Finder.deployed();
@@ -41,5 +41,5 @@ module.exports = async function(deployer, network, accounts) {
   );
 
   // For any test networks, automatically add ETH as an allowed margin currency.
-  await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.marginCurrencyWhitelist });
+  await marginCurrencyWhitelist.addToWhitelist(ethAddress, { from: keys.deployer });
 };
