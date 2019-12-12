@@ -19,8 +19,6 @@ module.exports = async function(deployer, network, accounts) {
   await registry.registerDerivative([], governor.address, { from: keys.deployer });
   await registry.removeMember(RegistryRolesEnum.DERIVATIVE_CREATOR, keys.deployer, { from: keys.deployer });
 
-  // Make the governor a writer in the Voting contract.
-  const voting = await Voting.deployed();
-  const writerRole = 1;
-  voting.addMember(writerRole, governor.address, { from: keys.deployer });
+  // TODO: make the governor the owner of the Registry, Finder, FinancialContractsAdmin, Store, Voting, and
+  // VotingToken for prod deployments.
 };

@@ -20,7 +20,7 @@ contract Governor is MultiRole, Testable {
 
     enum Roles {
         // Can set the proposer.
-        Admin,
+        Owner,
         // Address that can make proposals.
         Proposer
     }
@@ -51,8 +51,8 @@ contract Governor is MultiRole, Testable {
 
     constructor(address _finderAddress, bool _isTest) public Testable(_isTest) {
         finder = Finder(_finderAddress);
-        _createExclusiveRole(uint(Roles.Admin), uint(Roles.Admin), msg.sender);
-        _createExclusiveRole(uint(Roles.Proposer), uint(Roles.Admin), msg.sender);
+        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint(Roles.Proposer), uint(Roles.Owner), msg.sender);
     }
 
     /**
