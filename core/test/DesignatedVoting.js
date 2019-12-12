@@ -28,8 +28,7 @@ contract("DesignatedVoting", function(accounts) {
     voting = await Voting.deployed();
     votingToken = await VotingToken.deployed();
     const finder = await Finder.deployed();
-    designatedVoting = await DesignatedVoting.new(finder.address, { from: tokenOwner });
-    await designatedVoting.resetMember(voterRole, voter, { from: tokenOwner });
+    designatedVoting = await DesignatedVoting.new(finder.address, tokenOwner, voter);
 
     tokenBalance = web3.utils.toWei("1");
     // The admin can burn and mint tokens for the purposes of this test.
