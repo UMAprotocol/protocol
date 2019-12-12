@@ -14,7 +14,7 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
 
     enum Roles {
         // Can set the minter and burner.
-        Governance,
+        Owner,
         // Addresses that can mint new tokens.
         Minter,
         // Addresses that can burn tokens that address owns.
@@ -27,9 +27,9 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createSharedRole(uint(Roles.Minter), uint(Roles.Governance), new address[](0));
-        _createSharedRole(uint(Roles.Burner), uint(Roles.Governance), new address[](0));
+        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
+        _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), new address[](0));
+        _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), new address[](0));
     }
 
     /**

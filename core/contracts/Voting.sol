@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "./EncryptedSender.sol";
 import "./Finder.sol";
 import "./FixedPoint.sol";
-import "./MultiRole.sol";
 import "./OracleInterface.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
@@ -14,14 +13,16 @@ import "./VoteTiming.sol";
 import "./VotingToken.sol";
 import "./VotingInterface.sol";
 
+import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 
 /**
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, EncryptedSender {
+contract Voting is Testable, Ownable, OracleInterface, VotingInterface, EncryptedSender {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -143,15 +144,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     // new address only.
     address private migratedAddress;
 
-    enum Roles {
-        // Can set the writer.
-        Governance,
-        // Can change parameters and whitelists, such as adding new supported identifiers or changing the inflation
-        // rate.
-        // TODO: consider splitting this role into smaller roles with narrower permissions.
-        Writer
-    }
-
     // Max value of an unsigned integer.
     uint constant private UINT_MAX = ~uint(0);
 
@@ -191,15 +183,6 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
-        // Set up governance role.
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-
-        // TODO: this is only shared to allow the governor to share these permissions with an Admin until we decide
-        // exactly which permissions will be delegated to the governor.
-        address[] memory initialMembers = new address[](1);
-        initialMembers[0] = msg.sender;
-        _createSharedRole(uint(Roles.Writer), uint(Roles.Governance), initialMembers);
-
         voteTiming.init(phaseLength);
         // TODO(#779): GAT percentage must be < 100%
         require(_gatPercentage.isLessThan(1));
@@ -292,7 +275,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
     /**
      * @notice Disables this Voting contract in favor of the migrated one.
      */
-    function setMigrated(address newVotingAddress) external onlyRoleHolder(uint(Roles.Writer)) {
+    function setMigrated(address newVotingAddress) external onlyOwner {
         migratedAddress = newVotingAddress;
     }
 
@@ -300,7 +283,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
      * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will be
      * succeed after this call.
      */
-    function addSupportedIdentifier(bytes32 identifier) external onlyRoleHolder(uint(Roles.Writer)) {
+    function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
             emit SupportedIdentifierAdded(identifier);
@@ -311,7 +294,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
      * @notice Removes the identifier from the whitelist. Price requests using this identifier will no longer succeed
      * after this call.
      */
-    function removeSupportedIdentifier(bytes32 identifier) external onlyRoleHolder(uint(Roles.Writer)) {
+    function removeSupportedIdentifier(bytes32 identifier) external onlyOwner {
         if (supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = false;
             emit SupportedIdentifierRemoved(identifier);
@@ -466,7 +449,7 @@ contract Voting is Testable, MultiRole, OracleInterface, VotingInterface, Encryp
      * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      */
-    function setInflationRate(FixedPoint.Unsigned memory _inflationRate) public onlyRoleHolder(uint(Roles.Writer)) {
+    function setInflationRate(FixedPoint.Unsigned memory _inflationRate) public onlyOwner {
         inflationRate = _inflationRate;
     }
 
