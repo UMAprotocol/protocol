@@ -30,11 +30,10 @@ contract("DesignatedVoting", function(accounts) {
     const finder = await Finder.deployed();
     designatedVoting = await DesignatedVoting.new(finder.address, tokenOwner, voter);
 
-    tokenBalance = web3.utils.toWei("1");
-    // The admin can burn and mint tokens for the purposes of this test.
-    await votingToken.addMember("1", umaAdmin);
+    tokenBalance = web3.utils.toWei("100000000");
+    // The admin can burn tokens for the purposes of this test.
     await votingToken.addMember("2", umaAdmin);
-    await votingToken.mint(tokenOwner, tokenBalance, { from: umaAdmin });
+    await votingToken.transfer(tokenOwner, tokenBalance, { from: umaAdmin });
 
     const registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, umaAdmin);
@@ -123,7 +122,7 @@ contract("DesignatedVoting", function(accounts) {
     );
 
     // Expected inflation = token balance * inflation rate = 1 * 0.5
-    const expectedInflation = web3.utils.toWei("0.5");
+    const expectedInflation = web3.utils.toWei("50000000");
     const expectedNewBalance = web3.utils.toBN(tokenBalance).add(web3.utils.toBN(expectedInflation));
     assert.equal(await votingToken.balanceOf(tokenOwner), web3.utils.toWei("0"));
     assert.equal(await votingToken.balanceOf(designatedVoting.address), expectedNewBalance.toString());
