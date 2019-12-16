@@ -37,13 +37,14 @@ contract("Voting", function(accounts) {
     const minterRole = 1;
     await votingToken.addMember(minterRole, account1);
 
-    // Mint a single token to each of the 3 accounts so they all have ~33% of the vote.
-    await votingToken.mint(account1, web3.utils.toWei("1", "ether"));
-    await votingToken.mint(account2, web3.utils.toWei("1", "ether"));
-    await votingToken.mint(account3, web3.utils.toWei("1", "ether"));
-
-    // Mint 0.1 tokens to the last account so that its vote would not reach the GAT.
-    await votingToken.mint(account4, web3.utils.toWei(".1", "ether"));
+    // account1 starts with 100MM tokens, so divide up the tokens accordingly:
+    // 1: 32MM
+    // 2: 32MM
+    // 3: 32MM
+    // 4: 4MM (can't reach the 5% GAT alone)
+    await votingToken.transfer(account2, web3.utils.toWei("32000000", "ether"));
+    await votingToken.transfer(account3, web3.utils.toWei("32000000", "ether"));
+    await votingToken.transfer(account4, web3.utils.toWei("4000000", "ether"));
 
     // Set the inflation rate to 0 by default, so the balances stay fixed until inflation is tested.
     await setNewInflationRate("0");
@@ -722,7 +723,7 @@ contract("Voting", function(accounts) {
 
     // All 3 accounts should have equal balances to start, so for winningPrice to win, account1 or account2 must
     // transfer more than half of their balance to account3 before the snapshot.
-    await votingToken.transfer(account3, web3.utils.toWei("0.6", "ether"), { from: account1 });
+    await votingToken.transfer(account3, web3.utils.toWei("24000000", "ether"), { from: account1 });
 
     // Move to the reveal phase, where the snapshot should be taken.
     await moveToNextPhase(voting);
@@ -731,7 +732,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
 
     // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
-    await votingToken.transfer(account1, web3.utils.toWei("0.6", "ether"), { from: account3 });
+    await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
 
     // Do the final two reveals.
     await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
