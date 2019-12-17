@@ -166,7 +166,7 @@ function ActiveRequests({ votingGateway }) {
         });
       }
     }
-    batchRevealFunction(reveals);
+    batchRevealFunction(reveals, { from: account });
     setCheckboxesChecked({});
   };
 
