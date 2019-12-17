@@ -33,7 +33,7 @@ const editStateReducer = (state, action) => {
   }
 };
 
-function ActiveRequests() {
+function ActiveRequests({ votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
   const classes = useTableStyles();
@@ -66,7 +66,9 @@ function ActiveRequests() {
       committedValue: call(
         "Voting",
         "getMessage",
-        account,
+        // If commits/reveals are through a DesignatedVoting instance, then the address of the DesignatedVoting is the
+        // `recipient` for saved messages.
+        votingGateway === "Voting" ? account : votingGateway,
         web3.utils.soliditySha3(request.identifier, request.time, currentRoundId)
       ),
       hasRevealed:
@@ -151,7 +153,7 @@ function ActiveRequests() {
   }, [subsequentFetchComplete, voteStatusesStringified, decryptionKeys, account]);
   const decryptionComplete = decryptedCommits && voteStatuses && decryptedCommits.length === voteStatuses.length;
 
-  const { send: batchRevealFunction, status: revealStatus } = useCacheSend("Voting", "batchReveal");
+  const { send: batchRevealFunction, status: revealStatus } = useCacheSend(votingGateway, "batchReveal");
   const onClickHandler = () => {
     const reveals = [];
     for (const index in checkboxesChecked) {
@@ -164,13 +166,13 @@ function ActiveRequests() {
         });
       }
     }
-    batchRevealFunction(reveals);
+    batchRevealFunction(reveals, { from: account });
     setCheckboxesChecked({});
   };
 
   const [editState, dispatchEditState] = useReducer(editStateReducer, {});
 
-  const { send: batchCommitFunction, status: commitStatus } = useCacheSend("Voting", "batchCommit");
+  const { send: batchCommitFunction, status: commitStatus } = useCacheSend(votingGateway, "batchCommit");
   const onSaveHandler = async () => {
     const commits = [];
     const indicesCommitted = [];
@@ -195,7 +197,7 @@ function ActiveRequests() {
     if (commits.length < 1) {
       return;
     }
-    batchCommitFunction(commits);
+    batchCommitFunction(commits, { from: account });
     setCheckboxesChecked({});
     dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
   };

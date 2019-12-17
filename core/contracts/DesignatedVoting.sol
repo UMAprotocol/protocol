@@ -43,10 +43,24 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     }
 
     /**
+     * @notice Forwards a batch commit to Voting.
+     */
+    function batchCommit(Voting.Commitment[] calldata commits) external onlyRoleHolder(uint(Roles.Voter)) {
+        _getVotingAddress().batchCommit(commits);
+    }
+
+    /**
      * @notice Forwards a reveal to Voting.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().revealVote(identifier, time, price, salt);
+    }
+
+    /**
+     * @notice Forwards a batch reveal to Voting.
+     */
+    function batchReveal(Voting.Reveal[] calldata reveals) external onlyRoleHolder(uint(Roles.Voter)) {
+        _getVotingAddress().batchReveal(reveals);
     }
 
     /**

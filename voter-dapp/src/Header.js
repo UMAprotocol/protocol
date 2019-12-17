@@ -10,14 +10,14 @@ import BigNumber from "bignumber.js";
 // style this component, either edit the theme which should propogate
 // through inheritance, or change the properties (props) of this component.
 
-export default function Header() {
+export default function Header({ votingAccount }) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
   const account = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
   })).account;
 
-  const balance = useCacheCall("VotingToken", "balanceOf", account);
+  const balance = useCacheCall("VotingToken", "balanceOf", votingAccount ? votingAccount : account);
   const supply = useCacheCall("VotingToken", "totalSupply");
   let tokenBalance;
 
@@ -78,6 +78,11 @@ export default function Header() {
             <div align="right" style={textStyle}>
               Your Address: {account}
             </div>
+            {votingAccount && (
+              <div align="right" style={textStyle}>
+                Voting with contract: {votingAccount}
+              </div>
+            )}
             <div align="right" style={textStyle}>
               {tokenBalance}
             </div>
