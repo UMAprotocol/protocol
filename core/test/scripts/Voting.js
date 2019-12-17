@@ -38,10 +38,9 @@ contract("scripts/Voting.js", function(accounts) {
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, account1);
     await registry.registerDerivative([], account1);
 
-    // Give account1 all of the tokens.
-    const minterRole = 1;
-    await votingToken.addMember(minterRole, account1);
-    await votingToken.mint(voter, web3.utils.toWei("1", "ether"));
+    // Give voter all of the tokens.
+    const initialSupply = await votingToken.balanceOf(account1);
+    await votingToken.transfer(voter, initialSupply);
   });
 
   beforeEach(async function() {

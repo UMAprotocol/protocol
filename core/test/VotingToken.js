@@ -12,10 +12,16 @@ contract("VotingToken", function(accounts) {
   const minterRoleEnumValue = 1;
   const burnerRoleEnumValue = 2;
 
+  const { toBN, toWei } = web3.utils;
+
   it("Minting/Burning", async function() {
     const votingToken = await VotingToken.deployed();
 
-    assert.equal(await votingToken.totalSupply(), "0");
+    const initialTokenSupply = toWei("100000000");
+
+    // Should start with 100MM tokens granted to the governance address.
+    assert.equal(await votingToken.totalSupply(), initialTokenSupply);
+    assert.equal(await votingToken.balanceOf(governance), initialTokenSupply);
     assert.equal(await votingToken.balanceOf(voter), "0");
 
     // Contracts can't authorize themselves to mint tokens.
@@ -25,20 +31,24 @@ contract("VotingToken", function(accounts) {
     // Set burner.
     await votingToken.addMember(burnerRoleEnumValue, buybackUser, { from: governance });
 
-    const numTokens = web3.utils.toWei("100");
+    const numTokens = toWei("100");
     // Voters can't mint themselves new tokens.
     assert(await didContractThrow(votingToken.mint(voter, numTokens, { from: voter })));
     // The voting contract can mint new tokens to a voter.
     await votingToken.mint(voter, numTokens, { from: votingContractAddress });
 
     // Verify updated balances.
-    assert.equal(await votingToken.totalSupply(), numTokens);
+    assert.equal(
+      await votingToken.totalSupply(),
+      toBN(numTokens)
+        .add(toBN(initialTokenSupply))
+        .toString()
+    );
     assert.equal(await votingToken.balanceOf(voter), numTokens);
 
-    const tokensToBurn = web3.utils.toWei("25");
-    const tokensLeft = web3.utils
-      .toBN(numTokens)
-      .sub(web3.utils.toBN(tokensToBurn))
+    const tokensToBurn = toWei("25");
+    const tokensLeft = toBN(numTokens)
+      .sub(toBN(tokensToBurn))
       .toString();
     // Voters can't burn their own tokens.
     assert(await didContractThrow(votingToken.burn(tokensToBurn, { from: voter })));
@@ -54,7 +64,12 @@ contract("VotingToken", function(accounts) {
     await votingToken.burn(tokensToBurn, { from: buybackUser });
 
     // Check updated balances.
-    assert.equal(await votingToken.totalSupply(), tokensLeft);
+    assert.equal(
+      await votingToken.totalSupply(),
+      toBN(tokensLeft)
+        .add(toBN(initialTokenSupply))
+        .toString()
+    );
     assert.equal(await votingToken.balanceOf(buybackUser), "0");
   });
 });
