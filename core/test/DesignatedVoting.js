@@ -166,6 +166,7 @@ contract("DesignatedVoting", function(accounts) {
       { identifier, time: time1, hash: hash1, encryptedVote: message1 },
       { identifier, time: time2, hash: hash2, encryptedVote: message2 }
     ];
+    assert(await didContractThrow(designatedVoting.batchCommit(commits, { from: tokenOwner })));
     await designatedVoting.batchCommit(commits, { from: voter });
 
     // Move to the reveal phase.
@@ -186,6 +187,7 @@ contract("DesignatedVoting", function(accounts) {
       { identifier, time: time1, price: price1.toString(), salt: salt1.toString() },
       { identifier, time: time2, price: price2.toString(), salt: salt2.toString() }
     ];
+    assert(await didContractThrow(designatedVoting.batchReveal(reveals, { from: tokenOwner })));
     await designatedVoting.batchReveal(reveals, { from: voter });
 
     // Check the resolved price.
