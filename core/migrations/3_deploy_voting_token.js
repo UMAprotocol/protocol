@@ -10,6 +10,8 @@ const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationU
 
 const minterRoleEnumValue = 1;
 
+const { toWei } = web3.utils;
+
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
@@ -39,5 +41,13 @@ module.exports = async function(deployer, network, accounts) {
 
     // Allow the tokenMigrator to mint new tokens.
     await newToken.addMember(minterRoleEnumValue, tokenMigrator.address, { from: keys.deployer });
+  } else {
+    // No migration, so new tokens should be minted.
+
+    // Give the deployment key minting permissions, mint the initial token distribution of 100MM, and then remove the
+    // minting priviledges.
+    await newToken.addMember(minterRoleEnumValue, keys.deployer, { from: keys.deployer });
+    await newToken.mint(keys.deployer, toWei("100000000"), { from: keys.deployer });
+    await newToken.removeMember(minterRoleEnumValue, keys.deployer, { from: keys.deployer });
   }
 };
