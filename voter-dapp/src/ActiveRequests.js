@@ -33,7 +33,7 @@ const editStateReducer = (state, action) => {
   }
 };
 
-function ActiveRequests({ votingGateway }) {
+function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
   const classes = useTableStyles();
@@ -55,7 +55,10 @@ function ActiveRequests({ votingGateway }) {
   const revealEvents = useCacheEvents(
     "Voting",
     "VoteRevealed",
-    useMemo(() => ({ filter: { voter: account, roundId: currentRoundId }, fromBlock: 0 }), [account, currentRoundId])
+    useMemo(() => ({ filter: { voter: votingAccount, roundId: currentRoundId }, fromBlock: 0 }), [
+      votingAccount,
+      currentRoundId
+    ])
   );
 
   const voteStatuses = useCacheCall(["Voting"], call => {
@@ -66,22 +69,16 @@ function ActiveRequests({ votingGateway }) {
       committedValue: call(
         "Voting",
         "getMessage",
-        // If commits/reveals are through a DesignatedVoting instance, then the address of the DesignatedVoting is the
-        // `recipient` for saved messages.
-        votingGateway === "Voting" ? account : votingGateway,
+        votingAccount,
         web3.utils.soliditySha3(request.identifier, request.time, currentRoundId)
-      ),
-      hasRevealed:
-        votePhase.toString() === VotePhasesEnum.REVEAL
-          ? call("Voting", "hasRevealedVote", request.identifier, request.time)
-          : false
+      )
     }));
   });
   const subsequentFetchComplete =
     voteStatuses &&
     // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
     // but the fetched value was null, e.g., no `comittedValue` existed.
-    voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined && voteStatus.hasRevealed !== undefined);
+    voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined);
   // Future hook calls that depend on `voteStatuses` should use `voteStatusesStringified` in their dependencies array
   // because `voteStatuses` will never compare equal after a re-render, even if no values in it actually changed.
   // Also note that `JSON.stringify` doesn't distinguish `undefined` and `null`, but in Drizzle, those mean different
@@ -236,11 +233,12 @@ function ActiveRequests({ votingGateway }) {
       };
     }
     // In the REVEAL phase.
-    if (voteStatus.hasRevealed) {
-      const pendingRequest = pendingRequests[index];
+    const pendingRequest = pendingRequests[index];
+    const revealEvent = eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)];
+    if (revealEvent) {
       return {
         statusString: "Revealed",
-        currentVote: eventsMap[toPriceRequestKey(pendingRequest.identifier, pendingRequest.time)],
+        currentVote: revealEvent,
         enabled: false
       };
     }
