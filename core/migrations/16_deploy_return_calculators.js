@@ -22,6 +22,6 @@ module.exports = async function(deployer, network, accounts) {
   );
 
   // Approve the new return calculators on the whitelists.
-  await returnCalculatorWhitelist.addToWhitelist(levered2x.address, { from: keys.returnCalculatorWhitelist });
-  await returnCalculatorWhitelist.addToWhitelist(levered1x.address, { from: keys.returnCalculatorWhitelist });
+  await returnCalculatorWhitelist.addToWhitelist(levered2x.address, { from: keys.deployer });
+  await returnCalculatorWhitelist.addToWhitelist(levered1x.address, { from: keys.deployer });
 };
