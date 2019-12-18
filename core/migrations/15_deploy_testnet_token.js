@@ -28,5 +28,5 @@ module.exports = async function(deployer, network, accounts) {
   const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
   const marginCurrencyWhitelistAddress = await tokenizedDerivativeCreator.marginCurrencyWhitelist();
   const marginCurrencyWhitelist = await AddressWhitelist.at(marginCurrencyWhitelistAddress);
-  await marginCurrencyWhitelist.addToWhitelist(testnetERC20Address, { from: keys.marginCurrencyWhitelist });
+  await marginCurrencyWhitelist.addToWhitelist(testnetERC20Address, { from: keys.deployer });
 };
