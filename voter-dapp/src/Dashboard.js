@@ -44,25 +44,26 @@ function Dashboard() {
   }
   const hasDesignatedVoting = deployedDesignatedVotingAddress !== addressZero;
   let votingGateway = "Voting";
-  let votingAccount = "";
 
   if (hasDesignatedVoting) {
     if (designatedVoting) {
       votingGateway = deployedDesignatedVotingAddress;
-      votingAccount = deployedDesignatedVotingAddress;
     } else {
       // Waiting for drizzle finish loading DesignatedVoting.
       return <div>LOADING</div>;
     }
   }
+  // If commits/reveals are through a DesignatedVoting instance, then the address of the DesignatedVoting is the
+  // voting account as far as `Voting.sol` is concerned.
+  const votingAccount = votingGateway === "Voting" ? account : votingGateway;
 
   return (
     <div>
       <AppBar color="secondary" position="static">
         <Header votingAccount={votingAccount} />
       </AppBar>
-      <ActiveRequests votingGateway={votingGateway} />
-      <ResolvedRequests />
+      <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} />
+      <ResolvedRequests votingAccount={votingAccount} />
     </div>
   );
 }

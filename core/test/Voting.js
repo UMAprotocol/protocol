@@ -808,20 +808,6 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
     await moveToNextPhase(voting);
-
-    // Account 1 reveals.
-    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
-
-    // Check if hasRevealedVote gives correct results for each voter.
-    assert.isTrue(await voting.hasRevealedVote(identifier, time, { from: account1 }));
-    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
-    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
-
-    // Once in the next round, no voter is considered to have revealed.
-    await moveToNextRound(voting);
-    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account1 }));
-    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account2 }));
-    assert.isFalse(await voting.hasRevealedVote(identifier, time, { from: account3 }));
   });
 
   it("Basic Inflation", async function() {

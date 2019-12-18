@@ -12,16 +12,12 @@ import { useTableStyles } from "./Styles.js";
 import { formatDate } from "./common/FormattingUtils.js";
 import { MAX_UINT_VAL } from "./common/Constants.js";
 
-function ResolvedRequests() {
+function ResolvedRequests({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
-
-  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
-  }));
 
   const [showAllResolvedRequests, setShowAllResolvedRequests] = useState(false);
 
@@ -44,10 +40,10 @@ function ResolvedRequests() {
         const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
         // If all resolved requests are being shown, don't filter by round id.
         return {
-          filter: { resolutionRoundId: showAllResolvedRequests ? undefined : indexRoundId, voter: account },
+          filter: { resolutionRoundId: showAllResolvedRequests ? undefined : indexRoundId, voter: votingAccount },
           fromBlock: 0
         };
-      }, [currentRoundId, account, showAllResolvedRequests])
+      }, [currentRoundId, votingAccount, showAllResolvedRequests])
     ) || [];
 
   // Handler for when the user clicks the button to toggle showing all resolved requests.

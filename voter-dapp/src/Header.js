@@ -17,7 +17,7 @@ export default function Header({ votingAccount }) {
     account: drizzleState.accounts[0]
   })).account;
 
-  const balance = useCacheCall("VotingToken", "balanceOf", votingAccount ? votingAccount : account);
+  const balance = useCacheCall("VotingToken", "balanceOf", votingAccount);
   const supply = useCacheCall("VotingToken", "totalSupply");
   let tokenBalance;
 
@@ -78,7 +78,7 @@ export default function Header({ votingAccount }) {
             <div align="right" style={textStyle}>
               Your Address: {account}
             </div>
-            {votingAccount && (
+            {votingAccount !== account && (
               <div align="right" style={textStyle}>
                 Voting with contract: {votingAccount}
               </div>
