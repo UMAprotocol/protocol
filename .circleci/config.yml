@@ -2,7 +2,7 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
     working_directory: ~/protocol
     steps:
       - checkout
@@ -26,7 +26,7 @@ jobs:
             - ~/protocol
   build:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -40,7 +40,7 @@ jobs:
             - ~/protocol
   lint:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -50,7 +50,7 @@ jobs:
           command: ./ci/lint.sh
   docs:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -100,7 +100,7 @@ jobs:
           command: ./ci/run_slither.sh
   test:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000
     working_directory: ~/protocol
@@ -179,7 +179,7 @@ jobs:
           command: ./ci/run_echidna_tests.sh
   dapp_test:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
     working_directory: ~/protocol
@@ -217,7 +217,7 @@ jobs:
           command: ./ci/run_dapp_tests.sh
   dapp_build:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -242,7 +242,7 @@ jobs:
           destination: sponsor-dapp-v2-build
   deploy_to_staging:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node
     working_directory: ~/protocol
     steps:
       - restore_cache:
