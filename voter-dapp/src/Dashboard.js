@@ -3,6 +3,8 @@ import Header from "./Header.js";
 import AppBar from "@material-ui/core/AppBar";
 import ActiveRequests from "./ActiveRequests.js";
 import ResolvedRequests from "./ResolvedRequests.js";
+import DesignatedVotingDeployment from "./DesignatedVotingDeployment.js";
+import DesignatedVotingTransfer from "./DesignatedVotingTransfer.js";
 import DesignatedVoting from "./contracts/DesignatedVoting.json";
 
 import { drizzleReactHooks } from "drizzle-react";
@@ -45,13 +47,28 @@ function Dashboard() {
   const hasDesignatedVoting = deployedDesignatedVotingAddress !== addressZero;
   let votingGateway = "Voting";
 
+  let designatedVotingHelpers = "";
   if (hasDesignatedVoting) {
     if (designatedVoting) {
       votingGateway = deployedDesignatedVotingAddress;
+      // The user has a DesignatedVoting instance deployed: load the component that checks that the user doesn't have
+      // tokens in the current wallet instead.
+      designatedVotingHelpers = (
+        <div>
+          <DesignatedVotingTransfer votingAccount={votingGateway} />
+        </div>
+      );
     } else {
       // Waiting for drizzle finish loading DesignatedVoting.
       return <div>LOADING</div>;
     }
+  } else {
+    // The user doesn't have a DesignatedVoting instance deployed: load the component that allows them to deploy one.
+    designatedVotingHelpers = (
+      <div>
+        <DesignatedVotingDeployment votingAccount={account} />
+      </div>
+    );
   }
   // If commits/reveals are through a DesignatedVoting instance, then the address of the DesignatedVoting is the
   // voting account as far as `Voting.sol` is concerned.
@@ -62,6 +79,7 @@ function Dashboard() {
       <AppBar color="secondary" position="static">
         <Header votingAccount={votingAccount} />
       </AppBar>
+      {designatedVotingHelpers}
       <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} />
       <ResolvedRequests votingAccount={votingAccount} />
     </div>
