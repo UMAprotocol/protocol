@@ -52,6 +52,12 @@ contract("Governor", function(accounts) {
     await voting.transferOwnership(governor.address);
   });
 
+  beforeEach(async function() {
+    // Make sure the governor time and voting time are aligned before each test case.
+    let currentTime = await voting.getCurrentTime();
+    await governor.setCurrentTime(currentTime);
+  });
+
   it("Proposal permissions", async function() {
     const txnData = constructTransferTransaction(account1, "0");
     assert(
