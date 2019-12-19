@@ -52,6 +52,12 @@ contract("Governor", function(accounts) {
     await voting.transferOwnership(governor.address);
   });
 
+  beforeEach(async function() {
+    // Make sure the governor time and voting time are aligned before each test case.
+    let currentTime = await voting.getCurrentTime();
+    await governor.setCurrentTime(currentTime);
+  });
+
   it("Proposal permissions", async function() {
     const txnData = constructTransferTransaction(account1, "0");
     assert(
@@ -105,9 +111,6 @@ contract("Governor", function(accounts) {
   });
 
   it("Identifier construction", async function() {
-    // Reset the rounds.
-    await moveToNextRound(voting);
-
     // Construct the transaction to send 0 tokens.
     const txnData = constructTransferTransaction(account1, "0");
 
@@ -159,9 +162,6 @@ contract("Governor", function(accounts) {
   });
 
   it("Successful proposal", async function() {
-    // Reset the rounds.
-    await moveToNextRound(voting);
-
     // Issue some test tokens to the governor address.
     await testToken.allocateTo(governor.address, toWei("1"));
 
@@ -197,9 +197,6 @@ contract("Governor", function(accounts) {
   });
 
   it("Successful multi-transaction proposal", async function() {
-    // Reset the rounds.
-    await moveToNextRound(voting);
-
     // Issue some test tokens to the governor address.
     await testToken.allocateTo(governor.address, toWei("2"));
 
@@ -247,7 +244,6 @@ contract("Governor", function(accounts) {
 
   it("No repeated executions", async function() {
     // Setup
-    await moveToNextRound(voting);
     const txnData = constructTransferTransaction(account1, "0");
     const id = await governor.numProposals();
     await governor.propose([
@@ -279,7 +275,6 @@ contract("Governor", function(accounts) {
 
   it("No out of order executions", async function() {
     // Setup
-    await moveToNextRound(voting);
     const txnData = constructTransferTransaction(account1, "0");
     const id = await governor.numProposals();
     await governor.propose([
@@ -316,9 +311,6 @@ contract("Governor", function(accounts) {
   });
 
   it("Unsuccessful proposal", async function() {
-    // Reset the rounds.
-    await moveToNextRound(voting);
-
     // Issue some test tokens to the governor address.
     await testToken.allocateTo(governor.address, toWei("1"));
 
@@ -354,9 +346,6 @@ contract("Governor", function(accounts) {
   });
 
   it("Unresolved vote", async function() {
-    // Reset the rounds.
-    await moveToNextRound(voting);
-
     // Issue some test tokens to the governor address.
     await testToken.allocateTo(governor.address, toWei("1"));
 
@@ -398,9 +387,6 @@ contract("Governor", function(accounts) {
   });
 
   it("Failed transaction", async function() {
-    // Reset the rounds.
-    await moveToNextRound(voting);
-
     // Construct a transaction that will obviously fail.
     const txnData = constructTransferTransaction(account1, toWei("1000"));
 
@@ -433,9 +419,6 @@ contract("Governor", function(accounts) {
   });
 
   it("Events", async function() {
-    // Reset the rounds.
-    await moveToNextRound(voting);
-
     // Construct the transaction data to send the newly minted tokens to account1.
     const txnData = constructTransferTransaction(account1, toWei("0"));
 
