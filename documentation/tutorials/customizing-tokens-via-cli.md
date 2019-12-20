@@ -72,7 +72,7 @@ we want to use, `ETH`, is whitelisted. We represent `ETH` via the special addres
 const creator = await TokenizedDerivativeCreator.deployed()
 const whitelistAddress = await creator.marginCurrencyWhitelist()
 const whitelist = await AddressWhitelist.at(whitelistAddress)
-await whitelist.isOnWhitelist("0x0000000000000000000000000000000000000000");
+await whitelist.isOnWhitelist("0x0000000000000000000000000000000000000000")
 // returns true
 ```
 
