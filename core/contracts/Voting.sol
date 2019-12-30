@@ -157,7 +157,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint numTokens
     );
 
-    event RewardsRetrieved(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time, uint numTokens);
+    event RewardsRetrieved(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time,
+        uint numTokens);
 
     event PriceRequestAdded(uint indexed votingRoundId, bytes32 indexed identifier, uint time);
 
@@ -477,7 +478,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
                 totalRewardToIssue = totalRewardToIssue.add(reward);
 
                 // Emit reward retrieval for this vote.
-                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, reward.rawValue);
+                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time,
+                    reward.rawValue);
             } else {
                 // Emit a 0 token retrieval on incorrect votes.
                 emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
