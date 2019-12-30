@@ -214,7 +214,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     {
         uint blockTime = getCurrentTime();
         // TODO(#779): Price request must be for a time in the past
-        require(time < blockTime);
+        require(time <= blockTime);
         // TODO(#779): Price request for unsupported identifier
         require(supportedIdentifiers[identifier]);
 
