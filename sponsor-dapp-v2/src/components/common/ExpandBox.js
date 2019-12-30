@@ -26,7 +26,7 @@ class ExpandBox extends Component {
       } else if (timestamp === UINT_MAX) {
         return "None";
       } else {
-        return moment.unix(timestamp).format("YYYY-MM-DD, HH:MM:SS");
+        return moment.unix(timestamp).format("YYYY-MM-DD, LTS");
       }
     };
 
