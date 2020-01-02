@@ -990,15 +990,17 @@ contract("Voting", function(accounts) {
     truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => {
       return (
         ev.voter.toString() == account1.toString() &&
-        ev.rewardsRoundId.toString() == currentRoundId.toString() &&
+        ev.roundId.toString() == currentRoundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time == time &&
         // Inflation is 100% and there was only one voter.
         ev.numTokens.toString() == initialTotalSupply.toString()
       );
     });
 
-    // Events only get emitted if there were actually rewards issued. Is this the behavior we want?
+    // RewardsRetrieved event gets emitted for every reward retrieval that's attempted, even if no tokens are minted.
     result = await voting.retrieveRewards(account4, roundId, [{ identifier, time }]);
-    truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
+    truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => true);
 
     // An event should be emitted when a new supported identifier is added (but not on repeated no-op calls).
     result = await voting.removeSupportedIdentifier(identifier);

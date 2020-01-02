@@ -157,7 +157,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint numTokens
     );
 
-    event RewardsRetrieved(address indexed voter, uint indexed rewardsRoundId, uint numTokens);
+    event RewardsRetrieved(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time,
+        uint numTokens);
 
     event PriceRequestAdded(uint indexed votingRoundId, bytes32 indexed identifier, uint time);
 
@@ -461,13 +462,12 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         for (uint i = 0; i < toRetrieve.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time);
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voterAddress];
 
             require(priceRequest.lastVotingRound == roundId, "Only retrieve rewards for votes resolved in same round");
 
             _resolvePriceRequest(priceRequest, voteInstance);
 
-            if (voteInstance.resultComputation.wasVoteCorrect(voteSubmission.revealHash)) {
+            if (voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)) {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed and was
                 // correct, so they are elgible for a reward.
                 FixedPoint.Unsigned memory correctTokens = voteInstance.resultComputation.
@@ -476,16 +476,22 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
                 // Compute the reward and add to the cumulative reward.
                 FixedPoint.Unsigned memory reward = snapshotBalance.mul(totalRewardPerVote).div(correctTokens);
                 totalRewardToIssue = totalRewardToIssue.add(reward);
+
+                // Emit reward retrieval for this vote.
+                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time,
+                    reward.rawValue);
+            } else {
+                // Emit a 0 token retrieval on incorrect votes.
+                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
             }
 
             // Delete the submission to capture any refund and clean up storage.
-            delete voteSubmission.revealHash;
+            delete voteInstance.voteSubmissions[voterAddress].revealHash;
         }
 
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
             require(votingToken.mint(voterAddress, totalRewardToIssue.rawValue));
-            emit RewardsRetrieved(voterAddress, roundId, totalRewardToIssue.rawValue);
         }
     }
 
