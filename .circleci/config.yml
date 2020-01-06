@@ -2,14 +2,14 @@ version: 2
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - checkout
       - restore_cache:
           keys:
-            - v4-dependency-cache-{{ checksum "package.json" }}
-            - v4-dependency-cache-
+            - v7-dependency-cache-{{ checksum "package.json" }}
+            - v7-dependency-cache-
       - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
@@ -17,7 +17,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v4-dependency-cache-{{ checksum "package.json" }}
+          key: v7-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -26,7 +26,7 @@ jobs:
             - ~/protocol
   build:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -40,7 +40,7 @@ jobs:
             - ~/protocol
   lint:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -50,7 +50,7 @@ jobs:
           command: ./ci/lint.sh
   docs:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -100,7 +100,7 @@ jobs:
           command: ./ci/run_slither.sh
   test:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000
     working_directory: ~/protocol
@@ -179,7 +179,7 @@ jobs:
           command: ./ci/run_echidna_tests.sh
   dapp_test:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 6720000 -p 9545 -m "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
     working_directory: ~/protocol
@@ -192,8 +192,8 @@ jobs:
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
           keys: 
-            - v3-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
-            - v3-dapp-dep-cache-
+            - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
+            - v6-dapp-dep-cache-
       - run:
           name: Install Voter dApp Dependencies
           working_directory: ~/protocol/voter-dapp
@@ -203,7 +203,7 @@ jobs:
           working_directory: ~/protocol/sponsor-dapp-v2
           command: npm install
       - save_cache:
-          key: v3-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
+          key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
           paths:
             - voter-dapp/node_modules
             - sponsor-dapp-v2/node_modules
@@ -217,7 +217,7 @@ jobs:
           command: ./ci/run_dapp_tests.sh
   dapp_build:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -242,7 +242,7 @@ jobs:
           destination: sponsor-dapp-v2-build
   deploy_to_staging:
     docker:
-      - image: circleci/node:11.5.0
+      - image: circleci/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
