@@ -12,6 +12,30 @@ import { useTableStyles } from "./Styles.js";
 import { formatDate } from "./common/FormattingUtils.js";
 import { MAX_UINT_VAL } from "./common/Constants.js";
 
+function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents) {
+  if (retrievedRewardsEvents === undefined || priceResolvedEvents === undefined || revealedVoteEvents === undefined) {
+    // Requests haven't been completed.
+    return null;
+  } else {
+    // Loop through and match up.
+
+    // Short circuits
+//     if (priceResolvedEvents.length === retrievedRewardsEvents.length) {
+//       // If the voter has as many reward retrievals as there were resolved prices in these rounds, then we should be done.
+//       return null;
+//     }
+// 
+//     if (revealedVoteEvents.length === retrievedRewardsEvents.length) {
+//       // If the voter has retrieved rewards for each reveal, they should be done retrieving for all of these rounds.
+//       return null;
+//     }
+
+    // Place resolution events 
+
+
+  }
+}
+
 function RetrieveRewards({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
@@ -31,12 +55,13 @@ function RetrieveRewards({ votingAccount }) {
 
   const roundIds = useMemo(() => {
     if (queryAllRounds) {
+      // Signal that all rounds should be searched by setting the query parameter to undefined.
       return undefined;
     } else if (currentRoundId === undefined) {
+      // Should always return nothing, which is desired before we know the round id.
       return MAX_UINT_VAL;
     } else {
       // This section will produce an array of roundIds that should be queried for unclaimed rewards.
-
       const lookback = 10;
 
       // Window length should be the lookback or currentRoundId (so the numbers don't go below 0), whichever is smaller.
@@ -49,7 +74,7 @@ function RetrieveRewards({ votingAccount }) {
     }
   }, [currentRoundId, queryAllRounds]);
 
-  const retrievedRewards = useCacheEvents(
+  const retrievedRewardsEvents = useCacheEvents(
       "Voting",
       "RewardsRetrieved",
       useMemo(() => {
@@ -57,13 +82,11 @@ function RetrieveRewards({ votingAccount }) {
       }, [roundIds, votingAccount])
     );
 
-  const resolvedEvents =
+  const priceResolvedEvents =
     useCacheEvents(
       "Voting",
       "PriceResolved",
       useMemo(() => {
-        const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
-        // If all resolved requests are being shown, don't filter by round id.
         return { filter: { resolutionRoundId: roundIds }, fromBlock: 0 };
       }, [roundIds])
     );
@@ -73,14 +96,9 @@ function RetrieveRewards({ votingAccount }) {
       "Voting",
       "VoteRevealed",
       useMemo(() => {
-        const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
-        // If all resolved requests are being shown, don't filter by round id.
-        return {
-          filter: { resolutionRoundId: showAllResolvedRequests ? undefined : indexRoundId, voter: votingAccount },
-          fromBlock: 0
-        };
-      }, [currentRoundId, votingAccount, showAllResolvedRequests])
-    ) || [];
+        return { filter: { voter: votingAccount, roundId: roundIds }, fromBlock: 0 };
+      }, [roundIds, votingAccount])
+    );
 
   // Handler for when the user clicks the button to toggle showing all resolved requests.
   const clickShowAll = useMemo(
@@ -89,6 +107,8 @@ function RetrieveRewards({ votingAccount }) {
     },
     [showAllResolvedRequests]
   );
+
+  let retrieveSend = useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents);
 
   // TODO: add a resolved timestamp to the table so the sorting makes more sense to the user.
   // Sort the resolved requests such that they are organized from most recent to least recent round.
