@@ -6,7 +6,7 @@ After completing these set up steps, we'll be ready to start developing with the
 
 Start in the top-level directory in this repository, `protocol/`.
 
-1. Install nodejs v11.15.0 and ensure that npm is installed along with it.
+1. Install the latest stable version of nodejs and ensure that npm is installed along with it.
 2. Run `npm install` in `protocol/`.
 
 We should be able to compile the smart contracts from `protocol/core`:
