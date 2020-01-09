@@ -12,7 +12,7 @@ module.exports = async function(deployer, network, accounts) {
   const gatPercentage = { rawValue: web3.utils.toWei("0.05", "ether") };
 
   // Set the inflation rate.
-  const inflationRate = { rawValue: web3.utils.toWei("0.05", "ether") };
+  const inflationRate = { rawValue: web3.utils.toWei("0.0005", "ether") };
 
   // Get the previously deployed VotingToken and Finder.
   const votingToken = await VotingToken.deployed();
