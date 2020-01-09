@@ -178,10 +178,10 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         continue;
       }
       const price = web3.utils.toWei(editState[index]);
-      const salt = web3.utils.toBN(web3.utils.randomHex(32));
+      const salt = getRandomUnsignedInt();
       const encryptedVote = await encryptMessage(
         decryptionKeys[account][currentRoundId].publicKey,
-        JSON.stringify({ price, salt })
+        JSON.stringify({ price: price.toString(), salt: salt.toString() })
       );
       commits.push({
         identifier: pendingRequests[index].identifier,
