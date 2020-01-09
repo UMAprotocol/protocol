@@ -17,7 +17,7 @@ module.exports = async function(deployer, network, accounts) {
   // Only update the fees if this contract was newly deployed during this migration.
   if (didDeploy) {
     // Set oracle fees to 0.5% per year.
-    const annualFee = web3.utils.toWei("0.005");
+    const annualFee = web3.utils.toWei("0");
     const secondsPerYear = 31536000;
     const feePerSecond = web3.utils.toBN(annualFee).divn(secondsPerYear);
     await store.setFixedOracleFeePerSecond({ rawValue: feePerSecond.toString() }, { from: keys.deployer });
