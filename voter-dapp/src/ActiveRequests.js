@@ -15,6 +15,7 @@ import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 import { useTableStyles } from "./Styles.js";
 const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
+const { getRandomUnsignedInt } = require("./common/Random.js");
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -159,7 +160,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           identifier: pendingRequests[index].identifier,
           time: pendingRequests[index].time,
           price: decryptedCommits[index].price.toString(),
-          salt: web3.utils.hexToNumberString(decryptedCommits[index].salt)
+          salt: decryptedCommits[index].salt
         });
       }
     }
@@ -178,7 +179,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         continue;
       }
       const price = web3.utils.toWei(editState[index]);
-      const salt = web3.utils.toBN(web3.utils.randomHex(32));
+      const salt = getRandomUnsignedInt().toString();
       const encryptedVote = await encryptMessage(
         decryptionKeys[account][currentRoundId].publicKey,
         JSON.stringify({ price, salt })
