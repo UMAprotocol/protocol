@@ -12,7 +12,22 @@ import { useTableStyles } from "./Styles.js";
 import { formatDate } from "./common/FormattingUtils.js";
 import { MAX_UINT_VAL } from "./common/Constants.js";
 
-function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents) {
+const MAX_SAFE_INT = 2147483647;
+
+
+function getOrCreateObj(containingObj, field) {
+  if (!containingObj[fieldName]) {
+    containingObj[fieldName] = {};
+  }
+
+  return containingObj[fieldName];
+}
+
+function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents, votingAccount) {
+  const { useCacheSend } = drizzleReactHooks.useDrizzle();
+
+  const { send, status } = useCacheSend("Voting", "retrieveRewards");
+
   if (retrievedRewardsEvents === undefined || priceResolvedEvents === undefined || revealedVoteEvents === undefined) {
     // Requests haven't been completed.
     return null;
@@ -30,9 +45,70 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, reve
 //       return null;
 //     }
 
-    // Place resolution events 
+    // Put events into objects.
+    const state = {};
 
 
+    const getVoteState = (event, roundIdFieldName) => {
+      const roundId = event.returnValues[roundFieldName].toString();
+      const identifier = web3.utils.hexToUtf8(event.returnValues.identifier);
+      const time = event.returnValues.time.toString();
+      
+      const roundState = getOrCreateObj(state, roundId);
+      return getOrCreateObj(roundState, `${identifier}|${time}`);
+    }
+
+    for (const event of retrievedRewardsEvents) {
+      const voteState = getVoteState(event, "roundId");
+
+      voteState.retrievedRewards = true;
+    }
+
+    for (const event of priceResolvedEvents) {
+      const voteState = getVoteState(event, "resolutionRoundId");
+
+      voteState.priceResolved = true;
+    }
+
+    let oldestUnclaimedRound = MAX_SAFE_INT;
+    for (const event of revealedVoteEvents) {
+      const voteState = getVoteState(event, "roundId");
+
+      voteState.revealed = true;
+
+      if (!voteState.retrievedRewards && voteState.priceResolved) {
+        oldestUnclaimedRound = Math.min(oldestUnclaimedRound, event.returnValues.roundId.toString());
+      }
+    }
+
+    if (oldestUnclaimedRound === MAX_SAFE_INT) {
+      // No unclaimed rounds were found.
+      return null;
+    }
+
+    // Extract identifiers and times from the round we picked.
+    const toRetrieve = [];
+
+    // TODO: we arbitrarily set the max number of retrievals to 10 until we have better data on how many we can fit
+    // into a signle txn.
+    const maxRetrievals = 10;
+    for (const [key, voteState] of Object.entries(state[oldestUnclaimedRound])) {
+      if (!voteState.retrievedRewards && voteState.priceResolved && voteState.revealed) {
+        const [identifier, time] = key.split("|");
+        toRetrieve.push({ identifier: web3.utils.utf8ToHex(identifier), time: time });
+      }
+
+      if (toRetrieve.length === maxRetrievals) {
+        break;
+      }
+    }
+
+    // Create the txn send function and return it.
+    const retrieveRewards = () => {
+      send(votingAccount, oldestUnclaimedRound, toRetrieve);
+    }
+
+    return { send: retrievedRewards, status: status };
   }
 }
 
@@ -100,65 +176,24 @@ function RetrieveRewards({ votingAccount }) {
       }, [roundIds, votingAccount])
     );
 
+  const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents, votingAccount);
+
   // Handler for when the user clicks the button to toggle showing all resolved requests.
-  const clickShowAll = useMemo(
+  const clickQueryAll = useMemo(
     () => () => {
-      setShowAllResolvedRequests(!showAllResolvedRequests);
+      setQueryAllRounds(!queryAllRounds);
     },
-    [showAllResolvedRequests]
+    [queryAllRounds]
   );
-
-  let retrieveSend = useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents);
-
-  // TODO: add a resolved timestamp to the table so the sorting makes more sense to the user.
-  // Sort the resolved requests such that they are organized from most recent to least recent round.
-  const resolvedEventsSorted = resolvedEvents.sort((a, b) => {
-    const aRoundId = web3.utils.toBN(a.returnValues.resolutionRoundId);
-    const bRoundId = web3.utils.toBN(b.returnValues.resolutionRoundId);
-    return bRoundId.cmp(aRoundId);
-  });
 
   return (
     <div className={classes.root}>
       <Typography variant="h6" component="h6">
-        Resolved Requests
+        Retrieve Voting Rewards
       </Typography>
-      <Table style={{ marginBottom: "10px" }}>
-        <TableHead className={classes.tableHeader}>
-          <TableRow>
-            <TableCell className={classes.tableHeaderCell}>Price Feed</TableCell>
-            <TableCell className={classes.tableHeaderCell}>Timestamp</TableCell>
-            <TableCell className={classes.tableHeaderCell}>Status</TableCell>
-            <TableCell className={classes.tableHeaderCell}>Your Vote</TableCell>
-            <TableCell className={classes.tableHeaderCell}>Correct Vote</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody className={classes.tableBody}>
-          {resolvedEventsSorted.map((event, index) => {
-            const resolutionData = event.returnValues;
 
-            const revealEvent = revealedVoteEvents.find(
-              event =>
-                event.returnValues.identifier === resolutionData.identifier &&
-                event.returnValues.time === resolutionData.time
-            );
-
-            const userVote = revealEvent ? drizzle.web3.utils.fromWei(revealEvent.returnValues.price) : "No Vote";
-
-            return (
-              <TableRow key={index}>
-                <TableCell>{web3.utils.hexToUtf8(resolutionData.identifier)}</TableCell>
-                <TableCell>{formatDate(resolutionData.time, web3)}</TableCell>
-                <TableCell>Resolved</TableCell>
-                <TableCell>{userVote}</TableCell>
-                <TableCell>{web3.utils.fromWei(resolutionData.price)}</TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-      <Button onClick={clickShowAll} variant="contained" color="primary">
-        Show {showAllResolvedRequests ? "only recently" : "all"} resolved requests
+      <Button onClick={clickQueryAll} variant="contained" color="primary">
+        Search {queryAllRounds ? "only recent" : "all"} rounds for unclaimed rewards
       </Button>
     </div>
   );
