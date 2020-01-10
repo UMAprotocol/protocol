@@ -158,6 +158,21 @@
       }
     }
   },
+  "EUR/USD": {
+    "dappConfig": {
+      "comment": "expiries: 12/31, 3/31, 6/30, 9/30 at 9:00 PM GMT, Perpetual; supportedMove: 0.02 corresponds to 2%",
+      "expiries": [1577826000, 1585688400, 1593550800, 1601499600, 0],
+      "supportedMove": "0.02"
+    },
+    "uploaderConfig": {
+      "publishInterval": "900",
+      "minDelay": "0",
+      "numerator": {
+        "dataSource": "IntrinioForex",
+        "assetName": "EURUSD"
+      }
+    }
+  },
   "Telegram SAFT": {
     "dappConfig": {
       "comment": "expiries: 12/31, 3/31, 6/30, 9/30 at 9:00 PM GMT, Perpetual; supportedMove: 0.1 corresponds to 10%",
