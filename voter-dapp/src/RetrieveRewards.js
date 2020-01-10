@@ -14,7 +14,6 @@ import { MAX_UINT_VAL } from "./common/Constants.js";
 
 const MAX_SAFE_INT = 2147483647;
 
-
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[fieldName]) {
     containingObj[fieldName] = {};
@@ -35,28 +34,27 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, reve
     // Loop through and match up.
 
     // Short circuits
-//     if (priceResolvedEvents.length === retrievedRewardsEvents.length) {
-//       // If the voter has as many reward retrievals as there were resolved prices in these rounds, then we should be done.
-//       return null;
-//     }
-// 
-//     if (revealedVoteEvents.length === retrievedRewardsEvents.length) {
-//       // If the voter has retrieved rewards for each reveal, they should be done retrieving for all of these rounds.
-//       return null;
-//     }
+    //     if (priceResolvedEvents.length === retrievedRewardsEvents.length) {
+    //       // If the voter has as many reward retrievals as there were resolved prices in these rounds, then we should be done.
+    //       return null;
+    //     }
+    //
+    //     if (revealedVoteEvents.length === retrievedRewardsEvents.length) {
+    //       // If the voter has retrieved rewards for each reveal, they should be done retrieving for all of these rounds.
+    //       return null;
+    //     }
 
     // Put events into objects.
     const state = {};
-
 
     const getVoteState = (event, roundIdFieldName) => {
       const roundId = event.returnValues[roundFieldName].toString();
       const identifier = web3.utils.hexToUtf8(event.returnValues.identifier);
       const time = event.returnValues.time.toString();
-      
+
       const roundState = getOrCreateObj(state, roundId);
       return getOrCreateObj(roundState, `${identifier}|${time}`);
-    }
+    };
 
     for (const event of retrievedRewardsEvents) {
       const voteState = getVoteState(event, "roundId");
@@ -106,7 +104,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, reve
     // Create the txn send function and return it.
     const retrieveRewards = () => {
       send(votingAccount, oldestUnclaimedRound, toRetrieve);
-    }
+    };
 
     return { send: retrievedRewards, status: status };
   }
@@ -118,7 +116,6 @@ function RetrieveRewards({ votingAccount }) {
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
-
 
   const [queryAllRounds, setQueryAllRounds] = useState(false);
 
@@ -146,55 +143,64 @@ function RetrieveRewards({ votingAccount }) {
 
       // If the lastCompletedRound is 20, this creates the following array:
       // [20, 19, 18, 17, 16, 15, 14, 13, 12, 11]
-      return Array.from({length: windowLength}, (v, i) => lastCompletedRound - i); 
+      return Array.from({ length: windowLength }, (v, i) => lastCompletedRound - i);
     }
   }, [currentRoundId, queryAllRounds]);
 
   const retrievedRewardsEvents = useCacheEvents(
-      "Voting",
-      "RewardsRetrieved",
-      useMemo(() => {
-        return { filter: { voter: votingAccount, roundId: roundIds }, fromBlock: 0 };
-      }, [roundIds, votingAccount])
-    );
-
-  const priceResolvedEvents =
-    useCacheEvents(
-      "Voting",
-      "PriceResolved",
-      useMemo(() => {
-        return { filter: { resolutionRoundId: roundIds }, fromBlock: 0 };
-      }, [roundIds])
-    );
-
-  const revealedVoteEvents =
-    useCacheEvents(
-      "Voting",
-      "VoteRevealed",
-      useMemo(() => {
-        return { filter: { voter: votingAccount, roundId: roundIds }, fromBlock: 0 };
-      }, [roundIds, votingAccount])
-    );
-
-  const rewardsTxn = useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents, votingAccount);
-
-  // Handler for when the user clicks the button to toggle showing all resolved requests.
-  const clickQueryAll = useMemo(
-    () => () => {
-      setQueryAllRounds(!queryAllRounds);
-    },
-    [queryAllRounds]
+    "Voting",
+    "RewardsRetrieved",
+    useMemo(() => {
+      return { filter: { voter: votingAccount, roundId: roundIds }, fromBlock: 0 };
+    }, [roundIds, votingAccount])
   );
+
+  const priceResolvedEvents = useCacheEvents(
+    "Voting",
+    "PriceResolved",
+    useMemo(() => {
+      return { filter: { resolutionRoundId: roundIds }, fromBlock: 0 };
+    }, [roundIds])
+  );
+
+  const revealedVoteEvents = useCacheEvents(
+    "Voting",
+    "VoteRevealed",
+    useMemo(() => {
+      return { filter: { voter: votingAccount, roundId: roundIds }, fromBlock: 0 };
+    }, [roundIds, votingAccount])
+  );
+
+  const rewardsTxn = useRetrieveRewardsTxn(
+    retrievedRewardsEvents,
+    priceResolvedEvents,
+    revealedVoteEvents,
+    votingAccount
+  );
+
+  let body = "";
+  if (rewardsTxn) {
+    body = (
+      <Button onClick={rewardsTxn.send} variant="contained" color="primary">
+        Claim Your Rewards
+      </Button>
+    );
+  } else if (!queryAllRounds) {
+    body = (
+      <Button onClick={() => setQueryAllRounds(true)} variant="contained" color="primary">
+        Search all past rounds for unclaimed rewards
+      </Button>
+    );
+  } else {
+    body = "You have no unclaimed rewards to claim";
+  }
 
   return (
     <div className={classes.root}>
       <Typography variant="h6" component="h6">
         Retrieve Voting Rewards
       </Typography>
-
-      <Button onClick={clickQueryAll} variant="contained" color="primary">
-        Search {queryAllRounds ? "only recent" : "all"} rounds for unclaimed rewards
-      </Button>
+      {body}
     </div>
   );
 }
