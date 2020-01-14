@@ -10,17 +10,17 @@ in ETH, and depend upon the price of BTC/USD.
 * Every token facility has a Collateralization Ratio parameter, which you can set.
 
 * If the price of BTC/USD is $10,000, the token facility will require that at least (10,000 * Collateralization Ratio)
-  ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token facility will require that
-  at least 10,000 * 1.25 = 12,500 ETH are in the token facility. 
+  ETH are deposited in the token facility. If the Collateralization Ratio is 1.25 and the price of ETH is 150, the token facility will require that
+  at least 10,000 * 1.25  = 12,500 ETH are in the token facility. 
   
 * The Collateralization Ratio remains constant while the total amount of ETH required changes with the price of BTC/USD.
   See table below for reference. 
   
     | BTC/USD Index | Amount of ETH Required |
     |---------------|------------------------|
-    | $8,000        | $10,000                |
-    | $10,000       | $12,500                |
-    | $12,000       | $15,000                |
+    | $8,000        | 10,000                |
+    | $10,000       | 12,500                |
+    | $12,000       | 15,000                |
 
 * The token facility will require these minimum collateralization amounts, no matter what the price of ETH/USD is.
 
@@ -30,6 +30,16 @@ All of our tutorials require that you complete the steps in [Prerequisites](./pr
 system, start with [Creating tokens locally](./creating-tokens-locally.md) to get a gentle introduction.
 
 Make sure you have testnet ETH or are running locally. All commands should be run from the `core` directory.
+
+The important steps to complete for this tutorial are:
+* Deploying the contracts:
+```bash
+$(npm bin)/truffle migrate --reset --network test
+```
+* Manually pushing a price to the price feed for the specific token facility that we want to create, for example:
+```bash
+$(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier BTC/USD --price 8293 --time 1571686800
+```
 
 ## Token creation
 
@@ -83,7 +93,7 @@ We're all set the create the token now. Note that there are large number of cust
 const priceFeed = await ManualPriceFeed.deployed()
 const noLeverageCalculator = await LeveragedReturnCalculator.deployed()
 const params = { priceFeedAddress: priceFeed.address, defaultPenalty: web3.utils.toWei("0.5", "ether"), supportedMove: web3.utils.toWei("0.1", "ether"), product: web3.utils.utf8ToHex("BTC/USD"), fixedYearlyFee: web3.utils.toWei("0.01", "ether"), disputeDeposit: web3.utils.toWei("0.5", "ether"), returnCalculator: noLeverageCalculator.address, startingTokenPrice: web3.utils.toWei("1", "ether"), expiry: 0, marginCurrency: "0x0000000000000000000000000000000000000000", withdrawLimit: web3.utils.toWei("0.33", "ether"), returnType: "1", startingUnderlyingPrice: "0", name: "Name", symbol: "SYM" }
-await creator.createTokenizedDerivative(params)
+const newTokenFacility = await creator.createTokenizedDerivative(params)
 ```
 
 Note, in particular, the following two fields in params:
@@ -98,7 +108,12 @@ Note, in particular, the following two fields in params:
 Those choose the margin currency and the underlying asset.
 
 If all went well, we'll see a large transaction receipt, and in particular, in the event `logs`, there'll be an event
-named `CreatedTokenizedDerivative` with an `address` field. That's the address of our newly deployed token.
+named `CreatedTokenizedDerivative` with a `contractAddress` field. This contains the address of our newly deployed token, which you can print with:
+
+```js
+newTokenFacility.logs[0].args.contractAddress
+// ex. '0xA00F315bdE7c07D35f128dDC8Cdf99B06B8c9d63'
+```
 
 Let's grab our token so we can interact with it further:
 
@@ -108,17 +123,17 @@ const tokenizedDerivative = await TokenizedDerivative.at(/*whatever your address
 
 ## Token interaction
 
-Let's deposit 100 ETH in our token. All numbers are represented in the contract as Wei, i.e., 10**18, so `5` is
+Let's deposit 10 ETH in our token. All numbers are represented in the contract as Wei, i.e., 10**18, so `5` is
 represented as `5e18`.
 
 ```js
-await tokenizedDerivative.deposit(web3.utils.toWei("100"), { value: web3.utils.toWei("100") })
+await tokenizedDerivative.deposit(web3.utils.toWei("10"), { value: web3.utils.toWei("10") })
 ```
 
-And create some tokens:
+And create 1 token with 10 ETH as collateral:
 
 ```js
-await tokenizedDerivative.createTokens(web3.utils.toWei("1000"), web3.utils.toWei("1"), { value: web3.utils.toWei("1000") })
+await tokenizedDerivative.createTokens(web3.utils.toWei("10"), web3.utils.toWei("1"), { value: web3.utils.toWei("10") })
 ```
 
 This particular token is enormously overcollateralized.

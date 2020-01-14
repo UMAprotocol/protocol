@@ -33,8 +33,18 @@ with your mnemonic:
 export MNEMONIC="your mnemonic here"
 ```
 
-You'll need to open the truffle console to directly send commands to the blockchain. To do so, run the following
-command from the `core/` directory:
+Alternatively, you can create a `.env` file to store your mnemonic. This is useful as it will preserve your environment
+ between bash sessions. To do this copy the sample provided `.env` file and replace it with your own mnemonic. This can
+  be done by running the following from the `core/` directory:
+
+ ```bash
+cp .env_sample .env
+```
+
+Next, edit the .env file that is created in the `core/` directory to store your mnemonic. 
+
+Once you've done this you are ready to create your price feed. First, you'll need to open the truffle console to directly send
+ commands to the blockchain. To do so, run the following command from the `core/` directory:
 
 ```bash
 $(npm bin)/truffle console --network rinkeby_mnemonic
@@ -88,13 +98,19 @@ You've now updated the configuration to use your price feed contract.
 ## Upload prices to your price feed contract
 
 To use your price feed, you'll need to add a price to it. You'll need to add a price for one of the identifiers that's
-already approved in the testnet DVM. We reccomend using the identifier `Custom Index (1)`.
+already approved in the testnet DVM. We recommend using the identifier `Custom Index (1)`.
 
 To push a price, you'll need to know the price you want to push and the unix timestamp (must be now or in the past).
-Run the following command (from the `core/` directory) replacing `<price>` with your price and `<time>` with the unix
-timestamp:
+Run the following command (from the `core/` directory) replacing `<price>` with your price and `<time>` with the UNIX
+timestamp in seconds:
 ```bash
 $(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier 'Custom Index (1)' --price <price> --time <time> --network=rinkeby_mnemonic
+```
+
+For example, if the 'Custom Index (1)' was used to represent a number of Twitter followers a person had at 10000 on 10/21/2019 15:40 EDT, run:
+
+```bash
+$(npm bin)/truffle exec scripts/ManualPublishPriceFeed.js --identifier 'Custom Index (1)' --price 10000 --time 1571686800 --network=rinkeby_mnemonic
 ```
 
 Some notes on using this command:
