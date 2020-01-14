@@ -1,35 +1,30 @@
 import React, { useMemo, useState } from "react";
 import { drizzleReactHooks } from "drizzle-react";
 import Button from "@material-ui/core/Button";
-import Table from "@material-ui/core/Table";
-import TableBody from "@material-ui/core/TableBody";
-import TableCell from "@material-ui/core/TableCell";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
 import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
-import { formatDate } from "./common/FormattingUtils.js";
 import { MAX_UINT_VAL } from "./common/Constants.js";
 
 const MAX_SAFE_INT = 2147483647;
 
 function getOrCreateObj(containingObj, field) {
-  if (!containingObj[fieldName]) {
-    containingObj[fieldName] = {};
+  if (!containingObj[field]) {
+    containingObj[field] = {};
   }
 
-  return containingObj[fieldName];
+  return containingObj[field];
 }
 
-function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, revealedVoteEvents, votingAccount) {
-  const { useCacheSend } = drizzleReactHooks.useDrizzle();
+function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, pendingRequests, votingAccount) {
+  const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
+  const { web3 } = drizzle;
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || priceResolvedEvents === undefined || revealedVoteEvents === undefined) {
+  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || pendingRequests === undefined) {
     // Requests haven't been completed.
-    return null;
+    return { ready: false };
   } else {
     // Loop through and match up.
 
@@ -47,12 +42,10 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, reve
     // Put events into objects.
     const state = {};
 
-    const getVoteState = (event, roundIdFieldName) => {
-      const roundId = event.returnValues[roundFieldName].toString();
+    const getVoteState = (event) => {
       const identifier = web3.utils.hexToUtf8(event.returnValues.identifier);
       const time = event.returnValues.time.toString();
-
-      const roundState = getOrCreateObj(state, roundId);
+      
       return getOrCreateObj(roundState, `${identifier}|${time}`);
     };
 
@@ -62,7 +55,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, reve
       voteState.retrievedRewards = true;
     }
 
-    for (const event of priceResolvedEvents) {
+    for (const request of pendingRequests) {
       const voteState = getVoteState(event, "resolutionRoundId");
 
       voteState.priceResolved = true;
@@ -81,7 +74,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, reve
 
     if (oldestUnclaimedRound === MAX_SAFE_INT) {
       // No unclaimed rounds were found.
-      return null;
+      return { ready: true };
     }
 
     // Extract identifiers and times from the round we picked.
@@ -106,16 +99,16 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, priceResolvedEvents, reve
       send(votingAccount, oldestUnclaimedRound, toRetrieve);
     };
 
-    return { send: retrievedRewards, status: status };
+    return { ready: true, send: retrieveRewards, status: status };
   }
 }
 
 function RetrieveRewards({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
-  const { web3 } = drizzle;
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
+  const pendingRequests = useCacheCall("Voting", "getPendingRequests");
 
   const [queryAllRounds, setQueryAllRounds] = useState(false);
 
@@ -155,14 +148,6 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
-  const priceResolvedEvents = useCacheEvents(
-    "Voting",
-    "PriceResolved",
-    useMemo(() => {
-      return { filter: { resolutionRoundId: roundIds }, fromBlock: 0 };
-    }, [roundIds])
-  );
-
   const revealedVoteEvents = useCacheEvents(
     "Voting",
     "VoteRevealed",
@@ -173,13 +158,15 @@ function RetrieveRewards({ votingAccount }) {
 
   const rewardsTxn = useRetrieveRewardsTxn(
     retrievedRewardsEvents,
-    priceResolvedEvents,
     revealedVoteEvents,
+    pendingRequests,
     votingAccount
   );
 
   let body = "";
-  if (rewardsTxn) {
+  if (!rewardsTxn.ready) {
+    body = "Loading";
+  } else if (rewardsTxn.send) {
     body = (
       <Button onClick={rewardsTxn.send} variant="contained" color="primary">
         Claim Your Rewards
@@ -192,7 +179,7 @@ function RetrieveRewards({ votingAccount }) {
       </Button>
     );
   } else {
-    body = "You have no unclaimed rewards to claim";
+    body = "You have no unclaimed rewards to claim.";
   }
 
   return (
