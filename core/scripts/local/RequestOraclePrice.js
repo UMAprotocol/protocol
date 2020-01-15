@@ -57,7 +57,7 @@ async function run(deployedFinder, identifier, timeString) {
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     );
     await deployedVoting.addSupportedIdentifier(identifierInBytes);
-    const priceExists = await deployedVoting.hasPrice.call(identifierInBytes, timeInBN);
+    const priceExists = await deployedVoting.hasPrice(identifierInBytes, timeInBN);
     if (priceExists) {
       console.log(`Price already exists for ${identifier} @ ${time}`);
       return;
