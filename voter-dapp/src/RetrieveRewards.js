@@ -45,8 +45,8 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, pendi
     const getVoteState = (event) => {
       const identifier = web3.utils.hexToUtf8(event.returnValues.identifier);
       const time = event.returnValues.time.toString();
-      
-      return getOrCreateObj(roundState, `${identifier}|${time}`);
+
+      return getOrCreateObj(state, `${identifier}|${time}`);
     };
 
     for (const event of retrievedRewardsEvents) {
