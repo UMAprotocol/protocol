@@ -49,20 +49,13 @@ contract MockOracle is OracleInterface, Testable {
     constructor() public Testable(true) {}
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
-    function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime) {
+    function requestPrice(bytes32 identifier, uint time) external {
         require(supportedIdentifiers[identifier]);
         Price storage lookup = verifiedPrices[identifier][time];
-        if (lookup.isAvailable) {
-            // We already have a price, return 0 to indicate that.
-            return 0;
-        } else if (queryIndices[identifier][time].isValid) {
-            // We already have a pending query, don't need to do anything.
-            return getCurrentTime() + SECONDS_IN_WEEK;
-        } else {
+        if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
             // New query, enqueue it for review.
             queryIndices[identifier][time] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(identifier, time));
-            return getCurrentTime() + SECONDS_IN_WEEK;
         }
     }
 

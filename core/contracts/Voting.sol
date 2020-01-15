@@ -209,7 +209,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function requestPrice(bytes32 identifier, uint time)
         external
         onlyRegisteredDerivative()
-        returns (uint expectedTime)
     {
         uint blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
@@ -223,29 +222,25 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
-        if (requestStatus == RequestStatus.Active) {
-            return voteTiming.computeEstimatedRoundEndTime(currentRoundId);
-        } else if (requestStatus == RequestStatus.Resolved) {
-            return 0;
-        } else if (requestStatus == RequestStatus.Future) {
-            return voteTiming.computeEstimatedRoundEndTime(priceRequest.lastVotingRound);
+
+        if (
+            requestStatus != RequestStatus.Active &&
+            requestStatus != RequestStatus.Resolved &&
+            requestStatus != RequestStatus.Future
+        ) {
+            // Price has never been requested.
+            // Price requests always go in the next round, so add 1 to the computed current round.
+            uint nextRoundId = currentRoundId.add(1);
+
+            priceRequests[priceRequestId] = PriceRequest({
+                identifier: identifier,
+                time: time,
+                lastVotingRound: nextRoundId,
+                index: pendingPriceRequests.length
+            });
+            pendingPriceRequests.push(priceRequestId);
+            emit PriceRequestAdded(nextRoundId, identifier, time);
         }
-
-        // Price has never been requested.
-        // Price requests always go in the next round, so add 1 to the computed current round.
-        uint nextRoundId = currentRoundId.add(1);
-
-        priceRequests[priceRequestId] = PriceRequest({
-            identifier: identifier,
-            time: time,
-            lastVotingRound: nextRoundId,
-            index: pendingPriceRequests.length
-        });
-        pendingPriceRequests.push(priceRequestId);
-        emit PriceRequestAdded(nextRoundId, identifier, time);
-
-        // Estimate the end of next round and return the time.
-        return voteTiming.computeEstimatedRoundEndTime(nextRoundId);
     }
 
     function batchCommit(Commitment[] calldata commits) external {
