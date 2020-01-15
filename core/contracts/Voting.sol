@@ -381,9 +381,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
         // 0 hashes are disallowed in the commit phase, so they indicate a different error.
-        //Cannot reveal an uncommitted or previously revealed hash
+        // Cannot reveal an uncommitted or previously revealed hash
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
-        //Committed hash doesn't match revealed price and salt
+        // Committed hash doesn't match revealed price and salt
         require(keccak256(abi.encode(price, salt)) == voteSubmission.commit, "Invalid commit hash & salt");
         delete voteSubmission.commit;
 
@@ -454,7 +454,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         for (uint i = 0; i < toRetrieve.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time);
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            //Only retrieve rewards for votes resolved in same round
+            // Only retrieve rewards for votes resolved in same round
             require(priceRequest.lastVotingRound == roundId, "Retrieve for votes same round");
 
             _resolvePriceRequest(priceRequest, voteInstance);
