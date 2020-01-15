@@ -9,10 +9,6 @@ import "../Testable.sol";
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
 
-    // This contract doesn't implement the voting routine, and naively indicates that all requested prices will be
-    // available in a week.
-    uint constant private SECONDS_IN_WEEK = 60*60*24*7;
-
     // Represents an available price. Have to keep a separate bool to allow for price=0.
     struct Price {
         bool isAvailable;
