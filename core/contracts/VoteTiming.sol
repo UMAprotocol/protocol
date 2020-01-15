@@ -19,8 +19,6 @@ library VoteTiming {
     uint private constant NUM_PHASES = 2;
 
     struct Data {
-        uint roundId;
-        uint roundStartTime;
         uint phaseLength;
     }
 
@@ -32,31 +30,6 @@ library VoteTiming {
      */
     function init(Data storage data, uint phaseLength) internal {
         data.phaseLength = phaseLength;
-        data.roundId = 1;
-        data.roundStartTime = 0;
-    }
-
-    /**
-     * @notice Gets the most recently stored round ID set by updateRoundId().
-     */
-    function getLastUpdatedRoundId(Data storage data) internal view returns (uint) {
-        return data.roundId;
-    }
-
-    /**
-     * @notice Determines whether time has advanced far enough to advance to the next voting round and update the
-     * stored round id.
-     */
-    function shouldUpdateRoundId(Data storage data, uint currentTime) internal view returns (bool) {
-        (uint roundId,) = _getCurrentRoundIdAndStartTime(data, currentTime);
-        return data.roundId != roundId;
-    }
-
-    /**
-     * @notice Updates the round id. Note: if shouldUpdateRoundId() returns false, this method will have no effect.
-     */
-    function updateRoundId(Data storage data, uint currentTime) internal {
-        (data.roundId, data.roundStartTime) = _getCurrentRoundIdAndStartTime(data, currentTime);
     }
 
     /**
@@ -111,5 +84,10 @@ library VoteTiming {
         } else {
             roundId = data.roundId;
         }
+    }
+
+    function _calculateRoundStartTime(Data storage data, uint currentTime) private view returns (uint startTime){
+        uint roundLength = data.phaseLength.mul(NUM_PHASES);
+        return currentTime.div(roundLength).mul(roundLength);
     }
 }
