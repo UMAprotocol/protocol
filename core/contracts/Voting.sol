@@ -184,8 +184,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         bool _isTest
     ) public Testable(_isTest) {
         voteTiming.init(phaseLength);
-        // TODO(#779): GAT percentage must be < 100%
-        require(_gatPercentage.isLessThan(1));
+        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
@@ -197,7 +196,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             require(msg.sender == migratedAddress);
         } else {
             Registry registry = Registry(finder.getImplementationAddress("Registry"));
-            // TODO(#779): Must be registered derivative
             require(registry.isDerivativeRegistered(msg.sender));
         }
         _;
@@ -214,10 +212,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         returns (uint expectedTime)
     {
         uint blockTime = getCurrentTime();
-        // TODO(#779): Price request must be for a time in the past
-        require(time <= blockTime);
-        // TODO(#779): Price request for unsupported identifier
-        require(supportedIdentifiers[identifier]);
+        require(time <= blockTime, "Can only request in past");
+        require(supportedIdentifiers[identifier], "Unsupported identifier request");
 
         // Must ensure the round is updated here so the requested price will be voted on in the next commit cycle.
         _updateRound(blockTime);
@@ -312,7 +308,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function getPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (int) {
         (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
-        // TODO(#779): If the price wasn't available, revert with the provided message.
+        // If the price wasn't available, revert with the provided message.
         require(_hasPrice, message);
         return price;
     }
@@ -350,13 +346,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     }
 
     function commitVote(bytes32 identifier, uint time, bytes32 hash) public onlyIfNotMigrated() {
-        // TODO(#779): Committed hash of 0 is disallowed, choose a different salt
-        require(hash != bytes32(0));
-
+        require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
         uint blockTime = getCurrentTime();
-        // TODO(#779): Cannot commit while in the reveal phase
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit);
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit, "Cannot commit in reveal phase");
 
         // Should only update the round in the commit phase because a new round that's already in the reveal phase
         // would be wasted.
@@ -366,8 +359,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        // TODO(#779): Cannot commit on inactive request
-        require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active);
+        require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active,
+            "Cannot commit inactive request");
 
         priceRequest.lastVotingRound = currentRoundId;
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
@@ -378,9 +371,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     function revealVote(bytes32 identifier, uint time, int price, int salt) public onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal,
-            "Cannot reveal while in the commit phase");
-
+        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the
         // round is over.
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
@@ -390,9 +381,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
         // 0 hashes are disallowed in the commit phase, so they indicate a different error.
-        require(voteSubmission.commit != bytes32(0), "Cannot reveal an uncommitted or previously revealed hash");
-        require(keccak256(abi.encode(price, salt)) == voteSubmission.commit,
-                "Committed hash doesn't match revealed price and salt");
+        // Cannot reveal an uncommitted or previously revealed hash
+        require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
+        // Committed hash doesn't match revealed price and salt
+        require(keccak256(abi.encode(price, salt)) == voteSubmission.commit, "Invalid commit hash & salt");
         delete voteSubmission.commit;
 
         // Get or create a snapshot for this round.
@@ -441,11 +433,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
         if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress);
+            require(msg.sender == migratedAddress, "Can only call from migrated");
         }
         uint blockTime = getCurrentTime();
         _updateRound(blockTime);
-        require(roundId < voteTiming.computeCurrentRoundId(blockTime));
+        require(roundId < voteTiming.computeCurrentRoundId(blockTime), "Invalid roundId");
 
         Round storage round = rounds[roundId];
         FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
@@ -462,8 +454,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         for (uint i = 0; i < toRetrieve.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time);
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-
-            require(priceRequest.lastVotingRound == roundId, "Only retrieve rewards for votes resolved in same round");
+            // Only retrieve rewards for votes resolved in same round
+            require(priceRequest.lastVotingRound == roundId, "Retrieve for votes same round");
 
             _resolvePriceRequest(priceRequest, voteInstance);
 
@@ -491,7 +483,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
-            require(votingToken.mint(voterAddress, totalRewardToIssue.rawValue));
+            require(votingToken.mint(voterAddress, totalRewardToIssue.rawValue), "Voting token issuance failed");
         }
     }
 
@@ -509,14 +501,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
         if (requestStatus == RequestStatus.Active) {
-            return (false, 0, "The current voting round has not ended");
+            return (false, 0, "Current voting round not ended");
         } else if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
                 _computeGat(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
         } else if (requestStatus == RequestStatus.Future) {
-            return (false, 0, "Price will be voted on in the future");
+            return (false, 0, "Price is still to be voted on");
         } else {
             return (false, 0, "Price was never requested");
         }
@@ -546,7 +538,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
         (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
             _computeGat(priceRequest.lastVotingRound));
-        require(isResolved, "Can't resolve an unresolved price request");
+        require(isResolved, "Can't resolve unresolved request");
 
         // Delete the resolved price request from pendingPriceRequests.
         uint lastIndex = pendingPriceRequests.length - 1;
