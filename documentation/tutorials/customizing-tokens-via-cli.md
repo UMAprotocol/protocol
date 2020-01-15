@@ -10,8 +10,8 @@ in ETH, and depend upon the price of BTC/USD.
 * Every token facility has a Collateralization Ratio parameter, which you can set.
 
 * If the price of BTC/USD is $10,000, the token facility will require that at least (10,000 * Collateralization Ratio)
-  ETH are deposited in the token facility. If the Collateralization Ratio is 1.25 and the price of ETH is 150, the token facility will require that
-  at least 10,000 * 1.25  = 12,500 ETH are in the token facility. 
+  ETH are deposited in the token facility. If the Collateralization Ratio is 1.25, the token facility will require that
+  at least 10,000 * 1.25 = 12,500 ETH are in the token facility. 
   
 * The Collateralization Ratio remains constant while the total amount of ETH required changes with the price of BTC/USD.
   See table below for reference. 
@@ -93,7 +93,7 @@ We're all set the create the token now. Note that there are large number of cust
 const priceFeed = await ManualPriceFeed.deployed()
 const noLeverageCalculator = await LeveragedReturnCalculator.deployed()
 const params = { priceFeedAddress: priceFeed.address, defaultPenalty: web3.utils.toWei("0.5", "ether"), supportedMove: web3.utils.toWei("0.1", "ether"), product: web3.utils.utf8ToHex("BTC/USD"), fixedYearlyFee: web3.utils.toWei("0.01", "ether"), disputeDeposit: web3.utils.toWei("0.5", "ether"), returnCalculator: noLeverageCalculator.address, startingTokenPrice: web3.utils.toWei("1", "ether"), expiry: 0, marginCurrency: "0x0000000000000000000000000000000000000000", withdrawLimit: web3.utils.toWei("0.33", "ether"), returnType: "1", startingUnderlyingPrice: "0", name: "Name", symbol: "SYM" }
-const newTokenFacility = await creator.createTokenizedDerivative(params)
+const creationReceipt = await creator.createTokenizedDerivative(params)
 ```
 
 Note, in particular, the following two fields in params:
@@ -111,7 +111,7 @@ If all went well, we'll see a large transaction receipt, and in particular, in t
 named `CreatedTokenizedDerivative` with a `contractAddress` field. This contains the address of our newly deployed token, which you can print with:
 
 ```js
-newTokenFacility.logs[0].args.contractAddress
+creationReceipt.logs[0].args.contractAddress
 // ex. '0xA00F315bdE7c07D35f128dDC8Cdf99B06B8c9d63'
 ```
 

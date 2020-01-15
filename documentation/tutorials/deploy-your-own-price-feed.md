@@ -32,20 +32,16 @@ with your mnemonic:
 ```bash
 export MNEMONIC="your mnemonic here"
 ```
-
-Alternatively, you can create a `.env` file to store your mnemonic. This is useful as it will preserve your environment
- between bash sessions. To do this copy the sample provided `.env` file and replace it with your own mnemonic. This can
-  be done by running the following from the `core/` directory:
-
- ```bash
+Alternatively, you can create a `.env` file to store your mnemonic. This is useful as it will preserve your environment 
+between bash sessions. To do this copy the sample provided `.env` file and replace it with your own mnemonic. This can
+be done by running the following from the `core/` directory:
+```bash
 cp .env_sample .env
 ```
 
 Next, edit the .env file that is created in the `core/` directory to store your mnemonic. 
-
-Once you've done this you are ready to create your price feed. First, you'll need to open the truffle console to directly send
- commands to the blockchain. To do so, run the following command from the `core/` directory:
-
+Once you've done this you are ready to create your price feed. First, you'll need to open the truffle console to directly send 
+commands to the blockchain. To do so, run the following command from the `core/` directory:
 ```bash
 $(npm bin)/truffle console --network rinkeby_mnemonic
 ```
