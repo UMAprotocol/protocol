@@ -9,10 +9,8 @@ interface OracleInterface {
 
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
-     * @dev Returns the time at which the user should expect the price to be resolved. 0 means the price has already
-     * been resolved.
      */
-    function requestPrice(bytes32 identifier, uint time) external returns (uint expectedTime);
+    function requestPrice(bytes32 identifier, uint time) external;
 
     /**
      * @notice Whether the Oracle provides prices for this identifier.

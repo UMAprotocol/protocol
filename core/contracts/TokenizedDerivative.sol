@@ -893,10 +893,12 @@ library TokenizedDerivativeUtils {
         s._payOracleFees(finalFee);
 
         OracleInterface oracle = OracleInterface(_getOracleAddress(s));
-        uint expectedTime = oracle.requestPrice(s.fixedParameters.product, requestedTime);
-        if (expectedTime == 0) {
+        bool availablePrice = oracle.hasPrice(s.fixedParameters.product, requestedTime);
+        if (availablePrice) {
             // The Oracle price is already available, settle the contract right away.
             s._settleInternal();
+        } else {
+            oracle.requestPrice(s.fixedParameters.product, requestedTime);
         }
     }
 

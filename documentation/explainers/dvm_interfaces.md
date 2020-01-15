@@ -37,9 +37,7 @@ used as an arbitration mechanism to resolve disputes and to settle risk. If a fi
 function, it's unlikely to be approved for use with the DVM.
 
 This method takes the asset (identifier) and the timestamp that uniquely specify the price that the contract wants.
-This method only enqueues a request, it does not resolve it. This means it does not return a price. Rather, it returns
-the timestamp when the request is expected to be resolved. If 0 is returned, a price is already available for this
-request.
+This method only enqueues a request, it does not resolve it. This means it does not return a price. To check if a price is already available for this request, use `hasPrice`.
 
 ### `hasPrice`
 
