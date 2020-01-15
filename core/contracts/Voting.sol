@@ -308,7 +308,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function getPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (int) {
         (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
-        //If the price wasn't available, revert with the provided message.
+        // If the price wasn't available, revert with the provided message.
         require(_hasPrice, message);
         return price;
     }
