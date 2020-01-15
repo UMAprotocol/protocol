@@ -46,7 +46,7 @@ struct Params {
 
 - `name` is the long-form display name for the token.
 
-- `symbol is the short (three or four capital letters, typically) name for the token.
+- `symbol` is the short (three or four capital letters, typically) name for the token.
 
 ### Address parameters
 
