@@ -899,8 +899,6 @@ library TokenizedDerivativeUtils {
             s._settleInternal();
         } else {
             oracle.requestPrice(s.fixedParameters.product, requestedTime);
-            // The Oracle price is already available, settle the contract right away.
-            s._settleInternal();
         }
     }
 
