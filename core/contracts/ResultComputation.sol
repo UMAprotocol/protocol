@@ -2,13 +2,11 @@ pragma solidity ^0.5.0;
 
 import "./FixedPoint.sol";
 
-
 /**
  * @title Computes vote results.
  * @dev The result is the mode of the added votes, if the mode's frequency is >50%. Otherwise, the vote is unresolved.
  */
 library ResultComputation {
-
     using FixedPoint for FixedPoint.Unsigned;
 
     struct Data {
@@ -34,8 +32,10 @@ library ResultComputation {
         // TODO(ptare): Figure out where this parameter is supposed to come from.
         FixedPoint.Unsigned memory modeThreshold = FixedPoint.fromUnscaledUint(50).div(100);
 
-        if (data.totalVotes.isGreaterThan(minVoteThreshold) &&
-            data.voteFrequency[data.currentMode].div(data.totalVotes).isGreaterThan(modeThreshold)) {
+        if (
+            data.totalVotes.isGreaterThan(minVoteThreshold) &&
+            data.voteFrequency[data.currentMode].div(data.totalVotes).isGreaterThan(modeThreshold)
+        ) {
             // `modeThreshold` and `minVoteThreshold` are met, so the current mode is the resolved price.
             isResolved = true;
             price = data.currentMode;
@@ -47,13 +47,13 @@ library ResultComputation {
     /**
      * @dev Adds a new vote to be used when computing the result.
      */
-    function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens)
-        internal
-    {
+    function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens) internal {
         data.totalVotes = data.totalVotes.add(numberTokens);
         data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
-        if (votePrice != data.currentMode
-            && data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])) {
+        if (
+            votePrice != data.currentMode &&
+            data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])
+        ) {
             data.currentMode = votePrice;
         }
     }
@@ -70,11 +70,7 @@ library ResultComputation {
      * @dev Gets the total number of tokens whose votes are considered correct. Should only be called after a vote is
      * resolved, i.e., via `getResolvedPrice`.
      */
-    function getTotalCorrectlyVotedTokens(Data storage data)
-        internal
-        view
-        returns (FixedPoint.Unsigned memory)
-    {
+    function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (FixedPoint.Unsigned memory) {
         return data.voteFrequency[data.currentMode];
     }
 }

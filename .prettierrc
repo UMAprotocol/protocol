@@ -1,5 +1,6 @@
 {
   "printWidth": 120,
-  "bracketSpacing": true
+  "bracketSpacing": true,
+  "explicitTypes": "preserve"
 }
 

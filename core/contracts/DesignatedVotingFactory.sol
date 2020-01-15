@@ -6,13 +6,11 @@ import "./DesignatedVoting.sol";
 import "./Finder.sol";
 import "./Withdrawable.sol";
 
-
 /**
  * @title Factory to allow looking up deployed DesignatedVoting instances
  * @dev Allows off-chain infrastructure, such as a dApp, to look up a hot wallet's deployed DesignatedVoting contract.
  */
 contract DesignatedVotingFactory is Withdrawable {
-
     enum Roles {
         // Can withdraw any ETH or ERC20 sent accidentally to this contract.
         Withdrawer

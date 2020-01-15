@@ -2,12 +2,10 @@ pragma solidity ^0.5.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Library for fixed point arithmetic on uints
  */
 library FixedPoint {
-
     using SafeMath for uint;
 
     // Supports 18 decimals. E.g., 1e18 represents "1", 5e17 represents "0.5".

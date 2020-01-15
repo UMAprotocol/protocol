@@ -5,7 +5,6 @@ pragma experimental ABIEncoderV2;
 import "./FixedPoint.sol";
 import "./VoteTiming.sol";
 
-
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
  */
@@ -47,6 +46,7 @@ contract VotingInterface {
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
      */
-    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory) public returns
-    (FixedPoint.Unsigned memory);
+    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory)
+        public
+        returns (FixedPoint.Unsigned memory);
 }
