@@ -214,9 +214,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         require(time <= blockTime, "Can only request in past");
         require(supportedIdentifiers[identifier], "Unsupported identifier request");
 
-        // Must ensure the round is updated here so the requested price will be voted on in the next commit cycle.
-        _updateRound(blockTime);
-
         bytes32 priceRequestId = _encodePriceRequest(identifier, time);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
@@ -344,10 +341,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit, "Cannot commit in reveal phase");
 
-        // Should only update the round in the commit phase because a new round that's already in the reveal phase
-        // would be wasted.
-        _updateRound(blockTime);
-
         // At this point, the computed and last updated round ID should be equal.
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -429,7 +422,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             require(msg.sender == migratedAddress, "Can only call from migrated");
         }
         uint blockTime = getCurrentTime();
-        _updateRound(blockTime);
         require(roundId < voteTiming.computeCurrentRoundId(blockTime), "Invalid roundId");
 
         Round storage round = rounds[roundId];
@@ -520,6 +512,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         if (round.snapshotId == 0) {
             // There is no snapshot ID set, so create one.
             round.snapshotId = votingToken.snapshot();
+            
+            // Set the round inflation rate to the current global inflation rate.
+            rounds[roundId].inflationRate = inflationRate;
+
         }
 
         return round.snapshotId;
@@ -542,19 +538,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         priceRequest.index = UINT_MAX;
         emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, resolvedPrice);
-    }
-
-    function _updateRound(uint blockTime) private {
-        if (!voteTiming.shouldUpdateRoundId(blockTime)) {
-            return;
-        }
-        uint nextVotingRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
-        // Set the round inflation rate to the current global inflation rate.
-        rounds[nextVotingRoundId].inflationRate = inflationRate;
-
-        // Update the stored round to the current one.
-        voteTiming.updateRoundId(blockTime);
     }
 
     function _computeGat(uint roundId) private view returns (FixedPoint.Unsigned memory) {
