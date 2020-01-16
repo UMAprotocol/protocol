@@ -6,6 +6,7 @@ import "../OracleInterface.sol";
 import "../Testable.sol";
 import "../IdentifierWhitelistInterface.sol";
 
+
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
 
