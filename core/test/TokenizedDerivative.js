@@ -4,6 +4,7 @@ const { RegistryRolesEnum } = require("../../common/Enums.js");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Store = artifacts.require("Store");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
@@ -60,7 +61,8 @@ contract("TokenizedDerivative", function(accounts) {
     deployedRegistry = await Registry.deployed();
     deployedFinder = await Finder.deployed();
     deployedAdmin = await FinancialContractsAdmin.deployed();
-    mockOracle = await MockOracle.new();
+    supportedIdentifiers = await IdentifierWhitelist.deployed();
+    mockOracle = await MockOracle.new(supportedIdentifiers.address);
     deployedStore = await Store.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
@@ -84,7 +86,7 @@ contract("TokenizedDerivative", function(accounts) {
     returnCalculatorWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.returnCalculatorWhitelist());
 
     // Make sure the Oracle and PriceFeed support the underlying product.
-    await mockOracle.addSupportedIdentifier(identifierBytes);
+    await supportedIdentifiers.addSupportedIdentifier(identifierBytes);
     await deployedManualPriceFeed.setCurrentTime(100000);
     await pushPrice(web3.utils.toWei("1", "ether"));
 
@@ -2523,7 +2525,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Product unsupported by price feed.
       const productUnsupportedByPriceFeed = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByFeed"));
-      await mockOracle.addSupportedIdentifier(productUnsupportedByPriceFeed);
+      await supportedIdentifiers.addSupportedIdentifier(productUnsupportedByPriceFeed);
 
       const unsupportedByPriceFeedParams = { ...defaultConstructorParams, product: productUnsupportedByPriceFeed };
       assert(

@@ -4,6 +4,7 @@ const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 
 const numPriceRequests = 5;
@@ -17,6 +18,7 @@ const getVoter = (accounts, id) => {
 
 async function run() {
   const voting = await Voting.deployed();
+  const supportedIdentifiers = await IdentifierWhitelist.deployed();
   const votingToken = await VotingToken.deployed();
   const registry = await Registry.deployed();
 
@@ -32,7 +34,7 @@ async function run() {
   }
 
   const identifier = web3.utils.utf8ToHex("test-identifier");
-  await voting.addSupportedIdentifier(identifier);
+  await supportedIdentifiers.addSupportedIdentifier(identifier);
 
   // Allow owner to mint new tokens
   await votingToken.addMember("1", owner);

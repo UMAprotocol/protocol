@@ -1,5 +1,6 @@
 const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const Registry = artifacts.require("Registry");
@@ -32,6 +33,9 @@ const initializeSystem = async function(callback) {
     const deployedVoting = await Voting.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     );
+    const deployedIdentifierWhitelist = await IdentifierWhitelist.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentiferWhitelist))
+    )
     const deployedManualPriceFeed = await ManualPriceFeed.deployed();
 
     const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
@@ -50,7 +54,7 @@ const initializeSystem = async function(callback) {
     // Add support for each identifier.
     for (const identifier of supportedIdentifiers) {
       const identifierBytes = web3.utils.hexToBytes(web3.utils.utf8ToHex(identifier));
-      await deployedVoting.addSupportedIdentifier(identifierBytes);
+      await deployedIdentifierWhitelist.addSupportedIdentifier(identifierBytes);
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
     }
 

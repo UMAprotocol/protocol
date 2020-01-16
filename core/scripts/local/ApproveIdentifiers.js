@@ -1,4 +1,5 @@
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const identifiers = require("../../config/identifiers");
 
 const approveIdentifiers = async function(callback) {
@@ -6,11 +7,12 @@ const approveIdentifiers = async function(callback) {
     const deployer = (await web3.eth.getAccounts())[0];
 
     const voting = await Voting.deployed();
+    const supportedIdentifiers = await IdentifierWhitelist.deployed();
 
     for (const identifier of Object.keys(identifiers)) {
       const identifierBytes = web3.utils.utf8ToHex(identifier);
       if (!(await voting.isIdentifierSupported(identifierBytes))) {
-        await voting.addSupportedIdentifier(identifierBytes, { from: deployer });
+        await supportedIdentifiers.addSupportedIdentifier(identifierBytes, { from: deployer });
         console.log(`Approved new identifier: ${identifier}`);
       } else {
         console.log(`${identifier} is already approved.`);

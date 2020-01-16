@@ -3,6 +3,7 @@ const Finder = artifacts.require("Finder");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Store = artifacts.require("Store");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
 
@@ -35,6 +36,10 @@ async function transferPermissions(multisig) {
   // Voting should be owned by the governor.
   const voting = await Voting.deployed();
   await voting.transferOwnership(governor.address);
+
+  // Identifier Whitelist should be owned by governor
+  const supportedIdentifiers = await IdentifierWhitelist.deployed();
+  await supportedIdentifiers.transferOwnership(governor.address);
 
   // VotingToken should be owned by the governor.
   const votingToken = await VotingToken.deployed();

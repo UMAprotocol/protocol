@@ -1,5 +1,6 @@
 const VotingScript = require("../../scripts/Voting.js");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const Registry = artifacts.require("Registry");
 const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
@@ -31,6 +32,7 @@ contract("scripts/Voting.js", function(accounts) {
 
   before(async function() {
     voting = await Voting.deployed();
+    supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
 
@@ -53,7 +55,7 @@ contract("scripts/Voting.js", function(accounts) {
     const time = "1000";
 
     // Request an Oracle price.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     // Move to the round in which voters will vote on the requested price.
@@ -94,7 +96,7 @@ contract("scripts/Voting.js", function(accounts) {
     const time = "1000";
 
     // Request an Oracle price.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     // Move to the round in which voters will vote on the requested price.
@@ -131,8 +133,8 @@ contract("scripts/Voting.js", function(accounts) {
     const time2 = "1000";
 
     // Add both identifiers.
-    await voting.addSupportedIdentifier(identifier1);
-    await voting.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.addSupportedIdentifier(identifier1);
+    await supportedIdentifiers.addSupportedIdentifier(identifier2);
 
     // Send three overlapping requests such that each parameter overlaps with one other request.
     await voting.requestPrice(identifier1, time1);
@@ -169,7 +171,7 @@ contract("scripts/Voting.js", function(accounts) {
     const time = "1573513368";
 
     // Request an Oracle price.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     // Move to the round in which voters will vote on the requested price.
@@ -203,7 +205,7 @@ contract("scripts/Voting.js", function(accounts) {
     const time = "1560762000";
 
     // Request an Oracle price.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     const notifier = new MockNotifier();
@@ -238,7 +240,7 @@ contract("scripts/Voting.js", function(accounts) {
     const time = "1560762000";
 
     // Request an Oracle price.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     const votingSystem = new VotingScript.VotingSystem(voting, voter, [new MockNotifier()]);
@@ -266,7 +268,7 @@ contract("scripts/Voting.js", function(accounts) {
       }
     };
     // Request an Oracle price.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     const votingSystem = new VotingScript.VotingSystem(voting, voter, [new MockNotifier()]);

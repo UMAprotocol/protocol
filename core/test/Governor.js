@@ -5,6 +5,7 @@ const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
 const Registry = artifacts.require("Registry");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
@@ -16,6 +17,7 @@ contract("Governor", function(accounts) {
   let voting;
   let governor;
   let testToken;
+  let supportedIdentifiers;
 
   const account1 = accounts[0];
   const account2 = accounts[1];
@@ -30,6 +32,7 @@ contract("Governor", function(accounts) {
 
   before(async function() {
     voting = await Voting.deployed();
+    supportedIdentifiers = await IdentifierWhitelist.deployed();
     governor = await Governor.deployed();
     testToken = await TestnetERC20.deployed();
     let votingToken = await VotingToken.deployed();
@@ -47,9 +50,10 @@ contract("Governor", function(accounts) {
     // Set the inflation rate to 0 by default, so the balances stay fixed.
     await setNewInflationRate("0");
 
-    // To work, the governor must be the owner of the Voting contract. This is not the default setup in the test
+    // To work, the governor must be the owner of the Voting and IdentifierWhitelist contracts. This is not the default setup in the test
     // environment, so ownership must be transferred.
     await voting.transferOwnership(governor.address);
+    await supportedIdentifiers.transferOwnership(governor.address);
   });
 
   beforeEach(async function() {

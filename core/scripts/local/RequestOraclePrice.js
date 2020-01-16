@@ -2,6 +2,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["identifier", 
 
 const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Registry = artifacts.require("Registry");
 const { interfaceName } = require("../../utils/Constants.js");
 const { triggerOnRequest } = require("../../utils/Serving.js");
@@ -56,7 +57,10 @@ async function run(deployedFinder, identifier, timeString) {
     const deployedVoting = await Voting.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     );
-    await deployedVoting.addSupportedIdentifier(identifierInBytes);
+    const deployedIdentifierWhitelist = await IdentifierWhitelist.at(
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentiferWhitelist))
+    )
+    await deployedIdentifierWhitelist.addSupportedIdentifier(identifierInBytes);
     const priceExists = await deployedVoting.hasPrice(identifierInBytes, timeInBN);
     if (priceExists) {
       console.log(`Price already exists for ${identifier} @ ${time}`);
