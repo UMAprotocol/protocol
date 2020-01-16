@@ -441,15 +441,15 @@ contract("Voting", function(accounts) {
     const supported = web3.utils.utf8ToHex("supported");
 
     // No identifiers are originally suppported.
-    assert.isFalse(await voting.isIdentifierSupported(supported));
+    assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
 
     // Verify that supported identifiers can be added.
     await supportedIdentifiers.addSupportedIdentifier(supported);
-    assert.isTrue(await voting.isIdentifierSupported(supported));
+    assert.isTrue(await supportedIdentifiers.isIdentifierSupported(supported));
 
     // Verify that supported identifiers can be removed.
     await supportedIdentifiers.removeSupportedIdentifier(supported);
-    assert.isFalse(await voting.isIdentifierSupported(supported));
+    assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
 
     // Can't request prices for unsupported identifiers.
     assert(await didContractThrow(voting.requestPrice(supported, "0", { from: registeredDerivative })));

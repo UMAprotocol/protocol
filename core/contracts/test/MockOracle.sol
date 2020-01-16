@@ -41,8 +41,6 @@ contract MockOracle is OracleInterface, Testable {
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    // TODO: Is this solhint command required anymore?
-    // solhint-disable-next-line no-empty-blocks
     constructor(address _identifierWhitelist) public Testable(true) {
         identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
     }
@@ -95,10 +93,5 @@ contract MockOracle is OracleInterface, Testable {
     // Gets the queries that still need verified prices.
     function getPendingQueries() external view returns (QueryPoint[] memory queryPoints) {
         return requestedPrices;
-    }
-
-    // Whether the oracle provides verified prices for the provided identifier.
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported) {
-        return identifierWhitelist.isIdentifierSupported(identifier);
     }
 }

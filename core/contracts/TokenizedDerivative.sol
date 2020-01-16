@@ -10,6 +10,7 @@ import "./OracleInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 import "./StoreInterface.sol";
+import "./IdentifierWhitelistInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
@@ -545,6 +546,11 @@ library TokenizedDerivativeUtils {
         return s.externalAddresses.finder.getImplementationAddress(oracleInterface);
     }
 
+    function _getIdentifierWhitelistAddress(TDS.Storage storage s) internal view returns (address) {
+        bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
+        return s.externalAddresses.finder.getImplementationAddress(identifierWhitelistInterface);
+    }
+
     function _getStoreAddress(TDS.Storage storage s) internal view returns (address) {
         bytes32 storeInterface = "Store";
         return s.externalAddresses.finder.getImplementationAddress(storeInterface);
@@ -667,8 +673,8 @@ library TokenizedDerivativeUtils {
         s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeedAddress);
 
         // Verify that the price feed and Oracle support the given s.fixedParameters.product.
-        OracleInterface oracle = OracleInterface(_getOracleAddress(s));
-        require(oracle.isIdentifierSupported(params.product));
+        IdentifierWhitelistInterface supportedIdentifiers = IdentifierWhitelistInterface(_getIdentifierWhitelistAddress(s));
+        require(supportedIdentifiers.isIdentifierSupported(params.product));
         require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
 
         s.externalAddresses.sponsor = params.sponsor;

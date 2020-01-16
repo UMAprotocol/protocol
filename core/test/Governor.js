@@ -50,9 +50,8 @@ contract("Governor", function(accounts) {
     // Set the inflation rate to 0 by default, so the balances stay fixed.
     await setNewInflationRate("0");
 
-    // To work, the governor must be the owner of the Voting and IdentifierWhitelist contracts. This is not the default setup in the test
+    // To work, the governor must be the owner of the IdentifierWhitelist contract. This is not the default setup in the test
     // environment, so ownership must be transferred.
-    await voting.transferOwnership(governor.address);
     await supportedIdentifiers.transferOwnership(governor.address);
   });
 

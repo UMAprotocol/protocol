@@ -266,10 +266,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         migratedAddress = newVotingAddress;
     }
 
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
-        return identifierWhitelist.isIdentifierSupported(identifier);
-    }
-
     function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool _hasPrice) {
         (_hasPrice, ,) = _getPriceOrError(identifier, time);
     }
