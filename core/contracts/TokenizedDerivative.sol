@@ -673,7 +673,9 @@ library TokenizedDerivativeUtils {
         s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeedAddress);
 
         // Verify that the price feed and Oracle support the given s.fixedParameters.product.
-        IdentifierWhitelistInterface supportedIdentifiers = IdentifierWhitelistInterface(_getIdentifierWhitelistAddress(s));
+        IdentifierWhitelistInterface supportedIdentifiers = IdentifierWhitelistInterface(
+            _getIdentifierWhitelistAddress(s)
+        );
         require(supportedIdentifiers.isIdentifierSupported(params.product));
         require(s.externalAddresses.priceFeed.isIdentifierSupported(params.product));
 
