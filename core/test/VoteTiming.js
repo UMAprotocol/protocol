@@ -1,13 +1,8 @@
-const { didContractThrow } = require("../../common/SolidityTestUtils.js");
-
 const VoteTimingTest = artifacts.require("VoteTimingTest");
 
 contract("VoteTiming", function(accounts) {
-  let votingTiming;
-
   const COMMIT_PHASE = "0";
   const REVEAL_PHASE = "1";
-
   beforeEach(async function() {
     voteTiming = await VoteTimingTest.new("100");
   });
