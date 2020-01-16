@@ -370,8 +370,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         require(keccak256(abi.encode(price, salt)) == voteSubmission.commit, "Invalid commit hash & salt");
         delete voteSubmission.commit;
 
-        // Get or create a snapshot for this round.
-        uint snapshotId = _getOrCreateSnapshotId(roundId);
+        // Lock in round variables including snapshotId and interest rate
+        _freezeRoundVariables(roundId);
+
+        // Get the frozen snapshotId
+        uint snapshotId = rounds[roundId].snapshotId;
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
@@ -504,7 +507,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         return keccak256(abi.encode(identifier, time));
     }
 
-    function _getOrCreateSnapshotId(uint roundId) private returns (uint) {
+    function _freezeRoundVariables(uint roundId) private {
         Round storage round = rounds[roundId];
         if (round.snapshotId == 0) {
             // There is no snapshot ID set, so create one.
@@ -512,10 +515,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             
             // Set the round inflation rate to the current global inflation rate.
             rounds[roundId].inflationRate = inflationRate;
-
         }
-
-        return round.snapshotId;
     }
 
     function _resolvePriceRequest(PriceRequest storage priceRequest, VoteInstance storage voteInstance) private {
