@@ -23,18 +23,14 @@ library VoteTiming {
     }
 
     /**
-     * @notice Initializes the data object. Sets the phase length based on the input and resets the round id and round
-     * start time to 1 and 0 respectively.
-     * @dev This method should generally only be run once, but it can also be used to reset the data structure to its
-     * initial values.
+     * @notice Initializes the data object. Sets the phase length based on the input
      */
     function init(Data storage data, uint phaseLength) internal {
         data.phaseLength = phaseLength;
     }
 
     /**
-     * @notice Computes what the stored round id would be if it were updated right now, but this method does not
-     * commit the update.
+     * @notice Computes the roundID based off the current time as floor(timestamp/phaseLength)
      */
     function computeCurrentRoundId(Data storage data, uint currentTime) internal view returns (uint roundId) {
         uint roundLength = data.phaseLength.mul(NUM_PHASES);
