@@ -7,13 +7,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 pragma experimental ABIEncoderV2;
 
-
 /**
  * @title Registry for derivatives and approved derivative creators.
  * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives.
  */
 contract Registry is RegistryInterface, MultiRole {
-
     using SafeMath for uint;
 
     enum Roles {
@@ -27,10 +25,7 @@ contract Registry is RegistryInterface, MultiRole {
     address[] private registeredDerivatives;
 
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.
-    enum PointerValidity {
-        Invalid,
-        Valid
-    }
+    enum PointerValidity { Invalid, Valid }
 
     struct Pointer {
         PointerValidity valid;

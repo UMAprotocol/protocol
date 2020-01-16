@@ -1,6 +1,5 @@
 pragma solidity ^0.5.0;
 
-
 library Exclusive {
     struct RoleMembership {
         address member;
@@ -23,7 +22,6 @@ library Exclusive {
         resetMember(roleMembership, initialMember);
     }
 }
-
 
 library Shared {
     struct RoleMembership {
@@ -48,7 +46,6 @@ library Shared {
         }
     }
 }
-
 
 /**
  * @title Base class to manage permissions for the derived class.
@@ -179,8 +176,10 @@ contract MultiRole {
         role.roleType = RoleType.Shared;
         role.managingRole = managingRoleId;
         role.sharedRoleMembership.init(initialMembers);
-        require(roles[managingRoleId].roleType != RoleType.Invalid,
-            "Attempted to use an invalid role to manage a shared role");
+        require(
+            roles[managingRoleId].roleType != RoleType.Invalid,
+            "Attempted to use an invalid role to manage a shared role"
+        );
     }
 
     /**
@@ -197,7 +196,9 @@ contract MultiRole {
         role.roleType = RoleType.Exclusive;
         role.managingRole = managingRoleId;
         role.exclusiveRoleMembership.init(initialMember);
-        require(roles[managingRoleId].roleType != RoleType.Invalid,
-            "Attempted to use an invalid role to manage an exclusive role");
+        require(
+            roles[managingRoleId].roleType != RoleType.Invalid,
+            "Attempted to use an invalid role to manage an exclusive role"
+        );
     }
 }

@@ -2,7 +2,6 @@ pragma solidity ^0.5.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 /**
  * @title ERC20 interface that includes burn and mint methods.
  */

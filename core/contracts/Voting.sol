@@ -16,7 +16,6 @@ import "./VotingInterface.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
@@ -32,14 +31,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     struct PriceRequest {
         bytes32 identifier;
         uint time;
-
         // A map containing all votes for this price in various rounds.
         mapping(uint => VoteInstance) voteInstances;
-
         // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
         // this is the voting round where this price will be voted on, but not necessarily resolved.
         uint lastVotingRound;
-
         // The index in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX means that
         // this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
         uint index;
@@ -48,7 +44,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     struct VoteInstance {
         // Maps (voterAddress) to their submission.
         mapping(address => VoteSubmission) voteSubmissions;
-
         // The data structure containing the computed voting results.
         ResultComputation.Data resultComputation;
     }
@@ -56,7 +51,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     struct VoteSubmission {
         // A bytes32 of `0` indicates no commit or a commit that was already revealed.
         bytes32 commit;
-
         // The hash of the value that was revealed.
         // Note: this is only used for computation of rewards.
         bytes32 revealHash;
@@ -67,11 +61,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // Not used as a data structure for storage.
     struct Commitment {
         bytes32 identifier;
-
         uint time;
-
         bytes32 hash;
-
         bytes encryptedVote;
     }
 
@@ -80,18 +71,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // Not used as a data structure for storage.
     struct Reveal {
         bytes32 identifier;
-
         uint time;
-
         int price;
-
         int salt;
     }
 
     struct Round {
         // Voting token snapshot ID for this round. If this is 0, no snapshot has been taken.
         uint snapshotId;
-
         // Inflation rate set for this round.
         FixedPoint.Unsigned inflationRate;
     }
@@ -144,7 +131,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     address private migratedAddress;
 
     // Max value of an unsigned integer.
-    uint constant private UINT_MAX = ~uint(0);
+    uint private constant UINT_MAX = ~uint(0);
 
     event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
 
@@ -157,8 +144,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint numTokens
     );
 
-    event RewardsRetrieved(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time,
-        uint numTokens);
+    event RewardsRetrieved(
+        address indexed voter,
+        uint indexed roundId,
+        bytes32 indexed identifier,
+        uint time,
+        uint numTokens
+    );
 
     event PriceRequestAdded(uint indexed votingRoundId, bytes32 indexed identifier, uint time);
 
@@ -206,10 +198,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         _;
     }
 
-    function requestPrice(bytes32 identifier, uint time)
-        external
-        onlyRegisteredDerivative()
-    {
+    function requestPrice(bytes32 identifier, uint time) external onlyRegisteredDerivative() {
         uint blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
         require(supportedIdentifiers[identifier], "Unsupported identifier request");
@@ -219,6 +208,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+
         if (requestStatus == RequestStatus.NotRequested) {
             // Price has never been requested.
             // Price requests always go in the next round, so add 1 to the computed current round.
@@ -244,7 +234,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
                     commits[i].identifier,
                     commits[i].time,
                     commits[i].hash,
-                    commits[i].encryptedVote);
+                    commits[i].encryptedVote
+                );
             }
         }
     }
@@ -289,7 +280,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     }
 
     function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool _hasPrice) {
-        (_hasPrice, ,) = _getPriceOrError(identifier, time);
+        (_hasPrice, , ) = _getPriceOrError(identifier, time);
     }
 
     function getPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (int) {
@@ -312,8 +303,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         for (uint i = 0; i < pendingPriceRequests.length; i++) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
             if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
-                unresolved[numUnresolved] = PendingRequest(
-                    { identifier: priceRequest.identifier, time: priceRequest.time });
+                unresolved[numUnresolved] = PendingRequest({
+                    identifier: priceRequest.identifier,
+                    time: priceRequest.time
+                });
                 numUnresolved++;
             }
         }
@@ -342,8 +335,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
-        require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active,
-            "Cannot commit inactive request");
+        require(
+            _getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active,
+            "Cannot commit inactive request"
+        );
 
         priceRequest.lastVotingRound = currentRoundId;
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
@@ -393,12 +388,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
 
-    function commitAndPersistEncryptedVote(
-        bytes32 identifier,
-        uint time,
-        bytes32 hash,
-        bytes memory encryptedVote
-    ) public {
+    function commitAndPersistEncryptedVote(bytes32 identifier, uint time, bytes32 hash, bytes memory encryptedVote)
+        public
+    {
         commitVote(identifier, time, hash);
 
         uint roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
@@ -426,11 +418,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         Round storage round = rounds[roundId];
         FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
-            votingToken.balanceOfAt(voterAddress, round.snapshotId));
+            votingToken.balanceOfAt(voterAddress, round.snapshotId)
+        );
 
         // Compute the total amount of reward that will be issued for each of the votes in the round.
         FixedPoint.Unsigned memory snapshotTotalSupply = FixedPoint.Unsigned(
-            votingToken.totalSupplyAt(round.snapshotId));
+            votingToken.totalSupplyAt(round.snapshotId)
+        );
         FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
 
         // Keep track of the voter's accumulated token reward.
@@ -447,16 +441,22 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             if (voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)) {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed and was
                 // correct, so they are elgible for a reward.
-                FixedPoint.Unsigned memory correctTokens = voteInstance.resultComputation.
-                    getTotalCorrectlyVotedTokens();
+                FixedPoint.Unsigned memory correctTokens = voteInstance
+                    .resultComputation
+                    .getTotalCorrectlyVotedTokens();
 
                 // Compute the reward and add to the cumulative reward.
                 FixedPoint.Unsigned memory reward = snapshotBalance.mul(totalRewardPerVote).div(correctTokens);
                 totalRewardToIssue = totalRewardToIssue.add(reward);
 
                 // Emit reward retrieval for this vote.
-                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time,
-                    reward.rawValue);
+                emit RewardsRetrieved(
+                    voterAddress,
+                    roundId,
+                    toRetrieve[i].identifier,
+                    toRetrieve[i].time,
+                    reward.rawValue
+                );
             } else {
                 // Emit a 0 token retrieval on incorrect votes.
                 emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
@@ -490,7 +490,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         } else if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
-                _computeGat(priceRequest.lastVotingRound));
+                _computeGat(priceRequest.lastVotingRound)
+            );
             return (true, resolvedPrice, "");
         } else if (requestStatus == RequestStatus.Future) {
             return (false, 0, "Price is still to be voted on");
@@ -523,7 +524,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             return;
         }
         (bool isResolved, int resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
-            _computeGat(priceRequest.lastVotingRound));
+            _computeGat(priceRequest.lastVotingRound)
+        );
         require(isResolved, "Can't resolve unresolved request");
 
         // Delete the resolved price request from pendingPriceRequests.
@@ -562,7 +564,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         } else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (bool isResolved, ) = voteInstance.resultComputation.getResolvedPrice(
-                _computeGat(priceRequest.lastVotingRound));
+                _computeGat(priceRequest.lastVotingRound)
+            );
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) {
             return RequestStatus.Active;

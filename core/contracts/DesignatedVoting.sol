@@ -8,14 +8,12 @@ import "./Withdrawable.sol";
 import "./Voting.sol";
 import "./VotingInterface.sol";
 
-
 /**
  * @title Proxy to allow voting from another address
  * @dev Allows a UMA token holder to designate another address to vote on their behalf. Each voter must deploy their own
  * instance of this contract.
  */
 contract DesignatedVoting is MultiRole, Withdrawable {
-
     enum Roles {
         // Can set the Voter and Withdrawer roles.
         Owner,

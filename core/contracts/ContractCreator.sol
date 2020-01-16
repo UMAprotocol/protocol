@@ -3,7 +3,6 @@ pragma solidity ^0.5.0;
 import "./Finder.sol";
 import "./Registry.sol";
 
-
 // TODO(ptare): Make this (and all contracts) Withdrawable.
 /**
  * @title Base contract for all financial contract creators

@@ -2,7 +2,6 @@ pragma solidity ^0.5.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Library to compute rounds and phases for an equal length commit-reveal voting cycle. 
  */
@@ -10,10 +9,7 @@ library VoteTiming {
     using SafeMath for uint;
 
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
-    enum Phase {
-        Commit,
-        Reveal
-    }
+    enum Phase { Commit, Reveal }
 
     // Note: this MUST match the number of values in the enum above.
     uint private constant NUM_PHASES = 2;

@@ -5,10 +5,8 @@ pragma experimental ABIEncoderV2;
 import "../OracleInterface.sol";
 import "../Testable.sol";
 
-
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
-
     // Represents an available price. Have to keep a separate bool to allow for price=0.
     struct Price {
         bool isAvailable;

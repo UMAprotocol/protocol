@@ -7,7 +7,6 @@ import "./ContractCreator.sol";
 import "./TokenizedDerivative.sol";
 import "./Testable.sol";
 
-
 /**
  * @title Contract creator for TokenizedDerivative.
  */
@@ -48,10 +47,7 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
     /**
      * @notice Creates a new instance of `TokenizedDerivative` with the provided `params`.
      */
-    function createTokenizedDerivative(Params memory params)
-        public
-        returns (address derivativeAddress)
-    {
+    function createTokenizedDerivative(Params memory params) public returns (address derivativeAddress) {
         TokenizedDerivative derivative = new TokenizedDerivative(_convertParams(params), params.name, params.symbol);
 
         address[] memory parties = new address[](1);
