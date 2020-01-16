@@ -89,8 +89,8 @@ contract("Voting", function(accounts) {
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     // RoundId is a function of the voting time defined by floor(timestamp/phaseLength). Phase
-    const currentTime = (await voting.getCurrentTime()).toNumber()
-    assert.equal((await voting.getCurrentRoundId()).toString(), Math.floor(currentTime/(172800)));
+    const currentTime = (await voting.getCurrentTime()).toNumber();
+    assert.equal((await voting.getCurrentRoundId()).toString(), Math.floor(currentTime / 172800));
     assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
     await moveToNextRound(voting);
 
