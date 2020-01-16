@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../OracleInterface.sol";
 import "../Testable.sol";
-import "../IdentifierWhitelist.sol";
+import "../IdentifierWhitelistInterface.sol";
 
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
@@ -30,7 +30,7 @@ contract MockOracle is OracleInterface, Testable {
         uint time;
     }
 
-    IdentifierWhitelist public identifierWhitelist;
+    IdentifierWhitelistInterface public identifierWhitelist;
 
     // Conceptually we want a (time, identifier) -> price map.
     mapping(bytes32 => mapping(uint => Price)) private verifiedPrices;
@@ -42,8 +42,8 @@ contract MockOracle is OracleInterface, Testable {
 
     // TODO: Is this solhint command required anymore?
     // solhint-disable-next-line no-empty-blocks
-    constructor() public Testable(true) {
-        identifierWhitelist = new IdentifierWhitelist();
+    constructor(address _identifierWhitelist) public Testable(true) {
+        identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
     }
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
@@ -74,11 +74,6 @@ contract MockOracle is OracleInterface, Testable {
             requestedPrices[indexToReplace] = queryToCopy;
         }
         requestedPrices.length = requestedPrices.length - 1;
-    }
-
-    // Adds the provided identifier as a supported identifier.
-    function addSupportedIdentifier(bytes32 identifier) external {
-        identifierWhitelist.addSupportedIdentifier(identifier);
     }
 
     // Checks whether a price has been resolved.

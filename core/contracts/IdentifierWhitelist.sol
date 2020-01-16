@@ -1,11 +1,12 @@
 pragma solidity ^0.5.0;
 
+import "./IdentifierWhitelistInterface.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 /**
- * @title A contract to track a whitelist of supported identifiers that the oracle can provide prices for.
+ * @title Stores a whitelist of supported identifiers that the oracle can provide prices for.
  */
-contract IdentifierWhitelist is Ownable {
+contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
     mapping(bytes32 => bool) private supportedIdentifiers;
 
     event SupportedIdentifierAdded(bytes32 indexed identifier);

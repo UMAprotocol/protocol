@@ -12,7 +12,7 @@ import "./Testable.sol";
 import "./VoteTiming.sol";
 import "./VotingToken.sol";
 import "./VotingInterface.sol";
-import "./IdentifierWhitelist.sol";
+import "./IdentifierWhitelistInterface.sol";
 
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -121,7 +121,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     VoteTiming.Data private voteTiming;
 
-    IdentifierWhitelist public identifierWhitelist;
+    IdentifierWhitelistInterface public identifierWhitelist;
 
     // Percentage of the total token supply that must be used in a vote to create a valid price resolution.
     // 1 == 100%.
@@ -176,6 +176,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned memory _gatPercentage,
         FixedPoint.Unsigned memory _inflationRate,
         address _votingToken,
+        address _identifierWhitelist,
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
@@ -184,7 +185,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
-        identifierWhitelist = new IdentifierWhitelist();
+        identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
         finder = Finder(_finder);
     }
 
@@ -263,22 +264,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     function setMigrated(address newVotingAddress) external onlyOwner {
         migratedAddress = newVotingAddress;
-    }
-
-    /**
-     * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will
-     * succeed after this call.
-     */
-    function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
-        identifierWhitelist.addSupportedIdentifier(identifier);
-    }
-
-    /**
-     * @notice Removes the identifier from the whitelist. Price requests using this identifier will no longer succeed
-     * after this call.
-     */
-    function removeSupportedIdentifier(bytes32 identifier) external onlyOwner {
-        identifierWhitelist.removeSupportedIdentifier(identifier);
     }
 
     function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
