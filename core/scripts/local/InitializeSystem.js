@@ -35,7 +35,7 @@ const initializeSystem = async function(callback) {
     );
     const deployedIdentifierWhitelist = await IdentifierWhitelist.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentiferWhitelist))
-    )
+    );
     const deployedManualPriceFeed = await ManualPriceFeed.deployed();
 
     const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();

@@ -14,7 +14,6 @@ module.exports = async function(deployer, network, accounts) {
     from: keys.deployer
   });
 
-  
   // Set the GAT percentage to 5%
   const gatPercentage = { rawValue: web3.utils.toWei("0.05", "ether") };
 
@@ -45,9 +44,13 @@ module.exports = async function(deployer, network, accounts) {
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), voting.address, {
     from: keys.deployer
   });
-  await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address, {
-    from: keys.deployer
-  });
+  await finder.changeImplementationAddress(
+    web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
+    identifierWhitelist.address,
+    {
+      from: keys.deployer
+    }
+  );
 
   // Corresponds to VotingToken.Roles.Minter.
   const minterRoleEnumValue = 1;

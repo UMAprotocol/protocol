@@ -24,7 +24,9 @@ contract("IdentifierWhitelist", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
 
     // Rando cannot remove from the whitelist.
-    assert(await didContractThrow(identifierWhitelist.removeSupportedIdentifier(randomIdentifierToAdd, { from: rando })));
+    assert(
+      await didContractThrow(identifierWhitelist.removeSupportedIdentifier(randomIdentifierToAdd, { from: rando }))
+    );
 
     // Owner can remove from the whitelist.
     await identifierWhitelist.removeSupportedIdentifier(randomIdentifierToAdd, { from: owner });

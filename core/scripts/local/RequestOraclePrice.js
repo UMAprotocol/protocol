@@ -59,7 +59,7 @@ async function run(deployedFinder, identifier, timeString) {
     );
     const deployedIdentifierWhitelist = await IdentifierWhitelist.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentiferWhitelist))
-    )
+    );
     await deployedIdentifierWhitelist.addSupportedIdentifier(identifierInBytes);
     const priceExists = await deployedVoting.hasPrice(identifierInBytes, timeInBN);
     if (priceExists) {
