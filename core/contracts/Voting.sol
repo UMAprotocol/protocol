@@ -12,6 +12,7 @@ import "./Testable.sol";
 import "./VoteTiming.sol";
 import "./VotingToken.sol";
 import "./VotingInterface.sol";
+import "./IdentifierWhitelist.sol";
 
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -120,8 +121,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     VoteTiming.Data private voteTiming;
 
-    // The set of identifiers the oracle can provide verified prices for.
-    mapping(bytes32 => bool) private supportedIdentifiers;
+    IdentifierWhitelist public identifierWhitelist;
 
     // Percentage of the total token supply that must be used in a vote to create a valid price resolution.
     // 1 == 100%.
@@ -164,10 +164,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     event PriceResolved(uint indexed resolutionRoundId, bytes32 indexed identifier, uint time, int price);
 
-    event SupportedIdentifierAdded(bytes32 indexed identifier);
-
-    event SupportedIdentifierRemoved(bytes32 indexed identifier);
-
     /**
      * @notice Construct the Voting contract.
      * @param phaseLength length of the commit and reveal phases in seconds.
@@ -188,6 +184,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
+        identifierWhitelist = new IdentifierWhitelist();
         finder = Finder(_finder);
     }
 
@@ -212,7 +209,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     {
         uint blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
-        require(supportedIdentifiers[identifier], "Unsupported identifier request");
+        require(identifierWhitelist.isIdentifierSupported(identifier), "Unsupported identifier request");
 
         // Must ensure the round is updated here so the requested price will be voted on in the next commit cycle.
         _updateRound(blockTime);
@@ -269,14 +266,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     }
 
     /**
-     * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will be
+     * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will
      * succeed after this call.
      */
     function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
-        if (!supportedIdentifiers[identifier]) {
-            supportedIdentifiers[identifier] = true;
-            emit SupportedIdentifierAdded(identifier);
-        }
+        identifierWhitelist.addSupportedIdentifier(identifier);
     }
 
     /**
@@ -284,14 +278,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * after this call.
      */
     function removeSupportedIdentifier(bytes32 identifier) external onlyOwner {
-        if (supportedIdentifiers[identifier]) {
-            supportedIdentifiers[identifier] = false;
-            emit SupportedIdentifierRemoved(identifier);
-        }
+        identifierWhitelist.removeSupportedIdentifier(identifier);
     }
 
     function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
-        return supportedIdentifiers[identifier];
+        return identifierWhitelist.isIdentifierSupported(identifier);
     }
 
     function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool _hasPrice) {

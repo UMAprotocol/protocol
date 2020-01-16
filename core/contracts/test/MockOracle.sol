@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../OracleInterface.sol";
 import "../Testable.sol";
-
+import "../IdentifierWhitelist.sol";
 
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
@@ -30,8 +30,7 @@ contract MockOracle is OracleInterface, Testable {
         uint time;
     }
 
-    // The set of identifiers the oracle can provide verified prices for.
-    mapping(bytes32 => bool) private supportedIdentifiers;
+    IdentifierWhitelist public identifierWhitelist;
 
     // Conceptually we want a (time, identifier) -> price map.
     mapping(bytes32 => mapping(uint => Price)) private verifiedPrices;
@@ -41,12 +40,15 @@ contract MockOracle is OracleInterface, Testable {
     mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
+    // TODO: Is this solhint command required anymore?
     // solhint-disable-next-line no-empty-blocks
-    constructor() public Testable(true) {}
+    constructor() public Testable(true) {
+        identifierWhitelist = new IdentifierWhitelist();
+    }
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
     function requestPrice(bytes32 identifier, uint time) external {
-        require(supportedIdentifiers[identifier]);
+        require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
             // New query, enqueue it for review.
@@ -76,21 +78,19 @@ contract MockOracle is OracleInterface, Testable {
 
     // Adds the provided identifier as a supported identifier.
     function addSupportedIdentifier(bytes32 identifier) external {
-        if (!supportedIdentifiers[identifier]) {
-            supportedIdentifiers[identifier] = true;
-        }
+        identifierWhitelist.addSupportedIdentifier(identifier);
     }
 
     // Checks whether a price has been resolved.
     function hasPrice(bytes32 identifier, uint time) external view returns (bool hasPriceAvailable) {
-        require(supportedIdentifiers[identifier]);
+        require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
     }
 
     // Gets a price that has already been resolved.
     function getPrice(bytes32 identifier, uint time) external view returns (int price) {
-        require(supportedIdentifiers[identifier]);
+        require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);
         return lookup.price;
@@ -103,6 +103,6 @@ contract MockOracle is OracleInterface, Testable {
 
     // Whether the oracle provides verified prices for the provided identifier.
     function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported) {
-        return supportedIdentifiers[identifier];
+        return identifierWhitelist.isIdentifierSupported(identifier);
     }
 }
