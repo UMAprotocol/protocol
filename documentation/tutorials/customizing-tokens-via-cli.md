@@ -123,7 +123,11 @@ const tokenizedDerivative = await TokenizedDerivative.at(/*whatever your address
 
 ## Token interaction
 
-Let's deposit 10 ETH in our token. All numbers are represented in the contract as Wei, i.e., 10**18, so `5` is
+You can interact with the deployed token via the command line or a dapp. 
+
+Access the dapp at https://tokenbuilder.umaproject.org/. This point-and-click dapp will allow you to easily deposit collateral into the contract, borrow tokens, top up or remove additional collateral, and redeem tokens. We strongly recommend using the dapp for clarity. 
+
+Alternatively, you can interact with the deployed token via the command line. Below, we'll deposit 10 ETH in our token. All numbers are represented in the contract as Wei, i.e., 10**18, so `5` is
 represented as `5e18`.
 
 ```js
