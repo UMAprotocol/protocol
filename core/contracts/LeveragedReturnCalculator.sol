@@ -4,7 +4,6 @@ import "./ReturnCalculatorInterface.sol";
 import "./Withdrawable.sol";
 import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
 
-
 /**
  * @title Computes return values based on a fixed leverage.
  */
@@ -20,10 +19,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     int internal leverageMultiplier;
     int private constant FP_SCALING_FACTOR = 10**18;
 
-    enum Roles {
-        Governance,
-        Withdraw
-    }
+    enum Roles { Governance, Withdraw }
 
     constructor(int _leverageMultiplier) public {
         require(_leverageMultiplier != 0);
@@ -43,7 +39,6 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
 
         // Compute the RoR of the underlying asset and multiply by leverageMultiplier to get the modified return.
         assetReturn = underlyingAssetReturn.sub(FP_SCALING_FACTOR).mul(leverageMultiplier);
-
 
         // If oldPrice is < 0, we need to flip the sign to keep returns positively correlated with
         // leverageMultiplier * price diffs.

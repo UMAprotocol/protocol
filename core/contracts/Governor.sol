@@ -10,12 +10,10 @@ import "./Testable.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
 contract Governor is MultiRole, Testable {
-
     using SafeMath for uint;
 
     enum Roles {
@@ -64,8 +62,10 @@ contract Governor is MultiRole, Testable {
 
         Transaction storage transaction = proposal.transactions[transactionIndex];
 
-        require(transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
-            "Previous transaction has not been executed");
+        require(
+            transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
+            "Previous transaction has not been executed"
+        );
         require(transaction.to != address(0), "Transaction has already been executed");
         require(price != 0, "Cannot execute, proposal was voted down");
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Transaction execution failed");
@@ -140,10 +140,7 @@ contract Governor is MultiRole, Testable {
         return _addPrefix(bytesId, "Admin ", 6);
     }
 
-    function _executeCall(address to, uint256 value, bytes memory data)
-        private
-        returns (bool success)
-    {
+    function _executeCall(address to, uint256 value, bytes memory data) private returns (bool success) {
         // Mostly copied from:
         // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31

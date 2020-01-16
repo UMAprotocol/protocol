@@ -1,6 +1,5 @@
 pragma solidity ^0.5.0;
 
-
 /**
  * @title Contract for sending keyed encrypted messages via the EVM
  * @dev This contract uses topic hashes as keys and can store a single arbitrary encrypted message per topic at any
@@ -19,7 +18,6 @@ contract EncryptedSender {
         // An (optional) public key used to encrypt messages for this topic. This is only necessary if the sender will
         // not have access to the public key offchain.
         bytes publicKey;
-
         // The encrypted message.
         bytes message;
     }
@@ -28,7 +26,6 @@ contract EncryptedSender {
         // This maps from a hash to the data for this topic.
         // Note: the hash is a hash of the "subject" or "topic" of the message.
         mapping(bytes32 => TopicData) topics;
-
         // This contains the set of all authorized senders for this recipient.
         mapping(address => bool) authorizedSenders;
     }

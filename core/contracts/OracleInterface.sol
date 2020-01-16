@@ -1,12 +1,10 @@
 pragma solidity ^0.5.0;
 
-
 /**
  * @title Financial contract facing Oracle interface.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
 interface OracleInterface {
-
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
      */

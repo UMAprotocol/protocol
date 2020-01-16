@@ -2,7 +2,6 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-
 /**
  * @title Interface for a registry of derivatives and derivative creators.
  */

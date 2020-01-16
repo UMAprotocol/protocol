@@ -7,20 +7,15 @@ import "./Withdrawable.sol";
 import "./FixedPoint.sol";
 import "./MultiRole.sol";
 
-
 /** 
  * @title An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
 contract Store is StoreInterface, MultiRole, Withdrawable {
-
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint;
 
-    enum Roles {
-        Owner,
-        Withdrawer
-    }
+    enum Roles { Owner, Withdrawer }
 
     FixedPoint.Unsigned private fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
 
@@ -46,10 +41,10 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
 
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc) 
-        external 
-        view 
-        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) 
+    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
+        external
+        view
+        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
     {
         uint timeDiff = endTime.sub(startTime);
 
@@ -61,20 +56,17 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         return (regularFee, latePenalty);
     }
 
-    function computeFinalFee(address currency) 
-        external 
-        view 
-        returns (FixedPoint.Unsigned memory finalFee) 
-    {
+    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory finalFee) {
         finalFee = finalFees[currency];
     }
 
     /**
      * @dev Sets a new oracle fee per second
-     */ 
-    function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee) 
-        public 
-        onlyRoleHolder(uint(Roles.Owner)) 
+     */
+
+    function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee)
+        public
+        onlyRoleHolder(uint(Roles.Owner))
     {
         // Oracle fees at or over 100% don't make sense.
         require(newOracleFee.isLessThan(1));
@@ -84,19 +76,18 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
 
     /**
      * @dev Sets a new weekly delay fee
-     */ 
-    function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) 
-        public 
-        onlyRoleHolder(uint(Roles.Owner)) 
-    {
+     */
+
+    function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
         weeklyDelayFee = newWeeklyDelayFee;
     }
 
     /**
      * @dev Sets a new final fee for a particular currency
-     */ 
-    function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee) 
-        public 
+     */
+
+    function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee)
+        public
         onlyRoleHolder(uint(Roles.Owner))
     {
         finalFees[currency] = finalFee;

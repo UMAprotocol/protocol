@@ -17,12 +17,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./FixedPoint.sol";
 
-
 library TokenizedDerivativeParams {
-    enum ReturnType {
-        Linear,
-        Compound
-    }
+    enum ReturnType { Linear, Compound }
 
     struct ConstructorParams {
         address sponsor;
@@ -44,7 +40,6 @@ library TokenizedDerivativeParams {
     }
 }
 
-
 /**
  * @title Tokenized Derivative Storage
  * @dev This library name is shortened due to it being used so often.
@@ -55,7 +50,6 @@ library TDS {
         // it exceeds required levels). Remargining is allowed. Created contracts immediately begin in this state.
         // Possible state transitions: Disputed, Expired, Defaulted.
         Live,
-
         // Disputed, Expired, Defaulted, and Emergency are Frozen states. In a Frozen state, the contract is frozen in
         // time awaiting a resolution by the Oracle. No tokens can be created or redeemed. Margin cannot be withdrawn.
         // The resolution of these states moves the contract to the Settled state. Remargining is not allowed.
@@ -65,21 +59,17 @@ library TDS {
         // account. Otherwise, the dispute fee is added to the long margin account.
         // Possible state transitions: Settled.
         Disputed,
-
         // Contract expiration has been reached.
         // Possible state transitions: Settled.
         Expired,
-
         // The short margin account is below its margin requirement. The sponsor can choose to confirm the default and
         // move to Settle without waiting for the Oracle. Default penalties will be assessed when the contract moves to
         // Settled.
         // Possible state transitions: Settled.
         Defaulted,
-
         // UMA has manually triggered a shutdown of the account.
         // Possible state transitions: Settled.
         Emergency,
-
         // Token price is fixed. Tokens can be redeemed by anyone. All short margin can be withdrawn. Tokens can't be
         // created, and contract can't remargin.
         // Possible state transitions: None.
@@ -131,32 +121,24 @@ library TDS {
     struct Storage {
         FixedParameters fixedParameters;
         ExternalAddresses externalAddresses;
-
         // Balances
         int shortBalance;
         int longBalance;
-
         State state;
         uint endTime;
-
         // The NAV of the contract always reflects the transition from (`prev`, `current`).
         // In the case of a remargin, a `latest` price is retrieved from the price feed, and we shift
         // `current` -> `prev` and `latest` -> `current` (and then recompute).
         // In the case of a dispute, `current` might change (which is why we have to hold on to `prev`).
         TokenState referenceTokenState;
         TokenState currentTokenState;
-
-        int nav;  // Net asset value is measured in Wei
-
+        int nav; // Net asset value is measured in Wei
         Dispute disputeInfo;
-
         // Only populated once the contract enters a frozen state.
         int defaultPenaltyAmount;
-
         WithdrawThrottle withdrawThrottle;
     }
 }
-
 
 /**
  * @dev Implements the functionality of `TokenizedDerivative` by operating on the data contained in a `TDS.Storage`.
@@ -282,13 +264,11 @@ library TokenizedDerivativeUtils {
     }
 
     function _dispute(TDS.Storage storage s, uint depositMargin) external onlySponsor(s) {
-        require(
-            s.state == TDS.State.Live,
-            "Contract must be Live to dispute"
-        );
+        require(s.state == TDS.State.Live, "Contract must be Live to dispute");
 
         uint requiredDeposit = _safeUintCast(
-            _takePercentage(s._getRequiredMargin(s.currentTokenState), s.fixedParameters.disputeDeposit));
+            _takePercentage(s._getRequiredMargin(s.currentTokenState), s.fixedParameters.disputeDeposit)
+        );
 
         uint sendInconsistencyRefund = s._pullSentMargin(depositMargin);
 
@@ -335,7 +315,9 @@ library TokenizedDerivativeUtils {
                 // We've passed the previous s.withdrawThrottle window. Start new one.
                 s.withdrawThrottle.startTime = currentTime;
                 s.withdrawThrottle.remainingWithdrawal = _takePercentage(
-                    _safeUintCast(s.shortBalance), s.fixedParameters.withdrawLimit);
+                    _safeUintCast(s.shortBalance),
+                    s.fixedParameters.withdrawLimit
+                );
             }
 
             int marginMaxWithdraw = s.shortBalance.sub(s._getRequiredMargin(s.currentTokenState));
@@ -350,10 +332,7 @@ library TokenizedDerivativeUtils {
         }
 
         // Can only withdraw the allowed amount.
-        require(
-            withdrawableAmount >= _safeIntCast(amount),
-            "Attempting to withdraw more than allowed"
-        );
+        require(withdrawableAmount >= _safeIntCast(amount), "Attempting to withdraw more than allowed");
 
         // Transfer amount - Note: important to `-=` before the send so that the
         // function can not be called multiple times while waiting for transfer
@@ -444,7 +423,7 @@ library TokenizedDerivativeUtils {
     // Returns the expected value of each the outstanding tokens of the contract using the latest available Price Feed
     // price.
     function _calcTokenValue(TDS.Storage storage s) external view returns (int newTokenValue) {
-        (TDS.TokenState memory newTokenState,) = s._calcNewTokenStateAndBalance();
+        (TDS.TokenState memory newTokenState, ) = s._calcNewTokenStateAndBalance();
         newTokenValue = newTokenState.tokenPrice;
     }
 
@@ -498,10 +477,7 @@ library TokenizedDerivativeUtils {
         TDS.Storage storage s,
         TokenizedDerivativeParams.ConstructorParams memory params,
         string memory symbol
-    )
-        public
-    {
-
+    ) public {
         s._setFixedParameters(params, symbol);
         s._setExternalAddresses(params);
 
@@ -512,7 +488,8 @@ library TokenizedDerivativeUtils {
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
         (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
-            s.fixedParameters.product);
+            s.fixedParameters.product
+        );
 
         // If nonzero, take the user input as the starting price.
         if (params.startingUnderlyingPrice != 0) {
@@ -523,8 +500,9 @@ library TokenizedDerivativeUtils {
         require(latestTime != 0);
 
         // Keep the ratio in case it's needed for margin computation.
-        s.fixedParameters.initialTokenUnderlyingRatio = params.startingTokenPrice.mul(
-            UINT_FP_SCALING_FACTOR).div(_safeUintCast(latestUnderlyingPrice));
+        s.fixedParameters.initialTokenUnderlyingRatio = params.startingTokenPrice.mul(UINT_FP_SCALING_FACTOR).div(
+            _safeUintCast(latestUnderlyingPrice)
+        );
         require(s.fixedParameters.initialTokenUnderlyingRatio != 0);
 
         // Set end time to max value of uint to implement no expiry.
@@ -587,22 +565,24 @@ library TokenizedDerivativeUtils {
         // move to expiry.
         bool shouldUseReferenceTokenState = isContractLive &&
             (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear || isContractPostExpiry);
-        TDS.TokenState memory lastTokenState = (shouldUseReferenceTokenState ?
-            s.referenceTokenState : s.currentTokenState);
+        TDS.TokenState memory lastTokenState = (
+            shouldUseReferenceTokenState ? s.referenceTokenState : s.currentTokenState
+        );
 
         // Use the oracle settlement price/time if the contract is frozen or will move to expiry on the next remargin.
-        (uint recomputeTime, int recomputePrice) = !isContractLive || isContractPostExpiry ?
-            (s.endTime, OracleInterface(_getOracleAddress(s)).getPrice(s.fixedParameters.product, s.endTime)) :
-            (priceFeedTime, priceFeedPrice);
+        (uint recomputeTime, int recomputePrice) = !isContractLive || isContractPostExpiry
+            ? (s.endTime, OracleInterface(_getOracleAddress(s)).getPrice(s.fixedParameters.product, s.endTime))
+            : (priceFeedTime, priceFeedPrice);
 
         // Init the returned short balance to the current short balance.
         newShortMarginBalance = s.shortBalance;
 
         // Subtract the oracle fees from the short balance.
-        newShortMarginBalance = isContractLive ?
-            newShortMarginBalance.sub(
-                _safeIntCast(s._computeExpectedOracleFees(s.currentTokenState.time, recomputeTime))) :
-            newShortMarginBalance;
+        newShortMarginBalance = isContractLive
+            ? newShortMarginBalance.sub(
+                _safeIntCast(s._computeExpectedOracleFees(s.currentTokenState.time, recomputeTime))
+            )
+            : newShortMarginBalance;
 
         // Compute the new NAV
         newTokenState = s._computeNewTokenState(lastTokenState, recomputePrice, recomputeTime);
@@ -623,9 +603,9 @@ library TokenizedDerivativeUtils {
             // Subtract default penalty (if necessary) from the short balance.
             if (inDefault) {
                 int expectedDefaultPenalty = isContractLive ? s._computeDefaultPenalty() : s._getDefaultPenalty();
-                int defaultPenalty = (newShortMarginBalance < expectedDefaultPenalty) ?
-                    newShortMarginBalance :
-                    expectedDefaultPenalty;
+                int defaultPenalty = (newShortMarginBalance < expectedDefaultPenalty)
+                    ? newShortMarginBalance
+                    : expectedDefaultPenalty;
                 newShortMarginBalance = newShortMarginBalance.sub(defaultPenalty);
             }
 
@@ -642,10 +622,7 @@ library TokenizedDerivativeUtils {
         int latestUnderlyingPrice,
         uint latestTime,
         uint startingTokenPrice
-    )
-        internal
-        returns (int navNew)
-    {
+    ) internal returns (int navNew) {
         int unitNav = _safeIntCast(startingTokenPrice);
         s.referenceTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
         s.currentTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
@@ -678,12 +655,12 @@ library TokenizedDerivativeUtils {
         TDS.Storage storage s,
         TokenizedDerivativeParams.ConstructorParams memory params,
         string memory symbol
-    )
-        internal
-    {
+    ) internal {
         // Ensure only valid enum values are provided.
-        require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound
-            || params.returnType == TokenizedDerivativeParams.ReturnType.Linear);
+        require(
+            params.returnType == TokenizedDerivativeParams.ReturnType.Compound ||
+                params.returnType == TokenizedDerivativeParams.ReturnType.Linear
+        );
 
         // Fee must be 0 if the returnType is linear.
         require(params.returnType == TokenizedDerivativeParams.ReturnType.Compound || params.fixedYearlyFee == 0);
@@ -798,8 +775,12 @@ library TokenizedDerivativeUtils {
 
     function _settleInternal(TDS.Storage storage s) internal {
         TDS.State startingState = s.state;
-        require(startingState == TDS.State.Disputed || startingState == TDS.State.Expired
-                || startingState == TDS.State.Defaulted || startingState == TDS.State.Emergency);
+        require(
+            startingState == TDS.State.Disputed ||
+                startingState == TDS.State.Expired ||
+                startingState == TDS.State.Defaulted ||
+                startingState == TDS.State.Emergency
+        );
         s._settleVerifiedPrice();
         if (startingState == TDS.State.Disputed) {
             int depositValue = _safeIntCast(s.disputeInfo.deposit);
@@ -858,16 +839,19 @@ library TokenizedDerivativeUtils {
         return (shortBalance < expectedFeeAmount) ? shortBalance : expectedFeeAmount;
     }
 
-    function _computeNewTokenState(TDS.Storage storage s,
-        TDS.TokenState memory beginningTokenState, int latestUnderlyingPrice, uint recomputeTime)
-        internal
-        view
-        returns (TDS.TokenState memory newTokenState)
-    {
+    function _computeNewTokenState(
+        TDS.Storage storage s,
+        TDS.TokenState memory beginningTokenState,
+        int latestUnderlyingPrice,
+        uint recomputeTime
+    ) internal view returns (TDS.TokenState memory newTokenState) {
         int underlyingReturn = s.externalAddresses.returnCalculator.computeReturn(
-            beginningTokenState.underlyingPrice, latestUnderlyingPrice);
+            beginningTokenState.underlyingPrice,
+            latestUnderlyingPrice
+        );
         int tokenReturn = underlyingReturn.sub(
-            _safeIntCast(s.fixedParameters.fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time))));
+            _safeIntCast(s.fixedParameters.fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time)))
+        );
         int tokenMultiplier = tokenReturn.add(INT_FP_SCALING_FACTOR);
 
         // In the compound case, don't allow the token price to go below 0.
@@ -908,9 +892,7 @@ library TokenizedDerivativeUtils {
         returns (uint actualFeeAmount)
     {
         StoreInterface store = StoreInterface(_getStoreAddress(s));
-        FixedPoint.Unsigned memory expectedFee = store.computeFinalFee(
-            address(s.externalAddresses.marginCurrency)
-        );
+        FixedPoint.Unsigned memory expectedFee = store.computeFinalFee(address(s.externalAddresses.marginCurrency));
         uint expectedFeeAmount = expectedFee.rawValue;
         // Ensure the fee returned can actually be paid by the short margin account.
         uint shortBalanceUint = _safeUintCast(shortBalance);
@@ -966,7 +948,6 @@ library TokenizedDerivativeUtils {
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
     function _settleWithPrice(TDS.Storage storage s, int price) internal {
-
         // Remargin at whatever price we're using (verified or unverified).
         s._updateBalances(s._recomputeNav(price, s.endTime));
 
@@ -974,9 +955,7 @@ library TokenizedDerivativeUtils {
 
         if (inDefault) {
             int expectedDefaultPenalty = s._getDefaultPenalty();
-            int penalty = (s.shortBalance < expectedDefaultPenalty) ?
-                s.shortBalance :
-                expectedDefaultPenalty;
+            int penalty = (s.shortBalance < expectedDefaultPenalty) ? s.shortBalance : expectedDefaultPenalty;
 
             s.shortBalance = s.shortBalance.sub(penalty);
             s.longBalance = s.longBalance.add(penalty);
@@ -1013,8 +992,10 @@ library TokenizedDerivativeUtils {
 
         int effectiveNotional;
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
-            int effectiveUnitsOfUnderlying = _safeIntCast(_totalSupply().mul(
-                s.fixedParameters.initialTokenUnderlyingRatio).div(UINT_FP_SCALING_FACTOR)).mul(leverageMagnitude);
+            int effectiveUnitsOfUnderlying = _safeIntCast(
+                _totalSupply().mul(s.fixedParameters.initialTokenUnderlyingRatio).div(UINT_FP_SCALING_FACTOR)
+            )
+                .mul(leverageMagnitude);
             effectiveNotional = effectiveUnitsOfUnderlying.mul(tokenState.underlyingPrice).div(INT_FP_SCALING_FACTOR);
         } else {
             int currentNav = _computeNavForTokens(tokenState.tokenPrice, _totalSupply());
@@ -1134,7 +1115,6 @@ library TokenizedDerivativeUtils {
     }
 }
 
-
 /**
  * @title A synthetic token whose value tracks an arbitrary price feed.
  */
@@ -1161,11 +1141,9 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     event Deposited(string symbol, uint amount);
     event Withdrawal(string symbol, uint amount);
 
-    constructor(
-        TokenizedDerivativeParams.ConstructorParams memory params,
-        string memory _name,
-        string memory _symbol
-    ) public {
+    constructor(TokenizedDerivativeParams.ConstructorParams memory params, string memory _name, string memory _symbol)
+        public
+    {
         // Set token properties.
         name = _name;
         symbol = _symbol;
