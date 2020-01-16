@@ -513,7 +513,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         if (round.snapshotId == 0) {
             // There is no snapshot ID set, so create one.
             round.snapshotId = votingToken.snapshot();
-            
+
             // Set the round inflation rate to the current global inflation rate.
             rounds[roundId].inflationRate = inflationRate;
         }

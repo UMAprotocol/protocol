@@ -19,7 +19,7 @@ contract VoteTimingTest {
     function wrapComputeCurrentPhase(uint currentTime) external view returns (VoteTiming.Phase) {
         return voteTiming.computeCurrentPhase(currentTime);
     }
-    
+
     function wrapInit(uint phaseLength) public {
         voteTiming.init(phaseLength);
     }

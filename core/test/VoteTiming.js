@@ -18,7 +18,7 @@ contract("VoteTiming", function(accounts) {
   });
 
   it("Compute Round Id", async function() {
-    const startTime = 1579202864
+    const startTime = 1579202864;
     // Round Id is a function of the current time defined by floor(timestamp/phaseLength)
     const initialRoundId = (await voteTiming.wrapComputeCurrentRoundId(startTime)).toNumber();
     assert.equal(initialRoundId, Math.floor(startTime / 200));
