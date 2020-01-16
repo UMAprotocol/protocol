@@ -219,7 +219,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
-
         if (requestStatus == RequestStatus.NotRequested) {
             // Price has never been requested.
             // Price requests always go in the next round, so add 1 to the computed current round.
