@@ -18,12 +18,15 @@ contract("VoteTiming", function(accounts) {
   });
 
   it("Compute Round Id", async function() {
-    const startTime = Math.floor(Date.now() / 1000);
+    const startTime = 1579202864
     // Round Id is a function of the current time defined by floor(timestamp/phaseLength)
     const initialRoundId = (await voteTiming.wrapComputeCurrentRoundId(startTime)).toNumber();
     assert.equal(initialRoundId, Math.floor(startTime / 200));
 
     // Incremented by +200 should result in the next Round Id
     assert.equal((await voteTiming.wrapComputeCurrentRoundId(startTime + 200)).toNumber(), initialRoundId + 1);
+
+    // Incremented by +250 should result in the same round Id as +200 as it rounds down
+    assert.equal((await voteTiming.wrapComputeCurrentRoundId(startTime + 250)).toNumber(), initialRoundId + 1);
   });
 });
