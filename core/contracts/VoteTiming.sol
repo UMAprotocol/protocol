@@ -19,14 +19,14 @@ library VoteTiming {
     }
 
     /**
-     * @notice Initializes the data object. Sets the phase length based on the input
+     * @notice Initializes the data object. Sets the phase length based on the input.
      */
     function init(Data storage data, uint phaseLength) internal {
         data.phaseLength = phaseLength;
     }
 
     /**
-     * @notice Computes the roundID based off the current time as floor(timestamp/phaseLength)
+     * @notice Computes the roundID based off the current time as floor(timestamp/phaseLength).
      */
     function computeCurrentRoundId(Data storage data, uint currentTime) internal view returns (uint roundId) {
         uint roundLength = data.phaseLength.mul(NUM_PHASES);

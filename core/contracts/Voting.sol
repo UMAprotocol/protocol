@@ -365,7 +365,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         require(keccak256(abi.encode(price, salt)) == voteSubmission.commit, "Invalid commit hash & salt");
         delete voteSubmission.commit;
 
-        // Lock in round variables including snapshotId and interest rate
+        // Lock in round variables including snapshotId and inflation rate
         _freezeRoundVariables(roundId);
 
         // Get the frozen snapshotId
