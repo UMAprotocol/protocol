@@ -516,6 +516,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     function _freezeRoundVariables(uint roundId) private {
         Round storage round = rounds[roundId];
+        // Only on the first reveal should the snapshot be captured for that round.
         if (round.snapshotId == 0) {
             // There is no snapshot ID set, so create one.
             round.snapshotId = votingToken.snapshot();

@@ -698,6 +698,10 @@ contract("Voting", function(accounts) {
     // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
     await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
 
+    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been
+    // locked into the snapshot. Increasing the GAT to 100% (requiring unanimous agreement) should therefore have no effect.
+    await setNewGatPercentage(web3.utils.toWei("1.00", "ether"));
+
     // Do the final two reveals.
     await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
     await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
@@ -708,6 +712,9 @@ contract("Voting", function(accounts) {
       (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
       winningPrice.toString()
     );
+
+    // Reset the GAT to 5% for subsequent rounds.
+    await setNewGatPercentage(web3.utils.toWei("0.05", "ether")); 
   });
 
   it("Only registered derivatives", async function() {
