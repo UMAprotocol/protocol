@@ -29,9 +29,9 @@ contract("Voting", function(accounts) {
   };
 
   const setNewGatPercentage = async gatPercentage => {
-    await voting.setGatPercentage({ rawValue: inflationRate.toString()})
-  }
-  
+    await voting.setGatPercentage({ rawValue: gatPercentage.toString() });
+  };
+
   before(async function() {
     voting = await Voting.deployed();
     votingToken = await VotingToken.deployed();
@@ -576,7 +576,7 @@ contract("Voting", function(accounts) {
 
   it("GAT", async function() {
     const identifier = web3.utils.utf8ToHex("gat");
-    const time = "1000";
+    let time = "1000";
 
     // Make the Oracle support this identifier.
     await voting.addSupportedIdentifier(identifier);
@@ -605,7 +605,36 @@ contract("Voting", function(accounts) {
     const req = [{ identifier: identifier, time: time }];
     assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
 
-    // With a larger vote, the GAT should be hit and the price should resolve.
+    // With a smaller GAT value of 3%, account4 can pass the vote on their own with 4% of all tokens.
+    await setNewGatPercentage(web3.utils.toWei("0.03", "ether"));
+
+    // Commit votes.
+    await voting.commitVote(identifier, time, hash, { from: account4 });
+
+    // Reveal votes.
+    await moveToNextPhase(voting);
+    await voting.revealVote(identifier, time, price, salt, { from: account4 });
+
+    await moveToNextRound(voting);
+    assert.equal(
+      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
+      price.toString()
+    );
+
+    // Must specify the right roundId when retrieving rewards.
+    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
+    await voting.retrieveRewards(account4, newRoundId, req);
+
+    // Set GAT back to 5% and test a larger vote. With more votes the GAT should be hit
+    // and the price should resolve.
+    await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
+
+    // As the previous request has been filled, we need to progress time such that we
+    // can vote on the same identifier and request a new price to vote on.    
+    time += 10;
+    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await moveToNextRound(voting);
+    
     // Commit votes.
     await voting.commitVote(identifier, time, hash, { from: account4 });
     await voting.commitVote(identifier, time, hash, { from: account1 });
