@@ -523,6 +523,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
             // Set the round inflation rate to the current global inflation rate.
             rounds[roundId].inflationRate = inflationRate;
+
+            // Set the round gat percentage to the current global gat rate.
+            rounds[roundId].gatPercentage = gatPercentage;
         }
     }
 
@@ -544,22 +547,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         priceRequest.index = UINT_MAX;
         emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, resolvedPrice);
-    }
-
-    function _updateRound(uint blockTime) private {
-        if (!voteTiming.shouldUpdateRoundId(blockTime)) {
-            return;
-        }
-        uint nextVotingRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
-        // Set the round inflation rate to the current global inflation rate.
-        rounds[nextVotingRoundId].inflationRate = inflationRate;
-
-        // Set the round gat percentage to the current global gat rate
-        rounds[nextVotingRoundId].gatPercentage = gatPercentage;
-
-        // Update the stored round to the current one.
-        voteTiming.updateRoundId(blockTime);
     }
 
     function _computeGat(uint roundId) private view returns (FixedPoint.Unsigned memory) {
