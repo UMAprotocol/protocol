@@ -630,11 +630,11 @@ contract("Voting", function(accounts) {
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
 
     // As the previous request has been filled, we need to progress time such that we
-    // can vote on the same identifier and request a new price to vote on.    
+    // can vote on the same identifier and request a new price to vote on.
     time += 10;
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     await moveToNextRound(voting);
-    
+
     // Commit votes.
     await voting.commitVote(identifier, time, hash, { from: account4 });
     await voting.commitVote(identifier, time, hash, { from: account1 });
@@ -714,7 +714,7 @@ contract("Voting", function(accounts) {
     );
 
     // Reset the GAT to 5% for subsequent rounds.
-    await setNewGatPercentage(web3.utils.toWei("0.05", "ether")); 
+    await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
   });
 
   it("Only registered derivatives", async function() {

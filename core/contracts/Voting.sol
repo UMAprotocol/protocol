@@ -408,6 +408,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         inflationRate = _inflationRate;
     }
 
+    /**
+     * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
+     * @dev This method is public because calldata structs are not currently supported by solidity.
+     */
     function setGatPercentage(FixedPoint.Unsigned memory _gatPercentage) public onlyOwner {
         gatPercentage = _gatPercentage;
     }
