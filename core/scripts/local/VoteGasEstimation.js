@@ -6,30 +6,17 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 
-// Construct test cases for all combinations of numPriceRequests X numVoters X numRounds
-const createTestCases = (_numPriceRequests, _numVoters, _numRounds) => {
-  let testCases = []
-    for (let r = 1; r <= _numRounds; r++) {
-      for (let p = 1; p <= _numPriceRequests; p++) {
-        for (let v = 1; v <= _numVoters; v++) {
-          testCases.push({
-            numRounds: r,
-            numPriceRequests: p,
-            numVoters: v
-          })
-        }
-      }
-    }
-    return testCases
-}
+const numRounds = 2;
+const numPriceRequests = 2;
+const numVoters = 2;
 
 const getVoter = (accounts, id) => {
   // Offset by 2, because owner == accounts[0] and registeredDerivative == accounts[1]
   return accounts[id + 2];
 };
 
-async function run(numRounds, numPriceRequests, numVoters) {
-  console.group(`TEST CASE => (Rounds: ${numRounds}, PriceRequests: ${numPriceRequests}, Voters: ${numVoters})`);
+async function run() {
+  console.group(`Test Case Setup => (Rounds: ${numRounds}, PriceRequests: ${numPriceRequests}, Voters: ${numVoters})`);
   const voting = await Voting.deployed();
   const votingToken = await VotingToken.deployed();
   const registry = await Registry.deployed();
@@ -66,20 +53,13 @@ async function run(numRounds, numPriceRequests, numVoters) {
   // Pick a random time. Probabilistically, this won't request a duplicate time from a previous run.
   let time = Math.floor(Math.random() * max);
 
-  console.log("total supply", (await votingToken.totalSupply()).toString());
+  console.log("Voting tokens total supply:", (await votingToken.totalSupply()).toString());
 
   for (var i = 0; i < numRounds; i++) {
-    console.log("Round", i);
-    await cycleRound(
-      voting, 
-      votingToken, 
-      identifier, 
-      time, 
-      accounts,
-      numPriceRequests, 
-      numVoters
-    );
+    console.group(`\nRound ${i}`);
+    await cycleRound(voting, votingToken, identifier, time, accounts);
     time += numPriceRequests;
+    console.groupEnd();
   }
 
   for (var i = 0; i < numVoters; i++) {
@@ -92,21 +72,21 @@ async function run(numRounds, numPriceRequests, numVoters) {
   console.groupEnd();
 }
 
-// Cycle through each round--consisting of a commit and reveal phase
-const cycleRound = async (
-  voting, 
-  votingToken, 
-  identifier, 
-  time, 
-  accounts,
-  numPriceRequests, 
-  numVoters
+// Cycle through each round--consisting of a price request, commit, and reveal phase
+const cycleRound = async (voting, votingToken, identifier, time, accounts
 ) => {
+  /**
+   * Estimating gas usage: requestPrice
+   */
+  console.group(`\nEstimating gas usage: requestPrice`);
   for (var i = 0; i < numPriceRequests; i++) {
     const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
-    console.log("requestPrice", result.receipt.gasUsed);
+    const _gasUsed = result.receipt.gasUsed;
+    console.log(`- Price Request #${i}: ${_gasUsed}`);
   }
+  console.groupEnd();
 
+  // Advance to commit phase
   await moveToNextRound(voting);
 
   const salts = {};
@@ -171,11 +151,7 @@ const cycleRound = async (
 
 module.exports = async function(cb) {
   try {
-    let testCases = createTestCases(5,1,1);
-    for (let i = 0; i < testCases.length; i++) {
-      let _case = testCases[i];
-      await run(_case.numRounds, _case.numPriceRequests, _case.numVoters);
-    }
+    await run()
   } catch (err) {
     console.log(err);
   }
