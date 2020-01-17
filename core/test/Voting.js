@@ -605,6 +605,9 @@ contract("Voting", function(accounts) {
     const req = [{ identifier: identifier, time: time }];
     assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
 
+    // Setting GAT should revert if larger than 100%
+    assert(await didContractThrow(voting.setGatPercentage({ rawvalue: web3.utils.toWei("1.1", "ether") })));
+
     // With a smaller GAT value of 3%, account4 can pass the vote on their own with 4% of all tokens.
     await setNewGatPercentage(web3.utils.toWei("0.03", "ether"));
 
@@ -698,9 +701,9 @@ contract("Voting", function(accounts) {
     // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
     await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
 
-    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been
-    // locked into the snapshot. Increasing the GAT to 100% (requiring unanimous agreement) should therefore have no effect.
-    await setNewGatPercentage(web3.utils.toWei("1.00", "ether"));
+    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been locked into
+    // the snapshot. Increasing the GAT to 90% (requiring close to unanimous agreement) should therefore have no effect.
+    await setNewGatPercentage(web3.utils.toWei("0.9", "ether"));
 
     // Do the final two reveals.
     await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });

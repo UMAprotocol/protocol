@@ -413,6 +413,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @dev This method is public because calldata structs are not currently supported by solidity.
      */
     function setGatPercentage(FixedPoint.Unsigned memory _gatPercentage) public onlyOwner {
+        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = _gatPercentage;
     }
 
