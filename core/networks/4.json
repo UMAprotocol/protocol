@@ -12,6 +12,10 @@
     "address": "0x00526C1ede46255b752D280620318ab50B24c20e"
   },
   {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x26f65d7Da395F01A3e9C21595D1A2C0e173d82A4"
+  },
+  {
     "contractName": "Voting",
     "address": "0x5545092553Cf5Bf786e87a87192E902D50D8f022"
   },
