@@ -81,6 +81,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint snapshotId;
         // Inflation rate set for this round.
         FixedPoint.Unsigned inflationRate;
+
+        // Gat rate set for this round
+        FixedPoint.Unsigned gatPercentage;
     }
 
     // Represents the status a price request has.
@@ -406,6 +409,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         inflationRate = _inflationRate;
     }
 
+    function setGatPercentage(FixedPoint.Unsigned memory _gatPercentage) public onlyOwner {
+        gatPercentage = _gatPercentage;
+    }
+
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
@@ -539,6 +546,22 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, resolvedPrice);
     }
 
+    function _updateRound(uint blockTime) private {
+        if (!voteTiming.shouldUpdateRoundId(blockTime)) {
+            return;
+        }
+        uint nextVotingRoundId = voteTiming.computeCurrentRoundId(blockTime);
+
+        // Set the round inflation rate to the current global inflation rate.
+        rounds[nextVotingRoundId].inflationRate = inflationRate;
+
+        // Set the round gat percentage to the current global gat rate
+        rounds[nextVotingRoundId].gatPercentage = gatPercentage;
+
+        // Update the stored round to the current one.
+        voteTiming.updateRoundId(blockTime);
+    }
+
     function _computeGat(uint roundId) private view returns (FixedPoint.Unsigned memory) {
         uint snapshotId = rounds[roundId].snapshotId;
         if (snapshotId == 0) {
@@ -551,7 +574,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
 
         // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
-        return snapshottedSupply.mul(gatPercentage);
+        return snapshottedSupply.mul(rounds[roundId].gatPercentage);
     }
 
     function _getRequestStatus(PriceRequest storage priceRequest, uint currentRoundId)

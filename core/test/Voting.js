@@ -28,6 +28,10 @@ contract("Voting", function(accounts) {
     await voting.setInflationRate({ rawValue: inflationRate.toString() });
   };
 
+  const setNewGatPercentage = async gatPercentage => {
+    await voting.setGatPercentage({ rawValue: inflationRate.toString()})
+  }
+  
   before(async function() {
     voting = await Voting.deployed();
     votingToken = await VotingToken.deployed();
