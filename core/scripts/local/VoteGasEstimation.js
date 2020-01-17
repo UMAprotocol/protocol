@@ -65,7 +65,7 @@ async function run() {
   console.group(`\nVoter token balances post-test:`);
   for (var i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
-    const balance = await votingToken.balanceOf(voter)
+    const balance = await votingToken.balanceOf(voter);
     console.log(`- Voter #${i}: ${balance.toString()}`);
   }
   console.groupEnd();
@@ -75,8 +75,7 @@ async function run() {
 }
 
 // Cycle through each round--consisting of a price request, commit, and reveal phase
-const cycleRound = async (voting, votingToken, identifier, time, accounts
-) => {
+const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   /**
    * Estimating gas usage: requestPrice
    */
@@ -106,7 +105,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts
 
   for (var i = 0; i < numPriceRequests; i++) {
     console.group(`Price request #${i}`);
-    
+
     for (var j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
       const hash = web3.utils.soliditySha3(price, salt);
@@ -125,7 +124,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts
     }
     console.groupEnd();
   }
-  console.log(`Total gas: ${gasUsedCommitVote}`)
+  console.log(`Total gas: ${gasUsedCommitVote}`);
   console.groupEnd();
 
   // Advance to reveal phase
@@ -150,14 +149,13 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts
     }
     console.groupEnd();
   }
-  console.log(`Total gas: ${gasUsedRevealVote}`)
+  console.log(`Total gas: ${gasUsedRevealVote}`);
   console.groupEnd();
-  
 };
 
 module.exports = async function(cb) {
   try {
-    await run()
+    await run();
   } catch (err) {
     console.log(err);
   }

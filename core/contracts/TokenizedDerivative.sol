@@ -580,8 +580,8 @@ library TokenizedDerivativeUtils {
         // Subtract the oracle fees from the short balance.
         newShortMarginBalance = isContractLive
             ? newShortMarginBalance.sub(
-                _safeIntCast(s._computeExpectedOracleFees(s.currentTokenState.time, recomputeTime))
-            )
+            _safeIntCast(s._computeExpectedOracleFees(s.currentTokenState.time, recomputeTime))
+        )
             : newShortMarginBalance;
 
         // Compute the new NAV
