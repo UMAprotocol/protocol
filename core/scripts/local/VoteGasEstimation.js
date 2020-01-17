@@ -1,4 +1,4 @@
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
@@ -6,16 +6,30 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 
-const numPriceRequests = 5;
-const numVoters = 5;
-const numRounds = 5;
+// Construct test cases for all combinations of numPriceRequests X numVoters X numRounds
+const createTestCases = (_numPriceRequests, _numVoters, _numRounds) => {
+  let testCases = []
+    for (let r = 1; r <= _numRounds; r++) {
+      for (let p = 1; p <= _numPriceRequests; p++) {
+        for (let v = 1; v <= _numVoters; v++) {
+          testCases.push({
+            numRounds: r,
+            numPriceRequests: p,
+            numVoters: v
+          })
+        }
+      }
+    }
+    return testCases
+}
 
 const getVoter = (accounts, id) => {
   // Offset by 2, because owner == accounts[0] and registeredDerivative == accounts[1]
   return accounts[id + 2];
 };
 
-async function run() {
+async function run(numRounds, numPriceRequests, numVoters) {
+  console.group(`TEST CASE => (Rounds: ${numRounds}, PriceRequests: ${numPriceRequests}, Voters: ${numVoters})`);
   const voting = await Voting.deployed();
   const votingToken = await VotingToken.deployed();
   const registry = await Registry.deployed();
@@ -56,7 +70,15 @@ async function run() {
 
   for (var i = 0; i < numRounds; i++) {
     console.log("Round", i);
-    await cycleRound(voting, votingToken, identifier, time, accounts);
+    await cycleRound(
+      voting, 
+      votingToken, 
+      identifier, 
+      time, 
+      accounts,
+      numPriceRequests, 
+      numVoters
+    );
     time += numPriceRequests;
   }
 
@@ -66,10 +88,20 @@ async function run() {
   }
   console.log("total supply", (await votingToken.totalSupply()).toString());
 
-  console.log("Done");
+  console.log("Done\n");
+  console.groupEnd();
 }
 
-const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
+// Cycle through each round--consisting of a commit and reveal phase
+const cycleRound = async (
+  voting, 
+  votingToken, 
+  identifier, 
+  time, 
+  accounts,
+  numPriceRequests, 
+  numVoters
+) => {
   for (var i = 0; i < numPriceRequests; i++) {
     const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
     console.log("requestPrice", result.receipt.gasUsed);
@@ -79,7 +111,16 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
 
   const salts = {};
   const price = getRandomSignedInt();
+
+  /**
+   * Estimating gas usage: commitVote
+   */
+  let gasUsedCommitVote = 0;
+  console.group(`\nEstimating gas usage: commitVote`);
+
   for (var i = 0; i < numPriceRequests; i++) {
+    console.group(`Price request #${i}`);
+    
     for (var j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
       const hash = web3.utils.soliditySha3(price, salt);
@@ -87,30 +128,54 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
       const voter = getVoter(accounts, j);
 
       const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
-      console.log("commitVote", result.receipt.gasUsed);
+      const _gasUsed = result.receipt.gasUsed;
+      console.log(`- Commit #${j}: ${_gasUsed}`);
+      gasUsedCommitVote += _gasUsed;
 
       if (salts[i] == null) {
         salts[i] = {};
       }
       salts[i][j] = salt;
     }
+    console.groupEnd();
   }
+  console.log(`- total gas: ${gasUsedCommitVote}`)
+  console.groupEnd();
 
+  // Advance to reveal phase
   await moveToNextPhase(voting);
 
+  /**
+   * Estimating gas usage: revealVote
+   */
+  let gasUsedRevealVote = 0;
+  console.group(`\nEstimating gas usage: revealVote`);
+
   for (var i = 0; i < numPriceRequests; i++) {
+    console.group(`Price request #${i}`);
+
     for (var j = 0; j < numVoters; j++) {
       const voter = getVoter(accounts, j);
 
       const result = await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });
-      console.log("revealVote", result.receipt.gasUsed);
+      const _gasUsed = result.receipt.gasUsed;
+      console.log(`- Reveal #${j}: ${_gasUsed}`);
+      gasUsedRevealVote += _gasUsed;
     }
+    console.groupEnd();
   }
+  console.log(`- total gas: ${gasUsedRevealVote}`)
+  console.groupEnd();
+  
 };
 
 module.exports = async function(cb) {
   try {
-    await run();
+    let testCases = createTestCases(5,1,1);
+    for (let i = 0; i < testCases.length; i++) {
+      let _case = testCases[i];
+      await run(_case.numRounds, _case.numPriceRequests, _case.numVoters);
+    }
   } catch (err) {
     console.log(err);
   }
