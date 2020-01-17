@@ -53,24 +53,24 @@ Pass `--network=test` for local runs. For the UMA testnet deployment on Rinkeby,
 provide your mnemonic in an environment variable `MNEMONIC`. We'll type the rest of the commands in this document into
 the Truffle console.
 
-We'll grab an instance of the `Voting` contract.
+We'll grab an instance of the `IdentifierWhitelist` contract.
 
 ```js
-const voting = await Voting.deployed()
+const supportedIdentifiers = await IdentifierWhitelist.deployed()
 ```
 
 Next, we'll verify that the identifier `BTC/USD` is supported (note that `isIdentifierSupported` takes a bytes32 not a
 string):
 
 ```js
-await voting.isIdentifierSupported(web3.utils.utf8ToHex("BTC/USD"))
+await supportedIdentifiers.isIdentifierSupported(web3.utils.utf8ToHex("BTC/USD"))
 // returns true
 ```
 
 As an example, the identifier `UNSUPPORTED` is not supported and we'd see:
 
 ```js
-> await voting.isIdentifierSupported(web3.utils.utf8ToHex("UNSUPPORTED"))
+> await supportedIdentifiers.isIdentifierSupported(web3.utils.utf8ToHex("UNSUPPORTED"))
 // returns false
 ```
 

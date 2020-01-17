@@ -11,11 +11,6 @@ interface OracleInterface {
     function requestPrice(bytes32 identifier, uint time) external;
 
     /**
-     * @notice Whether the Oracle provides prices for this identifier.
-     */
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool);
-
-    /**
      * @notice Whether the price for `identifier` and `time` is available.
      */
     function hasPrice(bytes32 identifier, uint time) external view returns (bool);

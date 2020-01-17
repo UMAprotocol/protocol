@@ -4,6 +4,7 @@ const DesignatedVoting = artifacts.require("DesignatedVoting");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../common/Random.js");
@@ -27,6 +28,7 @@ contract("DesignatedVoting", function(accounts) {
 
   before(async function() {
     voting = await Voting.deployed();
+    supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     const finder = await Finder.deployed();
     designatedVoting = await DesignatedVoting.new(finder.address, tokenOwner, voter);
@@ -84,7 +86,7 @@ contract("DesignatedVoting", function(accounts) {
     // Request a price.
     const identifier = web3.utils.utf8ToHex("one-voter");
     const time = "1000";
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     await moveToNextRound(voting);
 
@@ -143,7 +145,7 @@ contract("DesignatedVoting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("batch");
     const time1 = "1000";
     const time2 = "2000";
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time1, { from: registeredDerivative });
     await voting.requestPrice(identifier, time2, { from: registeredDerivative });
     await moveToNextRound(voting);

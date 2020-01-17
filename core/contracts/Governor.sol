@@ -7,6 +7,7 @@ import "./MultiRole.sol";
 import "./FixedPoint.sol";
 import "./Voting.sol";
 import "./Testable.sol";
+import "./IdentifierWhitelistInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -127,10 +128,11 @@ contract Governor is MultiRole, Testable {
 
         // Request a vote on this proposal in the DVM.
         Voting voting = _getVoting();
-        voting.addSupportedIdentifier(identifier);
+        IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
+        supportedIdentifiers.addSupportedIdentifier(identifier);
 
         voting.requestPrice(identifier, time);
-        voting.removeSupportedIdentifier(identifier);
+        supportedIdentifiers.removeSupportedIdentifier(identifier);
 
         emit NewProposal(id, transactions);
     }
@@ -154,6 +156,10 @@ contract Governor is MultiRole, Testable {
 
     function _getVoting() private view returns (Voting voting) {
         return Voting(finder.getImplementationAddress("Oracle"));
+    }
+
+    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress("IdentifierWhitelist"));
     }
 
     // This method is based off of this code: https://ethereum.stackexchange.com/a/6613/47801.

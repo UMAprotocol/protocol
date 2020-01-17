@@ -12,6 +12,7 @@ import "./Testable.sol";
 import "./VoteTiming.sol";
 import "./VotingToken.sol";
 import "./VotingInterface.sol";
+import "./IdentifierWhitelistInterface.sol";
 
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -107,8 +108,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     VoteTiming.Data private voteTiming;
 
-    // The set of identifiers the oracle can provide verified prices for.
-    mapping(bytes32 => bool) private supportedIdentifiers;
+    IdentifierWhitelistInterface public identifierWhitelist;
 
     // Percentage of the total token supply that must be used in a vote to create a valid price resolution.
     // 1 == 100%.
@@ -156,10 +156,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     event PriceResolved(uint indexed resolutionRoundId, bytes32 indexed identifier, uint time, int price);
 
-    event SupportedIdentifierAdded(bytes32 indexed identifier);
-
-    event SupportedIdentifierRemoved(bytes32 indexed identifier);
-
     /**
      * @notice Construct the Voting contract.
      * @param phaseLength length of the commit and reveal phases in seconds.
@@ -172,6 +168,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned memory _gatPercentage,
         FixedPoint.Unsigned memory _inflationRate,
         address _votingToken,
+        address _identifierWhitelist,
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
@@ -180,6 +177,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
+        identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
         finder = Finder(_finder);
     }
 
@@ -201,7 +199,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function requestPrice(bytes32 identifier, uint time) external onlyRegisteredDerivative() {
         uint blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
-        require(supportedIdentifiers[identifier], "Unsupported identifier request");
+        require(identifierWhitelist.isIdentifierSupported(identifier), "Unsupported identifier request");
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
@@ -251,32 +249,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     function setMigrated(address newVotingAddress) external onlyOwner {
         migratedAddress = newVotingAddress;
-    }
-
-    /**
-     * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will be
-     * succeed after this call.
-     */
-    function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
-        if (!supportedIdentifiers[identifier]) {
-            supportedIdentifiers[identifier] = true;
-            emit SupportedIdentifierAdded(identifier);
-        }
-    }
-
-    /**
-     * @notice Removes the identifier from the whitelist. Price requests using this identifier will no longer succeed
-     * after this call.
-     */
-    function removeSupportedIdentifier(bytes32 identifier) external onlyOwner {
-        if (supportedIdentifiers[identifier]) {
-            supportedIdentifiers[identifier] = false;
-            emit SupportedIdentifierRemoved(identifier);
-        }
-    }
-
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
-        return supportedIdentifiers[identifier];
     }
 
     function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool _hasPrice) {

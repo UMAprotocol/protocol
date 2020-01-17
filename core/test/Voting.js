@@ -9,6 +9,7 @@ const truffleAssert = require("truffle-assertions");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 
 contract("Voting", function(accounts) {
@@ -30,6 +31,7 @@ contract("Voting", function(accounts) {
 
   before(async function() {
     voting = await Voting.deployed();
+    supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     registry = await Registry.deployed();
 
@@ -84,7 +86,7 @@ contract("Voting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("one-voter");
     const time = "1000";
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
@@ -140,7 +142,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     await moveToNextRound(voting);
@@ -194,8 +196,8 @@ contract("Voting", function(accounts) {
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
-    await voting.addSupportedIdentifier(identifier1);
-    await voting.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.addSupportedIdentifier(identifier1);
+    await supportedIdentifiers.addSupportedIdentifier(identifier2);
 
     // Send the requests.
     await voting.requestPrice(identifier1, time2, { from: registeredDerivative });
@@ -236,8 +238,8 @@ contract("Voting", function(accounts) {
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
-    await voting.addSupportedIdentifier(identifier1);
-    await voting.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.addSupportedIdentifier(identifier1);
+    await supportedIdentifiers.addSupportedIdentifier(identifier2);
 
     // Requests should not be added to the current voting round.
     await voting.requestPrice(identifier1, time1, { from: registeredDerivative });
@@ -306,7 +308,7 @@ contract("Voting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("future-request");
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Time 1 is in the future and should fail.
     const timeFail = startingTime.addn(1).toString();
@@ -336,7 +338,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
@@ -382,8 +384,8 @@ contract("Voting", function(accounts) {
     const time2 = "1001";
 
     // Make the Oracle support these identifiers.
-    await voting.addSupportedIdentifier(identifier1);
-    await voting.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.addSupportedIdentifier(identifier1);
+    await supportedIdentifiers.addSupportedIdentifier(identifier2);
 
     // Pending requests should be empty for this new round.
     assert.equal((await voting.getPendingRequests()).length, 0);
@@ -437,20 +439,18 @@ contract("Voting", function(accounts) {
   });
 
   it("Supported identifiers", async function() {
-    const voting = await Voting.deployed();
-
     const supported = web3.utils.utf8ToHex("supported");
 
     // No identifiers are originally suppported.
-    assert.isFalse(await voting.isIdentifierSupported(supported));
+    assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
 
     // Verify that supported identifiers can be added.
-    await voting.addSupportedIdentifier(supported);
-    assert.isTrue(await voting.isIdentifierSupported(supported));
+    await supportedIdentifiers.addSupportedIdentifier(supported);
+    assert.isTrue(await supportedIdentifiers.isIdentifierSupported(supported));
 
     // Verify that supported identifiers can be removed.
-    await voting.removeSupportedIdentifier(supported);
-    assert.isFalse(await voting.isIdentifierSupported(supported));
+    await supportedIdentifiers.removeSupportedIdentifier(supported);
+    assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
 
     // Can't request prices for unsupported identifiers.
     assert(await didContractThrow(voting.requestPrice(supported, "0", { from: registeredDerivative })));
@@ -461,7 +461,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
@@ -496,7 +496,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
@@ -533,7 +533,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
@@ -575,7 +575,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
@@ -627,7 +627,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
@@ -682,7 +682,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Unregistered derivatives can't request prices.
     assert(await didContractThrow(voting.requestPrice(identifier, time, { from: unregisteredDerivative })));
@@ -712,7 +712,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Verify view methods `hasPrice` and `getPrice` for a price was that was never requested.
     assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
@@ -756,7 +756,7 @@ contract("Voting", function(accounts) {
     const initialTotalSupply = await votingToken.totalSupply();
 
     // Make the Oracle support this identifier.
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time1, { from: registeredDerivative });
@@ -838,13 +838,7 @@ contract("Voting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("events");
     const time = "1000";
 
-    // An event should be emitted when a new supported identifier is added (but not on repeated no-op calls).
-    let result = await voting.addSupportedIdentifier(identifier);
-    truffleAssert.eventEmitted(result, "SupportedIdentifierAdded", ev => {
-      return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier);
-    });
-    result = await voting.addSupportedIdentifier(identifier);
-    truffleAssert.eventNotEmitted(result, "SupportedIdentifierAdded");
+    let result = await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     await moveToNextRound(voting);
     let currentRoundId = await voting.getCurrentRoundId();
@@ -932,20 +926,12 @@ contract("Voting", function(accounts) {
     // RewardsRetrieved event gets emitted for every reward retrieval that's attempted, even if no tokens are minted.
     result = await voting.retrieveRewards(account4, roundId, [{ identifier, time }]);
     truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => true);
-
-    // An event should be emitted when a new supported identifier is added (but not on repeated no-op calls).
-    result = await voting.removeSupportedIdentifier(identifier);
-    truffleAssert.eventEmitted(result, "SupportedIdentifierRemoved", ev => {
-      return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier);
-    });
-    result = await voting.removeSupportedIdentifier(identifier);
-    truffleAssert.eventNotEmitted(result, "SupportedIdentifierRemoved");
   });
 
   it("Commit and persist the encrypted price", async function() {
     const identifier = web3.utils.utf8ToHex("commit-and-persist");
     const time = "1000";
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     await moveToNextRound(voting);
@@ -990,7 +976,7 @@ contract("Voting", function(accounts) {
   it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
     const identifier = web3.utils.utf8ToHex("commit-and-persist2");
     const time = "1000";
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
     await moveToNextRound(voting);
@@ -1035,7 +1021,7 @@ contract("Voting", function(accounts) {
         encryptedVote: web3.utils.utf8ToHex(`some encrypted message ${i}`)
       });
 
-      await voting.addSupportedIdentifier(identifier);
+      await supportedIdentifiers.addSupportedIdentifier(identifier);
       await voting.requestPrice(identifier, requestTime, { from: registeredDerivative });
     }
 
@@ -1098,7 +1084,7 @@ contract("Voting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("batch-reveal");
     const time1 = "1000";
     const time2 = "1001";
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time1, { from: registeredDerivative });
     await voting.requestPrice(identifier, time2, { from: registeredDerivative });
@@ -1182,10 +1168,11 @@ contract("Voting", function(accounts) {
       { rawValue: "0" },
       { rawValue: "0" },
       votingToken.address,
+      supportedIdentifiers.address,
       (await Finder.deployed()).address,
       true
     );
-    await voting.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     await voting.requestPrice(identifier, time1, { from: registeredDerivative });
     await voting.requestPrice(identifier, time2, { from: registeredDerivative });

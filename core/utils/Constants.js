@@ -3,7 +3,8 @@ const interfaceName = {
   FinancialContractsAdmin: "FinancialContractsAdmin",
   Oracle: "Oracle",
   Registry: "Registry",
-  Store: "Store"
+  Store: "Store",
+  IdentifierWhitelist: "IdentifierWhitelist"
 };
 
 module.exports = {

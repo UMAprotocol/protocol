@@ -430,7 +430,7 @@ export function useEnabledIdentifierConfig() {
       const narrowedConfig = {};
       for (const identifier in config) {
         if (
-          call("Voting", "isIdentifierSupported", web3.utils.utf8ToHex(identifier)) &&
+          call("IdentifierWhitelist", "isIdentifierSupported", web3.utils.utf8ToHex(identifier)) &&
           call("ManualPriceFeed", "isIdentifierSupported", web3.utils.utf8ToHex(identifier))
         ) {
           narrowedConfig[identifier] = config[identifier];

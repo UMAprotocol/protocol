@@ -1,6 +1,7 @@
 import Finder from "contracts/Finder.json";
 import Registry from "contracts/Registry.json";
 import Voting from "contracts/Voting.json";
+import IdentifierWhitelist from "contracts/IdentifierWhitelist.json";
 import ManualPriceFeed from "contracts/ManualPriceFeed.json";
 import TokenizedDerivativeCreator from "contracts/TokenizedDerivativeCreator.json";
 import LeveragedReturnCalculator from "contracts/LeveragedReturnCalculator.json";
@@ -11,6 +12,7 @@ const options = {
     Registry,
     Finder,
     Voting,
+    IdentifierWhitelist,
     ManualPriceFeed,
     TokenizedDerivativeCreator,
     LeveragedReturnCalculator,

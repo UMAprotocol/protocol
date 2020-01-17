@@ -8,6 +8,7 @@ const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator")
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 
 contract("scripts/EmergencyShutdown.js", function(accounts) {
   const ethAddress = "0x0000000000000000000000000000000000000000";
@@ -28,6 +29,7 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
     registry = await Registry.deployed();
     admin = await FinancialContractsAdmin.deployed();
     voting = await Voting.deployed();
+    supportedIdentifiers = await IdentifierWhitelist.deployed();
     leverage = await LeveragedReturnCalculator.deployed();
     priceFeed = await ManualPriceFeed.deployed();
 
@@ -38,7 +40,7 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
     await marginCurrencyWhitelist.addToWhitelist(ethAddress);
 
     // Add identifier to Voting
-    await voting.addSupportedIdentifier(identifierBytes);
+    await supportedIdentifiers.addSupportedIdentifier(identifierBytes);
 
     // Push a price to the price feed
     const latestTime = parseInt(await priceFeed.getCurrentTime(), 10);

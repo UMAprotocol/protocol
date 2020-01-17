@@ -19,16 +19,8 @@ The Oracle Interface is used by financial contracts to retrieve prices. This int
 contracts that request prices _sparingly_. This is dependent on the specifics of the financial contract, but, in
 general, prices should only be requested for dispute resolution and contract settlement.
 
-There are four methods that make up the Oracle Interface: `isIdentifierSupported`, `requestPrice`, `hasPrice`, and
+There are four methods that make up the Oracle Interface: `requestPrice`, `hasPrice`, and
 `getPrice`.
-
-### `isIdentifierSupported`
-
-During deployment, if a financial contract could, at some point, require a price for an asset (identifier), it should
-double check that the DVM supports that asset by calling `isIdentifierSupported(identifier)`. If that asset is not
-supported, the deployment should revert.
-
-This method doesn't require the contract to be approved, and it can be called by an EOA for informational purposes.
 
 ### `requestPrice`
 
