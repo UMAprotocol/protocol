@@ -37,6 +37,10 @@ async function transferPermissions(multisig) {
   const supportedIdentifiers = await IdentifierWhitelist.deployed();
   await supportedIdentifiers.transferOwnership(governor.address);
 
+  // Voting should be owned by governor
+  const voting = await Voting.deployed();
+  await voting.transferOwnership(governor.address);
+
   // VotingToken should be owned by the governor.
   const votingToken = await VotingToken.deployed();
   await votingToken.resetMember(ownerRole, governor.address);
