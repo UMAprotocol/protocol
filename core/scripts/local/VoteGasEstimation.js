@@ -56,19 +56,21 @@ async function run() {
   console.log("Voting tokens total supply:", (await votingToken.totalSupply()).toString());
 
   for (var i = 0; i < numRounds; i++) {
-    console.group(`\nRound ${i}`);
+    console.group(`\n*** Round ${i} ***`);
     await cycleRound(voting, votingToken, identifier, time, accounts);
     time += numPriceRequests;
     console.groupEnd();
   }
 
+  console.group(`\nVoter token balances post-test:`);
   for (var i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
-    console.log("balance", (await votingToken.balanceOf(voter)).toString());
+    const balance = await votingToken.balanceOf(voter)
+    console.log(`- Voter #${i}: ${balance.toString()}`);
   }
-  console.log("total supply", (await votingToken.totalSupply()).toString());
+  console.groupEnd();
+  console.log("Voting tokens total supply", (await votingToken.totalSupply()).toString());
 
-  console.log("Done\n");
   console.groupEnd();
 }
 
@@ -78,12 +80,16 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts
   /**
    * Estimating gas usage: requestPrice
    */
+  let gasUsedPriceRequest = 0;
   console.group(`\nEstimating gas usage: requestPrice`);
+
   for (var i = 0; i < numPriceRequests; i++) {
     const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
     const _gasUsed = result.receipt.gasUsed;
-    console.log(`- Price Request #${i}: ${_gasUsed}`);
+    console.log(`Price Request #${i}: ${_gasUsed}`);
+    gasUsedPriceRequest += _gasUsed;
   }
+  console.log(`Total gas: ${gasUsedPriceRequest}`);
   console.groupEnd();
 
   // Advance to commit phase
@@ -119,7 +125,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts
     }
     console.groupEnd();
   }
-  console.log(`- total gas: ${gasUsedCommitVote}`)
+  console.log(`Total gas: ${gasUsedCommitVote}`)
   console.groupEnd();
 
   // Advance to reveal phase
@@ -144,7 +150,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts
     }
     console.groupEnd();
   }
-  console.log(`- total gas: ${gasUsedRevealVote}`)
+  console.log(`Total gas: ${gasUsedRevealVote}`)
   console.groupEnd();
   
 };
