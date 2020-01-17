@@ -1,3 +1,6 @@
+// This script Determins the max number of batched commits, reveals, and reward retrievals
+// that can fit into a single txn
+
 const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
@@ -43,39 +46,52 @@ async function run() {
   let converged = false;
   let lowestFailed = 0;
   let highestPassed = 0;
-  while (!converged) {
-    console.log("*size:", i, "*");
-    if (lowestFailed - highestPassed == 1) {
-      console.log("Maximum =", highestPassed);
-      converged = true;
-      break;
-    }
-    try {
-      await cycleCommit(voting, identifier, time, i, registeredDerivative, voter);
-      highestPassed = i;
-      if (lowestFailed != 0) {
-        i = Math.floor((lowestFailed + highestPassed) / 2);
-      } else {
-        i = i * 2;
+  // Define all three cases we want to check for
+  let tests = ["commit", "reveal", "claim"];
+
+  for (j = 1; j < tests.length; j++) {
+    console.log("Finding maximum batch size for", tests[j], "that can be run in one transaction.");
+    while (!converged) {
+      console.log("*size:", i, "*");
+      if (lowestFailed - highestPassed == 1) {
+        console.log("Maximum =", highestPassed);
+        converged = true;
+        break;
       }
-    } catch (error) {
-      lowestFailed = i;
-      i = Math.floor((lowestFailed + highestPassed) / 2);
+      try {
+        if (j == 0) {
+          await cycleCommit(voting, identifier, time, i, registeredDerivative, voter);
+        }
+        if (j == 1) {
+          await cycleReveal(voting, identifier, time, i, registeredDerivative, voter);
+        }
+        highestPassed = i;
+        if (lowestFailed != 0) {
+          i = Math.floor((lowestFailed + highestPassed) / 2);
+        } else {
+          i = i * 2;
+        }
+      } catch (error) {
+        lowestFailed = i;
+        i = Math.floor((lowestFailed + highestPassed) / 2);
+      }
+      time += 1;
     }
-    time += 1;
   }
   console.log("Done");
 }
 
 const cycleCommit = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
   for (var i = 0; i < requestNumber; i++) {
-    const result = await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
   }
 
   await moveToNextRound(voting);
   const salts = {};
   const price = getRandomSignedInt();
   const commitments = [];
+
+  // Create the batch of commitments.
   for (var i = 0; i < requestNumber; i++) {
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
@@ -83,11 +99,41 @@ const cycleCommit = async (voting, identifier, time, requestNumber, registeredDe
     commitments[i] = { identifier: identifier, time: time + i, hash: hash, encryptedVote: [] };
   }
 
+  // Reveal commitments.
   const result = await voting.batchCommit(commitments, { from: voter });
-  console.log("commitVote", result.receipt.gasUsed);
+  console.log("batchCommit gas used:", result.receipt.gasUsed);
 };
 
-// const cycleReveal = async () => {};
+const cycleReveal = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
+  console.log("revealing");
+  for (var i = 0; i < requestNumber; i++) {
+    await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
+  }
+
+  // Advance to commit phase
+  await moveToNextRound(voting);
+
+  const salts = {};
+  const price = getRandomSignedInt();
+
+  // Generate Commitments. We will use single commit so no upper bound on the number to generate.
+  for (var i = 0; i < requestNumber; i++) {
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time + i, hash, { from: voter });
+    salts[i] = salt;
+  }
+
+  // Advance to reveal phase
+  await moveToNextPhase(voting);
+
+  let reveals = [];
+  for (var i = 0; i < requestNumber; i++) {
+    reveals[i] = { identifier: identifier, time: time + i, price: price.toString(), salt: salts[i].toString() };
+  }
+  const result = await voting.batchReveal(reveals, { from: voter });
+  console.log("batchReveal gas used:", result.receipt.gasUsed);
+};
 
 module.exports = async function(cb) {
   try {
