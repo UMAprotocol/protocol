@@ -81,7 +81,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint snapshotId;
         // Inflation rate set for this round.
         FixedPoint.Unsigned inflationRate;
-        // Gat rate set for this round
+        // Gat rate set for this round.
         FixedPoint.Unsigned gatPercentage;
     }
 
