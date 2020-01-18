@@ -1,5 +1,8 @@
-// This script Determins the max number of batched commits, reveals, and reward retrievals
-// that can fit into a single txn
+// This script Determines the max number of batched commits, reveals, and reward retrievals
+// that can fit into a single txn. This is done by creating a set of price requests and then
+// progressively committing, revealing and claiming rewards until the transaction reverts for
+// a given size. A binary search mechanism is used to reduce the number of iterations required
+// to find the max number that can fit within one transaction.
 
 const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
@@ -32,27 +35,24 @@ async function run() {
   // Allow owner to mint new tokens
   await votingToken.addMember("1", owner);
 
-  const balance = await votingToken.balanceOf(voter);
-  const floorBalance = web3.utils.toBN(web3.utils.toWei("100", "ether"));
-  if (balance.lt(floorBalance)) {
-    console.log("Minting tokens for", voter);
-    await votingToken.mint(voter, web3.utils.toWei("100", "ether"));
-  }
+  // Transfer tokens to the voter such they they have enough to pass all votes on their own
+  const ownerBalance = await votingToken.balanceOf(owner);
+  await votingToken.transfer(voter, ownerBalance, { from: owner });
 
   // Pick a random time. Probabilistically, this won't request a duplicate time from a previous run.
-  let time = Math.floor(Math.random() * (await voting.getCurrentTime()));
+  let time = 0;
 
-  let i = 64;
+  let requestNum = 64;
   let converged = false;
   let lowestFailed = 0;
   let highestPassed = 0;
   // Define all three cases we want to check for
-  let tests = ["commit", "reveal", "claim"];
+  let tests = ["batchCommit", "batchReveal", "retrieveRewards"];
 
-  for (j = 1; j < tests.length; j++) {
+  for (j = 0; j <= tests.length; j++) {
     console.log("Finding maximum batch size for", tests[j], "that can be run in one transaction.");
     while (!converged) {
-      console.log("*size:", i, "*");
+      console.log("*size:", requestNum, "*");
       if (lowestFailed - highestPassed == 1) {
         console.log("Maximum =", highestPassed);
         converged = true;
@@ -60,22 +60,25 @@ async function run() {
       }
       try {
         if (j == 0) {
-          await cycleCommit(voting, identifier, time, i, registeredDerivative, voter);
+          await cycleCommit(voting, identifier, time, requestNum, registeredDerivative, voter);
         }
         if (j == 1) {
-          await cycleReveal(voting, identifier, time, i, registeredDerivative, voter);
+          await cycleReveal(voting, identifier, time, requestNum, registeredDerivative, voter);
         }
-        highestPassed = i;
+        if (j == 2) {
+          await cycleClaim(voting, identifier, time, requestNum, registeredDerivative, voter);
+        }
+        highestPassed = requestNum;
         if (lowestFailed != 0) {
-          i = Math.floor((lowestFailed + highestPassed) / 2);
+          requestNum = Math.floor((lowestFailed + highestPassed) / 2);
         } else {
-          i = i * 2;
+          requestNum = requestNum * 2;
         }
       } catch (error) {
-        lowestFailed = i;
-        i = Math.floor((lowestFailed + highestPassed) / 2);
+        lowestFailed = requestNum;
+        requestNum = Math.floor((lowestFailed + highestPassed) / 2);
       }
-      time += 1;
+      time = Math.floor(Math.random() * (await voting.getCurrentTime()));
     }
   }
   console.log("Done");
@@ -105,7 +108,6 @@ const cycleCommit = async (voting, identifier, time, requestNumber, registeredDe
 };
 
 const cycleReveal = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
-  console.log("revealing");
   for (var i = 0; i < requestNumber; i++) {
     await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
   }
@@ -133,6 +135,42 @@ const cycleReveal = async (voting, identifier, time, requestNumber, registeredDe
   }
   const result = await voting.batchReveal(reveals, { from: voter });
   console.log("batchReveal gas used:", result.receipt.gasUsed);
+};
+
+const cycleClaim = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
+  for (var i = 0; i < requestNumber; i++) {
+    await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
+  }
+  await moveToNextRound(voting);
+
+  const salts = {};
+  const price = getRandomSignedInt();
+
+  for (var i = 0; i < requestNumber; i++) {
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await voting.commitVote(identifier, time + i, hash, { from: voter });
+    salts[i] = salt;
+  }
+
+  // Advance to reveal phase
+  await moveToNextPhase(voting);
+
+  for (var i = 0; i < requestNumber; i++) {
+    await voting.revealVote(identifier, time + i, price, salts[i], { from: voter });
+  }
+
+  // Finally generate the batch rewards to retrieve
+  let roundId = await voting.getCurrentRoundId();
+
+  await moveToNextRound(voting);
+
+  let pendingRequests = [];
+  for (var i = 0; i < requestNumber; i++) {
+    pendingRequests[i] = { identifier: identifier, time: time + i };
+  }
+  const result = await voting.retrieveRewards(voter, roundId, pendingRequests, { from: voter });
+  console.log("retrieveRewards gas used:", result.receipt.gasUsed);
 };
 
 module.exports = async function(cb) {
