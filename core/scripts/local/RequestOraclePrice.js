@@ -58,7 +58,7 @@ async function run(deployedFinder, identifier, timeString) {
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     );
     const deployedIdentifierWhitelist = await IdentifierWhitelist.at(
-      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentiferWhitelist))
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist))
     );
     await deployedIdentifierWhitelist.addSupportedIdentifier(identifierInBytes);
     const priceExists = await deployedVoting.hasPrice(identifierInBytes, timeInBN);
