@@ -47,7 +47,7 @@ async function run() {
 
   console.log("Executing the following tests:", tests, "\nThis script can take a while to run.");
 
-  for (j = 1; j < tests.length; j++) {
+  for (j = 0; j < tests.length; j++) {
     // Binary search parameters. search starts at 64 and will either half our double if it finds
     // it can fit that number within one block. Algorithm iterates until there is convergence
     let requestNum = 64;
