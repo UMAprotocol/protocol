@@ -4,7 +4,7 @@
 // a given size. A binary search mechanism is used to reduce the number of iterations required
 // to find the max number that can fit within one transaction.
 
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
@@ -40,21 +40,26 @@ async function run() {
   await votingToken.transfer(voter, ownerBalance, { from: owner });
 
   // Pick a random time. Probabilistically, this won't request a duplicate time from a previous run.
-  let time = 0;
+  let time = Math.floor(Math.random() * (await voting.getCurrentTime()));
 
-  let requestNum = 64;
-  let converged = false;
-  let lowestFailed = 0;
-  let highestPassed = 0;
   // Define all three cases we want to check for
   let tests = ["batchCommit", "batchReveal", "retrieveRewards"];
 
-  for (j = 0; j <= tests.length; j++) {
+  console.log("Executing the following tests:", tests, "\nThis script can take a while to run.");
+
+  for (j = 1; j < tests.length; j++) {
+    // Binary search parameters. search starts at 64 and will either half our double if it finds
+    // it can fit that number within one block. Algorithm iterates until there is convergence
+    let requestNum = 64;
+    let converged = false;
+    let lowestFailed = 0;
+    let highestPassed = 0;
+
     console.log("Finding maximum batch size for", tests[j], "that can be run in one transaction.");
     while (!converged) {
-      console.log("*size:", requestNum, "*");
+      console.log("* testing size:", requestNum, "*");
       if (lowestFailed - highestPassed == 1) {
-        console.log("Maximum =", highestPassed);
+        console.log("Maximum tx per block reached for", tests[j], "as:", highestPassed);
         converged = true;
         break;
       }
@@ -84,12 +89,20 @@ async function run() {
   console.log("Done");
 }
 
-const cycleCommit = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
+const generatePriceRequests = async (requestNumber, voting, identifier, time, registeredDerivative) => {
   for (var i = 0; i < requestNumber; i++) {
     await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
   }
-
+  // Advance to commit phase
   await moveToNextRound(voting);
+};
+
+// Test how many commits can be placed within one block. Initially request n number
+// of price feeds then batch commit on them.
+const cycleCommit = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
+  // Generate prices up front for the test
+  await generatePriceRequests(requestNumber, voting, identifier, time, registeredDerivative);
+
   const salts = {};
   const price = getRandomSignedInt();
   const commitments = [];
@@ -107,18 +120,15 @@ const cycleCommit = async (voting, identifier, time, requestNumber, registeredDe
   console.log("batchCommit gas used:", result.receipt.gasUsed);
 };
 
+// Test how many reveals can be placed within one block. The process for requesting and committing
+// are done linearly (not batched) so that the test for revels is not impacted by this.
 const cycleReveal = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
-  for (var i = 0; i < requestNumber; i++) {
-    await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
-  }
-
-  // Advance to commit phase
-  await moveToNextRound(voting);
+  await generatePriceRequests(requestNumber, voting, identifier, time, registeredDerivative);
 
   const salts = {};
   const price = getRandomSignedInt();
 
-  // Generate Commitments. We will use single commit so no upper bound on the number to generate.
+  // Generate Commitments. We will use single commit so no upper bound from the previous test
   for (var i = 0; i < requestNumber; i++) {
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
@@ -137,11 +147,10 @@ const cycleReveal = async (voting, identifier, time, requestNumber, registeredDe
   console.log("batchReveal gas used:", result.receipt.gasUsed);
 };
 
+// Test how many claims can be fit within one block. Generation of price requests, commits and
+// reveals are all done linearly.
 const cycleClaim = async (voting, identifier, time, requestNumber, registeredDerivative, voter) => {
-  for (var i = 0; i < requestNumber; i++) {
-    await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
-  }
-  await moveToNextRound(voting);
+  await generatePriceRequests(requestNumber, voting, identifier, time, registeredDerivative);
 
   const salts = {};
   const price = getRandomSignedInt();
