@@ -76,17 +76,15 @@ async function run() {
 
 // Cycle through each round--consisting of a price request, commit, and reveal phase
 const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
-  /**
-   * Estimating gas usage: requestPrice
-   */
+  // Estimating gas usage: requestPrice.
   let gasUsedPriceRequest = 0;
   console.group(`\nEstimating gas usage: requestPrice`);
 
   for (var i = 0; i < numPriceRequests; i++) {
     const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
-    const _gasUsed = result.receipt.gasUsed;
-    console.log(`Price Request #${i}: ${_gasUsed}`);
-    gasUsedPriceRequest += _gasUsed;
+    const gasUsed = result.receipt.gasUsed;
+    console.log(`Price Request #${i}: ${gasUsed}`);
+    gasUsedPriceRequest += gasUsed;
   }
   console.log(`Total gas: ${gasUsedPriceRequest}`);
   console.groupEnd();
@@ -97,9 +95,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   const salts = {};
   const price = getRandomSignedInt();
 
-  /**
-   * Estimating gas usage: commitVote
-   */
+  // Estimating gas usage: commitVote
   let gasUsedCommitVote = 0;
   console.group(`\nEstimating gas usage: commitVote`);
 
@@ -113,9 +109,9 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
       const voter = getVoter(accounts, j);
 
       const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
-      const _gasUsed = result.receipt.gasUsed;
-      console.log(`- Commit #${j}: ${_gasUsed}`);
-      gasUsedCommitVote += _gasUsed;
+      const gasUsed = result.receipt.gasUsed;
+      console.log(`- Commit #${j}: ${gasUsed}`);
+      gasUsedCommitVote += gasUsed;
 
       if (salts[i] == null) {
         salts[i] = {};
@@ -130,9 +126,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   // Advance to reveal phase
   await moveToNextPhase(voting);
 
-  /**
-   * Estimating gas usage: revealVote
-   */
+  // Estimating gas usage: revealVote
   let gasUsedRevealVote = 0;
   console.group(`\nEstimating gas usage: revealVote`);
 
@@ -143,9 +137,9 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
       const voter = getVoter(accounts, j);
 
       const result = await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });
-      const _gasUsed = result.receipt.gasUsed;
-      console.log(`- Reveal #${j}: ${_gasUsed}`);
-      gasUsedRevealVote += _gasUsed;
+      const gasUsed = result.receipt.gasUsed;
+      console.log(`- Reveal #${j}: ${gasUsed}`);
+      gasUsedRevealVote += gasUsed;
     }
     console.groupEnd();
   }

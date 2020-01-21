@@ -12,8 +12,6 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 
-let results = {}; // Array to store maximum results achieved.
-
 async function run() {
   const voting = await Voting.deployed();
   const votingToken = await VotingToken.deployed();
@@ -47,6 +45,8 @@ async function run() {
   // Define all three cases we want to check for
   let tests = ["batchCommit", "batchReveal", "retrieveRewards"];
 
+  let results = {}; // Object to store maximum results achieved.
+
   console.log("Executing the following tests:", tests, "\nThis script can take a while to run.\n");
 
   for (j = 0; j < tests.length; j++) {
@@ -59,22 +59,23 @@ async function run() {
 
     console.log("Finding maximum batch size for", tests[j], "that can be run in one transaction.");
     while (!converged) {
-      if (lowestFailed - highestPassed == 1) {
+      if (lowestFailed - highestPassed === 1) {
         console.log("*** Maximum tx per block reached for", tests[j], "as:", highestPassed, "***");
         converged = true;
         break;
       }
       console.log("testing size:", requestNum);
+      console.log(results);
       try {
         switch (j) {
           case 0:
-            await cycleCommit(voting, identifier, time, requestNum, registeredDerivative, voter);
+            await cycleCommit(voting, identifier, time, requestNum, registeredDerivative, voter, results);
             break;
           case 1:
-            await cycleReveal(voting, identifier, time, requestNum, registeredDerivative, voter);
+            await cycleReveal(voting, identifier, time, requestNum, registeredDerivative, voter, results);
             break;
           case 2:
-            await cycleClaim(voting, identifier, time, requestNum, registeredDerivative, voter);
+            await cycleClaim(voting, identifier, time, requestNum, registeredDerivative, voter, results);
             break;
           default:
             break;
@@ -105,14 +106,14 @@ const generatePriceRequests = async (requestNum, voting, identifier, time, regis
 
 // Test how many commits can be placed within one block. Initially request n number
 // of price feeds then batch commit on them.
-const cycleCommit = async (voting, identifier, time, requestNum, registeredDerivative, voter) => {
+const cycleCommit = async (voting, identifier, time, requestNum, registeredDerivative, voter, results) => {
   // Generate prices up front for the test
   await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
 
   // Advance to commit phase
   await moveToNextRound(voting);
 
-  const salts = {};
+  const salts = [];
   const price = getRandomSignedInt();
   const commitments = [];
 
@@ -121,10 +122,10 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredDeriv
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
     salts[i] = salt;
-    commitments[i] = { identifier: identifier, time: time + i, hash: hash, encryptedVote: [] };
+    commitments.push({ identifier: identifier, time: time + i, hash: hash, encryptedVote: [] });
   }
 
-  // Reveal commitments.
+  // Batch commit commitments generated. If this exceeds the gas limit will revert.
   const result = await voting.batchCommit(commitments, { from: voter });
   console.log("batchCommit used", result.receipt.gasUsed, "gas to fit", requestNum, "in one tx.");
   results["batchCommit"] = { number: requestNum, gasUsed: result.receipt.gasUsed };
@@ -132,12 +133,12 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredDeriv
 
 // Test how many reveals can be placed within one block. The process for requesting and committing
 // are done linearly (not batched) so that the test for revels is not impacted by this.
-const cycleReveal = async (voting, identifier, time, requestNum, registeredDerivative, voter) => {
+const cycleReveal = async (voting, identifier, time, requestNum, registeredDerivative, voter, results) => {
   await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
 
   await moveToNextRound(voting);
 
-  const salts = {};
+  const salts = [];
   const price = getRandomSignedInt();
 
   // Generate Commitments. We will use single commit so no upper bound from the previous test
@@ -153,8 +154,10 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredDeriv
 
   let reveals = [];
   for (var i = 0; i < requestNum; i++) {
-    reveals[i] = { identifier: identifier, time: time + i, price: price.toString(), salt: salts[i].toString() };
+    reveals.push({ identifier: identifier, time: time + i, price: price.toString(), salt: salts[i].toString() });
   }
+
+  // Batch reveal. If this exceeds the gas limit will revert.
   const result = await voting.batchReveal(reveals, { from: voter });
   console.log("batchReveal used", result.receipt.gasUsed, "gas to fit", requestNum, "in one tx.");
   results["batchReveal"] = { number: requestNum, gasUsed: result.receipt.gasUsed };
@@ -162,12 +165,12 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredDeriv
 
 // Test how many claims can be fit within one block. Generation of price requests, commits and
 // reveals are all done linearly.
-const cycleClaim = async (voting, identifier, time, requestNum, registeredDerivative, voter) => {
+const cycleClaim = async (voting, identifier, time, requestNum, registeredDerivative, voter, results) => {
   await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
 
   await moveToNextRound(voting);
 
-  const salts = {};
+  const salts = [];
   const price = getRandomSignedInt();
 
   for (var i = 0; i < requestNum; i++) {
@@ -191,8 +194,10 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredDeriva
 
   let pendingRequests = [];
   for (var i = 0; i < requestNum; i++) {
-    pendingRequests[i] = { identifier: identifier, time: time + i };
+    pendingRequests.push({ identifier: identifier, time: time + i });
   }
+
+  // Batch request rewards. If exceeds will revert.
   const result = await voting.retrieveRewards(voter, roundId, pendingRequests, { from: voter });
   console.log("retrieveRewards used", result.receipt.gasUsed, "gas to fit", requestNum, "in one tx.");
   results["retrieveRewards"] = { number: requestNum, gasUsed: result.receipt.gasUsed };
