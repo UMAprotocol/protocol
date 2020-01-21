@@ -410,10 +410,11 @@ class SendgridNotifier {
 }
 
 class VotingSystem {
-  constructor(voting, account, notifiers) {
+  constructor(voting, account, notifiers, maxBatchTransactions) {
     this.voting = voting;
     this.account = account;
     this.notifiers = notifiers;
+    this.maxBatchTransactions = maxBatchTransactions;
   }
 
   async getMessage(request, roundId) {
@@ -446,6 +447,11 @@ class VotingSystem {
     const failures = [];
 
     for (const request of requests) {
+      // Stop processing requests if the batch transaction limit is reached
+      if (commitments.length == this.maxBatchTransactions) {
+        break;
+      }
+
       // Skip commits if a message already exists for this request.
       // This does not check the existence of an actual commit.
       if (await this.getMessage(request, roundId)) {
@@ -508,6 +514,11 @@ class VotingSystem {
     const reveals = [];
 
     for (const request of requests) {
+      // Stop processing requests if the batch transaction limit is reached
+      if (reveals.length == this.maxBatchTransactions) {
+        break;
+      }
+
       const encryptedCommit = await this.getMessage(request, roundId);
       if (!encryptedCommit) {
         continue;
@@ -669,7 +680,12 @@ async function runVoting() {
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
     const voting = await Voting.deployed();
     const account = (await web3.eth.getAccounts())[0];
-    const votingSystem = new VotingSystem(voting, account, getNotifiers());
+    // This number defines the maximum number of transactions that can fit within one block.
+    // It was calculated by testing the batchCommit and batch revealFunctions to identify the
+    // maximum that can be placed within one tx. The actual number that can fit is slightly
+    // more but is set to a lower amount for safety.
+    const maxBatchTransactions = 50;
+    const votingSystem = new VotingSystem(voting, account, getNotifiers(), maxBatchTransactions);
     await votingSystem.runIteration();
   } catch (error) {
     console.log(error);
