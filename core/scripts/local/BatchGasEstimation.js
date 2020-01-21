@@ -12,7 +12,7 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 
-let results = {}; //array to store maximum results achieved
+let results = {}; // Array to store maximum results achieved.
 
 async function run() {
   const voting = await Voting.deployed();
