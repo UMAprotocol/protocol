@@ -135,7 +135,7 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredDeriv
 const cycleReveal = async (voting, identifier, time, requestNum, registeredDerivative, voter) => {
   await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
 
-    await moveToNextRound(voting);
+  await moveToNextRound(voting);
 
   const salts = {};
   const price = getRandomSignedInt();
@@ -166,7 +166,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredDeriva
   await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
 
   await moveToNextRound(voting);
-  
+
   const salts = {};
   const price = getRandomSignedInt();
 
