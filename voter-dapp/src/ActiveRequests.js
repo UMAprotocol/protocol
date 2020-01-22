@@ -260,7 +260,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     // It was calculated by testing the batchCommit and batch revealFunctions to identify the
     // maximum that can be placed within one tx. The actual number that can be fit is slightly
     // more but is set to a lower amount for safety here.
-    return totalSelected < 3;
+    return totalSelected <= 25;
   };
 
   const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL;
@@ -368,8 +368,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         ""
       )}
       {!canExecuteBatch() ? (
-        <span style={{ paddingLeft: "10px", paddingTop: "15px" }}>
-          You can only commit or reveal up to 50 requests at once. Please select fewer.
+        <span style={{ paddingLeft: "10px", color: "#FF4F4D" }}>
+          You can only commit or reveal up to 25 requests at once. Please select fewer.
         </span>
       ) : (
         ""
