@@ -1,4 +1,4 @@
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
@@ -7,9 +7,9 @@ const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 
-const numPriceRequests = 5;
-const numVoters = 5;
-const numRounds = 5;
+const numRounds = 2;
+const numPriceRequests = 2;
+const numVoters = 2;
 
 const getVoter = (accounts, id) => {
   // Offset by 2, because owner == accounts[0] and registeredDerivative == accounts[1]
@@ -17,6 +17,7 @@ const getVoter = (accounts, id) => {
 };
 
 async function run() {
+  console.group(`Test Case Setup => (Rounds: ${numRounds}, PriceRequests: ${numPriceRequests}, Voters: ${numVoters})`);
   const voting = await Voting.deployed();
   const supportedIdentifiers = await IdentifierWhitelist.deployed();
   const votingToken = await VotingToken.deployed();
@@ -54,34 +55,55 @@ async function run() {
   // Pick a random time. Probabilistically, this won't request a duplicate time from a previous run.
   let time = Math.floor(Math.random() * max);
 
-  console.log("total supply", (await votingToken.totalSupply()).toString());
+  console.log("Voting tokens total supply:", (await votingToken.totalSupply()).toString());
 
   for (var i = 0; i < numRounds; i++) {
-    console.log("Round", i);
+    console.group(`\n*** Round ${i} ***`);
     await cycleRound(voting, votingToken, identifier, time, accounts);
     time += numPriceRequests;
+    console.groupEnd();
   }
 
+  console.group(`\nVoter token balances post-test:`);
   for (var i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
-    console.log("balance", (await votingToken.balanceOf(voter)).toString());
+    const balance = await votingToken.balanceOf(voter);
+    console.log(`- Voter #${i}: ${balance.toString()}`);
   }
-  console.log("total supply", (await votingToken.totalSupply()).toString());
+  console.groupEnd();
+  console.log("Voting tokens total supply", (await votingToken.totalSupply()).toString());
 
-  console.log("Done");
+  console.groupEnd();
 }
 
+// Cycle through each round--consisting of a price request, commit, and reveal phase
 const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
+  // Estimating gas usage: requestPrice.
+  let gasUsedPriceRequest = 0;
+  console.group(`\nEstimating gas usage: requestPrice`);
+
   for (var i = 0; i < numPriceRequests; i++) {
     const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
-    console.log("requestPrice", result.receipt.gasUsed);
+    const gasUsed = result.receipt.gasUsed;
+    console.log(`Price Request #${i}: ${gasUsed}`);
+    gasUsedPriceRequest += gasUsed;
   }
+  console.log(`Total gas: ${gasUsedPriceRequest}`);
+  console.groupEnd();
 
+  // Advance to commit phase
   await moveToNextRound(voting);
 
   const salts = {};
   const price = getRandomSignedInt();
+
+  // Estimating gas usage: commitVote
+  let gasUsedCommitVote = 0;
+  console.group(`\nEstimating gas usage: commitVote`);
+
   for (var i = 0; i < numPriceRequests; i++) {
+    console.group(`Price request #${i}`);
+
     for (var j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
       const hash = web3.utils.soliditySha3(price, salt);
@@ -89,25 +111,42 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
       const voter = getVoter(accounts, j);
 
       const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
-      console.log("commitVote", result.receipt.gasUsed);
+      const gasUsed = result.receipt.gasUsed;
+      console.log(`- Commit #${j}: ${gasUsed}`);
+      gasUsedCommitVote += gasUsed;
 
       if (salts[i] == null) {
         salts[i] = {};
       }
       salts[i][j] = salt;
     }
+    console.groupEnd();
   }
+  console.log(`Total gas: ${gasUsedCommitVote}`);
+  console.groupEnd();
 
+  // Advance to reveal phase
   await moveToNextPhase(voting);
 
+  // Estimating gas usage: revealVote
+  let gasUsedRevealVote = 0;
+  console.group(`\nEstimating gas usage: revealVote`);
+
   for (var i = 0; i < numPriceRequests; i++) {
+    console.group(`Price request #${i}`);
+
     for (var j = 0; j < numVoters; j++) {
       const voter = getVoter(accounts, j);
 
       const result = await voting.revealVote(identifier, time + i, price, salts[i][j], { from: voter });
-      console.log("revealVote", result.receipt.gasUsed);
+      const gasUsed = result.receipt.gasUsed;
+      console.log(`- Reveal #${j}: ${gasUsed}`);
+      gasUsedRevealVote += gasUsed;
     }
+    console.groupEnd();
   }
+  console.log(`Total gas: ${gasUsedRevealVote}`);
+  console.groupEnd();
 };
 
 module.exports = async function(cb) {
