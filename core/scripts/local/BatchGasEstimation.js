@@ -130,7 +130,7 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredDeriv
     salts[i] = salt;
 
     // Generate encrypted vote to store on chain.
-    const vote = { price: price, salt };
+    const vote = { price, salt };
     const roundId = await voting.getCurrentRoundId();
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), voter);
     const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
