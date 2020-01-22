@@ -107,6 +107,14 @@ const SUPPORTED_IDENTIFIERS = {
   }
 };
 
+// This number defines the maximum number of transactions that can fit within one block.
+// It was calculated by testing the batchCommit and batch revealFunctions to identify the
+// maximum that can be placed within one tx. The actual number that can fit is slightly
+// more but is set to a lower amount for safety.
+//
+// The latest tested maximum is 31
+const BATCH_MAX_TXNS = 25;
+
 const CC_API_KEY = process.env.CRYPTO_COMPARE_API_KEY
   ? process.env.CRYPTO_COMPARE_API_KEY
   : "6a5293dbbe836ea20b8bda991ee031443e7a4fe936afd8293f6985d358c1d2fc";
@@ -442,50 +450,67 @@ class VotingSystem {
   }
 
   async runBatchCommit(requests, roundId) {
-    const commitments = [];
+    let commitments = [];
     const skipped = [];
     const failures = [];
+    let batches = 0;
 
-    for (const request of requests) {
-      // Stop processing requests if the batch transaction limit is reached
-      if (commitments.length == this.maxBatchTransactions) {
-        break;
+    // Batch requests up to the max number that we can fit into one block
+    let requestsProcessed = 0;
+    while (requestsProcessed < requests.length) {
+      requestsProcessed += 1;
+
+      // Construct a new batch
+      const newCommitments = [];
+      for (let i = commitments.length; i < requests.length; i++) {
+        let request = requests[i];
+
+        // Stop processing requests if new batch transaction limit is reached
+        if (newCommitments.length == this.maxBatchTransactions) {
+          break;
+        }
+
+        // Skip commits if a message already exists for this request.
+        // This does not check the existence of an actual commit.
+        if (await this.getMessage(request, roundId)) {
+          skipped.push(request);
+          continue;
+        }
+
+        try {
+          newCommitments.push(await this.constructCommitment(request, roundId));
+        } catch (error) {
+          console.log("Failed", error);
+          failures.push({ request, error });
+        }
       }
 
-      // Skip commits if a message already exists for this request.
-      // This does not check the existence of an actual commit.
-      if (await this.getMessage(request, roundId)) {
-        skipped.push(request);
-        continue;
-      }
+      // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
+      const { receipt } = await this.voting.batchCommit(
+        newCommitments.map(commitment => {
+          // This filters out the parts of the commitment that we don't need to send to solidity.
+          // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
+          // the solidity struct.
+          const { price, salt, ...rest } = commitment;
+          return rest;
+        }),
+        { from: this.account }
+      );
 
-      try {
-        commitments.push(await this.constructCommitment(request, roundId));
-      } catch (error) {
-        console.log("Failed", error);
-        failures.push({ request, error });
+      // Add the batch transaction hash to each commitment.
+      newCommitments.forEach(commitment => {
+        commitment.txnHash = receipt.transactionHash;
+      });
+
+      // Append any of new batch's commitments to running commitment list
+      if (newCommitments.length > 0) {
+        commitments = commitments.concat(newCommitments);
+        batches += 1;
       }
     }
 
-    // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
-    // TODO (#562): Handle case where tx exceeds gas limit.
-    const { receipt } = await this.voting.batchCommit(
-      commitments.map(commitment => {
-        // This filters out the parts of the commitment that we don't need to send to solidity.
-        // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
-        // the solidity struct.
-        const { price, salt, ...rest } = commitment;
-        return rest;
-      }),
-      { from: this.account }
-    );
-
-    // Add the batch transaction hash to each commitment.
-    commitments.forEach(commitment => {
-      commitment.txnHash = receipt.transactionHash;
-    });
-
-    return { commitments, skipped, failures };
+    // Return receipt for testing purposes
+    return { commitments, skipped, failures, batches };
   }
 
   async constructReveal(request, roundId) {
@@ -511,35 +536,52 @@ class VotingSystem {
   }
 
   async runBatchReveal(requests, roundId) {
-    const reveals = [];
+    let reveals = [];
+    let batches = 0;
 
-    for (const request of requests) {
-      // Stop processing requests if the batch transaction limit is reached
-      if (reveals.length == this.maxBatchTransactions) {
-        break;
+    // Batch requests up to the max number that we can fit into one block
+    let requestsProcessed = 0;
+    while (requestsProcessed < requests.length) {
+      requestsProcessed += 1;
+
+      // Construct a new batch
+      const newReveals = [];
+      for (let i = reveals.length; i < requests.length; i++) {
+        let request = requests[i];
+
+        // Stop processing requests if the batch transaction limit is reached
+        if (newReveals.length == this.maxBatchTransactions) {
+          break;
+        }
+
+        const encryptedCommit = await this.getMessage(request, roundId);
+        if (!encryptedCommit) {
+          continue;
+        }
+
+        const reveal = await this.constructReveal(request, roundId);
+        if (reveal) {
+          newReveals.push(reveal);
+        }
       }
 
-      const encryptedCommit = await this.getMessage(request, roundId);
-      if (!encryptedCommit) {
-        continue;
-      }
+      // Always call `batchReveal`, even if there's only one reveal.
+      const { receipt } = await this.voting.batchReveal(newReveals, { from: this.account });
 
-      const reveal = await this.constructReveal(request, roundId);
-      if (reveal) {
-        reveals.push(reveal);
+      // Add the batch transaction hash to each reveal.
+      newReveals.forEach(reveal => {
+        reveal.txnHash = receipt.transactionHash;
+      });
+
+      // Append any of new batch's reveals to running reveals list
+      if (newReveals.length > 0) {
+        reveals = reveals.concat(newReveals);
+        batches += 1;
       }
     }
 
-    // Always call `batchReveal`, even if there's only one reveal.
-    // TODO (#562): Handle case where tx exceeds gas limit.
-    const { receipt } = await this.voting.batchReveal(reveals, { from: this.account });
-
-    // Add the batch transaction hash to each reveal.
-    reveals.forEach(reveal => {
-      reveal.txnHash = receipt.transactionHash;
-    });
-
-    return reveals;
+    // Return receipt for testing purposes
+    return { reveals, batches };
   }
 
   constructNotification(updates, skipped, failures, phase) {
@@ -641,26 +683,33 @@ class VotingSystem {
     let updates = [];
     let skipped = [];
     let failures = [];
+    let batches = 0;
     if (phase == VotePhasesEnum.COMMIT) {
-      ({ commitments: updates, skipped, failures } = await this.runBatchCommit(pendingRequests, roundId));
+      ({ commitments: updates, skipped, failures, batches } = await this.runBatchCommit(pendingRequests, roundId));
       console.log(
-        `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${failures.length} commits`
+        `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
+          failures.length
+        } commits, split into ${batches} batch${batches != 1 ? `es` : ``}`
       );
     } else {
-      updates = await this.runBatchReveal(pendingRequests, roundId);
-      console.log(`Completed ${updates.length} reveals`);
+      ({ reveals: updates, batches } = await this.runBatchReveal(pendingRequests, roundId));
+      console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
     }
 
     const notification = this.constructNotification(updates, skipped, failures, phase);
     await Promise.all(
       this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
     );
+
+    return { updates, skipped, failures, batches };
   }
 
   async runIteration() {
     console.log("Starting voting iteration");
+
+    let results;
     try {
-      await this.innerRunIteration();
+      results = await this.innerRunIteration();
     } catch (error) {
       // A catch-all error handler, so the user gets notified if the AVS crashes. Note that errors fetching prices for
       // some feeds is not considered a crash, and the user will be sent a more detailed message in that case.
@@ -671,6 +720,7 @@ class VotingSystem {
     }
 
     console.log("Finished voting iteration");
+    return results;
   }
 }
 
@@ -680,23 +730,20 @@ async function runVoting() {
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
     const voting = await Voting.deployed();
     const account = (await web3.eth.getAccounts())[0];
-    // This number defines the maximum number of transactions that can fit within one block.
-    // It was calculated by testing the batchCommit and batch revealFunctions to identify the
-    // maximum that can be placed within one tx. The actual number that can fit is slightly
-    // more but is set to a lower amount for safety.
-    const maxBatchTransactions = 50;
-    const votingSystem = new VotingSystem(voting, account, getNotifiers(), maxBatchTransactions);
-    await votingSystem.runIteration();
+    const votingSystem = new VotingSystem(voting, account, getNotifiers(), BATCH_MAX_TXNS);
+    return await votingSystem.runIteration();
   } catch (error) {
     console.log(error);
   }
 }
 
 run = async function(callback) {
+  // For production script, unnecessary to return stats on successful, skipped, failed requests or batch data
   await runVoting();
   callback();
 };
 
 run.VotingSystem = VotingSystem;
 run.SUPPORTED_IDENTIFIERS = SUPPORTED_IDENTIFIERS;
+run.BATCH_MAX_TXNS = BATCH_MAX_TXNS;
 module.exports = run;
