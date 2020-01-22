@@ -253,7 +253,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
 
   const canExecuteBatch = () => {
     let totalSelected = 0;
-    for (var checked in checkboxesChecked) {
+    for (let checked in checkboxesChecked) {
       totalSelected += checkboxesChecked[checked];
     }
     // This number defines the maximum number of transactions that can be fit within one block.
