@@ -22,6 +22,46 @@ class MockNotifier {
   }
 }
 
+const TEST_IDENTIFIERS = {
+  'test': {
+    key: web3.utils.utf8ToHex("test"),
+    expectedPrice: web3.utils.toWei("1.5")
+  },
+  'test-bad-reveal': {
+    key: web3.utils.utf8ToHex("test-bad-reveal")
+  },
+  'test-overlapping1': {
+    key: web3.utils.utf8ToHex("test-overlapping1"),
+    expectedPrice: web3.utils.toWei("1.5")
+  },
+  'test-overlapping2': {
+    key: web3.utils.utf8ToHex("test-overlapping2"),
+    expectedPrice: web3.utils.toWei("1.5")
+  },
+  'TSLA': {
+    key: web3.utils.utf8ToHex("TSLA"),
+    hardcodedTimestamp: '1573513368',
+    expectedPrice: web3.utils.toWei("345.07")
+  },
+  'Custom Index (1)': {
+    key: web3.utils.utf8ToHex("Custom Index (1)"),
+    expectedPrice: web3.utils.toWei("1")
+  },
+  'Custom Index (100)': {
+    key: web3.utils.utf8ToHex("Custom Index (100)"),
+    expectedPrice: web3.utils.toWei("100")
+  },
+  '0.5': {
+    key: web3.utils.utf8ToHex("0.5"),
+    expectedPrice: web3.utils.toWei("0.5")
+  }
+}
+
+const getRandomTimestampInPast = () => {
+  const salt = Math.floor(Math.random() * 100)
+  return Math.round(Date.now()/1000 - 1000 * 60 * (60 + salt)).toString();
+}
+
 contract("scripts/Voting.js", function(accounts) {
   let voting;
   let votingToken;
@@ -43,6 +83,12 @@ contract("scripts/Voting.js", function(accounts) {
     // Give voter all of the tokens.
     const initialSupply = await votingToken.balanceOf(account1);
     await votingToken.transfer(voter, initialSupply);
+
+    // Add supported identifiers
+    for (k = 0; k < Object.keys(TEST_IDENTIFIERS).length; k++) {
+      let key = TEST_IDENTIFIERS[Object.keys(TEST_IDENTIFIERS)[k]].key;
+      await supportedIdentifiers.addSupportedIdentifier(key);
+    }
   });
 
   beforeEach(async function() {
@@ -51,11 +97,10 @@ contract("scripts/Voting.js", function(accounts) {
   });
 
   it("basic case", async function() {
-    const identifier = web3.utils.utf8ToHex("test");
-    const time = "1000";
+    const identifier = TEST_IDENTIFIERS['test'].key;
+    const time = getRandomTimestampInPast();
 
     // Request an Oracle price.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     // Move to the round in which voters will vote on the requested price.
@@ -97,16 +142,15 @@ contract("scripts/Voting.js", function(accounts) {
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
-    const hardcodedPrice = web3.utils.toWei("1.5");
+    const hardcodedPrice = TEST_IDENTIFIERS['test'].expectedPrice;
     assert.equal(await voting.getPrice(identifier, time), hardcodedPrice);
   });
 
   it("reveal with bad data", async function() {
-    const identifier = web3.utils.utf8ToHex("test-bad-reveal");
-    const time = "1000";
+    const identifier = TEST_IDENTIFIERS["test-bad-reveal"].key;
+    const time = getRandomTimestampInPast();
 
     // Request an Oracle price.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     // Move to the round in which voters will vote on the requested price.
@@ -143,14 +187,10 @@ contract("scripts/Voting.js", function(accounts) {
   });
 
   it("simultaneous and overlapping votes", async function() {
-    const identifier1 = web3.utils.utf8ToHex("test-overlapping1");
+    const identifier1 = TEST_IDENTIFIERS["test-overlapping1"].key;
     const time1 = "1000";
-    const identifier2 = web3.utils.utf8ToHex("test-overlapping2");
+    const identifier2 = TEST_IDENTIFIERS["test-overlapping2"].key;
     const time2 = "1000";
-
-    // Add both identifiers.
-    await supportedIdentifiers.addSupportedIdentifier(identifier1);
-    await supportedIdentifiers.addSupportedIdentifier(identifier2);
 
     // Send three overlapping requests such that each parameter overlaps with one other request.
     await voting.requestPrice(identifier1, time1);
@@ -182,18 +222,17 @@ contract("scripts/Voting.js", function(accounts) {
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
-    const hardcodedPrice = web3.utils.toWei("1.5");
+    const hardcodedPrice = TEST_IDENTIFIERS["test-overlapping1"].expectedPrice;
     assert.equal(await voting.getPrice(identifier1, time1), hardcodedPrice);
     assert.equal(await voting.getPrice(identifier1, time2), hardcodedPrice);
     assert.equal(await voting.getPrice(identifier2, time2), hardcodedPrice);
   });
 
   it("Intrinio price", async function() {
-    const identifier = web3.utils.utf8ToHex("TSLA");
-    const time = "1573513368";
+    const identifier = TEST_IDENTIFIERS["TSLA"].key;
+    const time = TEST_IDENTIFIERS["TSLA"].hardcodedTimestamp;
 
     // Request an Oracle price.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     // Move to the round in which voters will vote on the requested price.
@@ -225,15 +264,14 @@ contract("scripts/Voting.js", function(accounts) {
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
-    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("345.07"));
+    assert.equal((await voting.getPrice(identifier, time)).toString(), TEST_IDENTIFIERS["TSLA"].expectedPrice);
   });
 
   it("Notification on crash", async function() {
-    const identifier = web3.utils.utf8ToHex("Custom Index (1)");
-    const time = "1560762000";
+    const identifier = TEST_IDENTIFIERS["Custom Index (1)"].key;
+    const time = getRandomTimestampInPast();
 
     // Request an Oracle price.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     const notifier = new MockNotifier();
@@ -264,13 +302,10 @@ contract("scripts/Voting.js", function(accounts) {
   });
 
   it("Constant price", async function() {
-    const identifier = web3.utils.utf8ToHex("Custom Index (1)");
-    // This needs to be a different timestamp than the previous test because
-    // they use the same identifier, and the previous test has already requested a price
-    const time = "1560762001";
+    const identifier = TEST_IDENTIFIERS["Custom Index (1)"].key;
+    const time = getRandomTimestampInPast();
 
     // Request an Oracle price.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     const votingSystem = new VotingScript.VotingSystem(
@@ -291,25 +326,14 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(result.updates.length, 1);
     await moveToNextRound(voting);
 
-    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("1"));
+    assert.equal((await voting.getPrice(identifier, time)).toString(), TEST_IDENTIFIERS["Custom Index (1)"].expectedPrice);
   });
 
   it("Numerator/Denominator", async function() {
-    const identifier = web3.utils.utf8ToHex("0.5");
-    const time = "1560762000";
+    const identifier = TEST_IDENTIFIERS["0.5"].key;
+    const time = getRandomTimestampInPast();
 
-    VotingScript.SUPPORTED_IDENTIFIERS["0.5"] = {
-      numerator: {
-        dataSource: "Constant",
-        value: "1"
-      },
-      denominator: {
-        dataSource: "Constant",
-        value: "2"
-      }
-    };
     // Request an Oracle price.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time);
 
     const votingSystem = new VotingScript.VotingSystem(
@@ -330,16 +354,15 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(result.updates.length, 1);
     await moveToNextRound(voting);
 
-    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("0.5"));
+    assert.equal((await voting.getPrice(identifier, time)).toString(), TEST_IDENTIFIERS["0.5"].expectedPrice);
   });
 
   it("Only batches up to the maximum number of commits or reveals that can fit in one block", async function() {
-    const identifier = web3.utils.utf8ToHex("Custom Index (100)");
-    const time = "1560762000";
-    let testTransactions = 101;
+    const identifier = TEST_IDENTIFIERS["Custom Index (100)"].key;
+    const time = getRandomTimestampInPast();
+    let testTransactions = Math.round(VotingScript.BATCH_MAX_TXNS * 2 + 1);
 
     // Request Oracle prices.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
     for (i = 0; i < testTransactions; i++) {
       let timeToVote = parseInt(time) + i;
       await voting.requestPrice(identifier, timeToVote.toString());
@@ -392,6 +415,6 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(pendingVotes.length, 0, `There should be 0 pending requests during post-reveal phase`);
 
     // Sanity check.
-    assert.equal((await voting.getPrice(identifier, time)).toString(), web3.utils.toWei("100"));
+    assert.equal((await voting.getPrice(identifier, time)).toString(), TEST_IDENTIFIERS["Custom Index (100)"].expectedPrice);
   });
 });

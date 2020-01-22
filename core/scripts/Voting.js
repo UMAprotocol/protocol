@@ -104,6 +104,16 @@ const SUPPORTED_IDENTIFIERS = {
       dataSource: "Constant",
       value: "100"
     }
+  },
+  '0.5': {
+    numerator: {
+      dataSource: "Constant",
+      value: "1"
+    },
+    denominator: {
+      dataSource: "Constant",
+      value: "2"
+    }
   }
 };
 
@@ -147,9 +157,9 @@ async function fetchCryptoComparePrice(request) {
     "&limit=1",
     "&api_key=" + CC_API_KEY
   ].join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
+  // console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
-  console.log(`Response [${JSON.stringify(jsonOutput)}]`);
+  // console.log(`Response [${JSON.stringify(jsonOutput)}]`);
 
   if (jsonOutput.Type != "100") {
     throw "Request failed";
@@ -165,17 +175,17 @@ async function fetchCryptoComparePrice(request) {
   }
 
   const tradeTime = jsonOutput.Data[0].time;
-  console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
+  // console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
 
   return web3.utils.toWei(price.toString());
 }
 
 function fetchConstantPrice(request, config) {
-  console.log(
-    `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
-      request.identifier
-    )}]`
-  );
+  // console.log(
+  //   `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
+  //     request.identifier
+  //   )}]`
+  // );
   return web3.utils.toWei(config.value);
 }
 
@@ -200,9 +210,9 @@ async function fetchIntrinioEquitiesPrice(request, config) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  // console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
   const jsonOutput = await getJson(url);
-  console.log("Intrinio response:", jsonOutput);
+  // console.log("Intrinio response:", jsonOutput);
 
   if (!jsonOutput.intraday_prices || jsonOutput.intraday_prices.length === 0) {
     throw "Failed to get data from Intrinio";
@@ -210,7 +220,7 @@ async function fetchIntrinioEquitiesPrice(request, config) {
 
   const price = jsonOutput.intraday_prices[0].last_price;
   const time = jsonOutput.intraday_prices[0].time;
-  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  // console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
   return web3.utils.toWei(price.toString());
 }
 
@@ -523,7 +533,7 @@ class VotingSystem {
       const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
       vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
     } catch (e) {
-      console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
+      // console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
       return null;
     }
 
@@ -686,14 +696,14 @@ class VotingSystem {
     let batches = 0;
     if (phase == VotePhasesEnum.COMMIT) {
       ({ commitments: updates, skipped, failures, batches } = await this.runBatchCommit(pendingRequests, roundId));
-      console.log(
-        `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
-          failures.length
-        } commits, split into ${batches} batch${batches != 1 ? `es` : ``}`
-      );
+      // console.log(
+      //   `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
+      //     failures.length
+      //   } commits, split into ${batches} batch${batches != 1 ? `es` : ``}`
+      // );
     } else {
       ({ reveals: updates, batches } = await this.runBatchReveal(pendingRequests, roundId));
-      console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
+      // console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
     }
 
     const notification = this.constructNotification(updates, skipped, failures, phase);
@@ -705,7 +715,7 @@ class VotingSystem {
   }
 
   async runIteration() {
-    console.log("Starting voting iteration");
+    // console.log("Starting voting iteration");
 
     let results;
     try {
@@ -719,7 +729,7 @@ class VotingSystem {
       );
     }
 
-    console.log("Finished voting iteration");
+    // console.log("Finished voting iteration");
     return results;
   }
 }
