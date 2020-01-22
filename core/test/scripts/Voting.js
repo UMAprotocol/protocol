@@ -336,7 +336,7 @@ contract("scripts/Voting.js", function(accounts) {
   it("Only batches up to the maximum number of commits or reveals that can fit in one block", async function() {
     const identifier = web3.utils.utf8ToHex("Custom Index (100)");
     const time = "1560762000";
-    let testTransactions = 100;
+    let testTransactions = 101;
 
     // Request Oracle prices.
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -377,7 +377,7 @@ contract("scripts/Voting.js", function(accounts) {
       `There should be ${testTransactions} pending requests during reveal phase`
     );
     let result = await votingSystem.runIteration();
-    let batchesExpected = testTransactions / VotingScript.BATCH_MAX_TXNS;
+    let batchesExpected = Math.floor(testTransactions / VotingScript.BATCH_MAX_TXNS);
     if (testTransactions % VotingScript.BATCH_MAX_TXNS > 0) {
       batchesExpected += 1;
     }
