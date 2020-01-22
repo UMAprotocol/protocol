@@ -4,17 +4,24 @@
 // a given size. A binary search mechanism is used to reduce the number of iterations required
 // to find the max number that can fit within one transaction.
 
+// Before you can run this script you must migrate all contracts to your local Ganache instance.
+// Then, run the script with `truffle exec scripts/local/BatchGasEstimation.js --network test`
+
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
+const { encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../../common/Crypto.js");
+const { getKeyGenMessage } = require("../../../common/EncryptionHelper");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 
 async function run() {
   const voting = await Voting.deployed();
   const votingToken = await VotingToken.deployed();
+  const identifierWhitelist = await IdentifierWhitelist.deployed();
   const registry = await Registry.deployed();
 
   const accounts = await web3.eth.getAccounts();
@@ -30,7 +37,7 @@ async function run() {
   }
 
   const identifier = web3.utils.utf8ToHex("test-identifier");
-  await voting.addSupportedIdentifier(identifier);
+  await identifierWhitelist.addSupportedIdentifier(identifier);
 
   // Allow owner to mint new tokens
   await votingToken.addMember("1", owner);
@@ -52,7 +59,7 @@ async function run() {
   for (j = 0; j < tests.length; j++) {
     // Binary search parameters. search starts at 64 and will either half our double if it finds
     // it can fit that number within one block. Algorithm iterates until there is convergence
-    let requestNum = 64;
+    let requestNum = 32;
     let converged = false;
     let lowestFailed = 0;
     let highestPassed = 0;
@@ -65,7 +72,6 @@ async function run() {
         break;
       }
       console.log("testing size:", requestNum);
-      console.log(results);
       try {
         switch (j) {
           case 0:
@@ -122,7 +128,15 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredDeriv
     const salt = getRandomUnsignedInt();
     const hash = web3.utils.soliditySha3(price, salt);
     salts[i] = salt;
-    commitments.push({ identifier: identifier, time: time + i, hash: hash, encryptedVote: [] });
+
+    // Generate encrypted vote to store on chain.
+    const vote = { price, salt };
+    const roundId = await voting.getCurrentRoundId();
+    const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), voter);
+    const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
+
+    // Add encrypted vote to commitment.
+    commitments.push({ identifier: identifier, time: time + i, hash: hash, encryptedVote: encryptedVote });
   }
 
   // Batch commit commitments generated. If this exceeds the gas limit will revert.
@@ -188,7 +202,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredDeriva
   }
 
   // Finally generate the batch rewards to retrieve
-  let roundId = await voting.getCurrentRoundId();
+  const roundId = await voting.getCurrentRoundId();
 
   await moveToNextRound(voting);
 
