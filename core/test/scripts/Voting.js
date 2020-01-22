@@ -23,44 +23,44 @@ class MockNotifier {
 }
 
 const TEST_IDENTIFIERS = {
-  'test': {
+  test: {
     key: web3.utils.utf8ToHex("test"),
     expectedPrice: web3.utils.toWei("1.5")
   },
-  'test-bad-reveal': {
+  "test-bad-reveal": {
     key: web3.utils.utf8ToHex("test-bad-reveal")
   },
-  'test-overlapping1': {
+  "test-overlapping1": {
     key: web3.utils.utf8ToHex("test-overlapping1"),
     expectedPrice: web3.utils.toWei("1.5")
   },
-  'test-overlapping2': {
+  "test-overlapping2": {
     key: web3.utils.utf8ToHex("test-overlapping2"),
     expectedPrice: web3.utils.toWei("1.5")
   },
-  'TSLA': {
+  TSLA: {
     key: web3.utils.utf8ToHex("TSLA"),
-    hardcodedTimestamp: '1573513368',
+    hardcodedTimestamp: "1573513368",
     expectedPrice: web3.utils.toWei("345.07")
   },
-  'Custom Index (1)': {
+  "Custom Index (1)": {
     key: web3.utils.utf8ToHex("Custom Index (1)"),
     expectedPrice: web3.utils.toWei("1")
   },
-  'Custom Index (100)': {
+  "Custom Index (100)": {
     key: web3.utils.utf8ToHex("Custom Index (100)"),
     expectedPrice: web3.utils.toWei("100")
   },
-  '0.5': {
+  "0.5": {
     key: web3.utils.utf8ToHex("0.5"),
     expectedPrice: web3.utils.toWei("0.5")
   }
-}
+};
 
 const getRandomTimestampInPast = () => {
-  const salt = Math.floor(Math.random() * 100)
-  return Math.round(Date.now()/1000 - 1000 * 60 * (60 + salt)).toString();
-}
+  const salt = Math.floor(Math.random() * 100);
+  return Math.round(Date.now() / 1000 - 1000 * 60 * (60 + salt)).toString();
+};
 
 contract("scripts/Voting.js", function(accounts) {
   let voting;
@@ -97,7 +97,7 @@ contract("scripts/Voting.js", function(accounts) {
   });
 
   it("basic case", async function() {
-    const identifier = TEST_IDENTIFIERS['test'].key;
+    const identifier = TEST_IDENTIFIERS["test"].key;
     const time = getRandomTimestampInPast();
 
     // Request an Oracle price.
@@ -142,7 +142,7 @@ contract("scripts/Voting.js", function(accounts) {
 
     await moveToNextRound(voting);
     // The previous `runIteration()` should have revealed the vote, so the price request should be resolved.
-    const hardcodedPrice = TEST_IDENTIFIERS['test'].expectedPrice;
+    const hardcodedPrice = TEST_IDENTIFIERS["test"].expectedPrice;
     assert.equal(await voting.getPrice(identifier, time), hardcodedPrice);
   });
 
@@ -326,7 +326,10 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(result.updates.length, 1);
     await moveToNextRound(voting);
 
-    assert.equal((await voting.getPrice(identifier, time)).toString(), TEST_IDENTIFIERS["Custom Index (1)"].expectedPrice);
+    assert.equal(
+      (await voting.getPrice(identifier, time)).toString(),
+      TEST_IDENTIFIERS["Custom Index (1)"].expectedPrice
+    );
   });
 
   it("Numerator/Denominator", async function() {
@@ -415,6 +418,9 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(pendingVotes.length, 0, `There should be 0 pending requests during post-reveal phase`);
 
     // Sanity check.
-    assert.equal((await voting.getPrice(identifier, time)).toString(), TEST_IDENTIFIERS["Custom Index (100)"].expectedPrice);
+    assert.equal(
+      (await voting.getPrice(identifier, time)).toString(),
+      TEST_IDENTIFIERS["Custom Index (100)"].expectedPrice
+    );
   });
 });

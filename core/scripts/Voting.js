@@ -105,7 +105,7 @@ const SUPPORTED_IDENTIFIERS = {
       value: "100"
     }
   },
-  '0.5': {
+  "0.5": {
     numerator: {
       dataSource: "Constant",
       value: "1"
