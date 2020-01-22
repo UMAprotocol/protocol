@@ -4,8 +4,8 @@
 // a given size. A binary search mechanism is used to reduce the number of iterations required
 // to find the max number that can fit within one transaction.
 
-// Before you can run this script you must migrate all contracts to your local ganache instance.
-// after this, you can run the script with truffle exec
+// Before you can run this script you must migrate all contracts to your local Ganache instance.
+// Then, run the script with `truffle exec scripts/local/BatchGasEstimation.js --network test`
 
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
