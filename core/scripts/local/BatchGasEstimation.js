@@ -134,7 +134,7 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredDeriv
     const roundId = await voting.getCurrentRoundId();
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), voter);
     const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
-    
+
     // Add encrypted vote to commitment.
     commitments.push({ identifier: identifier, time: time + i, hash: hash, encryptedVote: encryptedVote });
   }
