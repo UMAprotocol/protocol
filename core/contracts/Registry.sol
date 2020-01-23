@@ -21,29 +21,24 @@ contract Registry is RegistryInterface, MultiRole {
         DerivativeCreator
     }
 
-    // Array of all derivatives that are approved to use the UMA Oracle.
-    address[] public registeredDerivatives;
-
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.
-    enum PointerValidity { Invalid, Valid }
+    enum DerivativeValidity { Invalid, Valid }
 
-    struct Pointer {
-        PointerValidity valid;
+    // Store all key information about a derivative.
+    struct Derivative {
+        DerivativeValidity valid;
+        mapping(address => bool) parties;
         uint128 index;
     }
 
-    // Maps from derivative address to a pointer that refers to that registered derivative in `registeredDerivatives`.
-    mapping(address => Pointer) private derivativePointers;
+    // Map the address of the derivitive contract to the associated derivative object.
+    mapping(address => Derivative) public addressToDerivatives;
 
-    // Note: this must be stored outside of `registeredDerivatives` because mappings cannot be deleted and copied
-    // like normal data. This could be stored in the Pointer struct, but storing it there would muddy the purpose
-    // of the Pointer struct and break separation of concern between referential data and data.
-    struct PartiesMap {
-        mapping(address => bool) parties;
-    }
+    // Map each party member to their associated derivatives.
+    mapping(address => address[]) public partyMembersToDerivatives;
 
-    // Maps from derivative address to the set of parties that are involved in that derivative.
-    mapping(address => PartiesMap) private derivativesToParties;
+    // Array of all derivatives that are approved to use the UMA Oracle.
+    address[] public registeredDerivatives;
 
     event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
 
@@ -57,55 +52,53 @@ contract Registry is RegistryInterface, MultiRole {
         external
         onlyRoleHolder(uint(Roles.DerivativeCreator))
     {
-        // Create derivative pointer.
-        Pointer storage pointer = derivativePointers[derivativeAddress];
-
-        // Ensure that the pointer was not valid in the past (derivatives cannot be re-registered or double
-        // registered).
-        require(pointer.valid == PointerValidity.Invalid);
-        pointer.valid = PointerValidity.Valid;
+        Derivative storage derivative = addressToDerivatives[derivativeAddress];
+        require(addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Invalid, "Can only register once");
 
         registeredDerivatives.push(derivativeAddress);
 
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
-        pointer.index = uint128(registeredDerivatives.length.sub(1));
+        derivative.index = uint128(registeredDerivatives.length.sub(1));
 
-        // Set up PartiesMap for this derivative.
-        PartiesMap storage partiesMap = derivativesToParties[derivativeAddress];
+        derivative.valid = DerivativeValidity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
-            partiesMap.parties[parties[i]] = true;
+            derivative.parties[parties[i]] = true;
+            partyMembersToDerivatives[parties[i]].push(derivativeAddress);
         }
 
         address[] memory partiesForEvent = parties;
         emit NewDerivativeRegistered(derivativeAddress, msg.sender, partiesForEvent);
+
     }
 
-    function isDerivativeRegistered(address derivative) external view returns (bool isRegistered) {
-        return derivativePointers[derivative].valid == PointerValidity.Valid;
+    function isDerivativeRegistered(address derivative) external view returns (bool) {
+        return addressToDerivatives[derivative].valid == DerivativeValidity.Valid;
     }
 
-    function getRegisteredDerivatives(address party) external view returns (address[] memory derivatives) {
-        // This is not ideal - we must statically allocate memory arrays. To be safe, we make a temporary array as long
-        // as registeredDerivatives. We populate it with any derivatives that involve the provided party. Then, we copy
-        // the array over to the return array, which is allocated using the correct size. Note: this is done by double
-        // copying each value rather than storing some referential info (like indices) in memory to reduce the number
-        // of storage reads. This is because storage reads are far more expensive than extra memory space (~100:1).
-        address[] memory tmpDerivativeArray = new address[](registeredDerivatives.length);
-        uint outputIndex = 0;
-        for (uint i = 0; i < registeredDerivatives.length; i = i.add(1)) {
-            address derivative = registeredDerivatives[i];
-            if (derivativesToParties[derivative].parties[party]) {
-                // Copy selected derivative to the temporary array.
-                tmpDerivativeArray[outputIndex] = derivative;
-                outputIndex = outputIndex.add(1);
+    function getRegisteredDerivatives(address party) external view returns (address[] memory) {
+        return partyMembersToDerivatives[party];
+    }
+
+    function addPartyToDerivative(address party, address derivative) external onlyRoleHolder(uint(Roles.Owner)) {
+        require(addressToDerivatives[derivative].valid == DerivativeValidity.Valid, "Can add to valid derivative");
+        require(addressToDerivatives[derivative].parties[party] == false, "Can only register a party once");
+
+        addressToDerivatives[derivative].parties[party] = true;
+        partyMembersToDerivatives[party].push(derivative);
+    }
+
+    function removedPartyFromDerivative(address party, address derivative) external onlyRoleHolder(uint(Roles.Owner)) {
+        require(addressToDerivatives[derivative].valid == DerivativeValidity.Valid, "Can remove from valid derivative");
+        require(addressToDerivatives[derivative].parties[party] == true, "Can only remove an added party");
+
+        addressToDerivatives[derivative].parties[party] = false;
+
+        for (uint i = 0; i < partyMembersToDerivatives[party].length; i.add(1)) {
+            if (partyMembersToDerivatives[party][i] == derivative) {
+                delete partyMembersToDerivatives[derivative];
             }
         }
-
-        // Copy the temp array to the return array that is set to the correct size.
-        derivatives = new address[](outputIndex);
-        for (uint j = 0; j < outputIndex; j = j.add(1)) {
-            derivatives[j] = tmpDerivativeArray[j];
-        }
+        partyMembersToDerivatives[party].push(derivative);
     }
 
     function getAllRegisteredDerivatives() external view returns (address[] memory derivatives) {
