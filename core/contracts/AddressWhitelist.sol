@@ -7,9 +7,9 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
  */
 contract AddressWhitelist is Ownable {
     enum Status { None, In, Out }
-    mapping(address => Status) private whitelist;
+    mapping(address => Status) public whitelist;
 
-    address[] private whitelistIndices;
+    address[] public whitelistIndices;
 
     event AddedToWhitelist(address indexed addedAddress);
     event RemovedFromWhitelist(address indexed removedAddress);
