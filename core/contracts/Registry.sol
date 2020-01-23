@@ -22,7 +22,7 @@ contract Registry is RegistryInterface, MultiRole {
     }
 
     // Array of all derivatives that are approved to use the UMA Oracle.
-    address[] private registeredDerivatives;
+    address[] public registeredDerivatives;
 
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.
     enum PointerValidity { Invalid, Valid }

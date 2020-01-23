@@ -17,11 +17,11 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
 
     enum Roles { Owner, Withdrawer }
 
-    FixedPoint.Unsigned private fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
+    FixedPoint.Unsigned public fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
 
-    FixedPoint.Unsigned private weeklyDelayFee; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
-    mapping(address => FixedPoint.Unsigned) private finalFees;
-    uint private constant SECONDS_PER_WEEK = 604800;
+    FixedPoint.Unsigned public weeklyDelayFee; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
+    mapping(address => FixedPoint.Unsigned) public finalFees;
+    uint public constant SECONDS_PER_WEEK = 604800;
 
     event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
 

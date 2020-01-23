@@ -123,14 +123,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     FixedPoint.Unsigned public inflationRate;
 
     // Reference to the voting token.
-    VotingToken private votingToken;
+    VotingToken public votingToken;
 
     // Reference to the Finder.
     Finder private finder;
 
     // If non-zero, this contract has been migrated to this address. All voters and financial contracts should query the
     // new address only.
-    address private migratedAddress;
+    address public migratedAddress;
 
     // Max value of an unsigned integer.
     uint private constant UINT_MAX = ~uint(0);
