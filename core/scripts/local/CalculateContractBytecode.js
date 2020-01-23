@@ -15,4 +15,4 @@ let obj = require("./../../build/contracts/" + contractName + ".json");
 const byteCodeSize = (obj.bytecode.length - 2) / 2;
 const remainingSize = 2 ** 14 + 2 ** 13 - (obj.bytecode.length - 2) / 2;
 console.log("Contract is", byteCodeSize, "bytes in size.");
-console.log("This leaves a total of", remainingSize, " within EIP170");
+console.log("This leaves a total of", remainingSize, "bytes within the EIP170 limit.");
