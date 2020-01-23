@@ -123,7 +123,8 @@ const SUPPORTED_IDENTIFIERS = {
 // more but is set to a lower amount for safety.
 //
 // The latest tested maximum is 31
-const BATCH_MAX_TXNS = 25;
+const BATCH_MAX_COMMITS = 25;
+const BATCH_MAX_REVEALS = 25;
 
 const CC_API_KEY = process.env.CRYPTO_COMPARE_API_KEY
   ? process.env.CRYPTO_COMPARE_API_KEY
@@ -428,11 +429,12 @@ class SendgridNotifier {
 }
 
 class VotingSystem {
-  constructor(voting, account, notifiers, maxBatchTransactions) {
+  constructor(voting, account, notifiers) {
     this.voting = voting;
     this.account = account;
     this.notifiers = notifiers;
-    this.maxBatchTransactions = maxBatchTransactions;
+    this.maxBatchCommits = BATCH_MAX_COMMITS;
+    this.maxBatchReveals = BATCH_MAX_REVEALS;
   }
 
   async getMessage(request, roundId) {
@@ -468,17 +470,17 @@ class VotingSystem {
     // Batch requests up to the max number that we can fit into one block
     let requestsProcessed = 0;
     while (requestsProcessed < requests.length) {
-      requestsProcessed += 1;
-
       // Construct a new batch
       const newCommitments = [];
       for (let i = commitments.length; i < requests.length; i++) {
         let request = requests[i];
 
         // Stop processing requests if new batch transaction limit is reached
-        if (newCommitments.length == this.maxBatchTransactions) {
+        if (newCommitments.length == this.maxBatchCommits) {
           break;
         }
+
+        requestsProcessed += 1;
 
         // Skip commits if a message already exists for this request.
         // This does not check the existence of an actual commit.
@@ -495,25 +497,25 @@ class VotingSystem {
         }
       }
 
-      // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
-      const { receipt } = await this.voting.batchCommit(
-        newCommitments.map(commitment => {
-          // This filters out the parts of the commitment that we don't need to send to solidity.
-          // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
-          // the solidity struct.
-          const { price, salt, ...rest } = commitment;
-          return rest;
-        }),
-        { from: this.account }
-      );
-
-      // Add the batch transaction hash to each commitment.
-      newCommitments.forEach(commitment => {
-        commitment.txnHash = receipt.transactionHash;
-      });
-
-      // Append any of new batch's commitments to running commitment list
       if (newCommitments.length > 0) {
+        // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
+        const { receipt } = await this.voting.batchCommit(
+          newCommitments.map(commitment => {
+            // This filters out the parts of the commitment that we don't need to send to solidity.
+            // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
+            // the solidity struct.
+            const { price, salt, ...rest } = commitment;
+            return rest;
+          }),
+          { from: this.account }
+        );
+
+        // Add the batch transaction hash to each commitment.
+        newCommitments.forEach(commitment => {
+          commitment.txnHash = receipt.transactionHash;
+        });
+
+        // Append any of new batch's commitments to running commitment list
         commitments = commitments.concat(newCommitments);
         batches += 1;
       }
@@ -552,17 +554,17 @@ class VotingSystem {
     // Batch requests up to the max number that we can fit into one block
     let requestsProcessed = 0;
     while (requestsProcessed < requests.length) {
-      requestsProcessed += 1;
-
       // Construct a new batch
       const newReveals = [];
       for (let i = reveals.length; i < requests.length; i++) {
         let request = requests[i];
 
         // Stop processing requests if the batch transaction limit is reached
-        if (newReveals.length == this.maxBatchTransactions) {
+        if (newReveals.length == this.maxBatchReveals) {
           break;
         }
+
+        requestsProcessed += 1;
 
         const encryptedCommit = await this.getMessage(request, roundId);
         if (!encryptedCommit) {
@@ -575,16 +577,16 @@ class VotingSystem {
         }
       }
 
-      // Always call `batchReveal`, even if there's only one reveal.
-      const { receipt } = await this.voting.batchReveal(newReveals, { from: this.account });
-
-      // Add the batch transaction hash to each reveal.
-      newReveals.forEach(reveal => {
-        reveal.txnHash = receipt.transactionHash;
-      });
-
       // Append any of new batch's reveals to running reveals list
       if (newReveals.length > 0) {
+        // Always call `batchReveal`, even if there's only one reveal.
+        const { receipt } = await this.voting.batchReveal(newReveals, { from: this.account });
+
+        // Add the batch transaction hash to each reveal.
+        newReveals.forEach(reveal => {
+          reveal.txnHash = receipt.transactionHash;
+        });
+
         reveals = reveals.concat(newReveals);
         batches += 1;
       }
@@ -740,7 +742,7 @@ async function runVoting() {
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
     const voting = await Voting.deployed();
     const account = (await web3.eth.getAccounts())[0];
-    const votingSystem = new VotingSystem(voting, account, getNotifiers(), BATCH_MAX_TXNS);
+    const votingSystem = new VotingSystem(voting, account, getNotifiers());
     return await votingSystem.runIteration();
   } catch (error) {
     console.log(error);
@@ -755,5 +757,6 @@ run = async function(callback) {
 
 run.VotingSystem = VotingSystem;
 run.SUPPORTED_IDENTIFIERS = SUPPORTED_IDENTIFIERS;
-run.BATCH_MAX_TXNS = BATCH_MAX_TXNS;
+run.BATCH_MAX_COMMITS = BATCH_MAX_COMMITS;
+run.BATCH_MAX_REVEALS = BATCH_MAX_REVEALS;
 module.exports = run;

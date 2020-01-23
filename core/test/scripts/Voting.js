@@ -57,11 +57,6 @@ const TEST_IDENTIFIERS = {
   }
 };
 
-const getRandomTimestampInPast = () => {
-  const salt = Math.floor(Math.random() * 100);
-  return Math.round(Date.now() / 1000 - 1000 * 60 * (60 + salt)).toString();
-};
-
 contract("scripts/Voting.js", function(accounts) {
   let voting;
   let votingToken;
@@ -98,7 +93,7 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("basic case", async function() {
     const identifier = TEST_IDENTIFIERS["test"].key;
-    const time = getRandomTimestampInPast();
+    const time = await voting.getCurrentTime();
 
     // Request an Oracle price.
     await voting.requestPrice(identifier, time);
@@ -110,7 +105,7 @@ contract("scripts/Voting.js", function(accounts) {
     assert.isFalse(await voting.hasPrice(identifier, time));
 
     const notifier = new MockNotifier();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier], VotingScript.BATCH_MAX_TXNS);
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     assert.equal(notifier.notificationsSent, 0);
     // The vote should have been committed.
@@ -132,7 +127,7 @@ contract("scripts/Voting.js", function(accounts) {
     await moveToNextPhase(voting);
 
     // Replace the voting system object with a new one so the class can't persist the commit.
-    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier], VotingScript.BATCH_MAX_TXNS);
+    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     result = await votingSystem.runIteration();
@@ -148,7 +143,7 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("reveal with bad data", async function() {
     const identifier = TEST_IDENTIFIERS["test-bad-reveal"].key;
-    const time = getRandomTimestampInPast();
+    const time = await voting.getCurrentTime();
 
     // Request an Oracle price.
     await voting.requestPrice(identifier, time);
@@ -157,7 +152,7 @@ contract("scripts/Voting.js", function(accounts) {
     await moveToNextRound(voting);
 
     const notifier = new MockNotifier();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier], VotingScript.BATCH_MAX_TXNS);
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     assert.equal(notifier.notificationsSent, 0);
     // The vote should have been committed.
@@ -200,7 +195,7 @@ contract("scripts/Voting.js", function(accounts) {
     // Move to the round in which voters will vote on the requested prices.
     await moveToNextRound(voting);
     const notifier = new MockNotifier();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier], VotingScript.BATCH_MAX_TXNS);
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // The votes should have been committed.
     let result = await votingSystem.runIteration();
@@ -242,7 +237,7 @@ contract("scripts/Voting.js", function(accounts) {
     assert.isFalse(await voting.hasPrice(identifier, time));
 
     const notifier = new MockNotifier();
-    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier], VotingScript.BATCH_MAX_TXNS);
+    let votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // The vote should have been committed.
     let result = await votingSystem.runIteration();
@@ -255,7 +250,7 @@ contract("scripts/Voting.js", function(accounts) {
     await moveToNextPhase(voting);
 
     // Replace the voting system object with a new one so the class can't persist the commit.
-    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier], VotingScript.BATCH_MAX_TXNS);
+    votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     result = await votingSystem.runIteration();
@@ -269,13 +264,13 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("Notification on crash", async function() {
     const identifier = TEST_IDENTIFIERS["Custom Index (1)"].key;
-    const time = getRandomTimestampInPast();
+    const time = await voting.getCurrentTime();
 
     // Request an Oracle price.
     await voting.requestPrice(identifier, time);
 
     const notifier = new MockNotifier();
-    const votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier], VotingScript.BATCH_MAX_TXNS);
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
 
     // Simulate the commit reverting.
     const temp = votingSystem.voting.batchCommit;
@@ -303,17 +298,12 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("Constant price", async function() {
     const identifier = TEST_IDENTIFIERS["Custom Index (1)"].key;
-    const time = getRandomTimestampInPast();
+    const time = await voting.getCurrentTime();
 
     // Request an Oracle price.
     await voting.requestPrice(identifier, time);
 
-    const votingSystem = new VotingScript.VotingSystem(
-      voting,
-      voter,
-      [new MockNotifier()],
-      VotingScript.BATCH_MAX_TXNS
-    );
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [new MockNotifier()]);
     await moveToNextRound(voting);
     let result = await votingSystem.runIteration();
     assert.equal(result.batches, 1);
@@ -334,17 +324,12 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("Numerator/Denominator", async function() {
     const identifier = TEST_IDENTIFIERS["0.5"].key;
-    const time = getRandomTimestampInPast();
+    const time = await voting.getCurrentTime();
 
     // Request an Oracle price.
     await voting.requestPrice(identifier, time);
 
-    const votingSystem = new VotingScript.VotingSystem(
-      voting,
-      voter,
-      [new MockNotifier()],
-      VotingScript.BATCH_MAX_TXNS
-    );
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [new MockNotifier()]);
     await moveToNextRound(voting);
     let result = await votingSystem.runIteration();
     assert.equal(result.batches, 1);
@@ -362,8 +347,8 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("Only batches up to the maximum number of commits or reveals that can fit in one block", async function() {
     const identifier = TEST_IDENTIFIERS["Custom Index (100)"].key;
-    const time = getRandomTimestampInPast();
-    let testTransactions = Math.round(VotingScript.BATCH_MAX_TXNS * 2 + 1);
+    let testTransactions = Math.round(VotingScript.BATCH_MAX_COMMITS * 2 + 1);
+    const time = (parseInt((await voting.getCurrentTime()).toString()) - testTransactions).toString();
 
     // Request Oracle prices.
     for (i = 0; i < testTransactions; i++) {
@@ -377,12 +362,7 @@ contract("scripts/Voting.js", function(accounts) {
     // Query pending requests to vote on during each phase.
     let pendingVotes = await voting.getPendingRequests();
     assert.equal(pendingVotes.length, 0, "There should be 0 pending requests during pre-commit phase");
-    const votingSystem = new VotingScript.VotingSystem(
-      voting,
-      voter,
-      [new MockNotifier()],
-      VotingScript.BATCH_MAX_TXNS
-    );
+    const votingSystem = new VotingScript.VotingSystem(voting, voter, [new MockNotifier()]);
 
     // Move to commit phase.
     await moveToNextRound(voting);
@@ -392,7 +372,15 @@ contract("scripts/Voting.js", function(accounts) {
       testTransactions,
       `There should be ${testTransactions} pending requests during commit phase`
     );
-    await votingSystem.runIteration();
+    let result = await votingSystem.runIteration();
+    batchesExpected = Math.floor(testTransactions / VotingScript.BATCH_MAX_COMMITS);
+    if (testTransactions % VotingScript.BATCH_MAX_COMMITS > 0) {
+      batchesExpected += 1;
+    }
+    assert.equal(batchesExpected, result.batches);
+    assert.equal(result.updates.length, testTransactions);
+    assert.equal(result.skipped.length, 0);
+    assert.equal(result.failures.length, 0);
 
     // Move to reveal phase.
     await moveToNextPhase(voting);
@@ -402,15 +390,13 @@ contract("scripts/Voting.js", function(accounts) {
       testTransactions,
       `There should be ${testTransactions} pending requests during reveal phase`
     );
-    let result = await votingSystem.runIteration();
-    let batchesExpected = Math.floor(testTransactions / VotingScript.BATCH_MAX_TXNS);
-    if (testTransactions % VotingScript.BATCH_MAX_TXNS > 0) {
+    result = await votingSystem.runIteration();
+    batchesExpected = Math.floor(testTransactions / VotingScript.BATCH_MAX_REVEALS);
+    if (testTransactions % VotingScript.BATCH_MAX_REVEALS > 0) {
       batchesExpected += 1;
     }
     assert.equal(batchesExpected, result.batches);
     assert.equal(result.updates.length, testTransactions);
-    assert.equal(result.skipped.length, 0);
-    assert.equal(result.failures.length, 0);
 
     // End voting (commit & reveal) process.
     await moveToNextRound(voting);
