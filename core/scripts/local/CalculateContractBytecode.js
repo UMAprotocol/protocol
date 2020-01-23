@@ -8,8 +8,6 @@ if (!contractName) {
   console.log("Please enter the contract name as a parameter as `--contract <name>`.");
   return;
 }
-
-console.log("compiling contracts...🤓");
 var child = require("child_process").exec("truffle compile");
 child.stdout.pipe(process.stdout);
 child.on("exit", function() {
