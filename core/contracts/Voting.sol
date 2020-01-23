@@ -99,28 +99,28 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     }
 
     // Maps round numbers to the rounds.
-    mapping(uint => Round) private rounds;
+    mapping(uint => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) private priceRequests;
+    mapping(bytes32 => PriceRequest) public priceRequests;
 
     // Price request ids for price requests that haven't yet been marked as resolved. These requests may be for future
     // rounds.
-    bytes32[] private pendingPriceRequests;
+    bytes32[] public pendingPriceRequests;
 
-    VoteTiming.Data private voteTiming;
+    VoteTiming.Data public voteTiming;
 
     IdentifierWhitelistInterface public identifierWhitelist;
 
     // Percentage of the total token supply that must be used in a vote to create a valid price resolution.
     // 1 == 100%.
-    FixedPoint.Unsigned private gatPercentage;
+    FixedPoint.Unsigned public gatPercentage;
 
     // Global setting for the rate of inflation per vote. This is the percentage of the snapshotted total supply that
     // should be split among the correct voters. Note: this value is used to set per-round inflation at the beginning
     // of each round.
     // 1 = 100%
-    FixedPoint.Unsigned private inflationRate;
+    FixedPoint.Unsigned public inflationRate;
 
     // Reference to the voting token.
     VotingToken private votingToken;
