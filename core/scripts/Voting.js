@@ -152,7 +152,7 @@ async function fetchCryptoComparePrice(request, isProd) {
     console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
   }
   const jsonOutput = await getJson(url);
-  if (isTest) {
+  if (isProd) {
     console.log(`Response [${JSON.stringify(jsonOutput)}]`);
   }
 
@@ -170,7 +170,7 @@ async function fetchCryptoComparePrice(request, isProd) {
   }
 
   const tradeTime = jsonOutput.Data[0].time;
-  if (isTest) {
+  if (isProd) {
     console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
   }
 
