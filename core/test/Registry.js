@@ -169,6 +169,9 @@ contract("Registry", function(accounts) {
     // Cant add a member to a party more than once.
     assert(await didContractThrow(registry.addPartyToDerivative(creator2, { from: derivativeContract1 })));
 
+    // Cant add a member to an invalid derivative.
+    assert(await didContractThrow(registry.addPartyToDerivative(creator2, { from: rando1 })));
+
     // Create a second derivative and add it to the same user. Check that they are party of two.
     await registry.registerDerivative([], derivativeContract2, { from: creator1 });
     await registry.addPartyToDerivative(creator2, { from: derivativeContract2 });
@@ -210,6 +213,9 @@ contract("Registry", function(accounts) {
 
     // Cant remove a party from derivative multiple times.
     assert(await didContractThrow(registry.removedPartyFromDerivative(creator2, { from: derivativeContract1 })));
+
+    // Cant remove a member to an invalid derivative.
+    assert(await didContractThrow(registry.removedPartyFromDerivative(creator2, { from: rando1 })));
 
     // Remove party remember from second derivative and check that they are part of none.
     await registry.removedPartyFromDerivative(creator2, { from: derivativeContract2 });

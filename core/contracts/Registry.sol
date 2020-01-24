@@ -63,6 +63,8 @@ contract Registry is RegistryInterface, MultiRole {
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
         derivative.index = uint128(registeredDerivatives.length.sub(1));
 
+        // For all parties in the array add them to the derivative party members and
+        // add the derivative as one of the party members own derivatives.
         derivative.valid = DerivativeValidity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
             derivative.parties[parties[i]] = true;
@@ -81,7 +83,6 @@ contract Registry is RegistryInterface, MultiRole {
     }
 
     function addPartyToDerivative(address party) external {
-        // Only a derivative calling can add a member to it's own party.
         address derivativeAddress = msg.sender;
 
         require(
