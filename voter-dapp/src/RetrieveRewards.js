@@ -178,12 +178,10 @@ function RetrieveRewards({ votingAccount }) {
   } else if (!queryAllRounds) {
     body = (
       <>
-      <div>
-        No unclaimed rewards found in the last 10 rounds.
-      </div>
-      <Button onClick={() => setQueryAllRounds(true)} variant="contained" color="primary" disabled={hasPendingTxns}>
-        Search all past rounds for unclaimed rewards
-      </Button>
+        <div>No unclaimed rewards found in the last 10 rounds.</div>
+        <Button onClick={() => setQueryAllRounds(true)} variant="contained" color="primary" disabled={hasPendingTxns}>
+          Search all past rounds for unclaimed rewards
+        </Button>
       </>
     );
   } else {
