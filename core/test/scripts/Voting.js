@@ -9,7 +9,7 @@ const { computeTopicHash } = require("../../../common/EncryptionHelper.js");
 const { createVisibleAccount } = require("../../../common/Crypto");
 
 // Set this to TRUE to print out logs that a production AVS would display
-const USE_PROD_LOGS = true;
+const USE_PROD_LOGS = false;
 
 class MockNotifier {
   constructor() {
@@ -83,8 +83,8 @@ contract("scripts/Voting.js", function(accounts) {
     await votingToken.transfer(voter, initialSupply);
 
     // Add supported identifiers
-    for (k = 0; k < Object.keys(TEST_IDENTIFIERS).length; k++) {
-      let key = TEST_IDENTIFIERS[Object.keys(TEST_IDENTIFIERS)[k]].key;
+    for (const identifier in TEST_IDENTIFIERS) {
+      const key = TEST_IDENTIFIERS[identifier].key;
       await supportedIdentifiers.addSupportedIdentifier(key);
     }
   });
