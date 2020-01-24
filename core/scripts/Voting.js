@@ -104,16 +104,6 @@ const SUPPORTED_IDENTIFIERS = {
       dataSource: "Constant",
       value: "100"
     }
-  },
-  "0.5": {
-    numerator: {
-      dataSource: "Constant",
-      value: "1"
-    },
-    denominator: {
-      dataSource: "Constant",
-      value: "2"
-    }
   }
 };
 
@@ -144,7 +134,7 @@ const getJson = async url => {
   return json;
 };
 
-async function fetchCryptoComparePrice(request) {
+async function fetchCryptoComparePrice(request, isProd=false) {
   const identifier = request.identifier;
   const time = request.time;
 
@@ -158,9 +148,13 @@ async function fetchCryptoComparePrice(request) {
     "&limit=1",
     "&api_key=" + CC_API_KEY
   ].join("");
-  // console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  // console.log(`Response [${JSON.stringify(jsonOutput)}]`);
+  if (isTest) {
+    console.log(`Response [${JSON.stringify(jsonOutput)}]`);
+  }
 
   if (jsonOutput.Type != "100") {
     throw "Request failed";
@@ -176,17 +170,21 @@ async function fetchCryptoComparePrice(request) {
   }
 
   const tradeTime = jsonOutput.Data[0].time;
-  // console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
+  if (isTest) {
+    console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
+  }
 
   return web3.utils.toWei(price.toString());
 }
 
-function fetchConstantPrice(request, config) {
-  // console.log(
-  //   `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
-  //     request.identifier
-  //   )}]`
-  // );
+function fetchConstantPrice(request, config, isProd=false) {
+  if (isProd) {
+    console.log(
+      `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
+        request.identifier
+      )}]`
+    );
+  }
   return web3.utils.toWei(config.value);
 }
 
@@ -200,7 +198,7 @@ function getIntrinioTimeArguments(time) {
   return ["&end_date=" + requestDate, "&end_time=" + requestTime];
 }
 
-async function fetchIntrinioEquitiesPrice(request, config) {
+async function fetchIntrinioEquitiesPrice(request, config, isProd=false) {
   const url = [
     "https://api-v2.intrinio.com/securities/",
     config.symbol,
@@ -211,9 +209,14 @@ async function fetchIntrinioEquitiesPrice(request, config) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  // console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  // console.log("Intrinio response:", jsonOutput);
+  if (isProd) {
+    console.log("Intrinio response:", jsonOutput);
+  }
 
   if (!jsonOutput.intraday_prices || jsonOutput.intraday_prices.length === 0) {
     throw "Failed to get data from Intrinio";
@@ -221,11 +224,13 @@ async function fetchIntrinioEquitiesPrice(request, config) {
 
   const price = jsonOutput.intraday_prices[0].last_price;
   const time = jsonOutput.intraday_prices[0].time;
-  // console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  if (isProd) {
+    console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  }
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioForexPrice(request, config) {
+async function fetchIntrinioForexPrice(request, config, isProd=false) {
   const url = [
     "https://api-v2.intrinio.com/forex/prices/",
     config.symbol,
@@ -236,9 +241,13 @@ async function fetchIntrinioForexPrice(request, config) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  console.log("Intrinio response:", jsonOutput);
+  if (isProd) {
+    console.log("Intrinio response:", jsonOutput);
+  }
 
   if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
     throw "Failed to get data from Intrinio";
@@ -247,11 +256,13 @@ async function fetchIntrinioForexPrice(request, config) {
   // TODO(ptare): Forex quotes don't appear to have trade prices!?
   const price = jsonOutput.prices[0].open_bid;
   const time = jsonOutput.prices[0].occurred_at;
-  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  if (isProd) {
+    console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  }
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioCryptoPrice(request, config) {
+async function fetchIntrinioCryptoPrice(request, config, isProd=false) {
   const url = [
     "https://api-v2.intrinio.com/crypto/prices?",
     "api_key=" + process.env.INTRINIO_API_KEY,
@@ -261,9 +272,13 @@ async function fetchIntrinioCryptoPrice(request, config) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  if(isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  console.log("Intrinio response:", jsonOutput);
+  if (isProd) {
+    console.log("Intrinio response:", jsonOutput);
+  }
 
   if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
     throw "Failed to get data from Intrinio";
@@ -271,12 +286,14 @@ async function fetchIntrinioCryptoPrice(request, config) {
 
   const price = jsonOutput.prices[0].open;
   const time = jsonOutput.prices[0].time;
-  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  if (isProd) {
+    console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  }
   return web3.utils.toWei(price.toString());
 }
 
 // Works for equities and futures (even though it uses the _EQUITIES_API_KEY).
-async function fetchBarchartPrice(request, config) {
+async function fetchBarchartPrice(request, config, isProd=false) {
   // NOTE: this API only provides data up to a month in the past and only to minute granularities. If the requested
   // `time` has a nonzero number of seconds (not a round minute) or is longer than 1 month in the past, this call will
   // fail.
@@ -290,12 +307,16 @@ async function fetchBarchartPrice(request, config) {
     "&type=minutes",
     "&startDate=" + startDate
   ].join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, key)}]\n    ****** \n`);
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, key)}]\n    ****** \n`);
+  }
 
   const jsonOutput = await getJson(url);
 
   if (jsonOutput.status.code != 200) {
-    console.log("Barchart response:", jsonOutput);
+    if (isProd) {
+      console.log("Barchart response:", jsonOutput);
+    }
     throw "Barchart request failed";
   }
 
@@ -312,21 +333,21 @@ async function fetchBarchartPrice(request, config) {
   throw "Failed to get a matching timestamp";
 }
 
-async function fetchPriceInner(request, config) {
+async function fetchPriceInner(request, config, isProd=false) {
   switch (config.dataSource) {
     case "CryptoCompare":
       return await fetchCryptoComparePrice({
         identifier: { first: config.identifiers.first, second: config.identifiers.second },
         time: request.time
-      });
+      }, isProd);
     case "Constant":
-      return await fetchConstantPrice(request, config);
+      return await fetchConstantPrice(request, config, isProd);
     case "IntrinioEquities":
-      return await fetchIntrinioEquitiesPrice(request, config);
+      return await fetchIntrinioEquitiesPrice(request, config, isProd);
     case "IntrinioForex":
-      return await fetchIntrinioForexPrice(request, config);
+      return await fetchIntrinioForexPrice(request, config, isProd);
     case "Barchart":
-      return await fetchBarchartPrice(request, config);
+      return await fetchBarchartPrice(request, config, isProd);
     case "Manual":
       throw "Unsupported config. Please vote manually using the dApp";
     default:
@@ -334,15 +355,15 @@ async function fetchPriceInner(request, config) {
   }
 }
 
-async function fetchPrice(request) {
+async function fetchPrice(request, isProd=false) {
   const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
   if (plainTextIdentifier.startsWith("test")) {
     return web3.utils.toWei("1.5");
   }
   const config = SUPPORTED_IDENTIFIERS[plainTextIdentifier];
-  const numerator = await fetchPriceInner(request, config.numerator);
+  const numerator = await fetchPriceInner(request, config.numerator, isProd);
   if (config.denominator) {
-    const denominator = await fetchPriceInner(request, config.denominator);
+    const denominator = await fetchPriceInner(request, config.denominator, isProd);
     return web3.utils
       .toBN(numerator)
       .mul(web3.utils.toBN(web3.utils.toWei("1")))
@@ -387,9 +408,11 @@ function getNotifiers() {
 }
 
 class ConsoleNotifier {
-  async sendNotification(subject, body) {
-    console.log(`Notification subject: ${subject}`);
-    console.log(`Notification body: ${body}`);
+  async sendNotification(subject, body, isProd=false) {
+    if (isProd) {
+      console.log(`Notification subject: ${subject}`);
+      console.log(`Notification body: ${body}`);  
+    }
   }
 }
 
@@ -442,8 +465,8 @@ class VotingSystem {
     return await this.voting.getMessage(this.account, topicHash, { from: this.account });
   }
 
-  async constructCommitment(request, roundId) {
-    const fetchedPrice = await fetchPrice(request);
+  async constructCommitment(request, roundId, isProd=false) {
+    const fetchedPrice = await fetchPrice(request, isProd);
     const salt = web3.utils.toBN(web3.utils.randomHex(32));
     const hash = web3.utils.soliditySha3(fetchedPrice, salt);
 
@@ -461,7 +484,7 @@ class VotingSystem {
     };
   }
 
-  async runBatchCommit(requests, roundId) {
+  async runBatchCommit(requests, roundId, isProd=false) {
     let commitments = [];
     const skipped = [];
     const failures = [];
@@ -490,9 +513,9 @@ class VotingSystem {
         }
 
         try {
-          newCommitments.push(await this.constructCommitment(request, roundId));
+          newCommitments.push(await this.constructCommitment(request, roundId, isProd));
         } catch (error) {
-          console.log("Failed", error);
+          // console.error("Failed to construct commitment", error);
           failures.push({ request, error });
         }
       }
@@ -687,7 +710,7 @@ class VotingSystem {
     return { subject, body };
   }
 
-  async innerRunIteration() {
+  async innerRunIteration(isProd=false) {
     const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
@@ -697,61 +720,71 @@ class VotingSystem {
     let failures = [];
     let batches = 0;
     if (phase == VotePhasesEnum.COMMIT) {
-      ({ commitments: updates, skipped, failures, batches } = await this.runBatchCommit(pendingRequests, roundId));
-      // console.log(
-      //   `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
-      //     failures.length
-      //   } commits, split into ${batches} batch${batches != 1 ? `es` : ``}`
-      // );
+      ({ commitments: updates, skipped, failures, batches } = await this.runBatchCommit(pendingRequests, roundId, isProd));
+      if (isProd) {
+        console.log(
+          `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
+            failures.length
+          } commits, split into ${batches} batch${batches != 1 ? `es` : ``}`
+        );
+      }
     } else {
       ({ reveals: updates, batches } = await this.runBatchReveal(pendingRequests, roundId));
-      // console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
+      if (isProd) {
+        console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
+      }
     }
 
     const notification = this.constructNotification(updates, skipped, failures, phase);
     await Promise.all(
-      this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
+      this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body, isProd))
     );
 
     return { updates, skipped, failures, batches };
   }
 
-  async runIteration() {
-    // console.log("Starting voting iteration");
+  async runIteration(isProd=false) {
+    if (isProd) {
+      console.log("Starting voting iteration");
+    }
 
     let results;
     try {
-      results = await this.innerRunIteration();
+      results = await this.innerRunIteration(isProd);
     } catch (error) {
       // A catch-all error handler, so the user gets notified if the AVS crashes. Note that errors fetching prices for
       // some feeds is not considered a crash, and the user will be sent a more detailed message in that case.
       const notification = this.constructErrorNotification(error);
       await Promise.all(
-        this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
+        this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body, isProd))
       );
     }
 
-    // console.log("Finished voting iteration");
+    if (isProd) {
+      console.log("Finished voting iteration");
+    }
     return results;
   }
 }
 
-async function runVoting() {
+async function runVoting(isProd=false) {
   try {
-    console.log("Running Voting system");
+    if (isProd) {
+      console.log("Running Voting system");
+    }
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
     const voting = await Voting.deployed();
     const account = (await web3.eth.getAccounts())[0];
     const votingSystem = new VotingSystem(voting, account, getNotifiers());
-    return await votingSystem.runIteration();
+    return await votingSystem.runIteration(isProd);
   } catch (error) {
-    console.log(error);
+    console.error(`AVS Failed:`, error);
   }
 }
 
 run = async function(callback) {
   // For production script, unnecessary to return stats on successful, skipped, failed requests or batch data
-  await runVoting();
+  await runVoting({ isProd: true });
   callback();
 };
 
