@@ -116,7 +116,7 @@ contract Registry is RegistryInterface, MultiRole {
         // found. This removed position is swapped with the final position in the array and then the array length
         // is shrunk by 1. This process does not preserve array order and does not keep blank positions.
         address[] storage partyArray = partyMembersToDerivatives[party];
-        for (uint i = 0; i < partyArray.length; i.add(1)) {
+        for (uint i = 0; i < partyArray.length; i = i.add(1)) {
             if (partyArray[i] == derivativeAddress) {
                 partyArray[i] = partyArray[partyArray.length - 1];
                 delete partyArray[partyArray.length - 1];
