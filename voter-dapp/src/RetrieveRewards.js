@@ -23,7 +23,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceResolvedEvents == undefined) {
+  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceResolvedEvents === undefined) {
     // Requests haven't been completed.
     return { ready: false };
   } else {
@@ -102,7 +102,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 }
 
 function RetrieveRewards({ votingAccount }) {
-  const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
+  const { useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
