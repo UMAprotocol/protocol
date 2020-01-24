@@ -16,13 +16,14 @@ function getOrCreateObj(containingObj, field) {
   return containingObj[field];
 }
 
-function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, pendingRequests, votingAccount) {
+function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceResolvedEvents, pendingRequests, votingAccount) {
   const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
+  const priceRequests = useCacheCall("Voting", "getPendingRequests");
 
-  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || pendingRequests === undefined) {
+  if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceResolvedEvents == undefined) {
     // Requests haven't been completed.
     return { ready: false };
   } else {
@@ -42,33 +43,34 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, pendi
     // Put events into objects.
     const state = {};
 
-    const getVoteState = (event) => {
-      const identifier = web3.utils.hexToUtf8(event.returnValues.identifier);
-      const time = event.returnValues.time.toString();
+    const getVoteState = (identifier, time) => {
+      const identifier = web3.utils.hexToUtf8(identifier);
+      const time = time.toString();
 
       return getOrCreateObj(state, `${identifier}|${time}`);
     };
 
     for (const event of retrievedRewardsEvents) {
-      const voteState = getVoteState(event, "roundId");
+      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time.toString());
 
       voteState.retrievedRewards = true;
     }
 
-    for (const request of pendingRequests) {
-      const voteState = getVoteState(event, "resolutionRoundId");
+    for (const event of priceResolvedEvents) {
+      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time.toString());
 
-      voteState.priceResolved = true;
+      voteState.priceResolutionRound = event.returnValues.resolutionRoundId.toString();
     }
 
     let oldestUnclaimedRound = MAX_SAFE_INT;
     for (const event of revealedVoteEvents) {
-      const voteState = getVoteState(event, "roundId");
+      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time.toString());
+      const revealRound = event.returnValues.roundId.toString();
 
-      voteState.revealed = true;
-
-      if (!voteState.retrievedRewards && voteState.priceResolved) {
+      if (!voteState.retrievedRewards && voteState.priceResolutionRound === revealRound) {
+        // Reveal happened in the same round as the price resolution: definitely a retrievable reward.
         oldestUnclaimedRound = Math.min(oldestUnclaimedRound, event.returnValues.roundId.toString());
+        voteState.didReveal = true;
       }
     }
 
@@ -79,24 +81,21 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, pendi
 
     // Extract identifiers and times from the round we picked.
     const toRetrieve = [];
-
-    // TODO: we arbitrarily set the max number of retrievals to 10 until we have better data on how many we can fit
-    // into a signle txn.
-    const maxRetrievals = 10;
-    for (const [key, voteState] of Object.entries(state[oldestUnclaimedRound])) {
-      if (!voteState.retrievedRewards && voteState.priceResolved && voteState.revealed) {
+    const maxBatchRetrievals = 25;
+    for (const [key, voteState] of Object.entries(state)) {
+      if (!voteState.retrievedRewards && voteState.priceResolutionRound === oldestUnclaimedRound.toString() && voteState.didReveal) {
         const [identifier, time] = key.split("|");
         toRetrieve.push({ identifier: web3.utils.utf8ToHex(identifier), time: time });
       }
 
-      if (toRetrieve.length === maxRetrievals) {
+      if (toRetrieve.length === maxBatchRetrievals) {
         break;
       }
     }
 
     // Create the txn send function and return it.
     const retrieveRewards = () => {
-      send(votingAccount, oldestUnclaimedRound, toRetrieve);
+      send(votingAccount, oldestUnclaimedRound.toString(), toRetrieve);
     };
 
     return { ready: true, send: retrieveRewards, status: status };
@@ -148,6 +147,15 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
+
+  const priceResolvedEvents = useCacheEvents(
+    "Voting",
+    "PriceResolved",
+    useMemo(() => {
+      return { filter: { voter: votingAccount, resolutionRoundId: roundIds }, fromBlock: 0 };
+    }, [roundIds, votingAccount])
+  );
+
   const revealedVoteEvents = useCacheEvents(
     "Voting",
     "VoteRevealed",
@@ -159,6 +167,7 @@ function RetrieveRewards({ votingAccount }) {
   const rewardsTxn = useRetrieveRewardsTxn(
     retrievedRewardsEvents,
     revealedVoteEvents,
+    priceResolvedEvents,
     pendingRequests,
     votingAccount
   );
