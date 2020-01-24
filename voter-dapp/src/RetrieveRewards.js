@@ -22,7 +22,6 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
   const { web3 } = drizzle;
 
   const { send, status } = useCacheSend("Voting", "retrieveRewards");
-  const priceRequests = useCacheCall("Voting", "getPendingRequests");
 
   if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceResolvedEvents == undefined) {
     // Requests haven't been completed.
