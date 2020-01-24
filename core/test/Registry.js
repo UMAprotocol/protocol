@@ -150,9 +150,17 @@ contract("Registry", function(accounts) {
     await registry.registerDerivative([], derivativeContract1, { from: creator1 });
 
     // Adding party member.
-    await registry.addPartyToDerivative(creator2, { from: derivativeContract1 });
+    let result = await registry.addPartyToDerivative(creator2, { from: derivativeContract1 });
 
-    // Check the party member was added.
+    // Make sure a PartyMemberAdded event is emitted.
+    truffleAssert.eventEmitted(result, "PartyMemberAdded", ev => {
+      return (
+        web3.utils.toChecksumAddress(ev.derivativeAddress) === web3.utils.toChecksumAddress(derivativeContract1) &&
+        web3.utils.toChecksumAddress(ev.party) === web3.utils.toChecksumAddress(creator2)
+      );
+    });
+
+    // Check the party member was added to state.
     assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
     assert.isFalse(await registry.isPartyMemberOfDerivativeParty(rando1, derivativeContract1));
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 1);
@@ -185,7 +193,16 @@ contract("Registry", function(accounts) {
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 2);
 
     // Remove party member from the first derivative and check they are part of only the second derivative.
-    await registry.removedPartyFromDerivative(creator2, { from: derivativeContract1 });
+    let result = await registry.removedPartyFromDerivative(creator2, { from: derivativeContract1 });
+
+    truffleAssert.eventEmitted(result, "PartyMemberRemoved", ev => {
+      return (
+        web3.utils.toChecksumAddress(ev.derivativeAddress) === web3.utils.toChecksumAddress(derivativeContract1) &&
+        web3.utils.toChecksumAddress(ev.party) === web3.utils.toChecksumAddress(creator2)
+      );
+    });
+
+    // Check party member has been removed from state.
     assert.isFalse(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
     assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract2));
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 1);

@@ -42,6 +42,8 @@ contract Registry is RegistryInterface, MultiRole {
     mapping(address => address[]) public partyMembersToDerivatives;
 
     event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
+    event PartyMemberAdded(address indexed derivativeAddress, address indexed party);
+    event PartyMemberRemoved(address indexed derivativeAddress, address indexed party);
 
     constructor() public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
@@ -90,6 +92,8 @@ contract Registry is RegistryInterface, MultiRole {
 
         addressToDerivatives[derivativeAddress].parties[party] = true;
         partyMembersToDerivatives[party].push(derivativeAddress);
+
+        emit PartyMemberAdded(derivativeAddress, party);
     }
 
     function removedPartyFromDerivative(address party) external {
@@ -119,6 +123,8 @@ contract Registry is RegistryInterface, MultiRole {
                 break;
             }
         }
+
+        emit PartyMemberRemoved(derivativeAddress, party);
     }
 
     function getAllRegisteredDerivatives() external view returns (address[] memory derivatives) {
