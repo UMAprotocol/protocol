@@ -367,7 +367,7 @@ contract("scripts/Voting.js", function(accounts) {
 
     // Request Oracle prices.
     for (i = 0; i < testTransactions; i++) {
-      let timeToVote = parseInt(time) + i;
+      let timeToVote = time + i;
       await voting.requestPrice(identifier, timeToVote.toString());
     }
 

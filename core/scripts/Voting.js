@@ -134,7 +134,7 @@ const getJson = async url => {
   return json;
 };
 
-async function fetchCryptoComparePrice(request, isProd = false) {
+async function fetchCryptoComparePrice(request, isProd) {
   const identifier = request.identifier;
   const time = request.time;
 
@@ -177,7 +177,7 @@ async function fetchCryptoComparePrice(request, isProd = false) {
   return web3.utils.toWei(price.toString());
 }
 
-function fetchConstantPrice(request, config, isProd = false) {
+function fetchConstantPrice(request, config, isProd) {
   if (isProd) {
     console.log(
       `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
@@ -198,7 +198,7 @@ function getIntrinioTimeArguments(time) {
   return ["&end_date=" + requestDate, "&end_time=" + requestTime];
 }
 
-async function fetchIntrinioEquitiesPrice(request, config, isProd = false) {
+async function fetchIntrinioEquitiesPrice(request, config, isProd) {
   const url = [
     "https://api-v2.intrinio.com/securities/",
     config.symbol,
@@ -230,7 +230,7 @@ async function fetchIntrinioEquitiesPrice(request, config, isProd = false) {
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioForexPrice(request, config, isProd = false) {
+async function fetchIntrinioForexPrice(request, config, isProd) {
   const url = [
     "https://api-v2.intrinio.com/forex/prices/",
     config.symbol,
@@ -262,7 +262,7 @@ async function fetchIntrinioForexPrice(request, config, isProd = false) {
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioCryptoPrice(request, config, isProd = false) {
+async function fetchIntrinioCryptoPrice(request, config, isProd) {
   const url = [
     "https://api-v2.intrinio.com/crypto/prices?",
     "api_key=" + process.env.INTRINIO_API_KEY,
@@ -293,7 +293,7 @@ async function fetchIntrinioCryptoPrice(request, config, isProd = false) {
 }
 
 // Works for equities and futures (even though it uses the _EQUITIES_API_KEY).
-async function fetchBarchartPrice(request, config, isProd = false) {
+async function fetchBarchartPrice(request, config, isProd) {
   // NOTE: this API only provides data up to a month in the past and only to minute granularities. If the requested
   // `time` has a nonzero number of seconds (not a round minute) or is longer than 1 month in the past, this call will
   // fail.
@@ -333,7 +333,7 @@ async function fetchBarchartPrice(request, config, isProd = false) {
   throw "Failed to get a matching timestamp";
 }
 
-async function fetchPriceInner(request, config, isProd = false) {
+async function fetchPriceInner(request, config, isProd) {
   switch (config.dataSource) {
     case "CryptoCompare":
       return await fetchCryptoComparePrice(
@@ -358,7 +358,7 @@ async function fetchPriceInner(request, config, isProd = false) {
   }
 }
 
-async function fetchPrice(request, isProd = false) {
+async function fetchPrice(request, isProd) {
   const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
   if (plainTextIdentifier.startsWith("test")) {
     return web3.utils.toWei("1.5");
@@ -411,7 +411,7 @@ function getNotifiers() {
 }
 
 class ConsoleNotifier {
-  async sendNotification(subject, body, isProd = false) {
+  async sendNotification(subject, body, isProd) {
     if (isProd) {
       console.log(`Notification subject: ${subject}`);
       console.log(`Notification body: ${body}`);
@@ -468,7 +468,7 @@ class VotingSystem {
     return await this.voting.getMessage(this.account, topicHash, { from: this.account });
   }
 
-  async constructCommitment(request, roundId, isProd = false) {
+  async constructCommitment(request, roundId, isProd) {
     const fetchedPrice = await fetchPrice(request, isProd);
     const salt = web3.utils.toBN(web3.utils.randomHex(32));
     const hash = web3.utils.soliditySha3(fetchedPrice, salt);
@@ -487,7 +487,7 @@ class VotingSystem {
     };
   }
 
-  async runBatchCommit(requests, roundId, isProd = false) {
+  async runBatchCommit(requests, roundId, isProd) {
     let commitments = [];
     const skipped = [];
     const failures = [];
@@ -551,7 +551,7 @@ class VotingSystem {
     return { commitments, skipped, failures, batches };
   }
 
-  async constructReveal(request, roundId) {
+  async constructReveal(request, roundId, isProd) {
     const encryptedCommit = await this.getMessage(request, roundId);
 
     let vote;
@@ -561,7 +561,9 @@ class VotingSystem {
       const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
       vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
     } catch (e) {
-      // console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
+      if (isProd) {
+        console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
+      }
       return null;
     }
 
@@ -573,7 +575,7 @@ class VotingSystem {
     };
   }
 
-  async runBatchReveal(requests, roundId) {
+  async runBatchReveal(requests, roundId, isProd) {
     let reveals = [];
     let batches = 0;
 
@@ -597,7 +599,7 @@ class VotingSystem {
           continue;
         }
 
-        const reveal = await this.constructReveal(request, roundId);
+        const reveal = await this.constructReveal(request, roundId, isProd);
         if (reveal) {
           newReveals.push(reveal);
         }
@@ -713,7 +715,7 @@ class VotingSystem {
     return { subject, body };
   }
 
-  async innerRunIteration(isProd = false) {
+  async innerRunIteration(isProd) {
     const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
@@ -736,7 +738,7 @@ class VotingSystem {
         );
       }
     } else {
-      ({ reveals: updates, batches } = await this.runBatchReveal(pendingRequests, roundId));
+      ({ reveals: updates, batches } = await this.runBatchReveal(pendingRequests, roundId, isProd));
       if (isProd) {
         console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
       }
@@ -750,7 +752,7 @@ class VotingSystem {
     return { updates, skipped, failures, batches };
   }
 
-  async runIteration(isProd = false) {
+  async runIteration(isProd) {
     if (isProd) {
       console.log("Starting voting iteration");
     }
@@ -774,7 +776,7 @@ class VotingSystem {
   }
 }
 
-async function runVoting(isProd = false) {
+async function runVoting(isProd) {
   try {
     if (isProd) {
       console.log("Running Voting system");
