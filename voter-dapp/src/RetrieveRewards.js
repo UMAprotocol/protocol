@@ -187,7 +187,7 @@ function RetrieveRewards({ votingAccount }) {
       </>
     );
   } else {
-    body = "No unclaimed rewards found.";
+    body = "No unclaimed rewards found, yet.";
   }
 
   return (
