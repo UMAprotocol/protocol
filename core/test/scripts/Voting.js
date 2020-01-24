@@ -362,8 +362,8 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("Only batches up to the maximum number of commits or reveals that can fit in one block", async function() {
     const identifier = TEST_IDENTIFIERS["Custom Index (100)"].key;
-    let testTransactions = Math.round(VotingScript.BATCH_MAX_COMMITS * 2 + 1);
-    const time = (parseInt((await voting.getCurrentTime()).toString()) - testTransactions).toString();
+    let testTransactions = VotingScript.BATCH_MAX_COMMITS * 2 + 1;
+    const time = (await voting.getCurrentTime()).toNumber() - testTransactions;
 
     // Request Oracle prices.
     for (i = 0; i < testTransactions; i++) {
@@ -388,10 +388,7 @@ contract("scripts/Voting.js", function(accounts) {
       `There should be ${testTransactions} pending requests during commit phase`
     );
     let result = await votingSystem.runIteration(USE_PROD_LOGS);
-    batchesExpected = Math.floor(testTransactions / VotingScript.BATCH_MAX_COMMITS);
-    if (testTransactions % VotingScript.BATCH_MAX_COMMITS > 0) {
-      batchesExpected += 1;
-    }
+    batchesExpected = Math.ceil(testTransactions / VotingScript.BATCH_MAX_COMMITS);
     assert.equal(batchesExpected, result.batches);
     assert.equal(result.updates.length, testTransactions);
     assert.equal(result.skipped.length, 0);
@@ -406,10 +403,7 @@ contract("scripts/Voting.js", function(accounts) {
       `There should be ${testTransactions} pending requests during reveal phase`
     );
     result = await votingSystem.runIteration(USE_PROD_LOGS);
-    batchesExpected = Math.floor(testTransactions / VotingScript.BATCH_MAX_REVEALS);
-    if (testTransactions % VotingScript.BATCH_MAX_REVEALS > 0) {
-      batchesExpected += 1;
-    }
+    batchesExpected = Math.ceil(testTransactions / VotingScript.BATCH_MAX_REVEALS);
     assert.equal(batchesExpected, result.batches);
     assert.equal(result.updates.length, testTransactions);
 

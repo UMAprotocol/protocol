@@ -134,7 +134,7 @@ const getJson = async url => {
   return json;
 };
 
-async function fetchCryptoComparePrice(request, isProd=false) {
+async function fetchCryptoComparePrice(request, isProd = false) {
   const identifier = request.identifier;
   const time = request.time;
 
@@ -177,7 +177,7 @@ async function fetchCryptoComparePrice(request, isProd=false) {
   return web3.utils.toWei(price.toString());
 }
 
-function fetchConstantPrice(request, config, isProd=false) {
+function fetchConstantPrice(request, config, isProd = false) {
   if (isProd) {
     console.log(
       `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
@@ -198,7 +198,7 @@ function getIntrinioTimeArguments(time) {
   return ["&end_date=" + requestDate, "&end_time=" + requestTime];
 }
 
-async function fetchIntrinioEquitiesPrice(request, config, isProd=false) {
+async function fetchIntrinioEquitiesPrice(request, config, isProd = false) {
   const url = [
     "https://api-v2.intrinio.com/securities/",
     config.symbol,
@@ -209,7 +209,7 @@ async function fetchIntrinioEquitiesPrice(request, config, isProd=false) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  
+
   if (isProd) {
     console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
   }
@@ -230,7 +230,7 @@ async function fetchIntrinioEquitiesPrice(request, config, isProd=false) {
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioForexPrice(request, config, isProd=false) {
+async function fetchIntrinioForexPrice(request, config, isProd = false) {
   const url = [
     "https://api-v2.intrinio.com/forex/prices/",
     config.symbol,
@@ -262,7 +262,7 @@ async function fetchIntrinioForexPrice(request, config, isProd=false) {
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioCryptoPrice(request, config, isProd=false) {
+async function fetchIntrinioCryptoPrice(request, config, isProd = false) {
   const url = [
     "https://api-v2.intrinio.com/crypto/prices?",
     "api_key=" + process.env.INTRINIO_API_KEY,
@@ -272,7 +272,7 @@ async function fetchIntrinioCryptoPrice(request, config, isProd=false) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  if(isProd) {
+  if (isProd) {
     console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
   }
   const jsonOutput = await getJson(url);
@@ -293,7 +293,7 @@ async function fetchIntrinioCryptoPrice(request, config, isProd=false) {
 }
 
 // Works for equities and futures (even though it uses the _EQUITIES_API_KEY).
-async function fetchBarchartPrice(request, config, isProd=false) {
+async function fetchBarchartPrice(request, config, isProd = false) {
   // NOTE: this API only provides data up to a month in the past and only to minute granularities. If the requested
   // `time` has a nonzero number of seconds (not a round minute) or is longer than 1 month in the past, this call will
   // fail.
@@ -333,13 +333,16 @@ async function fetchBarchartPrice(request, config, isProd=false) {
   throw "Failed to get a matching timestamp";
 }
 
-async function fetchPriceInner(request, config, isProd=false) {
+async function fetchPriceInner(request, config, isProd = false) {
   switch (config.dataSource) {
     case "CryptoCompare":
-      return await fetchCryptoComparePrice({
-        identifier: { first: config.identifiers.first, second: config.identifiers.second },
-        time: request.time
-      }, isProd);
+      return await fetchCryptoComparePrice(
+        {
+          identifier: { first: config.identifiers.first, second: config.identifiers.second },
+          time: request.time
+        },
+        isProd
+      );
     case "Constant":
       return await fetchConstantPrice(request, config, isProd);
     case "IntrinioEquities":
@@ -355,7 +358,7 @@ async function fetchPriceInner(request, config, isProd=false) {
   }
 }
 
-async function fetchPrice(request, isProd=false) {
+async function fetchPrice(request, isProd = false) {
   const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
   if (plainTextIdentifier.startsWith("test")) {
     return web3.utils.toWei("1.5");
@@ -408,10 +411,10 @@ function getNotifiers() {
 }
 
 class ConsoleNotifier {
-  async sendNotification(subject, body, isProd=false) {
+  async sendNotification(subject, body, isProd = false) {
     if (isProd) {
       console.log(`Notification subject: ${subject}`);
-      console.log(`Notification body: ${body}`);  
+      console.log(`Notification body: ${body}`);
     }
   }
 }
@@ -465,7 +468,7 @@ class VotingSystem {
     return await this.voting.getMessage(this.account, topicHash, { from: this.account });
   }
 
-  async constructCommitment(request, roundId, isProd=false) {
+  async constructCommitment(request, roundId, isProd = false) {
     const fetchedPrice = await fetchPrice(request, isProd);
     const salt = web3.utils.toBN(web3.utils.randomHex(32));
     const hash = web3.utils.soliditySha3(fetchedPrice, salt);
@@ -484,7 +487,7 @@ class VotingSystem {
     };
   }
 
-  async runBatchCommit(requests, roundId, isProd=false) {
+  async runBatchCommit(requests, roundId, isProd = false) {
     let commitments = [];
     const skipped = [];
     const failures = [];
@@ -710,7 +713,7 @@ class VotingSystem {
     return { subject, body };
   }
 
-  async innerRunIteration(isProd=false) {
+  async innerRunIteration(isProd = false) {
     const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
@@ -720,7 +723,11 @@ class VotingSystem {
     let failures = [];
     let batches = 0;
     if (phase == VotePhasesEnum.COMMIT) {
-      ({ commitments: updates, skipped, failures, batches } = await this.runBatchCommit(pendingRequests, roundId, isProd));
+      ({ commitments: updates, skipped, failures, batches } = await this.runBatchCommit(
+        pendingRequests,
+        roundId,
+        isProd
+      ));
       if (isProd) {
         console.log(
           `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
@@ -743,7 +750,7 @@ class VotingSystem {
     return { updates, skipped, failures, batches };
   }
 
-  async runIteration(isProd=false) {
+  async runIteration(isProd = false) {
     if (isProd) {
       console.log("Starting voting iteration");
     }
@@ -767,7 +774,7 @@ class VotingSystem {
   }
 }
 
-async function runVoting(isProd=false) {
+async function runVoting(isProd = false) {
   try {
     if (isProd) {
       console.log("Running Voting system");
