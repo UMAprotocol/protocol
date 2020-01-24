@@ -6,6 +6,7 @@ import Typography from "@material-ui/core/Typography";
 import { useTableStyles } from "./Styles.js";
 import { MAX_UINT_VAL } from "./common/Constants.js";
 
+// Max integer that can be safely stored in a vanilla js int.
 const MAX_SAFE_INT = 2147483647;
 
 function getOrCreateObj(containingObj, field) {
