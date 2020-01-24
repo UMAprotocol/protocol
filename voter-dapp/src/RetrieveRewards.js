@@ -25,7 +25,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
   if (retrievedRewardsEvents === undefined || revealedVoteEvents === undefined || priceResolvedEvents === undefined) {
     // Requests haven't been completed.
-    return { ready: false };
+    return { ready: false, status };
   } else {
     // Put events into a simple mapping from identifier|time -> state
     const state = {};
@@ -69,7 +69,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
     if (oldestUnclaimedRound === MAX_SAFE_INT) {
       // No unclaimed rounds were found.
-      return { ready: true };
+      return { ready: true, status };
     }
 
     // Extract identifiers and times from the round we picked.
@@ -97,7 +97,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
       send(votingAccount, oldestUnclaimedRound.toString(), toRetrieve);
     };
 
-    return { ready: true, send: retrieveRewards, status: status };
+    return { ready: true, send: retrieveRewards, status };
   }
 }
 
@@ -120,10 +120,10 @@ function RetrieveRewards({ votingAccount }) {
       return MAX_UINT_VAL;
     } else {
       // This section will produce an array of roundIds that should be queried for unclaimed rewards.
-      const lookback = 10;
+      const defaultLookback = 10; // Default lookback is 10 rounds.
 
       // Window length should be the lookback or currentRoundId (so the numbers don't go below 0), whichever is smaller.
-      const windowLength = Math.min(currentRoundId, lookback);
+      const windowLength = Math.min(currentRoundId, defaultLookback);
       const lastCompletedRound = currentRoundId - 1;
 
       // If the lastCompletedRound is 20, this creates the following array:
@@ -166,19 +166,25 @@ function RetrieveRewards({ votingAccount }) {
   );
 
   let body = "";
+  const hasPendingTxns = rewardsTxn.status === "pending";
   if (!rewardsTxn.ready) {
     body = "Loading";
   } else if (rewardsTxn.send) {
     body = (
-      <Button onClick={rewardsTxn.send} variant="contained" color="primary">
+      <Button onClick={rewardsTxn.send} variant="contained" color="primary" disabled={hasPendingTxns}>
         Claim Your Rewards
       </Button>
     );
   } else if (!queryAllRounds) {
     body = (
-      <Button onClick={() => setQueryAllRounds(true)} variant="contained" color="primary">
+      <>
+      <div>
+        No unclaimed rewards found in the last 10 rounds.
+      </div>
+      <Button onClick={() => setQueryAllRounds(true)} variant="contained" color="primary" disabled={hasPendingTxns}>
         Search all past rounds for unclaimed rewards
       </Button>
+      </>
     );
   } else {
     body = "No unclaimed rewards found.";
