@@ -74,7 +74,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
     // Extract identifiers and times from the round we picked.
     const toRetrieve = [];
-    const maxBatchRetrievals = 25;
+    const maxBatchRetrievals = 100;
     for (const [key, voteState] of Object.entries(state)) {
       if (
         !voteState.retrievedRewards &&
