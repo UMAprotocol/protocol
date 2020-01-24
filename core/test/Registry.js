@@ -128,8 +128,8 @@ contract("Registry", function(accounts) {
     assert.equal(derivativeStruct.index.toNumber(), 0);
 
     // Check party is correctly added to derivative.
-    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(party2, derivative1));
-    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(rando1, derivative1));
+    assert.isTrue(await registry.isPartyMemberOfDerivative(party2, derivative1));
+    assert.isFalse(await registry.isPartyMemberOfDerivative(rando1, derivative1));
   });
 
   it("Double-register derivative", async function() {
@@ -161,8 +161,8 @@ contract("Registry", function(accounts) {
     });
 
     // Check the party member was added to state.
-    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
-    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(rando1, derivativeContract1));
+    assert.isTrue(await registry.isPartyMemberOfDerivative(creator2, derivativeContract1));
+    assert.isFalse(await registry.isPartyMemberOfDerivative(rando1, derivativeContract1));
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 1);
     assert.equal((await registry.getRegisteredDerivatives(creator2))[0], derivativeContract1);
 
@@ -177,8 +177,8 @@ contract("Registry", function(accounts) {
     await registry.addPartyToDerivative(creator2, { from: derivativeContract2 });
 
     // Check that creator2 is part of two derivatives.
-    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract2));
-    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(rando1, derivativeContract2));
+    assert.isTrue(await registry.isPartyMemberOfDerivative(creator2, derivativeContract2));
+    assert.isFalse(await registry.isPartyMemberOfDerivative(rando1, derivativeContract2));
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 2);
     assert.equal((await registry.getRegisteredDerivatives(creator2))[0], derivativeContract1);
     assert.equal((await registry.getRegisteredDerivatives(creator2))[1], derivativeContract2);
@@ -196,7 +196,7 @@ contract("Registry", function(accounts) {
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 2);
 
     // Remove party member from the first derivative and check they are part of only the second derivative.
-    let result = await registry.removedPartyFromDerivative(creator2, { from: derivativeContract1 });
+    let result = await registry.removePartyFromDerivative(creator2, { from: derivativeContract1 });
 
     truffleAssert.eventEmitted(result, "PartyMemberRemoved", ev => {
       return (
@@ -206,21 +206,24 @@ contract("Registry", function(accounts) {
     });
 
     // Check party member has been removed from state.
-    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
-    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract2));
+    assert.isFalse(await registry.isPartyMemberOfDerivative(creator2, derivativeContract1));
+    assert.isTrue(await registry.isPartyMemberOfDerivative(creator2, derivativeContract2));
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 1);
     assert.equal((await registry.getRegisteredDerivatives(creator2))[0], derivativeContract2);
 
     // Cant remove a party from derivative multiple times.
-    assert(await didContractThrow(registry.removedPartyFromDerivative(creator2, { from: derivativeContract1 })));
+    assert(await didContractThrow(registry.removePartyFromDerivative(creator2, { from: derivativeContract1 })));
 
     // Cant remove a member to an invalid derivative.
-    assert(await didContractThrow(registry.removedPartyFromDerivative(creator2, { from: rando1 })));
+    assert(await didContractThrow(registry.removePartyFromDerivative(creator2, { from: rando1 })));
 
     // Remove party remember from second derivative and check that they are part of none.
-    await registry.removedPartyFromDerivative(creator2, { from: derivativeContract2 });
+    await registry.removePartyFromDerivative(creator2, { from: derivativeContract2 });
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 0);
-    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
-    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract2));
+    assert.isFalse(await registry.isPartyMemberOfDerivative(creator2, derivativeContract1));
+    assert.isFalse(await registry.isPartyMemberOfDerivative(creator2, derivativeContract2));
+
+    // Cant remove a derivative if there is none left for the party.
+    assert(await didContractThrow(registry.removePartyFromDerivative(creator2, { from: derivativeContract1 })));
   });
 });

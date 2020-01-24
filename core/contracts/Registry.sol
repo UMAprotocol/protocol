@@ -28,8 +28,12 @@ contract Registry is RegistryInterface, MultiRole {
     // Store all key information about a derivative.
     struct Derivative {
         DerivativeValidity valid;
-        mapping(address => bool) parties;
         uint128 index;
+    }
+
+    struct PartyMember {
+        address[] derivatives;
+        mapping(address => uint) derivativeIndex;
     }
 
     // Array of all derivatives that are approved to use the UMA Oracle.
@@ -39,7 +43,7 @@ contract Registry is RegistryInterface, MultiRole {
     mapping(address => Derivative) public addressToDerivatives;
 
     // Map each party member to their associated derivatives.
-    mapping(address => address[]) public partyMembersToDerivatives;
+    mapping(address => PartyMember) private partyMembersToDerivatives;
 
     event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
     event PartyMemberAdded(address indexed derivativeAddress, address indexed party);
@@ -58,6 +62,7 @@ contract Registry is RegistryInterface, MultiRole {
         Derivative storage derivative = addressToDerivatives[derivativeAddress];
         require(addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Invalid, "Can only register once");
 
+        // Store derivative address as a registered deriviative.
         registeredDerivatives.push(derivativeAddress);
 
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
@@ -67,8 +72,8 @@ contract Registry is RegistryInterface, MultiRole {
         // add the derivative as one of the party members own derivatives.
         derivative.valid = DerivativeValidity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
-            derivative.parties[parties[i]] = true;
-            partyMembersToDerivatives[parties[i]].push(derivativeAddress);
+            uint derivativeIndex = partyMembersToDerivatives[parties[i]].derivatives.push(derivativeAddress);
+            partyMembersToDerivatives[parties[i]].derivativeIndex[derivativeAddress] = derivativeIndex - 1;
         }
 
         emit NewDerivativeRegistered(derivativeAddress, msg.sender, parties);
@@ -79,7 +84,7 @@ contract Registry is RegistryInterface, MultiRole {
     }
 
     function getRegisteredDerivatives(address party) external view returns (address[] memory) {
-        return partyMembersToDerivatives[party];
+        return partyMembersToDerivatives[party].derivatives;
     }
 
     function addPartyToDerivative(address party) external {
@@ -89,40 +94,51 @@ contract Registry is RegistryInterface, MultiRole {
             addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
             "Can add to valid derivative"
         );
-        require(addressToDerivatives[derivativeAddress].parties[party] == false, "Can only register a party once");
+        require(!isPartyMemberOfDerivative(party, derivativeAddress), "Can only register a party once");
 
-        addressToDerivatives[derivativeAddress].parties[party] = true;
-        partyMembersToDerivatives[party].push(derivativeAddress);
+        uint derivativeIndex = partyMembersToDerivatives[party].derivatives.push(derivativeAddress);
+        partyMembersToDerivatives[party].derivativeIndex[derivativeAddress] = derivativeIndex - 1;
 
         emit PartyMemberAdded(derivativeAddress, party);
     }
 
-    function removedPartyFromDerivative(address party) external {
+    function removePartyFromDerivative(address party) external {
         address derivativeAddress = msg.sender;
+
+        PartyMember storage partyMember = partyMembersToDerivatives[party];
 
         require(
             addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
             "Remove only from valid derivative"
         );
-        require(addressToDerivatives[derivativeAddress].parties[party] == true, "Remove existing party only");
+        require(isPartyMemberOfDerivative(party, derivativeAddress), "Can only register a party once");
 
-        addressToDerivatives[derivativeAddress].parties[party] = false;
+        // Index of the current location of the derivative to remove.
+        uint deleteIndex = partyMember.derivativeIndex[derivativeAddress];
 
-        // Need to delete the derivative from the partymembers array. This is vulnerable to a party member not being able
-        // to remove a derivative from their array, if they have too many in their array and exceed gas limit.
-        // However, this dos attack will not affect any party member other than the one who created too many.
+        // Set the removed derivative address in the lookup map to 0 (deleted).
+        partyMember.derivativeIndex[derivativeAddress] = 0;
 
-        // Deleting works by looping through all derivatives the party member has in their array until the location is
-        // found. This removed position is swapped with the final position in the array and then the array length
-        // is shrunk by 1. This process does not preserve array order and does not keep blank positions.
-        address[] storage partyArray = partyMembersToDerivatives[party];
-        for (uint i = 0; i < partyArray.length; i = i.add(1)) {
-            if (partyArray[i] == derivativeAddress) {
-                partyArray[i] = partyArray[partyArray.length - 1];
-                delete partyArray[partyArray.length - 1];
-                partyArray.length--;
-                break;
-            }
+        uint256 numberOfDerivatives = partyMember.derivatives.length;
+        require(numberOfDerivatives != 0, "Can't remove if party has no derivatives");
+
+        if (numberOfDerivatives > 1) {
+            // Store the last derivative in the array's address to update the lookup map.
+            address lastDerivativeAddress = partyMember.derivatives[numberOfDerivatives - 1];
+
+            // Swap the derivative to be removed with the last derivative in the array.
+            partyMember.derivatives[deleteIndex] = lastDerivativeAddress;
+
+            // Delete the derivative from the array and shrink it's length.
+            delete partyMember.derivatives[numberOfDerivatives - 1];
+            partyMember.derivatives.length--;
+
+            // Update the lookup index with the new location.
+            partyMember.derivativeIndex[lastDerivativeAddress] = deleteIndex;
+        } else {
+            delete partyMember.derivatives[numberOfDerivatives - 1];
+            partyMember.derivatives.length--;
+            partyMember.derivativeIndex[derivativeAddress] = 0;
         }
 
         emit PartyMemberRemoved(derivativeAddress, party);
@@ -132,7 +148,10 @@ contract Registry is RegistryInterface, MultiRole {
         return registeredDerivatives;
     }
 
-    function isPartyMemberOfDerivativeParty(address party, address derivative) external view returns (bool) {
-        return addressToDerivatives[derivative].parties[party];
+    function isPartyMemberOfDerivative(address party, address derivativeAddress) public view returns (bool) {
+        uint index = partyMembersToDerivatives[party].derivativeIndex[derivativeAddress];
+        return
+            partyMembersToDerivatives[party].derivatives.length > index &&
+            partyMembersToDerivatives[party].derivatives[index] == derivativeAddress;
     }
 }
