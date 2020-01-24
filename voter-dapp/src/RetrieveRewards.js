@@ -16,7 +16,7 @@ function getOrCreateObj(containingObj, field) {
   return containingObj[field];
 }
 
-function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceResolvedEvents, pendingRequests, votingAccount) {
+function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, priceResolvedEvents, votingAccount) {
   const { drizzle, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
 
@@ -27,49 +27,42 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
     // Requests haven't been completed.
     return { ready: false };
   } else {
-    // Loop through and match up.
-
-    // Short circuits
-    //     if (priceResolvedEvents.length === retrievedRewardsEvents.length) {
-    //       // If the voter has as many reward retrievals as there were resolved prices in these rounds, then we should be done.
-    //       return null;
-    //     }
-    //
-    //     if (revealedVoteEvents.length === retrievedRewardsEvents.length) {
-    //       // If the voter has retrieved rewards for each reveal, they should be done retrieving for all of these rounds.
-    //       return null;
-    //     }
-
-    // Put events into objects.
+    // Put events into a simple mapping from identifier|time -> state
     const state = {};
 
-    const getVoteState = (identifier, time) => {
-      const identifier = web3.utils.hexToUtf8(identifier);
-      const time = time.toString();
+    // Function to get the voteState object for an identifier and time.
+    const getVoteState = (identifierIn, timeIn) => {
+      const identifier = web3.utils.hexToUtf8(identifierIn);
+      const time = timeIn.toString();
 
       return getOrCreateObj(state, `${identifier}|${time}`);
     };
 
+    // Each of the following loops adds the relevant portions of the event state to the corresponding voteState data
+    // structure.
     for (const event of retrievedRewardsEvents) {
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time.toString());
+      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
 
       voteState.retrievedRewards = true;
     }
 
     for (const event of priceResolvedEvents) {
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time.toString());
+      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
 
       voteState.priceResolutionRound = event.returnValues.resolutionRoundId.toString();
     }
 
+    // Since this loop is the last one, we can use the state to determine if this identifer, time, roundId combo
+    // is eligible for a reward claim. We track the oldestUnclaimedRound to determine which round the transaction
+    // should query (since only one can be chosen).
     let oldestUnclaimedRound = MAX_SAFE_INT;
     for (const event of revealedVoteEvents) {
-      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time.toString());
+      const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
       const revealRound = event.returnValues.roundId.toString();
 
       if (!voteState.retrievedRewards && voteState.priceResolutionRound === revealRound) {
         // Reveal happened in the same round as the price resolution: definitely a retrievable reward.
-        oldestUnclaimedRound = Math.min(oldestUnclaimedRound, event.returnValues.roundId.toString());
+        oldestUnclaimedRound = Math.min(oldestUnclaimedRound, revealRound);
         voteState.didReveal = true;
       }
     }
@@ -83,11 +76,17 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
     const toRetrieve = [];
     const maxBatchRetrievals = 25;
     for (const [key, voteState] of Object.entries(state)) {
-      if (!voteState.retrievedRewards && voteState.priceResolutionRound === oldestUnclaimedRound.toString() && voteState.didReveal) {
+      if (
+        !voteState.retrievedRewards &&
+        voteState.priceResolutionRound === oldestUnclaimedRound.toString() &&
+        voteState.didReveal
+      ) {
+        // If this is an eligible reward for the oldest round, extract the information and push it into the retrieval array.
         const [identifier, time] = key.split("|");
         toRetrieve.push({ identifier: web3.utils.utf8ToHex(identifier), time: time });
       }
 
+      // Only so many reward claims can fit in a single transaction, so break if we go over that limit.
       if (toRetrieve.length === maxBatchRetrievals) {
         break;
       }
@@ -109,15 +108,10 @@ function RetrieveRewards({ votingAccount }) {
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const pendingRequests = useCacheCall("Voting", "getPendingRequests");
 
+  // This variable tracks whether the user only wants to query a limited lookback or all history for unclaimed rewards.
   const [queryAllRounds, setQueryAllRounds] = useState(false);
 
-  // 1a. Find last n rounds of reward retrieval.
-  // 1b. Find last n rounds of price resolutions.
-  // 1c. Find last n rounds of vote reveals.
-  // 2. Find all price resolutions with a corresponding reveal (price, round, time, and identifier must match), but without a reward retrieval and group them by round.
-  // 3. Find the oldest round and construct a button with a txn that requests rewards for all reveals in that round.
-  // 4. Tell the user that they have n rounds that they have not fully claimed rewards for.
-
+  // Determines the list of roundIds to query for. Will return undefined if the user wants to search the entire history.
   const roundIds = useMemo(() => {
     if (queryAllRounds) {
       // Signal that all rounds should be searched by setting the query parameter to undefined.
@@ -139,6 +133,7 @@ function RetrieveRewards({ votingAccount }) {
     }
   }, [currentRoundId, queryAllRounds]);
 
+  // Query all reward retrievals for this user, reveals for this user, and price resolutions for the roundIds selected above.
   const retrievedRewardsEvents = useCacheEvents(
     "Voting",
     "RewardsRetrieved",
@@ -146,7 +141,6 @@ function RetrieveRewards({ votingAccount }) {
       return { filter: { voter: votingAccount, roundId: roundIds }, fromBlock: 0 };
     }, [roundIds, votingAccount])
   );
-
 
   const priceResolvedEvents = useCacheEvents(
     "Voting",
@@ -164,6 +158,7 @@ function RetrieveRewards({ votingAccount }) {
     }, [roundIds, votingAccount])
   );
 
+  // Construct the claim rewards transaction.
   const rewardsTxn = useRetrieveRewardsTxn(
     retrievedRewardsEvents,
     revealedVoteEvents,
