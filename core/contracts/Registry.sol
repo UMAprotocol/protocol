@@ -67,9 +67,7 @@ contract Registry is RegistryInterface, MultiRole {
             partyMembersToDerivatives[parties[i]].push(derivativeAddress);
         }
 
-        address[] memory partiesForEvent = parties;
-        emit NewDerivativeRegistered(derivativeAddress, msg.sender, partiesForEvent);
-
+        emit NewDerivativeRegistered(derivativeAddress, msg.sender, parties);
     }
 
     function isDerivativeRegistered(address derivative) external view returns (bool) {
