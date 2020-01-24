@@ -33,9 +33,9 @@ contract Registry is RegistryInterface, MultiRole {
 
     struct PartyMember {
         // Each derivative address is stored in this array.
-        address[] derivatives; 
+        address[] derivatives;
         // The index of each derivative is mapped to it's address for constant time look up and deletion.
-        mapping(address => uint) derivativeIndex; 
+        mapping(address => uint) derivativeIndex;
     }
 
     // Array of all derivatives that are approved to use the UMA Oracle.
@@ -140,7 +140,7 @@ contract Registry is RegistryInterface, MultiRole {
 
             // Update the lookup index with the new location.
             partyMember.derivativeIndex[lastDerivativeAddress] = deleteIndex;
-        // If there is only one derivative we simply need to delete it and set the index to zero.
+            // If there is only one derivative we simply need to delete it and set the index to zero.
         } else {
             delete partyMember.derivatives[numberOfDerivatives - 1];
             partyMember.derivatives.length--;
