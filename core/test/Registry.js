@@ -191,6 +191,9 @@ contract("Registry", function(accounts) {
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 1);
     assert.equal((await registry.getRegisteredDerivatives(creator2))[0], derivativeContract2);
 
+    // Cant remove a party from derivative multiple times.
+    assert(await didContractThrow(registry.removedPartyFromDerivative(creator2, { from: derivativeContract1 })));
+
     // Remove party remember from second derivative and check that they are part of none.
     await registry.removedPartyFromDerivative(creator2, { from: derivativeContract2 });
     assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 0);

@@ -9,7 +9,8 @@ pragma experimental ABIEncoderV2;
 
 /**
  * @title Registry for derivatives and approved derivative creators.
- * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives.
+ * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives
+ * and stores party memebers of a derivative.
  */
 contract Registry is RegistryInterface, MultiRole {
     using SafeMath for uint;
@@ -81,39 +82,39 @@ contract Registry is RegistryInterface, MultiRole {
 
     function addPartyToDerivative(address party) external {
         // Only a derivative calling can add a member to it's own party.
-        address deriviativeAddress = msg.sender;
+        address derivativeAddress = msg.sender;
 
         require(
-            addressToDerivatives[deriviativeAddress].valid == DerivativeValidity.Valid,
+            addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
             "Can add to valid derivative"
         );
-        require(addressToDerivatives[deriviativeAddress].parties[party] == false, "Can only register a party once");
+        require(addressToDerivatives[derivativeAddress].parties[party] == false, "Can only register a party once");
 
-        addressToDerivatives[deriviativeAddress].parties[party] = true;
-        partyMembersToDerivatives[party].push(deriviativeAddress);
+        addressToDerivatives[derivativeAddress].parties[party] = true;
+        partyMembersToDerivatives[party].push(derivativeAddress);
     }
 
     function removedPartyFromDerivative(address party) external {
-        address deriviativeAddress = msg.sender;
+        address derivativeAddress = msg.sender;
 
         require(
-            addressToDerivatives[deriviativeAddress].valid == DerivativeValidity.Valid,
+            addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
             "Remove only from valid derivative"
         );
-        require(addressToDerivatives[deriviativeAddress].parties[party] == true, "Remove existing party only");
+        require(addressToDerivatives[derivativeAddress].parties[party] == true, "Remove existing party only");
 
-        addressToDerivatives[deriviativeAddress].parties[party] = false;
+        addressToDerivatives[derivativeAddress].parties[party] = false;
 
         // Need to delete the derivative from the partymembers array. This is vulnerable to a party member not being able
         // to remove a derivative from their array, if they have too many in their array and exceed gas limit.
         // However, this dos attack will not affect any party member other than the one who created too many.
 
-        // Deleting works by looping through all derivatives the party memeber has in their array until the location is
+        // Deleting works by looping through all derivatives the party member has in their array until the location is
         // found. This removed position is swapped with the final position in the array and then the array length
         // is shrunk by 1. This process does not preserve array order and does not keep blank positions.
         address[] storage partyArray = partyMembersToDerivatives[party];
         for (uint i = 0; i < partyArray.length; i.add(1)) {
-            if (partyArray[i] == deriviativeAddress) {
+            if (partyArray[i] == derivativeAddress) {
                 partyArray[i] = partyArray[partyArray.length - 1];
                 delete partyArray[partyArray.length - 1];
                 partyArray.length--;
