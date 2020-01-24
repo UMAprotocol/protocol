@@ -106,7 +106,6 @@ function RetrieveRewards({ votingAccount }) {
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
-  const pendingRequests = useCacheCall("Voting", "getPendingRequests");
 
   // This variable tracks whether the user only wants to query a limited lookback or all history for unclaimed rewards.
   const [queryAllRounds, setQueryAllRounds] = useState(false);
@@ -163,7 +162,6 @@ function RetrieveRewards({ votingAccount }) {
     retrievedRewardsEvents,
     revealedVoteEvents,
     priceResolvedEvents,
-    pendingRequests,
     votingAccount
   );
 
