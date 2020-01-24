@@ -13,7 +13,12 @@ contract("Registry", function(accounts) {
   const creator1 = accounts[1];
   const creator2 = accounts[2];
   const rando1 = accounts[3];
-  const rando2 = accounts[4];
+
+  // The addition and removal of party members after a derivative is created can only be done
+  // by the derivative contract its self. These two addresses act to simulate calls from a
+  // registered derivative to tests these post creation addition and removal actions.
+  const derivativeContract1 = accounts[4];
+  const derivativeContract2 = accounts[5];
 
   beforeEach(async function() {
     registry = await Registry.new();
@@ -92,7 +97,7 @@ contract("Registry", function(accounts) {
     const party2 = web3.utils.randomHex(20);
     const party3 = web3.utils.randomHex(20);
 
-    // Register two derivatives with partially overlapping parties
+    // Register three derivatives with partially overlapping parties
     await registry.registerDerivative([party1, party2], derivative1, { from: creator1 });
     await registry.registerDerivative([party2, party3], derivative2, { from: creator2 });
     await registry.registerDerivative([], derivative3, { from: creator1 });
@@ -116,6 +121,15 @@ contract("Registry", function(accounts) {
     assert.isTrue(areAddressesEqual(allDerivatives[0], derivative1));
     assert.isTrue(areAddressesEqual(allDerivatives[1], derivative2));
     assert.isTrue(areAddressesEqual(allDerivatives[2], derivative3));
+
+    // Check derivative information.
+    const derivativeStruct = await registry.addressToDerivatives(derivative1);
+    assert.equal(derivativeStruct.valid.toNumber(), 1);
+    assert.equal(derivativeStruct.index.toNumber(), 0);
+
+    // Check party is correctly added to derivative.
+    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(party2, derivative1));
+    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(rando1, derivative1));
   });
 
   it("Double-register derivative", async function() {
@@ -128,5 +142,59 @@ contract("Registry", function(accounts) {
 
     // Cannot register a derivative that is already registered.
     assert(await didContractThrow(registry.registerDerivative([], derivative1, { from: creator1 })));
+  });
+
+  it("Adding party members to derivatives", async function() {
+    // Approve creator and register derivative.
+    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: owner });
+    await registry.registerDerivative([], derivativeContract1, { from: creator1 });
+
+    // Adding party member.
+    await registry.addPartyToDerivative(creator2, { from: derivativeContract1 });
+
+    // Check the party member was added.
+    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
+    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(rando1, derivativeContract1));
+    assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 1);
+    assert.equal((await registry.getRegisteredDerivatives(creator2))[0], derivativeContract1);
+
+    // Cant add a member to a party more than once.
+    assert(await didContractThrow(registry.addPartyToDerivative(creator2, { from: derivativeContract1 })));
+
+    // Create a second derivative and add it to the same user. Check that they are party of two.
+    await registry.registerDerivative([], derivativeContract2, { from: creator1 });
+    await registry.addPartyToDerivative(creator2, { from: derivativeContract2 });
+
+    // Check that creator2 is part of two derivatives.
+    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract2));
+    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(rando1, derivativeContract2));
+    assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 2);
+    assert.equal((await registry.getRegisteredDerivatives(creator2))[0], derivativeContract1);
+    assert.equal((await registry.getRegisteredDerivatives(creator2))[1], derivativeContract2);
+  });
+
+  it("Removing party members from derivatives", async function() {
+    // Approve creator and register two derivative.
+    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator1, { from: owner });
+    await registry.registerDerivative([], derivativeContract1, { from: creator1 });
+    await registry.registerDerivative([], derivativeContract2, { from: creator1 });
+
+    // Adding party member to both derivatives.
+    await registry.addPartyToDerivative(creator2, { from: derivativeContract1 });
+    await registry.addPartyToDerivative(creator2, { from: derivativeContract2 });
+    assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 2);
+
+    // Remove party member from the first derivative and check they are part of only the second derivative.
+    await registry.removedPartyFromDerivative(creator2, { from: derivativeContract1 });
+    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
+    assert.isTrue(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract2));
+    assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 1);
+    assert.equal((await registry.getRegisteredDerivatives(creator2))[0], derivativeContract2);
+
+    // Remove party remember from second derivative and check that they are part of none.
+    await registry.removedPartyFromDerivative(creator2, { from: derivativeContract2 });
+    assert.equal((await registry.getRegisteredDerivatives(creator2)).length, 0);
+    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract1));
+    assert.isFalse(await registry.isPartyMemberOfDerivativeParty(creator2, derivativeContract2));
   });
 });

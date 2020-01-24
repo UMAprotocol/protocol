@@ -31,14 +31,14 @@ contract Registry is RegistryInterface, MultiRole {
         uint128 index;
     }
 
-    // Map the address of the derivitive contract to the associated derivative object.
+    // Array of all derivatives that are approved to use the UMA Oracle.
+    address[] public registeredDerivatives;
+
+    // Map the address of the derivative contract to the associated derivative object.
     mapping(address => Derivative) public addressToDerivatives;
 
     // Map each party member to their associated derivatives.
     mapping(address => address[]) public partyMembersToDerivatives;
-
-    // Array of all derivatives that are approved to use the UMA Oracle.
-    address[] public registeredDerivatives;
 
     event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
 
@@ -79,29 +79,54 @@ contract Registry is RegistryInterface, MultiRole {
         return partyMembersToDerivatives[party];
     }
 
-    function addPartyToDerivative(address party, address derivative) external onlyRoleHolder(uint(Roles.Owner)) {
-        require(addressToDerivatives[derivative].valid == DerivativeValidity.Valid, "Can add to valid derivative");
-        require(addressToDerivatives[derivative].parties[party] == false, "Can only register a party once");
+    function addPartyToDerivative(address party) external {
+        // Only a derivative calling can add a member to it's own party.
+        address deriviativeAddress = msg.sender;
 
-        addressToDerivatives[derivative].parties[party] = true;
-        partyMembersToDerivatives[party].push(derivative);
+        require(
+            addressToDerivatives[deriviativeAddress].valid == DerivativeValidity.Valid,
+            "Can add to valid derivative"
+        );
+        require(addressToDerivatives[deriviativeAddress].parties[party] == false, "Can only register a party once");
+
+        addressToDerivatives[deriviativeAddress].parties[party] = true;
+        partyMembersToDerivatives[party].push(deriviativeAddress);
     }
 
-    function removedPartyFromDerivative(address party, address derivative) external onlyRoleHolder(uint(Roles.Owner)) {
-        require(addressToDerivatives[derivative].valid == DerivativeValidity.Valid, "Can remove from valid derivative");
-        require(addressToDerivatives[derivative].parties[party] == true, "Can only remove an added party");
+    function removedPartyFromDerivative(address party) external {
+        address deriviativeAddress = msg.sender;
 
-        addressToDerivatives[derivative].parties[party] = false;
+        require(
+            addressToDerivatives[deriviativeAddress].valid == DerivativeValidity.Valid,
+            "Remove only from valid derivative"
+        );
+        require(addressToDerivatives[deriviativeAddress].parties[party] == true, "Remove existing party only");
 
-        for (uint i = 0; i < partyMembersToDerivatives[party].length; i.add(1)) {
-            if (partyMembersToDerivatives[party][i] == derivative) {
-                delete partyMembersToDerivatives[derivative];
+        addressToDerivatives[deriviativeAddress].parties[party] = false;
+
+        // Need to delete the derivative from the partymembers array. This is vulnerable to a party member not being able
+        // to remove a derivative from their array, if they have too many in their array and exceed gas limit.
+        // However, this dos attack will not affect any party member other than the one who created too many.
+
+        // Deleting works by looping through all derivatives the party memeber has in their array until the location is
+        // found. This removed position is swapped with the final position in the array and then the array length
+        // is shrunk by 1. This process does not preserve array order and does not keep blank positions.
+        address[] storage partyArray = partyMembersToDerivatives[party];
+        for (uint i = 0; i < partyArray.length; i.add(1)) {
+            if (partyArray[i] == deriviativeAddress) {
+                partyArray[i] = partyArray[partyArray.length - 1];
+                delete partyArray[partyArray.length - 1];
+                partyArray.length--;
+                break;
             }
         }
-        partyMembersToDerivatives[party].push(derivative);
     }
 
     function getAllRegisteredDerivatives() external view returns (address[] memory derivatives) {
         return registeredDerivatives;
+    }
+
+    function isPartyMemberOfDerivativeParty(address party, address derivative) external view returns (bool) {
+        return addressToDerivatives[derivative].parties[party];
     }
 }
