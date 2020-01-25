@@ -801,7 +801,10 @@ contract("Voting", function(accounts) {
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a resolved price request.
     assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
-    assert.equal((await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(), price.toString());
+    assert.equal(
+      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
+      price.toString()
+    );
     statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
     assert.equal(statuses[0].status.toString(), "2");
     assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).subn(1).toString());
