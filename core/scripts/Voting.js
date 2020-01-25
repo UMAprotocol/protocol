@@ -107,6 +107,15 @@ const SUPPORTED_IDENTIFIERS = {
   }
 };
 
+// This number defines the maximum number of transactions that can fit within one block.
+// It was calculated by testing the batchCommit and batch revealFunctions to identify the
+// maximum that can be placed within one tx. The actual number that can fit is slightly
+// more but is set to a lower amount for safety.
+//
+// The latest tested maximum is 31
+const BATCH_MAX_COMMITS = 25;
+const BATCH_MAX_REVEALS = 25;
+
 const CC_API_KEY = process.env.CRYPTO_COMPARE_API_KEY
   ? process.env.CRYPTO_COMPARE_API_KEY
   : "6a5293dbbe836ea20b8bda991ee031443e7a4fe936afd8293f6985d358c1d2fc";
@@ -125,7 +134,7 @@ const getJson = async url => {
   return json;
 };
 
-async function fetchCryptoComparePrice(request) {
+async function fetchCryptoComparePrice(request, isProd) {
   const identifier = request.identifier;
   const time = request.time;
 
@@ -139,9 +148,13 @@ async function fetchCryptoComparePrice(request) {
     "&limit=1",
     "&api_key=" + CC_API_KEY
   ].join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, CC_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  console.log(`Response [${JSON.stringify(jsonOutput)}]`);
+  if (isProd) {
+    console.log(`Response [${JSON.stringify(jsonOutput)}]`);
+  }
 
   if (jsonOutput.Type != "100") {
     throw "Request failed";
@@ -157,17 +170,21 @@ async function fetchCryptoComparePrice(request) {
   }
 
   const tradeTime = jsonOutput.Data[0].time;
-  console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
+  if (isProd) {
+    console.log(`Retrieved quote [${price}] at [${tradeTime}] for asset [${identifier.first}${identifier.second}]`);
+  }
 
   return web3.utils.toWei(price.toString());
 }
 
-function fetchConstantPrice(request, config) {
-  console.log(
-    `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
-      request.identifier
-    )}]`
-  );
+function fetchConstantPrice(request, config, isProd) {
+  if (isProd) {
+    console.log(
+      `Returning constant price [${config.value}] at [${request.time}] for asset [${web3.utils.hexToUtf8(
+        request.identifier
+      )}]`
+    );
+  }
   return web3.utils.toWei(config.value);
 }
 
@@ -181,7 +198,7 @@ function getIntrinioTimeArguments(time) {
   return ["&end_date=" + requestDate, "&end_time=" + requestTime];
 }
 
-async function fetchIntrinioEquitiesPrice(request, config) {
+async function fetchIntrinioEquitiesPrice(request, config, isProd) {
   const url = [
     "https://api-v2.intrinio.com/securities/",
     config.symbol,
@@ -192,9 +209,14 @@ async function fetchIntrinioEquitiesPrice(request, config) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  console.log("Intrinio response:", jsonOutput);
+  if (isProd) {
+    console.log("Intrinio response:", jsonOutput);
+  }
 
   if (!jsonOutput.intraday_prices || jsonOutput.intraday_prices.length === 0) {
     throw "Failed to get data from Intrinio";
@@ -202,11 +224,13 @@ async function fetchIntrinioEquitiesPrice(request, config) {
 
   const price = jsonOutput.intraday_prices[0].last_price;
   const time = jsonOutput.intraday_prices[0].time;
-  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  if (isProd) {
+    console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  }
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioForexPrice(request, config) {
+async function fetchIntrinioForexPrice(request, config, isProd) {
   const url = [
     "https://api-v2.intrinio.com/forex/prices/",
     config.symbol,
@@ -217,9 +241,13 @@ async function fetchIntrinioForexPrice(request, config) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  console.log("Intrinio response:", jsonOutput);
+  if (isProd) {
+    console.log("Intrinio response:", jsonOutput);
+  }
 
   if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
     throw "Failed to get data from Intrinio";
@@ -228,11 +256,13 @@ async function fetchIntrinioForexPrice(request, config) {
   // TODO(ptare): Forex quotes don't appear to have trade prices!?
   const price = jsonOutput.prices[0].open_bid;
   const time = jsonOutput.prices[0].occurred_at;
-  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  if (isProd) {
+    console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  }
   return web3.utils.toWei(price.toString());
 }
 
-async function fetchIntrinioCryptoPrice(request, config) {
+async function fetchIntrinioCryptoPrice(request, config, isProd) {
   const url = [
     "https://api-v2.intrinio.com/crypto/prices?",
     "api_key=" + process.env.INTRINIO_API_KEY,
@@ -242,9 +272,13 @@ async function fetchIntrinioCryptoPrice(request, config) {
   ]
     .concat(getIntrinioTimeArguments(request.time))
     .join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, process.env.INTRINIO_API_KEY)}]\n    ****** \n`);
+  }
   const jsonOutput = await getJson(url);
-  console.log("Intrinio response:", jsonOutput);
+  if (isProd) {
+    console.log("Intrinio response:", jsonOutput);
+  }
 
   if (!jsonOutput.prices || jsonOutput.prices.length === 0) {
     throw "Failed to get data from Intrinio";
@@ -252,12 +286,14 @@ async function fetchIntrinioCryptoPrice(request, config) {
 
   const price = jsonOutput.prices[0].open;
   const time = jsonOutput.prices[0].time;
-  console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  if (isProd) {
+    console.log(`Retrieved quote [${price}] at [${time}] for asset [${web3.utils.hexToUtf8(request.identifier)}]`);
+  }
   return web3.utils.toWei(price.toString());
 }
 
 // Works for equities and futures (even though it uses the _EQUITIES_API_KEY).
-async function fetchBarchartPrice(request, config) {
+async function fetchBarchartPrice(request, config, isProd) {
   // NOTE: this API only provides data up to a month in the past and only to minute granularities. If the requested
   // `time` has a nonzero number of seconds (not a round minute) or is longer than 1 month in the past, this call will
   // fail.
@@ -271,12 +307,16 @@ async function fetchBarchartPrice(request, config) {
     "&type=minutes",
     "&startDate=" + startDate
   ].join("");
-  console.log(`\n    ***** \n Querying with [${stripApiKey(url, key)}]\n    ****** \n`);
+  if (isProd) {
+    console.log(`\n    ***** \n Querying with [${stripApiKey(url, key)}]\n    ****** \n`);
+  }
 
   const jsonOutput = await getJson(url);
 
   if (jsonOutput.status.code != 200) {
-    console.log("Barchart response:", jsonOutput);
+    if (isProd) {
+      console.log("Barchart response:", jsonOutput);
+    }
     throw "Barchart request failed";
   }
 
@@ -293,21 +333,24 @@ async function fetchBarchartPrice(request, config) {
   throw "Failed to get a matching timestamp";
 }
 
-async function fetchPriceInner(request, config) {
+async function fetchPriceInner(request, config, isProd) {
   switch (config.dataSource) {
     case "CryptoCompare":
-      return await fetchCryptoComparePrice({
-        identifier: { first: config.identifiers.first, second: config.identifiers.second },
-        time: request.time
-      });
+      return await fetchCryptoComparePrice(
+        {
+          identifier: { first: config.identifiers.first, second: config.identifiers.second },
+          time: request.time
+        },
+        isProd
+      );
     case "Constant":
-      return await fetchConstantPrice(request, config);
+      return await fetchConstantPrice(request, config, isProd);
     case "IntrinioEquities":
-      return await fetchIntrinioEquitiesPrice(request, config);
+      return await fetchIntrinioEquitiesPrice(request, config, isProd);
     case "IntrinioForex":
-      return await fetchIntrinioForexPrice(request, config);
+      return await fetchIntrinioForexPrice(request, config, isProd);
     case "Barchart":
-      return await fetchBarchartPrice(request, config);
+      return await fetchBarchartPrice(request, config, isProd);
     case "Manual":
       throw "Unsupported config. Please vote manually using the dApp";
     default:
@@ -315,15 +358,15 @@ async function fetchPriceInner(request, config) {
   }
 }
 
-async function fetchPrice(request) {
+async function fetchPrice(request, isProd) {
   const plainTextIdentifier = web3.utils.hexToUtf8(request.identifier);
   if (plainTextIdentifier.startsWith("test")) {
     return web3.utils.toWei("1.5");
   }
   const config = SUPPORTED_IDENTIFIERS[plainTextIdentifier];
-  const numerator = await fetchPriceInner(request, config.numerator);
+  const numerator = await fetchPriceInner(request, config.numerator, isProd);
   if (config.denominator) {
-    const denominator = await fetchPriceInner(request, config.denominator);
+    const denominator = await fetchPriceInner(request, config.denominator, isProd);
     return web3.utils
       .toBN(numerator)
       .mul(web3.utils.toBN(web3.utils.toWei("1")))
@@ -368,9 +411,11 @@ function getNotifiers() {
 }
 
 class ConsoleNotifier {
-  async sendNotification(subject, body) {
-    console.log(`Notification subject: ${subject}`);
-    console.log(`Notification body: ${body}`);
+  async sendNotification(subject, body, isProd) {
+    if (isProd) {
+      console.log(`Notification subject: ${subject}`);
+      console.log(`Notification body: ${body}`);
+    }
   }
 }
 
@@ -414,6 +459,8 @@ class VotingSystem {
     this.voting = voting;
     this.account = account;
     this.notifiers = notifiers;
+    this.maxBatchCommits = BATCH_MAX_COMMITS;
+    this.maxBatchReveals = BATCH_MAX_REVEALS;
   }
 
   async getMessage(request, roundId) {
@@ -421,8 +468,8 @@ class VotingSystem {
     return await this.voting.getMessage(this.account, topicHash, { from: this.account });
   }
 
-  async constructCommitment(request, roundId) {
-    const fetchedPrice = await fetchPrice(request);
+  async constructCommitment(request, roundId, isProd) {
+    const fetchedPrice = await fetchPrice(request, isProd);
     const salt = web3.utils.toBN(web3.utils.randomHex(32));
     const hash = web3.utils.soliditySha3(fetchedPrice, salt);
 
@@ -440,49 +487,71 @@ class VotingSystem {
     };
   }
 
-  async runBatchCommit(requests, roundId) {
-    const commitments = [];
+  async runBatchCommit(requests, roundId, isProd) {
+    let commitments = [];
     const skipped = [];
     const failures = [];
+    let batches = 0;
 
-    for (const request of requests) {
-      // Skip commits if a message already exists for this request.
-      // This does not check the existence of an actual commit.
-      if (await this.getMessage(request, roundId)) {
-        skipped.push(request);
-        continue;
+    // Batch requests up to the max number that we can fit into one block
+    let requestsProcessed = 0;
+    while (requestsProcessed < requests.length) {
+      // Construct a new batch
+      const newCommitments = [];
+      for (let i = commitments.length; i < requests.length; i++) {
+        let request = requests[i];
+
+        // Stop processing requests if new batch transaction limit is reached
+        if (newCommitments.length == this.maxBatchCommits) {
+          break;
+        }
+
+        requestsProcessed += 1;
+
+        // Skip commits if a message already exists for this request.
+        // This does not check the existence of an actual commit.
+        if (await this.getMessage(request, roundId)) {
+          skipped.push(request);
+          continue;
+        }
+
+        try {
+          newCommitments.push(await this.constructCommitment(request, roundId, isProd));
+        } catch (error) {
+          // console.error("Failed to construct commitment", error);
+          failures.push({ request, error });
+        }
       }
 
-      try {
-        commitments.push(await this.constructCommitment(request, roundId));
-      } catch (error) {
-        console.log("Failed", error);
-        failures.push({ request, error });
+      if (newCommitments.length > 0) {
+        // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
+        const { receipt } = await this.voting.batchCommit(
+          newCommitments.map(commitment => {
+            // This filters out the parts of the commitment that we don't need to send to solidity.
+            // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
+            // the solidity struct.
+            const { price, salt, ...rest } = commitment;
+            return rest;
+          }),
+          { from: this.account }
+        );
+
+        // Add the batch transaction hash to each commitment.
+        newCommitments.forEach(commitment => {
+          commitment.txnHash = receipt.transactionHash;
+        });
+
+        // Append any of new batch's commitments to running commitment list
+        commitments = commitments.concat(newCommitments);
+        batches += 1;
       }
     }
 
-    // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
-    // TODO (#562): Handle case where tx exceeds gas limit.
-    const { receipt } = await this.voting.batchCommit(
-      commitments.map(commitment => {
-        // This filters out the parts of the commitment that we don't need to send to solidity.
-        // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
-        // the solidity struct.
-        const { price, salt, ...rest } = commitment;
-        return rest;
-      }),
-      { from: this.account }
-    );
-
-    // Add the batch transaction hash to each commitment.
-    commitments.forEach(commitment => {
-      commitment.txnHash = receipt.transactionHash;
-    });
-
-    return { commitments, skipped, failures };
+    // Return receipt for testing purposes
+    return { commitments, skipped, failures, batches };
   }
 
-  async constructReveal(request, roundId) {
+  async constructReveal(request, roundId, isProd) {
     const encryptedCommit = await this.getMessage(request, roundId);
 
     let vote;
@@ -492,7 +561,9 @@ class VotingSystem {
       const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
       vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
     } catch (e) {
-      console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
+      if (isProd) {
+        console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
+      }
       return null;
     }
 
@@ -504,31 +575,53 @@ class VotingSystem {
     };
   }
 
-  async runBatchReveal(requests, roundId) {
-    const reveals = [];
+  async runBatchReveal(requests, roundId, isProd) {
+    let reveals = [];
+    let batches = 0;
 
-    for (const request of requests) {
-      const encryptedCommit = await this.getMessage(request, roundId);
-      if (!encryptedCommit) {
-        continue;
+    // Batch requests up to the max number that we can fit into one block
+    let requestsProcessed = 0;
+    while (requestsProcessed < requests.length) {
+      // Construct a new batch
+      const newReveals = [];
+      for (let i = reveals.length; i < requests.length; i++) {
+        let request = requests[i];
+
+        // Stop processing requests if the batch transaction limit is reached
+        if (newReveals.length == this.maxBatchReveals) {
+          break;
+        }
+
+        requestsProcessed += 1;
+
+        const encryptedCommit = await this.getMessage(request, roundId);
+        if (!encryptedCommit) {
+          continue;
+        }
+
+        const reveal = await this.constructReveal(request, roundId, isProd);
+        if (reveal) {
+          newReveals.push(reveal);
+        }
       }
 
-      const reveal = await this.constructReveal(request, roundId);
-      if (reveal) {
-        reveals.push(reveal);
+      // Append any of new batch's reveals to running reveals list
+      if (newReveals.length > 0) {
+        // Always call `batchReveal`, even if there's only one reveal.
+        const { receipt } = await this.voting.batchReveal(newReveals, { from: this.account });
+
+        // Add the batch transaction hash to each reveal.
+        newReveals.forEach(reveal => {
+          reveal.txnHash = receipt.transactionHash;
+        });
+
+        reveals = reveals.concat(newReveals);
+        batches += 1;
       }
     }
 
-    // Always call `batchReveal`, even if there's only one reveal.
-    // TODO (#562): Handle case where tx exceeds gas limit.
-    const { receipt } = await this.voting.batchReveal(reveals, { from: this.account });
-
-    // Add the batch transaction hash to each reveal.
-    reveals.forEach(reveal => {
-      reveal.txnHash = receipt.transactionHash;
-    });
-
-    return reveals;
+    // Return receipt for testing purposes
+    return { reveals, batches };
   }
 
   constructNotification(updates, skipped, failures, phase) {
@@ -622,7 +715,7 @@ class VotingSystem {
     return { subject, body };
   }
 
-  async innerRunIteration() {
+  async innerRunIteration(isProd) {
     const phase = await this.voting.getVotePhase();
     const roundId = await this.voting.getCurrentRoundId();
     const pendingRequests = await this.voting.getPendingRequests();
@@ -630,57 +723,82 @@ class VotingSystem {
     let updates = [];
     let skipped = [];
     let failures = [];
+    let batches = 0;
     if (phase == VotePhasesEnum.COMMIT) {
-      ({ commitments: updates, skipped, failures } = await this.runBatchCommit(pendingRequests, roundId));
-      console.log(
-        `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${failures.length} commits`
-      );
+      ({ commitments: updates, skipped, failures, batches } = await this.runBatchCommit(
+        pendingRequests,
+        roundId,
+        isProd
+      ));
+      if (isProd) {
+        console.log(
+          `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
+            failures.length
+          } commits, split into ${batches} batch${batches != 1 ? `es` : ``}`
+        );
+      }
     } else {
-      updates = await this.runBatchReveal(pendingRequests, roundId);
-      console.log(`Completed ${updates.length} reveals`);
+      ({ reveals: updates, batches } = await this.runBatchReveal(pendingRequests, roundId, isProd));
+      if (isProd) {
+        console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
+      }
     }
 
     const notification = this.constructNotification(updates, skipped, failures, phase);
     await Promise.all(
-      this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
+      this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body, isProd))
     );
+
+    return { updates, skipped, failures, batches };
   }
 
-  async runIteration() {
-    console.log("Starting voting iteration");
+  async runIteration(isProd) {
+    if (isProd) {
+      console.log("Starting voting iteration");
+    }
+
+    let results;
     try {
-      await this.innerRunIteration();
+      results = await this.innerRunIteration(isProd);
     } catch (error) {
       // A catch-all error handler, so the user gets notified if the AVS crashes. Note that errors fetching prices for
       // some feeds is not considered a crash, and the user will be sent a more detailed message in that case.
       const notification = this.constructErrorNotification(error);
       await Promise.all(
-        this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body))
+        this.notifiers.map(notifier => notifier.sendNotification(notification.subject, notification.body, isProd))
       );
     }
 
-    console.log("Finished voting iteration");
+    if (isProd) {
+      console.log("Finished voting iteration");
+    }
+    return results;
   }
 }
 
-async function runVoting() {
+async function runVoting(isProd) {
   try {
-    console.log("Running Voting system");
+    if (isProd) {
+      console.log("Running Voting system");
+    }
     sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
     const voting = await Voting.deployed();
     const account = (await web3.eth.getAccounts())[0];
     const votingSystem = new VotingSystem(voting, account, getNotifiers());
-    await votingSystem.runIteration();
+    return await votingSystem.runIteration(isProd);
   } catch (error) {
-    console.log(error);
+    console.error(`AVS Failed:`, error);
   }
 }
 
 run = async function(callback) {
-  await runVoting();
+  // For production script, unnecessary to return stats on successful, skipped, failed requests or batch data
+  await runVoting({ isProd: true });
   callback();
 };
 
 run.VotingSystem = VotingSystem;
 run.SUPPORTED_IDENTIFIERS = SUPPORTED_IDENTIFIERS;
+run.BATCH_MAX_COMMITS = BATCH_MAX_COMMITS;
+run.BATCH_MAX_REVEALS = BATCH_MAX_REVEALS;
 module.exports = run;
