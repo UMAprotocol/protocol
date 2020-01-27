@@ -98,6 +98,12 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         Future
     }
 
+    // Only used as a return value in view methods -- never stored in the contract.
+    struct RequestState {
+        RequestStatus status;
+        uint lastVotingRound;
+    }
+
     // Maps round numbers to the rounds.
     mapping(uint => Round) public rounds;
 
@@ -452,6 +458,34 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // Issue any accumulated rewards.
         if (totalRewardToIssue.isGreaterThan(0)) {
             require(votingToken.mint(voterAddress, totalRewardToIssue.rawValue), "Voting token issuance failed");
+        }
+    }
+
+    /*
+     * @notice Gets the status of a list of price requests, identified by their identifier and time.
+     * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
+     * @returns A list, in the same order as the input list, giving the status of each of the specified price requests.
+     */
+    function getPriceRequestStatuses(PendingRequest[] memory requests)
+        public
+        view
+        returns (RequestState[] memory requestStates)
+    {
+        requestStates = new RequestState[](requests.length);
+        uint currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        for (uint i = 0; i < requests.length; i++) {
+            PriceRequest storage priceRequest = _getPriceRequest(requests[i].identifier, requests[i].time);
+
+            RequestStatus status = _getRequestStatus(priceRequest, currentRoundId);
+
+            // If it's an active request, its true lastVotingRound is the current one, even if it hasn't been updated.
+            if (status == RequestStatus.Active) {
+                requestStates[i].lastVotingRound = currentRoundId;
+            } else {
+                requestStates[i].lastVotingRound = priceRequest.lastVotingRound;
+            }
+
+            requestStates[i].status = status;
         }
     }
 

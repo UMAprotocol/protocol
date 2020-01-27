@@ -757,18 +757,29 @@ contract("Voting", function(accounts) {
     // Make the Oracle support this identifier.
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
-    // Verify view methods `hasPrice` and `getPrice` for a price was that was never requested.
+    // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses`` for a price was that was never requested.
     assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+    let statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    assert.equal(statuses[0].status.toString(), "0");
+    assert.equal(statuses[0].lastVotingRound.toString(), "0");
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredDerivative });
 
-    // Verify view methods `hasPrice` and `getPrice` for a price scheduled for the next round.
+    // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a price scheduled for the next round.
     assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+    statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    assert.equal(statuses[0].status.toString(), "3");
+    assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).addn(1).toString());
 
     await moveToNextRound(voting);
+
+    // Verify `getPriceRequestStatuses` for a price request scheduled for this round.
+    statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    assert.equal(statuses[0].status.toString(), "1");
+    assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).toString());
 
     const price = 123;
 
@@ -778,10 +789,25 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price, salt1);
+    const hash2 = web3.utils.soliditySha3(price, salt2);
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
     await moveToNextPhase(voting);
+
+    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
+    await voting.revealVote(identifier, time, price, salt2, { from: account2 });
+
+    await moveToNextRound(voting);
+
+    // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a resolved price request.
+    assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
+    assert.equal(
+      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
+      price.toString()
+    );
+    statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    assert.equal(statuses[0].status.toString(), "2");
+    assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).subn(1).toString());
   });
 
   it("Basic Inflation", async function() {
