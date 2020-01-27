@@ -19,9 +19,6 @@ contract Position is Testable {
     }
     mapping(address => PositionData) public positions;
 
-    // TODO: Not the final place for these fields.
-    address collateralAddress;
-
     FixedPoint.Unsigned public totalPositionCollateral;
     FixedPoint.Unsigned public totalTokensOutstanding;
 
@@ -59,6 +56,7 @@ contract Position is Testable {
         require(positionData.requestPassTimestamp == 0);
 
         positionData.collateral = positionData.collateral.sub(collateralAmount);
+        require(_checkCollateralizationRatio(positionData));
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
     }
 
@@ -102,8 +100,10 @@ contract Position is Testable {
             positionData.sponsor = msg.sender;
         }
         positionData.collateral = positionData.collateral.add(collateralAmount);
-        totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
+        require(_checkCollateralizationRatio(positionData));
+
+        totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
     }
 
@@ -125,5 +125,26 @@ contract Position is Testable {
     function _getPositionData() private view returns (PositionData storage positionData) {
         positionData = positions[msg.sender];
         require(positionData.sponsor != address(0));
+    }
+
+    function _checkCollateralizationRatio(PositionData storage positionData) private returns (bool) {
+        FixedPoint.Unsigned memory global = _getCollateralizationRatio(totalPositionCollateral, totalTokensOutstanding);
+        FixedPoint.Unsigned memory thisPos = _getCollateralizationRatio(
+            positionData.collateral,
+            positionData.tokensOutstanding
+        );
+        return !global.isGreaterThan(thisPos);
+    }
+
+    function _getCollateralizationRatio(FixedPoint.Unsigned storage collateral, FixedPoint.Unsigned storage numTokens)
+        private
+        view
+        returns (FixedPoint.Unsigned memory ratio)
+    {
+        if (!numTokens.isGreaterThan(0)) {
+            return FixedPoint.fromUnscaledUint(0);
+        } else {
+            return collateral.div(numTokens);
+        }
     }
 }
