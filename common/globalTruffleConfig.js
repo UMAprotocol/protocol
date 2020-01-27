@@ -44,14 +44,27 @@ function addPublicNetwork(networks, name, networkId) {
     provider: new HDWalletProvider(mnemonic, `https://${name}.infura.io/v3/${infuraApiKey}`, 0, 2)
   };
 
+  // Ledger has changed their standard derivation path since this library was created, so we must override the default one.
   const ledgerOptions = {
-    networkId: networkId
-  }; // default options
+    networkId: networkId,
+    path: "44'/60'/0'/0/0"
+  };
 
-  // Ledger wallet network
+  // Normal ledger wallet network.
   networks[name + "_ledger"] = {
     ...options,
     provider: new LedgerWalletProvider(ledgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`)
+  };
+
+  // The default derivation path matches the "legacy" ledger account in Ledger Live.
+  const legacyLedgerOptions = {
+    networkId: networkId,
+  };
+
+  // Legacy ledger wallet network
+  networks[name + "_ledger_legacy"] = {
+    ...options,
+    provider: new LedgerWalletProvider(legacyLedgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`)
   };
 }
 
