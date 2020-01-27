@@ -1,3 +1,4 @@
+const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const Position = artifacts.require("Position");
 
 contract("Position", function(accounts) {
@@ -57,5 +58,54 @@ contract("Position", function(accounts) {
     assert.equal(positionData.tokensOutstanding.toString(), toWei("0"));
     assert.equal((await position.totalPositionCollateral()).toString(), toWei("0"));
     assert.equal((await position.totalTokensOutstanding()).toString(), toWei("0"));
+  });
+
+  it("Withdrawal request", async function() {
+    const { toWei } = web3.utils;
+    const expirationTimestamp = "15798990420";
+    const position = await Position.new(expirationTimestamp, true);
+
+    const startTime = await position.getCurrentTime();
+
+    // Create the initial position.
+    await position.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
+
+    // Request withdrawal.
+    await position.requestWithdrawal({ rawValue: toWei("25") }, { from: sponsor });
+
+    // All other actions are locked.
+    assert(await didContractThrow(position.deposit({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(position.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(
+      await didContractThrow(position.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor }))
+    );
+    assert(await didContractThrow(position.redeem({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(position.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
+
+    // Can't withdraw before time is up.
+    await position.setCurrentTime(startTime.toNumber() + 500);
+    assert(await didContractThrow(position.withdrawPassedRequest({ from: sponsor })));
+
+    // Can withdraw after time is up.
+    await position.setCurrentTime(startTime.toNumber() + 1001);
+    await position.withdrawPassedRequest({ from: sponsor });
+
+    // Verify state of Position post-withdrawal.
+    let positionData = await position.positions(sponsor);
+    assert.equal(positionData.collateral.toString(), toWei("125"));
+    assert.equal(positionData.tokensOutstanding.toString(), toWei("100"));
+    assert.equal((await position.totalPositionCollateral()).toString(), toWei("125"));
+    assert.equal((await position.totalTokensOutstanding()).toString(), toWei("100"));
+
+    // Methods are now unlocked again.
+    await position.deposit({ rawValue: toWei("1") }, { from: sponsor });
+    await position.withdraw({ rawValue: toWei("1") }, { from: sponsor });
+    await position.create({ rawValue: toWei("25") }, { rawValue: toWei("25") }, { from: sponsor });
+    await position.redeem({ rawValue: toWei("25") }, { from: sponsor });
+    positionData = await position.positions(sponsor);
+    assert.equal(positionData.collateral.toString(), toWei("120"));
+    assert.equal(positionData.tokensOutstanding.toString(), toWei("100"));
+    assert.equal((await position.totalPositionCollateral()).toString(), toWei("120"));
+    assert.equal((await position.totalTokensOutstanding()).toString(), toWei("100"));
   });
 });

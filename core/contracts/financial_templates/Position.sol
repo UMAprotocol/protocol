@@ -1,16 +1,21 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
 
 contract Position is Testable {
+    using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
 
     struct PositionData {
         address sponsor;
         FixedPoint.Unsigned collateral;
         FixedPoint.Unsigned tokensOutstanding;
+        // Withdrawal request stuff.
+        FixedPoint.Unsigned withdrawalRequestAmount;
+        uint requestPassTimestamp;
     }
     mapping(address => PositionData) public positions;
 
@@ -21,9 +26,12 @@ contract Position is Testable {
     FixedPoint.Unsigned public totalTokensOutstanding;
 
     uint expirationTimestamp;
+    uint withdrawalLiveness;
 
     constructor(uint _expirationTimestamp, bool _isTest) public Testable(_isTest) {
         expirationTimestamp = _expirationTimestamp;
+        // TODO: This should be settable.
+        withdrawalLiveness = 1000;
     }
 
     modifier onlyPreExpiration() {
@@ -41,15 +49,47 @@ contract Position is Testable {
 
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData();
+        require(positionData.requestPassTimestamp == 0);
         positionData.collateral = positionData.collateral.add(collateralAmount);
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
     }
 
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData();
+        require(positionData.requestPassTimestamp == 0);
 
         positionData.collateral = positionData.collateral.sub(collateralAmount);
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
+    }
+
+    // Decide whether to fold this functionality into withdraw() method above.
+    function withdrawPassedRequest() public onlyPreExpiration() {
+        PositionData storage positionData = _getPositionData();
+        require(positionData.requestPassTimestamp < getCurrentTime());
+
+        positionData.collateral = positionData.collateral.sub(positionData.withdrawalRequestAmount);
+        totalPositionCollateral = totalPositionCollateral.sub(positionData.withdrawalRequestAmount);
+
+        positionData.requestPassTimestamp = 0;
+    }
+
+    function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
+        PositionData storage positionData = _getPositionData();
+        require(positionData.requestPassTimestamp == 0);
+
+        // Not just pre-expiration: make sure the proposed expiration of this request is itself before expiry.
+        uint requestPassTime = getCurrentTime() + withdrawalLiveness;
+        require(requestPassTime < expirationTimestamp);
+
+        // TODO: Handle case around downsizing a withdrawal request without resetting requestPassTime.
+        positionData.requestPassTimestamp = requestPassTime;
+        positionData.withdrawalRequestAmount = collateralAmount;
+    }
+
+    function cancelWithdrawal() public onlyPreExpiration() {
+        PositionData storage positionData = _getPositionData();
+        require(positionData.requestPassTimestamp != 0);
+        positionData.requestPassTimestamp = 0;
     }
 
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
@@ -57,6 +97,7 @@ contract Position is Testable {
         onlyPreExpiration()
     {
         PositionData storage positionData = positions[msg.sender];
+        require(positionData.requestPassTimestamp == 0);
         if (positionData.sponsor == address(0)) {
             positionData.sponsor = msg.sender;
         }
@@ -66,8 +107,9 @@ contract Position is Testable {
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
     }
 
-    function redeem(FixedPoint.Unsigned memory numTokens) public {
+    function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData();
+        require(positionData.requestPassTimestamp == 0);
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
