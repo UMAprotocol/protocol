@@ -8,11 +8,21 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
 
+// TODO:
+// - Events
+// - Connect with Position and Global Index
+// - Fees
+
 contract Liquidation is Testable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
 
-    enum Status { PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
+    enum Status {
+        PreDispute,
+        PendingDispute,
+        DisputeSucceeded,
+        DisputeFailed
+    }
 
     struct _Liquidation {
         /**
@@ -32,8 +42,6 @@ contract Liquidation is Testable {
         FixedPoint.Unsigned liquidatedCollateral;
 
         // VARIABLES SET UPON CREATION OF A NEW LIQUIDATION
-        // Uniquely identifies this Liquidation, which is uniquely combined with the sponsor's address
-        uint uuid;
         // When Liquidation ends and becomes 'Expired'
         uint expiry;
         // Person who created this liquidation
@@ -48,9 +56,9 @@ contract Liquidation is Testable {
         uint disputeTime;
         // Final price as determined by an Oracle following a dispute
         // TODO: Should this be FixedPoint?
-        uint settlementPrice;
+        FixedPoint.Unsigned settlementPrice;
     }
-    mapping(address => mapping (uint => _Liquidation)) private liquidations;
+    mapping(address => mapping (uint => _Liquidation)) public liquidations;
 
     // VARIABLES INFORMED BY GLOBAL contract
     // All Liquidations (and Positions) are constrained by these global variables
@@ -80,7 +88,7 @@ contract Liquidation is Testable {
 
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
         require(
-            (getLiquidation(sponsor, id).expiry < getCurrentTime()) && (getLiquidation(sponsor, id).state == Status.PreDispute), 
+            (getLiquidation(sponsor, id).expiry > getCurrentTime()) && (getLiquidation(sponsor, id).state == Status.PreDispute), 
             "Liquidation has expired or has already been disputed"
         );
         _;
@@ -89,7 +97,7 @@ contract Liquidation is Testable {
         require(
             (getLiquidation(sponsor, id).state == Status.DisputeSucceeded) ||
             (getLiquidation(sponsor, id).state == Status.DisputeFailed) ||
-            ((getLiquidation(sponsor, id).expiry >= getCurrentTime()) && (getLiquidation(sponsor, id).state == Status.PreDispute)),
+            ((getLiquidation(sponsor, id).expiry <= getCurrentTime()) && (getLiquidation(sponsor, id).state == Status.PreDispute)),
             "Liquidation has not expired or is pending dispute"
         );
         _;
@@ -125,26 +133,25 @@ contract Liquidation is Testable {
     // - Allow caller to pass in uuid
     // - Allow caller to pass all position variables
     function createLiquidation(
+        address sponsor,
         uint uuid,
         FixedPoint.Unsigned memory _tokensOutstanding,
         FixedPoint.Unsigned memory _lockedCollateral,
         FixedPoint.Unsigned memory _liquidatedCollateral
     ) public returns (address, uint){
-        _Liquidation storage newLiquidation = liquidations[msg.sender][uuid];
+        _Liquidation storage newLiquidation = liquidations[sponsor][uuid];
         // FOR TESTING: Hard code sponsor's position details
         // The implication right now is that we could populate these fields only knowing the sponsor's address
         newLiquidation.tokensOutstanding = _tokensOutstanding;
         newLiquidation.lockedCollateral = _lockedCollateral;
         newLiquidation.liquidatedCollateral = _liquidatedCollateral;
 
-        require(syntheticCurrency.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue), "failed to transfer synthetic tokens from sender");
-
         // Set these after creation of new liquidation
         newLiquidation.expiry = getCurrentTime() + liquidationLiveness;
         newLiquidation.liquidator = msg.sender;
         newLiquidation.state = Status.PreDispute;
 
-        return (msg.sender, uuid);
+        require(syntheticCurrency.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue), "failed to transfer synthetic tokens from sender");
     }
 
     function getLiquidation(address sponsor, uint uuid) private view returns (_Liquidation storage liquidation) {
@@ -156,10 +163,9 @@ contract Liquidation is Testable {
     // PRE-DISPUTE and PRE-EXPIRY: Can dispute, sends it to PENDING-DISPUTE
     // ACCESS: Only someone with enough Dispute-Bond can call and become the disputer
     function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
-        _Liquidation memory disputedLiquidation = getLiquidation(sponsor, id);
+        _Liquidation storage disputedLiquidation = getLiquidation(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
-
         require(collateralCurrency.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue), "failed to transfer dispute bond from sender");
 
         // Request a price from DVM,
@@ -177,8 +183,8 @@ contract Liquidation is Testable {
     // FOR TESTING PURPOSES: I make the following simplifications
     // - Allow caller to pass in settlement price
     // - Allow caller to determine if liquidation failed or not
-    function settleDispute(uint id, address sponsor, uint hardcodedPrice, bool disputeSucceeded) public view onlyPendingDispute(id, sponsor) {
-        _Liquidation memory disputedLiquidation = getLiquidation(sponsor, id);
+    function settleDispute(uint id, address sponsor, FixedPoint.Unsigned memory hardcodedPrice, bool disputeSucceeded) public onlyPendingDispute(id, sponsor) {
+        _Liquidation storage disputedLiquidation = getLiquidation(sponsor, id);
 
         // if (disputedLiquidation.oracle.hasPrice(disputedLiquidation.identifier, disputedLiquidation.disputeTime)) {
             // If dispute is over set oracle price
@@ -206,7 +212,7 @@ contract Liquidation is Testable {
     // DISPUTE_FAILED, DISPUTE_SUCCEEDED or postExpiry
     // ACCESS: Only sponsor and disputer if successful dispute, only liquidator if unsuccessful dispute
     function withdraw(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
-        _Liquidation memory liquidation = getLiquidation(sponsor, id);
+        _Liquidation storage liquidation = getLiquidation(sponsor, id);
         require(
             (msg.sender == liquidation.disputer) ||
             (msg.sender == liquidation.liquidator) ||
