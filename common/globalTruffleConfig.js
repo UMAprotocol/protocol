@@ -58,10 +58,10 @@ function addPublicNetwork(networks, name, networkId) {
 
   // The default derivation path matches the "legacy" ledger account in Ledger Live.
   const legacyLedgerOptions = {
-    networkId: networkId,
+    networkId: networkId
   };
 
-  // Legacy ledger wallet network
+  // Legacy ledger wallet network.
   networks[name + "_ledger_legacy"] = {
     ...options,
     provider: new LedgerWalletProvider(legacyLedgerOptions, `https://${name}.infura.io/v3/${infuraApiKey}`)
