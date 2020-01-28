@@ -175,6 +175,9 @@ contract("Position", function(accounts) {
     assert.equal(positionData.tokensOutstanding.toString(), toWei("100"));
     assert.equal((await position.totalPositionCollateral()).toString(), toWei("121"));
     assert.equal((await position.totalTokensOutstanding()).toString(), toWei("1100"));
+
+    // Can't cancel if no withdrawals pending.
+    assert(await didContractThrow(position.cancelWithdrawal({ from: sponsor })));
   });
 
   it("Global collateralization ratio checks", async function() {
@@ -237,12 +240,18 @@ contract("Position", function(accounts) {
     await position.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
 
     const expirationTime = await position.expirationTimestamp();
+    await position.setCurrentTime(expirationTime.toNumber() - 1);
+
+    // Even though the contract isn't expired yet, can't issue a withdrawal request past the expiration time.
+    assert(await didContractThrow(position.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
+
     await position.setCurrentTime(expirationTime.toNumber() + 1);
 
     assert(
       await didContractThrow(position.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor }))
     );
     assert(await didContractThrow(position.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
+    assert(await didContractThrow(position.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(position.redeem({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(position.deposit({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(position.transfer(accounts[3], { from: sponsor })));
@@ -252,6 +261,7 @@ contract("Position", function(accounts) {
     // Create a second, very big and lowly collateralization position.
     await collateral.approve(position.address, toWei("1000"), { from: other });
     await position.create({ rawValue: toWei("1") }, { rawValue: toWei("1000") }, { from: other });
+    await tokenCurrency.approve(position.address, toWei("50"), { from: sponsor });
 
     await collateral.approve(position.address, toWei("100000"), { from: sponsor });
     // Can't deposit without first creating a position.
@@ -259,6 +269,20 @@ contract("Position", function(accounts) {
 
     // Even if the "sponsor" acquires a token somehow, they can't redeem.
     await tokenCurrency.transfer(sponsor, toWei("1"), { from: other });
+    assert(await didContractThrow(position.redeem({ rawValue: toWei("1") }, { from: sponsor })));
+  });
+
+  it("Can't redeem more than position size", async function() {
+    await tokenCurrency.approve(position.address, toWei("50"), { from: sponsor });
+
+    await collateral.approve(position.address, toWei("1000"), { from: other });
+    await position.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: other });
+    await collateral.approve(position.address, toWei("1000"), { from: sponsor });
+    await position.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+
+    await tokenCurrency.transfer(sponsor, toWei("1"), { from: other });
+    assert(await didContractThrow(position.redeem({ rawValue: toWei("2") }, { from: sponsor })));
+    await position.redeem({ rawValue: toWei("1") }, { from: sponsor });
     assert(await didContractThrow(position.redeem({ rawValue: toWei("1") }, { from: sponsor })));
   });
 });
