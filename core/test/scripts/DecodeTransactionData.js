@@ -19,7 +19,10 @@ contract("scripts/DecodeTransactionData.js", function(accounts) {
       }
     };
 
-    assert.equal(JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    assert.equal(
+      JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(),
+      JSON.stringify(expectedObject).toLowerCase()
+    );
   });
 
   it("Decode batchReveal", async function() {
@@ -33,7 +36,7 @@ contract("scripts/DecodeTransactionData.js", function(accounts) {
         time: getRandomUnsignedInt().toString(),
         price: getRandomSignedInt().toString(),
         salt: getRandomSignedInt().toString()
-      })
+      });
     }
 
     const txnData = voting.contract.methods.batchReveal(revealArray).encodeABI();
@@ -44,6 +47,9 @@ contract("scripts/DecodeTransactionData.js", function(accounts) {
       }
     };
 
-    assert.equal(JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    assert.equal(
+      JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(),
+      JSON.stringify(expectedObject).toLowerCase()
+    );
   });
 });
