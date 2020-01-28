@@ -45,6 +45,7 @@ function useCreateContract(userSelectionsRef, identifierConfig, onNextStep, stat
       userSelectionsRef.current.contractAddress =
         TXObjects[TXObjects.length - 1].receipt.events.CreatedTokenizedDerivative.returnValues.contractAddress;
 
+      userSelectionsRef.current.symbol = state.tokenSymbol;
       // Transition to the next step since the txn is complete.
       onNextStep();
     }

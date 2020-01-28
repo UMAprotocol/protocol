@@ -14,7 +14,7 @@ function Step6(props) {
   const { toWei, toBN } = web3.utils;
 
   // Grab variables to display.
-  const { identifier, contractAddress, tokensBorrowed } = props.userSelectionsRef.current;
+  const { identifier, contractAddress, tokensBorrowed, symbol } = props.userSelectionsRef.current;
   const etherscanUrl = useEtherscanUrl();
   const {
     [identifier]: { supportedMove }
@@ -24,6 +24,21 @@ function Step6(props) {
       .add(toBN(toWei("1")))
       .muln(100)
   );
+
+  // Add token to users metamask wallet.
+  window.web3.currentProvider.sendAsync({
+    method: "wallet_watchAsset",
+    params: {
+      type: "ERC20",
+      options: {
+        address: contractAddress,
+        symbol: symbol.substring(0, 6),
+        decimals: 18,
+        image: "https://umaproject.org/assets/images/UMA_square_red_logo.png"
+      }
+    },
+    id: Math.round(Math.random() * 100000)
+  });
 
   return (
     <>
