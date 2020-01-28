@@ -32,24 +32,18 @@ contract("Liquidation", function(accounts) {
   const settlementPrice = BN(toWei("1"));
 
   // Settlement TRV
-  const settlementTRV = amountOfSynthetic.times(settlementPrice);
+  const settlementTRV = amountOfSynthetic.times(settlementPrice).dividedBy(toWei("1"));
 
   // Liquidation contract params
   const disputeBondPct = BN(toWei("0.1"));
-  const disputeBond = disputeBondPct.dividedBy(toWei("1")).times(amountOfCollateral);
+  const disputeBond = disputeBondPct.times(amountOfCollateral).dividedBy(toWei("1"));
   const sponsorDisputeRewardPct = BN(toWei("0.05"));
-  const sponsorDisputeReward = sponsorDisputeRewardPct
-    .div(toWei("1"))
-    .times(settlementTRV)
-    .dividedBy(toWei("1"));
+  const sponsorDisputeReward = sponsorDisputeRewardPct.times(settlementTRV).dividedBy(toWei("1"));
   const disputerDisputeRewardPct = BN(toWei("0.05"));
-  const disputerDisputeReward = disputerDisputeRewardPct
-    .div(toWei("1"))
-    .times(settlementTRV)
-    .dividedBy(toWei("1"));
+  const disputerDisputeReward = disputerDisputeRewardPct.times(settlementTRV).dividedBy(toWei("1"));
   const liquidationLiveness = BN(60)
     .times(60)
-    .times(1); // In seconds
+    .times(3); // In seconds
   const startTime = "15798990420";
 
   // Contracts
@@ -370,25 +364,109 @@ contract("Liquidation", function(accounts) {
       });
     });
 
-    describe("Withdraw: Liquidation is disputed", () => {
+    describe("Withdraw: Liquidation is disputed successfully", () => {
       beforeEach(async () => {
         // Dispute
-        // Settle the dispute
+        await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       });
-      it("Liquidation does not exist", async () => {});
-      it("Dispute succeeded", async () => {
-        it("Sponsor calls", async () => {});
-        it("Liquidator calls", async () => {});
-        it("Disputer calls", async () => {});
-        it("Rando calls", async () => {});
-        it("Withdraw still succeeds even if Liquidation has expired", async () => {});
+      describe("Dispute succeeded", () => {
+        beforeEach(async () => {
+          // Settle the dispute as SUCCESSFUL
+          await liquidationContract.settleDispute(
+            liquidationParams.uuid,
+            sponsor,
+            { rawValue: settlementPrice.toString() },
+            true
+          );
+        });
+        it("Sponsor calls", async () => {
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
+          // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
+          const expectedPayment = amountOfCollateral.minus(settlementTRV).plus(sponsorDisputeReward);
+          assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPayment.toString());
+        });
+        it("Liquidator calls", async () => {
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+          // Expected Liquidator payment => TRV - dispute reward - sponsor reward
+          const expectedPayment = settlementTRV.minus(disputerDisputeReward).minus(sponsorDisputeReward);
+          assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
+        });
+        it("Disputer calls", async () => {
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
+          // Expected Disputer payment => disputer reward + dispute bond
+          const expectedPayment = disputerDisputeReward.plus(disputeBond);
+          assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPayment.toString());
+        });
+        it("Rando calls", async () => {
+          assert(
+            await didContractThrow(
+              liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: rando })
+            )
+          );
+        });
+        it("Withdraw still succeeds even if Liquidation has expired", async () => {
+          // Expire contract
+          await liquidationContract.setCurrentTime(
+            BN(startTime)
+              .plus(liquidationLiveness)
+              .toString()
+          );
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
+        });
+        it("Liquidated contact should have no assets remaining after all withdrawals", async () => {
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
+          assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
+        });
       });
-      it("Dispute failed", async () => {
-        it("Sponsor calls", async () => {});
-        it("Liquidator calls", async () => {});
-        it("Disputer calls", async () => {});
-        it("Rando calls", async () => {});
-        it("Withdraw still succeeds even if Liquidation has expired", async () => {});
+      describe("Dispute failed", () => {
+        beforeEach(async () => {
+          // Settle the dispute as FAILED
+          await liquidationContract.settleDispute(
+            liquidationParams.uuid,
+            sponsor,
+            { rawValue: settlementPrice.toString() },
+            false
+          );
+        });
+        it("Sponsor calls", async () => {
+          assert(
+            await didContractThrow(
+              liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor })
+            )
+          );
+        });
+        it("Liquidator calls", async () => {
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+          // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
+          const expectedPayment = amountOfCollateral.plus(disputeBond);
+          assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
+          assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
+        });
+        it("Disputer calls", async () => {
+          assert(
+            await didContractThrow(
+              liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer })
+            )
+          );
+        });
+        it("Rando calls", async () => {
+          assert(
+            await didContractThrow(
+              liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: rando })
+            )
+          );
+        });
+        it("Withdraw still succeeds even if Liquidation has expired", async () => {
+          // Expire contract
+          await liquidationContract.setCurrentTime(
+            BN(startTime)
+              .plus(liquidationLiveness)
+              .toString()
+          );
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+        });
       });
     });
   });

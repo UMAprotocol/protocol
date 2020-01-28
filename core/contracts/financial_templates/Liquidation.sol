@@ -253,8 +253,8 @@ contract Liquidation is Testable {
                 );
             } else if (msg.sender == liquidation.liquidator) {
                 // Pay: TRV - dispute reward - sponsor reward
-                FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(
-                    sponsorDisputeReward.sub(disputerDisputeReward)
+                FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
+                    disputerDisputeReward
                 );
                 require(
                     collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
@@ -262,7 +262,7 @@ contract Liquidation is Testable {
                 );
             }
         } else if (liquidation.state == Status.DisputeFailed) {
-            // Pay all lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
+            // Pay all lockedCollateral + dispute bond
             if (msg.sender == liquidation.liquidator) {
                 FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
                 require(
