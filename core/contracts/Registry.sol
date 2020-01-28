@@ -7,10 +7,11 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 pragma experimental ABIEncoderV2;
 
+
 /**
  * @title Registry for derivatives and approved derivative creators.
  * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives
- * and stores party memebers of a derivative.
+ * and stores party members of a derivative.
  */
 contract Registry is RegistryInterface, MultiRole {
     using SafeMath for uint;
@@ -94,7 +95,7 @@ contract Registry is RegistryInterface, MultiRole {
 
         require(
             addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
-            "Can add to valid derivative"
+            "Can only add to valid derivative"
         );
         require(!isPartyMemberOfDerivative(party, derivativeAddress), "Can only register a party once");
 
@@ -114,7 +115,7 @@ contract Registry is RegistryInterface, MultiRole {
             addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
             "Remove only from valid derivative"
         );
-        require(isPartyMemberOfDerivative(party, derivativeAddress), "Can only register a party once");
+        require(isPartyMemberOfDerivative(party, derivativeAddress), "Can only remove an existing party member");
 
         // Index of the current location of the derivative to remove.
         uint deleteIndex = partyMember.derivativeIndex[derivativeAddress];
