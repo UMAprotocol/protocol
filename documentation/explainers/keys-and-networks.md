@@ -63,7 +63,8 @@ To set up a Ledger hardware wallet for use with our system:
 5. Go to the Ethereum app settings on the device and change the "Contract data" setting to yes if it isn't already.
 
 Now that you're set up, you should be able to run truffle commands with the network argument
-`--network [NETWORK_NAME]_ledger`.
+`--network [NETWORK_NAME]_ledger`. Note: this network uses the default Ledger Live derivation path: `m/44'/60'/x'/0/0`. 
+For the legacy derivation path (`m/44'/60'/0'/x`), use `[NETWORK_NAME]_legder_legacy`.
 
 For example, you could connect your ledger wallet to the truffle console and begin running commands against mainnet
 with the following command:
