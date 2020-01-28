@@ -1,19 +1,20 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // import "../OracleInteface.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
+import "./Position.sol";
 
 // TODO:
 // - Events
 // - Connect with Position and Global Index
 // - Fees
 
-contract Liquidation is Testable {
+contract Liquidation is Position {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
 
@@ -59,9 +60,9 @@ contract Liquidation is Testable {
     //
     //
     // Type of synthetic token
-    IERC20 syntheticCurrency;
+    ERC20Burnable syntheticCurrency;
     // Type of token used for collateral
-    IERC20 collateralCurrency;
+    ERC20Burnable collateralCurrency;
     // Amount of time for pending liquidation before expiry
     uint liquidationLiveness;
     // Oracle supported identifier
@@ -80,25 +81,25 @@ contract Liquidation is Testable {
 
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
         require(
-            (getCurrentTime() < getLiquidation(sponsor, id).expiry) &&
-                (getLiquidation(sponsor, id).state == Status.PreDispute),
+            (getCurrentTime() < _getLiquidation(sponsor, id).expiry) &&
+                (_getLiquidation(sponsor, id).state == Status.PreDispute),
             "Liquidation has expired or has already been disputed"
         );
         _;
     }
     modifier onlyPostExpiryOrPostDispute(uint id, address sponsor) {
         require(
-            (getLiquidation(sponsor, id).state == Status.DisputeSucceeded) ||
-                (getLiquidation(sponsor, id).state == Status.DisputeFailed) ||
-                ((getLiquidation(sponsor, id).expiry <= getCurrentTime()) &&
-                    (getLiquidation(sponsor, id).state == Status.PreDispute)),
+            (_getLiquidation(sponsor, id).state == Status.DisputeSucceeded) ||
+                (_getLiquidation(sponsor, id).state == Status.DisputeFailed) ||
+                ((_getLiquidation(sponsor, id).expiry <= getCurrentTime()) &&
+                    (_getLiquidation(sponsor, id).state == Status.PreDispute)),
             "Liquidation has not expired or is pending dispute"
         );
         _;
     }
     modifier onlyPendingDispute(uint id, address sponsor) {
         require(
-            getLiquidation(sponsor, id).state == Status.PendingDispute,
+            _getLiquidation(sponsor, id).state == Status.PendingDispute,
             "Liquidation is not currently pending dispute"
         );
         _;
@@ -107,17 +108,19 @@ contract Liquidation is Testable {
     // FOR TESTING PURPOSES MAINLY
     // Hard codes a bunch of variables that should be determined programmatically in production
     // The implication right now is that Liquidation inherits ExpiringMultiParty as a base class
+    // or otherwise can access some global store of rules for this template
     constructor(
         bool _isTest,
+        uint _positionExpiry,
         address _collateralCurrency,
         address _syntheticCurrency,
         FixedPoint.Unsigned memory _disputeBondPct,
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
         uint _liquidationLiveness
-    ) public Testable(_isTest) {
-        collateralCurrency = IERC20(_collateralCurrency);
-        syntheticCurrency = IERC20(_syntheticCurrency);
+    ) public Position(_positionExpiry, _isTest) {
+        collateralCurrency = ERC20Burnable(_collateralCurrency);
+        syntheticCurrency = ERC20Burnable(_syntheticCurrency);
         disputeBondPct = _disputeBondPct;
         sponsorDisputeRewardPct = _sponsorDisputeRewardPct;
         disputerDisputeRewardPct = _disputerDisputeRewardPct;
@@ -128,42 +131,36 @@ contract Liquidation is Testable {
     // ACCESS: Caller must have enough TRV to retire outstanding tokens
     // FOR TESTING PURPOSES: I make the following simplifications
     // - Allow caller to pass in uuid
-    // - Allow caller to pass all position variables
     function createLiquidation(
         address sponsor,
-        uint uuid,
-        FixedPoint.Unsigned memory _tokensOutstanding,
-        FixedPoint.Unsigned memory _lockedCollateral,
-        FixedPoint.Unsigned memory _liquidatedCollateral
-    ) public returns (address, uint) {
+        uint uuid
+    ) public {
+        // Attempt to retrieve Position data for sponsor
+        PositionData memory positionToLiquidate = _getPosition(sponsor);
+        // TODO: Should "destroy" the position somehow, rendering its create/redeem/deposit/withdraw methods uncallable
+
         _Liquidation storage newLiquidation = liquidations[sponsor][uuid];
-        // FOR TESTING: Hard code sponsor's position details
-        // The implication right now is that we could populate these fields only knowing the sponsor's address
-        newLiquidation.tokensOutstanding = _tokensOutstanding;
-        newLiquidation.lockedCollateral = _lockedCollateral;
-        newLiquidation.liquidatedCollateral = _liquidatedCollateral;
+        newLiquidation.tokensOutstanding = positionToLiquidate.tokensOutstanding;
+        newLiquidation.lockedCollateral = positionToLiquidate.collateral;
+        newLiquidation.liquidatedCollateral = positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount);
 
         // Set these after creation of new liquidation
         newLiquidation.expiry = getCurrentTime() + liquidationLiveness;
         newLiquidation.liquidator = msg.sender;
         newLiquidation.state = Status.PreDispute;
 
+        // Destroy tokens
         require(
             syntheticCurrency.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue),
             "failed to transfer synthetic tokens from sender"
         );
-    }
-
-    function getLiquidation(address sponsor, uint uuid) private view returns (_Liquidation storage liquidation) {
-        liquidation = liquidations[sponsor][uuid];
-        require(liquidation.liquidator != address(0), "liquidator address is not set on this Liquidation");
-
+        // syntheticCurrency.burn(newLiquidation.tokensOutstanding.rawValue);
     }
 
     // PRE-DISPUTE and PRE-EXPIRY: Can dispute, sends it to PENDING-DISPUTE
     // ACCESS: Only someone with enough Dispute-Bond can call and become the disputer
     function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
-        _Liquidation storage disputedLiquidation = getLiquidation(sponsor, id);
+        _Liquidation storage disputedLiquidation = _getLiquidation(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
         require(
@@ -191,7 +188,7 @@ contract Liquidation is Testable {
         public
         onlyPendingDispute(id, sponsor)
     {
-        _Liquidation storage disputedLiquidation = getLiquidation(sponsor, id);
+        _Liquidation storage disputedLiquidation = _getLiquidation(sponsor, id);
 
         // if (disputedLiquidation.oracle.hasPrice(disputedLiquidation.identifier, disputedLiquidation.disputeTime)) {
         // If dispute is over set oracle price
@@ -215,13 +212,12 @@ contract Liquidation is Testable {
         // } else {
         //     return;
         // }
-
     }
 
     // DISPUTE_FAILED, DISPUTE_SUCCEEDED or postExpiry
     // ACCESS: Only sponsor and disputer if successful dispute, only liquidator if unsuccessful dispute
     function withdrawLiquidation(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
-        _Liquidation storage liquidation = getLiquidation(sponsor, id);
+        _Liquidation storage liquidation = _getLiquidation(sponsor, id);
         require(
             (msg.sender == liquidation.disputer) || (msg.sender == liquidation.liquidator) || (msg.sender == sponsor),
             "must be a disputer, liquidator, or sponsor to request a withdrawal on a liquidation"
@@ -287,5 +283,14 @@ contract Liquidation is Testable {
             // Liquidation is in the middle of a dispute, should not get here
             require(false, "Cannot withdraw during a pending dispute");
         }
+    }
+
+    function _getLiquidation(address sponsor, uint uuid) internal view returns (_Liquidation storage liquidation) {
+        liquidation = liquidations[sponsor][uuid];
+        require(liquidation.liquidator != address(0), "Liquidation does not exist: liquidator address is not set");
+    }
+    function _getPosition(address sponsor) internal view returns (PositionData storage position) {
+        position = positions[sponsor];
+        require(position.sponsor != address(0), "Position does not exist: sponsor address is not set");
     }
 }

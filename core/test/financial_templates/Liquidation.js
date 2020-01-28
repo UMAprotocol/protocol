@@ -24,8 +24,6 @@ contract("Liquidation", function(accounts) {
 
   // Amount of tokens to mint for test
   const amountOfCollateral = BN(toWei("150"));
-  const amountOfCollateralToLiquidate = BN(toWei("150"));
-  // @dev: Amount to liquidate can be less than amount of collateral iff there is a pending withdrawal
   const amountOfSynthetic = BN(toWei("100"));
 
   // Settlement price
@@ -46,6 +44,13 @@ contract("Liquidation", function(accounts) {
     .times(3); // In seconds
   const startTime = "15798990420";
 
+  // Position contract params
+  const positionLiveness = BN(60)
+    .times(60)
+    .times(1);
+  const pendingWithdrawalAmount = "0"; // Amount to liquidate can be less than amount of collateral iff there is a pending withdrawal
+  const amountOfCollateralToLiquidate = amountOfCollateral.plus(pendingWithdrawalAmount);
+  
   // Contracts
   let liquidationContract;
   let collateralToken;
@@ -76,6 +81,7 @@ contract("Liquidation", function(accounts) {
     // Deploy liquidation contract and set global params
     liquidationContract = await Liquidation.new(
       true,
+      (BN(startTime).plus(positionLiveness).toString()),
       collateralToken.address,
       syntheticToken.address,
       { rawValue: disputeBondPct.toString() },
@@ -104,7 +110,27 @@ contract("Liquidation", function(accounts) {
     await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, { from: liquidator });
   });
 
-  describe("Creating a liquidation", () => {
+  describe("Attempting to liquidate a position that does not exist", () => {
+    it('should revert', async () => {
+      assert(await didContractThrow(
+        liquidationContract.createLiquidation(
+          sponsor,
+          liquidationParams.uuid,
+          { from: liquidator }
+        )
+      ));
+    });
+  });
+
+  describe("Creating a liquidation on a valid position", () => {
+    beforeEach(async () => {
+      // Create position
+      await liquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() }, 
+        { from: sponsor }
+      );
+    });
     it("Liquidator does not have enough tokens to retire position", async () => {
       await syntheticToken.transfer(contractDeployer, toWei("1"), { from: liquidator });
       assert(
@@ -112,9 +138,6 @@ contract("Liquidation", function(accounts) {
           liquidationContract.createLiquidation(
             sponsor,
             liquidationParams.uuid,
-            { rawValue: liquidationParams.tokensOutstanding.toString() },
-            { rawValue: liquidationParams.lockedCollateral.toString() },
-            { rawValue: liquidationParams.liquidatedCollateral.toString() },
             { from: liquidator }
           )
         )
@@ -124,20 +147,24 @@ contract("Liquidation", function(accounts) {
 
   describe("Liquidation has been created", () => {
     beforeEach(async () => {
+      // Create position
+      await liquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() }, 
+        { from: sponsor }
+      );
       // Create a Liquidation
       await liquidationContract.createLiquidation(
         sponsor,
         liquidationParams.uuid,
-        { rawValue: liquidationParams.tokensOutstanding.toString() },
-        { rawValue: liquidationParams.lockedCollateral.toString() },
-        { rawValue: liquidationParams.liquidatedCollateral.toString() },
         { from: liquidator }
       );
     });
 
     describe("Get a Liquidation", () => {
-      it("Liquidator redeemed synthetic tokens", async () => {
+      it("Liquidator burned synthetic tokens", async () => {
         assert.equal((await syntheticToken.balanceOf(liquidator)).toString(), "0");
+        assert.equal((await syntheticToken.totalSupply()).toString(), "0");
       });
       it("Liquidation exists and params are set properly", async () => {
         const newLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
