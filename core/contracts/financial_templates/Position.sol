@@ -2,8 +2,11 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../ExpandedIERC20.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
+import "./Token.sol";
 
 contract Position is Testable {
     using SafeMath for uint;
@@ -22,13 +25,19 @@ contract Position is Testable {
     FixedPoint.Unsigned public totalPositionCollateral;
     FixedPoint.Unsigned public totalTokensOutstanding;
 
+    ExpandedIERC20 public token;
+    IERC20 public collateral;
+
     uint expirationTimestamp;
     uint withdrawalLiveness;
 
-    constructor(uint _expirationTimestamp, bool _isTest) public Testable(_isTest) {
+    constructor(uint _expirationTimestamp, address collateralAddress, bool _isTest) public Testable(_isTest) {
         expirationTimestamp = _expirationTimestamp;
         // TODO: This should be settable.
         withdrawalLiveness = 1000;
+        collateral = IERC20(collateralAddress);
+        Token mintableToken = new Token();
+        token = ExpandedIERC20(address(mintableToken));
     }
 
     modifier onlyPreExpiration() {
@@ -49,6 +58,7 @@ contract Position is Testable {
         require(positionData.requestPassTimestamp == 0);
         positionData.collateral = positionData.collateral.add(collateralAmount);
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
+        require(collateral.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
     }
 
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
@@ -58,6 +68,7 @@ contract Position is Testable {
         positionData.collateral = positionData.collateral.sub(collateralAmount);
         require(_checkCollateralizationRatio(positionData));
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
+        require(collateral.transfer(msg.sender, collateralAmount.rawValue));
     }
 
     // Decide whether to fold this functionality into withdraw() method above.
@@ -69,6 +80,7 @@ contract Position is Testable {
         totalPositionCollateral = totalPositionCollateral.sub(positionData.withdrawalRequestAmount);
 
         positionData.requestPassTimestamp = 0;
+        require(collateral.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue));
     }
 
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
@@ -105,6 +117,8 @@ contract Position is Testable {
 
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
+        require(collateral.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
+        require(token.mint(msg.sender, numTokens.rawValue));
     }
 
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
@@ -120,6 +134,11 @@ contract Position is Testable {
         // TODO: Need to wipe out the struct entirely on full redemption.
         positionData.tokensOutstanding = positionData.tokensOutstanding.sub(numTokens);
         totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
+
+        require(collateral.transfer(msg.sender, collateralRedeemed.rawValue));
+        // TODO: Use `burnFrom` here?
+        require(token.transferFrom(msg.sender, address(this), numTokens.rawValue));
+        token.burn(numTokens.rawValue);
     }
 
     function _getPositionData() private view returns (PositionData storage positionData) {
