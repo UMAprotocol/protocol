@@ -91,7 +91,7 @@ contract("Liquidation", function(accounts) {
     );
 
     // Get newly created synthetic token
-    syntheticToken = await ERC20Mintable.at(await liquidationContract.token());
+    syntheticToken = await ERC20Mintable.at(await liquidationContract.tokenCurrency());
 
     // Hardcode start time
     await liquidationContract.setCurrentTime(startTime);

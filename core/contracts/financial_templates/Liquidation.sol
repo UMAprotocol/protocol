@@ -142,10 +142,10 @@ contract Liquidation is Position {
 
         // Destroy tokens
         require(
-            token.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue),
+            tokenCurrency.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue),
             "failed to transfer synthetic tokens from sender"
         );
-        token.burn(newLiquidation.tokensOutstanding.rawValue);
+        tokenCurrency.burn(newLiquidation.tokensOutstanding.rawValue);
     }
 
     // PRE-DISPUTE and PRE-EXPIRY: Can dispute, sends it to PENDING-DISPUTE
@@ -155,7 +155,7 @@ contract Liquidation is Position {
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
         require(
-            collateral.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue),
+            collateralCurrency.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue),
             "failed to transfer dispute bond from sender"
         );
 
@@ -228,7 +228,7 @@ contract Liquidation is Position {
                 // Pay: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
                 require(
-                    collateral.transfer(msg.sender, payToDisputer.rawValue),
+                    collateralCurrency.transfer(msg.sender, payToDisputer.rawValue),
                     "failed to transfer reward for a successful dispute to disputer"
                 );
             } else if (msg.sender == sponsor) {
@@ -236,7 +236,7 @@ contract Liquidation is Position {
                 FixedPoint.Unsigned memory remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
                 FixedPoint.Unsigned memory payToSponsor = sponsorDisputeReward.add(remainingCollateral);
                 require(
-                    collateral.transfer(msg.sender, payToSponsor.rawValue),
+                    collateralCurrency.transfer(msg.sender, payToSponsor.rawValue),
                     "failed to transfer reward for a successful dispute to sponsor"
                 );
             } else if (msg.sender == liquidation.liquidator) {
@@ -245,7 +245,7 @@ contract Liquidation is Position {
                     disputerDisputeReward
                 );
                 require(
-                    collateral.transfer(msg.sender, payToLiquidator.rawValue),
+                    collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer reward for a successful dispute to liquidator"
                 );
             }
@@ -254,7 +254,7 @@ contract Liquidation is Position {
             if (msg.sender == liquidation.liquidator) {
                 FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
                 require(
-                    collateral.transfer(msg.sender, payToLiquidator.rawValue),
+                    collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer locked collateral plus dispute bond to liquidator"
                 );
             } else {
@@ -265,7 +265,7 @@ contract Liquidation is Position {
             // Pay all lockedCollateral to liquidator
             if (msg.sender == liquidation.liquidator) {
                 require(
-                    collateral.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
+                    collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
                     "failed to transfer locked collateral to liquidator"
                 );
             } else {

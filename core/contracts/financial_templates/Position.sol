@@ -16,17 +16,17 @@ contract Position is Testable {
         address sponsor;
         FixedPoint.Unsigned collateral;
         FixedPoint.Unsigned tokensOutstanding;
-        // Withdrawal request stuff.
-        FixedPoint.Unsigned withdrawalRequestAmount;
+        // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTImestamp != 0`.
         uint requestPassTimestamp;
+        FixedPoint.Unsigned withdrawalRequestAmount;
     }
     mapping(address => PositionData) public positions;
 
     FixedPoint.Unsigned public totalPositionCollateral;
     FixedPoint.Unsigned public totalTokensOutstanding;
 
-    ExpandedIERC20 public token;
-    IERC20 public collateral;
+    ExpandedIERC20 public tokenCurrency;
+    IERC20 public collateralCurrency;
 
     uint expirationTimestamp;
     uint withdrawalLiveness;
@@ -35,9 +35,9 @@ contract Position is Testable {
         expirationTimestamp = _expirationTimestamp;
         // TODO: This should be settable.
         withdrawalLiveness = 1000;
-        collateral = IERC20(collateralAddress);
+        collateralCurrency = IERC20(collateralAddress);
         Token mintableToken = new Token();
-        token = ExpandedIERC20(address(mintableToken));
+        tokenCurrency = ExpandedIERC20(address(mintableToken));
     }
 
     modifier onlyPreExpiration() {
@@ -58,7 +58,7 @@ contract Position is Testable {
         require(positionData.requestPassTimestamp == 0);
         positionData.collateral = positionData.collateral.add(collateralAmount);
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
-        require(collateral.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
+        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
     }
 
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
@@ -68,7 +68,7 @@ contract Position is Testable {
         positionData.collateral = positionData.collateral.sub(collateralAmount);
         require(_checkCollateralizationRatio(positionData));
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
-        require(collateral.transfer(msg.sender, collateralAmount.rawValue));
+        require(collateralCurrency.transfer(msg.sender, collateralAmount.rawValue));
     }
 
     // Decide whether to fold this functionality into withdraw() method above.
@@ -80,7 +80,7 @@ contract Position is Testable {
         totalPositionCollateral = totalPositionCollateral.sub(positionData.withdrawalRequestAmount);
 
         positionData.requestPassTimestamp = 0;
-        require(collateral.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue));
+        require(collateralCurrency.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue));
     }
 
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
@@ -117,8 +117,8 @@ contract Position is Testable {
 
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
-        require(collateral.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
-        require(token.mint(msg.sender, numTokens.rawValue));
+        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
     }
 
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
@@ -135,10 +135,10 @@ contract Position is Testable {
         positionData.tokensOutstanding = positionData.tokensOutstanding.sub(numTokens);
         totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
 
-        require(collateral.transfer(msg.sender, collateralRedeemed.rawValue));
+        require(collateralCurrency.transfer(msg.sender, collateralRedeemed.rawValue));
         // TODO: Use `burnFrom` here?
-        require(token.transferFrom(msg.sender, address(this), numTokens.rawValue));
-        token.burn(numTokens.rawValue);
+        require(tokenCurrency.transferFrom(msg.sender, address(this), numTokens.rawValue));
+        tokenCurrency.burn(numTokens.rawValue);
     }
 
     function _getPositionData() private view returns (PositionData storage positionData) {

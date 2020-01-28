@@ -15,15 +15,17 @@ contract("Position", function(accounts) {
   let collateral;
 
   before(async function() {
+    // Represents DAI or some other token that the sponsor and contracts don't control.
     collateral = await ERC20Mintable.new({ from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
   });
 
   it("Lifecycle", async function() {
-    const expirationTimestamp = "15798990420";
+    // The contract expires 10k seconds in the future -> will not expire during this test case.
+    const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
     const position = await Position.new(expirationTimestamp, collateral.address, true);
-    const token = await Token.at(await position.token());
+    const tokenCurrency = await Token.at(await position.tokenCurrency());
 
     // Create a second, very big and lowly collateralization position.
     await collateral.approve(position.address, toWei("1000"), { from: other });
@@ -40,7 +42,7 @@ contract("Position", function(accounts) {
     assert.equal(positionData.sponsor, sponsor);
     assert.equal(positionData.collateral.toString(), toWei("150"));
     assert.equal(positionData.tokensOutstanding.toString(), toWei("100"));
-    assert.equal((await token.balanceOf(sponsor)).toString(), toWei("100"));
+    assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), toWei("100"));
     assert.equal((await position.totalPositionCollateral()).toString(), toWei("151"));
     assert.equal((await position.totalTokensOutstanding()).toString(), toWei("1100"));
     assert.equal((await collateral.balanceOf(position.address)).toString(), toWei("151"));
@@ -72,14 +74,14 @@ contract("Position", function(accounts) {
     // Redeem partial.
     // Fails without approving collateral.
     assert(await didContractThrow(position.redeem({ rawValue: toWei("50") }, { from: sponsor })));
-    await token.approve(position.address, toWei("50"), { from: sponsor });
+    await tokenCurrency.approve(position.address, toWei("50"), { from: sponsor });
     sponsorInitialBalance = await collateral.balanceOf(sponsor);
     await position.redeem({ rawValue: toWei("50") }, { from: sponsor });
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     positionData = await position.positions(sponsor);
     assert.equal(positionData.collateral.toString(), toWei("90"));
     assert.equal(positionData.tokensOutstanding.toString(), toWei("50"));
-    assert.equal((await token.balanceOf(sponsor)).toString(), toWei("50"));
+    assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), toWei("50"));
     assert.equal((await position.totalPositionCollateral()).toString(), toWei("91"));
     assert.equal((await position.totalTokensOutstanding()).toString(), toWei("1050"));
     assert.equal((await collateral.balanceOf(position.address)).toString(), toWei("91"));
@@ -92,20 +94,20 @@ contract("Position", function(accounts) {
     assert.equal(positionData.sponsor, sponsor);
     assert.equal(positionData.collateral.toString(), toWei("200"));
     assert.equal(positionData.tokensOutstanding.toString(), toWei("60"));
-    assert.equal((await token.balanceOf(sponsor)).toString(), toWei("60"));
+    assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), toWei("60"));
     assert.equal((await position.totalPositionCollateral()).toString(), toWei("201"));
     assert.equal((await position.totalTokensOutstanding()).toString(), toWei("1060"));
     assert.equal((await collateral.balanceOf(position.address)).toString(), toWei("201"));
 
     // Redeem full.
-    await token.approve(position.address, toWei("60"), { from: sponsor });
+    await tokenCurrency.approve(position.address, toWei("60"), { from: sponsor });
     sponsorInitialBalance = await collateral.balanceOf(sponsor);
     await position.redeem({ rawValue: toWei("60") }, { from: sponsor });
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     positionData = await position.positions(sponsor);
     assert.equal(positionData.collateral.toString(), toWei("0"));
     assert.equal(positionData.tokensOutstanding.toString(), toWei("0"));
-    assert.equal((await token.balanceOf(sponsor)).toString(), toWei("0"));
+    assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), toWei("0"));
     assert.equal((await position.totalPositionCollateral()).toString(), toWei("1"));
     assert.equal((await position.totalTokensOutstanding()).toString(), toWei("1000"));
     assert.equal((await collateral.balanceOf(position.address)).toString(), toWei("1"));
@@ -116,12 +118,12 @@ contract("Position", function(accounts) {
     const { toWei } = web3.utils;
     const expirationTimestamp = "15798990420";
     const position = await Position.new(expirationTimestamp, collateral.address, true);
-    const token = await Token.at(await position.token());
+    const tokenCurrency = await Token.at(await position.tokenCurrency());
 
     const startTime = await position.getCurrentTime();
     await collateral.approve(position.address, toWei("100000"), { from: sponsor });
     await collateral.approve(position.address, toWei("100000"), { from: other });
-    await token.approve(position.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(position.address, toWei("100000"), { from: sponsor });
 
     // Create a second, very big and lowly collateralization position.
     await position.create({ rawValue: toWei("1") }, { rawValue: toWei("1000") }, { from: other });
