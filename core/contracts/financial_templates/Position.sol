@@ -42,7 +42,7 @@ contract Position is Testable {
 
     modifier onlyPreExpiration() {
         // TODO: Do we need a window around expiration?
-        require(getCurrentTime() < expirationTimestamp);
+        require(getCurrentTime() < expirationTimestamp, "cannot create a position past its expiry time");
         _;
     }
 
