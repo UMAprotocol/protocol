@@ -557,4 +557,252 @@ contract("Liquidation", function(accounts) {
       });
     });
   });
+
+  describe("Full Lifecycle Edge cases", () => {
+    it("Dispute rewards should not sum to over 100% of TRV", async () => {
+      // Deploy liquidation contract and set global params
+      assert(
+        await didContractThrow(
+          Liquidation.new(
+            true,
+            BN(startTime)
+              .plus(positionLiveness)
+              .toString(),
+            collateralToken.address,
+            { rawValue: disputeBondPct.toString() },
+            { rawValue: toWei("0.5") },
+            { rawValue: toWei("0.5") },
+            liquidationLiveness.toString(),
+            { from: contractDeployer }
+          )
+        )
+      );
+    });
+    it("Dispute bond can be over 100%", async () => {
+      const edgeDisputeBondPct = BN(toWei("1.0"));
+      const edgeDisputeBond = edgeDisputeBondPct.times(amountOfCollateral).dividedBy(toWei("1"));
+
+      // Send away previous balances
+      await collateralToken.transfer(contractDeployer, disputeBond, { from: disputer });
+      await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
+
+      // Create  Liquidation
+      const edgeLiquidationContract = await Liquidation.new(
+        true,
+        BN(startTime)
+          .plus(positionLiveness)
+          .toString(),
+        collateralToken.address,
+        { rawValue: edgeDisputeBondPct.toString() },
+        { rawValue: sponsorDisputeRewardPct.toString() },
+        { rawValue: disputerDisputeRewardPct.toString() },
+        liquidationLiveness.toString(),
+        { from: contractDeployer }
+      );
+      // Get newly created synthetic token
+      const edgeSyntheticToken = await ERC20Mintable.at(await edgeLiquidationContract.tokenCurrency());
+      // Reset start time signifying the beginning of the first liquidation
+      await edgeLiquidationContract.setCurrentTime(startTime);
+      // Mint collateral to sponsor
+      await collateralToken.mint(sponsor, amountOfCollateral, { from: contractDeployer });
+      // Mint dispute bond to disputer
+      await collateralToken.mint(disputer, edgeDisputeBond, { from: contractDeployer });
+      // Set allowance for contract to pull collateral tokens from sponsor
+      await collateralToken.increaseAllowance(edgeLiquidationContract.address, amountOfCollateral, { from: sponsor });
+      // Set allowance for contract to pull dispute bond from disputer
+      await collateralToken.increaseAllowance(edgeLiquidationContract.address, edgeDisputeBond, { from: disputer });
+      // Set allowance for contract to pull synthetic tokens from liquidator
+      await edgeSyntheticToken.increaseAllowance(edgeLiquidationContract.address, amountOfSynthetic, {
+        from: liquidator
+      });
+      // Create position
+      await edgeLiquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Transfer synthetic tokens to a liquidator
+      await edgeSyntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      // Create a Liquidation
+      await edgeLiquidationContract.createLiquidation(sponsor, { from: liquidator });
+      // Dispute
+      await edgeLiquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+      // Settle the dispute as SUCCESSFUL
+      await edgeLiquidationContract.settleDispute(
+        liquidationParams.uuid,
+        sponsor,
+        { rawValue: settlementPrice.toString() },
+        true
+      );
+      await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
+      // Expected Disputer payment => disputer reward + dispute bond
+      const expectedPaymentDisputer = disputerDisputeReward.plus(edgeDisputeBond);
+      assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPaymentDisputer.toString());
+      await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+      // Expected Liquidator payment => TRV - dispute reward - sponsor reward
+      const expectedPaymentLiquidator = settlementTRV.minus(disputerDisputeReward).minus(sponsorDisputeReward);
+      assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPaymentLiquidator.toString());
+      await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
+      // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
+      const expectedPaymentSponsor = amountOfCollateral.minus(settlementTRV).plus(sponsorDisputeReward);
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
+    });
+    it("Liquidation is disputed successfully but there is no excess collateral for sponsor to withdraw", async () => {
+      const edgeAmountOfCollateral = BN(toWei("50"));
+
+      // Send away previous balances
+      await collateralToken.transfer(contractDeployer, disputeBond, { from: disputer });
+      await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
+
+      // Create  Liquidation
+      const edgeLiquidationContract = await Liquidation.new(
+        true,
+        BN(startTime)
+          .plus(positionLiveness)
+          .toString(),
+        collateralToken.address,
+        { rawValue: disputeBondPct.toString() },
+        { rawValue: sponsorDisputeRewardPct.toString() },
+        { rawValue: disputerDisputeRewardPct.toString() },
+        liquidationLiveness.toString(),
+        { from: contractDeployer }
+      );
+      // Get newly created synthetic token
+      const edgeSyntheticToken = await ERC20Mintable.at(await edgeLiquidationContract.tokenCurrency());
+      // Reset start time signifying the beginning of the first liquidation
+      await edgeLiquidationContract.setCurrentTime(startTime);
+      // Mint collateral to sponsor
+      await collateralToken.mint(sponsor, edgeAmountOfCollateral, { from: contractDeployer });
+      // Mint dispute bond to disputer
+      await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
+      // Set allowance for contract to pull collateral tokens from sponsor
+      await collateralToken.increaseAllowance(edgeLiquidationContract.address, edgeAmountOfCollateral, {
+        from: sponsor
+      });
+      // Set allowance for contract to pull dispute bond from disputer
+      await collateralToken.increaseAllowance(edgeLiquidationContract.address, disputeBond, { from: disputer });
+      // Set allowance for contract to pull synthetic tokens from liquidator
+      await edgeSyntheticToken.increaseAllowance(edgeLiquidationContract.address, amountOfSynthetic, {
+        from: liquidator
+      });
+      // Create position
+      await edgeLiquidationContract.create(
+        { rawValue: edgeAmountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Transfer synthetic tokens to a liquidator
+      await edgeSyntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      // Create a Liquidation
+      await edgeLiquidationContract.createLiquidation(sponsor, { from: liquidator });
+      // Dispute
+      await edgeLiquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+      // Settle the dispute as SUCCESSFUL
+      await edgeLiquidationContract.settleDispute(
+        liquidationParams.uuid,
+        sponsor,
+        { rawValue: settlementPrice.toString() },
+        true
+      );
+      // @dev: If Liquidation is disputed successfully AND locked collateral < TRV AND (disputer's reward + sponsor's reward) > locked collateral
+      // Then there will be a race to call withdraw first
+      // await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
+      // // Expected Disputer payment => disputer reward + dispute bond
+      // const expectedPaymentDisputer = disputerDisputeReward.plus(disputeBond);
+      // assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPaymentDisputer.toString());
+      // await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+      // // Expected Liquidator payment => TRV - dispute reward - sponsor reward
+      // const expectedPaymentLiquidator = settlementTRV.minus(disputerDisputeReward).minus(sponsorDisputeReward);
+      // assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPaymentLiquidator.toString());
+      await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
+      // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
+      const expectedPaymentSponsor = sponsorDisputeReward;
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
+    });
+    it("Liquidation is disputed successfully but TRV > collateral and sponsor's reward is large enough to prevent disputer from withdrawing", async () => {
+      const edgeSettlementPrice = BN(toWei("3.0"));
+      const edgeSponsorRewardPct = BN(toWei("0.4"));
+      const edgeSettlementTRV = amountOfSynthetic.times(edgeSettlementPrice).dividedBy(toWei("1"));
+      const edgeSponsorReward = edgeSponsorRewardPct.times(edgeSettlementTRV).dividedBy(toWei("1"));
+      const edgeDisputerRewardPct = BN(toWei("0.25"));
+      const edgeDisputerReward = edgeDisputerRewardPct.times(edgeSettlementTRV).dividedBy(toWei("1"));
+
+      // Send away previous balances
+      await collateralToken.transfer(contractDeployer, disputeBond, { from: disputer });
+      await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
+
+      // Create  Liquidation
+      const edgeLiquidationContract = await Liquidation.new(
+        true,
+        BN(startTime)
+          .plus(positionLiveness)
+          .toString(),
+        collateralToken.address,
+        { rawValue: disputeBondPct.toString() },
+        { rawValue: edgeSponsorRewardPct.toString() },
+        { rawValue: edgeDisputerRewardPct.toString() },
+        liquidationLiveness.toString(),
+        { from: contractDeployer }
+      );
+      // Get newly created synthetic token
+      const edgeSyntheticToken = await ERC20Mintable.at(await edgeLiquidationContract.tokenCurrency());
+      // Reset start time signifying the beginning of the first liquidation
+      await edgeLiquidationContract.setCurrentTime(startTime);
+      // Mint collateral to sponsor
+      await collateralToken.mint(sponsor, amountOfCollateral, { from: contractDeployer });
+      // Mint dispute bond to disputer
+      await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
+      // Set allowance for contract to pull collateral tokens from sponsor
+      await collateralToken.increaseAllowance(edgeLiquidationContract.address, amountOfCollateral, { from: sponsor });
+      // Set allowance for contract to pull dispute bond from disputer
+      await collateralToken.increaseAllowance(edgeLiquidationContract.address, disputeBond, { from: disputer });
+      // Set allowance for contract to pull synthetic tokens from liquidator
+      await edgeSyntheticToken.increaseAllowance(edgeLiquidationContract.address, amountOfSynthetic, {
+        from: liquidator
+      });
+      // Create position
+      await edgeLiquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Transfer synthetic tokens to a liquidator
+      await edgeSyntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      // Create a Liquidation
+      await edgeLiquidationContract.createLiquidation(sponsor, { from: liquidator });
+      // Dispute
+      await edgeLiquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+      // Settle the dispute as SUCCESSFUL
+      await edgeLiquidationContract.settleDispute(
+        liquidationParams.uuid,
+        sponsor,
+        { rawValue: edgeSettlementPrice.toString() },
+        true
+      );
+      // @dev: If Liquidation is disputed successfully AND locked collateral < TRV AND (disputer's reward + sponsor's reward) > locked collateral
+      // Then there will be a race to call withdraw first
+
+      // In this case, assume the Sponsor withdraws first, leaving insufficient remaining TRV for disputer to get their reward
+      await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
+      // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
+      const expectedPaymentSponsor = edgeSponsorReward;
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
+
+      // Disputer's withdrawal should fail, even though there is still some TRV remaining
+      assert(
+        await didContractThrow(
+          edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer })
+        )
+      );
+      // Expected Disputer payment => disputer reward + dispute bond
+
+      // Liquidator's withdrawal should also fail given that there
+      assert(
+        await didContractThrow(
+          edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
+        )
+      );
+      // Expected Liquidator payment => TRV - dispute reward - sponsor reward
+    });
+  });
 });

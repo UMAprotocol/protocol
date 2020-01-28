@@ -9,9 +9,13 @@ import "../Testable.sol";
 import "./Position.sol";
 
 // TODO:
+// - Rename this to "Liquidatable" and Position to "Positionizable"?
 // - Events
 // - Connect with Oracle/DVM
 // - Fees
+// - Partial liquidations: should be trivial to add
+// - In order to ensure that positions with < 100% collateralization are disputed,
+// the contract forces liquidators to liquidate the “least-collateralized” positions first.
 contract Liquidation is Position {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
@@ -126,6 +130,10 @@ contract Liquidation is Position {
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
         uint _liquidationLiveness
     ) public Position(_positionExpiry, _collateralCurrency, _isTest) {
+        require(
+            _sponsorDisputeRewardPct.add(_disputerDisputeRewardPct).isLessThan(1),
+            "Sponsor and Disputer dispute rewards shouldn't sum to 100% or more"
+        );
         disputeBondPct = _disputeBondPct;
         sponsorDisputeRewardPct = _sponsorDisputeRewardPct;
         disputerDisputeRewardPct = _disputerDisputeRewardPct;
@@ -281,7 +289,13 @@ contract Liquidation is Position {
                 );
             } else if (msg.sender == sponsor) {
                 // Pay SPONSOR: remaining collateral (locked collateral - TRV) + sponsor reward
-                FixedPoint.Unsigned memory remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
+                FixedPoint.Unsigned memory remainingCollateral;
+                // @dev: It is possible that remaining collateral < 0, in which case we peg to 0
+                if (tokenRedemptionValue.isGreaterThan(liquidation.lockedCollateral)) {
+                    remainingCollateral = FixedPoint.fromUnscaledUint(0);
+                } else {
+                    remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
+                }
                 FixedPoint.Unsigned memory payToSponsor = sponsorDisputeReward.add(remainingCollateral);
                 require(
                     collateralCurrency.transfer(msg.sender, payToSponsor.rawValue),
@@ -289,6 +303,8 @@ contract Liquidation is Position {
                 );
             } else if (msg.sender == liquidation.liquidator) {
                 // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
+                // @dev: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
+                // the constructor when these params are set
                 FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
                     disputerDisputeReward
                 );
