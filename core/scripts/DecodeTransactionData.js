@@ -1,3 +1,8 @@
+// This script allows you to decode a transaction data blob revealing the method that the transaction is calling and
+// the parameters.
+// Example:
+// $(npm bin)/truffle exec --network test ./scripts/DecodeTransactionData.js --data 0x10a7e2014554482f55534400000000000000000000000000000000000000000000000000
+
 const { getAbiDecoder } = require("../../common/AbiUtils.js");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["data"] });
