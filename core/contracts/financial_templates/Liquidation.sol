@@ -1,7 +1,6 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // import "../OracleInteface.sol";
@@ -59,10 +58,6 @@ contract Liquidation is Position {
     // set at index creation time (HARD CODED FOR NOW via Construction).
     //
     //
-    // Type of synthetic token
-    ERC20Burnable syntheticCurrency;
-    // Type of token used for collateral
-    ERC20Burnable collateralCurrency;
     // Amount of time for pending liquidation before expiry
     uint liquidationLiveness;
     // Oracle supported identifier
@@ -113,14 +108,11 @@ contract Liquidation is Position {
         bool _isTest,
         uint _positionExpiry,
         address _collateralCurrency,
-        address _syntheticCurrency,
         FixedPoint.Unsigned memory _disputeBondPct,
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
         uint _liquidationLiveness
-    ) public Position(_positionExpiry, _isTest) {
-        collateralCurrency = ERC20Burnable(_collateralCurrency);
-        syntheticCurrency = ERC20Burnable(_syntheticCurrency);
+    ) public Position(_positionExpiry, _collateralCurrency, _isTest) {
         disputeBondPct = _disputeBondPct;
         sponsorDisputeRewardPct = _sponsorDisputeRewardPct;
         disputerDisputeRewardPct = _disputerDisputeRewardPct;
@@ -131,10 +123,7 @@ contract Liquidation is Position {
     // ACCESS: Caller must have enough TRV to retire outstanding tokens
     // FOR TESTING PURPOSES: I make the following simplifications
     // - Allow caller to pass in uuid
-    function createLiquidation(
-        address sponsor,
-        uint uuid
-    ) public {
+    function createLiquidation(address sponsor, uint uuid) public {
         // Attempt to retrieve Position data for sponsor
         PositionData memory positionToLiquidate = _getPosition(sponsor);
         // TODO: Should "destroy" the position somehow, rendering its create/redeem/deposit/withdraw methods uncallable
@@ -142,7 +131,9 @@ contract Liquidation is Position {
         _Liquidation storage newLiquidation = liquidations[sponsor][uuid];
         newLiquidation.tokensOutstanding = positionToLiquidate.tokensOutstanding;
         newLiquidation.lockedCollateral = positionToLiquidate.collateral;
-        newLiquidation.liquidatedCollateral = positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount);
+        newLiquidation.liquidatedCollateral = positionToLiquidate.collateral.sub(
+            positionToLiquidate.withdrawalRequestAmount
+        );
 
         // Set these after creation of new liquidation
         newLiquidation.expiry = getCurrentTime() + liquidationLiveness;
@@ -151,10 +142,10 @@ contract Liquidation is Position {
 
         // Destroy tokens
         require(
-            syntheticCurrency.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue),
+            token.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue),
             "failed to transfer synthetic tokens from sender"
         );
-        // syntheticCurrency.burn(newLiquidation.tokensOutstanding.rawValue);
+        token.burn(newLiquidation.tokensOutstanding.rawValue);
     }
 
     // PRE-DISPUTE and PRE-EXPIRY: Can dispute, sends it to PENDING-DISPUTE
@@ -164,7 +155,7 @@ contract Liquidation is Position {
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
         require(
-            collateralCurrency.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue),
+            collateral.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue),
             "failed to transfer dispute bond from sender"
         );
 
@@ -212,6 +203,7 @@ contract Liquidation is Position {
         // } else {
         //     return;
         // }
+
     }
 
     // DISPUTE_FAILED, DISPUTE_SUCCEEDED or postExpiry
@@ -236,7 +228,7 @@ contract Liquidation is Position {
                 // Pay: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
                 require(
-                    collateralCurrency.transfer(msg.sender, payToDisputer.rawValue),
+                    collateral.transfer(msg.sender, payToDisputer.rawValue),
                     "failed to transfer reward for a successful dispute to disputer"
                 );
             } else if (msg.sender == sponsor) {
@@ -244,7 +236,7 @@ contract Liquidation is Position {
                 FixedPoint.Unsigned memory remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
                 FixedPoint.Unsigned memory payToSponsor = sponsorDisputeReward.add(remainingCollateral);
                 require(
-                    collateralCurrency.transfer(msg.sender, payToSponsor.rawValue),
+                    collateral.transfer(msg.sender, payToSponsor.rawValue),
                     "failed to transfer reward for a successful dispute to sponsor"
                 );
             } else if (msg.sender == liquidation.liquidator) {
@@ -253,7 +245,7 @@ contract Liquidation is Position {
                     disputerDisputeReward
                 );
                 require(
-                    collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
+                    collateral.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer reward for a successful dispute to liquidator"
                 );
             }
@@ -262,7 +254,7 @@ contract Liquidation is Position {
             if (msg.sender == liquidation.liquidator) {
                 FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
                 require(
-                    collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
+                    collateral.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer locked collateral plus dispute bond to liquidator"
                 );
             } else {
@@ -273,7 +265,7 @@ contract Liquidation is Position {
             // Pay all lockedCollateral to liquidator
             if (msg.sender == liquidation.liquidator) {
                 require(
-                    collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
+                    collateral.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
                     "failed to transfer locked collateral to liquidator"
                 );
             } else {
