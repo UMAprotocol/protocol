@@ -142,6 +142,9 @@ contract("Liquidation", function(accounts) {
     });
 
     describe("Get a Liquidation", () => {
+      it("Liquidator redeemed synthetic tokens", async () => {
+        assert.equal((await syntheticToken.balanceOf(liquidator)).toString(), "0");
+      });
       it("Liquidation exists and params are set properly", async () => {
         const newLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
         assert.equal(newLiquidation.state.toString(), STATES.PRE_DISPUTE);
@@ -208,6 +211,7 @@ contract("Liquidation", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         // Mint enough tokens to disputer for another dispute bond
         await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
+        await collateralToken.increaseAllowance(liquidationContract.address, disputeBond, { from: disputer });
         assert(
           await didContractThrow(liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer }))
         );
@@ -301,20 +305,69 @@ contract("Liquidation", function(accounts) {
     describe("Withdraw: Liquidation is pending a dispute", () => {
       beforeEach(async () => {
         // Dispute a liquidation
+        await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       });
       it("Fails even regardless if liquidation expires", async () => {
-        // Test pre-expiry
+        assert(
+          await didContractThrow(
+            liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
+          )
+        );
         // Expire contract
-        // Test post-expiry
+        await liquidationContract.setCurrentTime(
+          BN(startTime)
+            .plus(liquidationLiveness)
+            .toString()
+        );
+        assert(
+          await didContractThrow(
+            liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
+          )
+        );
       });
     });
 
     describe("Withdraw: Liquidation expires", () => {
-      it("Liquidation does not exist", async () => {});
-      it("Sponsor calls", async () => {});
-      it("Liquidator calls", async () => {});
-      it("Disputer calls", async () => {});
-      it("Rando calls", async () => {});
+      beforeEach(async () => {
+        // Expire contract
+        await liquidationContract.setCurrentTime(
+          BN(startTime)
+            .plus(liquidationLiveness)
+            .toString()
+        );
+      });
+      it("Liquidation does not exist", async () => {
+        assert(
+          await didContractThrow(
+            liquidationContract.withdrawLiquidation(liquidationParams.falseUuid, sponsor, { from: liquidator })
+          )
+        );
+      });
+      it("Sponsor calls", async () => {
+        assert(
+          await didContractThrow(
+            liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor })
+          )
+        );
+      });
+      it("Liquidator calls", async () => {
+        await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+        assert.equal((await collateralToken.balanceOf(liquidator)).toString(), amountOfCollateral.toString());
+      });
+      it("Disputer calls", async () => {
+        assert(
+          await didContractThrow(
+            liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer })
+          )
+        );
+      });
+      it("Rando calls", async () => {
+        assert(
+          await didContractThrow(
+            liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: rando })
+          )
+        );
+      });
     });
 
     describe("Withdraw: Liquidation is disputed", () => {
