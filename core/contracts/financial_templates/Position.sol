@@ -28,8 +28,8 @@ contract Position is Testable {
     ExpandedIERC20 public tokenCurrency;
     IERC20 public collateralCurrency;
 
-    uint expirationTimestamp;
-    uint withdrawalLiveness;
+    uint public expirationTimestamp;
+    uint public withdrawalLiveness;
 
     constructor(uint _expirationTimestamp, address collateralAddress, bool _isTest) public Testable(_isTest) {
         expirationTimestamp = _expirationTimestamp;
@@ -51,6 +51,7 @@ contract Position is Testable {
         PositionData storage positionData = _getPositionData();
         positionData.sponsor = newSponsorAddress;
         positions[newSponsorAddress] = positionData;
+        delete positions[msg.sender];
     }
 
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
