@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 pragma experimental ABIEncoderV2;
 
-
 /**
  * @title Registry for derivatives and approved derivative creators.
  * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives

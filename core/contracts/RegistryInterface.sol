@@ -2,7 +2,6 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-
 /**
  * @title Interface for a registry of derivatives and derivative creators.
  */
@@ -32,13 +31,13 @@ interface RegistryInterface {
      * @dev Adds a party member to the calling derivative. msg.sender must be the derivative contract
      * to which the party member is added.
      */
-    function addPartyToDerivative(address party) external view;
+    function addPartyToDerivative(address party) external;
 
     /**
      * @dev Removes a party member to the calling derivative. msg.sender must be the derivative contract
      * to which the party member is removed.
      */
-    function removePartyFromDerivative(address party) external view;
+    function removePartyFromDerivative(address party) external;
 
     /**
      * @dev Returns if a party member is part of a derivative.
