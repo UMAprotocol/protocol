@@ -8,10 +8,19 @@ import "../FixedPoint.sol";
 import "../Testable.sol";
 import "./Token.sol";
 
+/**
+ * @title Financial contract with priceless position management.
+ * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
+ * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
+ */
 contract Position is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
 
+    /**
+     * @dev Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
+     * and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
+     */
     struct PositionData {
         address sponsor;
         FixedPoint.Unsigned collateral;
@@ -20,21 +29,34 @@ contract Position is Testable {
         uint requestPassTimestamp;
         FixedPoint.Unsigned withdrawalRequestAmount;
     }
+    /**
+     * @dev Maps sponsor addresses to their positions. Each sponsor can have only one position.
+     */
     mapping(address => PositionData) public positions;
 
+    // Keep track of the total collateral and tokens across all positions to enable calculating the global
+    // collateralization ratio without iterating over all positions.
     FixedPoint.Unsigned public totalPositionCollateral;
     FixedPoint.Unsigned public totalTokensOutstanding;
 
     ExpandedIERC20 public tokenCurrency;
     IERC20 public collateralCurrency;
 
+    /**
+     * @dev Time that this contract expires.
+     */
     uint public expirationTimestamp;
+    /**
+     * @dev Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
+     */
     uint public withdrawalLiveness;
 
-    constructor(uint _expirationTimestamp, address collateralAddress, bool _isTest) public Testable(_isTest) {
+    constructor(uint _expirationTimestamp, uint _withdrawalLiveness, address collateralAddress, bool _isTest)
+        public
+        Testable(_isTest)
+    {
         expirationTimestamp = _expirationTimestamp;
-        // TODO: This should be settable.
-        withdrawalLiveness = 1000;
+        withdrawalLiveness = _withdrawalLiveness;
         collateralCurrency = IERC20(collateralAddress);
         Token mintableToken = new Token();
         tokenCurrency = ExpandedIERC20(address(mintableToken));
@@ -46,14 +68,22 @@ contract Position is Testable {
         _;
     }
 
+    /**
+     * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
+     * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
+     */
     function transfer(address newSponsorAddress) public onlyPreExpiration() {
         require(positions[newSponsorAddress].sponsor == address(0));
-        PositionData storage positionData = _getPositionData();
+        PositionData memory positionData = _getPositionData();
         positionData.sponsor = newSponsorAddress;
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
     }
 
+    /**
+     * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
+     * increase the collateralization level of a position.
+     */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData();
         require(positionData.requestPassTimestamp == 0);
@@ -62,6 +92,11 @@ contract Position is Testable {
         require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
     }
 
+    /**
+     * @notice Transfers `collateralAmount` of `collateralCurrency` from the calling sponsor's position to the caller.
+     * Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization ratio.
+     * In that case, use `requestWithdrawawal`.
+     */
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData();
         require(positionData.requestPassTimestamp == 0);
@@ -72,8 +107,12 @@ contract Position is Testable {
         require(collateralCurrency.transfer(msg.sender, collateralAmount.rawValue));
     }
 
-    // Decide whether to fold this functionality into withdraw() method above.
+    /**
+     * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
+     * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
+     */
     function withdrawPassedRequest() public onlyPreExpiration() {
+        // TODO: Decide whether to fold this functionality into withdraw() method above.
         PositionData storage positionData = _getPositionData();
         require(positionData.requestPassTimestamp < getCurrentTime());
 
@@ -84,9 +123,13 @@ contract Position is Testable {
         require(collateralCurrency.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue));
     }
 
+    /**
+     * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw `collateralAmount` from their
+     * position. The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
+     */
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
         PositionData storage positionData = _getPositionData();
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp == 0, "Concurrent withdrawal requests are not allowed");
 
         // Not just pre-expiration: make sure the proposed expiration of this request is itself before expiry.
         uint requestPassTime = getCurrentTime() + withdrawalLiveness;
@@ -97,12 +140,20 @@ contract Position is Testable {
         positionData.withdrawalRequestAmount = collateralAmount;
     }
 
+    /**
+     * @notice Cancels a pending withdrawal request.
+     */
     function cancelWithdrawal() public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData();
         require(positionData.requestPassTimestamp != 0);
         positionData.requestPassTimestamp = 0;
     }
 
+    /**
+     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`. Reverts if
+     * the minting these tokens would put the position's collateralization ratio below the global collateralization
+     * ratio.
+     */
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
         onlyPreExpiration()
@@ -122,6 +173,9 @@ contract Position is Testable {
         require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
     }
 
+    /**
+     * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
+     */
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData();
         require(positionData.requestPassTimestamp == 0);

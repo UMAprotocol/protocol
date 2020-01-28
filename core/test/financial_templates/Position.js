@@ -26,7 +26,8 @@ contract("Position", function(accounts) {
   beforeEach(async function() {
     // The contract expires 10k seconds in the future -> will not expire during this test case.
     const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-    position = await Position.new(expirationTimestamp, collateral.address, true);
+    const withdrawalLiveness = 1000;
+    position = await Position.new(expirationTimestamp, withdrawalLiveness, collateral.address, true);
     tokenCurrency = await Token.at(await position.tokenCurrency());
   });
 

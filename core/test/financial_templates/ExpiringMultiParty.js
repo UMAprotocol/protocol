@@ -12,6 +12,7 @@ contract("ExpiringMultiParty", function(accounts) {
     await ExpiringMultiParty.new(
       true,
       "1234567890",
+      "1000",
       collateralAddress.address,
       { rawValue: toWei("0.1") },
       { rawValue: toWei("0.1") },

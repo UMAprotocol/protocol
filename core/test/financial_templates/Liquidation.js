@@ -48,6 +48,9 @@ contract("Liquidation", function(accounts) {
     .times(60)
     .times(1)
     .plus(liquidationLiveness); // Add this to liquidation liveness so we can create more positions post-liquidation
+  const withdrawalLiveness = BN(60)
+    .times(60)
+    .times(1);
   const pendingWithdrawalAmount = "0"; // Amount to liquidate can be less than amount of collateral iff there is a pending withdrawal
   const amountOfCollateralToLiquidate = amountOfCollateral.plus(pendingWithdrawalAmount);
 
@@ -83,6 +86,7 @@ contract("Liquidation", function(accounts) {
       BN(startTime)
         .plus(positionLiveness)
         .toString(),
+      withdrawalLiveness.toString(),
       collateralToken.address,
       { rawValue: disputeBondPct.toString() },
       { rawValue: sponsorDisputeRewardPct.toString() },

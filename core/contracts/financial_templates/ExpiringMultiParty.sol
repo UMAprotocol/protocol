@@ -10,6 +10,7 @@ contract ExpiringMultiParty is Liquidation {
     constructor(
         bool _isTest,
         uint _positionExpiry,
+        uint _positionWithdrawalLiveness,
         address _collateralCurrency,
         FixedPoint.Unsigned memory _disputeBondPct,
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
@@ -20,6 +21,7 @@ contract ExpiringMultiParty is Liquidation {
         Liquidation(
             _isTest,
             _positionExpiry,
+            _positionWithdrawalLiveness,
             _collateralCurrency,
             _disputeBondPct,
             _sponsorDisputeRewardPct,
