@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import { useTableStyles } from "./Styles.js";
 
 function DesignatedVotingDeployment({ votingAccount }) {

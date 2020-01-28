@@ -7,7 +7,7 @@ import DesignatedVotingDeployment from "./DesignatedVotingDeployment.js";
 import DesignatedVotingTransfer from "./DesignatedVotingTransfer.js";
 import DesignatedVoting from "./contracts/DesignatedVoting.json";
 
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 
 function Dashboard() {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();

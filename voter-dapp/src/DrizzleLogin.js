@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { drizzleReactHooks } from "drizzle-react";
-import { Drizzle, generateStore } from "drizzle";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
+import { Drizzle, generateStore } from "@umaprotocol/store";
 import drizzleOptions from "./drizzleOptions";
 import Button from "@material-ui/core/Button";
 import DrizzleInit from "./DrizzleInit.js";

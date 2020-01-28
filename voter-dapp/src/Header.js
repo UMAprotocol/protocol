@@ -1,5 +1,5 @@
 import React from "react";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import logo from "./logo.png";
 import Grid from "@material-ui/core/Grid";
 import { formatWei, formatWithMaxDecimals } from "./common/FormattingUtils.js";
