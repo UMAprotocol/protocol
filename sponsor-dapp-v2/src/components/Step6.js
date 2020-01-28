@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import classNames from "classnames";
 import { createFormatFunction } from "common/FormattingUtils";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import { useIdentifierConfig, useEtherscanUrl } from "lib/custom-hooks";
 
 function Step6(props) {

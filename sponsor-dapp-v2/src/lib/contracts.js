@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 
 function useDynamicallyAddedContract(contractAddress, abi) {
   const { drizzle } = drizzleReactHooks.useDrizzle();

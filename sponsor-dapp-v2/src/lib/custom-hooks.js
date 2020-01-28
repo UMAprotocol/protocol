@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import publicNetworks from "common/PublicNetworks";
 import identifiers from "identifiers.json";
 import { MAX_UINT_VAL } from "common/Constants";

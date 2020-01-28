@@ -4,8 +4,8 @@ import { BrowserRouter as Router } from "react-router-dom";
 import { Provider } from "react-redux";
 import store from "./store/store";
 import App from "./components/application";
-import { Drizzle } from "drizzle";
-import { drizzleReactHooks } from "drizzle-react";
+import { Drizzle } from "@umaprotocol/store";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import drizzleOptions from "drizzleOptions";
 
 const drizzle = new Drizzle(drizzleOptions, store);

@@ -4,7 +4,7 @@ import { TransitionGroup, CSSTransition } from "react-transition-group";
 
 import routes from "lib/routes";
 
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import { useInitializeGoogleAnalytics } from "lib/google-analytics";
 
 function App(props) {

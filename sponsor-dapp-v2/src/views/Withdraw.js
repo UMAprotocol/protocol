@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import { useSendGaPageview } from "lib/google-analytics";
 
 import classNames from "classnames";
