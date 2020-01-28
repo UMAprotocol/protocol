@@ -16,7 +16,7 @@
   "devDependencies": {
     "prettier": "1.19.1",
     "prettier-plugin-solidity": "^1.0.0-alpha.36",
-    "solidity-coverage": "^0.7.0-beta.2",
+    "solidity-coverage": "^0.7.1",
     "truffle-deploy-registry": "^0.5.1"
   },
   "dependencies": {
