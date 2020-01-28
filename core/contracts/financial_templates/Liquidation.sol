@@ -107,12 +107,13 @@ contract Liquidation is Position {
     constructor(
         bool _isTest,
         uint _positionExpiry,
+        uint _positionWithdrawalLiveness,
         address _collateralCurrency,
         FixedPoint.Unsigned memory _disputeBondPct,
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
         uint _liquidationLiveness
-    ) public Position(_positionExpiry, _collateralCurrency, _isTest) {
+    ) public Position(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, _isTest) {
         disputeBondPct = _disputeBondPct;
         sponsorDisputeRewardPct = _sponsorDisputeRewardPct;
         disputerDisputeRewardPct = _disputerDisputeRewardPct;
