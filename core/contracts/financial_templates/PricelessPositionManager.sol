@@ -64,7 +64,7 @@ contract PricelessPositionManager is Testable {
 
     modifier onlyPreExpiration() {
         // TODO: Do we need a window around expiration?
-        require(getCurrentTime() < expirationTimestamp, "cannot create a position past its expiry time");
+        require(getCurrentTime() < expirationTimestamp, "Cannot create a position past its expiry time");
         _;
     }
 
@@ -73,7 +73,10 @@ contract PricelessPositionManager is Testable {
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() {
-        require(positions[newSponsorAddress].sponsor == address(0));
+        require(
+            positions[newSponsorAddress].sponsor == address(0),
+            "Cannot transfer to an address that already has a position"
+        );
         PositionData memory positionData = _getPositionData(msg.sender);
         positionData.sponsor = newSponsorAddress;
         positions[newSponsorAddress] = positionData;
@@ -86,7 +89,7 @@ contract PricelessPositionManager is Testable {
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp == 0, "Cannot deposit with a pending withdrawal request");
         positionData.collateral = positionData.collateral.add(collateralAmount);
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
@@ -99,10 +102,10 @@ contract PricelessPositionManager is Testable {
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp == 0, "Cannot withdraw with a pending withdrawal request");
 
         positionData.collateral = positionData.collateral.sub(collateralAmount);
-        require(_checkCollateralizationRatio(positionData));
+        require(_checkCollateralizationRatio(positionData), "Cannot withdraw below global collateralization ratio");
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
         require(collateralCurrency.transfer(msg.sender, collateralAmount.rawValue));
     }
@@ -114,7 +117,7 @@ contract PricelessPositionManager is Testable {
     function withdrawPassedRequest() public onlyPreExpiration() {
         // TODO: Decide whether to fold this functionality into withdraw() method above.
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp < getCurrentTime());
+        require(positionData.requestPassTimestamp < getCurrentTime(), "Cannot withdraw before request is passed");
 
         positionData.collateral = positionData.collateral.sub(positionData.withdrawalRequestAmount);
         totalPositionCollateral = totalPositionCollateral.sub(positionData.withdrawalRequestAmount);
@@ -129,11 +132,14 @@ contract PricelessPositionManager is Testable {
      */
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0, "Concurrent withdrawal requests are not allowed");
+        require(positionData.requestPassTimestamp == 0, "Cannot have concurrent withdrawal requests");
 
         // Not just pre-expiration: make sure the proposed expiration of this request is itself before expiry.
         uint requestPassTime = getCurrentTime() + withdrawalLiveness;
-        require(requestPassTime < expirationTimestamp);
+        require(
+            requestPassTime < expirationTimestamp,
+            "Cannot request withdrawal that would pass after contract expires"
+        );
 
         // TODO: Handle case around downsizing a withdrawal request without resetting requestPassTime.
         positionData.requestPassTimestamp = requestPassTime;
@@ -145,7 +151,7 @@ contract PricelessPositionManager is Testable {
      */
     function cancelWithdrawal() public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp != 0);
+        require(positionData.requestPassTimestamp != 0, "Cannot cancel if no pending withdrawal request");
         positionData.requestPassTimestamp = 0;
     }
 
@@ -159,13 +165,13 @@ contract PricelessPositionManager is Testable {
         onlyPreExpiration()
     {
         PositionData storage positionData = positions[msg.sender];
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp == 0, "Cannot create with a pending withdrawal request");
         if (positionData.sponsor == address(0)) {
             positionData.sponsor = msg.sender;
         }
         positionData.collateral = positionData.collateral.add(collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
-        require(_checkCollateralizationRatio(positionData));
+        require(_checkCollateralizationRatio(positionData), "Cannot create below global collateralization ratio");
 
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
@@ -178,8 +184,8 @@ contract PricelessPositionManager is Testable {
      */
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
-        require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
+        require(positionData.requestPassTimestamp == 0, "Cannot create with a pending withdrawal request");
+        require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Can't redeem more than position size");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
         FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(positionData.collateral);
