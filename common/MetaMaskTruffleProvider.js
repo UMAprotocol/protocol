@@ -1,5 +1,4 @@
 const MetaMaskConnector = require("node-metamask");
-
 const argv = require("minimist")(process.argv.slice());
 
 class MetaMaskTruffleProvider {
