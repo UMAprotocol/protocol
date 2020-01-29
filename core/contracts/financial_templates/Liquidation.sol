@@ -276,9 +276,21 @@ contract Liquidation is Position {
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
             liquidation.settlementPrice
         );
-        FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
+
+        // Calculate rewards: to ensure that everyone can be paid out,
+        // if TRV > Collateral, then make rewards a percentage of the Collateral
+        FixedPoint.Unsigned memory disputerDisputeReward;
+        FixedPoint.Unsigned memory sponsorDisputeReward;
+        if (tokenRedemptionValue.isGreaterThan(liquidation.lockedCollateral)) {
+            disputerDisputeReward = disputerDisputeRewardPct.mul(liquidation.lockedCollateral);
+            sponsorDisputeReward = sponsorDisputeRewardPct.mul(liquidation.lockedCollateral);
+        } else {
+            disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
+            sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
+        }
+
+        // Dispute bond can always be paid out
         FixedPoint.Unsigned memory disputeBondAmount = liquidation.lockedCollateral.mul(disputeBondPct);
-        FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
 
         if (liquidation.state == Status.DisputeSucceeded) {
             if (msg.sender == liquidation.disputer) {
@@ -291,7 +303,7 @@ contract Liquidation is Position {
             } else if (msg.sender == sponsor) {
                 // Pay SPONSOR: remaining collateral (locked collateral - TRV) + sponsor reward
                 FixedPoint.Unsigned memory remainingCollateral;
-                // @dev: It is possible that remaining collateral < 0, in which case we peg to 0
+                // if TRV > Collateral, there is 0 excess collateral
                 if (tokenRedemptionValue.isGreaterThan(liquidation.lockedCollateral)) {
                     remainingCollateral = FixedPoint.fromUnscaledUint(0);
                 } else {
@@ -304,17 +316,22 @@ contract Liquidation is Position {
                 );
             } else if (msg.sender == liquidation.liquidator) {
                 // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
-                // @dev: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
+                // If TRV > Collateral, then subtract rewards from locked collateral
+                // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
                 // the constructor when these params are set
-                FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
-                    disputerDisputeReward
-                );
+                FixedPoint.Unsigned memory payToLiquidator;
+                if (tokenRedemptionValue.isGreaterThan(liquidation.lockedCollateral)) {
+                    payToLiquidator = liquidation.lockedCollateral.sub(sponsorDisputeReward).sub(disputerDisputeReward);
+                } else {
+                    payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
+                }
                 require(
                     collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer reward for a successful dispute to liquidator"
                 );
             }
 
+            // Free up space once all locked collateral is withdrawn
             if (collateralCurrency.balanceOf(address(this)) == 0) {
                 delete liquidations[sponsor][id];
             }
@@ -328,7 +345,7 @@ contract Liquidation is Position {
                 );
                 delete liquidations[sponsor][id];
             } else {
-                require(false, "only the liquidator can call withdrawal on an unsuccessfully disputed liquidation");
+                require(false, "only the liquidator can withdraw on an unsuccessfully disputed liquidation");
             }
         } else if (liquidation.state == Status.PreDispute) {
             // Pay LIQUIDATOR: lockedCollateral
@@ -339,7 +356,7 @@ contract Liquidation is Position {
                 );
                 delete liquidations[sponsor][id];
             } else {
-                require(false, "only the liquidator can call withdrawal on a non-disputed, expired liquidation");
+                require(false, "only the liquidator can withdraw on a non-disputed, expired liquidation");
             }
         }
     }

@@ -562,7 +562,7 @@ contract("Liquidation", function(accounts) {
     });
   });
 
-  describe("Full Lifecycle Edge cases", () => {
+  describe("Weird Edge cases", () => {
     it("Dispute rewards should not sum to over 100% of TRV", async () => {
       // Deploy liquidation contract and set global params
       assert(
@@ -572,6 +572,7 @@ contract("Liquidation", function(accounts) {
             BN(startTime)
               .plus(positionLiveness)
               .toString(),
+            withdrawalLiveness.toString(),
             collateralToken.address,
             { rawValue: disputeBondPct.toString() },
             { rawValue: toWei("0.5") },
@@ -596,6 +597,7 @@ contract("Liquidation", function(accounts) {
         BN(startTime)
           .plus(positionLiveness)
           .toString(),
+        withdrawalLiveness.toString(),
         collateralToken.address,
         { rawValue: edgeDisputeBondPct.toString() },
         { rawValue: sponsorDisputeRewardPct.toString() },
@@ -651,8 +653,9 @@ contract("Liquidation", function(accounts) {
       const expectedPaymentSponsor = amountOfCollateral.minus(settlementTRV).plus(sponsorDisputeReward);
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
-    it("Liquidation is disputed successfully but there is no excess collateral for sponsor to withdraw", async () => {
+    it("Liquidation is disputed successfully but TRV > Collateral, so sponsor has no excess collateral", async () => {
       const edgeAmountOfCollateral = BN(toWei("50"));
+      const edgeSponsorReward = sponsorDisputeRewardPct.times(edgeAmountOfCollateral).dividedBy(toWei("1"));
 
       // Send away previous balances
       await collateralToken.transfer(contractDeployer, disputeBond, { from: disputer });
@@ -664,6 +667,7 @@ contract("Liquidation", function(accounts) {
         BN(startTime)
           .plus(positionLiveness)
           .toString(),
+        withdrawalLiveness.toString(),
         collateralToken.address,
         { rawValue: disputeBondPct.toString() },
         { rawValue: sponsorDisputeRewardPct.toString() },
@@ -708,28 +712,17 @@ contract("Liquidation", function(accounts) {
         { rawValue: settlementPrice.toString() },
         true
       );
-      // @dev: If Liquidation is disputed successfully AND locked collateral < TRV AND (disputer's reward + sponsor's reward) > locked collateral
-      // Then there will be a race to call withdraw first
-      // await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
-      // // Expected Disputer payment => disputer reward + dispute bond
-      // const expectedPaymentDisputer = disputerDisputeReward.plus(disputeBond);
-      // assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPaymentDisputer.toString());
-      // await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
-      // // Expected Liquidator payment => TRV - dispute reward - sponsor reward
-      // const expectedPaymentLiquidator = settlementTRV.minus(disputerDisputeReward).minus(sponsorDisputeReward);
-      // assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPaymentLiquidator.toString());
       await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
       // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
-      const expectedPaymentSponsor = sponsorDisputeReward;
+      const expectedPaymentSponsor = edgeSponsorReward;
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
-    it("Liquidation is disputed successfully but TRV > collateral and sponsor's reward is large enough to prevent disputer from withdrawing", async () => {
+    it("Liquidation is disputed successfully but TRV > collateral, so disputer rewards are drawn from collateral instead of TRV", async () => {
       const edgeSettlementPrice = BN(toWei("3.0"));
       const edgeSponsorRewardPct = BN(toWei("0.4"));
-      const edgeSettlementTRV = amountOfSynthetic.times(edgeSettlementPrice).dividedBy(toWei("1"));
-      const edgeSponsorReward = edgeSponsorRewardPct.times(edgeSettlementTRV).dividedBy(toWei("1"));
+      const edgeSponsorReward = edgeSponsorRewardPct.times(amountOfCollateral).dividedBy(toWei("1"));
       const edgeDisputerRewardPct = BN(toWei("0.25"));
-      const edgeDisputerReward = edgeDisputerRewardPct.times(edgeSettlementTRV).dividedBy(toWei("1"));
+      const edgeDisputerReward = edgeDisputerRewardPct.times(amountOfCollateral).dividedBy(toWei("1"));
 
       // Send away previous balances
       await collateralToken.transfer(contractDeployer, disputeBond, { from: disputer });
@@ -741,6 +734,7 @@ contract("Liquidation", function(accounts) {
         BN(startTime)
           .plus(positionLiveness)
           .toString(),
+        withdrawalLiveness.toString(),
         collateralToken.address,
         { rawValue: disputeBondPct.toString() },
         { rawValue: edgeSponsorRewardPct.toString() },
@@ -783,30 +777,23 @@ contract("Liquidation", function(accounts) {
         { rawValue: edgeSettlementPrice.toString() },
         true
       );
-      // @dev: If Liquidation is disputed successfully AND locked collateral < TRV AND (disputer's reward + sponsor's reward) > locked collateral
-      // Then there will be a race to call withdraw first
 
-      // In this case, assume the Sponsor withdraws first, leaving insufficient remaining TRV for disputer to get their reward
       await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
       // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
       const expectedPaymentSponsor = edgeSponsorReward;
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
 
-      // Disputer's withdrawal should fail, even though there is still some TRV remaining
-      assert(
-        await didContractThrow(
-          edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer })
-        )
-      );
+      await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
       // Expected Disputer payment => disputer reward + dispute bond
+      const expectedPaymentDisputer = edgeDisputerReward.plus(disputeBond);
+      assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPaymentDisputer.toString());
 
-      // Liquidator's withdrawal should also fail given that there
-      assert(
-        await didContractThrow(
-          edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
-        )
-      );
-      // Expected Liquidator payment => TRV - dispute reward - sponsor reward
+      // Expected Liquidator payment => *Collateral - dispute reward - sponsor reward
+      // *This is Collateral instead of TRV because TRV > Collateral
+      await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+      // Expected Disputer payment => disputer reward + dispute bond
+      const expectedPaymentLiquidator = amountOfCollateral.minus(edgeDisputerReward).minus(edgeSponsorReward);
+      assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPaymentLiquidator.toString());
     });
   });
 });
