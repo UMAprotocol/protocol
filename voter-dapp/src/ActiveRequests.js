@@ -371,7 +371,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       ) : (
         ""
       )}
-      {((saveButtonShown && !canExecuteBatchCommit()) || (revealButtonShown && !canExecuteBatchReveal())) ? (
+      {(saveButtonShown && !canExecuteBatchCommit()) || (revealButtonShown && !canExecuteBatchReveal()) ? (
         <span style={{ paddingLeft: "10px", color: "#FF4F4D" }}>
           You can only commit or reveal up to 25 requests at once. Please select fewer.
         </span>
