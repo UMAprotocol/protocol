@@ -6,6 +6,7 @@ import "./RegistryInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+
 /**
  * @title Registry for derivatives and approved derivative creators.
  * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives
@@ -122,11 +123,9 @@ contract Registry is RegistryInterface, MultiRole {
         // Update the lookup index with the new location.
         partyMember.derivativeIndex[lastDerivativeAddress] = deleteIndex;
 
-        // Delete the last derivative from the array, remove
-        // the index from the lookup map and shrink array length.
-        delete partyMember.derivatives[numberOfDerivatives - 1];
+        // Pop the last derivative from the array and update the lookup map.
+        partyMember.derivatives.pop();
         delete partyMember.derivativeIndex[derivativeAddress];
-        partyMember.derivatives.length--;
 
         emit PartyMemberRemoved(derivativeAddress, party);
     }
