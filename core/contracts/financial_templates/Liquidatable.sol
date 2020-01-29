@@ -91,8 +91,8 @@ contract Liquidatable is Position {
     // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
         require(
-            (getCurrentTime() < _getLiquidation(sponsor, id).expiry) &&
-                (_getLiquidation(sponsor, id).state == Status.PreDispute),
+            (getCurrentTime() < _getLiquidationData(sponsor, id).expiry) &&
+                (_getLiquidationData(sponsor, id).state == Status.PreDispute),
             "Liquidation has expired or has already been disputed"
         );
         _;
@@ -101,10 +101,10 @@ contract Liquidatable is Position {
     // i.e. once a dispute has been requested, the liquidation's expiry ceases to matter
     modifier onlyPostExpiryOrPostDispute(uint id, address sponsor) {
         require(
-            (_getLiquidation(sponsor, id).state == Status.DisputeSucceeded) ||
-                (_getLiquidation(sponsor, id).state == Status.DisputeFailed) ||
-                ((_getLiquidation(sponsor, id).expiry <= getCurrentTime()) &&
-                    (_getLiquidation(sponsor, id).state == Status.PreDispute)),
+            (_getLiquidationData(sponsor, id).state == Status.DisputeSucceeded) ||
+                (_getLiquidationData(sponsor, id).state == Status.DisputeFailed) ||
+                ((_getLiquidationData(sponsor, id).expiry <= getCurrentTime()) &&
+                    (_getLiquidationData(sponsor, id).state == Status.PreDispute)),
             "Liquidation has not expired or is pending dispute"
         );
         _;
@@ -112,7 +112,7 @@ contract Liquidatable is Position {
     // Callable only after a liquidation has been disputed but has not yet resolved
     modifier onlyPendingDispute(uint id, address sponsor) {
         require(
-            _getLiquidation(sponsor, id).state == Status.PendingDispute,
+            _getLiquidationData(sponsor, id).state == Status.PendingDispute,
             "Liquidation is not currently pending dispute"
         );
         _;
@@ -155,7 +155,7 @@ contract Liquidatable is Position {
      */
     function createLiquidation(address sponsor) public returns (uint lastIndexUsed) {
         // Attempt to retrieve Position data for sponsor
-        PositionData storage positionToLiquidate = _getPosition(sponsor);
+        PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         // Allocate space for new liquidation and increment index
         lastIndexUsed = sponsorLiquidationIndex[sponsor];
@@ -197,7 +197,7 @@ contract Liquidatable is Position {
      * TODO: Requests a settlement price from the DVM
      */
     function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
-        LiquidationData storage disputedLiquidation = _getLiquidation(sponsor, id);
+        LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
         require(
@@ -232,7 +232,7 @@ contract Liquidatable is Position {
         public
         onlyPendingDispute(id, sponsor)
     {
-        LiquidationData storage disputedLiquidation = _getLiquidation(sponsor, id);
+        LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         // if (disputedLiquidation.oracle.hasPrice(disputedLiquidation.identifier, disputedLiquidation.disputeTime)) {
         // If dispute is over set oracle price
@@ -267,7 +267,7 @@ contract Liquidatable is Position {
      * Once all collateral is withdrawn, delete the liquidation data
      */
     function withdrawLiquidation(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
-        LiquidationData storage liquidation = _getLiquidation(sponsor, id);
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         require(
             (msg.sender == liquidation.disputer) || (msg.sender == liquidation.liquidator) || (msg.sender == sponsor),
             "must be a disputer, liquidator, or sponsor to request a withdrawal on a liquidation"
@@ -364,15 +364,8 @@ contract Liquidatable is Position {
     /**
      * Return a liquidation or throw an error if it does not exist
      */
-    function _getLiquidation(address sponsor, uint uuid) internal view returns (LiquidationData storage liquidation) {
+    function _getLiquidationData(address sponsor, uint uuid) internal view returns (LiquidationData storage liquidation) {
         liquidation = liquidations[sponsor][uuid];
         require(liquidation.liquidator != address(0), "Liquidation does not exist: liquidator address is not set");
-    }
-    /**
-     * Return a position or throw an error if it does not exist
-     */
-    function _getPosition(address sponsor) internal view returns (PositionData storage position) {
-        position = positions[sponsor];
-        require(position.sponsor != address(0), "Position does not exist: sponsor address is not set");
     }
 }

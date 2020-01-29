@@ -74,7 +74,7 @@ contract Position is Testable {
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() {
         require(positions[newSponsorAddress].sponsor == address(0));
-        PositionData memory positionData = _getPositionData();
+        PositionData memory positionData = _getPositionData(msg.sender);
         positionData.sponsor = newSponsorAddress;
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
@@ -85,7 +85,7 @@ contract Position is Testable {
      * increase the collateralization level of a position.
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
-        PositionData storage positionData = _getPositionData();
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         positionData.collateral = positionData.collateral.add(collateralAmount);
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
@@ -98,7 +98,7 @@ contract Position is Testable {
      * In that case, use `requestWithdrawawal`.
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
-        PositionData storage positionData = _getPositionData();
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
         positionData.collateral = positionData.collateral.sub(collateralAmount);
@@ -113,7 +113,7 @@ contract Position is Testable {
      */
     function withdrawPassedRequest() public onlyPreExpiration() {
         // TODO: Decide whether to fold this functionality into withdraw() method above.
-        PositionData storage positionData = _getPositionData();
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime());
 
         positionData.collateral = positionData.collateral.sub(positionData.withdrawalRequestAmount);
@@ -128,7 +128,7 @@ contract Position is Testable {
      * position. The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
      */
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
-        PositionData storage positionData = _getPositionData();
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Concurrent withdrawal requests are not allowed");
 
         // Not just pre-expiration: make sure the proposed expiration of this request is itself before expiry.
@@ -144,7 +144,7 @@ contract Position is Testable {
      * @notice Cancels a pending withdrawal request.
      */
     function cancelWithdrawal() public onlyPreExpiration() {
-        PositionData storage positionData = _getPositionData();
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp != 0);
         positionData.requestPassTimestamp = 0;
     }
@@ -177,7 +177,7 @@ contract Position is Testable {
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
-        PositionData storage positionData = _getPositionData();
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
 
@@ -196,9 +196,9 @@ contract Position is Testable {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
-    function _getPositionData() private view returns (PositionData storage positionData) {
-        positionData = positions[msg.sender];
-        require(positionData.sponsor != address(0));
+    function _getPositionData(address sponsor) internal view returns (PositionData storage position) {
+        position = positions[sponsor];
+        require(position.sponsor != address(0), "Position does not exist: sponsor address is not set");
     }
 
     function _checkCollateralizationRatio(PositionData storage positionData) private returns (bool) {
