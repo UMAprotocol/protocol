@@ -4,10 +4,7 @@ import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
-import { MAX_UINT_VAL } from "./common/Constants.js";
-
-// Max integer that can be safely stored in a vanilla js int.
-const MAX_SAFE_INT = 2147483647;
+import { MAX_UINT_VAL, MAX_SAFE_JS_INT } from "./common/Constants.js";
 
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {
@@ -55,7 +52,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
     // Since this loop is the last one, we can use the state to determine if this identifer, time, roundId combo
     // is eligible for a reward claim. We track the oldestUnclaimedRound to determine which round the transaction
     // should query (since only one can be chosen).
-    let oldestUnclaimedRound = MAX_SAFE_INT;
+    let oldestUnclaimedRound = MAX_SAFE_JS_INT;
     for (const event of revealedVoteEvents) {
       const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
       const revealRound = event.returnValues.roundId.toString();
@@ -67,7 +64,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
       }
     }
 
-    if (oldestUnclaimedRound === MAX_SAFE_INT) {
+    if (oldestUnclaimedRound === MAX_SAFE_JS_INT) {
       // No unclaimed rounds were found.
       return { ready: true, status };
     }
