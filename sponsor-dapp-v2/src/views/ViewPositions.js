@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, Redirect } from "react-router-dom";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { formatWei, formatWithMaxDecimals } from "common/FormattingUtils";
 import {

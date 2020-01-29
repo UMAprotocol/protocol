@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import "./App.css";
 import Dashboard from "./Dashboard";
 import DrizzleLogin from "./DrizzleLogin.js";

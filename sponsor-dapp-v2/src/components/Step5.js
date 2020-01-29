@@ -8,7 +8,7 @@ import {
   useMaxTokensThatCanBeCreated,
   revertWrapper
 } from "lib/custom-hooks";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import TokenizedDerivative from "contracts/TokenizedDerivative.json";
 import { createFormatFunction } from "common/FormattingUtils";
 import { sendGaEvent } from "lib/google-analytics.js";

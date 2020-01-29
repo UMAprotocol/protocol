@@ -6,7 +6,7 @@ import web3 from "web3";
 
 import IconSvgComponent from "components/common/IconSvgComponent";
 import { useIdentifierConfig, useDaiAddress } from "lib/custom-hooks";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import { formatWei } from "common/FormattingUtils.js";
 import { sendGaEvent } from "lib/google-analytics.js";
 

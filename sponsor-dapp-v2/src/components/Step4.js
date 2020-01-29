@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 
 import classNames from "classnames";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import { MAX_UINT_VAL } from "common/Constants";
 import { sendGaEvent } from "lib/google-analytics.js";
 
