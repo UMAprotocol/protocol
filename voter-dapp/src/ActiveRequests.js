@@ -14,8 +14,9 @@ import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 import { useTableStyles } from "./Styles.js";
-const { getKeyGenMessage } = require("./common/EncryptionHelper.js");
-const { getRandomUnsignedInt } = require("./common/Random.js");
+import { getKeyGenMessage } from "./common/EncryptionHelper.js";
+import { getRandomUnsignedInt } from "./common/Random.js";
+import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "./common/Constants.js";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -251,22 +252,25 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     }
   });
 
-  const canExecuteBatch = () => {
+  const canExecuteBatchCommit = () => {
     let totalSelected = 0;
     for (let checked in checkboxesChecked) {
       totalSelected += checkboxesChecked[checked];
     }
-    // This number defines the maximum number of transactions that can be fit within one block.
-    // It was calculated by testing the batchCommit and batch revealFunctions to identify the
-    // maximum that can be placed within one tx. The actual number that can be fit is slightly
-    // more but is set to a lower amount for safety here.
-    return totalSelected <= 25;
+    return totalSelected <= BATCH_MAX_COMMITS;
+  };
+  const canExecuteBatchReveal = () => {
+    let totalSelected = 0;
+    for (let checked in checkboxesChecked) {
+      totalSelected += checkboxesChecked[checked];
+    }
+    return totalSelected <= BATCH_MAX_REVEALS;
   };
 
   const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL;
-  const revealButtonEnabled = statusDetails.some(statusDetail => statusDetail.enabled) && canExecuteBatch();
+  const revealButtonEnabled = statusDetails.some(statusDetail => statusDetail.enabled) && canExecuteBatchReveal();
   const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
-  const saveButtonEnabled = Object.values(checkboxesChecked).some(checked => checked) && canExecuteBatch();
+  const saveButtonEnabled = Object.values(checkboxesChecked).some(checked => checked) && canExecuteBatchCommit();
 
   const editCommit = index => {
     dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
@@ -367,7 +371,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       ) : (
         ""
       )}
-      {!canExecuteBatch() ? (
+      {((saveButtonShown && !canExecuteBatchCommit()) || (revealButtonShown && !canExecuteBatchReveal())) ? (
         <span style={{ paddingLeft: "10px", color: "#FF4F4D" }}>
           You can only commit or reveal up to 25 requests at once. Please select fewer.
         </span>
