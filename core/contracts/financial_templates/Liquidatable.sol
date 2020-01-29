@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 // import "../OracleInteface.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
-import "./Position.sol";
+import "./PricelessPositionManager.sol";
 
 // TODO:
 // - Rename this to "Liquidatable" and Position to "Positionizable"?
@@ -33,7 +33,7 @@ import "./Position.sol";
  * incorrectly liquidated. Importantly, a prospective disputer must deposit a dispute
  * bond that they can lose in the case of an unsuccessful dispute.
  */
-contract Liquidatable is Position {
+contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
 
@@ -147,7 +147,7 @@ contract Liquidatable is Position {
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
         uint _liquidationLiveness
-    ) public Position(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, _isTest) {
+    ) public PricelessPositionManager(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, _isTest) {
         require(
             _sponsorDisputeRewardPct.add(_disputerDisputeRewardPct).isLessThan(1),
             "Sponsor and Disputer dispute rewards shouldn't sum to 100% or more"

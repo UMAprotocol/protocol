@@ -13,7 +13,7 @@ import "./Token.sol";
  * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
-contract Position is Testable {
+contract PricelessPositionManager is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
 
@@ -201,7 +201,7 @@ contract Position is Testable {
         require(position.sponsor != address(0), "Position does not exist: sponsor address is not set");
     }
 
-    function _checkCollateralizationRatio(PositionData storage positionData) private returns (bool) {
+    function _checkCollateralizationRatio(PositionData storage positionData) private view returns (bool) {
         FixedPoint.Unsigned memory global = _getCollateralizationRatio(totalPositionCollateral, totalTokensOutstanding);
         FixedPoint.Unsigned memory thisPos = _getCollateralizationRatio(
             positionData.collateral,
