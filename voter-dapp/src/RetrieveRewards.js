@@ -142,7 +142,7 @@ function RetrieveRewards({ votingAccount }) {
     "Voting",
     "PriceResolved",
     useMemo(() => {
-      return { filter: { voter: votingAccount, resolutionRoundId: roundIds }, fromBlock: 0 };
+      return { filter: { resolutionRoundId: roundIds }, fromBlock: 0 };
     }, [roundIds, votingAccount])
   );
 
