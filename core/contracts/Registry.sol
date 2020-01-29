@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 pragma experimental ABIEncoderV2;
 
+
 /**
  * @title Registry for derivatives and approved derivative creators.
  * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives
@@ -23,11 +24,11 @@ contract Registry is RegistryInterface, MultiRole {
     }
 
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.
-    enum DerivativeValidity { Invalid, Valid }
+    enum Validity { Invalid, Valid }
 
     // Store all key information about a derivative.
     struct Derivative {
-        DerivativeValidity valid;
+        Validity valid;
         uint128 index;
     }
 
@@ -42,10 +43,10 @@ contract Registry is RegistryInterface, MultiRole {
     address[] public registeredDerivatives;
 
     // Map of derivative contracts to the associated derivative struct.
-    mapping(address => Derivative) public addressToDerivatives;
+    mapping(address => Derivative) public derivativeMap;
 
     // Map each party member to their associated derivatives struct.
-    mapping(address => PartyMember) private partyMembersToDerivatives;
+    mapping(address => PartyMember) private partyMap;
 
     event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
     event PartyMemberAdded(address indexed derivativeAddress, address indexed party);
@@ -61,8 +62,8 @@ contract Registry is RegistryInterface, MultiRole {
         external
         onlyRoleHolder(uint(Roles.DerivativeCreator))
     {
-        Derivative storage derivative = addressToDerivatives[derivativeAddress];
-        require(addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Invalid, "Can only register once");
+        Derivative storage derivative = derivativeMap[derivativeAddress];
+        require(derivativeMap[derivativeAddress].valid == Validity.Invalid, "Can only register once");
 
         // Store derivative address as a registered deriviative.
         registeredDerivatives.push(derivativeAddress);
@@ -72,80 +73,62 @@ contract Registry is RegistryInterface, MultiRole {
 
         // For all parties in the array add them to the derivative party members.
         // add the derivative as one of the party members own derivatives and store the index.
-        derivative.valid = DerivativeValidity.Valid;
+        derivative.valid = Validity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
-            uint derivativeIndex = partyMembersToDerivatives[parties[i]].derivatives.push(derivativeAddress);
-            partyMembersToDerivatives[parties[i]].derivativeIndex[derivativeAddress] = derivativeIndex - 1;
+            uint newLength = partyMap[parties[i]].derivatives.push(derivativeAddress);
+            partyMap[parties[i]].derivativeIndex[derivativeAddress] = newLength - 1;
         }
 
         emit NewDerivativeRegistered(derivativeAddress, msg.sender, parties);
     }
 
     function isDerivativeRegistered(address derivative) external view returns (bool) {
-        return addressToDerivatives[derivative].valid == DerivativeValidity.Valid;
+        return derivativeMap[derivative].valid == Validity.Valid;
     }
 
     function getRegisteredDerivatives(address party) external view returns (address[] memory) {
-        return partyMembersToDerivatives[party].derivatives;
+        return partyMap[party].derivatives;
     }
 
     function addPartyToDerivative(address party) external {
         address derivativeAddress = msg.sender;
 
-        require(
-            addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
-            "Can only add to valid derivative"
-        );
+        require(derivativeMap[derivativeAddress].valid == Validity.Valid, "Can only add to valid derivative");
         require(!isPartyMemberOfDerivative(party, derivativeAddress), "Can only register a party once");
 
         // Push the derivative and store the index.
-        uint derivativeIndex = partyMembersToDerivatives[party].derivatives.push(derivativeAddress);
-        partyMembersToDerivatives[party].derivativeIndex[derivativeAddress] = derivativeIndex - 1;
+        uint derivativeIndex = partyMap[party].derivatives.push(derivativeAddress);
+        partyMap[party].derivativeIndex[derivativeAddress] = derivativeIndex - 1;
 
         emit PartyMemberAdded(derivativeAddress, party);
     }
 
     function removePartyFromDerivative(address party) external {
         address derivativeAddress = msg.sender;
+        PartyMember storage partyMember = partyMap[party];
+        uint256 numberOfDerivatives = partyMember.derivatives.length;
 
-        PartyMember storage partyMember = partyMembersToDerivatives[party];
-
-        require(
-            addressToDerivatives[derivativeAddress].valid == DerivativeValidity.Valid,
-            "Remove only from valid derivative"
-        );
+        require(numberOfDerivatives != 0, "Can't remove if party has no derivatives");
+        require(derivativeMap[derivativeAddress].valid == Validity.Valid, "Remove only from valid derivative");
         require(isPartyMemberOfDerivative(party, derivativeAddress), "Can only remove an existing party member");
 
         // Index of the current location of the derivative to remove.
         uint deleteIndex = partyMember.derivativeIndex[derivativeAddress];
 
-        // Set the removed derivative address in the lookup map to 0 (deleted).
-        partyMember.derivativeIndex[derivativeAddress] = 0;
+        // Store the last derivative's address to update the lookup map.
+        address lastDerivativeAddress = partyMember.derivatives[numberOfDerivatives - 1];
 
-        uint256 numberOfDerivatives = partyMember.derivatives.length;
-        require(numberOfDerivatives != 0, "Can't remove if party has no derivatives");
+        // Swap the derivative to be removed with the last derivative.
+        partyMember.derivatives[deleteIndex] = lastDerivativeAddress;
 
-        // If there is more than one derivative then swap the derivative to be removed with the
-        // last position in the array and delete the last position.
-        if (numberOfDerivatives > 1) {
-            // Store the last derivative's address to update the lookup map.
-            address lastDerivativeAddress = partyMember.derivatives[numberOfDerivatives - 1];
+        // Update the lookup index with the new location.
+        partyMember.derivativeIndex[lastDerivativeAddress] = deleteIndex;
 
-            // Swap the derivative to be removed with the last derivative.
-            partyMember.derivatives[deleteIndex] = lastDerivativeAddress;
-
-            // Delete the derivative from the array and shrink it's length.
-            delete partyMember.derivatives[numberOfDerivatives - 1];
-            partyMember.derivatives.length--;
-
-            // Update the lookup index with the new location.
-            partyMember.derivativeIndex[lastDerivativeAddress] = deleteIndex;
-            // If there is only one derivative we simply need to delete it and set the index to zero.
-        } else {
-            delete partyMember.derivatives[numberOfDerivatives - 1];
-            partyMember.derivatives.length--;
-            partyMember.derivativeIndex[derivativeAddress] = 0;
-        }
+        // Delete the last derivative from the array, remove
+        // the index from the lookup map and shrink array length.
+        delete partyMember.derivatives[numberOfDerivatives - 1];
+        delete partyMember.derivativeIndex[derivativeAddress];
+        partyMember.derivatives.length--;
 
         emit PartyMemberRemoved(derivativeAddress, party);
     }
@@ -155,9 +138,7 @@ contract Registry is RegistryInterface, MultiRole {
     }
 
     function isPartyMemberOfDerivative(address party, address derivativeAddress) public view returns (bool) {
-        uint index = partyMembersToDerivatives[party].derivativeIndex[derivativeAddress];
-        return
-            partyMembersToDerivatives[party].derivatives.length > index &&
-            partyMembersToDerivatives[party].derivatives[index] == derivativeAddress;
+        uint index = partyMap[party].derivativeIndex[derivativeAddress];
+        return partyMap[party].derivatives.length > index && partyMap[party].derivatives[index] == derivativeAddress;
     }
 }

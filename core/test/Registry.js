@@ -123,7 +123,7 @@ contract("Registry", function(accounts) {
     assert.isTrue(areAddressesEqual(allDerivatives[2], derivative3));
 
     // Check derivative information.
-    const derivativeStruct = await registry.addressToDerivatives(derivative1);
+    const derivativeStruct = await registry.derivativeMap(derivative1);
     assert.equal(derivativeStruct.valid.toNumber(), 1);
     assert.equal(derivativeStruct.index.toNumber(), 0);
 
