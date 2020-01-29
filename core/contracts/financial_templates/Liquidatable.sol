@@ -16,6 +16,23 @@ import "./Position.sol";
 // - Partial liquidations: should be trivial to add
 // - In order to ensure that positions with < 100% collateralization are disputed,
 // the contract forces liquidators to liquidate the “least-collateralized” positions first.
+// - Make sure that "settleDispute" determines the outcome of a dispute based on
+// "liquidatedCollateral" (collateral - pendingWithdrawal amount)
+// instead of "locked collateral" (actual amount of collateral locked in contract)
+
+/**
+ * Adds logic to a position-managing contract that enables callers to
+ * "liquidate" an undercollateralized position. The liquidator must burn
+ * an amount of synthetic tokens that they are "liquidating" in order to potentially
+ * withdraw a portion of the locked collateral in an undercollateralized position.
+ * The liquidation has a liveness period before expiring successfully, during which
+ * someone can "dispute" the liquidation, which sends a price request to the relevant
+ * Oracle to settle the final collateralization ratio based on a DVM price. The 
+ * contract enforces dispute rewards in order to incentivize disputers to correctly
+ * dispute false liquidations and compensate position sponsors who had their position
+ * incorrectly liquidated. Importantly, a prospective disputer must deposit a dispute
+ * bond that they can lose in the case of an unsuccessful dispute.
+ */
 contract Liquidatable is Position {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
@@ -364,7 +381,11 @@ contract Liquidatable is Position {
     /**
      * Return a liquidation or throw an error if it does not exist
      */
-    function _getLiquidationData(address sponsor, uint uuid) internal view returns (LiquidationData storage liquidation) {
+    function _getLiquidationData(address sponsor, uint uuid)
+        internal
+        view
+        returns (LiquidationData storage liquidation)
+    {
         liquidation = liquidations[sponsor][uuid];
         require(liquidation.liquidator != address(0), "Liquidation does not exist: liquidator address is not set");
     }
