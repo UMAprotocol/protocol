@@ -1,3 +1,11 @@
+// This library has two functions that it exports: getAllContracts() and getAbiDecoder().
+//
+// getAllContracts() returns an array of all JSON artifacts from the core/build/contracts directory.
+//
+// getAbiDecoder returns an abi decoder (see https://github.com/UMAprotocol/abi-decoder) object preloaded with the ABIs
+// pulled from the core/build/contracts directory. Example usage:
+// getAbiDecoder().decodeMethod(data); // This decodes the txn data into the function name and arguments.
+
 const abiDecoder = require("abi-decoder");
 
 function importAll(r) {
