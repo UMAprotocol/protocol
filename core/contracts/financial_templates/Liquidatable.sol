@@ -16,7 +16,7 @@ import "./Position.sol";
 // - Partial liquidations: should be trivial to add
 // - In order to ensure that positions with < 100% collateralization are disputed,
 // the contract forces liquidators to liquidate the “least-collateralized” positions first.
-contract Liquidation is Position {
+contract Liquidatable is Position {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
 

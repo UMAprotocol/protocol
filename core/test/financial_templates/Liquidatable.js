@@ -10,9 +10,9 @@ const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 
 // Contracts to unit test:
-const Liquidation = artifacts.require("Liquidation");
+const Liquidatable = artifacts.require("Liquidatable");
 
-contract("Liquidation", function(accounts) {
+contract("Liquidatable", function(accounts) {
   // Roles
   const contractDeployer = accounts[0];
   const sponsor = accounts[1];
@@ -81,7 +81,7 @@ contract("Liquidation", function(accounts) {
     collateralToken = await ERC20Mintable.new({ from: contractDeployer });
 
     // Deploy liquidation contract and set global params
-    liquidationContract = await Liquidation.new(
+    liquidationContract = await Liquidatable.new(
       true,
       BN(startTime)
         .plus(positionLiveness)
@@ -567,7 +567,7 @@ contract("Liquidation", function(accounts) {
       // Deploy liquidation contract and set global params
       assert(
         await didContractThrow(
-          Liquidation.new(
+          Liquidatable.new(
             true,
             BN(startTime)
               .plus(positionLiveness)
@@ -592,7 +592,7 @@ contract("Liquidation", function(accounts) {
       await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
 
       // Create  Liquidation
-      const edgeLiquidationContract = await Liquidation.new(
+      const edgeLiquidationContract = await Liquidatable.new(
         true,
         BN(startTime)
           .plus(positionLiveness)
@@ -662,7 +662,7 @@ contract("Liquidation", function(accounts) {
       await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
 
       // Create  Liquidation
-      const edgeLiquidationContract = await Liquidation.new(
+      const edgeLiquidationContract = await Liquidatable.new(
         true,
         BN(startTime)
           .plus(positionLiveness)
@@ -729,7 +729,7 @@ contract("Liquidation", function(accounts) {
       await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
 
       // Create  Liquidation
-      const edgeLiquidationContract = await Liquidation.new(
+      const edgeLiquidationContract = await Liquidatable.new(
         true,
         BN(startTime)
           .plus(positionLiveness)

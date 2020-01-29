@@ -1,10 +1,10 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
-import "./Liquidation.sol";
+import "./Liquidatable.sol";
 import "../FixedPoint.sol";
 
-contract ExpiringMultiParty is Liquidation {
+contract ExpiringMultiParty is Liquidatable {
     using FixedPoint for FixedPoint.Unsigned;
 
     constructor(
@@ -18,7 +18,7 @@ contract ExpiringMultiParty is Liquidation {
         uint _liquidationLiveness
     )
         public
-        Liquidation(
+        Liquidatable(
             _isTest,
             _positionExpiry,
             _positionWithdrawalLiveness,
