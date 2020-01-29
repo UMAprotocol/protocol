@@ -1,5 +1,3 @@
-const Finder = artifacts.require("Finder");
-
 const cli = async function(callback) {
   try {
     console.log("You have started the UMA CLI!");
