@@ -252,7 +252,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     }
   });
 
-  const canExecuteBatch = (limit) => {
+  const canExecuteBatch = limit => {
     let totalSelected = 0;
     for (let checked in checkboxesChecked) {
       totalSelected += checkboxesChecked[checked];
@@ -261,9 +261,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   };
 
   const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL;
-  const revealButtonEnabled = statusDetails.some(statusDetail => statusDetail.enabled) && canExecuteBatch(BATCH_MAX_REVEALS);
+  const revealButtonEnabled =
+    statusDetails.some(statusDetail => statusDetail.enabled) && canExecuteBatch(BATCH_MAX_REVEALS);
   const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
-  const saveButtonEnabled = Object.values(checkboxesChecked).some(checked => checked) && canExecuteBatch(BATCH_MAX_COMMITS);
+  const saveButtonEnabled =
+    Object.values(checkboxesChecked).some(checked => checked) && canExecuteBatch(BATCH_MAX_COMMITS);
 
   const editCommit = index => {
     dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
@@ -366,7 +368,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       )}
       {(saveButtonShown && !saveButtonEnabled) || (revealButtonShown && !revealButtonEnabled) ? (
         <span style={{ paddingLeft: "10px", color: "#FF4F4D" }}>
-          You can only {(saveButtonShown ? `commit up to ${BATCH_MAX_COMMITS}` : `reveal up to ${BATCH_MAX_REVEALS}`)} requests at once. Please select fewer.
+          You can only {saveButtonShown ? `commit up to ${BATCH_MAX_COMMITS}` : `reveal up to ${BATCH_MAX_REVEALS}`}{" "}
+          requests at once. Please select fewer.
         </span>
       ) : (
         ""
