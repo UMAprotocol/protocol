@@ -6,6 +6,7 @@ import ResolvedRequests from "./ResolvedRequests.js";
 import DesignatedVotingDeployment from "./DesignatedVotingDeployment.js";
 import DesignatedVotingTransfer from "./DesignatedVotingTransfer.js";
 import DesignatedVoting from "./contracts/DesignatedVoting.json";
+import RetrieveRewards from "./RetrieveRewards.js";
 
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 
@@ -80,6 +81,7 @@ function Dashboard() {
         <Header votingAccount={votingAccount} />
       </AppBar>
       {designatedVotingHelpers}
+      <RetrieveRewards votingAccount={votingAccount} />
       <ActiveRequests votingGateway={votingGateway} votingAccount={votingAccount} />
       <ResolvedRequests votingAccount={votingAccount} />
     </div>
