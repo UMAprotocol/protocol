@@ -19,8 +19,8 @@ cd $SCRIPT_DIR/../..
 # Note: if the user needs to pass in a file path, we will need to pass the original working directory to the script so
 # we can correctly resolve the file location.
 echo "Setting up UMA contracts..."
-$(npm bin)/truffle compile > /dev/null || (echo "Contract compilation failed! Please check your installed version."; exit 1)
-$(npm bin)/apply-registry > /dev/null || (echo "Could not read contract addresses! Please check your installed version."; exit 1)
+$(npm bin)/truffle compile > /dev/null || (echo "Contract compilation failed! Please check your @umaprotocol/protocol installation."; exit 1)
+$(npm bin)/apply-registry > /dev/null || (echo "Could not read contract addresses! Please check your @umaprotocol/protocol installation."; exit 1)
 
 echo "Starting Truffle..."
 $(npm bin)/truffle exec ./scripts/cli/cli.js "$@"
