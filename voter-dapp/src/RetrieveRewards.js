@@ -143,7 +143,7 @@ function RetrieveRewards({ votingAccount }) {
     "PriceResolved",
     useMemo(() => {
       return { filter: { resolutionRoundId: roundIds }, fromBlock: 0 };
-    }, [roundIds, votingAccount])
+    }, [roundIds])
   );
 
   const revealedVoteEvents = useCacheEvents(
