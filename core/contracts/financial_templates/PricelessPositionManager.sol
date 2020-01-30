@@ -63,7 +63,7 @@ contract PricelessPositionManager is Testable {
     }
 
     modifier onlyPreExpiration() {
-        require(getCurrentTime() < expirationTimestamp, "Cannot create a position past its expiry time");
+        require(getCurrentTime() < expirationTimestamp, "Cannot operate on a position past its expiry time");
         _;
     }
 
