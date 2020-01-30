@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { drizzleReactHooks } from "drizzle-react";
+import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 
