@@ -6,7 +6,6 @@ import "./RegistryInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Registry for derivatives and approved derivative creators.
  * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives
