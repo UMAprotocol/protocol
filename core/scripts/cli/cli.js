@@ -1,27 +1,39 @@
 const inquirer = require("inquirer");
 const vote = require("./vote");
+const wallet = require("./wallet");
 
 const collectInputs = async (inputs = []) => {
   const prompts = [
     {
       type: "list",
       name: "topMenu",
-      message: "What do you want to do?",
-      choices: ["DVM system status", "wallet", "vote", "claim rewards", "help", "exit"]
+      message: "Top level menu. What do you want to do?",
+      choices: ["wallet", "vote", "claim rewards", "DVM system status", "help", "exit"]
     }
   ];
 
-  const { again, ...answers } = await inquirer.prompt(prompts);
-  const newInputs = [...inputs, answers];
-  return again ? collectInputs(newInputs) : newInputs;
+  answers = await inquirer.prompt(prompts);
+  return answers;
 };
 
 async function run() {
   let run = true;
   while (run) {
     const inputs = await collectInputs();
-    // console.log(inputs);
-    await vote();
+    switch (inputs["topMenu"]) {
+      case "wallet":
+        await wallet(web3);
+        break;
+      case "vote":
+        await vote(web3, artifacts);
+        break;
+      case "exit":
+        run = false;
+        break;
+      default:
+        console.log("unimplemented state");
+        break;
+    }
   }
 }
 
@@ -33,7 +45,3 @@ module.exports = async function(cb) {
   }
   cb();
 };
-
-run().then(function() {
-  console.log("run");
-});
