@@ -11,6 +11,8 @@ contract Token is ExpandedIERC20, ERC20 {
         _burn(msg.sender, value);
     }
 
+    // TODO: Inherit from ERC20Mintable instead, which will require redefining ExpandedIERC20 to have this method be
+    // public.
     function mint(address to, uint value) external returns (bool) {
         _mint(to, value);
         return true;

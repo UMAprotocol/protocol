@@ -26,7 +26,7 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedTotalCollateral = expectedSponsorCollateral.add(initialPositionCollateral);
 
     const positionData = await pricelessPositionManager.positions(sponsor);
-    assert.equal(positionData.sponsor, sponsor);
+    assert.equal(positionData.isValid, true);
     assert.equal(positionData.collateral.toString(), expectedSponsorCollateral.toString());
     assert.equal(positionData.tokensOutstanding.toString(), expectedSponsorTokens.toString());
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());

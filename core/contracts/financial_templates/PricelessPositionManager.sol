@@ -22,10 +22,10 @@ contract PricelessPositionManager is Testable {
      * and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
      */
     struct PositionData {
-        address sponsor;
+        bool isValid;
         FixedPoint.Unsigned collateral;
         FixedPoint.Unsigned tokensOutstanding;
-        // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTImestamp != 0`.
+        // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
         uint requestPassTimestamp;
         FixedPoint.Unsigned withdrawalRequestAmount;
     }
@@ -63,7 +63,6 @@ contract PricelessPositionManager is Testable {
     }
 
     modifier onlyPreExpiration() {
-        // TODO: Do we need a window around expiration?
         require(getCurrentTime() < expirationTimestamp, "Cannot create a position past its expiry time");
         _;
     }
@@ -73,12 +72,8 @@ contract PricelessPositionManager is Testable {
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() {
-        require(
-            positions[newSponsorAddress].sponsor == address(0),
-            "Cannot transfer to an address that already has a position"
-        );
+        require(!positions[newSponsorAddress].isValid, "Cannot transfer to an address that already has a position");
         PositionData memory positionData = _getPositionData(msg.sender);
-        positionData.sponsor = newSponsorAddress;
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
     }
@@ -166,8 +161,8 @@ contract PricelessPositionManager is Testable {
     {
         PositionData storage positionData = positions[msg.sender];
         require(positionData.requestPassTimestamp == 0, "Cannot create with a pending withdrawal request");
-        if (positionData.sponsor == address(0)) {
-            positionData.sponsor = msg.sender;
+        if (!positionData.isValid) {
+            positionData.isValid = true;
         }
         positionData.collateral = positionData.collateral.add(collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
@@ -184,7 +179,7 @@ contract PricelessPositionManager is Testable {
      */
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0, "Cannot create with a pending withdrawal request");
+        require(positionData.requestPassTimestamp == 0, "Cannot redeem with a pending withdrawal request");
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Can't redeem more than position size");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
@@ -204,7 +199,7 @@ contract PricelessPositionManager is Testable {
 
     function _getPositionData(address sponsor) internal view returns (PositionData storage position) {
         position = positions[sponsor];
-        require(position.sponsor != address(0), "Position does not exist: sponsor address is not set");
+        require(position.isValid, "Position does not exist");
     }
 
     function _checkCollateralizationRatio(PositionData storage positionData) private view returns (bool) {
