@@ -49,7 +49,6 @@ function ResolvedRequests({ votingAccount }) {
   // Handler for when the user clicks the button to toggle showing all resolved requests.
   const clickShowAll = useMemo(
     () => () => {
-      console.log("clicked!");
       setShowAllResolvedRequests(!showAllResolvedRequests);
     },
     [showAllResolvedRequests]
