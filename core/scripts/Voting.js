@@ -1,5 +1,6 @@
 const Voting = artifacts.require("Voting");
 const { VotePhasesEnum } = require("../../common/Enums");
+const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../common/Constants");
 const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../common/Crypto");
 const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper");
 const publicNetworks = require("../../common/PublicNetworks");
@@ -106,15 +107,6 @@ const SUPPORTED_IDENTIFIERS = {
     }
   }
 };
-
-// This number defines the maximum number of transactions that can fit within one block.
-// It was calculated by testing the batchCommit and batch revealFunctions to identify the
-// maximum that can be placed within one tx. The actual number that can fit is slightly
-// more but is set to a lower amount for safety.
-//
-// The latest tested maximum is 31
-const BATCH_MAX_COMMITS = 25;
-const BATCH_MAX_REVEALS = 25;
 
 const CC_API_KEY = process.env.CRYPTO_COMPARE_API_KEY
   ? process.env.CRYPTO_COMPARE_API_KEY
@@ -799,6 +791,4 @@ run = async function(callback) {
 
 run.VotingSystem = VotingSystem;
 run.SUPPORTED_IDENTIFIERS = SUPPORTED_IDENTIFIERS;
-run.BATCH_MAX_COMMITS = BATCH_MAX_COMMITS;
-run.BATCH_MAX_REVEALS = BATCH_MAX_REVEALS;
 module.exports = run;

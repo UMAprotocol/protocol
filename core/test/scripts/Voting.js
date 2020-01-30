@@ -7,6 +7,7 @@ const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js"
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { computeTopicHash } = require("../../../common/EncryptionHelper.js");
 const { createVisibleAccount } = require("../../../common/Crypto");
+const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../../common/Constants");
 
 // Set this to TRUE to print out logs that a production AVS would display
 const USE_PROD_LOGS = false;
@@ -362,7 +363,7 @@ contract("scripts/Voting.js", function(accounts) {
 
   it("Only batches up to the maximum number of commits or reveals that can fit in one block", async function() {
     const identifier = TEST_IDENTIFIERS["Custom Index (100)"].key;
-    let testTransactions = VotingScript.BATCH_MAX_COMMITS * 2 + 1;
+    let testTransactions = BATCH_MAX_COMMITS * 2 + 1;
     const time = (await voting.getCurrentTime()).toNumber() - testTransactions;
 
     // Request Oracle prices.
@@ -388,7 +389,7 @@ contract("scripts/Voting.js", function(accounts) {
       `There should be ${testTransactions} pending requests during commit phase`
     );
     let result = await votingSystem.runIteration(USE_PROD_LOGS);
-    batchesExpected = Math.ceil(testTransactions / VotingScript.BATCH_MAX_COMMITS);
+    batchesExpected = Math.ceil(testTransactions / BATCH_MAX_COMMITS);
     assert.equal(batchesExpected, result.batches);
     assert.equal(result.updates.length, testTransactions);
     assert.equal(result.skipped.length, 0);
@@ -403,7 +404,7 @@ contract("scripts/Voting.js", function(accounts) {
       `There should be ${testTransactions} pending requests during reveal phase`
     );
     result = await votingSystem.runIteration(USE_PROD_LOGS);
-    batchesExpected = Math.ceil(testTransactions / VotingScript.BATCH_MAX_REVEALS);
+    batchesExpected = Math.ceil(testTransactions / BATCH_MAX_REVEALS);
     assert.equal(batchesExpected, result.batches);
     assert.equal(result.updates.length, testTransactions);
 

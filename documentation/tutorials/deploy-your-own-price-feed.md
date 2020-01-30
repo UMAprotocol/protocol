@@ -116,7 +116,7 @@ Some notes on using this command:
 - You can repeat this command whenever you want to change the price. You'll only need to make sure that the timestamp
 is greater than the previous timestamp you provided, but not in the future.
 
-## Deploy a TokenizedDerivative instance that deplends on this price feed
+## Deploy a TokenizedDerivative instance that depends on this price feed
 
 To deploy a Tokenized Derivative that uses your price feed, you'll want to change the `priceFeedAddress` parameter to
 your price feed address from above and the `product` parameter to `Custom Index (1)` (converted to `bytes32`). The
