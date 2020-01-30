@@ -10,8 +10,7 @@ const wallet = async () => {
     }
   ];
 
-  answers = await inquirer.prompt(prompts);
-  return answers;
+  return await inquirer.prompt(prompts);
 };
 
 module.exports = async function(web3) {

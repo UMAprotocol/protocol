@@ -2,7 +2,7 @@ const inquirer = require("inquirer");
 const vote = require("./vote");
 const wallet = require("./wallet");
 
-const collectInputs = async (inputs = []) => {
+const collectInputs = async () => {
   const prompts = [
     {
       type: "list",
@@ -12,8 +12,7 @@ const collectInputs = async (inputs = []) => {
     }
   ];
 
-  answers = await inquirer.prompt(prompts);
-  return answers;
+  return await inquirer.prompt(prompts);
 };
 
 async function run() {
