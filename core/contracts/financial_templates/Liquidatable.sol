@@ -159,7 +159,7 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * Liquidate's the sponsor's position if the caller has enough
+     * Liquidates the sponsor's position if the caller has enough
      * synthetic tokens to retire the position's outstanding tokens.
      *
      * This method will generate an ID that will uniquely identify liquidation
@@ -207,7 +207,7 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * Dispute's a liquidation if the caller has enough collateral to post a dispute bond.
+     * Disputes a liquidation if the caller has enough collateral to post a dispute bond.
      * Can only dispute a liquidation before the liquidation expires and if there are no
      * other pending disputes
      *
