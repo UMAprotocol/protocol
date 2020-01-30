@@ -1,6 +1,8 @@
 const MetaMaskConnector = require("node-metamask");
 const argv = require("minimist")(process.argv.slice());
 
+// Wraps the MetaMask Connector enabling truffle to init a web3 provider and continue truffle execution until the
+// MetaMask connection has been established. This calls metaMask asynchronously while returning a provider synchronously.
 class MetaMaskTruffleProvider {
   constructor() {
     this.wrappedProvider = null;
@@ -48,11 +50,12 @@ class MetaMaskTruffleProvider {
 
   // Returns a Promise that resolves to the wrapped provider.
   getOrConstructWrappedProvider() {
+    // Only if the network is MetaMask should we init the wrapped provider.
     if (argv.network != "metamask") {
       return;
     }
     console.log(
-      "Using MetaMask as your Truffle provider. To connect navigate your browser to http://localhost:3333 and sign into your account.\nAll transactions will be proceeded by your Metamask wallet. Ensure that you do not switch your network during usage of the CLI utility."
+      "Using MetaMask as your Truffle provider. To connect navigate your browser to http://localhost:3333 and sign into your account.\nAll transactions will be proceeded by your MetaMask wallet. Ensure that you do not switch your network during usage of the CLI utility."
     );
 
     if (this.wrappedProvider) {
