@@ -16,7 +16,7 @@ async function topMenu() {
 
   const result = await inquirer.prompt(prompts);
   return result["topMenu"];
-};
+}
 
 async function run() {
   let run = true;
