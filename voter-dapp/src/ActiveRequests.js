@@ -366,7 +366,8 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       ) : (
         ""
       )}
-      {(saveButtonShown && !saveButtonEnabled) || (revealButtonShown && !revealButtonEnabled) ? (
+      {(saveButtonShown && !canExecuteBatch(BATCH_MAX_COMMITS)) ||
+      (revealButtonShown && !canExecuteBatch(BATCH_MAX_REVEALS)) ? (
         <span style={{ paddingLeft: "10px", color: "#FF4F4D" }}>
           You can only {saveButtonShown ? `commit up to ${BATCH_MAX_COMMITS}` : `reveal up to ${BATCH_MAX_REVEALS}`}{" "}
           requests at once. Please select fewer.
