@@ -14,7 +14,7 @@ contract("scripts/DecodeTransactionData.js", function(accounts) {
     const expectedObject = {
       name: "registerDerivative",
       params: {
-        counterparties: [],
+        parties: [],
         derivativeAddress: derivativeAddress
       }
     };
