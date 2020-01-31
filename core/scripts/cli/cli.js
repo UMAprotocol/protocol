@@ -18,8 +18,8 @@ const collectInputs = async () => {
 async function run() {
   let run = true;
   while (run) {
-    const inputs = await collectInputs();
-    switch (inputs["topMenu"]) {
+    const inputs = (await collectInputs())["topMenu"];
+    switch (inputs) {
       case "wallet":
         await wallet(web3);
         break;

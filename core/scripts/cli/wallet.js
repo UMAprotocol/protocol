@@ -21,8 +21,8 @@ module.exports = async function(web3) {
 
   const accounts = await getAccounts();
   try {
-    const inputs = await wallet();
-    switch (inputs["walletTopMenu"]) {
+    const inputs = (await wallet())["walletTopMenu"];
+    switch (inputs) {
       case ACTIONS[0]:
         const address = accounts[0];
         let balance = await getBalance(address);
