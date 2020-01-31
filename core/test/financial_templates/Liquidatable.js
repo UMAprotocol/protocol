@@ -39,7 +39,7 @@ contract("Liquidatable", function(accounts) {
   // Liquidation contract params
   const disputeBondPct = BN(toWei("0.1"));
   const disputeBond = disputeBondPct.times(amountOfCollateral).dividedBy(toWei("1"));
-  const collateralRequirement = BN(toWei("1.5"));
+  const collateralRequirement = BN(toWei("1.2"));
   const sponsorDisputeRewardPct = BN(toWei("0.05"));
   const sponsorDisputeReward = sponsorDisputeRewardPct.times(settlementTRV).dividedBy(toWei("1"));
   const disputerDisputeRewardPct = BN(toWei("0.05"));

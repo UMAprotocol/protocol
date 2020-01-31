@@ -14,6 +14,7 @@ import "../OracleInterface.sol";
  * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
+//TODO: implement the AdministrateeInterface.sol interfaces and emergency shut down.
 contract PricelessPositionManager is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
@@ -83,7 +84,7 @@ contract PricelessPositionManager is Testable {
     }
 
     modifier onlyPostExpiration() {
-        require(getCurrentTime() > expirationTimestamp, "Cannot operate on a position before its expiry time");
+        require(getCurrentTime() >= expirationTimestamp, "Cannot operate on a position before its expiry time");
         _;
     }
 
@@ -102,6 +103,7 @@ contract PricelessPositionManager is Testable {
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
      * increase the collateralization level of a position.
      */
+    //TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot deposit with a pending withdrawal request");
@@ -129,6 +131,7 @@ contract PricelessPositionManager is Testable {
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
+    //TODO: should this check if the position is valid first?
     function withdrawPassedRequest() public onlyPreExpiration() {
         // TODO: Decide whether to fold this functionality into withdraw() method above.
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -145,6 +148,7 @@ contract PricelessPositionManager is Testable {
      * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw `collateralAmount` from their
      * position. The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
      */
+    //TODO: should this check if the position is valid first?
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot have concurrent withdrawal requests");
@@ -197,6 +201,7 @@ contract PricelessPositionManager is Testable {
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
+    //TODO: should this check if the position is valid first?
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot redeem with a pending withdrawal request");
@@ -234,21 +239,25 @@ contract PricelessPositionManager is Testable {
         // Get the current settlement price. If it is not resolved will revert.
         FixedPoint.Unsigned memory settlementPrice = _getOraclePrice(expirationTimestamp);
 
-        // Get the information on the position for the caller.
-        PositionData storage positionData = _getPositionData(msg.sender);
+        // Get caller's tokens balance and calculate amount of underlying entitled to them.
+        FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
+        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.div(settlementPrice);
 
-        // Get callers tokens in wallet and the amount of underlying entitled to them.
-        FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.fromUnscaledUint(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory tokenRedeemableCollateral = tokensToRedeem.div(settlementPrice);
+        // If the caller is a sponsor they are also entitled to their underlying excess collateral.
+        if (positions[msg.sender].isValid) {
+            PositionData storage positionData = _getPositionData(msg.sender);
 
-        // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
-        FixedPoint.Unsigned memory tokenDebtValue = positionData.tokensOutstanding.div(settlementPrice);
-        FixedPoint.Unsigned memory positionRedeemableCollateral = positionData.collateral.sub(tokenDebtValue);
+            // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.div(settlementPrice);
+            FixedPoint.Unsigned memory positionRedeemableCollateral = positionData.collateral.sub(tokenDebtValueInCollateral);
 
-        // Calculate the total redeemable amount as the sum of their tokens to be redeemed and their excess underlying.
-        FixedPoint.Unsigned memory totalRedeemableCollateral = positionRedeemableCollateral.add(
-            tokenRedeemableCollateral
-        );
+            // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
+            totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
+
+            // Reset the position state as all the value has been removed after settlement.
+            positionData.collateral = FixedPoint.fromUnscaledUint(0);
+            positionData.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
+        }
 
         // Transfer tokens and collateral.
         require(
@@ -261,11 +270,7 @@ contract PricelessPositionManager is Testable {
         );
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
-        // Reset the position state.
-        positionData.collateral = FixedPoint.fromUnscaledUint(0);
-        positionData.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
-
-        // Decrement contract state.
+        // Decrement total contract collateral and oustanding debt.
         totalPositionCollateral = totalPositionCollateral.sub(totalRedeemableCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
     }
@@ -280,13 +285,13 @@ contract PricelessPositionManager is Testable {
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
-    function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint requestedTime) public view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = OracleInterface(_getOracleAddress());
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");
         int oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
 
-        // For now we dont want to deal with negative prices in positions.
+        // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }

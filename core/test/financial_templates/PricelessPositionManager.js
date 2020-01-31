@@ -17,13 +17,15 @@ contract("PricelessPositionManager", function(accounts) {
   const { toBN, toWei } = web3.utils;
   const contractDeployer = accounts[0];
   const sponsor = accounts[1];
-  const other = accounts[2];
-  const collateralOwner = accounts[3];
+  const tokenHolder = accounts[2];
+  const other = accounts[3];
+  const collateralOwner = accounts[4];
 
   const withdrawalLiveness = 1000;
   let collateral;
   let pricelessPositionManager;
   let tokenCurrency;
+  let priceTrackingIdentifier;
   let identifierWhitelist;
   let mockOracle;
   let finder;
@@ -58,7 +60,7 @@ contract("PricelessPositionManager", function(accounts) {
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
-    const priceTrackingIdentifier = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETHUSD"));
+    priceTrackingIdentifier = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETHUSD"));
     await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
       from: contractDeployer
     });
@@ -89,7 +91,7 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   //TODO: refactor these tests to use the `describe` keyword to break up each test into more modular and granular components.
-  it("Lifecycle", async function () {
+  it("Lifecycle", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
     await pricelessPositionManager.create(
@@ -172,7 +174,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
 
-    //TODO: Add a test to check that redemption does not work after expiratory.
+    //TODO: Add a test to check that normal redemption does not work after expiratory.
   });
 
   it("Withdrawal request", async function() {
@@ -229,6 +231,7 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.setCurrentTime(
       (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness + 1
     );
+    //TODO: use sponsorInitialBalance and sponsorFinalBalance in a test below
     let sponsorInitialBalance = await collateral.balanceOf(sponsor);
     await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
     let sponsorFinalBalance = await collateral.balanceOf(sponsor);
@@ -304,8 +307,6 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   it("Frozen post expiry", async function() {
-    // TODO: This test case is a placeholder until we implement the full expiration logic.
-
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
     await pricelessPositionManager.create(
@@ -342,6 +343,93 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(pricelessPositionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
     assert(await didContractThrow(pricelessPositionManager.transfer(accounts[3], { from: sponsor })));
+  });
+
+  it("Redemption post expiry", async function() {
+    // Create an initial large and lowly collateralized pricelessPositionManager.
+    await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
+    await pricelessPositionManager.create(
+      { rawValue: initialPositionCollateral.toString() },
+      { rawValue: initialPositionTokens.toString() },
+      { from: other }
+    );
+
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    const numTokens = toWei("100");
+    const amountCollateral = toWei("150");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    const tokenHolderTokens = toWei("50");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
+      from: sponsor
+    });
+
+    // Should revert if before contract expiration.
+    assert(await didContractThrow(pricelessPositionManager.settleExpired()));
+    assert(await didContractThrow(pricelessPositionManager.expire()));
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
+    await pricelessPositionManager.expire();
+
+    // Settling an expired position should revert if the contract has expired but the DVM has not yet returned a price.
+    assert(await didContractThrow(pricelessPositionManager.settleExpired({ from: tokenHolder })));
+
+    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1500 usd per eth.
+    // This will result in the large position created in the beginning being at 150% collateralization with its
+    // 1000 tokens of debt, valued at $1 per token, and 1 token of collateral, valued at $1500 per token.
+    const redemptionPrice = toWei("1500");
+    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), redemptionPrice);
+
+    //Token holder settle their synthetic tokens and redeem their tokens.
+    const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+    assert(tokenHolderInitialSynthetic, tokenHolderTokens);
+
+    // Approve the tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
+      from: tokenHolder
+    });
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+
+    // The token holder should gain the value of their synthetic tokens in underlying.
+    // The value in underlying is the number of tokens they held in the beginning/settlement price
+    assert(
+      tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral),
+      tokenHolderInitialCollateral.div(toBN(redemptionPrice))
+    );
+
+    // The token holder should have no synthetic positions left after settlement.
+    assert(tokenHolderFinalSynthetic, 0);
+
+    //Token sponsor settle their synthetic tokens and redeem their tokens.
+    const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
+    const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // Approve tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, sponsorInitialSynthetic, {
+      from: sponsor
+    });
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
+    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // The token Sponsor should gain the value of their synthetics in underlying
+    // + their excess collateral from the over collateralization in their position
+    assert(
+      sponsorFinalCollateral.sub(sponsorInitialCollateral),
+      tokenHolderInitialCollateral
+        .div(toBN(redemptionPrice))
+        .add(toBN(amountCollateral).sub(toBN(numTokens).div(toBN(redemptionPrice))))
+    );
+    // The token Sponsor should have no synthetic positions left after settlement.
+    assert(sponsorFinalSynthetic, 0);
   });
 
   it("Non sponsor can't deposit or redeem", async function() {
