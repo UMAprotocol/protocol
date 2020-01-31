@@ -65,20 +65,58 @@ async function decodeAllActiveGovernorProposals(artifacts, web3) {
   console.groupEnd();
 }
 
-async function viewAdminMenu() {
+async function viewAdminMenu(maxId) {
     const prompts = [
     {
-      type: "list",
-      name: "topMenu",
-      message: "Top level menu. What do you want to do?",
-      choices: ["Wallet", "Vote", "View admin proposals", "help", "exit"]
+      type: "input",
+      name: "viewAdminMenu",
+      message: `Please enter an admin propsal id (0-${maxId}), Enter to see all active admin proposals, or 'exit' to quit.`
     }
   ];
 
   const result = await inquirer.prompt(prompts);
-  return result["topMenu"];
+  return result["viewAdminMenu"];
 }
 
 async function decodeAllActiveGovernorProposals(artifacts, web3) {
+    const Governor = artifacts.require("Governor");
+    const governor = await Governor.deployed();
+    const numProposals = await governor.numProposals();
+
+    if (numProposals.toString() === "0") {
+        console.log("No admin proposals have been issued on this network.");
+        return;
+    }
+
+
+    while (true) {
+        const maxId = numProposals.subn(1).toString();
+        const userEntry = await viewAdminMenu(maxId);
+
+        if (selection) {
+            // User entered something.
+            let id = parseInt(selection);
+
+            // Detect exit command.
+            if (input.startsWith("exit")) {
+                console.log("Exiting admin menu...");
+                break;
+            }
+
+            // Validate input.
+            if (Number.isNaN(id) || web3.utils.toBN(id).gte(numProposals)) {
+                console.log(selection, `is not a valid admin proposal id. Please enter an integer between 0 and ${maxId}`);
+                continue;
+            }
+
+            await decodeGovernorProposal(artifacts, id);
+        } else {
+            // No selection was entered, show all admin proposals.
+            await decodeAllActiveGovernorProposals(artifacts, web3);
+        }
+
+    }
+
+}
 
 module.exports = { decodeGovernorProposal, decodeAllActiveGovernorProposals };
