@@ -70,6 +70,7 @@ contract PricelessPositionManager is Testable {
         withdrawalLiveness = _withdrawalLiveness;
         collateralCurrency = IERC20(_collateralAddress);
         //TODO: add parameters to register the synthetic token's name and symbol.
+        //TODO: add the collateral requirement. This is needed at settlement and at dispute resolution.
         Token mintableToken = new Token();
         tokenCurrency = ExpandedIERC20(address(mintableToken));
         finder = Finder(_finderAddress);

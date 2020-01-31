@@ -88,7 +88,8 @@ contract("PricelessPositionManager", function(accounts) {
     tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());
   });
 
-  it("Lifecycle", async function() {
+  //TODO: refactor these tests to use the `describe` keyword to break up each test into more modular and granular components.
+  it("Lifecycle", async function () {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
     await pricelessPositionManager.create(
@@ -170,6 +171,8 @@ contract("PricelessPositionManager", function(accounts) {
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
+
+    //TODO: Add a test to check that redemption does not work after expiratory.
   });
 
   it("Withdrawal request", async function() {
