@@ -7,7 +7,8 @@ import "../ExpandedIERC20.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
 import "./Token.sol";
-
+import "../Finder.sol";
+import "../OracleInterface.sol";
 /**
  * @title Financial contract with priceless position management.
  * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
@@ -42,6 +43,12 @@ contract PricelessPositionManager is Testable {
     ExpandedIERC20 public tokenCurrency;
     IERC20 public collateralCurrency;
 
+    // Finder knows the deployed addresses of all other smart contracts in UMA ecosystem.
+    Finder public finder;
+
+    // Unique identifier for DVM price feed ticker.
+    bytes32 priceIdentifer;
+
     /**
      * @dev Time that this contract expires.
      */
@@ -51,19 +58,31 @@ contract PricelessPositionManager is Testable {
      */
     uint public withdrawalLiveness;
 
-    constructor(uint _expirationTimestamp, uint _withdrawalLiveness, address collateralAddress, bool _isTest)
-        public
-        Testable(_isTest)
-    {
+    constructor(
+        uint _expirationTimestamp,
+        uint _withdrawalLiveness,
+        address _collateralAddress,
+        bool _isTest,
+        address _finderAddress,
+        bytes32 _priceFeedIdentifier
+    ) public Testable(_isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        collateralCurrency = IERC20(collateralAddress);
+        collateralCurrency = IERC20(_collateralAddress);
+        //TODO: add parameters to register the synthetic token's name and symbol.
         Token mintableToken = new Token();
         tokenCurrency = ExpandedIERC20(address(mintableToken));
+        finder = Finder(_finderAddress);
+        priceIdentifer = _priceFeedIdentifier;
     }
 
     modifier onlyPreExpiration() {
         require(getCurrentTime() < expirationTimestamp, "Cannot operate on a position past its expiry time");
+        _;
+    }
+
+    modifier onlyPostExpiration() {
+        require(getCurrentTime() > expirationTimestamp, "Cannot operate on a position before its expiry time");
         _;
     }
 
@@ -197,9 +216,94 @@ contract PricelessPositionManager is Testable {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
+    /**
+    * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
+    * expiration.
+    */
+    function expire() public onlyPostExpiration() {
+        _requestOraclePrice(expirationTimestamp);
+    }
+
+    /**
+     * @notice After a contract has passed maturity all token holders can redeem their tokens for underlying at
+     * the prevailing price defined by the DVM from the `expire` function. This Burns all tokens from the caller
+     * of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
+     */
+    function settleExpired() public onlyPostExpiration() {
+        // Get the current settlement price. If it is not resolved will revert.
+        FixedPoint.Unsigned memory settlementPrice = _getOraclePrice(expirationTimestamp);
+
+        // Get the information on the position for the caller.
+        PositionData storage positionData = _getPositionData(msg.sender);
+
+        // Get callers tokens in wallet and the amount of underlying entitled to them.
+        FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.fromUnscaledUint(tokenCurrency.balanceOf(msg.sender));
+        FixedPoint.Unsigned memory tokenRedeemableCollateral = tokensToRedeem.div(settlementPrice);
+
+        // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
+        FixedPoint.Unsigned memory tokenDebtValue = positionData.tokensOutstanding.div(settlementPrice);
+        FixedPoint.Unsigned memory positionRedeemableCollateral = positionData.collateral.sub(tokenDebtValue);
+
+        // Calculate the total redeemable amount as the sum of their tokens to be redeemed and their excess underlying.
+        FixedPoint.Unsigned memory totalRedeemableCollateral = positionRedeemableCollateral.add(
+            tokenRedeemableCollateral
+        );
+
+        // Transfer tokens and collateral.
+        require(
+            collateralCurrency.transfer(msg.sender, totalRedeemableCollateral.rawValue),
+            "Collateral redemption send failed"
+        );
+        require(
+            tokenCurrency.transferFrom(msg.sender, address(this), tokensToRedeem.rawValue),
+            "Token redemption send failed"
+        );
+        tokenCurrency.burn(tokensToRedeem.rawValue);
+
+        // Reset the position state.
+        positionData.collateral = FixedPoint.fromUnscaledUint(0);
+        positionData.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
+
+        // Decrement contract state.
+        totalPositionCollateral = totalPositionCollateral.sub(totalRedeemableCollateral);
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
+    }
+
     function _getPositionData(address sponsor) internal view returns (PositionData storage position) {
         position = positions[sponsor];
         require(position.isValid, "Position does not exist");
+    }
+
+    function _requestOraclePrice(uint requestedTime) internal {
+        OracleInterface oracle = OracleInterface(_getOracleAddress());
+        oracle.requestPrice(priceIdentifer, requestedTime);
+    }
+
+    function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+        // Create an instance of the oracle and get the price. If the price is not resolved revert.
+        OracleInterface oracle = OracleInterface(_getOracleAddress());
+        require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");
+        int oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
+
+        // For now we dont want to deal with negative prices in positions.
+        if (oraclePrice < 0) {
+            oraclePrice = 0;
+        }
+        return FixedPoint.fromUnscaledUint(_safeUintCast(oraclePrice));
+    }
+
+    function _getOracleAddress() internal view returns (address) {
+        bytes32 oracleInterface = "Oracle";
+        return finder.getImplementationAddress(oracleInterface);
+    }
+
+    function _getIdentifierWhitelistAddress() internal view returns (address) {
+        bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
+        return finder.getImplementationAddress(identifierWhitelistInterface);
+    }
+    function _getStoreAddress() internal view returns (address) {
+        bytes32 storeInterface = "Store";
+        return finder.getImplementationAddress(storeInterface);
     }
 
     function _checkCollateralizationRatio(PositionData storage positionData) private view returns (bool) {
@@ -221,5 +325,10 @@ contract PricelessPositionManager is Testable {
         } else {
             return collateral.div(numTokens);
         }
+    }
+
+    function _safeUintCast(int value) private pure returns (uint result) {
+        require(value >= 0);
+        return uint(value);
     }
 }

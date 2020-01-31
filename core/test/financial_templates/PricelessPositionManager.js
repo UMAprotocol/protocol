@@ -2,6 +2,11 @@ const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
 const Token = artifacts.require("Token");
 
+// Other UMA related contracts and mocks
+const Finder = artifacts.require("Finder");
+const MockOracle = artifacts.require("MockOracle");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+
 // Helper Contracts
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
@@ -10,14 +15,18 @@ ERC20Mintable.setProvider(web3.currentProvider);
 
 contract("PricelessPositionManager", function(accounts) {
   const { toBN, toWei } = web3.utils;
-  const sponsor = accounts[0];
-  const other = accounts[1];
-  const collateralOwner = accounts[2];
+  const contractDeployer = accounts[0];
+  const sponsor = accounts[1];
+  const other = accounts[2];
+  const collateralOwner = accounts[3];
 
   const withdrawalLiveness = 1000;
   let collateral;
   let pricelessPositionManager;
   let tokenCurrency;
+  let identifierWhitelist;
+  let mockOracle;
+  let finder;
 
   const initialPositionTokens = toBN(toWei("1000"));
   const initialPositionCollateral = toBN(toWei("1"));
@@ -47,13 +56,34 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   beforeEach(async function() {
+    // Create identifier whitelist and register the price tracking ticker with it.
+    identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
+    const priceTrackingIdentifier = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETHUSD"));
+    await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
+      from: contractDeployer
+    });
+
+    // Create a mockOracle and finder. Register the mockMoracle with the finder.
+    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+      from: contractDeployer
+    });
+    finder = await Finder.new({ from: contractDeployer });
+    const mockOracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex("Oracle"));
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
+      from: contractDeployer
+    });
+
+    // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
     const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
     pricelessPositionManager = await PricelessPositionManager.new(
       expirationTimestamp,
       withdrawalLiveness,
       collateral.address,
-      true
+      true,
+      finder.address,
+      priceTrackingIdentifier,
+      { from: contractDeployer }
     );
     tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());
   });

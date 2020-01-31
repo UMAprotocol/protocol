@@ -138,6 +138,8 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * Constructor: set universal Liquidation variables
      */
+     
+     // TODO: order and name these constructor parameters in the same way that they are done in the priceless position manager.
     constructor(
         bool _isTest,
         uint _positionExpiry,
@@ -146,8 +148,10 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory _disputeBondPct,
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
-        uint _liquidationLiveness
-    ) public PricelessPositionManager(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, _isTest) {
+        uint _liquidationLiveness,
+        address _finderAddress,
+        bytes32 _priceFeedIdentifier
+    ) public PricelessPositionManager(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, _isTest,_finderAddress,_priceFeedIdentifier) {
         require(
             _sponsorDisputeRewardPct.add(_disputerDisputeRewardPct).isLessThan(1),
             "Sponsor and Disputer dispute rewards shouldn't sum to 100% or more"

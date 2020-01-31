@@ -9,8 +9,13 @@ const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 
-// Contracts to unit test:
+// Contracts to unit test
 const Liquidatable = artifacts.require("Liquidatable");
+
+// Other UMA related contracts and mocks
+const Finder = artifacts.require("Finder");
+const MockOracle = artifacts.require("MockOracle");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -58,6 +63,10 @@ contract("Liquidatable", function(accounts) {
   let liquidationContract;
   let collateralToken;
   let syntheticToken;
+  let identifierWhitelist;
+  let priceTrackingIdentifier;
+  let mockOracle;
+  let finder;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -80,6 +89,23 @@ contract("Liquidatable", function(accounts) {
     // Create Collateral and Synthetic ERC20's
     collateralToken = await ERC20Mintable.new({ from: contractDeployer });
 
+    // Create identifier whitelist and register the price tracking ticker with it.
+    identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
+    priceTrackingIdentifier = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETHUSD"));
+    await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
+      from: contractDeployer
+    });
+
+    // Create a mockOracle and finder. Register the mockMoracle with the finder.
+    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+      from: contractDeployer
+    });
+    finder = await Finder.new({ from: contractDeployer });
+    const mockOracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex("Oracle"));
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
+      from: contractDeployer
+    });
+
     // Deploy liquidation contract and set global params
     liquidationContract = await Liquidatable.new(
       true,
@@ -92,6 +118,8 @@ contract("Liquidatable", function(accounts) {
       { rawValue: sponsorDisputeRewardPct.toString() },
       { rawValue: disputerDisputeRewardPct.toString() },
       liquidationLiveness.toString(),
+      finder.address,
+      priceTrackingIdentifier,
       { from: contractDeployer }
     );
 
@@ -578,6 +606,8 @@ contract("Liquidatable", function(accounts) {
             { rawValue: toWei("0.5") },
             { rawValue: toWei("0.5") },
             liquidationLiveness.toString(),
+            finder.address,
+            priceTrackingIdentifier,
             { from: contractDeployer }
           )
         )
@@ -603,6 +633,8 @@ contract("Liquidatable", function(accounts) {
         { rawValue: sponsorDisputeRewardPct.toString() },
         { rawValue: disputerDisputeRewardPct.toString() },
         liquidationLiveness.toString(),
+        finder.address,
+        priceTrackingIdentifier,
         { from: contractDeployer }
       );
       // Get newly created synthetic token
@@ -673,6 +705,8 @@ contract("Liquidatable", function(accounts) {
         { rawValue: sponsorDisputeRewardPct.toString() },
         { rawValue: disputerDisputeRewardPct.toString() },
         liquidationLiveness.toString(),
+        finder.address,
+        priceTrackingIdentifier,
         { from: contractDeployer }
       );
       // Get newly created synthetic token
@@ -740,6 +774,8 @@ contract("Liquidatable", function(accounts) {
         { rawValue: edgeSponsorRewardPct.toString() },
         { rawValue: edgeDisputerRewardPct.toString() },
         liquidationLiveness.toString(),
+        finder.address,
+        priceTrackingIdentifier,
         { from: contractDeployer }
       );
       // Get newly created synthetic token
