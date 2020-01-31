@@ -1,12 +1,14 @@
 const inquirer = require("inquirer");
 
+const ACTIONS = ["info", "restore", "help", "back"];
+
 const wallet = async () => {
   const prompts = [
     {
       type: "list",
       name: "walletTopMenu",
-      message: "Wallet actions",
-      choices: ["view wallet address", "wallet balance", "transfer tokens", "back"]
+      message: "UMA wallet actions",
+      choices: ACTIONS
     }
   ];
 
@@ -14,16 +16,21 @@ const wallet = async () => {
 };
 
 module.exports = async function(web3) {
-  const accounts = await web3.eth.getAccounts();
+  const { fromWei } = web3.utils;
+  const { getAccounts, getBalance } = web3.eth;
+
+  const accounts = await getAccounts();
   try {
     const inputs = await wallet();
     switch (inputs["walletTopMenu"]) {
-      case "view wallet address":
-        console.log(accounts[0]);
+      case ACTIONS[0]:
+        const address = accounts[0];
+        let balance = await getBalance(address);
+        console.group(`\n** Ethereum Wallet Info **`);
+        console.log(`- Address: ${address}`);
+        console.log(`- Balance: ${fromWei(balance)} ETH`);
+        console.groupEnd();
         break;
-      case "wallet balance":
-        let balance = await web3.eth.getBalance(accounts[0]);
-        console.log(web3.utils.fromWei(balance), "Eth");
       case "back":
         return;
       default:

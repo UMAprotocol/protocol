@@ -21,6 +21,7 @@ cd $SCRIPT_DIR/../..
 echo "Setting up UMA contracts..."
 $(npm bin)/truffle compile > /dev/null || (echo "Contract compilation failed! Please check your @umaprotocol/protocol installation."; exit 1)
 $(npm bin)/apply-registry > /dev/null || (echo "Could not read contract addresses! Please check your @umaprotocol/protocol installation."; exit 1)
+echo "...UMA contracts set up successfully!"
 
 echo "Starting Truffle..."
 $(npm bin)/truffle exec ./scripts/cli/cli.js "$@"

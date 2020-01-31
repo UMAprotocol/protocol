@@ -8,7 +8,7 @@ const collectInputs = async () => {
       type: "list",
       name: "topMenu",
       message: "Top level menu. What do you want to do?",
-      choices: ["wallet", "vote", "claim rewards", "DVM system status", "help", "exit"]
+      choices: ["wallet", "vote", "system", "help", "exit"]
     }
   ];
 
