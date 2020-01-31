@@ -2,7 +2,7 @@ const inquirer = require("inquirer");
 
 const vote = require("./vote");
 const wallet = require("./wallet");
-const { decodeGovernorProposal, decodeAllActiveGovernorProposals } = require("./decode.js");
+const admin = require("./admin.js");
 
 async function topMenu() {
   const prompts = [
@@ -30,6 +30,7 @@ async function run() {
         await vote(web3, artifacts);
         break;
       case "View admin proposals":
+        await admin(artifacts, web3);
         break;
       case "exit":
         run = false;

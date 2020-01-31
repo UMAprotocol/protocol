@@ -78,7 +78,8 @@ async function viewAdminMenu(maxId) {
   return result["viewAdminMenu"];
 }
 
-async function decodeAllActiveGovernorProposals(artifacts, web3) {
+async function admin(artifacts, web3) {
+  console.log("Starting the admin menu...");
   const Governor = artifacts.require("Governor");
   const governor = await Governor.deployed();
   const numProposals = await governor.numProposals();
@@ -92,19 +93,19 @@ async function decodeAllActiveGovernorProposals(artifacts, web3) {
     const maxId = numProposals.subn(1).toString();
     const userEntry = await viewAdminMenu(maxId);
 
-    if (selection) {
+    if (userEntry) {
       // User entered something.
-      let id = parseInt(selection);
+      let id = parseInt(userEntry);
 
       // Detect exit command.
-      if (input.startsWith("exit")) {
+      if (userEntry.startsWith("exit")) {
         console.log("Exiting admin menu...");
         break;
       }
 
       // Validate input.
-      if (Number.isNaN(id) || web3.utils.toBN(id).gte(numProposals)) {
-        console.log(selection, `is not a valid admin proposal id. Please enter an integer between 0 and ${maxId}`);
+      if (Number.isNaN(id) || numProposals.lten(id) || id < 0) {
+        console.log(userEntry, `is not a valid admin proposal id. Please enter an integer between 0 and ${maxId}`);
         continue;
       }
 
@@ -113,7 +114,9 @@ async function decodeAllActiveGovernorProposals(artifacts, web3) {
       // No selection was entered, show all admin proposals.
       await decodeAllActiveGovernorProposals(artifacts, web3);
     }
+
+    break;
   }
 }
 
-module.exports = { decodeGovernorProposal, decodeAllActiveGovernorProposals };
+module.exports = admin;
