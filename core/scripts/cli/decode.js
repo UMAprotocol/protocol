@@ -1,3 +1,4 @@
+const inquirer = require("inquirer");
 const abiDecoder = require("../../../common/AbiUtils.js").getAbiDecoder();
 
 async function decodeGovernorProposal(artifacts, id) {
@@ -63,5 +64,21 @@ async function decodeAllActiveGovernorProposals(artifacts, web3) {
   }
   console.groupEnd();
 }
+
+async function viewAdminMenu() {
+    const prompts = [
+    {
+      type: "list",
+      name: "topMenu",
+      message: "Top level menu. What do you want to do?",
+      choices: ["Wallet", "Vote", "View admin proposals", "help", "exit"]
+    }
+  ];
+
+  const result = await inquirer.prompt(prompts);
+  return result["topMenu"];
+}
+
+async function decodeAllActiveGovernorProposals(artifacts, web3) {
 
 module.exports = { decodeGovernorProposal, decodeAllActiveGovernorProposals };
