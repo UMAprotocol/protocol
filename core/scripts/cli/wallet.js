@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 
-const ACTIONS = ["info", "restore", "help", "back"];
+const ACTIONS = ["info", "init", "restore", "help", "back"];
 
 const wallet = async () => {
   const prompts = [
@@ -23,6 +23,7 @@ module.exports = async function(web3) {
   try {
     const inputs = (await wallet())["walletTopMenu"];
     switch (inputs) {
+      // Display default wallet information for user
       case ACTIONS[0]:
         const address = accounts[0];
         let balance = await getBalance(address);
@@ -31,6 +32,13 @@ module.exports = async function(web3) {
         console.log(`- Balance: ${fromWei(balance)} ETH`);
         console.groupEnd();
         break;
+      // Create a new default wallet
+      // - Detect if there is a wallet stored in ~/.uma
+      // - If yes, ask whether to use this one (needs a name) or create a new one
+      // - Using newly created wallet, add to web3.accounts
+      // - If don't want to create a new one then use default web3 wallet
+      // - If no default web3 wallet then throw error
+      // TODO: Handle MetaMask somehow
       case "back":
         return;
       default:
