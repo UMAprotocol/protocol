@@ -72,6 +72,7 @@ contract PricelessPositionManager is Testable {
         collateralCurrency = IERC20(_collateralAddress);
         //TODO: add parameters to register the synthetic token's name and symbol.
         //TODO: add the collateral requirement. This is needed at settlement and at dispute resolution.
+        //TODO: validate the input of the finder/price identifier inputs.
         Token mintableToken = new Token();
         tokenCurrency = ExpandedIERC20(address(mintableToken));
         finder = Finder(_finderAddress);
@@ -92,6 +93,7 @@ contract PricelessPositionManager is Testable {
      * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
      */
+    //TODO: transfer should not work if there is a pending withdraw
     function transfer(address newSponsorAddress) public onlyPreExpiration() {
         require(!positions[newSponsorAddress].isValid, "Cannot transfer to an address that already has a position");
         PositionData memory positionData = _getPositionData(msg.sender);
@@ -132,6 +134,7 @@ contract PricelessPositionManager is Testable {
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
     //TODO: should this check if the position is valid first?
+    //TODO: should you be able to submit a withdraw without any collateral?
     function withdrawPassedRequest() public onlyPreExpiration() {
         // TODO: Decide whether to fold this functionality into withdraw() method above.
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -246,8 +249,7 @@ contract PricelessPositionManager is Testable {
 
         // TODO: what happens in the case where the position is invalid but the contract has expired; i.e they were
         // liquidated close to settlement and then contract settles before they withdraw.
-        
-        
+
         // If the caller is a sponsor they are also entitled to their underlying excess collateral.
         if (positions[msg.sender].isValid) {
             PositionData storage positionData = _getPositionData(msg.sender);
@@ -280,6 +282,19 @@ contract PricelessPositionManager is Testable {
         // Decrement total contract collateral and oustanding debt.
         totalPositionCollateral = totalPositionCollateral.sub(totalRedeemableCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
+    }
+
+    function _liquidatePosition(address sponsor) internal {
+        PositionData storage positionToLiquidate = _getPositionData(sponsor);
+
+        // Remove the collateral and outstanding from the overall total position.
+        totalPositionCollateral.sub(positionToLiquidate.collateral);
+        totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
+
+        // Reset the sponsors position to have zero outstanding and collateral.
+        positionToLiquidate.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
+        positionToLiquidate.collateral = FixedPoint.fromUnscaledUint(0);
+        positionToLiquidate.isValid = false;
     }
 
     function _getPositionData(address sponsor) internal view returns (PositionData storage position) {

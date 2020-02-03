@@ -101,6 +101,9 @@ contract Liquidatable is PricelessPositionManager {
      * Method modifiers
      */
 
+    //TODO: could this modifier be replaced with one called `onlyPreDispute` and then the function can use
+    // the `onlyPreExpiration` modifier from the base contract and this one in conjunction?
+
     // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
         require(
@@ -176,16 +179,17 @@ contract Liquidatable is PricelessPositionManager {
      *
      * This method will generate an ID that will uniquely identify liquidation
      * for the sponsor.
-     * TODO: Perhaps pass this ID via an event rather than a return value
-     *
-     * TODO: Possibly allow partial liquidations
-     *
      * Returns UUID of new liquidation for the sponsor
      */
+
+    // TODO: Perhaps pass this ID via an event rather than a return value
+    // TODO: Possibly allow partial liquidations
+    //TODO: this should only be callable `onlyPreExpiration`
     function createLiquidation(address sponsor) public returns (uint lastIndexUsed) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
+        //TODO: can refactor this to use `liquidations.push` and then get the index returned from the push
         // Allocate space for new liquidation and increment index
         lastIndexUsed = sponsorLiquidationIndex[sponsor];
         LiquidationData storage newLiquidation = liquidations[sponsor][lastIndexUsed];
@@ -198,10 +202,8 @@ contract Liquidatable is PricelessPositionManager {
             positionToLiquidate.withdrawalRequestAmount
         );
 
-        // TODO: Should "destroy" the position somehow, rendering its create/redeem/deposit/withdraw methods uncallable
-        // This should reduce totalTokensOutstanding and lockedCollateral, and also withdrawal request amount?
-        positionToLiquidate.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
-        positionToLiquidate.collateral = FixedPoint.fromUnscaledUint(0);
+        // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
+        _liquidatePosition(sponsor);
 
         // Set parameters for new liquidation
         newLiquidation.expiry = getCurrentTime() + liquidationLiveness;
@@ -222,8 +224,6 @@ contract Liquidatable is PricelessPositionManager {
      * Disputes a liquidation if the caller has enough collateral to post a dispute bond.
      * Can only dispute a liquidation before the liquidation expires and if there are no
      * other pending disputes
-     *
-     * TODO: Requests a settlement price from the DVM
      */
     function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
@@ -240,9 +240,8 @@ contract Liquidatable is PricelessPositionManager {
         disputedLiquidation.disputer = msg.sender;
         disputedLiquidation.disputeTime = getCurrentTime();
 
-        // TODO: Remove call to Oracle for testing purposes
-        // require(disputedLiquidation.oracle.requestPrice(disputedLiquidation.identifier, disputedLiquidation.disputeTime), "oracle request failed");
-
+        // Enqueue a request with the DVM.
+        _requestOraclePrice(disputedLiquidation.disputeTime);
     }
 
     /**
@@ -252,35 +251,29 @@ contract Liquidatable is PricelessPositionManager {
      * that the DVM has resolved a price. This method then calculates whether the
      * dispute on the liquidation was successful usin only the settlement price,
      * tokens outstanding, locked collateral (post-pending withdrawals), and liquidation ratio
-     *
-     * TODO: Requests a settlement price from the DVM
-     * TESTING: For now, I allow the caller to hard-code a settlement price and
-     * a dispute resolution => {SUCCESS, FAILURE}
      */
-    function settleDispute(uint id, address sponsor, FixedPoint.Unsigned memory hardcodedPrice, bool disputeSucceeded)
-        public
-        onlyPendingDispute(id, sponsor)
-    {
+    function settleDispute(uint id, address sponsor) public onlyPendingDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
-        // if (disputedLiquidation.oracle.hasPrice(disputedLiquidation.identifier, disputedLiquidation.disputeTime)) {
-        // If dispute is over set oracle price
-        // disputedLiquidation.oraclePrice = disputedLiquidation.oracle.getPrice(
-        //     disputedLiquidation.identifier,
-        //     disputedLiquidation.disputeTime
-        // );
+        // Get the returned price from the oracle. If this has not yet resolved will revert.
+        disputedLiquidation.settlementPrice = _getOraclePrice(disputedLiquidation.disputeTime);
 
-        // TODO: For testing purposes
-        disputedLiquidation.settlementPrice = hardcodedPrice;
+        // Find the value of the tokens in the underlying collateral.
+        FixedPoint.Unsigned memory tokenValueInCollateral = disputedLiquidation.tokensOutstanding.mul(
+            disputedLiquidation.settlementPrice
+        );
 
-        // TODO: Settle dispute using settlementPrice and liquidatedTokens (which might be different from lockedCollateral!)
-        // This is where liquidatedCollateral vs lockedCollateral comes important, as the liquidator is comparing
-        // the liquidatedCollateral:TRV vs. lockedCollateral:TRV against the collateralRequirement
+        // The required collateral is the value of the tokens in underlying * required collateral ratio.
+        FixedPoint.Unsigned memory requiredCollateral = tokenValueInCollateral.mul(collateralRequirement);
+
+        // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
+        // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
+        bool disputeSucceeded = disputedLiquidation.liquidatedCollateral.isGreaterThan(requiredCollateral);
+
         if (disputeSucceeded) {
-            // If dispute is successful
             disputedLiquidation.state = Status.DisputeSucceeded;
+
         } else {
-            // If dispute fails
             disputedLiquidation.state = Status.DisputeFailed;
         }
     }
