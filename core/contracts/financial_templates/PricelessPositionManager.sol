@@ -7,13 +7,14 @@ import "../ExpandedIERC20.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
 import "./Token.sol";
+import "./FeePayer.sol";
 
 /**
  * @title Financial contract with priceless position management.
  * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
-contract PricelessPositionManager is Testable {
+contract PricelessPositionManager is FeePayer {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
 
@@ -40,7 +41,6 @@ contract PricelessPositionManager is Testable {
     FixedPoint.Unsigned public totalTokensOutstanding;
 
     ExpandedIERC20 public tokenCurrency;
-    IERC20 public collateralCurrency;
 
     /**
      * @dev Time that this contract expires.
@@ -51,13 +51,11 @@ contract PricelessPositionManager is Testable {
      */
     uint public withdrawalLiveness;
 
-    constructor(uint _expirationTimestamp, uint _withdrawalLiveness, address collateralAddress, bool _isTest)
-        public
-        Testable(_isTest)
+    constructor(uint _expirationTimestamp, uint _withdrawalLiveness, address collateralAddress, address finderAddress, bool _isTest)
+        public FeePayer(collateralAddress, finderAddress, _isTest)
     {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        collateralCurrency = IERC20(collateralAddress);
         Token mintableToken = new Token();
         tokenCurrency = ExpandedIERC20(address(mintableToken));
     }
@@ -195,6 +193,10 @@ contract PricelessPositionManager is Testable {
         // TODO: Use `burnFrom` here?
         require(tokenCurrency.transferFrom(msg.sender, address(this), numTokens.rawValue));
         tokenCurrency.burn(numTokens.rawValue);
+    }
+
+    function pfc() public returns (FixedPoint.Unsigned memory)  {
+        return totalPositionCollateral;
     }
 
     function _getPositionData(address sponsor) internal view returns (PositionData storage position) {

@@ -101,6 +101,8 @@ contract Liquidatable is PricelessPositionManager {
     // Represented as a multipler, see above
     FixedPoint.Unsigned disputerDisputeRewardPct;
 
+    FixedPoint.Unsigned totalLiquidationCollateral;
+
     /**
      * Method modifiers
      */
@@ -146,8 +148,9 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory _disputeBondPct,
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
-        uint _liquidationLiveness
-    ) public PricelessPositionManager(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, _isTest) {
+        uint _liquidationLiveness,
+        address finderAddress
+    ) public PricelessPositionManager(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, finderAddress, _isTest) {
         require(
             _sponsorDisputeRewardPct.add(_disputerDisputeRewardPct).isLessThan(1),
             "Sponsor and Disputer dispute rewards shouldn't sum to 100% or more"
@@ -376,6 +379,10 @@ contract Liquidatable is PricelessPositionManager {
                 require(false, "only the liquidator can withdraw on a non-disputed, expired liquidation");
             }
         }
+    }
+
+    function pfc() public returns (FixedPoint.Unsigned memory)  {
+        return PriceLessPositionManager.pfc().add(totalLiquidationCollateral);
     }
 
     /**
