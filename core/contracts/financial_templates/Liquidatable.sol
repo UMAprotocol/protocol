@@ -166,6 +166,8 @@ contract Liquidatable is PricelessPositionManager {
             _sponsorDisputeRewardPct.add(_disputerDisputeRewardPct).isLessThan(1),
             "Sponsor and Disputer dispute rewards shouldn't sum to 100% or more"
         );
+        require(_collateralRequirement.isGreaterThan(1), "The collateral requirement must be at minimum 100%");
+
         collateralRequirement = _collateralRequirement;
         disputeBondPct = _disputeBondPct;
         sponsorDisputeRewardPct = _sponsorDisputeRewardPct;
@@ -259,12 +261,12 @@ contract Liquidatable is PricelessPositionManager {
         disputedLiquidation.settlementPrice = _getOraclePrice(disputedLiquidation.disputeTime);
 
         // Find the value of the tokens in the underlying collateral.
-        FixedPoint.Unsigned memory tokenValueInCollateral = disputedLiquidation.tokensOutstanding.mul(
+        FixedPoint.Unsigned memory tokenRedemptionValue = disputedLiquidation.tokensOutstanding.mul(
             disputedLiquidation.settlementPrice
         );
 
         // The required collateral is the value of the tokens in underlying * required collateral ratio.
-        FixedPoint.Unsigned memory requiredCollateral = tokenValueInCollateral.mul(collateralRequirement);
+        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
@@ -299,17 +301,9 @@ contract Liquidatable is PricelessPositionManager {
             liquidation.settlementPrice
         );
 
-        // Calculate rewards: to ensure that everyone can be paid out,
-        // if TRV > Collateral, then make rewards a percentage of the Collateral
-        FixedPoint.Unsigned memory disputerDisputeReward;
-        FixedPoint.Unsigned memory sponsorDisputeReward;
-        if (tokenRedemptionValue.isGreaterThan(liquidation.lockedCollateral)) {
-            disputerDisputeReward = disputerDisputeRewardPct.mul(liquidation.lockedCollateral);
-            sponsorDisputeReward = sponsorDisputeRewardPct.mul(liquidation.lockedCollateral);
-        } else {
-            disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
-            sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
-        }
+        // Calculate rewards as a function of the TRV
+        FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
+        FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
 
         // Dispute bond can always be paid out
         FixedPoint.Unsigned memory disputeBondAmount = liquidation.lockedCollateral.mul(disputeBondPct);
@@ -325,12 +319,7 @@ contract Liquidatable is PricelessPositionManager {
             } else if (msg.sender == sponsor) {
                 // Pay SPONSOR: remaining collateral (locked collateral - TRV) + sponsor reward
                 FixedPoint.Unsigned memory remainingCollateral;
-                // if TRV > Collateral, there is 0 excess collateral
-                if (tokenRedemptionValue.isGreaterThan(liquidation.lockedCollateral)) {
-                    remainingCollateral = FixedPoint.fromUnscaledUint(0);
-                } else {
-                    remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
-                }
+                remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
                 FixedPoint.Unsigned memory payToSponsor = sponsorDisputeReward.add(remainingCollateral);
                 require(
                     collateralCurrency.transfer(msg.sender, payToSponsor.rawValue),
@@ -342,17 +331,12 @@ contract Liquidatable is PricelessPositionManager {
                 // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
                 // the constructor when these params are set
                 FixedPoint.Unsigned memory payToLiquidator;
-                if (tokenRedemptionValue.isGreaterThan(liquidation.lockedCollateral)) {
-                    payToLiquidator = liquidation.lockedCollateral.sub(sponsorDisputeReward).sub(disputerDisputeReward);
-                } else {
-                    payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
-                }
+                payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
                 require(
                     collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer reward for a successful dispute to liquidator"
                 );
             }
-
             // Free up space once all locked collateral is withdrawn
             if (collateralCurrency.balanceOf(address(this)) == 0) {
                 delete liquidations[sponsor][id];

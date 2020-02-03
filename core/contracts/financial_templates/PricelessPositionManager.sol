@@ -288,8 +288,8 @@ contract PricelessPositionManager is Testable {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         // Remove the collateral and outstanding from the overall total position.
-        totalPositionCollateral.sub(positionToLiquidate.collateral);
-        totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
+        totalPositionCollateral = totalPositionCollateral.sub(positionToLiquidate.collateral);
+        totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
         // Reset the sponsors position to have zero outstanding and collateral.
         positionToLiquidate.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
