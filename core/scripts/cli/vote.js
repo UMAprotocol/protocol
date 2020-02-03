@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const ora = require('ora');
+const ora = require("ora");
 
 const ACTIONS = ["info", "commit", "reveal", "rewards", "help", "back"];
 
@@ -23,12 +23,10 @@ module.exports = async function(web3, artifacts) {
     const inputs = (await vote())["voteTopMenu"];
     switch (inputs) {
       case ACTIONS[0]:
-        const spinner = ora(
-          {
-            text: 'Reading contracts',
-            color: 'blue'
-          }
-        );
+        const spinner = ora({
+          text: "Reading contracts",
+          color: "blue"
+        });
         spinner.start();
         const pendingRequests = await voting.getPendingRequests();
         const roundId = await voting.getCurrentRoundId();
