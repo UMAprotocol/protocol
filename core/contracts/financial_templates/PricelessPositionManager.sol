@@ -249,7 +249,9 @@ contract PricelessPositionManager is Testable {
 
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
             FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.div(settlementPrice);
-            FixedPoint.Unsigned memory positionRedeemableCollateral = positionData.collateral.sub(tokenDebtValueInCollateral);
+            FixedPoint.Unsigned memory positionRedeemableCollateral = positionData.collateral.sub(
+                tokenDebtValueInCollateral
+            );
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
