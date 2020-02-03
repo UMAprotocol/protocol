@@ -1,12 +1,17 @@
 const fs = require("fs");
 const inquirer = require("inquirer");
 const setDefaultAccountForWallet = require("./setDefaultAccountForWallet");
+const style = require("../textStyle");
 
 const createAndSaveAccount = (web3, newAccountPath) => {
   const newAccount = web3.eth.accounts.create();
   try {
     fs.writeFileSync(newAccountPath, JSON.stringify(newAccount));
-    console.log(`Saved new Ethereum account to ${newAccountPath} with public key: ${newAccount.address}`);
+    console.log(
+      `Saved new Ethereum account to ${style.bgGreen(newAccountPath)} with public key: ${style.bgRed(
+        newAccount.address
+      )}`
+    );
     return newAccount;
   } catch (err) {
     console.error(`Failed to save new Ethereum wallet to  ${newAccountPath}`, err);

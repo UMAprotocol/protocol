@@ -1,6 +1,7 @@
 const fs = require("fs");
 const inquirer = require("inquirer");
 const setDefaultAccountForWallet = require("./setDefaultAccountForWallet");
+const style = require("../textStyle");
 
 module.exports = async (web3, accountDataFile) => {
   // Check if backup file exists
@@ -29,6 +30,7 @@ module.exports = async (web3, accountDataFile) => {
         fs.copyFileSync(`${accountDataFile}.temp`, `${accountDataFile}`);
         fs.unlinkSync(`${accountDataFile}.temp`);
         const restoredAccount = JSON.parse(fs.readFileSync(accountDataFile));
+        console.log(`Restored account with public key: ${style.bgRed(restoredAccount.address)}`);
         setDefaultAccountForWallet(web3, restoredAccount);
       } catch (err) {
         console.error(err);
