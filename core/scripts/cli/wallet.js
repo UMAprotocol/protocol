@@ -1,4 +1,17 @@
+// TODO:
+// Allow user to change directory in which wallets are stored
+// Allow more than one wallet backups
+// Connect to MetaMask
+
 const inquirer = require("inquirer");
+const os = require('os');
+
+// Wallet module helpers
+const createNewAccount = require('./wallet/createNewAccount');
+const createWalletDirectory = require('./wallet/createWalletDirectory');
+const loadSavedAccount = require('./wallet/loadSavedAccount');
+const restoreBackupAccount = require('./wallet/swapDefaultAndBackupAccounts');
+const readDefaultAccount = require('./wallet/readDefaultAccountInfo')
 
 const ACTIONS = ["info", "init", "restore", "help", "back"];
 
@@ -16,36 +29,51 @@ const wallet = async () => {
 };
 
 module.exports = async function(web3) {
-  const { fromWei } = web3.utils;
-  const { getAccounts, getBalance } = web3.eth;
-
-  const accounts = await getAccounts();
+  // Get saved .uma directory for user (if it exists) and copy default account into web3.accounts.wallet
+  // @dev: Get home directory in platform agnostic way, src=https://stackoverflow.com/questions/9080085/node-js-find-home-directory-in-platform-agnostic-way
+  const homedir = os.homedir(); 
+  const umaDirectory = `${homedir}/.uma`;
+  const walletDirectory = createWalletDirectory(umaDirectory);
+  const accountDataFile = `${walletDirectory}/account.seed`;
+  loadSavedAccount(web3, accountDataFile);
+  
   try {
     const inputs = (await wallet())["walletTopMenu"];
     switch (inputs) {
-      // Display default wallet information for user
+
+      // INFO: Display default account information for user
       case ACTIONS[0]:
-        const address = accounts[0];
-        let balance = await getBalance(address);
-        console.group(`\n** Ethereum Wallet Info **`);
-        console.log(`- Address: ${address}`);
-        console.log(`- Balance: ${fromWei(balance)} ETH`);
+        await readDefaultAccount(web3);
+        break;
+
+      // INIT: Create a new account for user
+      case ACTIONS[1]: 
+        await createNewAccount(web3, accountDataFile)
+        break;
+
+      // RESTORE: Replace account backup with default account
+      case ACTIONS[2]:
+        await restoreBackupAccount(web3, accountDataFile);
+        break;
+
+      // HELP
+      case "help":
+        console.group(`Wallet actions:`);
+        console.log(`- info: displays balance information for your default account, stored in ${accountDataFile}`);
+        console.log(`- init: create a new default account, backs up previous default account in the same directory`);
+        console.log(`- restore: restores an account backup to your default (and backs up the default)`);
         console.groupEnd();
         break;
-      // Create a new default wallet
-      // - Detect if there is a wallet stored in ~/.uma
-      // - If yes, ask whether to use this one (needs a name) or create a new one
-      // - Using newly created wallet, add to web3.accounts
-      // - If don't want to create a new one then use default web3 wallet
-      // - If no default web3 wallet then throw error
-      // TODO: Handle MetaMask somehow
+
+      // BACK
       case "back":
         return;
+
       default:
         console.log("unimplemented state");
     }
   } catch (err) {
-    console.log(err);
+    console.error(`Unknown "wallet" error:`, err);
   }
   return;
 };
