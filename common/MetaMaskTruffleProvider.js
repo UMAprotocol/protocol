@@ -9,12 +9,6 @@ class MetaMaskTruffleProvider {
     this.wrappedProviderPromise = this.getOrConstructWrappedProvider();
   }
 
-  // Kicks off the construction of the wrapper provider. Call (and await on) this method before invoking any other
-  // methods.
-  async constructWrappedProvider() {
-    return this.wrappedProviderPromise;
-  }
-
   // Passes the call through, by attaching a callback to the wrapper provider promise.
   sendAsync(...all) {
     this.wrappedProviderPromise.then(wrappedProvider => {
