@@ -149,6 +149,7 @@ contract PricelessPositionManager is Testable {
      * position. The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
      */
     //TODO: should this check if the position is valid first?
+    //TODO: should this check if the contract is pre-expiration?
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot have concurrent withdrawal requests");
@@ -243,6 +244,10 @@ contract PricelessPositionManager is Testable {
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
         FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.div(settlementPrice);
 
+        // TODO: what happens in the case where the position is invalid but the contract has expired; i.e they were
+        // liquidated close to settlement and then contract settles before they withdraw.
+        
+        
         // If the caller is a sponsor they are also entitled to their underlying excess collateral.
         if (positions[msg.sender].isValid) {
             PositionData storage positionData = _getPositionData(msg.sender);
