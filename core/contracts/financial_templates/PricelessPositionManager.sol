@@ -317,7 +317,7 @@ contract PricelessPositionManager is Testable {
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return FixedPoint.fromUnscaledUint(_safeUintCast(oraclePrice));
+        return FixedPoint.Unsigned(_safeUintCast(oraclePrice));
     }
 
     function _getOracleAddress() internal view returns (address) {
