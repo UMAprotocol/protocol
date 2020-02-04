@@ -43,6 +43,7 @@
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
+    "node-metamask": "^1.1.2",
     "require-context": "^1.1.0",
     "secp256k1": "^3.7.1",
     "truffle": "5.1.4",

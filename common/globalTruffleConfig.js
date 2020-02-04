@@ -3,6 +3,7 @@ const GckmsConfig = require("./gckms/GckmsConfig.js");
 const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
 const publicNetworks = require("./PublicNetworks.js");
 const LedgerWalletProvider = require("@umaprotocol/truffle-ledger-provider");
+const MetaMaskTruffleProvider = require("./MetaMaskTruffleProvider.js");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
@@ -110,6 +111,9 @@ addLocalNetwork(networks, "test");
 
 // Coverage requires specific parameters to allow very high cost transactions.
 addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
+
+// MetaMask truffle provider
+addLocalNetwork(networks, "metamask", { provider: new MetaMaskTruffleProvider() });
 
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
