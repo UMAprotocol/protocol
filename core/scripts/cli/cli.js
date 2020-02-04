@@ -21,7 +21,7 @@ async function run() {
     const inputs = (await collectInputs())["topMenu"];
     switch (inputs) {
       case "wallet":
-        await wallet(web3);
+        await wallet(web3, artifacts);
         break;
       case "vote":
         await vote(web3, artifacts);

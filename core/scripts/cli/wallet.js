@@ -28,16 +28,16 @@ const wallet = async () => {
   return await inquirer.prompt(prompts);
 };
 
-module.exports = async function(web3) {
+module.exports = async function(web3, artifacts) {
   try {
     const inputs = (await wallet())["walletTopMenu"];
     switch (inputs) {
       // INFO: Display default account information for user
       case ACTIONS.info:
-        await readDefaultAccount(web3);
+        await readDefaultAccount(web3, artifacts);
         break;
 
-      // INIT: Create a new account for user
+      // GENERATE: Create a new account for user
       case ACTIONS.generate_account:
         await createNewAccount(web3);
         break;
