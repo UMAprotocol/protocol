@@ -1,32 +1,46 @@
 const inquirer = require("inquirer");
+
 const vote = require("./vote");
 const wallet = require("./wallet");
+const admin = require("./admin.js");
 
-const collectInputs = async () => {
+const ACTIONS = {
+  wallet: "Wallet",
+  vote: "Vote",
+  admin: "Admin",
+  help: "Help",
+  exit: "Exit"
+};
+
+async function topMenu() {
   const prompts = [
     {
       type: "list",
       name: "topMenu",
       message: "Top level menu. What do you want to do?",
-      choices: ["wallet", "vote", "system", "help", "exit"]
+      choices: Object.values(ACTIONS)
     }
   ];
 
-  return await inquirer.prompt(prompts);
-};
+  const result = await inquirer.prompt(prompts);
+  return result["topMenu"];
+}
 
 async function run() {
   let run = true;
   while (run) {
-    const inputs = (await collectInputs())["topMenu"];
-    switch (inputs) {
-      case "wallet":
+    const choice = await topMenu();
+    switch (choice) {
+      case ACTIONS.wallet:
         await wallet(web3, artifacts);
         break;
-      case "vote":
+      case ACTIONS.vote:
         await vote(web3, artifacts);
         break;
-      case "exit":
+      case ACTIONS.admin:
+        await admin(artifacts, web3);
+        break;
+      case ACTIONS.exit:
         run = false;
         break;
       default:
@@ -40,7 +54,7 @@ module.exports = async function(cb) {
   try {
     await run();
   } catch (err) {
-    console.log(err);
+    cb(err);
   }
   cb();
 };

@@ -6,10 +6,10 @@ const readDefaultAccount = require("./wallet/readDefaultAccountInfo");
 const style = require("./textStyle");
 
 const ACTIONS = {
-  info: "info",
-  generate_account: "generate_account",
-  help: "help",
-  back: "back"
+  info: "Info",
+  generate: "Generate Account",
+  help: "Help",
+  back: "Back"
 };
 
 const wallet = async () => {
@@ -18,7 +18,7 @@ const wallet = async () => {
       type: "list",
       name: "walletTopMenu",
       message: "UMA wallet actions",
-      choices: Object.keys(ACTIONS)
+      choices: Object.values(ACTIONS)
     }
   ];
 
@@ -35,7 +35,7 @@ module.exports = async function(web3, artifacts) {
         break;
 
       // GENERATE: Create a new account for user
-      case ACTIONS.generate_account:
+      case ACTIONS.generate:
         await createNewAccount(web3);
         break;
 
@@ -44,19 +44,19 @@ module.exports = async function(web3, artifacts) {
         console.group(`${style.bgCyan(`Wallet actions`)}:`);
         console.log(
           `${style.bgCyan(
-            `- info`
+            `- Info`
           )}: displays balance information for your default account from which you will send UMA-related transactions`
         );
         console.log(
           `${style.bgCyan(
-            `- generate_account`
+            `- Generate Account`
           )}: create and display credentials for a new Ethereum account. If you want to make this your default signing account for UMA-related transactions then you can import it into Metamask or save it into your environment variable "MNEMONIC".`
         );
         console.groupEnd();
         break;
 
       // BACK
-      case "back":
+      case ACTIONS.back:
         return;
 
       default:

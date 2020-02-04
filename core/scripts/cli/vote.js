@@ -2,12 +2,12 @@ const inquirer = require("inquirer");
 const style = require("./textStyle");
 
 const ACTIONS = {
-  info: "info",
-  commit: "commit",
-  reveal: "reveal",
-  rewards: "rewards",
-  help: "help",
-  back: "back"
+  info: "Info",
+  commit: "Commit",
+  reveal: "Reveal",
+  rewards: "Rewards",
+  help: "Help",
+  back: "Back"
 };
 
 const vote = async () => {
@@ -16,7 +16,7 @@ const vote = async () => {
       type: "list",
       name: "voteTopMenu",
       message: "Voting actions",
-      choices: Object.keys(ACTIONS)
+      choices: Object.values(ACTIONS)
     }
   ];
 
