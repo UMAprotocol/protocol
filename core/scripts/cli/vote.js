@@ -33,10 +33,19 @@ module.exports = async function(web3, artifacts) {
         style.spinnerReadingContracts.start();
         const pendingRequests = await voting.getPendingRequests();
         const roundId = await voting.getCurrentRoundId();
+        const roundPhase = await voting.getVotePhase();
+        const roundStats = await voting.rounds(roundId);
         style.spinnerReadingContracts.stop();
-        console.group(`\n** Your voting status **`);
-        console.log(`- Current round ID: ${roundId.toNumber()}`);
-        console.log(`- Pending price requests:`, pendingRequests);
+        console.group(`${style.bgMagenta(`\n** Your voting status **`)}`);
+        console.log(`${style.bgMagenta(`- Current round ID`)}: ${roundId.toString()}`);
+        // TODO: Display these as ordered table intuitvely
+        console.log(`${style.bgMagenta(`- Pending price requests`)}:`, pendingRequests);
+        console.log(
+          `${style.bgMagenta(`- Current round phase`)}: ${roundPhase.toString() === "0" ? "Commit" : "Reveal"}`
+        );
+        console.log(`${style.bgMagenta(`- Round Inflation percentage`)}: ${roundStats.inflationRate.toString()}`);
+        console.log(`${style.bgMagenta(`- Round GAT percentage`)}: ${roundStats.gatPercentage.toString()}`);
+        console.log(`\n`);
         console.groupEnd();
         break;
       case ACTIONS.back:

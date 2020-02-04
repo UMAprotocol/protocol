@@ -27,6 +27,8 @@ async function topMenu() {
 }
 
 async function run() {
+  // TODO: Should do a check here to detect if contracts are deployed,
+  // as wallet, vote, and admin modules all assume they are deployed
   let run = true;
   while (run) {
     const choice = await topMenu();
