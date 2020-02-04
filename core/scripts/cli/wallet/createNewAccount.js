@@ -1,22 +1,7 @@
 const fs = require("fs");
 const inquirer = require("inquirer");
 const setDefaultAccountForWallet = require("./setDefaultAccountForWallet");
-const style = require("../textStyle");
-
-const createAndSaveAccount = (web3, newAccountPath) => {
-  const newAccount = web3.eth.accounts.create();
-  try {
-    fs.writeFileSync(newAccountPath, JSON.stringify(newAccount));
-    console.log(
-      `Saved new Ethereum account to ${style.bgGreen(newAccountPath)} with public key: ${style.bgRed(
-        newAccount.address
-      )}`
-    );
-    return newAccount;
-  } catch (err) {
-    console.error(`Failed to save new Ethereum wallet to  ${newAccountPath}`, err);
-  }
-};
+const saveAccount = require("./saveAccount");
 
 module.exports = async (web3, newAccountPath) => {
   // Check if account file exists
@@ -33,16 +18,18 @@ module.exports = async (web3, newAccountPath) => {
       // Save old wallet to backup and create new wallet
       try {
         fs.copyFileSync(newAccountPath, `${newAccountPath}.backup`);
-        const newAccount = createAndSaveAccount(web3, newAccountPath);
+        const newAccount = web3.eth.accounts.create();
+        saveAccount(newAccountPath, newAccount);
         setDefaultAccountForWallet(web3, newAccount);
       } catch (err) {
-        console.error(`Failed to backup existing account file`);
+        console.error(`Failed to save new account and backup existing account file`);
       }
     }
   } catch (err) {
     if (err.code === "ENOENT") {
       // User does not have an account, create a new one
-      const newAccount = createAndSaveAccount(web3, newAccountPath);
+      const newAccount = web3.eth.accounts.create();
+      saveAccount(newAccountPath, newAccount);
       setDefaultAccountForWallet(web3, newAccount);
     } else {
       console.error(err);

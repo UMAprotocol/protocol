@@ -1,4 +1,6 @@
 // TODO:
+// Encrypt account data files
+// Show UMA token balance in wallet-info
 // Allow user to change directory in which wallets are stored
 // Allow more than one wallet backups
 // Connect to MetaMask
@@ -12,8 +14,10 @@ const createWalletDirectory = require("./wallet/createWalletDirectory");
 const loadSavedAccount = require("./wallet/loadSavedAccount");
 const restoreBackupAccount = require("./wallet/swapDefaultAndBackupAccounts");
 const readDefaultAccount = require("./wallet/readDefaultAccountInfo");
+const recoverAccount = require("./wallet/recoverAccount");
+const style = require("./textStyle");
 
-const ACTIONS = ["info", "init", "restore", "help", "back"];
+const ACTIONS = ["info", "init", "restore-backup", "recover", "help", "back"];
 
 const wallet = async () => {
   const prompts = [
@@ -55,12 +59,28 @@ module.exports = async function(web3) {
         await restoreBackupAccount(web3, accountDataFile);
         break;
 
+      // RECOVER: Allow user to enter a private key for their desired default account
+      case ACTIONS[3]:
+        await recoverAccount(web3, accountDataFile);
+        break;
+
       // HELP
       case "help":
-        console.group(`Wallet actions:`);
-        console.log(`- info: displays balance information for your default account, stored in ${accountDataFile}`);
-        console.log(`- init: create a new default account, backs up previous default account in the same directory`);
-        console.log(`- restore: restores an account backup to your default (and backs up the default)`);
+        console.group(`${style.bgCyan(`Wallet actions`)}:`);
+        console.log(
+          `${style.bgCyan(
+            `- info`
+          )}: displays balance information for your default account, stored in ${accountDataFile}`
+        );
+        console.log(
+          `${style.bgCyan(
+            `- init`
+          )}: create a new default account, backs up previous default account in the same directory`
+        );
+        console.log(
+          `${style.bgCyan(`- restore-backup`)}: restores your account backup to your default (and backs up the default)`
+        );
+        console.log(`${style.bgCyan(`- recover`)}: recover a account from a private key and set as your default`);
         console.groupEnd();
         break;
 
