@@ -1,7 +1,14 @@
 const inquirer = require("inquirer");
 const style = require("./textStyle");
 
-const ACTIONS = ["info", "commit", "reveal", "rewards", "help", "back"];
+const ACTIONS = {
+  info: "info",
+  commit: "commit",
+  reveal: "reveal",
+  rewards: "rewards",
+  help: "help",
+  back: "back"
+};
 
 const vote = async () => {
   const prompts = [
@@ -9,7 +16,7 @@ const vote = async () => {
       type: "list",
       name: "voteTopMenu",
       message: "Voting actions",
-      choices: ACTIONS
+      choices: Object.keys(ACTIONS)
     }
   ];
 
@@ -22,7 +29,7 @@ module.exports = async function(web3, artifacts) {
   try {
     const inputs = (await vote())["voteTopMenu"];
     switch (inputs) {
-      case ACTIONS[0]:
+      case ACTIONS.info:
         style.spinnerReadingContracts.start();
         const pendingRequests = await voting.getPendingRequests();
         const roundId = await voting.getCurrentRoundId();
@@ -32,7 +39,7 @@ module.exports = async function(web3, artifacts) {
         console.log(`- Pending price requests:`, pendingRequests);
         console.groupEnd();
         break;
-      case "back":
+      case ACTIONS.back:
         return;
       default:
         console.log("unimplemented state");
