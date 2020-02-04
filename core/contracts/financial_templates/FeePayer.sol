@@ -3,6 +3,7 @@ pragma solidity ^0.5.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../FixedPoint.sol";
 import "../Finder.sol";
+import "../Testable.sol";
 
 contract FeePayer is Testable {
     IERC20 public collateralCurrency;
