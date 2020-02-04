@@ -1,6 +1,3 @@
-// TODO:
-// Show UMA token balance in wallet-info
-
 const inquirer = require("inquirer");
 
 // Wallet module helpers

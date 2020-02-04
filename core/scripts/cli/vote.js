@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const style = require('./textStyle')
+const style = require("./textStyle");
 
 const ACTIONS = ["info", "commit", "reveal", "rewards", "help", "back"];
 

@@ -1,5 +1,5 @@
 const chalkPipe = require("chalk-pipe");
-const ora = require('ora');
+const ora = require("ora");
 
 module.exports = {
   bgRed: chalkPipe("bgRed"),

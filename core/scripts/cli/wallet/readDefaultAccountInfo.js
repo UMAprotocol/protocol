@@ -21,6 +21,6 @@ module.exports = async (web3, artifacts) => {
     console.log(`\n`);
     console.groupEnd();
   } catch (err) {
-    console.error(`Failed to read default account information:`,err)
+    console.error(`Failed to read default account information:`, err);
   }
 };
