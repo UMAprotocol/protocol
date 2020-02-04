@@ -4,9 +4,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../FixedPoint.sol";
 import "../Finder.sol";
 
-/**
- * @notice A burnable and mintable ERC20.
- */
 contract FeePayer is Testable {
     IERC20 public collateralCurrency;
     Finder public finder;
