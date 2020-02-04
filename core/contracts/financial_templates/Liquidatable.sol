@@ -148,7 +148,16 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
         uint _liquidationLiveness,
         address finderAddress
-    ) public PricelessPositionManager(_positionExpiry, _positionWithdrawalLiveness, _collateralCurrency, finderAddress, _isTest) {
+    )
+        public
+        PricelessPositionManager(
+            _positionExpiry,
+            _positionWithdrawalLiveness,
+            _collateralCurrency,
+            finderAddress,
+            _isTest
+        )
+    {
         require(
             _sponsorDisputeRewardPct.add(_disputerDisputeRewardPct).isLessThan(1),
             "Sponsor and Disputer dispute rewards shouldn't sum to 100% or more"

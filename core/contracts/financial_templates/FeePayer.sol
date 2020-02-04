@@ -24,7 +24,11 @@ contract FeePayer is Testable {
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = StoreInterface(finder.getImplementationAddress("Store"));
         uint currentTime = getCurrentTime();
-        (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(lastPaymentTime, currentTime, pfc());
+        (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
+            lastPaymentTime,
+            currentTime,
+            pfc()
+        );
         lastPaymentTime = currentTime;
 
         if (regularFee.isGreaterThan(0)) {

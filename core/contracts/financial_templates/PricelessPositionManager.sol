@@ -53,9 +53,13 @@ contract PricelessPositionManager is FeePayer {
 
     FixedPoint.Unsigned positionFeeAdjustment;
 
-    constructor(uint _expirationTimestamp, uint _withdrawalLiveness, address collateralAddress, address finderAddress, bool _isTest)
-        public FeePayer(collateralAddress, finderAddress, _isTest)
-    {
+    constructor(
+        uint _expirationTimestamp,
+        uint _withdrawalLiveness,
+        address collateralAddress,
+        address finderAddress,
+        bool _isTest
+    ) public FeePayer(collateralAddress, finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         Token mintableToken = new Token();
@@ -97,7 +101,6 @@ contract PricelessPositionManager is FeePayer {
      * In that case, use `requestWithdrawawal`.
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
-
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot withdraw with a pending withdrawal request");
 
@@ -200,7 +203,7 @@ contract PricelessPositionManager is FeePayer {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
-    function pfc() public returns (FixedPoint.Unsigned memory)  {
+    function pfc() public returns (FixedPoint.Unsigned memory) {
         return totalPositionCollateral;
     }
 
@@ -229,7 +232,11 @@ contract PricelessPositionManager is FeePayer {
         require(position.isValid, "Position does not exist");
     }
 
-    function _getCollateral(PositionData storage positionData) internal view returns (FixedPoint.Unsigned memory collateral) {
+    function _getCollateral(PositionData storage positionData)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory collateral)
+    {
         return positionData.rawCollateral.mul(positionFeeAdjustment);
     }
 
