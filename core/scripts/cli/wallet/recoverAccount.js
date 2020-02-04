@@ -14,19 +14,27 @@ module.exports = async (web3, newAccountPath) => {
     mask: true
   });
   try {
-    const recoveredAccount = web3.eth.accounts.privateKeyToAccount(secretInput["privKey"]);
+    let inputPrivKey;
+    if (!secretInput["privKey"].startsWith("0x")) {
+      inputPrivKey = `0x${secretInput["privKey"]}`;
+    } else {
+      inputPrivKey = secretInput["privKey"];
+    }
+
+    const recoveredAccount = web3.eth.accounts.privateKeyToAccount(inputPrivKey);
     try {
       fs.statSync(newAccountPath);
+      // User has an existing account, back it up
+      try {
+        fs.copyFileSync(newAccountPath, `${newAccountPath}.backup`);
+      } catch (err) {
+        console.error(`Failed to backup existing account file`, err);
+      }
     } catch (err) {
       if (err.code === "ENOENT") {
         // User does not have an existing account, nothing to backup
       } else {
-        // User has an existing account, back it up
-        try {
-          fs.copyFileSync(newAccountPath, `${newAccountPath}.backup`);
-        } catch (err) {
-          console.error(`Failed to backup existing account file`, err);
-        }
+        console.error(`Unknown error reading file ${newAccountPath}`);
       }
     }
     saveAccount(newAccountPath, recoveredAccount);

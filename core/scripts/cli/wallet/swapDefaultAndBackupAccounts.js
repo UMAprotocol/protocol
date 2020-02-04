@@ -25,6 +25,8 @@ module.exports = async (web3, accountDataFile) => {
             // If wallet.seed does not exist (but wallet.seed.backup does exist),
             // then just delete wallet.backup since we've already copied it to wallet.temp
             fs.unlinkSync(`${accountDataFile}.backup`);
+          } else {
+            console.error(`Unknown error reading file ${accountDataFile}`);
           }
         }
         fs.copyFileSync(`${accountDataFile}.temp`, `${accountDataFile}`);
@@ -33,13 +35,14 @@ module.exports = async (web3, accountDataFile) => {
         console.log(`Restored account with public key: ${style.bgRed(restoredAccount.address)}`);
         setDefaultAccountForWallet(web3, restoredAccount);
       } catch (err) {
-        console.error(err);
         console.error(`Failed to restore backup account file`);
       }
     }
   } catch (err) {
     if (err.code === "ENOENT") {
       console.log(`Account backup does not exist`);
+    } else {
+      console.error(`Unknown error reading file ${accountDataFile}`);
     }
   }
 };

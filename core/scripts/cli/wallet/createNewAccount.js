@@ -32,7 +32,7 @@ module.exports = async (web3, newAccountPath) => {
       saveAccount(newAccountPath, newAccount);
       setDefaultAccountForWallet(web3, newAccount);
     } else {
-      console.error(err);
+      console.error(`Unknown error reading file ${newAccountPath}`);
     }
   }
 };
