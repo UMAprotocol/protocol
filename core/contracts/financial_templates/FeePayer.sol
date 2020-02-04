@@ -6,6 +6,9 @@ import "../Finder.sol";
 import "../Testable.sol";
 
 contract FeePayer is Testable {
+    using SafeMath for uint;
+    using FixedPoint for FixedPoint.Unsigned;
+    
     IERC20 public collateralCurrency;
     Finder public finder;
     uint lastPaymentTime;
