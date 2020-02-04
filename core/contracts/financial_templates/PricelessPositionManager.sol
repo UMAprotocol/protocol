@@ -208,40 +208,17 @@ contract PricelessPositionManager is FeePayer {
         // Send the fee payment.
         totalPaid = super.payFees();
 
-        // Adjust internal variables
-
+        // TODO: add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
+        // Adjust internal variables below.
         // Compute fee percentage that was paid by the entire contract (fees / pfc).
-        FixedPoint.Unsigned memory feePercentage = totalPaid.divCeil(initialPfc);
+        FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialPfc);
 
         // Compute adjustment to be applied to the position collateral (1 - feePercentage).
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
 
         // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
         totalPositionCollateral = totalPositionCollateral.mul(adjustment);
-        positionFeeAdjustment = positionFeeAdjustment.mul()
-
-        // Total collateral adjustment
-        totalPositionCollateral = totalPositionCollateral.sub
-
-
-
-
-        // Adjust internal variables.
-
-        // Compute the percentage of pfc that the positions tracked by this contract account for.
-        FixedPoint.Unsigned memory positionPfcPercentage = totalPositionCollateral.divCeil(initialPfc);
-
-        // Compute the fees that were paid on behalf of the collateral in the PositionManager contract.
-        FixedPoint.Unsigned memory positionFees = totalPaid.mul(positionPfcPercentage);
-
-        // Divide those fees equally across all of the tokens collateralized in the position manager.
-        FixedPoint.Unsigned memory perTokenFee = positionFees.divCeil(totalTokensOutstanding);
-
-        // Add the perTokenFee to the cumulative token adjustment.
-        feeAdjustment = feeAdjustment.add(perTokenFee);
-
-        // Decrease the total collateral held in the PositionManager by its pro-rata portion of the fees.
-        totalPositionCollateral = totalPositionCollateral.sub(positionFees);
+        positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
     }
 
     function _getPositionData(address sponsor) internal view returns (PositionData storage position) {
