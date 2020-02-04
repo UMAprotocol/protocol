@@ -112,6 +112,15 @@ library FixedPoint {
         return div(fromUnscaledUint(a), b);
     }
 
+    /** @dev Divides with ceil an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */
+    function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        uint numerator = a.rawValue.mul(FP_SCALING_FACTOR);
+        uint denominator = b.rawValue;
+        uint rawResult = numerator.div(denominator);
+        bool hasRemainder = numerator.mod(denominator) != 0;
+        return Unsigned(rawResult + hasRemainder ? 1 : 0);
+    }
+
     /** @dev Raises an `Unsigned` to the power of an unscaled uint, reverting on overflow. E.g., `b=2` squares `a`. */
     function pow(Unsigned memory a, uint b) internal pure returns (Unsigned memory output) {
         // TODO(ptare): Consider using the exponentiation by squaring technique instead:

@@ -30,7 +30,7 @@
     "@truffle/contract": "^4.1.0",
     "@truffle/hdwallet-provider": "^1.0.25",
     "@umaprotocol/truffle-ledger-provider": "^1.0.3",
-    "abi-decoder": "github:UMAprotocol/abi-decoder",
+    "abi-decoder": "file:../abi-decoder",
     "bignumber.js": "^8.0.1",
     "dotenv": "^6.2.0",
     "eslint": "5.16.0",
