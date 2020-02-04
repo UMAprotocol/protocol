@@ -92,14 +92,6 @@ library FixedPoint {
         return Unsigned(a.rawValue.mul(b));
     }
 
-    function mulCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        uint numerator = a.rawValue.mul(b.rawValue);
-        uint denominator = FP_SCALING_FACTOR;
-        uint rawResult = numerator.div(denominator);
-        bool hasRemainder = numerator.mod(denominator) != 0;
-        return Unsigned(rawResult + hasRemainder ? 1 : 0);
-    }
-
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
     function div(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
@@ -118,15 +110,6 @@ library FixedPoint {
     /** @dev Divides with truncation an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */
     function div(uint a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return div(fromUnscaledUint(a), b);
-    }
-
-    /** @dev Divides with ceil an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */
-    function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        uint numerator = a.rawValue.mul(FP_SCALING_FACTOR);
-        uint denominator = b.rawValue;
-        uint rawResult = numerator.div(denominator);
-        bool hasRemainder = numerator.mod(denominator) != 0;
-        return Unsigned(rawResult + hasRemainder ? 1 : 0);
     }
 
     /** @dev Raises an `Unsigned` to the power of an unscaled uint, reverting on overflow. E.g., `b=2` squares `a`. */
