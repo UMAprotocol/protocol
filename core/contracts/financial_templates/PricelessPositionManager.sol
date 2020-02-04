@@ -208,6 +208,24 @@ contract PricelessPositionManager is FeePayer {
         // Send the fee payment.
         totalPaid = super.payFees();
 
+        // Adjust internal variables
+
+        // Compute fee percentage that was paid by the entire contract (fees / pfc).
+        FixedPoint.Unsigned memory feePercentage = totalPaid.divCeil(initialPfc);
+
+        // Compute adjustment to be applied to the position collateral (1 - feePercentage).
+        FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
+
+        // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
+        totalPositionCollateral = totalPositionCollateral.mul(adjustment);
+        positionFeeAdjustment = positionFeeAdjustment.mul()
+
+        // Total collateral adjustment
+        totalPositionCollateral = totalPositionCollateral.sub
+
+
+
+
         // Adjust internal variables.
 
         // Compute the percentage of pfc that the positions tracked by this contract account for.

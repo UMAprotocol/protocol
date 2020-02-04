@@ -102,6 +102,8 @@ contract Liquidatable is PricelessPositionManager {
     FixedPoint.Unsigned disputerDisputeRewardPct;
 
     FixedPoint.Unsigned totalLiquidationCollateral;
+    FixedPoint.Unsigned tokensInLiquidation;
+    FixedPoint.Unsigned liquidationFeeAdjustment;
 
     /**
      * Method modifiers
@@ -382,7 +384,32 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     function pfc() public returns (FixedPoint.Unsigned memory)  {
-        return PriceLessPositionManager.pfc().add(totalLiquidationCollateral);
+        return super.pfc().add(totalLiquidationCollateral);
+    }
+
+    function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
+        // Capture pfc upfront.
+        FixedPoint.Unsigned memory initialPfc = pfc();
+
+        // Send the fee payment.
+        totalPaid = super.payFees();
+
+        // Adjust internal variables.
+
+        // Compute the percentage of pfc that the positions tracked by this contract account for.
+        FixedPoint.Unsigned memory positionPfcPercentage = totalLiquidationCollateral.divCeil(initialPfc);
+
+        // Compute the fees that were paid on behalf of the collateral in the Liquidatable contract.
+        FixedPoint.Unsigned memory liquidationFees = totalPaid.mul(positionPfcPercentage);
+
+        // Divide those fees equally across all of the tokens collateralized in the liquidatable contract.
+        FixedPoint.Unsigned memory perTokenFee = positionFees.divCeil(totalTokensOutstanding);
+
+        // Add the perTokenFee to the cumulative token adjustment.
+        feeAdjustment = feeAdjustment.add(perTokenFee);
+
+        // Decrease the total collateral held in the PositionManager by its pro-rata portion of the fees.
+        totalPositionCollateral = totalPositionCollateral.sub(positionFees);
     }
 
     /**
