@@ -38,6 +38,7 @@
     "express": "^4.17.1",
     "ganache-cli": "^6.7.0",
     "gmail-send": "^1.2.14",
+    "inquirer": "^7.0.4",
     "lodash.startcase": "^4.4.0",
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
@@ -55,6 +56,6 @@
     "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork"
   },
   "bin": {
-    "uma" : "./core/scripts/cli/cli_entry.sh"
+    "uma": "./core/scripts/cli/cli_entry.sh"
   }
 }
