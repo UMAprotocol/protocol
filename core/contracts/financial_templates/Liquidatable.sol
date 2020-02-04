@@ -9,15 +9,11 @@ import "../Testable.sol";
 import "./PricelessPositionManager.sol";
 
 // TODO:
-// - Rename this to "Liquidatable" and Position to "Positionizable"?
 // - Events
 // - Connect with Oracle/DVM
-// - Fees
 // - Partial liquidations: should be trivial to add
 // - In order to ensure that positions with < 100% collateralization are disputed,
 // the contract forces liquidators to liquidate the “least-collateralized” positions first.
-// - Make sure that "settleDispute" determines the outcome of a dispute based on
-// "liquidatedCollateral" (collateral - pendingWithdrawal amount)
 // instead of "locked collateral" (actual amount of collateral locked in contract)
 
 /**
@@ -101,7 +97,7 @@ contract Liquidatable is PricelessPositionManager {
      * Method modifiers
      */
 
-    //TODO: could this modifier be replaced with one called `onlyPreDispute` and then the function can use
+    // TODO: could this modifier be replaced with one called `onlyPreDispute` and then the function can use
     // the `onlyPreExpiration` modifier from the base contract and this one in conjunction?
 
     // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
@@ -186,12 +182,12 @@ contract Liquidatable is PricelessPositionManager {
 
     // TODO: Perhaps pass this ID via an event rather than a return value
     // TODO: Possibly allow partial liquidations
-    //TODO: this should only be callable `onlyPreExpiration`
+    // TODO: this should only be callable `onlyPreExpiration`
     function createLiquidation(address sponsor) public returns (uint lastIndexUsed) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
-        //TODO: can refactor this to use `liquidations.push` and then get the index returned from the push
+        // TODO: can refactor this to use `liquidations.push` and then get the index returned from the push
         // Allocate space for new liquidation and increment index
         lastIndexUsed = sponsorLiquidationIndex[sponsor];
         LiquidationData storage newLiquidation = liquidations[sponsor][lastIndexUsed];

@@ -14,7 +14,7 @@ import "../OracleInterface.sol";
  * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
-//TODO: implement the AdministrateeInterface.sol interfaces and emergency shut down.
+// TODO: implement the AdministrateeInterface.sol interfaces and emergency shut down.
 contract PricelessPositionManager is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
@@ -70,9 +70,9 @@ contract PricelessPositionManager is Testable {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         collateralCurrency = IERC20(_collateralAddress);
-        //TODO: add parameters to register the synthetic token's name and symbol.
-        //TODO: add the collateral requirement. This is needed at settlement and at dispute resolution.
-        //TODO: validate the input of the finder/price identifier inputs.
+        // TODO: add parameters to register the synthetic token's name and symbol.
+        // TODO: add the collateral requirement. This is needed at settlement and at dispute resolution.
+        // TODO: validate the input of the finder/price identifier inputs.
         Token mintableToken = new Token();
         tokenCurrency = ExpandedIERC20(address(mintableToken));
         finder = Finder(_finderAddress);
@@ -93,7 +93,7 @@ contract PricelessPositionManager is Testable {
      * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
      */
-    //TODO: transfer should not work if there is a pending withdraw
+    // TODO: transfer should not work if there is a pending withdraw
     function transfer(address newSponsorAddress) public onlyPreExpiration() {
         require(!positions[newSponsorAddress].isValid, "Cannot transfer to an address that already has a position");
         PositionData memory positionData = _getPositionData(msg.sender);
@@ -105,7 +105,7 @@ contract PricelessPositionManager is Testable {
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
      * increase the collateralization level of a position.
      */
-    //TODO: should this check if the position is valid first?
+    // TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot deposit with a pending withdrawal request");
@@ -133,8 +133,8 @@ contract PricelessPositionManager is Testable {
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
-    //TODO: should this check if the position is valid first?
-    //TODO: should you be able to submit a withdraw without any collateral?
+    // TODO: should this check if the position is valid first?
+    // TODO: should you be able to submit a withdraw without any collateral?
     function withdrawPassedRequest() public onlyPreExpiration() {
         // TODO: Decide whether to fold this functionality into withdraw() method above.
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -151,8 +151,8 @@ contract PricelessPositionManager is Testable {
      * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw `collateralAmount` from their
      * position. The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
      */
-    //TODO: should this check if the position is valid first?
-    //TODO: should this check if the contract is pre-expiration?
+    // TODO: should this check if the position is valid first?
+    // TODO: should this check if the contract is pre-expiration?
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot have concurrent withdrawal requests");
@@ -205,7 +205,7 @@ contract PricelessPositionManager is Testable {
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
-    //TODO: should this check if the position is valid first?
+    // TODO: should this check if the position is valid first?
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot redeem with a pending withdrawal request");
