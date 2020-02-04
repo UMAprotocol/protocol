@@ -9,6 +9,11 @@ contract FeePayer is Testable {
     Finder public finder;
     uint lastPaymentTime;
 
+    modifier fees {
+        payFees();
+        _;
+    }
+
     constructor(address collateralAddress, address finderAddress, bool _isTest) public Testable(_isTest) {
         collateralCurrency = IERC20(collateralAddress);
         finder = Finder(finderAddress);

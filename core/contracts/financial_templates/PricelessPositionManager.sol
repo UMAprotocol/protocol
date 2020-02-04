@@ -24,7 +24,7 @@ contract PricelessPositionManager is FeePayer {
      */
     struct PositionData {
         bool isValid;
-        FixedPoint.Unsigned collateral;
+        FixedPoint.Unsigned rawCollateral;
         FixedPoint.Unsigned tokensOutstanding;
         // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
         uint requestPassTimestamp;
@@ -60,6 +60,7 @@ contract PricelessPositionManager is FeePayer {
         withdrawalLiveness = _withdrawalLiveness;
         Token mintableToken = new Token();
         tokenCurrency = ExpandedIERC20(address(mintableToken));
+        positionFeeAdjustment = FixedPoint.fromUnscaledUint(1);
     }
 
     modifier onlyPreExpiration() {
@@ -82,10 +83,10 @@ contract PricelessPositionManager is FeePayer {
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
      * increase the collateralization level of a position.
      */
-    function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
+    function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot deposit with a pending withdrawal request");
-        positionData.collateral = positionData.collateral.add(collateralAmount);
+        _addCollateral(positionData, collateralAmount);
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
     }
@@ -95,11 +96,12 @@ contract PricelessPositionManager is FeePayer {
      * Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization ratio.
      * In that case, use `requestWithdrawawal`.
      */
-    function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
+    function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
+
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot withdraw with a pending withdrawal request");
 
-        positionData.collateral = positionData.collateral.sub(collateralAmount);
+        _removeCollateral(positionData, collateralAmount);
         require(_checkCollateralizationRatio(positionData), "Cannot withdraw below global collateralization ratio");
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
         require(collateralCurrency.transfer(msg.sender, collateralAmount.rawValue));
@@ -109,12 +111,12 @@ contract PricelessPositionManager is FeePayer {
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
-    function withdrawPassedRequest() public onlyPreExpiration() {
+    function withdrawPassedRequest() public onlyPreExpiration() fees() {
         // TODO: Decide whether to fold this functionality into withdraw() method above.
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime(), "Cannot withdraw before request is passed");
 
-        positionData.collateral = positionData.collateral.sub(positionData.withdrawalRequestAmount);
+        _removeCollateral(positionData, positionData.withdrawalRequestAmount);
         totalPositionCollateral = totalPositionCollateral.sub(positionData.withdrawalRequestAmount);
 
         positionData.requestPassTimestamp = 0;
@@ -158,13 +160,14 @@ contract PricelessPositionManager is FeePayer {
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
         onlyPreExpiration()
+        fees()
     {
         PositionData storage positionData = positions[msg.sender];
         require(positionData.requestPassTimestamp == 0, "Cannot create with a pending withdrawal request");
         if (!positionData.isValid) {
             positionData.isValid = true;
         }
-        positionData.collateral = positionData.collateral.add(collateralAmount);
+        _addCollateral(positionData, collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
         require(_checkCollateralizationRatio(positionData), "Cannot create below global collateralization ratio");
 
@@ -177,15 +180,15 @@ contract PricelessPositionManager is FeePayer {
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
-    function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() {
+    function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot redeem with a pending withdrawal request");
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Can't redeem more than position size");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
-        FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(positionData.collateral);
+        FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(_getCollateral(positionData));
 
-        positionData.collateral = positionData.collateral.sub(collateralRedeemed);
+        _removeCollateral(positionData, collateralRedeemed);
         totalPositionCollateral = totalPositionCollateral.sub(collateralRedeemed);
         // TODO: Need to wipe out the struct entirely on full redemption.
         positionData.tokensOutstanding = positionData.tokensOutstanding.sub(numTokens);
@@ -226,10 +229,24 @@ contract PricelessPositionManager is FeePayer {
         require(position.isValid, "Position does not exist");
     }
 
+    function _getCollateral(PositionData storage positionData) internal view returns (FixedPoint.Unsigned memory collateral) {
+        return positionData.rawCollateral.mul(positionFeeAdjustment);
+    }
+
+    function _removeCollateral(PositionData storage positionData, FixedPoint.Unsigned memory collateral) internal {
+        FixedPoint.Unsigned memory adjustedCollateral = collateral.div(positionFeeAdjustment);
+        positionData.rawCollateral = positionData.rawCollateral.sub(adjustedCollateral);
+    }
+
+    function _addCollateral(PositionData storage positionData, FixedPoint.Unsigned memory collateral) internal {
+        FixedPoint.Unsigned memory adjustedCollateral = collateral.div(positionFeeAdjustment);
+        positionData.rawCollateral = positionData.rawCollateral.add(adjustedCollateral);
+    }
+
     function _checkCollateralizationRatio(PositionData storage positionData) private view returns (bool) {
         FixedPoint.Unsigned memory global = _getCollateralizationRatio(totalPositionCollateral, totalTokensOutstanding);
         FixedPoint.Unsigned memory thisPos = _getCollateralizationRatio(
-            positionData.collateral,
+            _getCollateral(positionData),
             positionData.tokensOutstanding
         );
         return !global.isGreaterThan(thisPos);
