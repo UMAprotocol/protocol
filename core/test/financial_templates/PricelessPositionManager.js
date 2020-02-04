@@ -78,13 +78,16 @@ contract("PricelessPositionManager", function(accounts) {
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
     const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
+
     pricelessPositionManager = await PricelessPositionManager.new(
+      true,
       expirationTimestamp,
       withdrawalLiveness,
       collateral.address,
-      true,
       finder.address,
       priceTrackingIdentifier,
+      "UMA test Token",
+      "UMAUSA",
       { from: contractDeployer }
     );
     tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());

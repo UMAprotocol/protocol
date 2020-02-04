@@ -54,6 +54,9 @@ contract("Liquidatable", function(accounts) {
     .times(60)
     .times(1)
     .plus(liquidationLiveness); // Add this to liquidation liveness so we can create more positions post-liquidation
+  const expirationTimestamp = BN(startTime)
+    .plus(positionLiveness)
+    .toString();
   const withdrawalLiveness = BN(60)
     .times(60)
     .times(1);
@@ -68,6 +71,8 @@ contract("Liquidatable", function(accounts) {
   let priceTrackingIdentifier;
   let mockOracle;
   let finder;
+
+  let liquidatableParameters;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -107,23 +112,24 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
+    liquidatableParameters = {
+      isTest: true,
+      expirationTimestamp: expirationTimestamp,
+      withdrawalLiveness: withdrawalLiveness.toString(),
+      collateralAddress: collateralToken.address,
+      finderAddress: finder.address,
+      priceFeedIdentifier: priceTrackingIdentifier,
+      syntheticName: "Test UMA Token",
+      syntheticSymbol: "UMAETH",
+      liquidationLiveness: liquidationLiveness.toString(),
+      collateralRequirement: { rawValue: collateralRequirement.toString() },
+      disputeBondPct: { rawValue: disputeBondPct.toString() },
+      sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
+      disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() }
+    };
+
     // Deploy liquidation contract and set global params
-    liquidationContract = await Liquidatable.new(
-      true,
-      BN(startTime)
-        .plus(positionLiveness)
-        .toString(),
-      withdrawalLiveness.toString(),
-      collateralToken.address,
-      { rawValue: collateralRequirement.toString() },
-      { rawValue: disputeBondPct.toString() },
-      { rawValue: sponsorDisputeRewardPct.toString() },
-      { rawValue: disputerDisputeRewardPct.toString() },
-      liquidationLiveness.toString(),
-      finder.address,
-      priceTrackingIdentifier,
-      { from: contractDeployer }
-    );
+    liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
 
     // Get newly created synthetic token
     syntheticToken = await ERC20Mintable.at(await liquidationContract.tokenCurrency());
@@ -602,28 +608,18 @@ contract("Liquidatable", function(accounts) {
   });
 
   describe("Weird Edge cases", () => {
-    it("Dispute rewards should not sum to over 100% of TRV", async () => {
-      // Deploy liquidation contract and set global params
-      assert(
-        await didContractThrow(
-          Liquidatable.new(
-            true,
-            BN(startTime)
-              .plus(positionLiveness)
-              .toString(),
-            withdrawalLiveness.toString(),
-            collateralToken.address,
-            { rawValue: collateralRequirement.toString() },
-            { rawValue: disputeBondPct.toString() },
-            { rawValue: toWei("0.5") },
-            { rawValue: toWei("0.5") },
-            liquidationLiveness.toString(),
-            finder.address,
-            priceTrackingIdentifier,
-            { from: contractDeployer }
-          )
-        )
-      );
+    only("Dispute rewards should not sum to over 100% of TRV", async () => {
+      // Deploy liquidation contract and set global params.
+      // Set the sum of the dispute rewards to be >= 100 %
+      let invalidConstructorParameter = liquidatableParameters;
+      invalidConstructorParameter.sponsorDisputeRewardPct = { rawValue: toWei("0.6") };
+      invalidConstructorParameter.disputerDisputeRewardPct = { rawValue: toWei("0.5") };
+      assert(await didContractThrow(Liquidatable.new(invalidConstructorParameter, { from: contractDeployer })));
+    });
+    only("Collateral requirement should be later than 100%", async () => {
+      let invalidConstructorParameter = liquidatableParameters;
+      invalidConstructorParameter.collateralRequirement = { rawValue: toWei("0.95") };
+      assert(await didContractThrow(Liquidatable.new(invalidConstructorParameter, { from: contractDeployer })));
     });
     it("Dispute bond can be over 100%", async () => {
       const edgeDisputeBondPct = BN(toWei("1.0"));
@@ -634,22 +630,7 @@ contract("Liquidatable", function(accounts) {
       await collateralToken.transfer(contractDeployer, amountOfCollateral, { from: sponsor });
 
       // Create  Liquidation
-      const edgeLiquidationContract = await Liquidatable.new(
-        true,
-        BN(startTime)
-          .plus(positionLiveness)
-          .toString(),
-        withdrawalLiveness.toString(),
-        collateralToken.address,
-        { rawValue: collateralRequirement.toString() },
-        { rawValue: edgeDisputeBondPct.toString() },
-        { rawValue: sponsorDisputeRewardPct.toString() },
-        { rawValue: disputerDisputeRewardPct.toString() },
-        liquidationLiveness.toString(),
-        finder.address,
-        priceTrackingIdentifier,
-        { from: contractDeployer }
-      );
+      const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
       // Get newly created synthetic token
       const edgeSyntheticToken = await ERC20Mintable.at(await edgeLiquidationContract.tokenCurrency());
       // Reset start time signifying the beginning of the first liquidation

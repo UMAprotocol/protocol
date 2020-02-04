@@ -130,45 +130,53 @@ contract Liquidatable is PricelessPositionManager {
         _;
     }
 
-    /**
-     * Constructor: set universal Liquidation variables
-     */
+    // Define the contract's constructor parameters as a struct to enable more variables to be spesified.
+    struct ConstructorParams {
+        // Params for PricelessPositionManager only.
+        bool isTest;
+        uint expirationTimestamp;
+        uint withdrawalLiveness;
+        address collateralAddress;
+        address finderAddress;
+        bytes32 priceFeedIdentifier;
+        string syntheticName;
+        string syntheticSymbol;
+        // Params specifically for Liquidatable.
+        uint liquidationLiveness;
+        FixedPoint.Unsigned collateralRequirement;
+        FixedPoint.Unsigned disputeBondPct;
+        FixedPoint.Unsigned sponsorDisputeRewardPct;
+        FixedPoint.Unsigned disputerDisputeRewardPct;
+    }
 
-    // TODO: order and name these constructor parameters in the same way that they are done in the priceless position manager.
-    constructor(
-        bool _isTest,
-        uint _positionExpiry,
-        uint _positionWithdrawalLiveness,
-        address _collateralCurrency,
-        FixedPoint.Unsigned memory _collateralRequirement,
-        FixedPoint.Unsigned memory _disputeBondPct,
-        FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
-        FixedPoint.Unsigned memory _disputerDisputeRewardPct,
-        uint _liquidationLiveness,
-        address _finderAddress,
-        bytes32 _priceFeedIdentifier
-    )
+    /**
+     * Constructor: set universal Liquidation variables and initalize the PricelessPositionManager.
+     */
+    constructor(ConstructorParams memory params)
         public
         PricelessPositionManager(
-            _positionExpiry,
-            _positionWithdrawalLiveness,
-            _collateralCurrency,
-            _isTest,
-            _finderAddress,
-            _priceFeedIdentifier
+            params.isTest,
+            params.expirationTimestamp,
+            params.withdrawalLiveness,
+            params.collateralAddress,
+            params.finderAddress,
+            params.priceFeedIdentifier,
+            params.syntheticName,
+            params.syntheticSymbol
         )
     {
+        require(params.collateralRequirement.isGreaterThan(1), "The collateral requirement must be at minimum 100%");
         require(
-            _sponsorDisputeRewardPct.add(_disputerDisputeRewardPct).isLessThan(1),
-            "Sponsor and Disputer dispute rewards shouldn't sum to 100% or more"
+            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
+            "Dispute rewards should sum to > 100%"
         );
-        require(_collateralRequirement.isGreaterThan(1), "The collateral requirement must be at minimum 100%");
 
-        collateralRequirement = _collateralRequirement;
-        disputeBondPct = _disputeBondPct;
-        sponsorDisputeRewardPct = _sponsorDisputeRewardPct;
-        disputerDisputeRewardPct = _disputerDisputeRewardPct;
-        liquidationLiveness = _liquidationLiveness;
+        // Set liquidatable specific variables.
+        liquidationLiveness = params.liquidationLiveness;
+        collateralRequirement = params.collateralRequirement;
+        disputeBondPct = params.disputeBondPct;
+        sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
+        disputerDisputeRewardPct = params.disputerDisputeRewardPct;
     }
 
     /**

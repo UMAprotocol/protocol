@@ -1,38 +1,38 @@
-pragma solidity ^0.5.0;
-pragma experimental ABIEncoderV2;
+// pragma solidity ^0.5.0;
+// pragma experimental ABIEncoderV2;
 
-import "./Liquidatable.sol";
-import "../FixedPoint.sol";
+// import "./Liquidatable.sol";
+// import "../FixedPoint.sol";
 
-contract ExpiringMultiParty is Liquidatable {
-    using FixedPoint for FixedPoint.Unsigned;
+// contract ExpiringMultiParty is Liquidatable {
+//     using FixedPoint for FixedPoint.Unsigned;
 
-    constructor(
-        bool _isTest,
-        uint _positionExpiry,
-        uint _positionWithdrawalLiveness,
-        address _collateralCurrency,
-        FixedPoint.Unsigned memory _collateralRequirement,
-        FixedPoint.Unsigned memory _disputeBondPct,
-        FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
-        FixedPoint.Unsigned memory _disputerDisputeRewardPct,
-        uint _liquidationLiveness,
-        address _finderAddress,
-        bytes32 _priceFeedIdentifier
-    )
-        public
-        Liquidatable(
-            _isTest,
-            _positionExpiry,
-            _positionWithdrawalLiveness,
-            _collateralCurrency,
-            _collateralRequirement,
-            _disputeBondPct,
-            _sponsorDisputeRewardPct,
-            _disputerDisputeRewardPct,
-            _liquidationLiveness,
-            _finderAddress,
-            _priceFeedIdentifier
-        )
-    {}
-}
+//     constructor(
+//         bool _isTest,
+//         uint _positionExpiry,
+//         uint _positionWithdrawalLiveness,
+//         address _collateralCurrency,
+//         FixedPoint.Unsigned memory _collateralRequirement,
+//         FixedPoint.Unsigned memory _disputeBondPct,
+//         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
+//         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
+//         uint _liquidationLiveness,
+//         address _finderAddress,
+//         bytes32 _priceFeedIdentifier
+//     )
+//         public
+//         Liquidatable(
+//             _isTest,
+//             _positionExpiry,
+//             _positionWithdrawalLiveness,
+//             _collateralCurrency,
+//             _collateralRequirement,
+//             _disputeBondPct,
+//             _sponsorDisputeRewardPct,
+//             _disputerDisputeRewardPct,
+//             _liquidationLiveness,
+//             _finderAddress,
+//             _priceFeedIdentifier
+//         )
+//     {}
+// }
