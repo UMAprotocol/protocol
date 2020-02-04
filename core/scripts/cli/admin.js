@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 const abiDecoder = require("../../../common/AbiUtils.js").getAbiDecoder();
+const style = require("./textStyle");
 
 async function decodeGovernorProposal(artifacts, id) {
   const Governor = artifacts.require("Governor");
@@ -80,10 +81,11 @@ async function viewAdminMenu(maxId) {
 }
 
 async function admin(artifacts, web3) {
-  console.log("Starting the admin menu...");
+  style.spinnerReadingContracts.start();
   const Governor = artifacts.require("Governor");
   const governor = await Governor.deployed();
   const numProposals = await governor.numProposals();
+  style.spinnerReadingContracts.stop();
 
   if (numProposals.toString() === "0") {
     console.log("No admin proposals have been issued on this network.");

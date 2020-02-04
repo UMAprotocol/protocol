@@ -4,13 +4,21 @@ const vote = require("./vote");
 const wallet = require("./wallet");
 const admin = require("./admin.js");
 
+const ACTIONS = {
+  wallet: "Wallet",
+  vote: "Vote",
+  admin: "Admin",
+  help: "Help",
+  exit: "Exit"
+};
+
 async function topMenu() {
   const prompts = [
     {
       type: "list",
       name: "topMenu",
       message: "Top level menu. What do you want to do?",
-      choices: ["Wallet", "Vote", "View admin proposals", "help", "exit"]
+      choices: Object.values(ACTIONS)
     }
   ];
 
@@ -23,16 +31,16 @@ async function run() {
   while (run) {
     const choice = await topMenu();
     switch (choice) {
-      case "Wallet":
-        await wallet(web3);
+      case ACTIONS.wallet:
+        await wallet(web3, artifacts);
         break;
-      case "Vote":
+      case ACTIONS.vote:
         await vote(web3, artifacts);
         break;
-      case "View admin proposals":
+      case ACTIONS.admin:
         await admin(artifacts, web3);
         break;
-      case "exit":
+      case ACTIONS.exit:
         run = false;
         break;
       default:
