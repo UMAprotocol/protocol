@@ -27,7 +27,7 @@ async function decodeGovernorProposal(artifacts, id) {
       const decodedTxn = abiDecoder.decodeMethod(transaction.data);
       if (!decodedTxn) {
         // Cannot decode txn, just give the user the raw data.
-        console.log("Cannot decode transaction (does not match any UMA Protocol Signauture.");
+        console.log("Cannot decode transaction (does not match any UMA Protocol Signature.");
         console.log("Raw transaction data:", transaction.data);
       } else {
         // Decode was successful -- pretty print the results.
@@ -47,11 +47,12 @@ async function decodeAllActiveGovernorProposals(artifacts, web3) {
   // Search through pending requests to find active governor proposals.
   const pendingRequests = await voting.getPendingRequests();
   const adminRequests = [];
+  const adminPrefix = "Admin ";
   for (const pendingRequest of pendingRequests) {
     const identifier = web3.utils.hexToUtf8(pendingRequest.identifier);
-    if (identifier.startsWith("Admin ")) {
+    if (identifier.startsWith(adminPrefix)) {
       // This is an admin proposal.
-      const id = parseInt(identifier.slice(6));
+      const id = parseInt(identifier.slice(adminPrefix.length));
       adminRequests.push(id);
     }
   }
@@ -70,7 +71,7 @@ async function viewAdminMenu(maxId) {
     {
       type: "input",
       name: "viewAdminMenu",
-      message: `Please enter an admin propsal id (0-${maxId}), Enter to see all active admin proposals, or 'exit' to quit.`
+      message: `Please enter an admin proposal id (0-${maxId}), Enter to see all active admin proposals, or 'exit' to quit.`
     }
   ];
 
