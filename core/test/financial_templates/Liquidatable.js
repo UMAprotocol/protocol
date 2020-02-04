@@ -314,36 +314,36 @@ contract("Liquidatable", function(accounts) {
         assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
       });
       // Weird edge cases, test anyways:
-      // it("Liquidation already disputed successfully", async () => {
-      //   await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
-      //   await liquidationContract.settleDispute(
-      //     liquidationParams.uuid,
-      //     sponsor,
-      //     { rawValue: settlementPrice.toString() },
-      //     true
-      //   );
-      //   // Mint enough tokens to disputer for another dispute bond
-      //   await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
-      //   assert(
-      //     await didContractThrow(liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer }))
-      //   );
-      //   assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
-      // });
-      // it("Liquidation already disputed unsuccessfully", async () => {
-      //   await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
-      //   await liquidationContract.settleDispute(
-      //     liquidationParams.uuid,
-      //     sponsor,
-      //     { rawValue: settlementPrice.toString() },
-      //     false
-      //   );
-      //   // Mint enough tokens to disputer for another dispute bond
-      //   await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
-      //   assert(
-      //     await didContractThrow(liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer }))
-      //   );
-      //   assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
-      // });
+      it("Liquidation already disputed successfully", async () => {
+        await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+
+        // Push to oracle.
+        const disputeTime = await liquidationContract.getCurrentTime();
+        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, settlementPrice.toString());
+
+        await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
+        // Mint enough tokens to disputer for another dispute bond
+        await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
+        assert(
+          await didContractThrow(liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer }))
+        );
+        assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
+      });
+      it("Liquidation already disputed unsuccessfully", async () => {
+        await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+
+        // Push to oracle.
+        const disputeTime = await liquidationContract.getCurrentTime();
+        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, settlementPrice.toString());
+
+        await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
+        // Mint enough tokens to disputer for another dispute bond
+        await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
+        assert(
+          await didContractThrow(liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer }))
+        );
+        assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
+      });
     });
 
     describe("Settle Dispute: there is not pending dispute", () => {
