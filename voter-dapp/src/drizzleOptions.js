@@ -1,9 +1,10 @@
 import DesignatedVotingFactory from "./contracts/DesignatedVotingFactory.json";
+import Governor from "./contracts/Governor.json";
 import Voting from "./contracts/Voting.json";
 import VotingToken from "./contracts/VotingToken.json";
 
 const options = {
-  contracts: [DesignatedVotingFactory, Voting, VotingToken],
+  contracts: [DesignatedVotingFactory, Governor, Voting, VotingToken],
   polls: {
     accounts: 1000,
     blocks: 3000

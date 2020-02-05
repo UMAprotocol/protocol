@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const abiDecoder = require("../../../common/AbiUtils.js").getAbiDecoder();
 const style = require("./textStyle");
+const {decodeTransaction} = require("../../../common/AdminUtils.js");
 
 async function decodeGovernorProposal(artifacts, id) {
   const Governor = artifacts.require("Governor");
@@ -15,27 +16,9 @@ async function decodeGovernorProposal(artifacts, id) {
     console.log("Transaction", i);
 
     const transaction = proposal.transactions[i];
+      const strForm = decodeTransaction(transaction);
+      console.log(strForm);
 
-    // Give to and value.
-    console.log("To: ", transaction.to);
-    console.log("Value (in Wei): ", transaction.value);
-
-    if (!transaction.data || transaction.data.length === 0 || transaction.data === "0x") {
-      // No data -> simple ETH send.
-      console.log("Transaction is a simple ETH send (no data).");
-    } else {
-      // Txn data isn't empty -- attempt to decode.
-      const decodedTxn = abiDecoder.decodeMethod(transaction.data);
-      if (!decodedTxn) {
-        // Cannot decode txn, just give the user the raw data.
-        console.log("Cannot decode transaction (does not match any UMA Protocol Signature.");
-        console.log("Raw transaction data:", transaction.data);
-      } else {
-        // Decode was successful -- pretty print the results.
-        console.log("Transaction details:");
-        console.log(JSON.stringify(decodedTxn, null, 4));
-      }
-    }
     console.groupEnd();
   }
   console.groupEnd();
