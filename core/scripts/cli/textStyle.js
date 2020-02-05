@@ -11,10 +11,17 @@ module.exports = {
   bgYellow: chalkPipe("bgYellow"),
   bgCyan: chalkPipe("bgCyan"),
 
+  // Links
+  link: chalkPipe("blue.underline"),
+
   // Spinners
   spinnerReadingContracts: ora({
     text: "Reading contracts",
     color: "blue"
+  }),
+  spinnerWritingContracts: ora({
+    text: "Submitting contract transactions",
+    color: "red"
   }),
 
   // Date format

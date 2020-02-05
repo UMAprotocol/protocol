@@ -14,7 +14,13 @@ module.exports = async (pendingRequests, account, roundId, roundPhase, votingCon
       // Display all requests during commit phase even if
       // user has already committed a vote, for they
       // might want to change it
-      filteredRequests = chronologicalPriceRequests;
+      for (let i = 0; i < chronologicalPriceRequests.length; i++) {
+        const request = chronologicalPriceRequests[i];
+        filteredRequests.push({
+          identifier: request.identifier,
+          time: request.time
+        });
+      }
     } else {
       // Only display committed votes during the reveal phase (i.e.
       // if an encrypted message exists for the identifier-timestamp)
@@ -23,7 +29,10 @@ module.exports = async (pendingRequests, account, roundId, roundPhase, votingCon
         const topicHash = computeTopicHash(request, roundId);
         const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
         if (encryptedCommit) {
-          filteredRequests.push(request);
+          filteredRequests.push({
+            identifier: request.identifier,
+            time: request.time
+          });
         }
       }
     }

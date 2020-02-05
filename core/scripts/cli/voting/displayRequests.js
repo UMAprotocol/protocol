@@ -3,20 +3,15 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 
-module.exports = async (web3, artifacts) => {
-  // TODO: Find a way not to have to require this artifacts twice, if that is even an inefficiency
-  const Voting = artifacts.require("Voting");
-  const voting = await Voting.deployed();
-
+module.exports = async (web3, voting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
   const roundPhase = await voting.getVotePhase();
   const account = await getDefaultAccount(web3);
+  const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   style.spinnerReadingContracts.stop();
 
-  // Display relevant requests for this round
-  const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   if (filteredRequests.length === 0) {
     console.log(`No pending requests for this vote phase!`);
   } else {
