@@ -1,8 +1,13 @@
 const inquirer = require("inquirer");
 const style = require("./textStyle");
 
+// Voting module helpers
+const displayStatus = require('./voting/displayStatus')
+const displayPriceRequests = require('./voting/displayPriceRequests')
+
 const ACTIONS = {
   info: "Info",
+  priceRequests: "Price Request Details",
   commit: "Commit",
   reveal: "Reveal",
   rewards: "Rewards",
@@ -24,30 +29,22 @@ const vote = async () => {
 };
 
 module.exports = async function(web3, artifacts) {
-  const Voting = artifacts.require("Voting");
-  const voting = await Voting.deployed();
   try {
     const inputs = (await vote())["voteTopMenu"];
     switch (inputs) {
+
+      // INFO: Round ID, phase, inflation & GAT rates, and quick breakdown of pending price requests/vote reveals
       case ACTIONS.info:
-        style.spinnerReadingContracts.start();
-        const pendingRequests = await voting.getPendingRequests();
-        const roundId = await voting.getCurrentRoundId();
-        const roundPhase = await voting.getVotePhase();
-        const roundStats = await voting.rounds(roundId);
-        style.spinnerReadingContracts.stop();
-        console.group(`${style.bgMagenta(`\n** Your voting status **`)}`);
-        console.log(`${style.bgMagenta(`- Current round ID`)}: ${roundId.toString()}`);
-        // TODO: Display these as ordered table intuitvely
-        console.log(`${style.bgMagenta(`- Pending price requests`)}:`, pendingRequests);
-        console.log(
-          `${style.bgMagenta(`- Current round phase`)}: ${roundPhase.toString() === "0" ? "Commit" : "Reveal"}`
-        );
-        console.log(`${style.bgMagenta(`- Round Inflation percentage`)}: ${roundStats.inflationRate.toString()}`);
-        console.log(`${style.bgMagenta(`- Round GAT percentage`)}: ${roundStats.gatPercentage.toString()}`);
-        console.log(`\n`);
-        console.groupEnd();
+        await displayStatus(artifacts);
         break;
+        
+      // PRICE REQUESTS: Detailed breakdown of price requests
+      case ACTIONS.priceRequests:
+        await displayPriceRequests(web3, artifacts);
+        break;
+
+      // VOTE: Allow user to 'select' price requests to submit votes on
+      
       case ACTIONS.back:
         return;
       default:
