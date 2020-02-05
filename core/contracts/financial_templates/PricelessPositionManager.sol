@@ -24,12 +24,17 @@ contract PricelessPositionManager is FeePayer {
      */
     struct PositionData {
         bool isValid;
-        FixedPoint.Unsigned rawCollateral;
         FixedPoint.Unsigned tokensOutstanding;
         // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
         uint requestPassTimestamp;
         FixedPoint.Unsigned withdrawalRequestAmount;
+
+        // Raw collateral value. This value should never be accessed directly -- always use _getCollateral().
+        // To add or remove collateral, use _addCollateral() and _removeCollateral().
+        FixedPoint.Unsigned rawCollateral;
     }
+
+    // TODO: determine how we should adjust collateral when the user reads it out of the contract.
     /**
      * @dev Maps sponsor addresses to their positions. Each sponsor can have only one position.
      */
@@ -51,6 +56,14 @@ contract PricelessPositionManager is FeePayer {
      */
     uint public withdrawalLiveness;
 
+    /**
+     * @dev Percentage adjustment that must be applied to rawCollateral so it takes fees into account.
+     * To adjust rawCollateral to a user-readable collateral value:
+     * `realCollateral = rawCollateral * positionFeeAdjustment`
+     * When adding or removing collateral, the following adjustment must be made:
+     * `updatedRawCollateral = rawCollateral + (addedCollateral / positionFeeAdjustment)`
+     * 
+     */ 
     FixedPoint.Unsigned positionFeeAdjustment;
 
     constructor(
@@ -259,7 +272,7 @@ contract PricelessPositionManager is FeePayer {
         return !global.isGreaterThan(thisPos);
     }
 
-    function _getCollateralizationRatio(FixedPoint.Unsigned storage collateral, FixedPoint.Unsigned storage numTokens)
+    function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned storage numTokens)
         private
         view
         returns (FixedPoint.Unsigned memory ratio)
