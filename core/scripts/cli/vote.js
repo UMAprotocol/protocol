@@ -6,6 +6,7 @@ const displayStatus = require("./voting/displayStatus");
 const displayRequests = require("./voting/displayRequests");
 const commitVotes = require("./voting/commitVotes");
 const revealVotes = require("./voting/revealVotes");
+const retrieveRewards = require("./voting/retrieveRewards");
 
 const ACTIONS = {
   info: "Info",
@@ -57,6 +58,11 @@ module.exports = async function(web3, artifacts) {
         await revealVotes(web3, voting);
         break;
 
+      // REWARDS: Allow user to 'select' resolved price requests to retrieve rewards for
+      case ACTIONS.rewards:
+        await retrieveRewards(web3, voting);
+        break;
+
       // HELP
       case ACTIONS.help:
         console.group(`${style.bgCyan(`Voting actions`)}:`);
@@ -66,6 +72,17 @@ module.exports = async function(web3, artifacts) {
             ACTIONS.requests
           )}: displays a more detailed break down of pending commit or reveal requests. You can commit votes during the "Commit" phase on pending price requests, or reveal votes during the "Reveal" phase.`
         );
+        console.log(
+          `${style.bgCyan(
+            ACTIONS.commit
+          )}: Prompts user to select batch of price requests to vote for. Only possible during the Commit phase.`
+        );
+        console.log(
+          `${style.bgCyan(
+            ACTIONS.reveal
+          )}: Prompts user to select batch of votes to reveal. Only possible during the Reveal phase.`
+        );
+        console.log(`${style.bgCyan(ACTIONS.rewards)}: Prompts user to select resolved votes to retrieve rewards for.`);
         console.groupEnd();
         break;
 
