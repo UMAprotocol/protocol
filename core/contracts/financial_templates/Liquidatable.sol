@@ -79,9 +79,7 @@ contract Liquidatable is PricelessPositionManager {
     */
 
     // Liquidations are unique by ID per sponsor
-    mapping(address => mapping(uint => LiquidationData)) public liquidations;
-    // Keeps track of last used liquidation ID per sponsor
-    mapping(address => uint) public sponsorLiquidationIndex;
+    mapping(address => LiquidationData[]) public liquidations;
 
     // Amount of time for pending liquidation before expiry
     uint liquidationLiveness;
@@ -107,9 +105,9 @@ contract Liquidatable is PricelessPositionManager {
 
     // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         require(
-            (getCurrentTime() < _getLiquidationData(sponsor, id).expiry) &&
-                (_getLiquidationData(sponsor, id).state == Status.PreDispute),
+            (getCurrentTime() < liquidation.expiry) && (liquidation.state == Status.PreDispute),
             "Liquidation has expired or has already been disputed"
         );
         _;
@@ -117,11 +115,12 @@ contract Liquidatable is PricelessPositionManager {
     // Callable either post the liquidation's expiry or after a dispute has been resolved,
     // i.e. once a dispute has been requested, the liquidation's expiry ceases to matter
     modifier onlyPostExpiryOrPostDispute(uint id, address sponsor) {
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
+        Status state = liquidation.state;
         require(
-            (_getLiquidationData(sponsor, id).state == Status.DisputeSucceeded) ||
-                (_getLiquidationData(sponsor, id).state == Status.DisputeFailed) ||
-                ((_getLiquidationData(sponsor, id).expiry <= getCurrentTime()) &&
-                    (_getLiquidationData(sponsor, id).state == Status.PreDispute)),
+            (state == Status.DisputeSucceeded) ||
+                (state == Status.DisputeFailed) ||
+                ((liquidation.expiry <= getCurrentTime()) && (state == Status.PreDispute)),
             "Liquidation has not expired or is pending dispute"
         );
         _;
@@ -170,40 +169,40 @@ contract Liquidatable is PricelessPositionManager {
      *
      * Returns UUID of new liquidation for the sponsor
      */
-    function createLiquidation(address sponsor) public returns (uint lastIndexUsed) {
+    function createLiquidation(address sponsor) public returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
-        // Allocate space for new liquidation and increment index
-        lastIndexUsed = sponsorLiquidationIndex[sponsor];
-        LiquidationData storage newLiquidation = liquidations[sponsor][lastIndexUsed];
-        sponsorLiquidationIndex[sponsor] = (lastIndexUsed + 1);
-
-        // Read position data into liquidation
-        newLiquidation.tokensOutstanding = positionToLiquidate.tokensOutstanding;
-        newLiquidation.lockedCollateral = positionToLiquidate.collateral;
-        newLiquidation.liquidatedCollateral = positionToLiquidate.collateral.sub(
-            positionToLiquidate.withdrawalRequestAmount
+        // Construct liquidation object.
+        uint newLength = liquidations[sponsor].push(
+            LiquidationData({
+                expiry: getCurrentTime() + liquidationLiveness,
+                liquidator: msg.sender,
+                state: Status.PreDispute,
+                lockedCollateral: positionToLiquidate.collateral,
+                tokensOutstanding: positionToLiquidate.tokensOutstanding,
+                liquidatedCollateral: positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount),
+                disputer: // Note: the following values are just zeroed out until a dispute occurs.
+                address(0),
+                disputeTime: 0,
+                settlementPrice: FixedPoint.fromUnscaledUint(0)
+            })
         );
+
+        // UUID is the index of the LiquidationData that was just pushed into the array, which is length - 1.
+        uuid = newLength.sub(1);
+
+        // Destroy tokens
+        require(
+            tokenCurrency.transferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue),
+            "failed to transfer synthetic tokens from sender"
+        );
+        tokenCurrency.burn(positionToLiquidate.tokensOutstanding.rawValue);
 
         // TODO: Should "destroy" the position somehow, rendering its create/redeem/deposit/withdraw methods uncallable
         // This should reduce totalTokensOutstanding and lockedCollateral, and also withdrawal request amount?
         positionToLiquidate.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
         positionToLiquidate.collateral = FixedPoint.fromUnscaledUint(0);
-
-        // Set parameters for new liquidation
-        newLiquidation.expiry = getCurrentTime() + liquidationLiveness;
-        newLiquidation.liquidator = msg.sender;
-        newLiquidation.state = Status.PreDispute;
-
-        // Destroy tokens
-        require(
-            tokenCurrency.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue),
-            "failed to transfer synthetic tokens from sender"
-        );
-        tokenCurrency.burn(newLiquidation.tokensOutstanding.rawValue);
-
-        return lastIndexUsed;
     }
 
     /**
@@ -387,6 +386,5 @@ contract Liquidatable is PricelessPositionManager {
         returns (LiquidationData storage liquidation)
     {
         liquidation = liquidations[sponsor][uuid];
-        require(liquidation.liquidator != address(0), "Liquidation does not exist: liquidator address is not set");
     }
 }
