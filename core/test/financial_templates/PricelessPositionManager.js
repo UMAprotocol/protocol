@@ -30,8 +30,9 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedTotalCollateral = expectedSponsorCollateral.add(initialPositionCollateral);
 
     const positionData = await pricelessPositionManager.positions(sponsor);
+    const sponsorCollateral = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(positionData.isValid, true);
-    assert.equal(positionData.collateral.toString(), expectedSponsorCollateral.toString());
+    assert.equal(sponsorCollateral.toString(), expectedSponsorCollateral.toString());
     assert.equal(positionData.tokensOutstanding.toString(), expectedSponsorTokens.toString());
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
 
@@ -264,13 +265,13 @@ contract("PricelessPositionManager", function(accounts) {
     const numTokens = toWei("100");
     const amountCollateral = toWei("150");
     await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
-    assert.equal((await pricelessPositionManager.positions(sponsor)).collateral.toString(), amountCollateral);
-    assert.equal((await pricelessPositionManager.positions(other)).collateral.toString(), toWei("0"));
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), amountCollateral);
+    assert.equal((await pricelessPositionManager.positions(other)).rawCollateral.toString(), toWei("0"));
 
     // Transfer.
     await pricelessPositionManager.transfer(other, { from: sponsor });
-    assert.equal((await pricelessPositionManager.positions(sponsor)).collateral.toString(), toWei("0"));
-    assert.equal((await pricelessPositionManager.positions(other)).collateral.toString(), amountCollateral);
+    assert.equal((await pricelessPositionManager.positions(sponsor)).rawCollateral.toString(), toWei("0"));
+    assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), amountCollateral);
 
     // Can't transfer if the target already has a pricelessPositionManager.
     await pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });

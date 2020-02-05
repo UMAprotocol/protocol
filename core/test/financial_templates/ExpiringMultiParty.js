@@ -1,5 +1,7 @@
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+
 // Helper Contracts
+const Finder = artifacts.require("Finder");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
@@ -17,7 +19,8 @@ contract("ExpiringMultiParty", function(accounts) {
       { rawValue: toWei("0.1") },
       { rawValue: toWei("0.1") },
       { rawValue: toWei("0.1") },
-      1000
+      1000,
+      Finder.address
     );
   });
 });
