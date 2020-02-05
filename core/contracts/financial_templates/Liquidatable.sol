@@ -174,6 +174,7 @@ contract Liquidatable is PricelessPositionManager {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         // Construct liquidation object.
+        // Note: all dispute-related values are just zeroed out until a dispute occurs.
         uint newLength = liquidations[sponsor].push(
             LiquidationData({
                 expiry: getCurrentTime() + liquidationLiveness,
@@ -182,8 +183,7 @@ contract Liquidatable is PricelessPositionManager {
                 lockedCollateral: positionToLiquidate.collateral,
                 tokensOutstanding: positionToLiquidate.tokensOutstanding,
                 liquidatedCollateral: positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount),
-                disputer: // Note: the following values are just zeroed out until a dispute occurs.
-                address(0),
+                disputer: address(0),
                 disputeTime: 0,
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
             })
