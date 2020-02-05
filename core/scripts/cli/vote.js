@@ -4,8 +4,8 @@ const style = require("./textStyle");
 // Voting module helpers
 const displayStatus = require("./voting/displayStatus");
 const displayRequests = require("./voting/displayRequests");
-const commitVotes = require('./voting/commitVotes');
-const revealVotes = require('./voting/revealVotes');
+const commitVotes = require("./voting/commitVotes");
+const revealVotes = require("./voting/revealVotes");
 
 const ACTIONS = {
   info: "Info",
@@ -34,7 +34,7 @@ module.exports = async function(web3, artifacts) {
   try {
     const Voting = artifacts.require("Voting");
     const voting = await Voting.deployed();
-  
+
     const inputs = (await vote())["voteTopMenu"];
     switch (inputs) {
       // INFO: Round ID, phase, inflation & GAT rates, and quick breakdown of pending price requests/vote reveals

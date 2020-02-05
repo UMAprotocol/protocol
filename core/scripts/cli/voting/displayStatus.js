@@ -16,11 +16,12 @@ module.exports = async (web3, voting) => {
   // If no reveals have taken place in the current vote phase, then
   // show the global inflation and GAT percentages. Otherwise,
   // show the round's inflation and GAT percentages.
-  const _inflationRate = (roundStats.snapshotId.toString() === '0' ? (await voting.inflationRate()) : roundStats.inflationRate.toString())
-  const _gatPercentage = (roundStats.snapshotId.toString() === '0' ? (await voting.gatPercentage()) : roundStats.gatPercentage.toString())
-  const inflationRate = parseFloat(web3.utils.fromWei(_inflationRate))*100
-  const gatPercentage = parseFloat(web3.utils.fromWei(_gatPercentage))*100
-
+  const _inflationRate =
+    roundStats.snapshotId.toString() === "0" ? await voting.inflationRate() : roundStats.inflationRate.toString();
+  const _gatPercentage =
+    roundStats.snapshotId.toString() === "0" ? await voting.gatPercentage() : roundStats.gatPercentage.toString();
+  const inflationRate = parseFloat(web3.utils.fromWei(_inflationRate)) * 100;
+  const gatPercentage = parseFloat(web3.utils.fromWei(_gatPercentage)) * 100;
 
   console.group(`${style.bgMagenta(`\n** Your voting status **`)}`);
   console.log(`${style.bgMagenta(`- Current round ID`)}: ${roundId.toString()}`);
