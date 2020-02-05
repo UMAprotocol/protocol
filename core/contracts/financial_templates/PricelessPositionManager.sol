@@ -216,7 +216,7 @@ contract PricelessPositionManager is FeePayer {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
-    function pfc() public returns (FixedPoint.Unsigned memory) {
+    function pfc() public view returns (FixedPoint.Unsigned memory) {
         return totalPositionCollateral;
     }
 
