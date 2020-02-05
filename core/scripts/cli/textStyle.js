@@ -1,6 +1,6 @@
 const chalkPipe = require("chalk-pipe");
 const ora = require("ora");
-const moment = require('moment');
+const moment = require("moment");
 
 // General library for displaying text in terminal in (enjoyable) human readable form
 module.exports = {
@@ -18,7 +18,7 @@ module.exports = {
   }),
 
   // Date format
-  formatSecondsToUtc: (timestampInSeconds) => {
-    return moment.utc(timestampInSeconds*1000).format('MMMM Do YYYY, h:mm:ss a')
-  }  
+  formatSecondsToUtc: timestampInSeconds => {
+    return moment.utc(timestampInSeconds * 1000).format("MMMM Do YYYY, h:mm:ss a");
+  }
 };
