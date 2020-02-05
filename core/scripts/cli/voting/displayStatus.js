@@ -2,6 +2,7 @@ const style = require("../textStyle");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
+const votePhaseTime = require("./votePhaseTiming");
 
 module.exports = async (web3, voting) => {
   style.spinnerReadingContracts.start();
@@ -9,6 +10,7 @@ module.exports = async (web3, voting) => {
   const roundId = await voting.getCurrentRoundId();
   const roundPhase = await voting.getVotePhase();
   const roundStats = await voting.rounds(roundId);
+  const currentTime = await voting.getCurrentTime();
   const account = await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   style.spinnerReadingContracts.stop();
@@ -22,6 +24,9 @@ module.exports = async (web3, voting) => {
     roundStats.snapshotId.toString() === "0" ? await voting.gatPercentage() : roundStats.gatPercentage.toString();
   const inflationRate = parseFloat(web3.utils.fromWei(_inflationRate)) * 100;
   const gatPercentage = parseFloat(web3.utils.fromWei(_gatPercentage)) * 100;
+
+  // Compute time until next phase and round
+  const { minutesInLastHour, hoursUntilNextPhase, hoursUntilNextRound } = votePhaseTime(currentTime, roundPhase);
 
   console.group(`${style.bgMagenta(`\n** Your voting status **`)}`);
   console.log(`${style.bgMagenta(`- Current round ID`)}: ${roundId.toString()}`);
@@ -38,6 +43,15 @@ module.exports = async (web3, voting) => {
   );
   console.log(`${style.bgMagenta(`- Round Inflation`)}: ${inflationRate.toString()} %`);
   console.log(`${style.bgMagenta(`- Round GAT`)}: ${gatPercentage.toString()} %`);
+  console.log(`${style.bgMagenta(`- Contract time`)}: ${style.formatSecondsToUtc(currentTime)}`);
+  console.log(
+    `${style.bgMagenta(
+      `- Time until ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "Reveal" : "Commit"}`
+    )} phase: ${hoursUntilNextPhase} hours, ${minutesInLastHour} minutes`
+  );
+  console.log(
+    `${style.bgMagenta(`- Time until next voting round`)}: ${hoursUntilNextRound} hours, ${minutesInLastHour} minutes`
+  );
   console.log(`\n`);
   console.groupEnd();
 };

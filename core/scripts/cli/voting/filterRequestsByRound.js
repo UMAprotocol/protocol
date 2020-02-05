@@ -2,6 +2,7 @@ const { computeTopicHash } = require("../../../../common/EncryptionHelper");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 
 module.exports = async (pendingRequests, account, roundId, roundPhase, votingContract) => {
+  let filteredRequests = [];
   if (pendingRequests.length > 0) {
     // Sort requests by timestamp requested
     const chronologicalPriceRequests = pendingRequests.sort((a, b) => {
@@ -9,7 +10,6 @@ module.exports = async (pendingRequests, account, roundId, roundPhase, votingCon
     });
 
     // Depending on the round phase, determine which requests to display
-    let filteredRequests = [];
     if (roundPhase.toString() === VotePhasesEnum.COMMIT) {
       // Display all requests during commit phase even if
       // user has already committed a vote, for they
@@ -36,10 +36,9 @@ module.exports = async (pendingRequests, account, roundId, roundPhase, votingCon
         }
       }
     }
-
-    return filteredRequests;
   } else {
     console.log(`There are no pending price requests`);
-    return;
   }
+
+  return filteredRequests;
 };
