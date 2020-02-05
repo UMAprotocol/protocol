@@ -44,7 +44,7 @@ contract FeePayer is Testable {
 
     /**
      * @notice Pays UMA DVM fees to the Store contract.
-     * @returns the amount of collateral that was paid to the Store.
+     * @return the amount of collateral that was paid to the Store.
      */
 
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {

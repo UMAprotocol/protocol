@@ -216,9 +216,18 @@ contract PricelessPositionManager is FeePayer {
         tokenCurrency.burn(numTokens.rawValue);
     }
 
+    /**
+     * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
+     */
+
     function pfc() public view returns (FixedPoint.Unsigned memory) {
         return totalPositionCollateral;
     }
+
+    /**
+     * @dev This overrides payFees() so the PricelessPositionManager can update its internal bookkeeping to account for
+     * the fees.
+     */
 
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         // Capture pfc upfront.
@@ -227,7 +236,12 @@ contract PricelessPositionManager is FeePayer {
         // Send the fee payment.
         totalPaid = super.payFees();
 
-        // TODO: add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
+        // Exit early if pfc == 0 to prevent divide by 0.
+        if (initialPfc.rawValue == 0) {
+            return totalPaid;
+        }
+
+        // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
         // Adjust internal variables below.
         // Compute fee percentage that was paid by the entire contract (fees / pfc).
         FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialPfc);
@@ -238,6 +252,15 @@ contract PricelessPositionManager is FeePayer {
         // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
         totalPositionCollateral = totalPositionCollateral.mul(adjustment);
         positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
+    }
+
+    /**
+     * @notice Accessor method for a sponsor's collateral.
+     * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't a
+     * user-readable value.
+     */
+    function getCollateral(address sponsor) public view returns (FixedPoint.Unsigned memory) {
+        return _getCollateral(_getPositionData(sponsor));
     }
 
     function _getPositionData(address sponsor) internal view returns (PositionData storage position) {

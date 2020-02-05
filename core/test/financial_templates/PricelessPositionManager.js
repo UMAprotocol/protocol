@@ -1,6 +1,8 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
 const Token = artifacts.require("Token");
+const Store = artifacts.require("Store");
+const Finder = artifacts.require("Finder");
 
 // Helper Contracts
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
@@ -13,6 +15,8 @@ contract("PricelessPositionManager", function(accounts) {
   const sponsor = accounts[0];
   const other = accounts[1];
   const collateralOwner = accounts[2];
+
+  let store;
 
   const withdrawalLiveness = 1000;
   let collateral;
@@ -44,6 +48,8 @@ contract("PricelessPositionManager", function(accounts) {
     collateral = await ERC20Mintable.new({ from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
+
+    store = await Store.deployed();
   });
 
   beforeEach(async function() {
@@ -53,6 +59,7 @@ contract("PricelessPositionManager", function(accounts) {
       expirationTimestamp,
       withdrawalLiveness,
       collateral.address,
+      Finder.address,
       true
     );
     tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());
@@ -345,5 +352,36 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: numCombinedTokens }, { from: sponsor })));
     await pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor });
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor })));
+  });
+
+  it("Basic fees", async function() {
+    // Set up position.
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
+
+    // Set store fees to 1% per second.
+    await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.01") });
+
+    // Move time in the contract forward by 1 second to capture a 1% fee.
+    const startTime = await pricelessPositionManager.getCurrentTime();
+    await pricelessPositionManager.setCurrentTime(startTime.addn(1));
+
+    // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
+    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(toWei("0.01")));
+
+    // Pay the fees, then check the collateral and the store balance.
+    await pricelessPositionManager.payFees();
+    let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+    assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
+    assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance);
+
+    // Ensure that fees are not applied to new collateral.
+    // TODO: value chosen specifically to avoid rounding errors -- see #873.
+    await pricelessPositionManager.deposit({ rawValue: toWei("99") }, { from: sponsor });
+    collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+    assert.equal(collateralAmount.rawValue.toString(), toWei("99.99"));
+
+    // Set the store fees back to 0 to prevent it from affecting other tests.
+    await store.setFixedOracleFeePerSecond({ rawValue: "0" });
   });
 });

@@ -4,6 +4,7 @@ const BN = require("bignumber.js");
 const { toWei } = web3.utils;
 
 // Helper Contracts
+const Finder = artifacts.require("Finder");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
@@ -92,6 +93,7 @@ contract("Liquidatable", function(accounts) {
       { rawValue: sponsorDisputeRewardPct.toString() },
       { rawValue: disputerDisputeRewardPct.toString() },
       liquidationLiveness.toString(),
+      Finder.address,
       { from: contractDeployer }
     );
 
@@ -578,6 +580,7 @@ contract("Liquidatable", function(accounts) {
             { rawValue: toWei("0.5") },
             { rawValue: toWei("0.5") },
             liquidationLiveness.toString(),
+            Finder.address,
             { from: contractDeployer }
           )
         )
@@ -603,6 +606,7 @@ contract("Liquidatable", function(accounts) {
         { rawValue: sponsorDisputeRewardPct.toString() },
         { rawValue: disputerDisputeRewardPct.toString() },
         liquidationLiveness.toString(),
+        Finder.address,
         { from: contractDeployer }
       );
       // Get newly created synthetic token
@@ -673,6 +677,7 @@ contract("Liquidatable", function(accounts) {
         { rawValue: sponsorDisputeRewardPct.toString() },
         { rawValue: disputerDisputeRewardPct.toString() },
         liquidationLiveness.toString(),
+        Finder.address,
         { from: contractDeployer }
       );
       // Get newly created synthetic token
@@ -740,6 +745,7 @@ contract("Liquidatable", function(accounts) {
         { rawValue: edgeSponsorRewardPct.toString() },
         { rawValue: edgeDisputerRewardPct.toString() },
         liquidationLiveness.toString(),
+        Finder.address,
         { from: contractDeployer }
       );
       // Get newly created synthetic token
