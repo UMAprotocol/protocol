@@ -5,7 +5,7 @@ module.exports = {
   // - batchCommit: 28 commits, 6654676 gas used
   // - batchReveal: 58 commits, 5828051 gas used
   // - retrieveRewards: 129 commits, 3344083 gas used
-  // Practically, we set a safe upper bound of 25 batch commits & reveals
+  // Practically, we set a safe upper bound of 25 batch commits & reveals and 100 retrievals.
   BATCH_MAX_COMMITS: 25,
   BATCH_MAX_REVEALS: 25,
   BATCH_MAX_RETRIEVALS: 100,
