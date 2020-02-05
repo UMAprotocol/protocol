@@ -49,13 +49,13 @@ contract FeePayer is Testable {
 
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = StoreInterface(finder.getImplementationAddress("Store"));
-        uint currentTime = getCurrentTime();
+        uint time = getCurrentTime();
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
             lastPaymentTime,
-            currentTime,
+            time,
             pfc()
         );
-        lastPaymentTime = currentTime;
+        lastPaymentTime = time;
 
         if (regularFee.isGreaterThan(0)) {
             SafeERC20.safeApprove(collateralCurrency, address(store), regularFee.rawValue);
