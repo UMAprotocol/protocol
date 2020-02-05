@@ -21,6 +21,11 @@ library FixedPoint {
         return Unsigned(a.mul(FP_SCALING_FACTOR));
     }
 
+    /** @dev Whether `a` is equal to `b`. */
+    function isEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool){
+        return a.rawValue == b.rawValue;
+    }
+
     /** @dev Whether `a` is greater than `b`. */
     function isGreaterThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue > b.rawValue;

@@ -608,7 +608,7 @@ contract("Liquidatable", function(accounts) {
   });
 
   describe("Weird Edge cases", () => {
-    only("Dispute rewards should not sum to over 100% of TRV", async () => {
+    it("Dispute rewards should not sum to over 100% of TRV", async () => {
       // Deploy liquidation contract and set global params.
       // Set the sum of the dispute rewards to be >= 100 %
       let invalidConstructorParameter = liquidatableParameters;
@@ -616,7 +616,7 @@ contract("Liquidatable", function(accounts) {
       invalidConstructorParameter.disputerDisputeRewardPct = { rawValue: toWei("0.5") };
       assert(await didContractThrow(Liquidatable.new(invalidConstructorParameter, { from: contractDeployer })));
     });
-    only("Collateral requirement should be later than 100%", async () => {
+    it("Collateral requirement should be later than 100%", async () => {
       let invalidConstructorParameter = liquidatableParameters;
       invalidConstructorParameter.collateralRequirement = { rawValue: toWei("0.95") };
       assert(await didContractThrow(Liquidatable.new(invalidConstructorParameter, { from: contractDeployer })));

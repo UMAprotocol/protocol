@@ -97,9 +97,6 @@ contract Liquidatable is PricelessPositionManager {
      * Method modifiers
      */
 
-    // TODO: could this modifier be replaced with one called `onlyPreDispute` and then the function can use
-    // the `onlyPreExpiration` modifier from the base contract and this one in conjunction?
-
     // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
         require(
@@ -189,9 +186,7 @@ contract Liquidatable is PricelessPositionManager {
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
-    // TODO: Possibly allow partial liquidations
-    // TODO: this should only be callable `onlyPreExpiration`
-    function createLiquidation(address sponsor) public returns (uint lastIndexUsed) {
+    function createLiquidation(address sponsor) public onlyPreExpiration() returns (uint lastIndexUsed) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
@@ -288,11 +283,8 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * After a dispute has settled or after a non-disputed liquidation has expired,
      * the sponsor, liquidator, and/or disputer can call this method to receive payments.
-     *
      * If the dispute SUCCEEDED: the sponsor, liquidator, and disputer are eligible for payment
-     *
      * If the dispute FAILED: only the liquidator can receive payment
-     *
      * Once all collateral is withdrawn, delete the liquidation data
      */
     function withdrawLiquidation(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
