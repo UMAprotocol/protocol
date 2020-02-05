@@ -382,7 +382,7 @@ contract("PricelessPositionManager", function(accounts) {
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1500 usd per eth.
     // This will result in the large position created in the beginning being at 150% collateralization with its
     // 1000 tokens of debt, valued at $1 per token, and 1 token of collateral, valued at $1500 per token.
-    const redemptionPrice = toWei("1500");
+    const redemptionPrice = toWei("0.0005");
     await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), redemptionPrice);
 
     //Token holder settle their synthetic tokens and redeem their tokens.
@@ -467,4 +467,5 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor });
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor })));
   });
+  //TODO: check position is correctly deleted on settle expired
 });

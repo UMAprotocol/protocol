@@ -245,7 +245,7 @@ contract PricelessPositionManager is Testable {
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.div(settlementPrice);
+        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(settlementPrice);
 
         // TODO: what happens in the case where the position is invalid but the contract has expired; i.e they were
         // liquidated close to settlement and then contract settles before they withdraw.
@@ -255,7 +255,7 @@ contract PricelessPositionManager is Testable {
             PositionData storage positionData = _getPositionData(msg.sender);
 
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.div(settlementPrice);
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(settlementPrice);
             FixedPoint.Unsigned memory positionRedeemableCollateral = positionData.collateral.sub(
                 tokenDebtValueInCollateral
             );
@@ -264,8 +264,7 @@ contract PricelessPositionManager is Testable {
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);
 
             // Reset the position state as all the value has been removed after settlement.
-            positionData.collateral = FixedPoint.fromUnscaledUint(0);
-            positionData.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
+            delete positions[msg.sender];
         }
 
         // Transfer tokens and collateral.
@@ -284,7 +283,7 @@ contract PricelessPositionManager is Testable {
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
     }
 
-    function _liquidatePosition(address sponsor) internal {
+    function _deleteSponsorPosition(address sponsor) internal {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         // Remove the collateral and outstanding from the overall total position.
@@ -292,9 +291,7 @@ contract PricelessPositionManager is Testable {
         totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
         // Reset the sponsors position to have zero outstanding and collateral.
-        positionToLiquidate.tokensOutstanding = FixedPoint.fromUnscaledUint(0);
-        positionToLiquidate.collateral = FixedPoint.fromUnscaledUint(0);
-        positionToLiquidate.isValid = false;
+        delete positions[sponsor];
     }
 
     function _getPositionData(address sponsor) internal view returns (PositionData storage position) {

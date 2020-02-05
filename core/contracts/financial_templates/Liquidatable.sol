@@ -201,7 +201,7 @@ contract Liquidatable is PricelessPositionManager {
         );
 
         // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
-        _liquidatePosition(sponsor);
+        _deleteSponsorPosition(sponsor);
 
         // Set parameters for new liquidation
         newLiquidation.expiry = getCurrentTime() + liquidationLiveness;
@@ -266,6 +266,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
+        // bool disputeSucceeded = !requiredCollateral.isLessThan(disputedLiquidation.liquidatedCollateral);
         bool disputeSucceeded = disputedLiquidation.liquidatedCollateral.isGreaterThan(requiredCollateral);
 
         if (disputeSucceeded) {
