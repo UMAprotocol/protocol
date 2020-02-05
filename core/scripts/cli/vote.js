@@ -1,4 +1,14 @@
 const inquirer = require("inquirer");
+const style = require("./textStyle");
+
+const ACTIONS = {
+  info: "Info",
+  commit: "Commit",
+  reveal: "Reveal",
+  rewards: "Rewards",
+  help: "Help",
+  back: "Back"
+};
 
 const vote = async () => {
   const prompts = [
@@ -6,7 +16,7 @@ const vote = async () => {
       type: "list",
       name: "voteTopMenu",
       message: "Voting actions",
-      choices: ["list pending price requests and vote", "commit specific vote", "reveal votes", "get round ID", "back"]
+      choices: Object.values(ACTIONS)
     }
   ];
 
@@ -17,16 +27,19 @@ module.exports = async function(web3, artifacts) {
   const Voting = artifacts.require("Voting");
   const voting = await Voting.deployed();
   try {
-    const inputs = await vote();
-    switch (inputs["voteTopMenu"]) {
-      case "list pending price requests and vote":
+    const inputs = (await vote())["voteTopMenu"];
+    switch (inputs) {
+      case ACTIONS.info:
+        style.spinnerReadingContracts.start();
         const pendingRequests = await voting.getPendingRequests();
-        console.log(pendingRequests);
-        break;
-      case "get round ID":
         const roundId = await voting.getCurrentRoundId();
-        console.log(roundId.toNumber());
-      case "back":
+        style.spinnerReadingContracts.stop();
+        console.group(`\n** Your voting status **`);
+        console.log(`- Current round ID: ${roundId.toNumber()}`);
+        console.log(`- Pending price requests:`, pendingRequests);
+        console.groupEnd();
+        break;
+      case ACTIONS.back:
         return;
       default:
         console.log("unimplemented state");

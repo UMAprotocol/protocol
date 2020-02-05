@@ -30,7 +30,7 @@ function getAllContracts() {
     // This only works in node.js.
     const fs = require("fs");
     const path = require("path");
-    const contractsPath = "../core/build/contracts/";
+    const contractsPath = path.join(__dirname, "../core/build/contracts/");
 
     const fileList = fs.readdirSync(contractsPath).filter(name => name.match(/\.json$/));
     importedObjects = fileList.map(filename => {
