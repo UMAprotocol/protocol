@@ -353,7 +353,7 @@ contract PricelessPositionManager is Testable {
     }
 
     function _safeUintCast(int value) private pure returns (uint result) {
-        require(value >= 0);
+        require(value >= 0, "Uint underflow");
         return uint(value);
     }
 }

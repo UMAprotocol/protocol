@@ -4,7 +4,7 @@ const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationU
 
 module.exports = async function(deployer, network, accounts) {
   if (argv["skip-migration"] === "t" || argv["s"]) {
-    console.log("Skilling migrations...");
+    console.log("Running tests with skipped migrations...");
     return;
   }
   const keys = getKeysForNetwork(network, accounts);
