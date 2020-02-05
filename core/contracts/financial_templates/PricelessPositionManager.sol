@@ -57,13 +57,13 @@ contract PricelessPositionManager is FeePayer {
 
     /**
      * @dev Percentage adjustment that must be applied to rawCollateral so it takes fees into account.
+     *
      * To adjust rawCollateral to a user-readable collateral value:
      * `realCollateral = rawCollateral * positionFeeAdjustment`
+     *
      * When adding or removing collateral, the following adjustment must be made:
      * `updatedRawCollateral = rawCollateral + (addedCollateral / positionFeeAdjustment)`
-     * 
      */
-
     FixedPoint.Unsigned positionFeeAdjustment;
 
     constructor(
