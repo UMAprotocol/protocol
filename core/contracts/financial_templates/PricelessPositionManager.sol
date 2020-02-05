@@ -237,6 +237,7 @@ contract PricelessPositionManager is FeePayer {
         totalPaid = super.payFees();
 
         // Exit early if pfc == 0 to prevent divide by 0.
+        // TODO(#884): replace this with a FixedPoint.equal().
         if (initialPfc.rawValue == 0) {
             return totalPaid;
         }
