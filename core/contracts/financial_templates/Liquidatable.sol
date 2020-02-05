@@ -193,9 +193,7 @@ contract Liquidatable is PricelessPositionManager {
         newLiquidation.tokensOutstanding = positionToLiquidate.tokensOutstanding;
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate);
         newLiquidation.lockedCollateral = positionCollateral;
-        newLiquidation.liquidatedCollateral = positionCollateral.sub(
-            positionToLiquidate.withdrawalRequestAmount
-        );
+        newLiquidation.liquidatedCollateral = positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount);
 
         // TODO: Should "destroy" the position somehow, rendering its create/redeem/deposit/withdraw methods uncallable
         // This should reduce totalTokensOutstanding and lockedCollateral, and also withdrawal request amount?

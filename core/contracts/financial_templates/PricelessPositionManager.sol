@@ -28,7 +28,6 @@ contract PricelessPositionManager is FeePayer {
         // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
         uint requestPassTimestamp;
         FixedPoint.Unsigned withdrawalRequestAmount;
-
         // Raw collateral value. This value should never be accessed directly -- always use _getCollateral().
         // To add or remove collateral, use _addCollateral() and _removeCollateral().
         FixedPoint.Unsigned rawCollateral;
@@ -63,7 +62,8 @@ contract PricelessPositionManager is FeePayer {
      * When adding or removing collateral, the following adjustment must be made:
      * `updatedRawCollateral = rawCollateral + (addedCollateral / positionFeeAdjustment)`
      * 
-     */ 
+     */
+
     FixedPoint.Unsigned positionFeeAdjustment;
 
     constructor(
