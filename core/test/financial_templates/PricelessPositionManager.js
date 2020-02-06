@@ -1,10 +1,9 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
 const Token = artifacts.require("Token");
-const Store = artifacts.require("Store");
-const Finder = artifacts.require("Finder");
 
 // Other UMA related contracts and mocks
+const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
