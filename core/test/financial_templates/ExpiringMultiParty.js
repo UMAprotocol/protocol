@@ -2,7 +2,7 @@ const { toWei } = web3.utils;
 
 // Tested Contract
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const Finder = artifacts.require("Finder");
+
 // Helper Contracts
 const Finder = artifacts.require("Finder");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
