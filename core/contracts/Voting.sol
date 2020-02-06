@@ -84,6 +84,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned inflationRate;
         // Gat rate set for this round.
         FixedPoint.Unsigned gatPercentage;
+        uint rewardsExpirationSeconds;
     }
 
     // Represents the status a price request has.
@@ -127,6 +128,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // of each round.
     // 1 = 100%
     FixedPoint.Unsigned public inflationRate;
+
+    uint public rewardsExpirationSeconds;
 
     // Reference to the voting token.
     VotingToken public votingToken;
@@ -187,6 +190,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         votingToken = VotingToken(_votingToken);
         identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
         finder = Finder(_finder);
+        rewardsExpirationSeconds = 60 * 60 * 24 * 14; // 14 days.
     }
 
     modifier onlyRegisteredDerivative() {
@@ -395,6 +399,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         gatPercentage = _gatPercentage;
     }
 
+    function setRewardsExpirationTime(uint _rewardsExpiration) public onlyOwner {
+        rewardsExpirationSeconds = _rewardsExpiration;
+    }
+
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
@@ -406,6 +414,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         require(roundId < voteTiming.computeCurrentRoundId(blockTime), "Invalid roundId");
 
         Round storage round = rounds[roundId];
+        bool isExpired = blockTime - voteTiming.computeRoundEndTime(roundId) > round.rewardsExpirationSeconds;
         FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
             votingToken.balanceOfAt(voterAddress, round.snapshotId)
         );
@@ -427,15 +436,18 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
             _resolvePriceRequest(priceRequest, voteInstance);
 
-            if (voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)) {
+            if (isExpired) {
+                // Emit a 0 token retrieval on expired rewards.
+                emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
+            } else if (
+                voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
+            ) {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed and was
                 // correct, so they are elgible for a reward.
-                FixedPoint.Unsigned memory correctTokens = voteInstance
-                    .resultComputation
-                    .getTotalCorrectlyVotedTokens();
-
                 // Compute the reward and add to the cumulative reward.
-                FixedPoint.Unsigned memory reward = snapshotBalance.mul(totalRewardPerVote).div(correctTokens);
+                FixedPoint.Unsigned memory reward = snapshotBalance.mul(totalRewardPerVote).div(
+                    voteInstance.resultComputation.getTotalCorrectlyVotedTokens()
+                );
                 totalRewardToIssue = totalRewardToIssue.add(reward);
 
                 // Emit reward retrieval for this vote.
@@ -537,6 +549,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gatPercentage = gatPercentage;
+
+            rounds[roundId].rewardsExpirationSeconds = rewardsExpirationSeconds;
         }
     }
 
