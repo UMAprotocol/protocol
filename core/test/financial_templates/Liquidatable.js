@@ -1,5 +1,6 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const truffleAssert = require("truffle-assertions");
 const BN = require("bignumber.js");
 const { toWei } = web3.utils;
 
@@ -179,6 +180,19 @@ contract("Liquidatable", function(accounts) {
       await liquidationContract.createLiquidation(sponsor, { from: liquidator });
       assert.equal(uuid.toString(), liquidationParams.uuid.toString());
     });
+    it("Emits an event", async () => {
+      const createLiquidationResult = await liquidationContract.createLiquidation(sponsor, { from: liquidator });
+      truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
+        return (
+          ev.sponsor == sponsor,
+          ev.liquidator == liquidator,
+          ev.liquidationId == 0,
+          ev.tokensOutstanding == amountOfSynthetic.toString(),
+          ev.lockedCollateral == amountOfCollateral.toString(),
+          ev.liquidatedCollateral == amountOfCollateral.toString()
+        );
+      });
+    });
     it("Increments UUID after creation", async () => {
       // Create first liquidation
       await liquidationContract.createLiquidation(sponsor, { from: liquidator });
@@ -298,6 +312,18 @@ contract("Liquidatable", function(accounts) {
         assert.equal(liquidation.disputer, disputer);
         assert.equal(liquidation.disputeTime.toString(), disputeTime.toString());
       });
+      it("Dispute emits and event", async () => {
+        const disputeResult = await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+        truffleAssert.eventEmitted(disputeResult, "LiquidationDisputed", ev => {
+          return (
+            ev.sponsor == sponsor &&
+            ev.liquidator == liquidator &&
+            ev.disputer == disputer &&
+            ev.disputeId == 0 &&
+            ev.disputeBondAmount == toWei("15").toString() //10% of the collateral as disputeBondPct * amountOfCollateral
+          );
+        });
+      });
       it("Dispute initiates an oracle call", async () => {
         const disputeTime = await liquidationContract.getCurrentTime();
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
@@ -397,6 +423,28 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
         assert.equal(liquidation.state.toString(), STATES.DISPUTE_FAILED);
+      });
+      it("Event correctly emitted", async () => {
+        // Create a successful dispute and check the event is correct.
+
+        const disputeTime = await liquidationContract.getCurrentTime();
+        const disputePrice = toWei("1");
+        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, disputePrice);
+
+        const settleDisputeResult = await liquidationContract.settleDispute(liquidationParams.uuid, sponsor, {
+          from: rando
+        });
+
+        truffleAssert.eventEmitted(settleDisputeResult, "DisputeSettled", ev => {
+          return (
+            ev.caller == rando &&
+            ev.sponsor == sponsor &&
+            ev.liquidator == liquidator &&
+            ev.disputer == disputer &&
+            ev.disputeId == 0 &&
+            ev.DisputeSucceeded
+          );
+        });
       });
     });
 
@@ -554,6 +602,16 @@ contract("Liquidatable", function(accounts) {
           assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
           const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
           assert.equal(deletedLiquidation.liquidator, zeroAddress);
+        });
+        it("Event emmited", async () => {
+          const withdrawalResult = await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, {
+            from: sponsor
+          });
+
+          // TODO: flesh out this test with other params when they are added to the event in `Liquidatable.sol`
+          truffleAssert.eventEmitted(withdrawalResult, "LiquidationWithdrawn", ev => {
+            return ev.caller == sponsor;
+          });
         });
       });
       describe("Dispute failed", () => {

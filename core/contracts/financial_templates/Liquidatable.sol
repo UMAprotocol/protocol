@@ -8,14 +8,6 @@ import "../FixedPoint.sol";
 import "../Testable.sol";
 import "./PricelessPositionManager.sol";
 
-// TODO:
-// - Events
-// - Connect with Oracle/DVM
-// - Partial liquidations: should be trivial to add
-// - In order to ensure that positions with < 100% collateralization are disputed,
-// the contract forces liquidators to liquidate the “least-collateralized” positions first.
-// instead of "locked collateral" (actual amount of collateral locked in contract)
-
 /**
  * Adds logic to a position-managing contract that enables callers to
  * "liquidate" an undercollateralized position. The liquidator must burn
@@ -92,6 +84,33 @@ contract Liquidatable is PricelessPositionManager {
     // Percent of oraclePrice paid to disputer in the Disputed state (i.e. following a successful dispute)
     // Represented as a multipler, see above
     FixedPoint.Unsigned disputerDisputeRewardPct;
+
+    // Events for contract actions
+    event LiquidationCreated(
+        address sponsor,
+        address liquidator,
+        uint liquidationId,
+        uint tokensOutstanding,
+        uint lockedCollateral,
+        uint liquidatedCollateral
+    );
+    event LiquidationDisputed(
+        address sponsor,
+        address liquidator,
+        address disputer,
+        uint disputeId,
+        uint disputeBondAmount
+    );
+    event DisputeSettled(
+        address caller,
+        address sponsor,
+        address liquidator,
+        address disputer,
+        uint disputeId,
+        bool DisputeSucceeded
+    );
+    // TODO: add more fields to this event after refactoring the withdrawn function
+    event LiquidationWithdrawn(address caller);
 
     /**
      * Method modifiers
@@ -218,6 +237,15 @@ contract Liquidatable is PricelessPositionManager {
         );
         tokenCurrency.burn(newLiquidation.tokensOutstanding.rawValue);
 
+        emit LiquidationCreated(
+            sponsor,
+            newLiquidation.liquidator,
+            lastIndexUsed,
+            newLiquidation.tokensOutstanding.rawValue,
+            newLiquidation.lockedCollateral.rawValue,
+            newLiquidation.liquidatedCollateral.rawValue
+        );
+
         return lastIndexUsed;
     }
 
@@ -243,6 +271,8 @@ contract Liquidatable is PricelessPositionManager {
 
         // Enqueue a request with the DVM.
         _requestOraclePrice(disputedLiquidation.disputeTime);
+
+        emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }
 
     /**
@@ -278,6 +308,15 @@ contract Liquidatable is PricelessPositionManager {
         } else {
             disputedLiquidation.state = Status.DisputeFailed;
         }
+
+        emit DisputeSettled(
+            msg.sender,
+            sponsor,
+            disputedLiquidation.liquidator,
+            disputedLiquidation.disputer,
+            id,
+            disputeSucceeded
+        );
     }
 
     /**
@@ -362,6 +401,8 @@ contract Liquidatable is PricelessPositionManager {
                 require(false, "only the liquidator can withdraw on a non-disputed, expired liquidation");
             }
         }
+
+        emit LiquidationWithdrawn(msg.sender);
     }
 
     /**

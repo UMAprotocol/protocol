@@ -191,8 +191,8 @@ contract PricelessPositionManager is Testable {
      */
     // TODO: is onlyCollateralizedPosition(msg.sender) correct here? if a position withdraws all their collateral will this still work?
     // TODO: this currently does not decrement the sponsors oustanding withdrawalRequestAmount. should it?
+    // TODO: Decide whether to fold this functionality into withdraw() method above.
     function withdrawPassedRequest() public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
-        // TODO: Decide whether to fold this functionality into withdraw() method above.
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime(), "Cannot withdraw before request is passed");
 
