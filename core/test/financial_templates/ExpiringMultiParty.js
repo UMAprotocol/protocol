@@ -9,6 +9,7 @@ ERC20Mintable.setProvider(web3.currentProvider);
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Empty", async function() {
+
     const collateralAddress = await ERC20Mintable.new({ from: accounts[0] });
     const { toWei } = web3.utils;
     await ExpiringMultiParty.new(
@@ -16,11 +17,13 @@ contract("ExpiringMultiParty", function(accounts) {
       "1234567890",
       "1000",
       collateralAddress.address,
+      { rawValue: toWei("1.5") },
       { rawValue: toWei("0.1") },
       { rawValue: toWei("0.1") },
       { rawValue: toWei("0.1") },
       1000,
-      Finder.address
+      Finder.address,
+      web3.utils.utf8ToHex("TESTUMA")
     );
   });
 });

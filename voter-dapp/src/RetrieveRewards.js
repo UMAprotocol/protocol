@@ -4,7 +4,7 @@ import Button from "@material-ui/core/Button";
 import Typography from "@material-ui/core/Typography";
 
 import { useTableStyles } from "./Styles.js";
-import { MAX_UINT_VAL, MAX_SAFE_JS_INT } from "./common/Constants.js";
+import { MAX_UINT_VAL, MAX_SAFE_JS_INT, BATCH_MAX_RETRIEVALS } from "./common/Constants.js";
 
 function getOrCreateObj(containingObj, field) {
   if (!containingObj[field]) {
@@ -71,7 +71,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
 
     // Extract identifiers and times from the round we picked.
     const toRetrieve = [];
-    const maxBatchRetrievals = 100;
+    const maxBatchRetrievals = BATCH_MAX_RETRIEVALS;
     for (const [key, voteState] of Object.entries(state)) {
       if (
         !voteState.retrievedRewards &&

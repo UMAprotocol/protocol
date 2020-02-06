@@ -12,11 +12,13 @@ contract ExpiringMultiParty is Liquidatable {
         uint _positionExpiry,
         uint _positionWithdrawalLiveness,
         address _collateralCurrency,
+        FixedPoint.Unsigned memory _collateralRequirement,
         FixedPoint.Unsigned memory _disputeBondPct,
         FixedPoint.Unsigned memory _sponsorDisputeRewardPct,
         FixedPoint.Unsigned memory _disputerDisputeRewardPct,
         uint _liquidationLiveness,
-        address finderAddress
+        address _finderAddress,
+        bytes32 _priceFeedIdentifier
     )
         public
         Liquidatable(
@@ -24,11 +26,13 @@ contract ExpiringMultiParty is Liquidatable {
             _positionExpiry,
             _positionWithdrawalLiveness,
             _collateralCurrency,
+            _collateralRequirement,
             _disputeBondPct,
             _sponsorDisputeRewardPct,
             _disputerDisputeRewardPct,
             _liquidationLiveness,
-            finderAddress
+            _finderAddress,
+            _priceFeedIdentifier
         )
     {}
 }
