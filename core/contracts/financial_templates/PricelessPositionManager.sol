@@ -11,9 +11,11 @@ import "../Finder.sol";
 import "../OracleInterface.sol";
 /**
  * @title Financial contract with priceless position management.
- * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
+ * @author umaproject.org
+ * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
+
 // TODO: implement the AdministrateeInterface.sol interfaces and emergency shut down.
 contract PricelessPositionManager is Testable {
     using SafeMath for uint;
@@ -38,9 +40,7 @@ contract PricelessPositionManager is Testable {
 
     ExpandedIERC20 public tokenCurrency; // Synthetic token created by this contract
     IERC20 public collateralCurrency; // Collateral held by the contract to back synthetics.
-
-    // Finder knows the deployed addresses of all other smart contracts in UMA ecosystem.
-    Finder public finder;
+    Finder public finder; // Finder knows the deployed addresses of all other smart contracts in UMA ecosystem.
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
@@ -49,7 +49,7 @@ contract PricelessPositionManager is Testable {
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
 
-    // Events for contract actions
+
     event Transfer(address oldSponsor, address newSponsor);
     event Deposit(address sponsor, uint collateralAmount);
     event Withdrawal(address sponsor, uint collateralAmount);
@@ -61,7 +61,6 @@ contract PricelessPositionManager is Testable {
     event ContractExpired(address caller);
     event SettleExpiredPosition(address caller, uint collateralAmountReturned, uint tokensBurned);
 
-    // Function modifiers for common logic
     modifier onlyPreExpiration() {
         require(getCurrentTime() < expirationTimestamp, "Cannot operate on a position past its expiry time");
         _;
@@ -99,6 +98,8 @@ contract PricelessPositionManager is Testable {
     /**
      * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
+     * @dev transfering positions can only occure if the recipiant does not already have a position.
+     * @param newSponsorAddress is the address to which the position will be transfered.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
         require(
@@ -116,7 +117,8 @@ contract PricelessPositionManager is Testable {
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
      * increase the collateralization level of a position.
-     */
+     * @param collateralAmount represents the total amount of tokens to be sent to the position for the sponsor.
+     */ 
     // TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -135,8 +137,9 @@ contract PricelessPositionManager is Testable {
 
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` from the calling sponsor's position to the caller.
-     * Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization ratio.
+     * @dev * Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization ratio.
      * In that case, use `requestWithdrawawal`.
+     * @param collateralAmount is the amount of collateral to withdraw
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount)
         public
@@ -161,7 +164,9 @@ contract PricelessPositionManager is Testable {
 
     /**
      * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw `collateralAmount` from their
-     * position. The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
+     * position. 
+     @dev The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
+     @param collateralAmount the amount of collateral requested to withdraw
      */
 
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount)
@@ -226,9 +231,11 @@ contract PricelessPositionManager is Testable {
     }
 
     /**
-     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`. Reverts if
-     * the minting these tokens would put the position's collateralization ratio below the global collateralization
-     * ratio.
+     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`. 
+     * @dev Reverts if the minting these tokens would put the position's collateralization ratio below the
+     * global collateralization ratio.
+     * @param collateralAmount is the number of collateral tokens to collateralize the position with
+     * @param numTokens is the number of tokens to mint from the position.
      */
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens)
         public
@@ -298,7 +305,7 @@ contract PricelessPositionManager is Testable {
 
     /**
     * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
-    * expiration.
+    * expiration. Once this has been resolved token holders can withdraw.
     */
     function expire() public onlyPostExpiration() {
         _requestOraclePrice(expirationTimestamp);
@@ -308,8 +315,8 @@ contract PricelessPositionManager is Testable {
 
     /**
      * @notice After a contract has passed maturity all token holders can redeem their tokens for underlying at
-     * the prevailing price defined by the DVM from the `expire` function. This Burns all tokens from the caller
-     * of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
+     * the prevailing price defined by the DVM from the `expire` function. 
+     * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
     function settleExpired() public onlyPostExpiration() {
         // Get the current settlement price. If it is not resolved will revert.

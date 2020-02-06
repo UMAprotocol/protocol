@@ -9,18 +9,18 @@ import "../Testable.sol";
 import "./PricelessPositionManager.sol";
 
 /**
- * Adds logic to a position-managing contract that enables callers to
- * "liquidate" an undercollateralized position. The liquidator must burn
- * an amount of synthetic tokens that they are "liquidating" in order to potentially
- * withdraw a portion of the locked collateral in an undercollateralized position.
- * The liquidation has a liveness period before expiring successfully, during which
- * someone can "dispute" the liquidation, which sends a price request to the relevant
- * Oracle to settle the final collateralization ratio based on a DVM price. The
- * contract enforces dispute rewards in order to incentivize disputers to correctly
- * dispute false liquidations and compensate position sponsors who had their position
- * incorrectly liquidated. Importantly, a prospective disputer must deposit a dispute
- * bond that they can lose in the case of an unsuccessful dispute.
- */
+@title Liquidatable
+@author umaproject.org
+@notice Adds logic to a position-managing contract that enables callers to
+liquidate an undercollateralized position.
+@dev The liquidation has a liveness period before expiring successfully, during which
+someone can "dispute" the liquidation, which sends a price request to the relevant
+Oracle to settle the final collateralization ratio based on a DVM price. The
+contract enforces dispute rewards in order to incentivize disputers to correctly
+dispute false liquidations and compensate position sponsors who had their position
+incorrectly liquidated. Importantly, a prospective disputer must deposit a dispute
+bond that they can lose in the case of an unsuccessful dispute.
+*/
 contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
@@ -28,43 +28,22 @@ contract Liquidatable is PricelessPositionManager {
     enum Status { PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
-        /**
-         * Following variables set upon creation of liquidation:
-         */
-
-        // When Liquidation ends and becomes 'Expired'
-        uint expiry;
-        // Person who created this liquidation
-        address liquidator;
-        // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
-        Status state;
-        /**
-         * Following variables determined by the position that is being liquidated:
-         */
-
-        // Synthetic Tokens required to be burned by liquidator to initiate dispute
-        FixedPoint.Unsigned tokensOutstanding;
-        // Collateral locked by contract and released upon expiry or post-dispute
-        FixedPoint.Unsigned lockedCollateral;
-        // Amount of collateral being liquidated, which could be different from
+         // Following variables set upon creation of liquidation:
+        uint expiry; // When Liquidation ends and becomes 'Expired'
+        address liquidator; // caller who created this liquidation
+        Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
+        
+        // Following variables determined by the position that is being liquidated:
+        FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
+        FixedPoint.Unsigned lockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
+        FixedPoint.Unsigned liquidatedCollateral; // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
-        FixedPoint.Unsigned liquidatedCollateral;
-        /**
-         * Following variables set upon a dispute request
-         */
-
-        // Person who is disputing a liquidation
-        address disputer;
-        // Time when dispute is initiated, needed to get price from Oracle
-        uint disputeTime;
-        // Final price as determined by an Oracle following a dispute
-        FixedPoint.Unsigned settlementPrice;
+        
+        // Following variables set upon a dispute request
+        address disputer; // Person who is disputing a liquidation
+        uint disputeTime; // Time when dispute is initiated, needed to get price from Oracle
+        FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
     }
-
-    /**
-    * Contract-wide variables, consistent across all liquidations for synthetic tokens
-    * of this template
-    */
 
     // Liquidations are unique by ID per sponsor
     mapping(address => LiquidationData[]) public liquidations;
@@ -83,7 +62,6 @@ contract Liquidatable is PricelessPositionManager {
     // Represented as a multipler, see above
     FixedPoint.Unsigned disputerDisputeRewardPct;
 
-    // Events for contract actions
     event LiquidationCreated(
         address sponsor,
         address liquidator,
@@ -109,10 +87,6 @@ contract Liquidatable is PricelessPositionManager {
     );
     // TODO: add more fields to this event after refactoring the withdrawn function
     event LiquidationWithdrawn(address caller);
-
-    /**
-     * Method modifiers
-     */
 
     // TODO: could this modifier be replaced with one called `onlyPreDispute` and then the function can use
     // the `onlyPreExpiration` modifier from the base contract and this one in conjunction?
@@ -167,9 +141,6 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned disputerDisputeRewardPct;
     }
 
-    /**
-     * Constructor: set universal Liquidation variables and initalize the PricelessPositionManager.
-     */
     constructor(ConstructorParams memory params)
         public
         PricelessPositionManager(
@@ -198,12 +169,12 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * Liquidates the sponsor's position if the caller has enough
+     * @notice Liquidates the sponsor's position if the caller has enough
      * synthetic tokens to retire the position's outstanding tokens.
-     *
-     * This method will generate an ID that will uniquely identify liquidation
+     * @dev This method generates an ID that will uniquely identify liquidation
      * for the sponsor.
-     * Returns UUID of new liquidation for the sponsor
+     * @param sponsor address to liquidate
+     * @return uuid of the newoly created liquidation
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
@@ -251,9 +222,11 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * Disputes a liquidation if the caller has enough collateral to post a dispute bond.
-     * Can only dispute a liquidation before the liquidation expires and if there are no
-     * other pending disputes
+     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond.
+     * @dev Can only dispute a liquidation before the liquidation expires and if there are no
+     * other pending disputes.
+     * @param id of the disputed liquidation.
+     * @param sponsor the address of the sponsor who's liquidation is being disputed.
      */
     function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
@@ -277,12 +250,14 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * Anyone can call this method to settle a pending dispute. This
-     * is only possible after the DVM has resolved a price. Callers should
+     * @notice After a liquidation has been disputed, it can be settled by any caller enabling withdrawl to occure.
+     * @dev This is only possible after the DVM has resolved a price. Callers should
      * call hasPrice() on the DVM before calling this to ensure
      * that the DVM has resolved a price. This method then calculates whether the
-     * dispute on the liquidation was successful usin only the settlement price,
+     * dispute on the liquidation was successful using only the settlement price,
      * tokens outstanding, locked collateral (post-pending withdrawals), and liquidation ratio
+     * @param id to uniquly identify the dispute to settle
+     * @param sponsor the address of the sponsor who's dispute is being settled
      */
     function settleDispute(uint id, address sponsor) public onlyPendingDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
@@ -323,11 +298,13 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * After a dispute has settled or after a non-disputed liquidation has expired,
+     * @notice After a dispute has settled or after a non-disputed liquidation has expired,
      * the sponsor, liquidator, and/or disputer can call this method to receive payments.
-     * If the dispute SUCCEEDED: the sponsor, liquidator, and disputer are eligible for payment
+     * @dev If the dispute SUCCEEDED: the sponsor, liquidator, and disputer are eligible for payment
      * If the dispute FAILED: only the liquidator can receive payment
-     * Once all collateral is withdrawn, delete the liquidation data
+     * Once all collateral is withdrawn, delete the liquidation data.
+     * @param id uniquly identifies the sponsor's liqudation
+     * @param sponsor address of the sponsor associated with the liquidation
      */
     function withdrawLiquidation(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
@@ -413,9 +390,6 @@ contract Liquidatable is PricelessPositionManager {
         emit LiquidationWithdrawn(msg.sender);
     }
 
-    /**
-     * Return a liquidation or throw an error if it does not exist
-     */
     function _getLiquidationData(address sponsor, uint uuid)
         internal
         view
