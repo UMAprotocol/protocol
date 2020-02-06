@@ -249,16 +249,9 @@ contract("Liquidatable", function(accounts) {
         assert.equal(newLiquidation.settlementPrice.toString(), "0");
       });
       it("Liquidation does not exist", async () => {
-        const uncreatedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.falseUuid);
-        assert.equal(uncreatedLiquidation.state.toString(), STATES.PRE_DISPUTE);
-        assert.equal(uncreatedLiquidation.liquidator, zeroAddress);
-        assert.equal(uncreatedLiquidation.tokensOutstanding.toString(), "0");
-        assert.equal(uncreatedLiquidation.lockedCollateral.toString(), "0");
-        assert.equal(uncreatedLiquidation.liquidatedCollateral.toString(), "0");
-        assert.equal(uncreatedLiquidation.expiry.toString(), "0");
-        assert.equal(uncreatedLiquidation.disputer, zeroAddress);
-        assert.equal(uncreatedLiquidation.disputeTime.toString(), "0");
-        assert.equal(uncreatedLiquidation.settlementPrice.toString(), "0");
+        const uncreatedLiquidation = assert(
+          await didContractThrow(liquidationContract.liquidations(sponsor, liquidationParams.falseUuid))
+        );
       });
     });
 
