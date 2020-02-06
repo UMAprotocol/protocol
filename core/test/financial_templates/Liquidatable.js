@@ -4,7 +4,6 @@ const BN = require("bignumber.js");
 const { toWei, hexToUtf8 } = web3.utils;
 
 // Helper Contracts
-const Finder = artifacts.require("Finder");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
