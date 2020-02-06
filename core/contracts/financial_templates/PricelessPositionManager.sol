@@ -16,7 +16,7 @@ import "./FeePayer.sol";
  * @dev Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
- // TODO: implement the AdministrateeInterface.sol interfaces and emergency shut down.
+// TODO: implement the AdministrateeInterface.sol interfaces and emergency shut down.
 contract PricelessPositionManager is FeePayer {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
