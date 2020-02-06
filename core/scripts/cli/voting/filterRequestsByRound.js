@@ -36,9 +36,6 @@ module.exports = async (pendingRequests, account, roundId, roundPhase, votingCon
         }
       }
     }
-  } else {
-    console.log(`There are no pending price requests`);
   }
-
   return filteredRequests;
 };

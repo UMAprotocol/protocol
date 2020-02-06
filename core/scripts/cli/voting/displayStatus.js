@@ -3,6 +3,7 @@ const { VotePhasesEnum } = require("../../../../common/Enums");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const votePhaseTime = require("./votePhaseTiming");
+const getAvailableRewards = require("./getResolvedVotesByRoundId");
 
 module.exports = async (web3, voting) => {
   style.spinnerReadingContracts.start();
@@ -13,6 +14,7 @@ module.exports = async (web3, voting) => {
   const currentTime = await voting.getCurrentTime();
   const account = await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
+  const rewards = await getAvailableRewards(web3, voting, account);
   style.spinnerReadingContracts.stop();
 
   // If no reveals have taken place in the current vote phase, then
@@ -35,12 +37,6 @@ module.exports = async (web3, voting) => {
       roundPhase.toString() === VotePhasesEnum.COMMIT ? "Commit" : "Reveal"
     }`
   );
-  // TODO: Display these as ordered table intuitvely
-  console.log(
-    `${style.bgMagenta(
-      `- Pending ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "price" : "reveal"} requests`
-    )}: ${filteredRequests.length}`
-  );
   console.log(`${style.bgMagenta(`- Round Inflation`)}: ${inflationRate.toString()} %`);
   console.log(`${style.bgMagenta(`- Round GAT`)}: ${gatPercentage.toString()} %`);
   console.log(`${style.bgMagenta(`- Contract time`)}: ${style.formatSecondsToUtc(currentTime)}`);
@@ -52,6 +48,40 @@ module.exports = async (web3, voting) => {
   console.log(
     `${style.bgMagenta(`- Time until next voting round`)}: ${hoursUntilNextRound} hours, ${minutesInLastHour} minutes`
   );
+
+  // Display pending requests in a table
+  console.log(
+    `${style.bgMagenta(`- Pending ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "Price" : "Reveal"} Requests`)}:`
+  );
+  if (filteredRequests.length > 0) {
+    const requestsTable = [];
+    filteredRequests.forEach(request => {
+      const identifierUtf8 = web3.utils.hexToUtf8(request.identifier);
+      const timestampUtc = style.formatSecondsToUtc(parseInt(request.time));
+      requestsTable.push({
+        Identifier: identifierUtf8,
+        Time: timestampUtc
+      });
+    });
+    console.table(requestsTable);
+  }
+
+  // Display rewards to be retrieved in a table
+  console.log(`${style.bgMagenta(`- Voting Rewards Available`)}:`);
+  if (rewards.roundIds.length > 0) {
+    const rewardsTable = [];
+    Object.keys(rewards.resolvedVotesByRoundId).forEach(roundId => {
+      rewards.resolvedVotesByRoundId[roundId].forEach(_reward => {
+        rewardsTable.push({
+          "Round ID": _reward.roundId,
+          Name: _reward.name,
+          "Reward Tokens": web3.utils.fromWei(_reward.potentialRewards)
+        });
+      });
+    });
+    console.table(rewardsTable);
+  }
+
   console.log(`\n`);
   console.groupEnd();
 };

@@ -14,7 +14,7 @@ module.exports = async (requests, roundId, votingContract, account) => {
       });
     }
 
-    // Always call `batchReveal`, even if there's only one reveal. Difference in gas cost is negligible.
+    // Always call `retrieveRewards`, even if there's only one reward. Difference in gas cost is negligible.
     style.spinnerWritingContracts.start();
     const { receipt } = await votingContract.retrieveRewards(account, roundId, pendingRequests, { from: account });
     style.spinnerWritingContracts.stop();

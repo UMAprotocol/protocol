@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 
+const style = require("./textStyle");
 const vote = require("./vote");
 const wallet = require("./wallet");
 const admin = require("./admin.js");
@@ -41,6 +42,22 @@ async function run() {
         break;
       case ACTIONS.admin:
         await admin(artifacts, web3);
+        break;
+      // HELP
+      case ACTIONS.help:
+        console.group(`${style.bgCyan(`Welcome to the UMA Voting Tool`)}:`);
+        console.log(
+          `${style.bgCyan(
+            ACTIONS.wallet
+          )}: Displays your token balances and provides functioanlity for generating new voting accounts.`
+        );
+        console.log(
+          `${style.bgCyan(
+            ACTIONS.vote
+          )}: Review pending price requests that you can vote on (as well as other helpful information about the current voting round). You can also commit votes, reveal votes, and retrieve rewards.`
+        );
+        console.log(`${style.bgCyan(ACTIONS.admin)}: View pending UMA Admin proposals.`);
+        console.groupEnd();
         break;
       case ACTIONS.exit:
         run = false;

@@ -105,9 +105,7 @@ const runRequestOraclePrice = async function(callback) {
       await run(finder, argv.identifier, argv.time);
     });
   } else {
-    for (let i = 0; i < 10; i++) {
-      await run(finder, argv.identifier, parseInt(argv.time) + i);
-    }
+    await run(finder, argv.identifier, argv.time);
 
     // Note: only call the callback in the non-server case. In the server case, the server is expected to run
     // indefinitely.

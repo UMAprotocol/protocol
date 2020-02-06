@@ -2,7 +2,7 @@ const { encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../../
 const { getKeyGenMessage } = require("../../../../common/EncryptionHelper");
 
 module.exports = async (request, roundId, web3, price, account) => {
-  const priceString = price.toString();
+  const priceString = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
   const hash = web3.utils.soliditySha3(priceString, salt);
 

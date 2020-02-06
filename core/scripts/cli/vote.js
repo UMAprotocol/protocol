@@ -1,16 +1,12 @@
 const inquirer = require("inquirer");
 const style = require("./textStyle");
-
-// Voting module helpers
 const displayStatus = require("./voting/displayStatus");
-const displayRequests = require("./voting/displayRequests");
 const commitVotes = require("./voting/commitVotes");
 const revealVotes = require("./voting/revealVotes");
 const retrieveRewards = require("./voting/retrieveRewards");
 
 const ACTIONS = {
   info: "Info",
-  requests: "Pending Commit or Reveal Requests",
   commit: "Commit",
   reveal: "Reveal",
   rewards: "Rewards",
@@ -43,11 +39,6 @@ module.exports = async function(web3, artifacts) {
         await displayStatus(web3, voting);
         break;
 
-      // REQUESTS: Detailed breakdown of commit or reveal requests depending on the current round phase
-      case ACTIONS.requests:
-        await displayRequests(web3, voting);
-        break;
-
       // COMMIT: Allow user to 'select' price requests to submit votes on
       case ACTIONS.commit:
         await commitVotes(web3, voting);
@@ -66,11 +57,10 @@ module.exports = async function(web3, artifacts) {
       // HELP
       case ACTIONS.help:
         console.group(`${style.bgCyan(`Voting actions`)}:`);
-        console.log(`${style.bgCyan(ACTIONS.info)}: displays information about the current voting round`);
         console.log(
           `${style.bgCyan(
-            ACTIONS.requests
-          )}: displays a more detailed break down of pending commit or reveal requests. You can commit votes during the "Commit" phase on pending price requests, or reveal votes during the "Reveal" phase.`
+            ACTIONS.info
+          )}: Displays information about the current voting round including pending price requests to commit or reveal votes for, and rewards available.`
         );
         console.log(
           `${style.bgCyan(
