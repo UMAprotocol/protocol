@@ -56,23 +56,23 @@ module.exports = async function(web3, artifacts) {
 
       // HELP
       case ACTIONS.help:
-        console.group(`${style.bgCyan(`Voting actions`)}:`);
+        console.group(`${style.help(`Voting actions`)}:`);
         console.log(
-          `${style.bgCyan(
+          `${style.help(
             ACTIONS.info
           )}: Displays information about the current voting round including pending price requests to commit or reveal votes for, and rewards available.`
         );
         console.log(
-          `${style.bgCyan(
+          `${style.help(
             ACTIONS.commit
           )}: Prompts user to select batch of price requests to vote for. Only possible during the Commit phase.`
         );
         console.log(
-          `${style.bgCyan(
+          `${style.help(
             ACTIONS.reveal
           )}: Prompts user to select batch of votes to reveal. Only possible during the Reveal phase.`
         );
-        console.log(`${style.bgCyan(ACTIONS.rewards)}: Prompts user to select resolved votes to retrieve rewards for.`);
+        console.log(`${style.help(ACTIONS.rewards)}: Prompts user to select resolved votes to retrieve rewards for.`);
         console.groupEnd();
         break;
 

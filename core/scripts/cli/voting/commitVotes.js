@@ -22,7 +22,7 @@ module.exports = async (web3, voting) => {
   } else if (filteredRequests.length === 0) {
     console.log(`No pending price requests to commit votes for!`);
   } else {
-    console.group(`${style.bgRed(`\nPlease select which price requests you would like to commit votes for`)}`);
+    console.group(`${style.instruction(`\nPlease select which price requests you would like to commit votes for`)}`);
 
     // To display properly, give each request a 'value' parameter
     for (let i = 0; i < filteredRequests.length; i++) {
@@ -40,7 +40,7 @@ module.exports = async (web3, voting) => {
     });
     if (checkbox["requestsCheckbox"]) {
       console.log(
-        style.bgRed(
+        style.instruction(
           `Next, enter prices for the selected requests. Prices must be positive numbers, invalid input will default to 0.`
         )
       );
@@ -56,7 +56,7 @@ module.exports = async (web3, voting) => {
           type: "number",
           name: "price",
           default: 0,
-          message: style.bgRed(`Price for ${selections[i]}:`),
+          message: style.instruction(`Price for ${selections[i]}:`),
           validate: value => value >= 0 || "Price must be positive"
         });
 
@@ -84,13 +84,13 @@ module.exports = async (web3, voting) => {
 
         // Print results
         console.log(
-          style.bgGreen(
+          style.success(
             `You have successfully committed ${successes.length} price${
               successes.length === 1 ? "" : "s"
             } in ${batches} batch${batches === 1 ? "" : "es"}. (Failures = ${failures.length})`
           )
         );
-        console.group(style.bgGreen(`Receipts:`));
+        console.group(style.success(`Receipts:`));
         for (let i = 0; i < successes.length; i++) {
           console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${successes[i].txnHash}`)}`);
           console.log(`    - salt: ${successes[i].salt}`);

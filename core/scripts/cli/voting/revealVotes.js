@@ -22,7 +22,7 @@ module.exports = async (web3, voting) => {
   } else if (filteredRequests.length === 0) {
     console.log(`No pending votes to reveal!`);
   } else {
-    console.group(`${style.bgRed(`\nPlease select which price requests you would like to reveal votes for`)}`);
+    console.group(`${style.instruction(`\nPlease select which price requests you would like to reveal votes for`)}`);
 
     // To display properly, give each request a 'value' parameter
     for (let i = 0; i < filteredRequests.length; i++) {
@@ -69,13 +69,13 @@ module.exports = async (web3, voting) => {
 
         // Print results
         console.log(
-          style.bgGreen(
+          style.success(
             `You have successfully revealed ${successes.length} price${
               successes.length === 1 ? "" : "s"
             } in ${batches} batch${batches === 1 ? "" : "es"}. (Failures = ${failures.length})`
           )
         );
-        console.group(style.bgGreen(`Receipts:`));
+        console.group(style.success(`Receipts:`));
         for (let i = 0; i < successes.length; i++) {
           console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${successes[i].txnHash}`)}`);
         }

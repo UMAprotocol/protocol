@@ -12,7 +12,7 @@ module.exports = async (web3, voting) => {
 
   if (roundIds.length > 0) {
     console.group(
-      `${style.bgRed(
+      `${style.instruction(
         `\nPlease select which round ID of resolved price requests you would like to retrieve rewards for`
       )}`
     );
@@ -32,13 +32,13 @@ module.exports = async (web3, voting) => {
 
       // Print results
       console.log(
-        style.bgGreen(
+        style.success(
           `You have successfully retrieved ${successes.length} reward${
             successes.length === 1 ? "" : "s"
           } in ${batches} batch${batches === 1 ? "" : "es"}.`
         )
       );
-      console.group(style.bgGreen(`Receipts:`));
+      console.group(style.success(`Receipts:`));
       for (let i = 0; i < successes.length; i++) {
         console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${successes[i].txnHash}`)}`);
       }

@@ -14,10 +14,10 @@ module.exports = async (web3, artifacts) => {
     const votingToken = await VotingToken.deployed();
     const votingBalance = await votingToken.balanceOf(address);
     style.spinnerReadingContracts.stop();
-    console.group(style.bgGreen(`\n** Ethereum Account Info **`));
-    console.log(`- ${style.bgGreen(`Address`)}: ${address}`);
-    console.log(`- ${style.bgGreen(`Balance`)}: ${fromWei(balance)} ETH`);
-    console.log(`- ${style.bgGreen(`Balance`)}: ${fromWei(votingBalance)} UMA voting token`);
+    console.group(style.success(`\n** Ethereum Account Info **`));
+    console.log(`- ${style.success(`Address`)}: ${address}`);
+    console.log(`- ${style.success(`Balance`)}: ${fromWei(balance)} ETH`);
+    console.log(`- ${style.success(`Balance`)}: ${fromWei(votingBalance)} UMA voting token`);
     console.log(`\n`);
     console.groupEnd();
   } catch (err) {

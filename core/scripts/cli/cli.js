@@ -45,18 +45,18 @@ async function run() {
         break;
       // HELP
       case ACTIONS.help:
-        console.group(`${style.bgCyan(`Welcome to the UMA Voting Tool`)}:`);
+        console.group(`${style.help(`Welcome to the UMA Voting Tool`)}:`);
         console.log(
-          `${style.bgCyan(
+          `${style.help(
             ACTIONS.wallet
           )}: Displays your token balances and provides functioanlity for generating new voting accounts.`
         );
         console.log(
-          `${style.bgCyan(
+          `${style.help(
             ACTIONS.vote
           )}: Review pending price requests that you can vote on (as well as other helpful information about the current voting round). You can also commit votes, reveal votes, and retrieve rewards.`
         );
-        console.log(`${style.bgCyan(ACTIONS.admin)}: View pending UMA Admin proposals.`);
+        console.log(`${style.help(ACTIONS.admin)}: View pending UMA Admin proposals.`);
         console.groupEnd();
         break;
       case ACTIONS.exit:

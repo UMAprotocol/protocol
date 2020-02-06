@@ -5,11 +5,9 @@ const moment = require("moment");
 // General library for displaying text in terminal in (enjoyable) human readable form
 module.exports = {
   // Colors
-  bgRed: chalkPipe("bgRed"),
-  bgGreen: chalkPipe("bgGreen"),
-  bgMagenta: chalkPipe("bgMagenta"),
-  bgYellow: chalkPipe("bgYellow"),
-  bgCyan: chalkPipe("bgCyan"),
+  instruction: chalkPipe("bgRed"),
+  success: chalkPipe("bgGreen"),
+  help: chalkPipe("bgCyan"),
 
   // Links
   link: chalkPipe("blue.underline"),
