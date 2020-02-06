@@ -22,7 +22,7 @@ library FixedPoint {
     }
 
     /** @dev Whether `a` is equal to `b`. */
-    function isEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool){
+    function isEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue == b.rawValue;
     }
 

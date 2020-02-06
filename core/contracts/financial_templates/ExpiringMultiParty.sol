@@ -6,8 +6,5 @@ import "../FixedPoint.sol";
 
 contract ExpiringMultiParty is Liquidatable {
     using FixedPoint for FixedPoint.Unsigned;
-    constructor(ConstructorParams memory params)
-        public
-        Liquidatable(params)
-    {}
+    constructor(ConstructorParams memory params) public Liquidatable(params) {}
 }
