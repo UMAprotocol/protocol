@@ -11,11 +11,6 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("Token");
 
-// Other UMA related contracts and mocks
-const Finder = artifacts.require("Finder");
-const MockOracle = artifacts.require("MockOracle");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-
 // Helper Contracts
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
@@ -34,7 +29,6 @@ contract("PricelessPositionManager", function(accounts) {
   let collateral;
   let pricelessPositionManager;
   let tokenCurrency;
-  let priceTrackingIdentifier;
   let identifierWhitelist;
   let mockOracle;
   let finder;
@@ -75,7 +69,6 @@ contract("PricelessPositionManager", function(accounts) {
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
-    priceTrackingIdentifier = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETHUSD"));
     await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
       from: contractDeployer
     });
@@ -245,7 +238,7 @@ contract("PricelessPositionManager", function(accounts) {
       { from: sponsor }
     );
 
-    // Request withdrawal. Check event is emmitted
+    // Request withdrawal. Check event is emitted
     let resultRequestWithdrawal = await pricelessPositionManager.requestWithdrawal(
       { rawValue: toWei("100") },
       { from: sponsor }

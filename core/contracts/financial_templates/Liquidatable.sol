@@ -207,30 +207,28 @@ contract Liquidatable is PricelessPositionManager {
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
-    function createLiquidation(address sponsor) public onlyPreExpiration() returns (uint lastIndexUsed) {
+    function createLiquidation(address sponsor) public returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
-        // TODO: can refactor this to use `liquidations.push` and then get the index returned from the push
-        // Allocate space for new liquidation and increment index
-        lastIndexUsed = sponsorLiquidationIndex[sponsor];
-        LiquidationData storage newLiquidation = liquidations[sponsor][lastIndexUsed];
-        sponsorLiquidationIndex[sponsor] = (lastIndexUsed + 1);
-
-        // Read position data into liquidation
-        newLiquidation.tokensOutstanding = positionToLiquidate.tokensOutstanding;
-        newLiquidation.lockedCollateral = positionToLiquidate.collateral;
-        newLiquidation.liquidatedCollateral = positionToLiquidate.collateral.sub(
-            positionToLiquidate.withdrawalRequestAmount
+        // Construct liquidation object.
+        // Note: all dispute-related values are just zeroed out until a dispute occurs.
+        uint newLength = liquidations[sponsor].push(
+            LiquidationData({
+                expiry: getCurrentTime() + liquidationLiveness,
+                liquidator: msg.sender,
+                state: Status.PreDispute,
+                lockedCollateral: positionToLiquidate.collateral,
+                tokensOutstanding: positionToLiquidate.tokensOutstanding,
+                liquidatedCollateral: positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount),
+                disputer: address(0),
+                disputeTime: 0,
+                settlementPrice: FixedPoint.fromUnscaledUint(0)
+            })
         );
 
-        // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
-        _deleteSponsorPosition(sponsor);
-
-        // Set parameters for new liquidation
-        newLiquidation.expiry = getCurrentTime() + liquidationLiveness;
-        newLiquidation.liquidator = msg.sender;
-        newLiquidation.state = Status.PreDispute;
+        // UUID is the index of the LiquidationData that was just pushed into the array, which is length - 1.
+        uuid = newLength.sub(1);
 
         // Destroy tokens
         require(
@@ -239,16 +237,17 @@ contract Liquidatable is PricelessPositionManager {
         );
         tokenCurrency.burn(positionToLiquidate.tokensOutstanding.rawValue);
 
+        // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
+        _deleteSponsorPosition(sponsor);
+
         emit LiquidationCreated(
             sponsor,
-            newLiquidation.liquidator,
-            lastIndexUsed,
-            newLiquidation.tokensOutstanding.rawValue,
-            newLiquidation.lockedCollateral.rawValue,
-            newLiquidation.liquidatedCollateral.rawValue
+            msg.sender,
+            uuid,
+            liquidations[sponsor][uuid].tokensOutstanding.rawValue,
+            liquidations[sponsor][uuid].lockedCollateral.rawValue,
+            liquidations[sponsor][uuid].liquidatedCollateral.rawValue
         );
-
-        return lastIndexUsed;
     }
 
     /**
