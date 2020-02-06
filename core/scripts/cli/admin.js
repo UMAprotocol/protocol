@@ -1,7 +1,7 @@
 const inquirer = require("inquirer");
 const abiDecoder = require("../../../common/AbiUtils.js").getAbiDecoder();
 const style = require("./textStyle");
-const {decodeTransaction} = require("../../../common/AdminUtils.js");
+const { decodeTransaction } = require("../../../common/AdminUtils.js");
 
 async function decodeGovernorProposal(artifacts, id) {
   const Governor = artifacts.require("Governor");
@@ -16,8 +16,8 @@ async function decodeGovernorProposal(artifacts, id) {
     console.log("Transaction", i);
 
     const transaction = proposal.transactions[i];
-      const strForm = decodeTransaction(transaction);
-      console.log(strForm);
+    const strForm = decodeTransaction(transaction);
+    console.log(strForm);
 
     console.groupEnd();
   }
