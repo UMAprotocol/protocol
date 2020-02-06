@@ -385,6 +385,14 @@ contract Liquidatable is PricelessPositionManager {
         view
         returns (LiquidationData storage liquidation)
     {
-        liquidation = liquidations[sponsor][uuid];
+        LiquidationData[] storage liquidationArray = liquidations[sponsor];
+
+        // Revert if the caller is attempting to access an invalid liquidation (one that has never been created or one
+        // that was deleted after resolution).
+        require(
+            uuid < liquidationArray.length && liquidationArray[uuid].liquidator != address(0),
+            "Invalid liquidation: liquidator address is not set"
+        );
+        return liquidationArray[uuid];
     }
 }
