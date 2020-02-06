@@ -299,6 +299,11 @@ contract PricelessPositionManager is Testable {
         require(position.isValid, "Position does not exist");
     }
 
+    function _getOracleAddress() internal view returns (address) {
+        bytes32 oracleInterface = "Oracle";
+        return finder.getImplementationAddress(oracleInterface);
+    }
+
     function _requestOraclePrice(uint requestedTime) internal {
         OracleInterface oracle = OracleInterface(_getOracleAddress());
         oracle.requestPrice(priceIdentifer, requestedTime);
