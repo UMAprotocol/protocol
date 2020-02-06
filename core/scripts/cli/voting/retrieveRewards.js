@@ -12,7 +12,7 @@ module.exports = async (web3, voting) => {
 
   if (roundIds.length > 0) {
     console.group(
-      `${style.bgGreen(
+      `${style.bgRed(
         `\nPlease select which round ID of resolved price requests you would like to retrieve rewards for`
       )}`
     );

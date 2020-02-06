@@ -14,13 +14,15 @@ module.exports = async (web3, artifacts) => {
     const votingToken = await VotingToken.deployed();
     const votingBalance = await votingToken.balanceOf(address);
     style.spinnerReadingContracts.stop();
-    console.group(style.bgRed(`\n** Ethereum Account Info **`));
-    console.log(`- ${style.bgRed(`Address`)}: ${address}`);
-    console.log(`- ${style.bgRed(`Balance`)}: ${fromWei(balance)} ETH`);
-    console.log(`- ${style.bgRed(`Balance`)}: ${fromWei(votingBalance)} UMA voting token`);
+    console.group(style.bgGreen(`\n** Ethereum Account Info **`));
+    console.log(`- ${style.bgGreen(`Address`)}: ${address}`);
+    console.log(`- ${style.bgGreen(`Balance`)}: ${fromWei(balance)} ETH`);
+    console.log(`- ${style.bgGreen(`Balance`)}: ${fromWei(votingBalance)} UMA voting token`);
     console.log(`\n`);
     console.groupEnd();
   } catch (err) {
-    console.error(`Failed to read default account information:`, err);
+    console.error(
+      `Failed to read default account information. Are you sure the contracts are deployed to this network?`
+    );
   }
 };

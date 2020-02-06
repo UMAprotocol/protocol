@@ -22,7 +22,7 @@ module.exports = async (web3, voting) => {
   } else if (filteredRequests.length === 0) {
     console.log(`No pending votes to reveal!`);
   } else {
-    console.group(`${style.bgGreen(`\nPlease select which price requests you would like to reveal votes for`)}`);
+    console.group(`${style.bgRed(`\nPlease select which price requests you would like to reveal votes for`)}`);
 
     // To display properly, give each request a 'value' parameter
     for (let i = 0; i < filteredRequests.length; i++) {

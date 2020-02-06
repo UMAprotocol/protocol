@@ -30,28 +30,28 @@ module.exports = async (web3, voting) => {
   // Compute time until next phase and round
   const { minutesInLastHour, hoursUntilNextPhase, hoursUntilNextRound } = votePhaseTime(currentTime, roundPhase);
 
-  console.group(`${style.bgMagenta(`\n** Your voting status **`)}`);
-  console.log(`${style.bgMagenta(`- Current round ID`)}: ${roundId.toString()}`);
+  console.group(`${style.bgGreen(`\n** Your voting status **`)}`);
+  console.log(`${style.bgGreen(`- Current round ID`)}: ${roundId.toString()}`);
   console.log(
-    `${style.bgMagenta(`- Current round phase`)}: ${
+    `${style.bgGreen(`- Current round phase`)}: ${
       roundPhase.toString() === VotePhasesEnum.COMMIT ? "Commit" : "Reveal"
     }`
   );
-  console.log(`${style.bgMagenta(`- Round Inflation`)}: ${inflationRate.toString()} %`);
-  console.log(`${style.bgMagenta(`- Round GAT`)}: ${gatPercentage.toString()} %`);
-  console.log(`${style.bgMagenta(`- Contract time`)}: ${style.formatSecondsToUtc(currentTime)}`);
+  console.log(`${style.bgGreen(`- Round Inflation`)}: ${inflationRate.toString()} %`);
+  console.log(`${style.bgGreen(`- Round GAT`)}: ${gatPercentage.toString()} %`);
+  console.log(`${style.bgGreen(`- Contract time`)}: ${style.formatSecondsToUtc(currentTime)}`);
   console.log(
-    `${style.bgMagenta(
+    `${style.bgGreen(
       `- Time until ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "Reveal" : "Commit"}`
     )} phase: ${hoursUntilNextPhase} hours, ${minutesInLastHour} minutes`
   );
   console.log(
-    `${style.bgMagenta(`- Time until next voting round`)}: ${hoursUntilNextRound} hours, ${minutesInLastHour} minutes`
+    `${style.bgGreen(`- Time until next voting round`)}: ${hoursUntilNextRound} hours, ${minutesInLastHour} minutes`
   );
 
   // Display pending requests in a table
   console.log(
-    `${style.bgMagenta(`- Pending ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "Price" : "Reveal"} Requests`)}:`
+    `${style.bgGreen(`- Pending ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "Price" : "Reveal"} Requests`)}:`
   );
   if (filteredRequests.length > 0) {
     const requestsTable = [];
@@ -67,7 +67,7 @@ module.exports = async (web3, voting) => {
   }
 
   // Display rewards to be retrieved in a table
-  console.log(`${style.bgMagenta(`- Voting Rewards Available`)}:`);
+  console.log(`${style.bgGreen(`- Voting Rewards Available`)}:`);
   if (rewards.roundIds.length > 0) {
     const rewardsTable = [];
     Object.keys(rewards.resolvedVotesByRoundId).forEach(roundId => {
