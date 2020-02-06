@@ -20,7 +20,7 @@ import { useTableStyles } from "./Styles.js";
 import { getKeyGenMessage } from "./common/EncryptionHelper.js";
 import { getRandomUnsignedInt } from "./common/Random.js";
 import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "./common/Constants.js";
-import { decodeTransaction } from "./common/AdminUtils.js";
+import { getAdminRequestId, isAdminRequest, decodeTransaction } from "./common/AdminUtils.js";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -45,11 +45,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const { hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
-  const isAdminRequest = identifier => {
-    const adminPrefix = "Admin ";
-    return drizzle.web3.utils.hexToUtf8(identifier).startsWith(adminPrefix);
-  };
-
   const [checkboxesChecked, setCheckboxesChecked] = useState({});
   const check = (index, event) => {
     setCheckboxesChecked(old => ({ ...old, [index]: event.target.checked }));
@@ -59,15 +54,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
 
-  const [dialogOpen, setDialogOpen] = useState(-1);
-
-  // Deal with Hook crap here.
-  const proposal = useCacheCall("Governor", "getProposal", 0);
   const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
   }));
 
-  const initialFetchComplete = pendingRequests && currentRoundId && votePhase && account && proposal;
+  const initialFetchComplete = pendingRequests && currentRoundId && votePhase && account;
 
   const revealEvents = useCacheEvents(
     "Voting",
@@ -78,17 +69,39 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     ])
   );
 
+  const closedDialogIndex = -1;
+  const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
+  const handleClickExplain = index => {
+    setDialogContentIndex(index);
+  };
+
+  const handleClickClose = () => {
+    setDialogContentIndex(closedDialogIndex);
+  };
+
   const proposals = useCacheCall(["Governor"], call => {
     if (!initialFetchComplete) {
       return null;
     }
-    const adminPrefix = "Admin ";
     return pendingRequests.map(request => ({
-      proposal: isAdminRequest(request.identifier)
-        ? call("Governor", "getProposal", parseInt(hexToUtf8(request.identifier).slice(adminPrefix.length)))
+      proposal: isAdminRequest(hexToUtf8(request.identifier))
+        ? call("Governor", "getProposal", getAdminRequestId(hexToUtf8(request.identifier)))
         : null
     }));
   });
+  const decodeRequestIndex = index => {
+    if (index === closedDialogIndex) {
+      return "";
+    }
+    const proposal = proposals[index].proposal;
+    let output =
+      hexToUtf8(pendingRequests[index].identifier) + " (" + proposal.transactions.length + " transaction(s))";
+    for (let i = 0; i < proposal.transactions.length; i++) {
+      const transaction = proposal.transactions[i];
+      output += "\n\nTransaction #" + i + ":\n" + decodeTransaction(transaction);
+    }
+    return output;
+  };
 
   const voteStatuses = useCacheCall(["Voting"], call => {
     if (!initialFetchComplete) {
@@ -116,20 +129,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   // things and should retrigger dependent hooks. The replace function (the second argument) stringifies `undefined` to
   // the string `"undefined"`, so that it can be distinguished from the string `"null"`.
   const voteStatusesStringified = JSON.stringify(voteStatuses, (k, v) => (v === undefined ? "undefined" : v));
-
-  const mdecodeTransaction = index => {
-    if (index === -1) {
-      return "";
-    }
-    const proposal = proposals[index].proposal;
-    let output =
-      hexToUtf8(pendingRequests[index].identifier) + " (" + proposal.transactions.length + " transaction(s))";
-    for (let i = 0; i < proposal.transactions.length; i++) {
-      const transaction = proposal.transactions[i];
-      output += "\n\nTransaction #" + i + ":\n" + decodeTransaction(transaction);
-    }
-    return output;
-  };
 
   // The decryption key is a function of the account and `currentRoundId`, so we need the user to re-sign a message
   // any time one of those changes. We also don't want to show multiple, identical notifications when this effect gets
@@ -347,22 +346,16 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     }
   };
 
-  const handleClickExplain = index => {
-    setDialogOpen(index);
-  };
-
-  const handleClickClose = () => {
-    setDialogOpen(-1);
-  };
-
   return (
     <div className={classes.root}>
       <Typography variant="h6" component="h6">
         Active Requests
       </Typography>
-      <Dialog open={dialogOpen !== -1} onClose={handleClickClose}>
+      <Dialog open={dialogContentIndex !== closedDialogIndex} onClose={handleClickClose}>
         <DialogContent>
-          <DialogContentText style={{ whiteSpace: "pre-wrap" }}>{mdecodeTransaction(dialogOpen)}</DialogContentText>
+          <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
+            {decodeRequestIndex(dialogContentIndex)}
+          </DialogContentText>
         </DialogContent>
       </Dialog>
       <Table style={{ marginBottom: "10px" }}>
@@ -383,13 +376,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
               <TableRow key={index}>
                 <TableCell>
                   <span>
-                    {drizzle.web3.utils.hexToUtf8(pendingRequest.identifier)}{" "}
-                    {isAdminRequest(pendingRequest.identifier) && (
-                      <>
-                        <Button variant="contained" color="primary" onClick={() => handleClickExplain(index)}>
-                          Explain
-                        </Button>
-                      </>
+                    {hexToUtf8(pendingRequest.identifier)}{" "}
+                    {isAdminRequest(hexToUtf8(pendingRequest.identifier)) && (
+                      <Button variant="contained" color="primary" onClick={() => handleClickExplain(index)}>
+                        Explain
+                      </Button>
                     )}
                   </span>
                 </TableCell>

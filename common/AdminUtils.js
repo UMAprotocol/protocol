@@ -26,6 +26,19 @@ function decodeTransaction(transaction) {
   return returnValue;
 }
 
+const adminPrefix = "Admin ";
+
+function isAdminRequest(identifierUtf8) {
+  return identifierUtf8.startsWith(adminPrefix);
+}
+
+// Assumes that `identifierUtf8` is an admin request, i.e., `isAdminRequest()` returns true for it.
+function getAdminRequestId(identifierUtf8) {
+  return parseInt(identifierUtf8.slice(adminPrefix.length), 10);
+}
+
 module.exports = {
-  decodeTransaction
+  decodeTransaction,
+  isAdminRequest,
+  getAdminRequestId
 };
