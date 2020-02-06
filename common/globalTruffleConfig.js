@@ -3,12 +3,18 @@ const GckmsConfig = require("./gckms/GckmsConfig.js");
 const ManagedSecretProvider = require("./gckms/ManagedSecretProvider.js");
 const publicNetworks = require("./PublicNetworks.js");
 const LedgerWalletProvider = require("@umaprotocol/truffle-ledger-provider");
+const MetaMaskTruffleProvider = require("./MetaMaskTruffleProvider.js");
 require("dotenv").config();
 
 // Fallback to a public mnemonic to prevent exceptions
 const mnemonic = process.env.MNEMONIC
   ? process.env.MNEMONIC
   : "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+
+// Fallback to a public private key to prevent exceptions
+const privateKey = process.env.PRIVATE_KEY
+  ? process.env.PRIVATE_KEY
+  : "0x348ce564d427a3311b6536bbcff9390d69395b06ed6c486954e971d960fe8709";
 
 // Fallback to a backup non-prod API key.
 const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "9317010b1b6343558b7eff9d25934f38";
@@ -36,6 +42,12 @@ function addPublicNetwork(networks, name, networkId) {
       0,
       GckmsConfig.length
     )
+  };
+
+  // Private key network.
+  networks[name + "_privatekey"] = {
+    ...options,
+    provider: new HDWalletProvider([privateKey], `https://${name}.infura.io/v3/${infuraApiKey}`)
   };
 
   // Mnemonic network.
@@ -110,6 +122,9 @@ addLocalNetwork(networks, "test");
 
 // Coverage requires specific parameters to allow very high cost transactions.
 addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
+
+// MetaMask truffle provider
+addLocalNetwork(networks, "metamask", { provider: new MetaMaskTruffleProvider() });
 
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>

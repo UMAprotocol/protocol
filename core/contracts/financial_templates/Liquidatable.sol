@@ -67,9 +67,7 @@ contract Liquidatable is PricelessPositionManager {
     */
 
     // Liquidations are unique by ID per sponsor
-    mapping(address => mapping(uint => LiquidationData)) public liquidations;
-    // Keeps track of last used liquidation ID per sponsor
-    mapping(address => uint) public sponsorLiquidationIndex;
+    mapping(address => LiquidationData[]) public liquidations;
 
     // Amount of time for pending liquidation before expiry
     uint liquidationLiveness;
@@ -116,11 +114,14 @@ contract Liquidatable is PricelessPositionManager {
      * Method modifiers
      */
 
+    // TODO: could this modifier be replaced with one called `onlyPreDispute` and then the function can use
+    // the `onlyPreExpiration` modifier from the base contract and this one in conjunction?
+
     // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         require(
-            (getCurrentTime() < _getLiquidationData(sponsor, id).expiry) &&
-                (_getLiquidationData(sponsor, id).state == Status.PreDispute),
+            (getCurrentTime() < liquidation.expiry) && (liquidation.state == Status.PreDispute),
             "Liquidation has expired or has already been disputed"
         );
         _;
@@ -128,11 +129,12 @@ contract Liquidatable is PricelessPositionManager {
     // Callable either post the liquidation's expiry or after a dispute has been resolved,
     // i.e. once a dispute has been requested, the liquidation's expiry ceases to matter
     modifier onlyPostExpiryOrPostDispute(uint id, address sponsor) {
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
+        Status state = liquidation.state;
         require(
-            (_getLiquidationData(sponsor, id).state == Status.DisputeSucceeded) ||
-                (_getLiquidationData(sponsor, id).state == Status.DisputeFailed) ||
-                ((_getLiquidationData(sponsor, id).expiry <= getCurrentTime()) &&
-                    (_getLiquidationData(sponsor, id).state == Status.PreDispute)),
+            (state == Status.DisputeSucceeded) ||
+                (state == Status.DisputeFailed) ||
+                ((liquidation.expiry <= getCurrentTime()) && (state == Status.PreDispute)),
             "Liquidation has not expired or is pending dispute"
         );
         _;
@@ -232,10 +234,10 @@ contract Liquidatable is PricelessPositionManager {
 
         // Destroy tokens
         require(
-            tokenCurrency.transferFrom(msg.sender, address(this), newLiquidation.tokensOutstanding.rawValue),
+            tokenCurrency.transferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue),
             "failed to transfer synthetic tokens from sender"
         );
-        tokenCurrency.burn(newLiquidation.tokensOutstanding.rawValue);
+        tokenCurrency.burn(positionToLiquidate.tokensOutstanding.rawValue);
 
         emit LiquidationCreated(
             sponsor,
@@ -299,8 +301,10 @@ contract Liquidatable is PricelessPositionManager {
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
-        // bool disputeSucceeded = !requiredCollateral.isLessThan(disputedLiquidation.liquidatedCollateral);
-        bool disputeSucceeded = disputedLiquidation.liquidatedCollateral.isGreaterThan(requiredCollateral);
+
+        // TODO: refactor this to use `isGreaterThanOrEqual` when the fixedpoint lib is updated
+        bool disputeSucceeded = requiredCollateral.isLessThan(disputedLiquidation.liquidatedCollateral);
+        // bool disputeSucceeded = disputedLiquidation.liquidatedCollateral.isGreaterThan(requiredCollateral);
 
         if (disputeSucceeded) {
             disputedLiquidation.state = Status.DisputeSucceeded;
@@ -346,6 +350,11 @@ contract Liquidatable is PricelessPositionManager {
 
         if (liquidation.state == Status.DisputeSucceeded) {
             if (msg.sender == liquidation.disputer) {
+                // TODO: right now this call can siphon out funds if the disputer calls it multiple times.
+                // This needs to be addressed in a futuer PR + unit test coverage to ensure that if multiple
+                // calls are done by the sponsor, disputor or liquidator they can only withdraw what is
+                // entitled to them ONCE
+
                 // Pay DISPUTER: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
                 require(
@@ -413,7 +422,14 @@ contract Liquidatable is PricelessPositionManager {
         view
         returns (LiquidationData storage liquidation)
     {
-        liquidation = liquidations[sponsor][uuid];
-        require(liquidation.liquidator != address(0), "Liquidation does not exist: liquidator address is not set");
+        LiquidationData[] storage liquidationArray = liquidations[sponsor];
+
+        // Revert if the caller is attempting to access an invalid liquidation (one that has never been created or one
+        // that was deleted after resolution).
+        require(
+            uuid < liquidationArray.length && liquidationArray[uuid].liquidator != address(0),
+            "Invalid liquidation: liquidator address is not set"
+        );
+        return liquidationArray[uuid];
     }
 }

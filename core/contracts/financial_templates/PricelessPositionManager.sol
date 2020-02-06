@@ -117,6 +117,7 @@ contract PricelessPositionManager is Testable {
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
      * increase the collateralization level of a position.
      */
+    // TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot deposit with a pending withdrawal request");
@@ -373,6 +374,20 @@ contract PricelessPositionManager is Testable {
         return positions[sponsor];
     }
 
+    function _getIdentifierWhitelistAddress() internal view returns (address) {
+        bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
+        return finder.getImplementationAddress(identifierWhitelistInterface);
+    }
+    function _getStoreAddress() internal view returns (address) {
+        bytes32 storeInterface = "Store";
+        return finder.getImplementationAddress(storeInterface);
+    }
+
+    function _getOracleAddress() internal view returns (address) {
+        bytes32 oracleInterface = "Oracle";
+        return finder.getImplementationAddress(oracleInterface);
+    }
+
     function _requestOraclePrice(uint requestedTime) internal {
         OracleInterface oracle = OracleInterface(_getOracleAddress());
         oracle.requestPrice(priceIdentifer, requestedTime);
@@ -389,20 +404,6 @@ contract PricelessPositionManager is Testable {
             oraclePrice = 0;
         }
         return FixedPoint.Unsigned(_safeUintCast(oraclePrice));
-    }
-
-    function _getOracleAddress() internal view returns (address) {
-        bytes32 oracleInterface = "Oracle";
-        return finder.getImplementationAddress(oracleInterface);
-    }
-
-    function _getIdentifierWhitelistAddress() internal view returns (address) {
-        bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
-        return finder.getImplementationAddress(identifierWhitelistInterface);
-    }
-    function _getStoreAddress() internal view returns (address) {
-        bytes32 storeInterface = "Store";
-        return finder.getImplementationAddress(storeInterface);
     }
 
     function _checkCollateralizationRatio(PositionData storage positionData) private view returns (bool) {

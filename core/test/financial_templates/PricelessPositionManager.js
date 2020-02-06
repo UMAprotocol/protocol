@@ -11,6 +11,11 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("Token");
 
+// Other UMA related contracts and mocks
+const Finder = artifacts.require("Finder");
+const MockOracle = artifacts.require("MockOracle");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+
 // Helper Contracts
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
@@ -29,6 +34,7 @@ contract("PricelessPositionManager", function(accounts) {
   let collateral;
   let pricelessPositionManager;
   let tokenCurrency;
+  let priceTrackingIdentifier;
   let identifierWhitelist;
   let mockOracle;
   let finder;
@@ -69,6 +75,7 @@ contract("PricelessPositionManager", function(accounts) {
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
+    priceTrackingIdentifier = web3.utils.hexToBytes(web3.utils.utf8ToHex("ETHUSD"));
     await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
       from: contractDeployer
     });
@@ -211,6 +218,8 @@ contract("PricelessPositionManager", function(accounts) {
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
+
+    // TODO: Add a test to check that normal redemption does not work after maturity.
   });
 
   it("Withdrawal request", async function() {
@@ -546,4 +555,5 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor });
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor })));
   });
+  //TODO: check position is correctly deleted on settle expired
 });

@@ -2,7 +2,7 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
 const BN = require("bignumber.js");
-const { toWei } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 
 // Helper Contracts
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
@@ -72,7 +72,6 @@ contract("Liquidatable", function(accounts) {
   let priceTrackingIdentifier;
   let mockOracle;
   let finder;
-
   let liquidatableParameters;
 
   // Basic liquidation params
@@ -268,16 +267,9 @@ contract("Liquidatable", function(accounts) {
         assert.equal(newLiquidation.settlementPrice.toString(), "0");
       });
       it("Liquidation does not exist", async () => {
-        const uncreatedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.falseUuid);
-        assert.equal(uncreatedLiquidation.state.toString(), STATES.PRE_DISPUTE);
-        assert.equal(uncreatedLiquidation.liquidator, zeroAddress);
-        assert.equal(uncreatedLiquidation.tokensOutstanding.toString(), "0");
-        assert.equal(uncreatedLiquidation.lockedCollateral.toString(), "0");
-        assert.equal(uncreatedLiquidation.liquidatedCollateral.toString(), "0");
-        assert.equal(uncreatedLiquidation.expiry.toString(), "0");
-        assert.equal(uncreatedLiquidation.disputer, zeroAddress);
-        assert.equal(uncreatedLiquidation.disputeTime.toString(), "0");
-        assert.equal(uncreatedLiquidation.settlementPrice.toString(), "0");
+        const uncreatedLiquidation = assert(
+          await didContractThrow(liquidationContract.liquidations(sponsor, liquidationParams.falseUuid))
+        );
       });
     });
 
@@ -329,11 +321,8 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         // Oracle should have an enqueued price after calling dispute
         const pendingRequests = await mockOracle.getPendingQueries();
-        assert.equal(
-          pendingRequests[0]["identifier"],
-          priceTrackingIdentifier.padEnd(pendingRequests[0]["identifier"].length, 0)
-        );
-        assert.equal(pendingRequests[0]["time"], disputeTime);
+        assert.equal(hexToUtf8(pendingRequests[0]["identifier"]), hexToUtf8(priceTrackingIdentifier));
+        assert.equal(pendingRequests[0].time, disputeTime);
       });
       it("Throw if liquidation has already been disputed", async () => {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
