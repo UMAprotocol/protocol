@@ -1,24 +1,36 @@
-// const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-// const Finder = artifacts.require()
-// // Helper Contracts
-// const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-// const truffleContract = require("@truffle/contract");
-// const ERC20Mintable = truffleContract(ERC20MintableData);
-// ERC20Mintable.setProvider(web3.currentProvider);
+const { toWei } = web3.utils;
 
-// contract("ExpiringMultiParty", function(accounts) {
-//   it("Empty", async function() {
-//     const collateralAddress = await ERC20Mintable.new({ from: accounts[0] });
-//     const { toWei } = web3.utils;
-//     await ExpiringMultiParty.new(
-//       true,
-//       "1234567890",
-//       "1000",
-//       collateralAddress.address,
-//       { rawValue: toWei("0.1") },
-//       { rawValue: toWei("0.1") },
-//       { rawValue: toWei("0.1") },
-//       1000
-//     );
-//   });
-// });
+// Tested Contract
+const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+
+// Helper Contracts
+const Finder = artifacts.require("Finder");
+const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
+const truffleContract = require("@truffle/contract");
+const ERC20Mintable = truffleContract(ERC20MintableData);
+ERC20Mintable.setProvider(web3.currentProvider);
+
+contract("ExpiringMultiParty", function(accounts) {
+  it("Can deploy", async function() {
+    const collateralToken = await ERC20Mintable.new({ from: accounts[0] });
+    const finder = await Finder.new();
+
+    const constructorParams = {
+      isTest: true,
+      expirationTimestamp: "1234567890",
+      withdrawalLiveness: "1000",
+      collateralAddress: collateralToken.address,
+      finderAddress: finder.address,
+      priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
+      syntheticName: "Test UMA Token",
+      syntheticSymbol: "UMATEST",
+      liquidationLiveness: "1000",
+      collateralRequirement: { rawValue: toWei("1.5") },
+      disputeBondPct: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+    };
+    await ExpiringMultiParty.new(constructorParams);
+    assert(true);
+  });
+});
