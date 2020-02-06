@@ -505,6 +505,6 @@ contract("PricelessPositionManager", function(accounts) {
     // Set the store fees back to 0 to prevent it from affecting other tests.
     await store.setFixedOracleFeePerSecond({ rawValue: "0" });
   });
-  
+
   //TODO: check position is correctly deleted on settle expired
 });

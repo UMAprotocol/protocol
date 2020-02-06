@@ -9,7 +9,6 @@ ERC20Mintable.setProvider(web3.currentProvider);
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Empty", async function() {
-
     const collateralAddress = await ERC20Mintable.new({ from: accounts[0] });
     const { toWei } = web3.utils;
     await ExpiringMultiParty.new(

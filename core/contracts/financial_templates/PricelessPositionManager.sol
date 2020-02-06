@@ -75,18 +75,6 @@ contract PricelessPositionManager is FeePayer {
     constructor(
         uint _expirationTimestamp,
         uint _withdrawalLiveness,
-        address collateralAddress,
-        address finderAddress,
-        bool _isTest
-    ) public FeePayer(collateralAddress, finderAddress, _isTest) {
-        expirationTimestamp = _expirationTimestamp;
-        withdrawalLiveness = _withdrawalLiveness;
-        Token mintableToken = new Token();
-        tokenCurrency = ExpandedIERC20(address(mintableToken));
-        positionFeeAdjustment = FixedPoint.fromUnscaledUint(1);
-    constructor(
-        uint _expirationTimestamp,
-        uint _withdrawalLiveness,
         address _collateralAddress,
         bool _isTest,
         address _finderAddress,
@@ -329,7 +317,7 @@ contract PricelessPositionManager is FeePayer {
 
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
             FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(settlementPrice);
-            FixedPoint.Unsigned memory positionRedeemableCollateral = positionData.collateral.sub(
+            FixedPoint.Unsigned memory positionRedeemableCollateral = _getCollateral(positionData).sub(
                 tokenDebtValueInCollateral
             );
 
@@ -360,7 +348,7 @@ contract PricelessPositionManager is FeePayer {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         // Remove the collateral and outstanding from the overall total position.
-        totalPositionCollateral = totalPositionCollateral.sub(positionToLiquidate.collateral);
+        totalPositionCollateral = totalPositionCollateral.sub(_getCollateral(positionToLiquidate));
         totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
         // Reset the sponsors position to have zero outstanding and collateral.
