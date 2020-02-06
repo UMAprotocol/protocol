@@ -317,20 +317,6 @@ contract PricelessPositionManager is Testable {
         return FixedPoint.Unsigned(_safeUintCast(oraclePrice));
     }
 
-    function _getOracleAddress() internal view returns (address) {
-        bytes32 oracleInterface = "Oracle";
-        return finder.getImplementationAddress(oracleInterface);
-    }
-
-    function _getIdentifierWhitelistAddress() internal view returns (address) {
-        bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
-        return finder.getImplementationAddress(identifierWhitelistInterface);
-    }
-    function _getStoreAddress() internal view returns (address) {
-        bytes32 storeInterface = "Store";
-        return finder.getImplementationAddress(storeInterface);
-    }
-
     function _checkCollateralizationRatio(PositionData storage positionData) private view returns (bool) {
         FixedPoint.Unsigned memory global = _getCollateralizationRatio(totalPositionCollateral, totalTokensOutstanding);
         FixedPoint.Unsigned memory thisPos = _getCollateralizationRatio(

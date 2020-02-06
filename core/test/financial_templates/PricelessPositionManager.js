@@ -174,7 +174,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
 
-    // TODO: Add a test to check that normal redemption does not work after expiratory.
+    // TODO: Add a test to check that normal redemption does not work after maturity.
   });
 
   it("Withdrawal request", async function() {
@@ -385,7 +385,7 @@ contract("PricelessPositionManager", function(accounts) {
     const redemptionPrice = toWei("0.0005");
     await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), redemptionPrice);
 
-    //Token holder settle their synthetic tokens and redeem their tokens.
+    // Token holder settle their synthetic tokens and redeem their tokens.
     const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     assert(tokenHolderInitialSynthetic, tokenHolderTokens);
@@ -408,7 +408,7 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should have no synthetic positions left after settlement.
     assert(tokenHolderFinalSynthetic, 0);
 
-    //Token sponsor settle their synthetic tokens and redeem their tokens.
+    // Token sponsor settle their synthetic tokens and redeem their tokens.
     const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
 

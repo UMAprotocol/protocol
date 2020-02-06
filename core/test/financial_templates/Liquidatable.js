@@ -1,7 +1,7 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const BN = require("bignumber.js");
-const { toWei } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 
 // Helper Contracts
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
@@ -297,11 +297,8 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         // Oracle should have an enqueued price after calling dispute
         const pendingRequests = await mockOracle.getPendingQueries();
-        assert.equal(
-          pendingRequests[0]["identifier"],
-          priceTrackingIdentifier.padEnd(pendingRequests[0]["identifier"].length, 0)
-        );
-        assert.equal(pendingRequests[0]["time"], disputeTime);
+        assert.equal(hexToUtf8(pendingRequests[0]["identifier"]), hexToUtf8(priceTrackingIdentifier));
+        assert.equal(pendingRequests[0].time, disputeTime);
       });
       it("Throw if liquidation has already been disputed", async () => {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });

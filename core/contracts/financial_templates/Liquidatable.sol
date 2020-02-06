@@ -266,8 +266,10 @@ contract Liquidatable is PricelessPositionManager {
 
         // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
         // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
-        // bool disputeSucceeded = !requiredCollateral.isLessThan(disputedLiquidation.liquidatedCollateral);
-        bool disputeSucceeded = disputedLiquidation.liquidatedCollateral.isGreaterThan(requiredCollateral);
+        
+        // TODO: refactor this to use `isGreaterThanOrEqual` when the fixedpoint lib is updated
+        bool disputeSucceeded = requiredCollateral.isLessThan(disputedLiquidation.liquidatedCollateral);
+        // bool disputeSucceeded = disputedLiquidation.liquidatedCollateral.isGreaterThan(requiredCollateral);
 
         if (disputeSucceeded) {
             disputedLiquidation.state = Status.DisputeSucceeded;
@@ -307,6 +309,11 @@ contract Liquidatable is PricelessPositionManager {
 
         if (liquidation.state == Status.DisputeSucceeded) {
             if (msg.sender == liquidation.disputer) {
+                // TODO: right now this call can siphon out funds if the disputer calls it multiple times.
+                // This needs to be addressed in a futuer PR + unit test coverage to ensure that if multiple
+                // calls are done by the sponsor, disputor or liquidator they can only withdraw what is
+                // entitled to them ONCE
+                
                 // Pay DISPUTER: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
                 require(
