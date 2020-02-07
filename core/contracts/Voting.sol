@@ -84,7 +84,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned inflationRate;
         // Gat rate set for this round.
         FixedPoint.Unsigned gatPercentage;
-        uint rewardsExpirationSeconds;
+        // Time that rewards for this round can be claimed until.
+        uint rewardsExpirationTime;
     }
 
     // Represents the status a price request has.
@@ -129,7 +130,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // 1 = 100%
     FixedPoint.Unsigned public inflationRate;
 
-    uint public rewardsExpirationSeconds;
+    // Time in seconds from the end of the round in which a price request is resolved that voters can still claim their
+    // rewards.
+    uint public rewardsExpirationTimeout;
 
     // Reference to the voting token.
     VotingToken public votingToken;
@@ -190,7 +193,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         votingToken = VotingToken(_votingToken);
         identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
         finder = Finder(_finder);
-        rewardsExpirationSeconds = 60 * 60 * 24 * 14; // 14 days.
+        rewardsExpirationTimeout = 60 * 60 * 24 * 14; // 14 days.
     }
 
     modifier onlyRegisteredDerivative() {
@@ -399,8 +402,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         gatPercentage = _gatPercentage;
     }
 
-    function setRewardsExpirationTime(uint _rewardsExpiration) public onlyOwner {
-        rewardsExpirationSeconds = _rewardsExpiration;
+    function setRewardsExpirationTimeout(uint _rewardsExpirationTimeout) public onlyOwner {
+        rewardsExpirationTimeout = _rewardsExpirationTimeout;
     }
 
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
@@ -414,7 +417,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         require(roundId < voteTiming.computeCurrentRoundId(blockTime), "Invalid roundId");
 
         Round storage round = rounds[roundId];
-        bool isExpired = blockTime - voteTiming.computeRoundEndTime(roundId) > round.rewardsExpirationSeconds;
+        bool isExpired = blockTime > round.rewardsExpirationTime;
         FixedPoint.Unsigned memory snapshotBalance = FixedPoint.Unsigned(
             votingToken.balanceOfAt(voterAddress, round.snapshotId)
         );
@@ -550,7 +553,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gatPercentage = gatPercentage;
 
-            rounds[roundId].rewardsExpirationSeconds = rewardsExpirationSeconds;
+            // Set the rewards expiration time based on end of time of this round and the current global timeout.
+            rounds[roundId].rewardsExpirationTime = voteTiming.computeRoundEndTime(roundId) + rewardsExpirationTimeout;
         }
     }
 

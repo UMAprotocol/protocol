@@ -838,7 +838,9 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
 
     // This should have no effect because the expiration has been captured.
-    await voting.setRewardsExpirationTime(1);
+    await voting.setRewardsExpirationTimeout(1);
+    // Only the owner should be able to call this method, however.
+    assert(await didContractThrow(voting.setRewardsExpirationTimeout(1, { from: account2 })));
 
     const roundId = await voting.getCurrentRoundId();
     const req = [{ identifier: identifier, time: time }];
@@ -855,12 +857,30 @@ contract("Voting", function(accounts) {
 
     // No change in balances because the rewards have expired.
     account1Rewards = await voting.retrieveRewards.call(account1, roundId, req);
-    await voting.retrieveRewards(account1, roundId, req);
     assert.equal(account1Rewards.toString(), "0");
+
+    // The price is still resolved and the expected events are emitted.
+    const result = await voting.retrieveRewards(account1, roundId, req);
+    truffleAssert.eventEmitted(result, "PriceResolved", ev => {
+      return (
+        ev.resolutionRoundId.toString() == roundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time == time &&
+        ev.price.toString() == winningPrice.toString()
+      );
+    });
+    truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => {
+      return (
+        ev.voter.toString() == account1.toString() &&
+        ev.roundId.toString() == roundId.toString() &&
+        ev.time == time &&
+        ev.numTokens.toString() == "0"
+      );
+    });
 
     // Reset the inflation rate and rewards expiration time.
     await setNewInflationRate("0");
-    await voting.setRewardsExpirationTime(60 * 60 * 24 * 14);
+    await voting.setRewardsExpirationTimeout(60 * 60 * 24 * 14);
   });
 
   it("Basic Inflation", async function() {
