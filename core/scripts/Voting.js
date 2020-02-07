@@ -1,14 +1,17 @@
 const Voting = artifacts.require("Voting");
 const { VotePhasesEnum } = require("../../common/Enums");
 const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../common/Constants");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../common/Crypto");
-const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper");
+const { computeTopicHash } = require("../../common/EncryptionHelper");
 const publicNetworks = require("../../common/PublicNetworks");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
 const gmailSend = require("gmail-send")();
 const moment = require("moment");
+const {
+  constructCommitment: _constructCommitment,
+  constructReveal: _constructReveal
+} = require("../../common/VotingUtils");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
@@ -462,21 +465,7 @@ class VotingSystem {
 
   async constructCommitment(request, roundId, isProd) {
     const fetchedPrice = await fetchPrice(request, isProd);
-    const salt = web3.utils.toBN(web3.utils.randomHex(32));
-    const hash = web3.utils.soliditySha3(fetchedPrice, salt);
-
-    const vote = { price: fetchedPrice, salt };
-    const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
-    const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
-
-    return {
-      identifier: request.identifier,
-      time: request.time,
-      hash,
-      encryptedVote,
-      price: fetchedPrice,
-      salt
-    };
+    return await _constructCommitment(request, roundId, web3, web3.utils.fromWei(fetchedPrice), this.account);
   }
 
   async runBatchCommit(requests, roundId, isProd) {
@@ -544,27 +533,14 @@ class VotingSystem {
   }
 
   async constructReveal(request, roundId, isProd) {
-    const encryptedCommit = await this.getMessage(request, roundId);
-
-    let vote;
-
-    // Catch messages that are indecipherable and handle by skipping over the request.
     try {
-      const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
-      vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
+      return await _constructReveal(request, roundId, web3, this.account, this.voting);
     } catch (e) {
       if (isProd) {
         console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
       }
       return null;
     }
-
-    return {
-      identifier: request.identifier,
-      time: request.time,
-      price: vote.price.toString(),
-      salt: web3.utils.hexToNumberString("0x" + vote.salt.toString())
-    };
   }
 
   async runBatchReveal(requests, roundId, isProd) {
