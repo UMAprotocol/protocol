@@ -65,7 +65,7 @@ contract("Voting", function(accounts) {
     const finder = await Finder.deployed();
     assert(
       await didContractThrow(
-        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, votingToken.address, finder.address, true)
+        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, 1, votingToken.address, finder.address, true)
       )
     );
   });
@@ -1309,6 +1309,7 @@ contract("Voting", function(accounts) {
       "86400",
       { rawValue: "0" },
       { rawValue: "0" },
+      "86400",
       votingToken.address,
       supportedIdentifiers.address,
       (await Finder.deployed()).address,

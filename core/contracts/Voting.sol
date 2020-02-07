@@ -181,6 +181,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint phaseLength,
         FixedPoint.Unsigned memory _gatPercentage,
         FixedPoint.Unsigned memory _inflationRate,
+        uint _rewardsExpirationTimeout,
         address _votingToken,
         address _identifierWhitelist,
         address _finder,
@@ -193,7 +194,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         votingToken = VotingToken(_votingToken);
         identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
         finder = Finder(_finder);
-        rewardsExpirationTimeout = 60 * 60 * 24 * 14; // 14 days.
+        rewardsExpirationTimeout = _rewardsExpirationTimeout;
     }
 
     modifier onlyRegisteredDerivative() {
