@@ -254,30 +254,30 @@ async function getIntrinioForexPrice(asset) {
 
 async function fetchPrice(assetConfig) {
   switch (assetConfig.dataSource) {
-    case "IntrinioEquities":
-      return await getIntrinioEquitiesPrice(assetConfig.assetName);
-    case "IntrinioForex":
-      return await getIntrinioForexPrice(assetConfig.assetName);
-    case "Barchart":
-      return await getBarchartStandardPrice(assetConfig.assetName);
-    case "Constant":
-      return await getConstantPrice(assetConfig.assetName);
-    case "BarchartEquities":
-      return await getBarchartEquitiesPrice(assetConfig.assetName);
-    case "BarchartCrypto":
-      return await getBarchartCryptoPrice(assetConfig.assetName);
-    case "CMCCrypto":
-      return await getCMCCryptoPrice(assetConfig.assetName);
-    case "CMCGlobalMetric":
-      return await getCMCGlobalMetricPrice(assetConfig.assetName);
-    case "AlphaVantage":
-      return await getAlphaVantageQuote(assetConfig.assetName);
-    case "AlphaVantageCurrency":
-      return await getAlphaVantageCurrencyRate(assetConfig.assetName);
-    case "Coinbase":
-      return await getCoinbasePrice(assetConfig.assetName);
-    default:
-      throw `Unknown dataSource [${value.uploaderConfig.dataSource}]`;
+  case "IntrinioEquities":
+    return await getIntrinioEquitiesPrice(assetConfig.assetName);
+  case "IntrinioForex":
+    return await getIntrinioForexPrice(assetConfig.assetName);
+  case "Barchart":
+    return await getBarchartStandardPrice(assetConfig.assetName);
+  case "Constant":
+    return await getConstantPrice(assetConfig.assetName);
+  case "BarchartEquities":
+    return await getBarchartEquitiesPrice(assetConfig.assetName);
+  case "BarchartCrypto":
+    return await getBarchartCryptoPrice(assetConfig.assetName);
+  case "CMCCrypto":
+    return await getCMCCryptoPrice(assetConfig.assetName);
+  case "CMCGlobalMetric":
+    return await getCMCGlobalMetricPrice(assetConfig.assetName);
+  case "AlphaVantage":
+    return await getAlphaVantageQuote(assetConfig.assetName);
+  case "AlphaVantageCurrency":
+    return await getAlphaVantageCurrencyRate(assetConfig.assetName);
+  case "Coinbase":
+    return await getCoinbasePrice(assetConfig.assetName);
+  default:
+    throw `Unknown dataSource [${value.uploaderConfig.dataSource}]`;
   }
 }
 

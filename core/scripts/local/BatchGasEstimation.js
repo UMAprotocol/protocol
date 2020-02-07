@@ -74,17 +74,17 @@ async function run() {
       console.log("testing size:", requestNum);
       try {
         switch (j) {
-          case 0:
-            await cycleCommit(voting, identifier, time, requestNum, registeredDerivative, voter, results);
-            break;
-          case 1:
-            await cycleReveal(voting, identifier, time, requestNum, registeredDerivative, voter, results);
-            break;
-          case 2:
-            await cycleClaim(voting, identifier, time, requestNum, registeredDerivative, voter, results);
-            break;
-          default:
-            break;
+        case 0:
+          await cycleCommit(voting, identifier, time, requestNum, registeredDerivative, voter, results);
+          break;
+        case 1:
+          await cycleReveal(voting, identifier, time, requestNum, registeredDerivative, voter, results);
+          break;
+        case 2:
+          await cycleClaim(voting, identifier, time, requestNum, registeredDerivative, voter, results);
+          break;
+        default:
+          break;
         }
         highestPassed = requestNum;
         if (lowestFailed != 0) {

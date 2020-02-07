@@ -308,7 +308,7 @@ contract("Liquidatable", function(accounts) {
             ev.liquidator == liquidator &&
             ev.disputer == disputer &&
             ev.disputeId == 0 &&
-            ev.disputeBondAmount == toWei("15").toString() //10% of the collateral as disputeBondPct * amountOfCollateral
+            ev.disputeBondAmount == toWei("15").toString() // 10% of the collateral as disputeBondPct * amountOfCollateral
           );
         });
       });
@@ -399,7 +399,7 @@ contract("Liquidatable", function(accounts) {
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
-        //Any price above 1.25 for a debt of 100 with 150 units of underlying should result in failed dispute and a successful liquidation.
+        // Any price above 1.25 for a debt of 100 with 150 units of underlying should result in failed dispute and a successful liquidation.
 
         const disputeTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1.3");

@@ -411,7 +411,7 @@ contract("scripts/Voting.js", function(accounts) {
     // End voting (commit & reveal) process.
     await moveToNextRound(voting);
     pendingVotes = await voting.getPendingRequests();
-    assert.equal(pendingVotes.length, 0, `There should be 0 pending requests during post-reveal phase`);
+    assert.equal(pendingVotes.length, 0, "There should be 0 pending requests during post-reveal phase");
 
     // Sanity check.
     assert.equal(

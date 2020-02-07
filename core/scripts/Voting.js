@@ -327,26 +327,26 @@ async function fetchBarchartPrice(request, config, isProd) {
 
 async function fetchPriceInner(request, config, isProd) {
   switch (config.dataSource) {
-    case "CryptoCompare":
-      return await fetchCryptoComparePrice(
-        {
-          identifier: { first: config.identifiers.first, second: config.identifiers.second },
-          time: request.time
-        },
-        isProd
-      );
-    case "Constant":
-      return await fetchConstantPrice(request, config, isProd);
-    case "IntrinioEquities":
-      return await fetchIntrinioEquitiesPrice(request, config, isProd);
-    case "IntrinioForex":
-      return await fetchIntrinioForexPrice(request, config, isProd);
-    case "Barchart":
-      return await fetchBarchartPrice(request, config, isProd);
-    case "Manual":
-      throw "Unsupported config. Please vote manually using the dApp";
-    default:
-      throw "No known data source specified";
+  case "CryptoCompare":
+    return await fetchCryptoComparePrice(
+      {
+        identifier: { first: config.identifiers.first, second: config.identifiers.second },
+        time: request.time
+      },
+      isProd
+    );
+  case "Constant":
+    return await fetchConstantPrice(request, config, isProd);
+  case "IntrinioEquities":
+    return await fetchIntrinioEquitiesPrice(request, config, isProd);
+  case "IntrinioForex":
+    return await fetchIntrinioForexPrice(request, config, isProd);
+  case "Barchart":
+    return await fetchBarchartPrice(request, config, isProd);
+  case "Manual":
+    throw "Unsupported config. Please vote manually using the dApp";
+  default:
+    throw "No known data source specified";
   }
 }
 
@@ -673,7 +673,7 @@ class VotingSystem {
       );
 
     // Join the blocks (with a single line break between) to form the text that gives details on all the requests.
-    const requestsText = blocks.join(`<br />`);
+    const requestsText = blocks.join("<br />");
 
     // TODO: Add the following docs/links to the bottom of the notification:
     // <bold>Additional information and instructions:</bold>
@@ -726,13 +726,13 @@ class VotingSystem {
         console.log(
           `Completed ${updates.length} commits, skipped ${skipped.length} commits, failed ${
             failures.length
-          } commits, split into ${batches} batch${batches != 1 ? `es` : ``}`
+          } commits, split into ${batches} batch${batches != 1 ? "es" : ""}`
         );
       }
     } else {
       ({ reveals: updates, batches } = await this.runBatchReveal(pendingRequests, roundId, isProd));
       if (isProd) {
-        console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? `es` : ``}`);
+        console.log(`Completed ${updates.length} reveals, split into ${batches} batch${batches != 1 ? "es" : ""}`);
       }
     }
 
@@ -779,7 +779,7 @@ async function runVoting(isProd) {
     const votingSystem = new VotingSystem(voting, account, getNotifiers());
     return await votingSystem.runIteration(isProd);
   } catch (error) {
-    console.error(`AVS Failed:`, error);
+    console.error("AVS Failed:", error);
   }
 }
 

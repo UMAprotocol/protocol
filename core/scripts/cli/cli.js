@@ -31,21 +31,21 @@ async function run() {
   while (run) {
     const choice = await topMenu();
     switch (choice) {
-      case ACTIONS.wallet:
-        await wallet(web3, artifacts);
-        break;
-      case ACTIONS.vote:
-        await vote(web3, artifacts);
-        break;
-      case ACTIONS.admin:
-        await admin(artifacts, web3);
-        break;
-      case ACTIONS.exit:
-        run = false;
-        break;
-      default:
-        console.log("unimplemented state");
-        break;
+    case ACTIONS.wallet:
+      await wallet(web3, artifacts);
+      break;
+    case ACTIONS.vote:
+      await vote(web3, artifacts);
+      break;
+    case ACTIONS.admin:
+      await admin(artifacts, web3);
+      break;
+    case ACTIONS.exit:
+      run = false;
+      break;
+    default:
+      console.log("unimplemented state");
+      break;
     }
   }
 }
