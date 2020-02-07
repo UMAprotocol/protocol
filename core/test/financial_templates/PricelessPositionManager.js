@@ -474,9 +474,13 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor })));
   });
 
-  it("Basic fees", async function() {
+  it.only("Basic fees", async function() {
     // Set up position.
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+
+    // Set up another position that is less collateralized so sponsor can withdraw freely.
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("100000") }, { from: other });
     await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
 
     // Set store fees to 1% per second.
@@ -487,19 +491,25 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.setCurrentTime(startTime.addn(1));
 
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
-    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(toWei("0.01")));
+    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(toWei("0.02")));
 
     // Pay the fees, then check the collateral and the store balance.
     await pricelessPositionManager.payFees();
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
-    assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance);
+    assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
 
     // Ensure that fees are not applied to new collateral.
     // TODO: value chosen specifically to avoid rounding errors -- see #873.
     await pricelessPositionManager.deposit({ rawValue: toWei("99") }, { from: sponsor });
     collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("99.99"));
+
+    // Ensure that the conversion works correctly for withdrawals.
+    const expectedSponsorBalance = (await collateral.balanceOf(sponsor)).add(toBN(toWei("1")));
+    await pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor });
+    assert.equal((await collateral.balanceOf(sponsor)).toString(), expectedSponsorBalance.toString());
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
     await store.setFixedOracleFeePerSecond({ rawValue: "0" });
