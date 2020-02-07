@@ -1,12 +1,23 @@
 const style = require("../textStyle");
 
-// Given a list of revealed votes for a user, return
-// the filtered list of votes that have successfully resolved a price
-// mapped to their round ID's.
-//
-// Cross reference revealed votes with a list of already-retrieved
-// rewards by the user to remove duplicate retrievals
-module.exports = async (web3, votingContract, account) => {
+/**
+ * Given a list of revealed votes for a user, return
+ * the filtered list of votes that have successfully resolved a price
+ * mapped to their round ID's.
+ *
+ * Cross reference revealed votes with a list of already-retrieved
+ * rewards by the user to remove duplicate retrievals.
+ *
+ * We can check which rewards have already been retrieved by calling (but not executing!) the
+ * retrieveRewards() method and checking that the return value is greater than 0. This return value
+ * is the number of rewards that can be retrieved. Moreover, if retrieveRewards() throws an error
+ * then the price has not resolved yet.
+ *
+ * @param {*} web3 Web3 provider
+ * @param {*} voting deployed Voting.sol contract instance
+ * @param {*} account Etheruem account of voter
+ */
+const getResolvedVotesByRound = async (web3, votingContract, account) => {
   // All rewards available must be tied to formerly revealed votes
   const revealedVotes = await votingContract.getPastEvents("VoteRevealed", {
     filter: { voter: account },
@@ -74,3 +85,5 @@ module.exports = async (web3, votingContract, account) => {
 
   return { resolvedVotesByRoundId, roundIds };
 };
+
+module.exports = getResolvedVotesByRound;

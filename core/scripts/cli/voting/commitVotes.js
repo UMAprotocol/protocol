@@ -5,7 +5,19 @@ const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 const { constructCommitment, batchCommitVotes } = require("../../../../common/VotingUtils");
 
-module.exports = async (web3, voting) => {
+/**
+ * This prompts the user twice from the command line interface:
+ * first to select from a list of pending price requests, and second
+ * to manually enter in a price on each request. The user can opt not to select any price
+ * requests to vote on in the first step. In the second step, the user must enter a positive number, otherwise
+ * the price entered will default to 0.
+ *
+ * The user can change their votes by committing another price to a pending price request
+ *
+ * @param {*} web3 Web3 provider
+ * @param {*} voting deployed Voting.sol contract instance
+ */
+const commitVotes = async (web3, voting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
@@ -107,3 +119,5 @@ module.exports = async (web3, voting) => {
     console.groupEnd();
   }
 };
+
+module.exports = commitVotes;

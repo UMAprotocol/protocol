@@ -27,7 +27,10 @@ const vote = async () => {
   return await inquirer.prompt(prompts);
 };
 
-module.exports = async function(web3, artifacts) {
+/**
+ * Menu for Voting subactions of CLI
+ */
+const votingMenu = async function(web3, artifacts) {
   try {
     const Voting = artifacts.require("Voting");
     const voting = await Voting.deployed();
@@ -86,3 +89,5 @@ module.exports = async function(web3, artifacts) {
   }
   return;
 };
+
+module.exports = votingMenu;

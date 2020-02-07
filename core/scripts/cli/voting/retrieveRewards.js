@@ -4,7 +4,14 @@ const { batchRetrieveRewards } = require("../../../../common/VotingUtils");
 const getResolvedVotesByRoundId = require("./getResolvedVotesByRoundId");
 const inquirer = require("inquirer");
 
-module.exports = async (web3, voting) => {
+/**
+ * This prompts the user to select from a list of round ID's that have one or more rewards that can be retrieved.
+ * For the selected round ID, we batch retrieve all of the rewards for the round.
+ *
+ * @param {*} web3 Web3 provider
+ * @param {*} voting deployed Voting.sol contract instance
+ */
+const retrieveRewards = async (web3, voting) => {
   style.spinnerReadingContracts.start();
   const account = await getDefaultAccount(web3);
   const { resolvedVotesByRoundId, roundIds } = await getResolvedVotesByRoundId(web3, voting, account);
@@ -52,3 +59,5 @@ module.exports = async (web3, voting) => {
     console.log(`You have no rewards to retrieve`);
   }
 };
+
+module.exports = retrieveRewards;

@@ -27,6 +27,9 @@ async function topMenu() {
   return result["topMenu"];
 }
 
+/**
+ * Top-level menu of CLI tool, and main node JS entry point.
+ */
 async function run() {
   // TODO: Should do a check here to detect if contracts are deployed,
   // as wallet, vote, and admin modules all assume they are deployed

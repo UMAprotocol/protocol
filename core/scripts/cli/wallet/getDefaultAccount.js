@@ -1,7 +1,11 @@
 // Main method for getting default account, used to sign all transactions in the CLI!
 const DEFAULT_ACCOUNT_INDEX = 0;
 
-module.exports = async web3 => {
+/**
+ * Returns the default account that the Voting CLI will use to commit and reveal votes.
+ * @param {*} web3 Web3 provider
+ */
+const getDefaultAccount = async web3 => {
   const accounts = await web3.eth.getAccounts();
 
   if (accounts.length === 0) {
@@ -10,3 +14,5 @@ module.exports = async web3 => {
     return accounts[DEFAULT_ACCOUNT_INDEX];
   }
 };
+
+module.exports = getDefaultAccount;

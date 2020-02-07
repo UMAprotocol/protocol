@@ -1,7 +1,14 @@
 const inquirer = require("inquirer");
 const style = require("../textStyle");
 
-module.exports = async web3 => {
+/**
+ * Prompt user to confirm that they want to generate a new Ethereum account.
+ * Displays the new public and private key to the user without storing anything, and
+ * provides instructions on how to use this account in the CLI tool.
+ *
+ * @param {*} web3 Web3 provider
+ */
+const createNewAccount = async web3 => {
   const confirm = await inquirer.prompt({
     type: "confirm",
     name: "createNewAccount",
@@ -24,3 +31,5 @@ module.exports = async web3 => {
     console.groupEnd();
   }
 };
+
+module.exports = createNewAccount;

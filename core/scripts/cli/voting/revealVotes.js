@@ -5,7 +5,14 @@ const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 const { constructReveal, batchRevealVotes } = require("../../../../common/VotingUtils");
 
-module.exports = async (web3, voting) => {
+/**
+ * This prompts the user to select which pending price requests, that they have committed votes on, they want to reveal.
+ * A vote can only be revealed once, unlike a commit.
+ *
+ * @param {*} web3 Web3 provider
+ * @param {*} voting deployed Voting.sol contract instance
+ */
+const revealVotes = async (web3, voting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
@@ -91,3 +98,5 @@ module.exports = async (web3, voting) => {
     console.groupEnd();
   }
 };
+
+module.exports = revealVotes;

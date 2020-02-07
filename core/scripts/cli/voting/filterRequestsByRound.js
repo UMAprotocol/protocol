@@ -1,7 +1,20 @@
 const { computeTopicHash } = require("../../../../common/EncryptionHelper");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 
-module.exports = async (pendingRequests, account, roundId, roundPhase, votingContract) => {
+/**
+ * First, sorts all price requests chronologically from earliest to latest.
+ *
+ * Next, if the phase is a Commit phase, then return all sorted requests.
+ * If the phase is a Reveal phase, then only return price requests that have yet to be revealed (i.e. you can only reveal a price request once).
+ * Conversely, a commit can be redone as many times as the user wants in a round, therefore we should display them all to the user.
+ *
+ * @param {* Array} pendingRequests List of pending price requests => {identifier, time}
+ * @param {*} account Etheruem account of voter
+ * @param {*} roundId Round ID number
+ * @param {*} roundPhase 0 = Commit or 1 = Reveal
+ * @param {*} votingContract deployed Voting.sol contract instance
+ */
+const filterRequestsByRound = async (pendingRequests, account, roundId, roundPhase, votingContract) => {
   let filteredRequests = [];
   if (pendingRequests.length > 0) {
     // Sort requests by timestamp requested
@@ -39,3 +52,5 @@ module.exports = async (pendingRequests, account, roundId, roundPhase, votingCon
   }
   return filteredRequests;
 };
+
+module.exports = filterRequestsByRound;

@@ -1,7 +1,16 @@
 const style = require("../textStyle");
 const getDefaultAccount = require("./getDefaultAccount");
 
-module.exports = async (web3, artifacts) => {
+/**
+ * Displays information about the default account:
+ * - Address
+ * - ETH balance
+ * - UMA voting token balance
+ *
+ * @param {*} web3 Web3 provider
+ * @param {*} artifacts Contract artifacts
+ */
+const readDefaultAccountInfo = async (web3, artifacts) => {
   const { fromWei } = web3.utils;
   const { getBalance } = web3.eth;
   const VotingToken = artifacts.require("VotingToken");
@@ -26,3 +35,5 @@ module.exports = async (web3, artifacts) => {
     );
   }
 };
+
+module.exports = readDefaultAccountInfo;

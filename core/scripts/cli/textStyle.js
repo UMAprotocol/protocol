@@ -2,8 +2,9 @@ const chalkPipe = require("chalk-pipe");
 const ora = require("ora");
 const moment = require("moment");
 
-// General library for displaying text in terminal in (enjoyable) human readable form
-module.exports = {
+// General library for displaying text and graphics in terminal in (enjoyable) human readable form.
+// Used to standardize text styles across the CLI
+const style = {
   // Colors
   instruction: chalkPipe("bgRed"),
   success: chalkPipe("bgGreen"),
@@ -27,3 +28,5 @@ module.exports = {
     return moment.utc(timestampInSeconds * 1000).format("MMMM Do YYYY, h:mm:ss a");
   }
 };
+
+module.exports = style;

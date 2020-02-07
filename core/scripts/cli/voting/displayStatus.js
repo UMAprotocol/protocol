@@ -5,7 +5,20 @@ const filterRequests = require("./filterRequestsByRound");
 const votePhaseTime = require("./votePhaseTiming");
 const getAvailableRewards = require("./getResolvedVotesByRoundId");
 
-module.exports = async (web3, voting) => {
+/**
+ * Display information about the current voting round:
+ * - Round ID
+ * - Whether you are in the Commit or Reveal Phase
+ * - Round Inflation and GAT
+ * - The current contract's timestamp
+ * - Time until the next phase and next round
+ * - A table displaying all pending price requests, which will be pending commits or reveals depending on the stage
+ * - Any resolved price requests that the user can retrieve rewards from
+ *
+ * @param {*} web3 Web3 provider
+ * @param {*} voting deployed Voting.sol contract instance
+ */
+const displayVoteStatus = async (web3, voting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
@@ -85,3 +98,5 @@ module.exports = async (web3, voting) => {
   console.log(`\n`);
   console.groupEnd();
 };
+
+module.exports = displayVoteStatus;

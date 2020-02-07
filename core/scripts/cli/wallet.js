@@ -23,7 +23,10 @@ const wallet = async () => {
   return await inquirer.prompt(prompts);
 };
 
-module.exports = async function(web3, artifacts) {
+/**
+ * Menu for Wallet subactions of CLI
+ */
+const walletMenu = async function(web3, artifacts) {
   try {
     const inputs = (await wallet())["walletTopMenu"];
     switch (inputs) {
@@ -65,3 +68,5 @@ module.exports = async function(web3, artifacts) {
   }
   return;
 };
+
+module.exports = walletMenu;

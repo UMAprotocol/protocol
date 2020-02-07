@@ -2,6 +2,8 @@ const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = re
 const { getKeyGenMessage, computeTopicHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 
+// Generate a salt and use it to encrypt a committed vote in response to a price request
+// Return committed vote details to the voter
 const constructCommitment = async (request, roundId, web3, price, account) => {
   const priceString = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
@@ -21,6 +23,7 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
   };
 };
 
+// Decrypt an encrypted vote commit for the voter and return vote details
 const constructReveal = async (request, roundId, web3, account, votingContract) => {
   const topicHash = computeTopicHash(request, roundId);
   const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
@@ -36,6 +39,9 @@ const constructReveal = async (request, roundId, web3, account, votingContract) 
   };
 };
 
+// Optimally batch together vote commits in the fewest batches possible,
+// each batchCommit is one Ethereum transaction. Return the number of successes
+// and batches to the user
 const batchCommitVotes = async (newCommitments, votingContract, account) => {
   let successes = [];
   let batches = 0;
@@ -70,6 +76,9 @@ const batchCommitVotes = async (newCommitments, votingContract, account) => {
   };
 };
 
+// Optimally batch together vote reveals in the fewest batches possible,
+// each batchReveal is one Ethereum transaction. Return the number of successes
+// and batches to the user
 const batchRevealVotes = async (newReveals, votingContract, account) => {
   let successes = [];
   let batches = 0;
@@ -95,6 +104,9 @@ const batchRevealVotes = async (newReveals, votingContract, account) => {
   };
 };
 
+// Optimally batch together reward retrievals in the fewest batches possible,
+// each retrieveRewards is one Ethereum transaction. Return the number of successes
+// and batches to the user
 const batchRetrieveRewards = async (requests, roundId, votingContract, account) => {
   let successes = [];
   let batches = 0;
