@@ -75,7 +75,7 @@ contract("PricelessPositionManager", function(accounts) {
     mockOracle = await MockOracle.new(identifierWhitelist.address, {
       from: contractDeployer
     });
-    finder = await Finder.new({ from: contractDeployer });
+    finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex("Oracle"));
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
