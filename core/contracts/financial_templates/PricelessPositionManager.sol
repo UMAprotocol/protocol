@@ -86,11 +86,6 @@ contract PricelessPositionManager is Testable {
         string memory _syntheticName,
         string memory _syntheticSymbol
     ) public Testable(_isTest) {
-        IdentifierWhitelistInterface identiferWhiteList = IdentifierWhitelistInterface(
-            _getIdentifierWhitelistAddress()
-        );
-        require(identiferWhiteList.isIdentifierSupported(_priceIdentifier), "Price identifer not supported");
-
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         collateralCurrency = IERC20(_collateralAddress);
@@ -98,6 +93,10 @@ contract PricelessPositionManager is Testable {
         tokenCurrency = ExpandedIERC20(address(mintableToken));
         finder = Finder(_finderAddress);
         priceIdentifer = _priceIdentifier;
+
+        IdentifierWhitelistInterface identiferWhiteList = IdentifierWhitelistInterface(
+            _getIdentifierWhitelistAddress());
+        require(identiferWhiteList.isIdentifierSupported(_priceIdentifier), "Price identifer not supported");
     }
 
     /**
