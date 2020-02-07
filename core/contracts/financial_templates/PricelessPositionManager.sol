@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../ExpandedIERC20.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
 import "./Token.sol";
@@ -11,7 +10,6 @@ import "../Finder.sol";
 import "../OracleInterface.sol";
 /**
  * @title Financial contract with priceless position management.
- * @author umaproject.org
  * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
@@ -38,7 +36,7 @@ contract PricelessPositionManager is Testable {
     FixedPoint.Unsigned public totalPositionCollateral;
     FixedPoint.Unsigned public totalTokensOutstanding;
 
-    ExpandedIERC20 public tokenCurrency; // Synthetic token created by this contract
+    Token public tokenCurrency; // Synthetic token created by this contract
     IERC20 public collateralCurrency; // Collateral held by the contract to back synthetics.
     Finder public finder; // Finder knows the deployed addresses of all other smart contracts in UMA ecosystem.
 
@@ -93,7 +91,7 @@ contract PricelessPositionManager is Testable {
         withdrawalLiveness = _withdrawalLiveness;
         collateralCurrency = IERC20(_collateralAddress);
         Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
-        tokenCurrency = ExpandedIERC20(address(mintableToken));
+        tokenCurrency = Token(address(mintableToken));
         finder = Finder(_finderAddress);
         priceIdentifer = _priceFeedIdentifier;
     }
@@ -141,7 +139,7 @@ contract PricelessPositionManager is Testable {
 
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` from the calling sponsor's position to the caller.
-     * @dev * Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization ratio.
+     * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization ratio.
      * In that case, use `requestWithdrawawal`.
      * @param collateralAmount is the amount of collateral to withdraw
      */
@@ -389,6 +387,7 @@ contract PricelessPositionManager is Testable {
         bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
         return finder.getImplementationAddress(identifierWhitelistInterface);
     }
+    
     function _getStoreAddress() internal view returns (address) {
         bytes32 storeInterface = "Store";
         return finder.getImplementationAddress(storeInterface);

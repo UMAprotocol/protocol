@@ -10,7 +10,6 @@ import "./PricelessPositionManager.sol";
 
 /**
 @title Liquidatable
-@author umaproject.org
 @notice Adds logic to a position-managing contract that enables callers to
 liquidate an undercollateralized position.
 @dev The liquidation has a liveness period before expiring successfully, during which
@@ -156,7 +155,7 @@ contract Liquidatable is PricelessPositionManager {
         require(params.collateralRequirement.isGreaterThan(1), "The collateral requirement must be at minimum 100%");
         require(
             params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
-            "Dispute rewards should sum to > 100%"
+            "Dispute rewards should sum to < 100%"
         );
 
         // Set liquidatable specific variables.
@@ -249,13 +248,13 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * @notice After a liquidation has been disputed, it can be settled by any caller enabling withdrawl to occure.
+     * @notice After a liquidation has been disputed, it can be settled by any caller enabling withdrawal to occur.
      * @dev This is only possible after the DVM has resolved a price. Callers should
      * call hasPrice() on the DVM before calling this to ensure
      * that the DVM has resolved a price. This method then calculates whether the
      * dispute on the liquidation was successful using only the settlement price,
      * tokens outstanding, locked collateral (post-pending withdrawals), and liquidation ratio
-     * @param id to uniquly identify the dispute to settle
+     * @param id to uniquely identify the dispute to settle
      * @param sponsor the address of the sponsor who's dispute is being settled
      */
     function settleDispute(uint id, address sponsor) public onlyPendingDispute(id, sponsor) {
