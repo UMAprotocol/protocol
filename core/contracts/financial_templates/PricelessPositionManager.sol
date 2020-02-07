@@ -9,6 +9,7 @@ import "../Testable.sol";
 import "./Token.sol";
 import "../Finder.sol";
 import "../OracleInterface.sol";
+import "../IdentifierWhitelistInterface.sol";
 /**
  * @title Financial contract with priceless position management.
  * @author umaproject.org
@@ -81,17 +82,22 @@ contract PricelessPositionManager is Testable {
         uint _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
-        bytes32 _priceFeedIdentifier,
+        bytes32 _priceIdentifier,
         string memory _syntheticName,
         string memory _syntheticSymbol
     ) public Testable(_isTest) {
+        IdentifierWhitelistInterface identiferWhiteList = IdentifierWhitelistInterface(
+            _getIdentifierWhitelistAddress()
+        );
+        require(identiferWhiteList.isIdentifierSupported(_priceIdentifier), "Price identifer not supported");
+
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         collateralCurrency = IERC20(_collateralAddress);
         Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
         tokenCurrency = ExpandedIERC20(address(mintableToken));
         finder = Finder(_finderAddress);
-        priceIdentifer = _priceFeedIdentifier;
+        priceIdentifer = _priceIdentifier;
     }
 
     /**
