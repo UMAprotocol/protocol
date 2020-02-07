@@ -27,27 +27,15 @@ const filterRequestsByRound = async (pendingRequests, account, roundId, roundPha
       // Display all requests during commit phase even if
       // user has already committed a vote, for they
       // might want to change it
-      for (let i = 0; i < chronologicalPriceRequests.length; i++) {
-        const request = chronologicalPriceRequests[i];
-        filteredRequests.push({
-          identifier: request.identifier,
-          time: request.time
-        });
-      }
+      filteredRequests = chronologicalPriceRequests;
     } else {
       // Only display committed votes during the reveal phase (i.e.
       // if an encrypted message exists for the identifier-timestamp)
-      for (let i = 0; i < chronologicalPriceRequests.length; i++) {
-        const request = chronologicalPriceRequests[i];
+      filteredRequests = chronologicalPriceRequests.filter(async (request) => {
         const topicHash = computeTopicHash(request, roundId);
         const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
-        if (encryptedCommit) {
-          filteredRequests.push({
-            identifier: request.identifier,
-            time: request.time
-          });
-        }
-      }
+        return encryptedCommit;
+      });
     }
   }
   return filteredRequests;

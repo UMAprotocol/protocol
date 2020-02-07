@@ -69,14 +69,14 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
   // Create a mapping of round IDs to total rewards per round
   let roundIds = [];
   Object.keys(resolvedVotesByRoundId).forEach(id => {
-    let totalRewardsInRound = 0;
+    let totalRewardsInRound = web3.utils.toBN(0);
     resolvedVotesByRoundId[id].forEach(reward => {
-      totalRewardsInRound += parseInt(reward.potentialRewards);
+      totalRewardsInRound.add(web3.utils.toBN(reward.potentialRewards));
     });
     roundIds.push({
-      name: `ID: ${id}, rewards: ${totalRewardsInRound / 10e18}`,
+      name: `ID: ${id}, rewards: ${web3.utils.fromWei(totalRewardsInRound)}`,
       value: id,
-      totalRewardsInRound
+      totalRewardsInRound: totalRewardsInRound.toString()
     });
   });
   roundIds = roundIds.sort((a, b) => {

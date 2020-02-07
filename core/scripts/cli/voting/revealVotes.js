@@ -28,20 +28,19 @@ const revealVotes = async (web3, voting) => {
   } else if (filteredRequests.length === 0) {
     console.log(`No pending votes to reveal!`);
   } else {
-    console.group(`${style.instruction(`\nPlease select which price requests you would like to reveal votes for`)}`);
-
     // To display properly, give each request a 'value' parameter
     for (let i = 0; i < filteredRequests.length; i++) {
       let request = filteredRequests[i];
-      request.value = `${web3.utils.hexToUtf8(request.identifier)} @ ${style.formatSecondsToUtc(
+      request.name = `${web3.utils.hexToUtf8(request.identifier)} @ ${style.formatSecondsToUtc(
         parseInt(request.time)
       )}`;
+      request.value = request
     }
 
     const checkbox = await inquirer.prompt({
       type: "checkbox",
       name: "requestsCheckbox",
-      message: `Revealing a vote makes the vote final.`,
+      message: `Please select which price requests you would like to reveal votes for. Revealing a vote makes the vote final.`,
       choices: filteredRequests
     });
     if (checkbox["requestsCheckbox"]) {
@@ -51,14 +50,12 @@ const revealVotes = async (web3, voting) => {
       // Prompt user to enter a price per vote construct commitments for the votes
       const selections = checkbox["requestsCheckbox"];
       for (let i = 0; i < selections.length; i++) {
-        // Look up raw request data from checkbox value
-        const selectedRequest = filteredRequests.find(request => request.value === selections[i]);
-
         // Construct commitment
         try {
-          newReveals.push(await constructReveal(selectedRequest, roundId, web3, account, voting));
+          newReveals.push(await constructReveal(selections[i], roundId, web3, account, voting));
         } catch (err) {
-          failures.push({ selectedRequest, err });
+          console.error(err)
+          failures.push({ request: selections[i], err });
         }
       }
 
@@ -87,8 +84,6 @@ const revealVotes = async (web3, voting) => {
     } else {
       console.log(`You have not selected any requests.`);
     }
-    console.log(`\n`);
-    console.groupEnd();
   }
 };
 

@@ -33,29 +33,23 @@ const commitVotes = async (web3, voting) => {
   } else if (filteredRequests.length === 0) {
     console.log(`No pending price requests to commit votes for!`);
   } else {
-    console.group(`${style.instruction(`\nPlease select which price requests you would like to commit votes for`)}`);
-
-    // To display properly, give each request a 'value' parameter
+    
+    // To display properly, give each request a 'name' parameter and set 'value' to the price request
     for (let i = 0; i < filteredRequests.length; i++) {
       let request = filteredRequests[i];
-      request.value = `${web3.utils.hexToUtf8(request.identifier)} @ ${style.formatSecondsToUtc(
+      request.name = `${web3.utils.hexToUtf8(request.identifier)} @ ${style.formatSecondsToUtc(
         parseInt(request.time)
       )}`;
+      request.value = request
     }
-
     const checkbox = await inquirer.prompt({
       type: "checkbox",
       name: "requestsCheckbox",
-      message: `After selecting which requests you want to vote on, you will be prompted to manually enter in a price for each request. You can change these votes later.`,
+      message: `Please select which price requests you would like to commit votes for. Afterwards, you will be prompted to manually enter in a price for each request in the order shown. You can change these votes later.`,
       choices: filteredRequests
     });
-    if (checkbox["requestsCheckbox"]) {
-      console.log(
-        style.instruction(
-          `Next, enter prices for the selected requests. Prices must be positive numbers, invalid input will default to 0.`
-        )
-      );
 
+    if (checkbox["requestsCheckbox"]) {
       const newCommitments = [];
       const failures = [];
 
@@ -66,17 +60,14 @@ const commitVotes = async (web3, voting) => {
         const priceInput = await inquirer.prompt({
           type: "number",
           name: "price",
-          default: 0,
-          message: style.instruction(`Price for ${selections[i]}:`),
+          default: 0.0,
+          message: style.instruction(`Enter a positive price, invalid input will default to 0:`),
           validate: value => value >= 0 || "Price must be positive"
         });
 
-        // Look up raw request data from checkbox value
-        const selectedRequest = filteredRequests.find(request => request.value === selections[i]);
-
         // Construct commitment
         try {
-          newCommitments.push(await constructCommitment(selectedRequest, roundId, web3, priceInput["price"], account));
+          newCommitments.push(await constructCommitment(selections[i], roundId, web3, priceInput["price"], account));
         } catch (err) {
           failures.push({ selectedRequest, err });
         }
@@ -100,6 +91,7 @@ const commitVotes = async (web3, voting) => {
         for (let i = 0; i < successes.length; i++) {
           console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${successes[i].txnHash}`)}`);
           console.log(`    - salt: ${successes[i].salt}`);
+          console.log(`    - voted price: ${web3.utils.fromWei(successes[i].price)}`);
         }
         console.groupEnd();
       } else {
@@ -108,8 +100,6 @@ const commitVotes = async (web3, voting) => {
     } else {
       console.log(`You have not selected any requests.`);
     }
-    console.log(`\n`);
-    console.groupEnd();
   }
 };
 
