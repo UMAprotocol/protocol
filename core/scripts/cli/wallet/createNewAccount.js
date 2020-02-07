@@ -17,7 +17,7 @@ module.exports = async web3 => {
     console.log(`${style.bgGreen("- Private Key")}: ${newAccount.privateKey}`);
     console.log(
       `${style.bgGreen(
-        "- If you want to use this account as your default account when sending UMA transactions, then exit the CLI tool, set your \"PRIVATE_KEY\" environment variable to the above secret, and restart the CLI via \"uma --network ropsten_privatekey\", replacing \"ropsten\" with the network of your choice"
+        '- If you want to use this account as your default account when sending UMA transactions, then exit the CLI tool, set your "PRIVATE_KEY" environment variable to the above secret, and restart the CLI via "uma --network ropsten_privatekey", replacing "ropsten" with the network of your choice'
       )}`
     );
     console.log("\n");
