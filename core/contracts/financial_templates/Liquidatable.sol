@@ -28,17 +28,16 @@ contract Liquidatable is PricelessPositionManager {
     enum Status { PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
-         // Following variables set upon creation of liquidation:
+        // Following variables set upon creation of liquidation:
         uint expiry; // When Liquidation ends and becomes 'Expired'
         address liquidator; // caller who created this liquidation
         Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
-        
         // Following variables determined by the position that is being liquidated:
         FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned lockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
         FixedPoint.Unsigned liquidatedCollateral; // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
-        
+
         // Following variables set upon a dispute request
         address disputer; // Person who is disputing a liquidation
         uint disputeTime; // Time when dispute is initiated, needed to get price from Oracle

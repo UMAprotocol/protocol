@@ -49,7 +49,6 @@ contract PricelessPositionManager is Testable {
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
 
-
     event Transfer(address oldSponsor, address newSponsor);
     event Deposit(address sponsor, uint collateralAmount);
     event Withdrawal(address sponsor, uint collateralAmount);
@@ -118,7 +117,8 @@ contract PricelessPositionManager is Testable {
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
      * increase the collateralization level of a position.
      * @param collateralAmount represents the total amount of tokens to be sent to the position for the sponsor.
-     */ 
+     */
+
     // TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);

@@ -51,7 +51,7 @@ contract("Liquidatable", function(accounts) {
 
   // Synthetic Token Position contract params
   const positionLiveness = toBN(60 * 60).mul(liquidationLiveness); // Add this to liquidation liveness so we can create more positions post-liquidation
-  const expirationTimestamp = (toBN(startTime))
+  const expirationTimestamp = toBN(startTime)
     .add(positionLiveness)
     .toString();
   const withdrawalLiveness = toBN(60)
