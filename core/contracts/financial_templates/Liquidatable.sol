@@ -376,7 +376,7 @@ contract Liquidatable is PricelessPositionManager {
             );
             liquidation.hasLiquidatorWithdrawn = true;
             withdrawalMade = payToLiquidator.rawValue;
-            delete liquidations[sponsor][id];   
+            delete liquidations[sponsor][id];
             //If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
         } else if (
             liquidation.state == Status.PreDispute &&
@@ -391,7 +391,7 @@ contract Liquidatable is PricelessPositionManager {
             withdrawalMade = liquidation.lockedCollateral.rawValue;
             delete liquidations[sponsor][id];
         }
-        if(withdrawalMade > 0){
+        if (withdrawalMade > 0) {
             // TODO: add this amount to the event in the issue #875.
             return withdrawalMade;
         }
