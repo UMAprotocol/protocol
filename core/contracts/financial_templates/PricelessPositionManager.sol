@@ -387,7 +387,7 @@ contract PricelessPositionManager is Testable {
         bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
         return finder.getImplementationAddress(identifierWhitelistInterface);
     }
-    
+
     function _getStoreAddress() internal view returns (address) {
         bytes32 storeInterface = "Store";
         return finder.getImplementationAddress(storeInterface);
