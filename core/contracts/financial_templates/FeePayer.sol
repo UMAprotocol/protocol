@@ -11,6 +11,7 @@ import "../StoreInterface.sol";
 contract FeePayer is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
+    using SafeERC20 for IERC20;
 
     /**
      * The collateral currency used to back the positions in this contract.
@@ -58,12 +59,12 @@ contract FeePayer is Testable {
         lastPaymentTime = time;
 
         if (regularFee.isGreaterThan(0)) {
-            SafeERC20.safeApprove(collateralCurrency, address(store), regularFee.rawValue);
+            collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
             store.payOracleFeesErc20(address(collateralCurrency));
         }
 
         if (latePenalty.isGreaterThan(0)) {
-            SafeERC20.safeTransfer(collateralCurrency, msg.sender, latePenalty.rawValue);
+            collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
 
         return regularFee.add(latePenalty);
