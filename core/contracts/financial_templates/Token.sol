@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 contract Token is ERC20Detailed, ERC20Mintable, ERC20Burnable {
     constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
         public
-        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals) ERC20Mintable() ERC20Burnable()
+        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals)
+        ERC20Mintable()
+        ERC20Burnable()
     {}
 }
