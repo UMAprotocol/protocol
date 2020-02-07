@@ -3,7 +3,7 @@ const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
-const constructCommitment = require("./constructCommitment");
+const { constructCommitment } = require("../../../../common/VotingUtils");
 const batchCommitVotes = require("./batchCommitVotes");
 
 module.exports = async (web3, voting) => {

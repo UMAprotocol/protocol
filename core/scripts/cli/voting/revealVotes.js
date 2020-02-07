@@ -3,7 +3,7 @@ const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
-const constructReveal = require("./constructReveal");
+const { constructReveal } = require("../../../../common/VotingUtils");
 const batchRevealVotes = require("./batchRevealVotes");
 
 module.exports = async (web3, voting) => {
