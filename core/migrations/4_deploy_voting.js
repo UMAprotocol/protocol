@@ -20,6 +20,9 @@ module.exports = async function(deployer, network, accounts) {
   // Set the inflation rate.
   const inflationRate = { rawValue: web3.utils.toWei("0.0005", "ether") };
 
+  // Set the rewards expiration timeout.
+  const rewardsExpirationTimeout = 60 * 60 * 24 * 14; // Two weeks.
+
   // Get the previously deployed VotingToken and Finder.
   const votingToken = await VotingToken.deployed();
   const finder = await Finder.deployed();
@@ -34,6 +37,7 @@ module.exports = async function(deployer, network, accounts) {
     secondsPerDay,
     gatPercentage,
     inflationRate,
+    rewardsExpirationTimeout,
     votingToken.address,
     identifierWhitelist.address,
     finder.address,

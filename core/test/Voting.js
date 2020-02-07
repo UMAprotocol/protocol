@@ -65,7 +65,7 @@ contract("Voting", function(accounts) {
     const finder = await Finder.deployed();
     assert(
       await didContractThrow(
-        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, votingToken.address, finder.address, true)
+        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, 1, votingToken.address, finder.address, true)
       )
     );
   });
@@ -810,6 +810,79 @@ contract("Voting", function(accounts) {
     assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).subn(1).toString());
   });
 
+  it("Rewards expiration", async function() {
+    // Set the inflation rate to 100% (for ease of computation).
+    await setNewInflationRate(web3.utils.toWei("1", "ether"));
+
+    const identifier = web3.utils.utf8ToHex("rewards-expiration");
+    const time = "1000";
+
+    const initialAccount1Balance = await votingToken.balanceOf(account1);
+    const initialTotalSupply = await votingToken.totalSupply();
+
+    // Make the Oracle support this identifier.
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await moveToNextRound(voting);
+
+    const winningPrice = 456;
+
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(winningPrice, salt);
+    await voting.commitVote(identifier, time, hash, { from: account1 });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting);
+    await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
+
+    // This should have no effect because the expiration has been captured.
+    await voting.setRewardsExpirationTimeout(1);
+    // Only the owner should be able to call this method, however.
+    assert(await didContractThrow(voting.setRewardsExpirationTimeout(1, { from: account2 })));
+
+    const roundId = await voting.getCurrentRoundId();
+    const req = [{ identifier: identifier, time: time }];
+
+    // Wait 7 rounds before retrieving rewards => still OK.
+    for (let i = 0; i < 7; i++) {
+      await moveToNextRound(voting);
+    }
+    let account1Rewards = await voting.retrieveRewards.call(account1, roundId, req);
+    assert.equal(account1Rewards.toString(), initialTotalSupply.toString());
+
+    // Wait 8 rounds => rewards have expired.
+    await moveToNextRound(voting);
+
+    // No change in balances because the rewards have expired.
+    account1Rewards = await voting.retrieveRewards.call(account1, roundId, req);
+    assert.equal(account1Rewards.toString(), "0");
+
+    // The price is still resolved and the expected events are emitted.
+    const result = await voting.retrieveRewards(account1, roundId, req);
+    truffleAssert.eventEmitted(result, "PriceResolved", ev => {
+      return (
+        ev.resolutionRoundId.toString() == roundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time == time &&
+        ev.price.toString() == winningPrice.toString()
+      );
+    });
+    truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => {
+      return (
+        ev.voter.toString() == account1.toString() &&
+        ev.roundId.toString() == roundId.toString() &&
+        ev.time == time &&
+        ev.numTokens.toString() == "0"
+      );
+    });
+
+    // Reset the inflation rate and rewards expiration time.
+    await setNewInflationRate("0");
+    await voting.setRewardsExpirationTimeout(60 * 60 * 24 * 14);
+  });
+
   it("Basic Inflation", async function() {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
@@ -1236,6 +1309,7 @@ contract("Voting", function(accounts) {
       "86400",
       { rawValue: "0" },
       { rawValue: "0" },
+      "86400",
       votingToken.address,
       supportedIdentifiers.address,
       (await Finder.deployed()).address,

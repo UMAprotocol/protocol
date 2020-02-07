@@ -33,6 +33,11 @@ library VoteTiming {
         return currentTime.div(roundLength);
     }
 
+    function computeRoundEndTime(Data storage data, uint roundId) internal view returns (uint timestamp) {
+        uint roundLength = data.phaseLength.mul(NUM_PHASES);
+        return roundLength.mul(roundId.add(1));
+    }
+
     /**
      * @notice Computes the current phase based only on the current time.
      */
