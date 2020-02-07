@@ -186,7 +186,10 @@ contract Liquidatable is PricelessPositionManager {
     function createLiquidation(address sponsor) public returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
-        require(positionToLiquidate.collateral.rawValue > 0, "Cant liquidate a position with no collateral");
+        require(
+            FixedPoint.isGreaterThan(positionToLiquidate.collateral, 0),
+            "Cant liquidate a position with no collateral"
+        );
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
