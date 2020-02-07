@@ -15,7 +15,7 @@ function decodeTransaction(transaction) {
     const decodedTxn = abiDecoder.decodeMethod(transaction.data);
     if (!decodedTxn) {
       // Cannot decode txn, just give the user the raw data.
-      returnValue += "\nCannot decode transaction (does not match any UMA Protocol Signature.";
+      returnValue += "\nCannot decode transaction (does not match any UMA Protocol Signature).";
       returnValue += "\nRaw transaction data: " + transaction.data;
     } else {
       // Decode was successful -- pretty print the results.

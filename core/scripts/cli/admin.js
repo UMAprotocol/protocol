@@ -10,7 +10,9 @@ async function decodeGovernorProposal(artifacts, id) {
 
   console.group();
   console.log("Retrieved Admin Proposal for ID:", id);
-  console.log("Proposal has", proposal.transactions.length, " transaction(s)");
+  console.log(
+    `Proposal has ${proposal.transactions.length} transaction${proposal.transactions.length === 1 ? "" : "s"}`
+  );
   for (let i = 0; i < proposal.transactions.length; i++) {
     console.group();
     console.log("Transaction", i);
