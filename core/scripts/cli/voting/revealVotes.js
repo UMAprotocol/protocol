@@ -52,14 +52,7 @@ const revealVotes = async (web3, voting) => {
       const selections = checkbox["requestsCheckbox"];
       for (let i = 0; i < selections.length; i++) {
         // Look up raw request data from checkbox value
-        let selectedRequest;
-        for (let j = 0; j < filteredRequests.length; j++) {
-          let request = filteredRequests[j];
-          if (request.value === selections[i]) {
-            selectedRequest = request;
-            break;
-          }
-        }
+        const selectedRequest = filteredRequests.find(request => request.value === selections[i]);
 
         // Construct commitment
         try {
