@@ -31,6 +31,5 @@ contract("ExpiringMultiParty", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
     await ExpiringMultiParty.new(constructorParams);
-    assert(true);
   });
 });

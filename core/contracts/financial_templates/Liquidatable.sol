@@ -62,24 +62,24 @@ contract Liquidatable is PricelessPositionManager {
     FixedPoint.Unsigned disputerDisputeRewardPct;
 
     event LiquidationCreated(
-        address sponsor,
-        address liquidator,
-        uint liquidationId,
+        address indexed sponsor,
+        address indexed liquidator,
+        uint indexed liquidationId,
         uint tokensOutstanding,
         uint lockedCollateral,
         uint liquidatedCollateral
     );
     event LiquidationDisputed(
-        address sponsor,
-        address liquidator,
-        address disputer,
+        address indexed sponsor,
+        address indexed liquidator,
+        address indexed disputer,
         uint disputeId,
         uint disputeBondAmount
     );
     event DisputeSettled(
-        address caller,
-        address sponsor,
-        address liquidator,
+        address indexed caller,
+        address indexed sponsor,
+        address indexed liquidator,
         address disputer,
         uint disputeId,
         bool DisputeSucceeded

@@ -49,16 +49,20 @@ contract PricelessPositionManager is Testable {
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
 
-    event Transfer(address oldSponsor, address newSponsor);
-    event Deposit(address sponsor, uint collateralAmount);
-    event Withdrawal(address sponsor, uint collateralAmount);
-    event RequestWithdrawal(address sponsor, uint collateralAmount);
-    event RequestWithdrawalExecuted(address sponsor, uint collateralAmount);
-    event RequestWithdrawalCanceled(address sponsor, uint collateralAmount);
-    event PositionCreated(address sponsor, uint collateralAmount, uint tokenAmount);
-    event Redeem(address sponsor, uint collateralAmount, uint tokenAmount);
-    event ContractExpired(address caller);
-    event SettleExpiredPosition(address caller, uint collateralAmountReturned, uint tokensBurned);
+    event Transfer(address indexed oldSponsor, address indexed newSponsor);
+    event Deposit(address indexed sponsor, uint indexed collateralAmount);
+    event Withdrawal(address indexed sponsor, uint indexed collateralAmount);
+    event RequestWithdrawal(address indexed sponsor, uint indexed collateralAmount);
+    event RequestWithdrawalExecuted(address indexed sponsor, uint indexed collateralAmount);
+    event RequestWithdrawalCanceled(address indexed sponsor, uint indexed collateralAmount);
+    event PositionCreated(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
+    event Redeem(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
+    event ContractExpired(address indexed caller);
+    event SettleExpiredPosition(
+        address indexed caller,
+        uint indexed collateralAmountReturned,
+        uint indexed tokensBurned
+    );
 
     modifier onlyPreExpiration() {
         require(getCurrentTime() < expirationTimestamp, "Cannot operate on a position past its expiry time");
