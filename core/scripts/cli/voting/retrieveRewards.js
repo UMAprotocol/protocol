@@ -1,6 +1,6 @@
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const style = require("../textStyle");
-const batchRetrieveRewards = require("./batchRetrieveRewards");
+const { batchRetrieveRewards } = require("../../../../common/VotingUtils");
 const getResolvedVotesByRoundId = require("./getResolvedVotesByRoundId");
 const inquirer = require("inquirer");
 
@@ -28,7 +28,9 @@ module.exports = async (web3, voting) => {
       const resolvedVotes = resolvedVotesByRoundId[roundId];
 
       // Batch retrieve rewards
+      style.spinnerWritingContracts.start();
       const { successes, batches } = await batchRetrieveRewards(resolvedVotes, roundId, voting, account);
+      style.spinnerWritingContracts.stop();
 
       // Print results
       console.log(

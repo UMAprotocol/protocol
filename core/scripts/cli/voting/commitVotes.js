@@ -3,8 +3,7 @@ const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
-const { constructCommitment } = require("../../../../common/VotingUtils");
-const batchCommitVotes = require("./batchCommitVotes");
+const { constructCommitment, batchCommitVotes } = require("../../../../common/VotingUtils");
 
 module.exports = async (web3, voting) => {
   style.spinnerReadingContracts.start();
@@ -80,7 +79,9 @@ module.exports = async (web3, voting) => {
 
       // Batch commit the votes and display a receipt to the user
       if (newCommitments.length > 0) {
+        style.spinnerWritingContracts.start();
         const { successes, batches } = await batchCommitVotes(newCommitments, voting, account);
+        style.spinnerWritingContracts.stop();
 
         // Print results
         console.log(

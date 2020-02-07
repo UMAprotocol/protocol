@@ -10,7 +10,9 @@ const gmailSend = require("gmail-send")();
 const moment = require("moment");
 const {
   constructCommitment: _constructCommitment,
-  constructReveal: _constructReveal
+  constructReveal: _constructReveal,
+  batchRevealVotes,
+  batchCommitVotes
 } = require("../../common/VotingUtils");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
@@ -505,26 +507,9 @@ class VotingSystem {
       }
 
       if (newCommitments.length > 0) {
-        // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
-        const { receipt } = await this.voting.batchCommit(
-          newCommitments.map(commitment => {
-            // This filters out the parts of the commitment that we don't need to send to solidity.
-            // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
-            // the solidity struct.
-            const { price, salt, ...rest } = commitment;
-            return rest;
-          }),
-          { from: this.account }
-        );
-
-        // Add the batch transaction hash to each commitment.
-        newCommitments.forEach(commitment => {
-          commitment.txnHash = receipt.transactionHash;
-        });
-
-        // Append any of new batch's commitments to running commitment list
-        commitments = commitments.concat(newCommitments);
-        batches += 1;
+        const { successes, batches: _batches } = await batchCommitVotes(newCommitments, this.voting, this.account);
+        commitments = commitments.concat(successes);
+        batches += _batches;
       }
     }
 
@@ -575,16 +560,9 @@ class VotingSystem {
 
       // Append any of new batch's reveals to running reveals list
       if (newReveals.length > 0) {
-        // Always call `batchReveal`, even if there's only one reveal.
-        const { receipt } = await this.voting.batchReveal(newReveals, { from: this.account });
-
-        // Add the batch transaction hash to each reveal.
-        newReveals.forEach(reveal => {
-          reveal.txnHash = receipt.transactionHash;
-        });
-
-        reveals = reveals.concat(newReveals);
-        batches += 1;
+        const { successes, batches: _batches } = await batchRevealVotes(newReveals, this.voting, this.account);
+        reveals = reveals.concat(successes);
+        batches += _batches;
       }
     }
 
