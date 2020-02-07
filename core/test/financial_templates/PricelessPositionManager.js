@@ -118,7 +118,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await tokenCurrency.symbol(), syntheticSymbol);
 
     //Reverts on bad constructor input (unknown identifer)
-    await didContractThrow(
+    assert(await didContractThrow(
       PricelessPositionManager.new(
         true, //_isTest (unchanged)
         expirationTimestamp, //_expirationTimestamp (unchanged)
@@ -130,7 +130,7 @@ contract("PricelessPositionManager", function(accounts) {
         syntheticSymbol, //_syntheticSymbol (unchanged)
         { from: contractDeployer }
       )
-    );
+    ))
   });
 
   it("Lifecycle", async function() {
