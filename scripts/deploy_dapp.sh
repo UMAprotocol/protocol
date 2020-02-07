@@ -56,7 +56,8 @@ set -e
 # Link the contracts dir to the dapp dir and build the dapp.
 cd $DAPP_DIR
 echo "Building dapp."
-npm run build
+# Due a webpack build warning from AbiUtils.js, we have to set `CI=false` to allow the build to not error out.
+CI=false npm run build
 
 # Make sure to cleanup the temp directory for any exits after this line.
 function cleanup() {
