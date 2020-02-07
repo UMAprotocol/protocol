@@ -7,8 +7,8 @@ const getDefaultAccount = require("./getDefaultAccount");
  * - ETH balance
  * - UMA voting token balance
  *
- * @param {*} web3 Web3 provider
- * @param {*} artifacts Contract artifacts
+ * @param {* Object} web3 Web3 provider
+ * @param {* Object} artifacts Contract artifacts
  */
 const readDefaultAccountInfo = async (web3, artifacts) => {
   const { fromWei } = web3.utils;

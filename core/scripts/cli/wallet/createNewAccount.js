@@ -6,7 +6,7 @@ const style = require("../textStyle");
  * Displays the new public and private key to the user without storing anything, and
  * provides instructions on how to use this account in the CLI tool.
  *
- * @param {*} web3 Web3 provider
+ * @param {* Object} web3 Web3 provider
  */
 const createNewAccount = async web3 => {
   const confirm = await inquirer.prompt({

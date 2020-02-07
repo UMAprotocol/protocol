@@ -13,9 +13,9 @@ const style = require("../textStyle");
  * is the number of rewards that can be retrieved. Moreover, if retrieveRewards() throws an error
  * then the price has not resolved yet.
  *
- * @param {*} web3 Web3 provider
- * @param {*} voting deployed Voting.sol contract instance
- * @param {*} account Etheruem account of voter
+ * @param {* Object} web3 Web3 provider
+ * @param {* Object} voting deployed Voting.sol contract instance
+ * @param {* String} account Etheruem account of voter
  */
 const getResolvedVotesByRound = async (web3, votingContract, account) => {
   // All rewards available must be tied to formerly revealed votes

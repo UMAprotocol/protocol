@@ -15,8 +15,8 @@ const getAvailableRewards = require("./getResolvedVotesByRoundId");
  * - A table displaying all pending price requests, which will be pending commits or reveals depending on the stage
  * - Any resolved price requests that the user can retrieve rewards from
  *
- * @param {*} web3 Web3 provider
- * @param {*} voting deployed Voting.sol contract instance
+ * @param {* Object} web3 Web3 provider
+ * @param {* Object} voting deployed Voting.sol contract instance
  */
 const displayVoteStatus = async (web3, voting) => {
   style.spinnerReadingContracts.start();
@@ -72,8 +72,8 @@ const displayVoteStatus = async (web3, voting) => {
       const identifierUtf8 = web3.utils.hexToUtf8(request.identifier);
       const timestampUtc = style.formatSecondsToUtc(parseInt(request.time));
       requestsTable.push({
-        Identifier: identifierUtf8,
-        Time: timestampUtc
+        "Identifier": identifierUtf8,
+        "Time": timestampUtc
       });
     });
     console.table(requestsTable);
@@ -87,7 +87,7 @@ const displayVoteStatus = async (web3, voting) => {
       rewards.resolvedVotesByRoundId[roundId].forEach(_reward => {
         rewardsTable.push({
           "Round ID": _reward.roundId,
-          Name: _reward.name,
+          "Name": _reward.name,
           "Reward Tokens": web3.utils.fromWei(_reward.potentialRewards)
         });
       });

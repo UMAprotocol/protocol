@@ -13,8 +13,8 @@ const MINUTES_IN_HOUR = 60;
  * a full round is a Commit followed by a Reveal phase. If this is a Reveal phase, there will simply be 3 hours and 55 minutes
  * until the next round.
  *
- * @param {*} contractTime What time the contract thinks it is, in seconds
- * @param {*} roundPhase 0 = Commit or 1 = Reveal
+ * @param {* String} contractTime What time the contract thinks it is, in seconds
+ * @param {* String} roundPhase 0 = Commit or 1 = Reveal
  */
 const votePhaseTiming = (contractTime, roundPhase) => {
   // Phase length is one day, round length is two days, phases

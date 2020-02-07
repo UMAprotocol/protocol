@@ -9,8 +9,8 @@ const { constructReveal, batchRevealVotes } = require("../../../../common/Voting
  * This prompts the user to select which pending price requests, that they have committed votes on, they want to reveal.
  * A vote can only be revealed once, unlike a commit.
  *
- * @param {*} web3 Web3 provider
- * @param {*} voting deployed Voting.sol contract instance
+ * @param {* Object} web3 Web3 provider
+ * @param {* Object} voting deployed Voting.sol contract instance
  */
 const revealVotes = async (web3, voting) => {
   style.spinnerReadingContracts.start();

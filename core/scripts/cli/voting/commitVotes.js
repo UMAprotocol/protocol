@@ -14,8 +14,8 @@ const { constructCommitment, batchCommitVotes } = require("../../../../common/Vo
  *
  * The user can change their votes by committing another price to a pending price request
  *
- * @param {*} web3 Web3 provider
- * @param {*} voting deployed Voting.sol contract instance
+ * @param {* Object} web3 Web3 provider
+ * @param {* Object} voting deployed Voting.sol contract instance
  */
 const commitVotes = async (web3, voting) => {
   style.spinnerReadingContracts.start();
@@ -33,7 +33,7 @@ const commitVotes = async (web3, voting) => {
   } else if (filteredRequests.length === 0) {
     console.log(`No pending price requests to commit votes for!`);
   } else {
-    
+
     // To display properly, give each request a 'name' parameter and set 'value' to the price request
     for (let i = 0; i < filteredRequests.length; i++) {
       let request = filteredRequests[i];
