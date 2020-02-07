@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState, useReducer } from "react";
 import Button from "@material-ui/core/Button";
 import Checkbox from "@material-ui/core/Checkbox";
+import Dialog from "@material-ui/core/Dialog";
+import DialogContent from "@material-ui/core/DialogContent";
+import DialogContentText from "@material-ui/core/DialogContentText";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
@@ -17,6 +20,7 @@ import { useTableStyles } from "./Styles.js";
 import { getKeyGenMessage } from "./common/EncryptionHelper.js";
 import { getRandomUnsignedInt } from "./common/Random.js";
 import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "./common/Constants.js";
+import { getAdminRequestId, isAdminRequest, decodeTransaction } from "./common/AdminUtils.js";
 
 const editStateReducer = (state, action) => {
   switch (action.type) {
@@ -38,6 +42,7 @@ const editStateReducer = (state, action) => {
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
+  const { hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
   const [checkboxesChecked, setCheckboxesChecked] = useState({});
@@ -48,6 +53,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const pendingRequests = useCacheCall("Voting", "getPendingRequests");
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
   const votePhase = useCacheCall("Voting", "getVotePhase");
+
   const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
     account: drizzleState.accounts[0]
   }));
@@ -62,6 +68,40 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       currentRoundId
     ])
   );
+
+  const closedDialogIndex = -1;
+  const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
+  const handleClickExplain = index => {
+    setDialogContentIndex(index);
+  };
+
+  const handleClickClose = () => {
+    setDialogContentIndex(closedDialogIndex);
+  };
+
+  const proposals = useCacheCall(["Governor"], call => {
+    if (!initialFetchComplete) {
+      return null;
+    }
+    return pendingRequests.map(request => ({
+      proposal: isAdminRequest(hexToUtf8(request.identifier))
+        ? call("Governor", "getProposal", getAdminRequestId(hexToUtf8(request.identifier)))
+        : null
+    }));
+  });
+  const decodeRequestIndex = index => {
+    if (index === closedDialogIndex) {
+      return "";
+    }
+    const proposal = proposals[index].proposal;
+    let output =
+      hexToUtf8(pendingRequests[index].identifier) + " (" + proposal.transactions.length + " transaction(s))";
+    for (let i = 0; i < proposal.transactions.length; i++) {
+      const transaction = proposal.transactions[i];
+      output += "\n\nTransaction #" + i + ":\n" + decodeTransaction(transaction);
+    }
+    return output;
+  };
 
   const voteStatuses = useCacheCall(["Voting"], call => {
     if (!initialFetchComplete) {
@@ -80,7 +120,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     voteStatuses &&
     // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
     // but the fetched value was null, e.g., no `comittedValue` existed.
-    voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined);
+    voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined) &&
+    proposals &&
+    proposals.every(prop => prop.proposal !== undefined);
   // Future hook calls that depend on `voteStatuses` should use `voteStatusesStringified` in their dependencies array
   // because `voteStatuses` will never compare equal after a re-render, even if no values in it actually changed.
   // Also note that `JSON.stringify` doesn't distinguish `undefined` and `null`, but in Drizzle, those mean different
@@ -309,6 +351,13 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       <Typography variant="h6" component="h6">
         Active Requests
       </Typography>
+      <Dialog open={dialogContentIndex !== closedDialogIndex} onClose={handleClickClose}>
+        <DialogContent>
+          <DialogContentText style={{ whiteSpace: "pre-wrap" }}>
+            {decodeRequestIndex(dialogContentIndex)}
+          </DialogContentText>
+        </DialogContent>
+      </Dialog>
       <Table style={{ marginBottom: "10px" }}>
         <TableHead>
           <TableRow>
@@ -325,7 +374,16 @@ function ActiveRequests({ votingAccount, votingGateway }) {
           {pendingRequests.map((pendingRequest, index) => {
             return (
               <TableRow key={index}>
-                <TableCell>{drizzle.web3.utils.hexToUtf8(pendingRequest.identifier)}</TableCell>
+                <TableCell>
+                  <span>
+                    {hexToUtf8(pendingRequest.identifier)}{" "}
+                    {isAdminRequest(hexToUtf8(pendingRequest.identifier)) && (
+                      <Button variant="contained" color="primary" onClick={() => handleClickExplain(index)}>
+                        Explain
+                      </Button>
+                    )}
+                  </span>
+                </TableCell>
                 <TableCell>
                   <Checkbox
                     disabled={!statusDetails[index].enabled}

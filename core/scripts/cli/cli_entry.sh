@@ -8,7 +8,7 @@ set -e
 # $(npm bin)/uma --network mainnet_ledger
 
 # Platform independent way of evaluating symlinks to find the real location of the script.
-SCRIPT_FILE=$(/usr/bin/env python2 -c "import os; print(os.path.realpath(\"$0\"))")
+SCRIPT_FILE=$(/usr/bin/env python -c "import os; print(os.path.realpath(\"$0\"))")
 SCRIPT_DIR=$(dirname $SCRIPT_FILE)
 
 # cd into the directory containing the cli file.
