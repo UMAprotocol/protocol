@@ -42,7 +42,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // When Liquidation ends and becomes 'Expired'
         uint expiry;
-        // Person who created this liquidation
+        // Address who created this liquidation
         address liquidator;
         // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
         Status state;
@@ -61,7 +61,7 @@ contract Liquidatable is PricelessPositionManager {
          * Following variables set upon a dispute request
          */
 
-        // Person who is disputing a liquidation
+        // Address who is disputing a liquidation
         address disputer;
         // Time when dispute is initiated, needed to get price from Oracle
         uint disputeTime;
@@ -295,7 +295,11 @@ contract Liquidatable is PricelessPositionManager {
      *
      * Once all collateral is withdrawn, delete the liquidation data
      */
-    function withdrawLiquidation(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
+    function withdrawLiquidation(uint id, address sponsor)
+        public
+        onlyPostExpiryOrPostDispute(id, sponsor)
+        returns (uint)
+    {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         require(
             (msg.sender == liquidation.disputer) || (msg.sender == liquidation.liquidator) || (msg.sender == sponsor),
@@ -313,7 +317,13 @@ contract Liquidatable is PricelessPositionManager {
         // Dispute bond can always be paid out
         FixedPoint.Unsigned memory disputeBondAmount = liquidation.lockedCollateral.mul(disputeBondPct);
 
+        //There are three main outcome states: either the dispute succeeded, failed or was not updated.
+        // Based on the state, different parties of a liquidation can withdraw different amounts.
+
+        //Once a payment has been recorded this flag is set to inform clean up at function end.
+        uint withdrawalMade = 0;
         if (liquidation.state == Status.DisputeSucceeded) {
+            // If the dispute is successful then all three users can withdraw from the contract.
             if (msg.sender == liquidation.disputer && !liquidation.hasDisputorWithdrawn) {
                 // Pay DISPUTER: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
@@ -322,6 +332,7 @@ contract Liquidatable is PricelessPositionManager {
                     "failed to transfer reward for a successful dispute to disputer"
                 );
                 liquidation.hasDisputorWithdrawn = true;
+                withdrawalMade = payToDisputer.rawValue;
             } else if (msg.sender == sponsor && !liquidation.hasSponsorWithdrawn) {
                 // Pay SPONSOR: remaining collateral (locked collateral - TRV) + sponsor reward
                 FixedPoint.Unsigned memory remainingCollateral;
@@ -332,50 +343,59 @@ contract Liquidatable is PricelessPositionManager {
                     "failed to transfer reward for a successful dispute to sponsor"
                 );
                 liquidation.hasSponsorWithdrawn = true;
+                withdrawalMade = payToSponsor.rawValue;
             } else if (msg.sender == liquidation.liquidator && !liquidation.hasLiquidatorWithdrawn) {
                 // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
                 // If TRV > Collateral, then subtract rewards from locked collateral
                 // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
                 // the constructor when these params are set
-                FixedPoint.Unsigned memory payToLiquidator;
-                payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
+                FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
+                    disputerDisputeReward
+                );
                 require(
                     collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer reward for a successful dispute to liquidator"
                 );
                 liquidation.hasLiquidatorWithdrawn = true;
+                withdrawalMade = payToLiquidator.rawValue;
             }
             // Free up space once all locked collateral is withdrawn
             if (collateralCurrency.balanceOf(address(this)) == 0) {
                 delete liquidations[sponsor][id];
             }
+            //In the case of a failed dispute only the liquidator can withdraw.
         } else if (
             liquidation.state == Status.DisputeFailed &&
             msg.sender == liquidation.liquidator &&
             !liquidation.hasLiquidatorWithdrawn
         ) {
-            // Pay LIQUIDATOR: lockedCollateral + dispute bond
             FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
-            require(
+            require( // Pay LIQUIDATOR: lockedCollateral + dispute bond
                 collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                 "failed to transfer locked collateral plus dispute bond to liquidator"
             );
             liquidation.hasLiquidatorWithdrawn = true;
-            delete liquidations[sponsor][id];
-
+            withdrawalMade = payToLiquidator.rawValue;
+            delete liquidations[sponsor][id];   
+            //If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
         } else if (
             liquidation.state == Status.PreDispute &&
             msg.sender == liquidation.liquidator &&
             !liquidation.hasLiquidatorWithdrawn
         ) {
-            // Pay LIQUIDATOR: lockedCollateral
-            require(
+            require( // Pay LIQUIDATOR: lockedCollateral
                 collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
                 "failed to transfer locked collateral to liquidator"
             );
             liquidation.hasLiquidatorWithdrawn = true;
+            withdrawalMade = liquidation.lockedCollateral.rawValue;
             delete liquidations[sponsor][id];
         }
+        if(withdrawalMade > 0){
+            // TODO: add this amount to the event in the issue #875.
+            return withdrawalMade;
+        }
+        require(false, "Either caller has already withdrawn or can not perform operation on liquidation");
     }
 
     /**
