@@ -216,6 +216,7 @@ contract("Liquidatable", function(accounts) {
       // Transfer synthetic tokens to a liquidator
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
       // Create a Liquidation
+      liquidationTime = await liquidationContract.getCurrentTime();
       await liquidationContract.createLiquidation(sponsor, { from: liquidator });
     });
 
@@ -245,6 +246,7 @@ contract("Liquidatable", function(accounts) {
         assert.equal(newLiquidation.liquidator, liquidator);
         assert.equal(newLiquidation.disputer, zeroAddress);
         assert.equal(newLiquidation.disputeTime.toString(), "0");
+        assert.equal(newLiquidation.liquidationTime.toString(), liquidationTime.toString());
         assert.equal(newLiquidation.settlementPrice.toString(), "0");
       });
       it("Liquidation does not exist", async () => {

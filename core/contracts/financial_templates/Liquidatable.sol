@@ -63,7 +63,9 @@ contract Liquidatable is PricelessPositionManager {
 
         // Person who is disputing a liquidation
         address disputer;
-        // Time when dispute is initiated, needed to get price from Oracle
+        // Time when liquidation is initiated, needed to get price from Oracle
+        uint liquidationTime;
+        // Time when the dispute is initialized
         uint disputeTime;
         // Final price as determined by an Oracle following a dispute
         FixedPoint.Unsigned settlementPrice;
@@ -184,6 +186,7 @@ contract Liquidatable is PricelessPositionManager {
     function createLiquidation(address sponsor) public returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
+        require(positionToLiquidate.collateral.rawValue > 0, "Cant liquidate a position with no collateral");
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
@@ -196,6 +199,7 @@ contract Liquidatable is PricelessPositionManager {
                 tokensOutstanding: positionToLiquidate.tokensOutstanding,
                 liquidatedCollateral: positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount),
                 disputer: address(0),
+                liquidationTime: getCurrentTime(),
                 disputeTime: 0,
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
             })
@@ -236,7 +240,7 @@ contract Liquidatable is PricelessPositionManager {
         disputedLiquidation.disputeTime = getCurrentTime();
 
         // Enqueue a request with the DVM.
-        _requestOraclePrice(disputedLiquidation.disputeTime);
+        _requestOraclePrice(disputedLiquidation.liquidationTime);
     }
 
     /**
@@ -251,7 +255,7 @@ contract Liquidatable is PricelessPositionManager {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        disputedLiquidation.settlementPrice = _getOraclePrice(disputedLiquidation.disputeTime);
+        disputedLiquidation.settlementPrice = _getOraclePrice(disputedLiquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue = disputedLiquidation.tokensOutstanding.mul(
