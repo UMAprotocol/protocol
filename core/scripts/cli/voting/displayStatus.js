@@ -22,7 +22,7 @@ const displayVoteStatus = async (web3, voting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
-  const roundPhase = await voting.getVotePhase();
+  const roundPhase = (await voting.getVotePhase()).toString();
   const roundStats = await voting.rounds(roundId);
   const currentTime = await voting.getCurrentTime();
   const account = await getDefaultAccount(web3);
@@ -55,7 +55,7 @@ const displayVoteStatus = async (web3, voting) => {
   console.log(`${style.success(`- Contract time`)}: ${style.formatSecondsToUtc(currentTime)}`);
   console.log(
     `${style.success(
-      `- Time until ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "Reveal" : "Commit"}`
+      `- Time until ${roundPhase === VotePhasesEnum.COMMIT ? "Reveal" : "Commit"}`
     )} phase: ${hoursUntilNextPhase} hours, ${minutesInLastHour} minutes`
   );
   console.log(
@@ -64,7 +64,7 @@ const displayVoteStatus = async (web3, voting) => {
 
   // Display pending requests in a table
   console.log(
-    `${style.success(`- Pending ${roundPhase.toString() === VotePhasesEnum.COMMIT ? "Price" : "Reveal"} Requests`)}:`
+    `${style.success(`- Pending ${roundPhase === VotePhasesEnum.COMMIT ? "Price" : "Reveal"} Requests`)}:`
   );
   if (filteredRequests.length > 0) {
     const requestsTable = [];
@@ -72,8 +72,8 @@ const displayVoteStatus = async (web3, voting) => {
       const identifierUtf8 = web3.utils.hexToUtf8(request.identifier);
       const timestampUtc = style.formatSecondsToUtc(parseInt(request.time));
       requestsTable.push({
-        Identifier: identifierUtf8,
-        Time: timestampUtc
+        identifier: identifierUtf8,
+        time: timestampUtc
       });
     });
     console.table(requestsTable);
@@ -87,9 +87,9 @@ const displayVoteStatus = async (web3, voting) => {
       .reduce(reducer)
       .map(reward => {
         return {
-          "Round ID": reward.roundId,
-          Name: reward.name,
-          "Reward Tokens": web3.utils.fromWei(reward.potentialRewards)
+          round_id: reward.roundId,
+          name: reward.name,
+          reward_tokens: web3.utils.fromWei(reward.potentialRewards)
         };
       });
     console.table(rewardsTable);

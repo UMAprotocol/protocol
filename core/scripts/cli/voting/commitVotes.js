@@ -21,12 +21,12 @@ const commitVotes = async (web3, voting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
-  const roundPhase = await voting.getVotePhase();
+  const roundPhase = (await voting.getVotePhase()).toString();
   const account = await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   style.spinnerReadingContracts.stop();
 
-  if (roundPhase.toString() === VotePhasesEnum.REVEAL) {
+  if (roundPhase === VotePhasesEnum.REVEAL) {
     console.log(
       `The current vote phase is the "reveal" phase; in the reveal phase, you can only reveal already committed votes. You cannot vote on price requests in this phase.`
     );
@@ -60,7 +60,7 @@ const commitVotes = async (web3, voting) => {
           type: "number",
           name: "price",
           default: 0.0,
-          message: style.instruction(`Enter a positive price, invalid input will default to 0:`),
+          message: style.instruction(`Enter a positive price invalid input will default to 0:`),
           validate: value => value >= 0 || "Price must be positive"
         });
 
@@ -68,7 +68,7 @@ const commitVotes = async (web3, voting) => {
         try {
           newCommitments.push(await constructCommitment(selections[i], roundId, web3, priceInput["price"], account));
         } catch (err) {
-          failures.push({ selectedRequest, err });
+          failures.push({ request: selections[i], err });
         }
       }
 
@@ -87,11 +87,11 @@ const commitVotes = async (web3, voting) => {
           )
         );
         console.group(style.success(`Receipts:`));
-        for (let i = 0; i < successes.length; i++) {
-          console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${successes[i].txnHash}`)}`);
-          console.log(`    - salt: ${successes[i].salt}`);
-          console.log(`    - voted price: ${web3.utils.fromWei(successes[i].price)}`);
-        }
+        successes.forEach(committedVote => {
+          console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${committedVote.txnHash}`)}`);
+          console.log(`    - salt: ${committedVote.salt}`);
+          console.log(`    - voted price: ${web3.utils.fromWei(committedVote.price)}`);
+        })
         console.groupEnd();
       } else {
         console.log(`You have not entered valid prices for any votes`);

@@ -2,14 +2,21 @@ const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = re
 const { getKeyGenMessage, computeTopicHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 
-// Generate a salt and use it to encrypt a committed vote in response to a price request
-// Return committed vote details to the voter
+/**
+ * Generate a salt and use it to encrypt a committed vote in response to a price request
+ * Return committed vote details to the voter
+ * @param {* Object} request {identifier, time}
+ * @param {* String} roundId 
+ * @param {* Object} web3 
+ * @param {* String | Number | BN} price 
+ * @param {* String} account 
+ */
 const constructCommitment = async (request, roundId, web3, price, account) => {
-  const priceString = web3.utils.toWei(price.toString());
+  const priceWei = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
-  const hash = web3.utils.soliditySha3(priceString, salt);
+  const hash = web3.utils.soliditySha3(priceWei, salt);
 
-  const vote = { price: priceString, salt };
+  const vote = { price: priceWei, salt };
   const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account);
   const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
 
@@ -18,12 +25,19 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
     time: request.time,
     hash,
     encryptedVote,
-    price: priceString,
+    price: priceWei,
     salt
   };
 };
 
-// Decrypt an encrypted vote commit for the voter and return vote details
+/**
+ * Decrypt an encrypted vote commit for the voter and return vote details
+ * @param {* Object} request {identifier, time}
+ * @param {* String} roundId 
+ * @param {* Object} web3 
+ * @param {* String} account 
+ * @param {* Object} votingContract deployed Voting.sol instance
+ */
 const constructReveal = async (request, roundId, web3, account, votingContract) => {
   const topicHash = computeTopicHash(request, roundId);
   const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
