@@ -22,8 +22,7 @@ const votePhaseTiming = (contractTime, roundPhase) => {
   const secondsUntilNextPhase = SECONDS_IN_DAY - (parseInt(contractTime) % SECONDS_IN_DAY);
   const hoursUntilNextPhase = Math.floor(moment.duration(secondsUntilNextPhase, "seconds").asHours());
   const minutesInLastHour = Math.floor(moment.duration(secondsUntilNextPhase, "seconds").asMinutes()) % MINUTES_IN_HOUR;
-  const hoursUntilNextRound =
-    roundPhase === VotePhasesEnum.COMMIT ? hoursUntilNextPhase + 24 : hoursUntilNextPhase;
+  const hoursUntilNextRound = roundPhase === VotePhasesEnum.COMMIT ? hoursUntilNextPhase + 24 : hoursUntilNextPhase;
 
   return {
     minutesInLastHour,

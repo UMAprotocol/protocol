@@ -6,10 +6,10 @@ const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("
  * Generate a salt and use it to encrypt a committed vote in response to a price request
  * Return committed vote details to the voter
  * @param {* Object} request {identifier, time}
- * @param {* String} roundId 
- * @param {* Object} web3 
- * @param {* String | Number | BN} price 
- * @param {* String} account 
+ * @param {* String} roundId
+ * @param {* Object} web3
+ * @param {* String | Number | BN} price
+ * @param {* String} account
  */
 const constructCommitment = async (request, roundId, web3, price, account) => {
   const priceWei = web3.utils.toWei(price.toString());
@@ -33,9 +33,9 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
 /**
  * Decrypt an encrypted vote commit for the voter and return vote details
  * @param {* Object} request {identifier, time}
- * @param {* String} roundId 
- * @param {* Object} web3 
- * @param {* String} account 
+ * @param {* String} roundId
+ * @param {* Object} web3
+ * @param {* String} account
  * @param {* Object} votingContract deployed Voting.sol instance
  */
 const constructReveal = async (request, roundId, web3, account, votingContract) => {

@@ -91,7 +91,7 @@ const commitVotes = async (web3, voting) => {
           console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${committedVote.txnHash}`)}`);
           console.log(`    - salt: ${committedVote.salt}`);
           console.log(`    - voted price: ${web3.utils.fromWei(committedVote.price)}`);
-        })
+        });
         console.groupEnd();
       } else {
         console.log(`You have not entered valid prices for any votes`);

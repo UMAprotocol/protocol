@@ -63,9 +63,7 @@ const displayVoteStatus = async (web3, voting) => {
   );
 
   // Display pending requests in a table
-  console.log(
-    `${style.success(`- Pending ${roundPhase === VotePhasesEnum.COMMIT ? "Price" : "Reveal"} Requests`)}:`
-  );
+  console.log(`${style.success(`- Pending ${roundPhase === VotePhasesEnum.COMMIT ? "Price" : "Reveal"} Requests`)}:`);
   if (filteredRequests.length > 0) {
     const requestsTable = [];
     filteredRequests.forEach(request => {
