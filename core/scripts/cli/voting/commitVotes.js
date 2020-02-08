@@ -33,14 +33,13 @@ const commitVotes = async (web3, voting) => {
   } else if (filteredRequests.length === 0) {
     console.log(`No pending price requests to commit votes for!`);
   } else {
-
     // To display properly, give each request a 'name' parameter and set 'value' to the price request
     for (let i = 0; i < filteredRequests.length; i++) {
       let request = filteredRequests[i];
       request.name = `${web3.utils.hexToUtf8(request.identifier)} @ ${style.formatSecondsToUtc(
         parseInt(request.time)
       )}`;
-      request.value = request
+      request.value = { identifier: request.identifier, time: request.time };
     }
     const checkbox = await inquirer.prompt({
       type: "checkbox",

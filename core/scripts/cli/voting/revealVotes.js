@@ -34,7 +34,7 @@ const revealVotes = async (web3, voting) => {
       request.name = `${web3.utils.hexToUtf8(request.identifier)} @ ${style.formatSecondsToUtc(
         parseInt(request.time)
       )}`;
-      request.value = request
+      request.value = { identifier: request.identifier, time: request.time };
     }
 
     const checkbox = await inquirer.prompt({
@@ -54,7 +54,6 @@ const revealVotes = async (web3, voting) => {
         try {
           newReveals.push(await constructReveal(selections[i], roundId, web3, account, voting));
         } catch (err) {
-          console.error(err)
           failures.push({ request: selections[i], err });
         }
       }

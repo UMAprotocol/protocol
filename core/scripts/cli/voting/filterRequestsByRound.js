@@ -31,11 +31,14 @@ const filterRequestsByRound = async (pendingRequests, account, roundId, roundPha
     } else {
       // Only display committed votes during the reveal phase (i.e.
       // if an encrypted message exists for the identifier-timestamp)
-      filteredRequests = chronologicalPriceRequests.filter(async (request) => {
+      for (let i = 0; i < chronologicalPriceRequests.length; i++) {
+        const request = chronologicalPriceRequests[i];
         const topicHash = computeTopicHash(request, roundId);
         const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
-        return encryptedCommit;
-      });
+        if (encryptedCommit) {
+          filteredRequests.push(request);
+        }
+      }
     }
   }
   return filteredRequests;

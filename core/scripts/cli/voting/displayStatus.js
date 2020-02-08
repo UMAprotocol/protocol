@@ -72,8 +72,8 @@ const displayVoteStatus = async (web3, voting) => {
       const identifierUtf8 = web3.utils.hexToUtf8(request.identifier);
       const timestampUtc = style.formatSecondsToUtc(parseInt(request.time));
       requestsTable.push({
-        "Identifier": identifierUtf8,
-        "Time": timestampUtc
+        Identifier: identifierUtf8,
+        Time: timestampUtc
       });
     });
     console.table(requestsTable);
@@ -82,16 +82,16 @@ const displayVoteStatus = async (web3, voting) => {
   // Display rewards to be retrieved in a table
   console.log(`${style.success(`- Voting Rewards Available`)}:`);
   if (rewards.roundIds.length > 0) {
-    const rewardsTable = [];
-    Object.keys(rewards.resolvedVotesByRoundId).forEach(roundId => {
-      rewards.resolvedVotesByRoundId[roundId].forEach(_reward => {
-        rewardsTable.push({
-          "Round ID": _reward.roundId,
-          "Name": _reward.name,
-          "Reward Tokens": web3.utils.fromWei(_reward.potentialRewards)
-        });
+    const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
+    const rewardsTable = Object.values(rewards.resolvedVotesByRoundId)
+      .reduce(reducer)
+      .map(reward => {
+        return {
+          "Round ID": reward.roundId,
+          Name: reward.name,
+          "Reward Tokens": web3.utils.fromWei(reward.potentialRewards)
+        };
       });
-    });
     console.table(rewardsTable);
   }
 
