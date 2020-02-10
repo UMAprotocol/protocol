@@ -4,6 +4,7 @@ const displayStatus = require("./voting/displayStatus");
 const commitVotes = require("./voting/commitVotes");
 const revealVotes = require("./voting/revealVotes");
 const retrieveRewards = require("./voting/retrieveRewards");
+const getTwoKeyContract = require('./wallet/getTwoKeyContract')
 
 const ACTIONS = {
   info: "Info",
@@ -33,28 +34,29 @@ const vote = async () => {
 const votingMenu = async function(web3, artifacts) {
   try {
     const Voting = artifacts.require("Voting");
-    const voting = await Voting.deployed();
+    const votingContract = await Voting.deployed();  
+    const designatedVotingContract = await getTwoKeyContract(web3, artifacts)
 
     const inputs = (await vote())["voteTopMenu"];
     switch (inputs) {
       // INFO: Round ID, phase, inflation & GAT rates, and quick breakdown of pending price requests/vote reveals
       case ACTIONS.info:
-        await displayStatus(web3, voting);
+        await displayStatus(web3, votingContract, designatedVotingContract);
         break;
 
       // COMMIT: Allow user to 'select' price requests to submit votes on
       case ACTIONS.commit:
-        await commitVotes(web3, voting);
+        await commitVotes(web3, votingContract, designatedVotingContract);
         break;
 
       // REVEAL: Allow user to 'select' price requests to reveal votes for
       case ACTIONS.reveal:
-        await revealVotes(web3, voting);
+        await revealVotes(web3, votingContract, designatedVotingContract);
         break;
 
       // REWARDS: Allow user to 'select' resolved price requests to retrieve rewards for
       case ACTIONS.rewards:
-        await retrieveRewards(web3, voting);
+        await retrieveRewards(web3, votingContract, designatedVotingContract);
         break;
 
       // HELP
@@ -63,7 +65,7 @@ const votingMenu = async function(web3, artifacts) {
         console.log(
           `${style.help(
             ACTIONS.info
-          )}: Displays information about the current voting round including pending price requests to commit or reveal votes for, and rewards available.`
+          )}: Displays information about the current voting round including pending price requests to commit or reveal votes for, and rewards available. Also displays two key designated voting contract information if the user has set it up properly.`
         );
         console.log(
           `${style.help(

@@ -1,7 +1,7 @@
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const style = require("../textStyle");
 const { batchRetrieveRewards } = require("../../../../common/VotingUtils");
-const getResolvedVotesByRoundId = require("./getResolvedVotesByRoundId");
+const getAvailableRewards = require("./getRewardsByRoundId");
 const inquirer = require("inquirer");
 
 /**
@@ -11,10 +11,11 @@ const inquirer = require("inquirer");
  * @param {* Object} web3 Web3 provider
  * @param {* Object} voting deployed Voting.sol contract instance
  */
-const retrieveRewards = async (web3, voting) => {
+const retrieveRewards = async (web3, voting, designatedVoting) => {
   style.spinnerReadingContracts.start();
-  const account = await getDefaultAccount(web3);
-  const { resolvedVotesByRoundId, roundIds } = await getResolvedVotesByRoundId(web3, voting, account);
+  // If the user is using the two key contract, then the account is the designated voting contract's address
+  const account = (designatedVoting ? designatedVoting.address : await getDefaultAccount(web3));
+  const { rewardsByRoundId, roundIds } = await getAvailableRewards(web3, voting, account);
   style.spinnerReadingContracts.stop();
 
   if (roundIds.length > 0) {
@@ -32,7 +33,7 @@ const retrieveRewards = async (web3, voting) => {
     });
     if (list["roundIdList"] !== "back") {
       const roundId = list["roundIdList"];
-      const resolvedVotes = resolvedVotesByRoundId[roundId];
+      const resolvedVotes = rewardsByRoundId[roundId];
 
       // Batch retrieve rewards
       style.spinnerWritingContracts.start();

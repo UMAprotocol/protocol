@@ -52,7 +52,7 @@ async function run() {
         console.log(
           `${style.help(
             ACTIONS.wallet
-          )}: Displays your token balances and provides functioanlity for generating new voting accounts.`
+          )}: Displays your token balances and provides functionality for generating new voting accounts.`
         );
         console.log(
           `${style.help(

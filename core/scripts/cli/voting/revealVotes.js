@@ -12,12 +12,13 @@ const { constructReveal, batchRevealVotes } = require("../../../../common/Voting
  * @param {* Object} web3 Web3 provider
  * @param {* Object} voting deployed Voting.sol contract instance
  */
-const revealVotes = async (web3, voting) => {
+const revealVotes = async (web3, voting, designatedVoting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
   const roundPhase = await voting.getVotePhase();
-  const account = await getDefaultAccount(web3);
+  // If the user is using the two key contract, then the account is the designated voting contract's address
+  const account = (designatedVoting ? designatedVoting.address : await getDefaultAccount(web3));
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   style.spinnerReadingContracts.stop();
 

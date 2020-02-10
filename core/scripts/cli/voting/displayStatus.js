@@ -3,7 +3,8 @@ const { VotePhasesEnum } = require("../../../../common/Enums");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const votePhaseTime = require("./votePhaseTiming");
-const getAvailableRewards = require("./getResolvedVotesByRoundId");
+const getAvailableRewards = require("./getRewardsByRoundId");
+const getResolvedPrices = require('./getResolvedVotesByRoundId')
 
 /**
  * Display information about the current voting round:
@@ -18,40 +19,48 @@ const getAvailableRewards = require("./getResolvedVotesByRoundId");
  * @param {* Object} web3 Web3 provider
  * @param {* Object} voting deployed Voting.sol contract instance
  */
-const displayVoteStatus = async (web3, voting) => {
+const displayVoteStatus = async (web3, voting, designatedVoting) => {
   style.spinnerReadingContracts.start();
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
   const roundPhase = (await voting.getVotePhase()).toString();
-  const roundStats = await voting.rounds(roundId);
+  // TODO: #901 Can't access Voting.rounds in latest deployed Contract https://etherscan.io/address/0xfe3c4f1ec9f5df918d42ef7ed3fba81cc0086c5f#readContract
+  // const roundStats = await voting.rounds(roundId);
+
   const currentTime = await voting.getCurrentTime();
-  const account = await getDefaultAccount(web3);
+  // If the user is using the two key contract, then the account is the designated voting contract's address
+  const account = (designatedVoting ? designatedVoting.address : await getDefaultAccount(web3));
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   const rewards = await getAvailableRewards(web3, voting, account);
+  const resolvedPrices = await getResolvedPrices(web3, voting, account)
   style.spinnerReadingContracts.stop();
 
-  // If no reveals have taken place in the current vote phase, then
-  // show the global inflation and GAT percentages. Otherwise,
-  // show the round's inflation and GAT percentages.
-  const _inflationRate =
-    roundStats.snapshotId.toString() === "0" ? await voting.inflationRate() : roundStats.inflationRate.toString();
-  const _gatPercentage =
-    roundStats.snapshotId.toString() === "0" ? await voting.gatPercentage() : roundStats.gatPercentage.toString();
-  const inflationRate = parseFloat(web3.utils.fromWei(_inflationRate)) * 100;
-  const gatPercentage = parseFloat(web3.utils.fromWei(_gatPercentage)) * 100;
+  // TODO: #901 Can't access Voting.rounds in latest deployed Contract https://etherscan.io/address/0xfe3c4f1ec9f5df918d42ef7ed3fba81cc0086c5f#readContract
+  // // If no reveals have taken place in the current vote phase, then
+  // // show the global inflation and GAT percentages. Otherwise,
+  // // show the round's inflation and GAT percentages.
+  // const _inflationRate =
+  //   roundStats.snapshotId.toString() === "0" ? await voting.inflationRate() : roundStats.inflationRate.toString();
+  // const _gatPercentage =
+  //   roundStats.snapshotId.toString() === "0" ? await voting.gatPercentage() : roundStats.gatPercentage.toString();
+  // const inflationRate = parseFloat(web3.utils.fromWei(_inflationRate)) * 100;
+  // const gatPercentage = parseFloat(web3.utils.fromWei(_gatPercentage)) * 100;
 
   // Compute time until next phase and round
   const { minutesInLastHour, hoursUntilNextPhase, hoursUntilNextRound } = votePhaseTime(currentTime, roundPhase);
 
   console.group(`${style.success(`\n** Your voting status **`)}`);
+  if (designatedVoting) {
+    console.log(`${style.success(`- Voting by proxy with the two key contract @`)}: ${designatedVoting.address}`);
+  }
   console.log(`${style.success(`- Current round ID`)}: ${roundId.toString()}`);
   console.log(
     `${style.success(`- Current round phase`)}: ${
       roundPhase.toString() === VotePhasesEnum.COMMIT ? "Commit" : "Reveal"
     }`
   );
-  console.log(`${style.success(`- Round Inflation`)}: ${inflationRate.toString()} %`);
-  console.log(`${style.success(`- Round GAT`)}: ${gatPercentage.toString()} %`);
+  // console.log(`${style.success(`- Round Inflation`)}: ${inflationRate.toString()} %`);
+  // console.log(`${style.success(`- Round GAT`)}: ${gatPercentage.toString()} %`);
   console.log(`${style.success(`- Contract time`)}: ${style.formatSecondsToUtc(currentTime)}`);
   console.log(
     `${style.success(
@@ -81,7 +90,7 @@ const displayVoteStatus = async (web3, voting) => {
   console.log(`${style.success(`- Voting Rewards Available`)}:`);
   if (rewards.roundIds.length > 0) {
     const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
-    const rewardsTable = Object.values(rewards.resolvedVotesByRoundId)
+    const rewardsTable = Object.values(rewards.rewardsByRoundId)
       .reduce(reducer)
       .map(reward => {
         return {
@@ -93,6 +102,23 @@ const displayVoteStatus = async (web3, voting) => {
     console.table(rewardsTable);
   }
 
+  // Display resolved prices that voter voted on
+  console.log(`${style.success(`- Resolved Prices of Votes Participated In`)}:`);
+  if (Object.keys(resolvedPrices).length > 0) {
+    const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
+    const resolvedPricesTable = Object.values(resolvedPrices)
+      .reduce(reducer)
+      .map(resolution => {
+        return {
+          round_id: resolution.roundId,
+          identifier: resolution.identifier,
+          time: resolution.time,
+          price: resolution.price
+        };
+      });
+    console.table(resolvedPricesTable);
+  }
+  
   console.log(`\n`);
   console.groupEnd();
 };
