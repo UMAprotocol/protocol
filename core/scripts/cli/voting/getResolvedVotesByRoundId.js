@@ -34,7 +34,7 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
       filter: { resolutionRoundId: Object.keys(roundIds) },
       fromBlock: 0
     });
-  
+
     resolvedPrices.forEach(price => {
       const roundId = price.args.resolutionRoundId;
       const resolvedPrice = {
@@ -44,7 +44,7 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
         price: web3.utils.fromWei(price.args.price)
       };
       roundIds[roundId].push(resolvedPrice);
-    });  
+    });
   }
 
   return roundIds;
