@@ -119,7 +119,7 @@ contract PricelessPositionManager is FeePayer {
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
         require(
-            getCollateral(newSponsor).isEqual(FixedPoint.fromUnscaledUint(0)),
+            getCollateral(newSponsorAddress).isEqual(FixedPoint.fromUnscaledUint(0)),
             "Cannot transfer to an address that already has a position"
         );
         PositionData storage positionData = _getPositionData(msg.sender);
