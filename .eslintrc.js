@@ -18,6 +18,7 @@ module.exports = {
     "no-unused-vars": [0],
     "no-case-declarations": [0],
     "no-constant-condition": [0],
-    "no-redeclare": [0]
+    "no-redeclare": [0],
+    "no-console": [0]
   }
 };

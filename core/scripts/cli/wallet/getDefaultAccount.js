@@ -5,7 +5,7 @@ module.exports = async web3 => {
   const accounts = await web3.eth.getAccounts();
 
   if (accounts.length === 0) {
-    throw new Error(`No accounts in web3.eth.accounts.wallet`);
+    throw new Error("No accounts in web3.eth.accounts.wallet");
   } else {
     return accounts[DEFAULT_ACCOUNT_INDEX];
   }

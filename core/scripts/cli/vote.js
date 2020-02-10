@@ -34,9 +34,9 @@ module.exports = async function(web3, artifacts) {
         const pendingRequests = await voting.getPendingRequests();
         const roundId = await voting.getCurrentRoundId();
         style.spinnerReadingContracts.stop();
-        console.group(`\n** Your voting status **`);
+        console.group("\n** Your voting status **");
         console.log(`- Current round ID: ${roundId.toNumber()}`);
-        console.log(`- Pending price requests:`, pendingRequests);
+        console.log("- Pending price requests:", pendingRequests);
         console.groupEnd();
         break;
       case ACTIONS.back:

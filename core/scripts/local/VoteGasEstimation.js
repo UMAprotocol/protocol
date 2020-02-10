@@ -64,7 +64,7 @@ async function run() {
     console.groupEnd();
   }
 
-  console.group(`\nVoter token balances post-test:`);
+  console.group("\nVoter token balances post-test:");
   for (var i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);
     const balance = await votingToken.balanceOf(voter);
@@ -80,7 +80,7 @@ async function run() {
 const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   // Estimating gas usage: requestPrice.
   let gasUsedPriceRequest = 0;
-  console.group(`\nEstimating gas usage: requestPrice`);
+  console.group("\nEstimating gas usage: requestPrice");
 
   for (var i = 0; i < numPriceRequests; i++) {
     const result = await voting.requestPrice(identifier, time + i, { from: accounts[1] });
@@ -99,7 +99,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
 
   // Estimating gas usage: commitVote
   let gasUsedCommitVote = 0;
-  console.group(`\nEstimating gas usage: commitVote`);
+  console.group("\nEstimating gas usage: commitVote");
 
   for (var i = 0; i < numPriceRequests; i++) {
     console.group(`Price request #${i}`);
@@ -130,7 +130,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
 
   // Estimating gas usage: revealVote
   let gasUsedRevealVote = 0;
-  console.group(`\nEstimating gas usage: revealVote`);
+  console.group("\nEstimating gas usage: revealVote");
 
   for (var i = 0; i < numPriceRequests; i++) {
     console.group(`Price request #${i}`);

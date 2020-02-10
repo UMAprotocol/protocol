@@ -14,13 +14,13 @@ module.exports = async (web3, artifacts) => {
     const votingToken = await VotingToken.deployed();
     const votingBalance = await votingToken.balanceOf(address);
     style.spinnerReadingContracts.stop();
-    console.group(style.bgRed(`\n** Ethereum Account Info **`));
-    console.log(`- ${style.bgRed(`Address`)}: ${address}`);
-    console.log(`- ${style.bgRed(`Balance`)}: ${fromWei(balance)} ETH`);
-    console.log(`- ${style.bgRed(`Balance`)}: ${fromWei(votingBalance)} UMA voting token`);
-    console.log(`\n`);
+    console.group(style.bgRed("\n** Ethereum Account Info **"));
+    console.log(`- ${style.bgRed("Address")}: ${address}`);
+    console.log(`- ${style.bgRed("Balance")}: ${fromWei(balance)} ETH`);
+    console.log(`- ${style.bgRed("Balance")}: ${fromWei(votingBalance)} UMA voting token`);
+    console.log("\n");
     console.groupEnd();
   } catch (err) {
-    console.error(`Failed to read default account information:`, err);
+    console.error("Failed to read default account information:", err);
   }
 };
