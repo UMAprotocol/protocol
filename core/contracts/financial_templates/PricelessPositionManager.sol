@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../FixedPoint.sol";
 import "../Testable.sol";
 import "./Token.sol";
@@ -18,6 +19,8 @@ import "../OracleInterface.sol";
 contract PricelessPositionManager is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
+    using SafeERC20 for IERC20;
+    using SafeERC20 for Token;
 
     // Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
     // and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
@@ -129,10 +132,7 @@ contract PricelessPositionManager is Testable {
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
 
         // Move collateral currency from sender to contract.
-        require(
-            collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue),
-            "Deposit collateral currency transfer failed"
-        );
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
 
         emit Deposit(msg.sender, collateralAmount.rawValue);
     }
@@ -156,10 +156,7 @@ contract PricelessPositionManager is Testable {
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
 
         // Move collateral currency from contract to sender.
-        require(
-            collateralCurrency.transfer(msg.sender, collateralAmount.rawValue),
-            "Withdrawal of collateral currency failed."
-        );
+        collateralCurrency.safeTransfer(msg.sender, collateralAmount.rawValue);
 
         emit Withdrawal(msg.sender, collateralAmount.rawValue);
     }
@@ -210,10 +207,7 @@ contract PricelessPositionManager is Testable {
         positionData.requestPassTimestamp = 0;
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        require(
-            collateralCurrency.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue),
-            "Withdrawing tokens from position to caller failed."
-        );
+        collateralCurrency.safeTransfer(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, positionData.withdrawalRequestAmount.rawValue);
     }
@@ -253,10 +247,7 @@ contract PricelessPositionManager is Testable {
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
         // Transfer tokens into the contract from caller and mint the caller synthetic tokens.
-        require(
-            collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue),
-            "Transferring collateral failed"
-        );
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
         require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
 
         emit PositionCreated(msg.sender, collateralAmount.rawValue, numTokens.rawValue);
@@ -291,15 +282,8 @@ contract PricelessPositionManager is Testable {
         }
 
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
-        require(
-            collateralCurrency.transfer(msg.sender, collateralRedeemed.rawValue),
-            "Transfering collateral from caller to contract failed"
-        );
-
-        require(
-            tokenCurrency.transferFrom(msg.sender, address(this), numTokens.rawValue),
-            "Burning tokens from caller failed"
-        );
+        collateralCurrency.safeTransfer(msg.sender, collateralRedeemed.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
         tokenCurrency.burn(numTokens.rawValue);
 
         emit Redeem(msg.sender, collateralRedeemed.rawValue, numTokens.rawValue);
@@ -345,15 +329,9 @@ contract PricelessPositionManager is Testable {
             delete positions[msg.sender];
         }
 
-        // Transfer tokens and collateral.
-        require(
-            collateralCurrency.transfer(msg.sender, totalRedeemableCollateral.rawValue),
-            "Collateral redemption send failed"
-        );
-        require(
-            tokenCurrency.transferFrom(msg.sender, address(this), tokensToRedeem.rawValue),
-            "Token redemption send failed"
-        );
+        // Transfer tokens & collateral and burn the redeemed tokens.
+        collateralCurrency.safeTransfer(msg.sender, totalRedeemableCollateral.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
         // Decrement total contract collateral and oustanding debt.
