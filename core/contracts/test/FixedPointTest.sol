@@ -67,6 +67,10 @@ contract FixedPointTest {
         return FixedPoint.Unsigned(a).mul(FixedPoint.Unsigned(b)).rawValue;
     }
 
+    function wrapMulCeil(uint a, uint b) external pure returns (uint) {
+        return FixedPoint.Unsigned(a).mulCeil(FixedPoint.Unsigned(b)).rawValue;
+    }
+
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.
     function wrapMixedMul(uint a, uint b) external pure returns (uint) {
         return FixedPoint.Unsigned(a).mul(b).rawValue;
@@ -74,6 +78,10 @@ contract FixedPointTest {
 
     function wrapDiv(uint a, uint b) external pure returns (uint) {
         return FixedPoint.Unsigned(a).div(FixedPoint.Unsigned(b)).rawValue;
+    }
+
+    function wrapDivCeil(uint a, uint b) external pure returns (uint) {
+        return FixedPoint.Unsigned(a).divCeil(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint is interpreted with a scaling factor and is converted to an `Unsigned` directly.

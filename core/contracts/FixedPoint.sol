@@ -97,6 +97,20 @@ library FixedPoint {
         return Unsigned(a.rawValue.mul(b));
     }
 
+    /** @dev Multiplies two `Unsigned`s, reverting on overflow, and rounds the resultant product up rather than by default, down. */
+    function mulCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        // To ensure rounding up occurs post-truncation, add one half of the least significant digit remaining post-truncation
+        // (i.e., the 18th digit). If the 18th digit is [0,1,2,3,4], then it will not affect the 17th digit and will get truncated
+        // down and the product will get "rounded down". If the 18th digit is [5,6,7,8,9], then the 17th digit will be increased
+        // by one before getting truncated. Therefore the resultant product will be "rounded up"
+        return Unsigned(a.rawValue.mul(b.rawValue).add(0.5 * 10**18) / FP_SCALING_FACTOR);
+    }
+
+    /** @dev Multiplies an `Unsigned` by an unscaled uint, reverting on overflow, and rounds the resultant product up rather than by default, down. */
+    function mulCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        return Unsigned(a.rawValue.mul(b).add(0.5 * 10**18));
+    }
+
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
     function div(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
@@ -110,6 +124,23 @@ library FixedPoint {
     /** @dev Divides with truncation an `Unsigned` by an unscaled uint, reverting on division by 0. */
     function div(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
         return Unsigned(a.rawValue.div(b));
+    }
+
+    /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0, and rounds the resultant quotient up rather than by default, down. */
+    function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        // To ensure rounding up occurs post-truncation, add one half of the least significant digit remaining post-truncation
+        // (i.e., the 18th digit). If the 18th digit is [0,1,2,3,4], then it will not affect the 17th digit and will get truncated
+        // down and the product will get "rounded down". If the 18th digit is [5,6,7,8,9], then the 17th digit will be increased
+        // by one before getting truncated. Therefore the resultant product will be "rounded up"
+        //
+        // To accomplish this with division, first multiply a "up one dimension" (aka, leave it with 19 digits), divide it by
+        // b, and then still with 19 digits add 0.5 to the 18th digit, and then do a final truncation
+        return Unsigned(a.rawValue.mul(FP_SCALING_FACTOR.mul(10)).div(b.rawValue).add(5).div(10));
+    }
+
+    /** @dev Divides with truncation an `Unsigned` by an unscaled uint, reverting on division by 0, and rounds the resultant quotient up rather than by default, down. */
+    function divCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        return Unsigned(a.rawValue.mul(10).div(b).add(5).div(10));
     }
 
     /** @dev Divides with truncation an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */

@@ -147,6 +147,27 @@ contract("FixedPoint", function(accounts) {
     assert(await didContractThrow(fixedPoint.wrapMul(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2"))));
   });
 
+  it("Multiplication, rounded up", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    // Whole numbers above 10**18.
+    let product = await fixedPoint.wrapMulCeil(web3.utils.toWei("5"), web3.utils.toWei("17"));
+    assert.equal(product.toString(), web3.utils.toWei("85"));
+
+    // Fractions, no precision loss.
+    product = await fixedPoint.wrapMulCeil(web3.utils.toWei("0.0001"), web3.utils.toWei("5"));
+    assert.equal(product.toString(), web3.utils.toWei("0.0005"));
+
+    // Fractions, precision loss, rounding up.
+    // 1.4 * 2e-18 = 2.8e-18, which can't be represented and gets rounded up to 3.
+    product = await fixedPoint.wrapMulCeil(web3.utils.toWei("1.4"), "2");
+    assert.equal(product.toString(), "3");
+
+    // Reverts on overflow.
+    // (uint_max - 1) * 2 overflows.
+    assert(await didContractThrow(fixedPoint.wrapMulCeil(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2"))));
+  });
+
   it("Mixed multiplication", async function() {
     const fixedPoint = await FixedPointTest.new();
 
@@ -179,6 +200,26 @@ contract("FixedPoint", function(accounts) {
     // 1 / 3 = 0.3 repeating, which can't be represented and gets rounded down to 0.333333333333333333.
     quotient = await fixedPoint.wrapDiv(web3.utils.toWei("1"), web3.utils.toWei("3"));
     assert.equal(quotient.toString(), "3".repeat(18));
+
+    // Reverts on division by zero.
+    assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
+  });
+
+  it("Division, rounded up", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    // Normal division case.
+    let quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("150.3"), web3.utils.toWei("3"));
+    assert.equal(quotient.toString(), web3.utils.toWei("50.1"));
+
+    // Divisor < 1.
+    quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("2"), web3.utils.toWei("0.01"));
+    assert.equal(quotient.toString(), web3.utils.toWei("200"));
+
+    // Fractions, precision loss, rounding down.
+    // 2 / 3 = 0.6 repeating, which can't be represented and gets rounded up to 0.666666666666666667.
+    quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("2"), web3.utils.toWei("3"));
+    assert.equal(quotient.toString(), "6".repeat(17) + "7");
 
     // Reverts on division by zero.
     assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
