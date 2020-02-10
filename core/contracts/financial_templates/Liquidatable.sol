@@ -27,19 +27,18 @@ contract Liquidatable is PricelessPositionManager {
     enum Status { PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
-        // Following variables set upon creation of liquidation:
+        // * Following variables set upon creation of liquidation *
         uint expiry; // When Liquidation ends and becomes 'Expired'
         address liquidator; // caller who created this liquidation
         Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
-        // Following variables determined by the position that is being liquidated:
+        // * Following variables determined by the position that is being liquidated *
         FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned lockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
         FixedPoint.Unsigned liquidatedCollateral; // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
-
-        // Following variables set upon a dispute request
+        // * Following variables set upon a dispute request *
         address disputer; // Person who is disputing a liquidation
-        uint disputeTime; // Time when dispute is initiated, needed to get price from Oracle
+        uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
         FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
     }
 
@@ -180,6 +179,7 @@ contract Liquidatable is PricelessPositionManager {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate);
+        require(positionCollateral.isGreaterThan(0), "Cant liquidate a position with no collateral");
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
@@ -192,7 +192,7 @@ contract Liquidatable is PricelessPositionManager {
                 tokensOutstanding: positionToLiquidate.tokensOutstanding,
                 liquidatedCollateral: positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount),
                 disputer: address(0),
-                disputeTime: 0,
+                liquidationTime: getCurrentTime(),
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
             })
         );
@@ -240,10 +240,9 @@ contract Liquidatable is PricelessPositionManager {
         // Liquidation is pending dispute until DVM returns a price
         disputedLiquidation.state = Status.PendingDispute;
         disputedLiquidation.disputer = msg.sender;
-        disputedLiquidation.disputeTime = getCurrentTime();
 
         // Enqueue a request with the DVM.
-        _requestOraclePrice(disputedLiquidation.disputeTime);
+        _requestOraclePrice(disputedLiquidation.liquidationTime);
 
         emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }
@@ -262,7 +261,7 @@ contract Liquidatable is PricelessPositionManager {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        disputedLiquidation.settlementPrice = _getOraclePrice(disputedLiquidation.disputeTime);
+        disputedLiquidation.settlementPrice = _getOraclePrice(disputedLiquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue = disputedLiquidation.tokensOutstanding.mul(
