@@ -90,7 +90,7 @@ contract PricelessPositionManager is FeePayer {
 
     modifier onlyCollateralizedPosition(address sponsor) {
         require(
-            _getCollateral(_getPositionData(sponsor)).isGreaterThan(0),
+            _getCollateral(positions[sponsor]).isGreaterThan(0),
             "Position has no collateral and so is invalid"
         );
         _;
@@ -327,18 +327,9 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
-     * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
-     */
-
-    function pfc() public view returns (FixedPoint.Unsigned memory) {
-        return totalPositionCollateral;
-    }
-
-    /**
      * @dev This overrides payFees() so the PricelessPositionManager can update its internal bookkeeping to account for
      * the fees.
      */
-
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         // Capture pfc upfront.
         FixedPoint.Unsigned memory initialPfc = pfc();
@@ -363,15 +354,6 @@ contract PricelessPositionManager is FeePayer {
         // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
         totalPositionCollateral = totalPositionCollateral.mul(adjustment);
         positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
-    }
-
-    /**
-     * @notice Accessor method for a sponsor's collateral.
-     * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't a
-     * user-readable value.
-     */
-    function getCollateral(address sponsor) public view returns (FixedPoint.Unsigned memory) {
-        return _getCollateral(_getPositionData(sponsor));
     }
 
     /**
@@ -429,6 +411,23 @@ contract PricelessPositionManager is FeePayer {
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
         emit SettleExpiredPosition(msg.sender, totalRedeemableCollateral.rawValue, tokensToRedeem.rawValue);
+    }
+
+    /**
+     * @notice Accessor method for a sponsor's collateral.
+     * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't a
+     * user-readable value.
+     */
+    function getCollateral(address sponsor) public view returns (FixedPoint.Unsigned memory) {
+        // Note: do a direct access to avoid the validity check.
+        return _getCollateral(positions[sponsor]);
+    }
+
+    /**
+     * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
+     */
+    function pfc() public view returns (FixedPoint.Unsigned memory) {
+        return totalPositionCollateral;
     }
 
     function _deleteSponsorPosition(address sponsor) internal {
