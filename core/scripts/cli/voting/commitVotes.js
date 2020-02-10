@@ -60,7 +60,7 @@ const commitVotes = async (web3, voting) => {
           type: "number",
           name: "price",
           default: 0.0,
-          message: style.instruction(`Enter a positive price invalid input will default to 0:`),
+          message: style.instruction(`Enter a positive price. Invalid input will default to 0!`),
           validate: value => value >= 0 || "Price must be positive"
         });
 
