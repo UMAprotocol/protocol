@@ -34,7 +34,7 @@ function Step6(props) {
         address: contractAddress,
         symbol: symbol.substring(0, 6),
         decimals: 18,
-        image: "https://umaproject.org/assets/images/UMA_square_red_logo.png"
+        image: "https://umaproject.org/assets/images/UMA_square_grey_logo.png"
       }
     },
     id: Math.round(Math.random() * 100000)
