@@ -17,35 +17,37 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
   });
 
   // Construct list of round ID's participated in by voter
-  const roundIds = {}
+  const roundIds = {};
   for (let i = 0; i < revealedVotes.length; i++) {
     const roundId = revealedVotes[i].args.roundId.toString();
     // If this is a new roundId, count it
     if (!roundIds[roundId]) {
-        roundIds[roundId] = [];
+      roundIds[roundId] = [];
     } else {
-        continue
+      continue;
     }
   }
 
   // Now filter resolved prices by the voter participation
-  const resolvedPrices = await votingContract.getPastEvents("PriceResolved", {
-    filter: { resolutionRoundId: Object.keys(roundIds) },
-    fromBlock: 0
-  });
-
-  resolvedPrices.forEach(price => {
-    const roundId = price.args.resolutionRoundId;
-    const resolvedPrice = {
+  if (Object.keys(roundIds).length > 0) {
+    const resolvedPrices = await votingContract.getPastEvents("PriceResolved", {
+      filter: { resolutionRoundId: Object.keys(roundIds) },
+      fromBlock: 0
+    });
+  
+    resolvedPrices.forEach(price => {
+      const roundId = price.args.resolutionRoundId;
+      const resolvedPrice = {
         roundId: roundId.toString(),
         identifier: web3.utils.hexToUtf8(price.args.identifier),
         time: style.formatSecondsToUtc(price.args.time),
         price: web3.utils.fromWei(price.args.price)
-    }
-    roundIds[roundId].push(resolvedPrice)
-  })
-  
-  return roundIds
+      };
+      roundIds[roundId].push(resolvedPrice);
+    });  
+  }
+
+  return roundIds;
 };
 
 module.exports = getResolvedVotesByRound;

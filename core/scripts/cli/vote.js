@@ -4,7 +4,7 @@ const displayStatus = require("./voting/displayStatus");
 const commitVotes = require("./voting/commitVotes");
 const revealVotes = require("./voting/revealVotes");
 const retrieveRewards = require("./voting/retrieveRewards");
-const getTwoKeyContract = require('./wallet/getTwoKeyContract')
+const getTwoKeyContract = require("./wallet/getTwoKeyContract");
 
 const ACTIONS = {
   info: "Info",
@@ -34,8 +34,8 @@ const vote = async () => {
 const votingMenu = async function(web3, artifacts) {
   try {
     const Voting = artifacts.require("Voting");
-    const votingContract = await Voting.deployed();  
-    const designatedVotingContract = await getTwoKeyContract(web3, artifacts)
+    const votingContract = await Voting.deployed();
+    const designatedVotingContract = await getTwoKeyContract(web3, artifacts);
 
     const inputs = (await vote())["voteTopMenu"];
     switch (inputs) {

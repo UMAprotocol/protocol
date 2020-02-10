@@ -4,7 +4,7 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const votePhaseTime = require("./votePhaseTiming");
 const getAvailableRewards = require("./getRewardsByRoundId");
-const getResolvedPrices = require('./getResolvedVotesByRoundId')
+const getResolvedPrices = require("./getResolvedVotesByRoundId");
 
 /**
  * Display information about the current voting round:
@@ -29,10 +29,10 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
 
   const currentTime = await voting.getCurrentTime();
   // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = (designatedVoting ? designatedVoting.address : await getDefaultAccount(web3));
+  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   const rewards = await getAvailableRewards(web3, voting, account);
-  const resolvedPrices = await getResolvedPrices(web3, voting, account)
+  const resolvedPrices = await getResolvedPrices(web3, voting, account);
   style.spinnerReadingContracts.stop();
 
   // TODO: #901 Can't access Voting.rounds in latest deployed Contract https://etherscan.io/address/0xfe3c4f1ec9f5df918d42ef7ed3fba81cc0086c5f#readContract
@@ -118,7 +118,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
       });
     console.table(resolvedPricesTable);
   }
-  
+
   console.log(`\n`);
   console.groupEnd();
 };

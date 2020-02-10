@@ -1,6 +1,6 @@
 const style = require("../textStyle");
 const getDefaultAccount = require("./getDefaultAccount");
-const getTwoKeyContract =  require('./getTwoKeyContract')
+const getTwoKeyContract = require("./getTwoKeyContract");
 
 /**
  * Displays information about the default account:
@@ -37,12 +37,11 @@ const readDefaultAccountInfo = async (web3, artifacts) => {
       console.group(style.success(`\n** Two Key Contract Info **`));
       const designatedVotingBalance = await votingToken.balanceOf(designatedVotingContract.address);
       console.log(`- ${style.success(`Balance`)}: ${fromWei(designatedVotingBalance)} UMA voting token`);
-      console.log(`\n`)
-      console.groupEnd()
+      console.log(`\n`);
+      console.groupEnd();
     }
-
   } catch (err) {
-    console.error(err)
+    console.error(err);
     console.error(
       `Failed to read default account information. Are you sure the contracts are deployed to this network?`
     );

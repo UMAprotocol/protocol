@@ -23,7 +23,7 @@ const commitVotes = async (web3, voting, designatedVoting) => {
   const roundId = await voting.getCurrentRoundId();
   const roundPhase = (await voting.getVotePhase()).toString();
   // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = (designatedVoting ? designatedVoting.address : await getDefaultAccount(web3));
+  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
   style.spinnerReadingContracts.stop();
 

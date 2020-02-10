@@ -14,7 +14,7 @@ const inquirer = require("inquirer");
 const retrieveRewards = async (web3, voting, designatedVoting) => {
   style.spinnerReadingContracts.start();
   // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = (designatedVoting ? designatedVoting.address : await getDefaultAccount(web3));
+  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
   const { rewardsByRoundId, roundIds } = await getAvailableRewards(web3, voting, account);
   style.spinnerReadingContracts.stop();
 
