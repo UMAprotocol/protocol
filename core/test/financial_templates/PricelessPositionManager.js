@@ -550,7 +550,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor })));
   });
 
-  it.only("Basic fees", async function() {
+  it("Basic fees", async function() {
     // Set up position.
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
