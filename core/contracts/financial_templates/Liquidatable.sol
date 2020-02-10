@@ -245,6 +245,8 @@ contract Liquidatable is PricelessPositionManager {
 
         // Enqueue a request with the DVM.
         _requestOraclePrice(disputedLiquidation.liquidationTime);
+
+        emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }
 
     /**
