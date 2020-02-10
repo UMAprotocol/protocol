@@ -118,11 +118,11 @@ contract PricelessPositionManager is FeePayer {
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
-        PositionData storage positionData = _getPositionData(msg.sender);
         require(
-            _getCollateral(positionData).isEqual(FixedPoint.fromUnscaledUint(0)),
+            getCollateral(newSponsor).isEqual(FixedPoint.fromUnscaledUint(0)),
             "Cannot transfer to an address that already has a position"
         );
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot transfer with a pending withdrawal request");
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
@@ -377,7 +377,7 @@ contract PricelessPositionManager is FeePayer {
         FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(settlementPrice);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
-        PositionData storage positionData = _getPositionData(msg.sender);
+        PositionData storage positionData = positions[msg.sender];
         if (_getCollateral(positionData).isGreaterThan(0)) {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
             FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(settlementPrice);
