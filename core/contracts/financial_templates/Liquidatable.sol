@@ -65,8 +65,6 @@ contract Liquidatable is PricelessPositionManager {
         address disputer;
         // Time when liquidation is initiated, needed to get price from Oracle
         uint liquidationTime;
-        // Time when the dispute is initialized
-        uint disputeTime;
         // Final price as determined by an Oracle following a dispute
         FixedPoint.Unsigned settlementPrice;
     }
@@ -203,7 +201,6 @@ contract Liquidatable is PricelessPositionManager {
                 liquidatedCollateral: positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount),
                 disputer: address(0),
                 liquidationTime: getCurrentTime(),
-                disputeTime: 0,
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
             })
         );
@@ -240,7 +237,6 @@ contract Liquidatable is PricelessPositionManager {
         // Liquidation is pending dispute until DVM returns a price
         disputedLiquidation.state = Status.PendingDispute;
         disputedLiquidation.disputer = msg.sender;
-        disputedLiquidation.disputeTime = getCurrentTime();
 
         // Enqueue a request with the DVM.
         _requestOraclePrice(disputedLiquidation.liquidationTime);

@@ -245,7 +245,6 @@ contract("Liquidatable", function(accounts) {
         );
         assert.equal(newLiquidation.liquidator, liquidator);
         assert.equal(newLiquidation.disputer, zeroAddress);
-        assert.equal(newLiquidation.disputeTime.toString(), "0");
         assert.equal(newLiquidation.liquidationTime.toString(), liquidationTime.toString());
         assert.equal(newLiquidation.settlementPrice.toString(), "0");
       });
@@ -279,21 +278,21 @@ contract("Liquidatable", function(accounts) {
         );
       });
       it("Request to dispute succeeds and Liquidation params changed correctly", async () => {
-        const disputeTime = await liquidationContract.getCurrentTime();
+        const liquidationTime = await liquidationContract.getCurrentTime();
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         assert.equal((await collateralToken.balanceOf(disputer)).toString(), "0");
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
         assert.equal(liquidation.state.toString(), STATES.PENDING_DISPUTE);
         assert.equal(liquidation.disputer, disputer);
-        assert.equal(liquidation.disputeTime.toString(), disputeTime.toString());
+        assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
       });
       it("Dispute initiates an oracle call", async () => {
-        const disputeTime = await liquidationContract.getCurrentTime();
+        const liquidationTime = await liquidationContract.getCurrentTime();
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         // Oracle should have an enqueued price after calling dispute
         const pendingRequests = await mockOracle.getPendingQueries();
         assert.equal(hexToUtf8(pendingRequests[0]["identifier"]), hexToUtf8(priceTrackingIdentifier));
-        assert.equal(pendingRequests[0].time, disputeTime);
+        assert.equal(pendingRequests[0].time, liquidationTime);
       });
       it("Throw if liquidation has already been disputed", async () => {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
@@ -310,8 +309,8 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
 
         // Push to oracle.
-        const disputeTime = await liquidationContract.getCurrentTime();
-        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, settlementPrice.toString());
+        const liquidationTime = await liquidationContract.getCurrentTime();
+        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, settlementPrice.toString());
 
         await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         // Mint enough tokens to disputer for another dispute bond
@@ -325,8 +324,8 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
 
         // Push to oracle.
-        const disputeTime = await liquidationContract.getCurrentTime();
-        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, settlementPrice.toString());
+        const liquidationTime = await liquidationContract.getCurrentTime();
+        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, settlementPrice.toString());
 
         await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         // Mint enough tokens to disputer for another dispute bond
@@ -352,9 +351,9 @@ contract("Liquidatable", function(accounts) {
       it("Settlement price set properly", async () => {
         // After the dispute call the oracle is requested a price. As such, push a price into the oracle at that
         // timestamp for the contract price identifer. Check that the value is set correctly for the dispute object.
-        const disputeTime = await liquidationContract.getCurrentTime();
+        const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1");
-        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, disputePrice);
+        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
 
         await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
@@ -364,9 +363,9 @@ contract("Liquidatable", function(accounts) {
         // For a successful dispute the price needs to result in the position being correctly collateralized (to invalidate the
         // liquidation). Any price below 1.25 for a debt of 100 with 150 units of underlying should result in successful dispute.
 
-        const disputeTime = await liquidationContract.getCurrentTime();
+        const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1");
-        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, disputePrice);
+        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
 
         await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
@@ -376,9 +375,9 @@ contract("Liquidatable", function(accounts) {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
         //Any price above 1.25 for a debt of 100 with 150 units of underlying should result in failed dispute and a successful liquidation.
 
-        const disputeTime = await liquidationContract.getCurrentTime();
+        const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1.3");
-        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, disputePrice);
+        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
 
         await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
@@ -494,9 +493,9 @@ contract("Liquidatable", function(accounts) {
       describe("Dispute succeeded", () => {
         beforeEach(async () => {
           // Settle the dispute as SUCCESSFUL. for this the liquidation needs to be unsuccessful.
-          const disputeTime = await liquidationContract.getCurrentTime();
+          const liquidationTime = await liquidationContract.getCurrentTime();
           const disputePrice = toWei("1");
-          await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, disputePrice);
+          await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
           await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         });
         it("Sponsor calls", async () => {
@@ -545,9 +544,9 @@ contract("Liquidatable", function(accounts) {
       describe("Dispute failed", () => {
         beforeEach(async () => {
           // Settle the dispute as FAILED. To achieve this the liquidation must be correct.
-          const disputeTime = await liquidationContract.getCurrentTime();
+          const liquidationTime = await liquidationContract.getCurrentTime();
           const disputePrice = toWei("1.3");
-          await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, disputePrice);
+          await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
           await liquidationContract.settleDispute(liquidationParams.uuid, sponsor);
         });
         it("Sponsor calls", async () => {
@@ -671,8 +670,8 @@ contract("Liquidatable", function(accounts) {
       // Dispute
       await edgeLiquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       // Settle the dispute as SUCCESSFUL
-      const disputeTime = await liquidationContract.getCurrentTime();
-      await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, settlementPrice.toString());
+      const liquidationTime = await liquidationContract.getCurrentTime();
+      await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, settlementPrice.toString());
       await edgeLiquidationContract.settleDispute(liquidationParams.uuid, sponsor);
       await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
       // Expected Disputer payment => disputer reward + dispute bond
