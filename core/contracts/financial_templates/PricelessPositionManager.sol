@@ -89,7 +89,10 @@ contract PricelessPositionManager is FeePayer {
     }
 
     modifier onlyCollateralizedPosition(address sponsor) {
-        require(positions[sponsor].collateral.rawValue > 0, "Position has no collateral and so is invalid");
+        require(
+            _getCollateral(_getPositionData(sponsor)).isGreaterThan(0),
+            "Position has no collateral and so is invalid"
+        );
         _;
     }
 
@@ -118,11 +121,11 @@ contract PricelessPositionManager is FeePayer {
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
+        PositionData storage positionData = _getPositionData(msg.sender);
         require(
-            positions[newSponsorAddress].collateral.rawValue == 0,
+            _getCollateral(positionData).isEqual(FixedPoint.fromUnscaledUint(0)),
             "Cannot transfer to an address that already has a position"
         );
-        PositionData memory positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0, "Cannot transfer with a pending withdrawal request");
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
@@ -220,7 +223,7 @@ contract PricelessPositionManager is FeePayer {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime(), "Cannot withdraw before request is passed");
 
-        positionData.collateral = positionData.collateral.sub(positionData.withdrawalRequestAmount);
+        _removeCollateral(positionData, positionData.withdrawalRequestAmount);
         totalPositionCollateral = totalPositionCollateral.sub(positionData.withdrawalRequestAmount);
 
         positionData.requestPassTimestamp = 0;
@@ -395,9 +398,8 @@ contract PricelessPositionManager is FeePayer {
         FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(settlementPrice);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
-        if (positions[msg.sender].collateral.rawValue > 0) {
-            PositionData storage positionData = _getPositionData(msg.sender);
-
+        PositionData storage positionData = _getPositionData(msg.sender);
+        if (_getCollateral(positionData).isGreaterThan(0)) {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
             FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(settlementPrice);
             FixedPoint.Unsigned memory positionRedeemableCollateral = _getCollateral(positionData).sub(
