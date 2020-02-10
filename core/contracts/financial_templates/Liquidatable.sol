@@ -27,14 +27,14 @@ contract Liquidatable is PricelessPositionManager {
     enum Status { PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
-        /** Following variables set upon creation of liquidation */ 
+        /** Following variables set upon creation of liquidation */
+
         // When Liquidation ends and becomes 'Expired'
         uint expiry;
         // Address who created this liquidation
         address liquidator;
         // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
         Status state;
-
         /** Following variables determined by the position that is being liquidated*/
         // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned tokensOutstanding;
@@ -43,25 +43,14 @@ contract Liquidatable is PricelessPositionManager {
         // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
         FixedPoint.Unsigned liquidatedCollateral;
-
         /** Following variables set upon a dispute request */
-        // Address who is disputing a liquidation
-        address disputer;
-        // Time when dispute is initiated, needed to get price from Oracle
-        uint disputeTime;
-        // Final price as determined by an Oracle following a dispute
-        FixedPoint.Unsigned settlementPrice;
-     
+        address disputer; // Person who is disputing a liquidation
+        uint disputeTime; // Time when dispute is initiated, needed to get price from Oracle
+        FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
         /** Following variables check that each member can only withdraw once */
         bool hasSponsorWithdrawn;
         bool hasLiquidatorWithdrawn;
         bool hasDisputorWithdrawn;
-    }
-
-        // Following variables set upon a dispute request
-        address disputer; // Person who is disputing a liquidation
-        uint disputeTime; // Time when dispute is initiated, needed to get price from Oracle
-        FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
     }
 
     // Liquidations are unique by ID per sponsor
