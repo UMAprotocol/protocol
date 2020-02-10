@@ -89,10 +89,7 @@ contract PricelessPositionManager is FeePayer {
     }
 
     modifier onlyCollateralizedPosition(address sponsor) {
-        require(
-            _getCollateral(positions[sponsor]).isGreaterThan(0),
-            "Position has no collateral and so is invalid"
-        );
+        require(_getCollateral(positions[sponsor]).isGreaterThan(0), "Position has no collateral and so is invalid");
         _;
     }
 
