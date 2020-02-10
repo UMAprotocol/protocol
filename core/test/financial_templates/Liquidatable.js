@@ -108,6 +108,12 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
+    // Register the identifer white list with the finder as well
+    const identifierWhitelistName = web3.utils.utf8ToHex("IdentifierWhitelist");
+    await finder.changeImplementationAddress(identifierWhitelistName, identifierWhitelist.address, {
+      from: contractDeployer
+    });
+
     liquidatableParameters = {
       isTest: true,
       expirationTimestamp: expirationTimestamp,

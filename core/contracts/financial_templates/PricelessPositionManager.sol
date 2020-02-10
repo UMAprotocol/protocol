@@ -8,6 +8,7 @@ import "../Testable.sol";
 import "./Token.sol";
 import "../Finder.sol";
 import "../OracleInterface.sol";
+import "../IdentifierWhitelistInterface.sol";
 /**
  * @title Financial contract with priceless position management.
  * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
@@ -83,7 +84,7 @@ contract PricelessPositionManager is Testable {
         uint _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
-        bytes32 _priceFeedIdentifier,
+        bytes32 _priceIdentifier,
         string memory _syntheticName,
         string memory _syntheticSymbol
     ) public Testable(_isTest) {
@@ -93,7 +94,12 @@ contract PricelessPositionManager is Testable {
         Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
         tokenCurrency = Token(address(mintableToken));
         finder = Finder(_finderAddress);
-        priceIdentifer = _priceFeedIdentifier;
+        priceIdentifer = _priceIdentifier;
+
+        IdentifierWhitelistInterface identiferWhiteList = IdentifierWhitelistInterface(
+            _getIdentifierWhitelistAddress()
+        );
+        require(identiferWhiteList.isIdentifierSupported(_priceIdentifier), "Price identifer not supported");
     }
 
     /**

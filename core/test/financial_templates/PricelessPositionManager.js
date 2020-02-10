@@ -40,7 +40,7 @@ contract("PricelessPositionManager", function(accounts) {
   const syntheticSymbol = "UMATEST";
   const withdrawalLiveness = 1000;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-  const priceTrackingIdentifier = web3.utils.utf8ToHex("ETHUSD");
+  const priceTrackingIdentifier = web3.utils.utf8ToHex("UMATEST");
 
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
@@ -82,6 +82,12 @@ contract("PricelessPositionManager", function(accounts) {
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
     });
+    
+    // Register the identifer white list with the finder as well
+    const identifierWhitelistName = web3.utils.utf8ToHex("IdentifierWhitelist");
+    await finder.changeImplementationAddress(identifierWhitelistName, identifierWhitelist.address, {
+      from: contractDeployer
+    });
 
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
@@ -110,6 +116,21 @@ contract("PricelessPositionManager", function(accounts) {
     // Synthetic token
     assert.equal(await tokenCurrency.name(), syntheticName);
     assert.equal(await tokenCurrency.symbol(), syntheticSymbol);
+
+    //Reverts on bad constructor input (unknown identifer)
+    assert(await didContractThrow(
+      PricelessPositionManager.new(
+        true, //_isTest (unchanged)
+        expirationTimestamp, //_expirationTimestamp (unchanged)
+        withdrawalLiveness, //_withdrawalLiveness (unchanged)
+        collateral.address, //_collateralAddress (unchanged)
+        finder.address, //_finderAddress (unchanged)
+        web3.utils.utf8ToHex("UNKNOWN"), //Some identifer that the white list tracker does not know
+        syntheticName, //_syntheticName (unchanged)
+        syntheticSymbol, //_syntheticSymbol (unchanged)
+        { from: contractDeployer }
+      )
+    ))
   });
 
   it("Lifecycle", async function() {
