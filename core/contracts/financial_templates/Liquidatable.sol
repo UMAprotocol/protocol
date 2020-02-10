@@ -360,7 +360,7 @@ contract Liquidatable is PricelessPositionManager {
         } else if (liquidation.state == Status.PreDispute) {
             // Pay LIQUIDATOR: lockedCollateral
             if (msg.sender == liquidation.liquidator) {
-                collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue);
+                collateralCurrency.safeTransfer(msg.sender, liquidation.lockedCollateral.rawValue);
                 delete liquidations[sponsor][id];
             } else {
                 require(false, "only the liquidator can withdraw on a non-disputed, expired liquidation");
