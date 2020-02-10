@@ -1204,7 +1204,7 @@ contract("Voting", function(accounts) {
     // Edit a single commit
     const modifiedPriceRequest = priceRequests[0];
     modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomUnsignedInt());
-    modifiedPriceRequest.encryptedVote = web3.utils.utf8ToHex(`some other encrypted message`);
+    modifiedPriceRequest.encryptedVote = web3.utils.utf8ToHex("some other encrypted message");
     await voting.commitAndPersistEncryptedVote(
       modifiedPriceRequest.identifier,
       modifiedPriceRequest.time,
