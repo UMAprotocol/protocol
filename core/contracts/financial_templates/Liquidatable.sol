@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // import "../OracleInteface.sol";
-import "../FixedPoint.sol";
-import "../Testable.sol";
+import "../common/FixedPoint.sol";
+import "../common/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 /**
