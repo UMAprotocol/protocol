@@ -82,7 +82,7 @@ contract("PricelessPositionManager", function(accounts) {
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
     });
-    
+
     // Register the identifer white list with the finder as well
     const identifierWhitelistName = web3.utils.utf8ToHex("IdentifierWhitelist");
     await finder.changeImplementationAddress(identifierWhitelistName, identifierWhitelist.address, {
@@ -118,19 +118,21 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await tokenCurrency.symbol(), syntheticSymbol);
 
     //Reverts on bad constructor input (unknown identifer)
-    assert(await didContractThrow(
-      PricelessPositionManager.new(
-        true, //_isTest (unchanged)
-        expirationTimestamp, //_expirationTimestamp (unchanged)
-        withdrawalLiveness, //_withdrawalLiveness (unchanged)
-        collateral.address, //_collateralAddress (unchanged)
-        finder.address, //_finderAddress (unchanged)
-        web3.utils.utf8ToHex("UNKNOWN"), //Some identifer that the white list tracker does not know
-        syntheticName, //_syntheticName (unchanged)
-        syntheticSymbol, //_syntheticSymbol (unchanged)
-        { from: contractDeployer }
+    assert(
+      await didContractThrow(
+        PricelessPositionManager.new(
+          true, //_isTest (unchanged)
+          expirationTimestamp, //_expirationTimestamp (unchanged)
+          withdrawalLiveness, //_withdrawalLiveness (unchanged)
+          collateral.address, //_collateralAddress (unchanged)
+          finder.address, //_finderAddress (unchanged)
+          web3.utils.utf8ToHex("UNKNOWN"), //Some identifer that the white list tracker does not know
+          syntheticName, //_syntheticName (unchanged)
+          syntheticSymbol, //_syntheticSymbol (unchanged)
+          { from: contractDeployer }
+        )
       )
-    ))
+    );
   });
 
   it("Lifecycle", async function() {

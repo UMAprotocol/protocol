@@ -5,6 +5,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 // Helper Contracts
 const Finder = artifacts.require("Finder");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
@@ -30,6 +31,18 @@ contract("ExpiringMultiParty", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
+
+    identifierWhitelist = await IdentifierWhitelist.new({ from: accounts[0] });
+    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
+      from: accounts[0]
+    });
+
+    // Register the identifer white list with the finder as well
+    const identifierWhitelistName = web3.utils.utf8ToHex("IdentifierWhitelist");
+    await finder.changeImplementationAddress(identifierWhitelistName, identifierWhitelist.address, {
+      from: accounts[0]
+    });
+
     await ExpiringMultiParty.new(constructorParams);
   });
 });
