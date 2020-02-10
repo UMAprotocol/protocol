@@ -36,16 +36,9 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned lockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
         FixedPoint.Unsigned liquidatedCollateral; // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
-        FixedPoint.Unsigned liquidatedCollateral;
-        // * Following variables set upon a dispute request *
-        address disputer;  // Person who is disputing a liquidation
-        uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
-        FixedPoint.Unsigned settlementPrice;  // Final price as determined by an Oracle following a dispute
-    }
-
         // * Following variables set upon a dispute request *
         address disputer; // Person who is disputing a liquidation
-        uint disputeTime; // Time when dispute is initiated, needed to get price from Oracle
+        uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
         FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
     }
 
