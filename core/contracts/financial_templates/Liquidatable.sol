@@ -46,18 +46,18 @@ contract Liquidatable is PricelessPositionManager {
     mapping(address => LiquidationData[]) public liquidations;
 
     // Amount of time for pending liquidation before expiry
-    uint liquidationLiveness;
+    uint public liquidationLiveness;
     // Required collateral:TRV ratio for a position to be considered sufficiently collateralized.
-    FixedPoint.Unsigned collateralRequirement;
+    FixedPoint.Unsigned public collateralRequirement;
     // Percent of a Liquidation/Position's lockedCollateral to be deposited by a potential disputer
     // Represented as a multiplier, for example 1.5e18 = "150%" and 0.05e18 = "5%"
-    FixedPoint.Unsigned disputeBondPct;
+    FixedPoint.Unsigned public disputeBondPct;
     // Percent of oraclePrice paid to sponsor in the Disputed state (i.e. following a successful dispute)
     // Represented as a multipler, see above
-    FixedPoint.Unsigned sponsorDisputeRewardPct;
+    FixedPoint.Unsigned public sponsorDisputeRewardPct;
     // Percent of oraclePrice paid to disputer in the Disputed state (i.e. following a successful dispute)
     // Represented as a multipler, see above
-    FixedPoint.Unsigned disputerDisputeRewardPct;
+    FixedPoint.Unsigned public disputerDisputeRewardPct;
 
     event LiquidationCreated(
         address indexed sponsor,
