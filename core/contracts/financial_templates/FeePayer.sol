@@ -3,10 +3,10 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../FixedPoint.sol";
+import "../common/FixedPoint.sol";
+import "../common/Testable.sol";
+import "../oracle/interfaces/StoreInterface.sol";
 import "../Finder.sol";
-import "../Testable.sol";
-import "../StoreInterface.sol";
 
 contract FeePayer is Testable {
     using SafeMath for uint;
@@ -49,7 +49,7 @@ contract FeePayer is Testable {
      */
 
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
-        StoreInterface store = StoreInterface(finder.getImplementationAddress("Store"));
+        StoreInterface store = _getStore();
         uint time = getCurrentTime();
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
             lastPaymentTime,
@@ -93,4 +93,9 @@ contract FeePayer is Testable {
      */
 
     function pfc() public view returns (FixedPoint.Unsigned memory);
+
+    function _getStore() internal view returns (StoreInterface) {
+        bytes32 storeInterface = "Store";
+        return StoreInterface(finder.getImplementationAddress(storeInterface));
+    }
 }
