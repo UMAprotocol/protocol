@@ -114,7 +114,7 @@ contract Liquidatable is PricelessPositionManager {
         _;
     }
 
-    // Define the contract's constructor parameters as a struct to enable more variables to be spesified.
+    // Define the contract's constructor parameters as a struct to enable more variables to be specified.
     struct ConstructorParams {
         // Params for PricelessPositionManager only.
         bool isTest;
@@ -163,7 +163,7 @@ contract Liquidatable is PricelessPositionManager {
      * @dev This method generates an ID that will uniquely identify liquidation
      * for the sponsor.
      * @param sponsor address to liquidate
-     * @return uuid of the newoly created liquidation
+     * @return uuid of the newly created liquidation
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
@@ -289,7 +289,7 @@ contract Liquidatable is PricelessPositionManager {
      * @dev If the dispute SUCCEEDED: the sponsor, liquidator, and disputer are eligible for payment
      * If the dispute FAILED: only the liquidator can receive payment
      * Once all collateral is withdrawn, delete the liquidation data.
-     * @param id uniquly identifies the sponsor's liqudation
+     * @param id uniquely identifies the sponsor's liquidation
      * @param sponsor address of the sponsor associated with the liquidation
      */
     function withdrawLiquidation(uint id, address sponsor)
@@ -308,20 +308,19 @@ contract Liquidatable is PricelessPositionManager {
             liquidation.settlementPrice
         );
 
-        // Calculate rewards as a function of the TRV
+        // Calculate rewards as a function of the TRV.
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
         FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
 
-        // Dispute bond can always be paid out
+        // Dispute bond can always be paid out.
         FixedPoint.Unsigned memory disputeBondAmount = liquidation.lockedCollateral.mul(disputeBondPct);
 
         // There are three main outcome states: either the dispute succeeded, failed or was not updated.
         // Based on the state, different parties of a liquidation can withdraw different amounts.
+        // Once a caller has been paid their address deleted from the struct.
+        // This prevents them from being paid multiple from times the same liquidation.
 
-        // Once a caller has been paid their address is set to address(0) within the struct.
-        // This prevents them from being paid multiple from the same liquidation.
-
-        // Once a payment has been recorded this flag is set to inform clean up at function end.
+        // Once a payment has been recorded this uint is set to inform clean up at function end.
         uint withdrawalMade = 0;
         if (liquidation.state == Status.DisputeSucceeded) {
             // If the dispute is successful then all three users can withdraw from the contract.
@@ -357,18 +356,18 @@ contract Liquidatable is PricelessPositionManager {
             }
             //In the case of a failed dispute only the liquidator can withdraw.
         } else if (liquidation.state == Status.DisputeFailed && msg.sender == liquidation.liquidator) {
+            // Pay LIQUIDATOR: lockedCollateral + dispute bond
             FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
             require(collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue));
-            // Pay LIQUIDATOR: lockedCollateral + dispute bond
-            delete liquidation.liquidator;
             withdrawalMade = payToLiquidator.rawValue;
+            delete liquidation.liquidator;
             delete liquidations[sponsor][id];
             //If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
         } else if (liquidation.state == Status.PreDispute && msg.sender == liquidation.liquidator) {
-            require(collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue));
             // Pay LIQUIDATOR: lockedCollateral
-            delete liquidation.liquidator;
+            require(collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue));
             withdrawalMade = liquidation.lockedCollateral.rawValue;
+            delete liquidation.liquidator;
             delete liquidations[sponsor][id];
         }
         if (withdrawalMade > 0) {
