@@ -3,11 +3,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../FixedPoint.sol";
-import "../Testable.sol";
-import "./Token.sol";
+import "../common/FixedPoint.sol";
+import "../common/Testable.sol";
+import "../oracle/interfaces/OracleInterface.sol";
 import "../Finder.sol";
-import "../OracleInterface.sol";
+import "./Token.sol";
 import "./FeePayer.sol";
 
 /**
