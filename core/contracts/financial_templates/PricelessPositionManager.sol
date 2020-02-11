@@ -342,7 +342,6 @@ contract PricelessPositionManager is FeePayer {
         // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
         // Adjust internal variables below.
         // Compute fee percentage that was paid by the entire contract (fees / pfc).
-        // TODO: Does dividing by initialPfc still make sense if pfc() !== totalPositionCollateral? We care about fees paid as a percentage of locked collateral, so why couldn't we replace initialPfc with totalPositionCollateral to be safe in case pfc() ever changes?
         FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialPfc);
 
         // Compute adjustment to be applied to the position collateral (1 - feePercentage).
@@ -487,22 +486,22 @@ contract PricelessPositionManager is FeePayer {
     }
 
     function _payFinalFee() internal {
-        // Capture pfc upfront.
-        FixedPoint.Unsigned memory initialPfc = pfc();
+        FixedPoint.Unsigned memory initialTotalPositionCollateral = totalPositionCollateral;
 
         // Send the fee payment.
         FixedPoint.Unsigned memory totalPaid = super.payFinalFees();
 
         // Exit early if pfc == 0 to prevent divide by 0.
-        if (initialPfc.isEqual(FixedPoint.fromUnscaledUint(0))) {
+        if (initialTotalPositionCollateral.isEqual(FixedPoint.fromUnscaledUint(0))) {
             return;
         }
 
         // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
         // Adjust internal variables below.
-        // Compute fee percentage that was paid by the entire contract (fees / pfc).
-        // TODO: Same question as in payFees(): Does dividing by initialPfc still make sense if pfc() !== totalPositionCollateral? We care about fees paid as a percentage of locked collateral, so why couldn't we replace initialPfc with totalPositionCollateral to be safe in case pfc() ever changes?
-        FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialPfc);
+        // Compute fee percentage that was paid by the entire contract (fees / collateral).
+        // Unlike payFees, we are spreading fees across all locked collateral and NOT all PfC, which 
+        // could mean that fees are not spread across liquidations (if PfC !== collateral)
+        FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialTotalPositionCollateral);
 
         // Compute adjustment to be applied to the position collateral (1 - feePercentage).
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
