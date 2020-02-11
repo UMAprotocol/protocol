@@ -347,7 +347,7 @@ contract Liquidatable is PricelessPositionManager {
                     collateralCurrency.transfer(msg.sender, payToDisputer.rawValue),
                     "failed to transfer reward for a successful dispute to disputer"
                 );
-                liquidation.disputer = address(0);
+                delete liquidation.disputer;
                 withdrawalMade = payToDisputer.rawValue;
             } else if (msg.sender == sponsor) {
                 // Pay SPONSOR: remaining collateral (locked collateral - TRV) + sponsor reward
@@ -358,7 +358,7 @@ contract Liquidatable is PricelessPositionManager {
                     collateralCurrency.transfer(msg.sender, payToSponsor.rawValue),
                     "failed to transfer reward for a successful dispute to sponsor"
                 );
-                liquidation.sponsor = address(0);
+                delete liquidation.sponsor;
                 withdrawalMade = payToSponsor.rawValue;
             } else if (msg.sender == liquidation.liquidator) {
                 // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
@@ -372,7 +372,7 @@ contract Liquidatable is PricelessPositionManager {
                     collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                     "failed to transfer reward for a successful dispute to liquidator"
                 );
-                liquidation.liquidator = address(0);
+                delete liquidation.liquidator;
                 withdrawalMade = payToLiquidator.rawValue;
             }
             // Free up space once all locked collateral is withdrawn
@@ -386,7 +386,7 @@ contract Liquidatable is PricelessPositionManager {
                 collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
                 "failed to transfer locked collateral plus dispute bond to liquidator"
             );
-            liquidation.liquidator = address(0);
+            delete liquidation.liquidator;
             withdrawalMade = payToLiquidator.rawValue;
             delete liquidations[sponsor][id];
             //If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
@@ -395,7 +395,7 @@ contract Liquidatable is PricelessPositionManager {
                 collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
                 "failed to transfer locked collateral to liquidator"
             );
-            liquidation.liquidator = address(0);
+            delete liquidation.liquidator;
             withdrawalMade = liquidation.lockedCollateral.rawValue;
             delete liquidations[sponsor][id];
         }
