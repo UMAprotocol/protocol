@@ -78,7 +78,6 @@ contract FeePayer is Testable {
 
     function pfc() public view returns (FixedPoint.Unsigned memory);
 
-
     function _getStore() internal view returns (StoreInterface) {
         bytes32 storeInterface = "Store";
         return StoreInterface(finder.getImplementationAddress(storeInterface));
