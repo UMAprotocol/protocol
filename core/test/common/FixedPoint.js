@@ -150,6 +150,9 @@ contract("FixedPoint", function(accounts) {
     // 1.2 * 2e-18 = 2.4e-18, which can't be represented and gets rounded down to 2.
     product = await fixedPoint.wrapMul(web3.utils.toWei("1.2"), "2");
     assert.equal(product.toString(), "2");
+    // 1e-18 * 1e-18 = 1e-36, which can't be represented and gets floor'd to 0.
+    product = await fixedPoint.wrapMul("1", "1");
+    assert.equal(product.toString(), "0");
 
     // Reverts on overflow.
     // (uint_max - 1) * 2 overflows.
@@ -171,6 +174,9 @@ contract("FixedPoint", function(accounts) {
     // 1.2 * 2e-18 = 2.4e-18, which can't be represented and gets ceil'd to 3.
     product = await fixedPoint.wrapMulCeil(web3.utils.toWei("1.2"), "2");
     assert.equal(product.toString(), "3");
+    // 1e-18 * 1e-18 = 1e-36, which can't be represented and gets ceil'd to 1e-18.
+    product = await fixedPoint.wrapMulCeil("1", "1");
+    assert.equal(product.toString(), "1");
 
     // Reverts on overflow.
     // (uint_max - 1) * 2 overflows.
@@ -209,6 +215,9 @@ contract("FixedPoint", function(accounts) {
     // 1 / 3 = 0.3 repeating, which can't be represented and gets rounded down to 0.333333333333333333.
     quotient = await fixedPoint.wrapDiv(web3.utils.toWei("1"), web3.utils.toWei("3"));
     assert.equal(quotient.toString(), "3".repeat(18));
+    // 1e-18 / 1e19 = 1e-37, which can't be represented and gets floor'd to 0.
+    quotient = await fixedPoint.wrapDiv("1", web3.utils.toWei(web3.utils.toWei("10")));
+    assert.equal(quotient.toString(), "0");
 
     // Reverts on division by zero.
     assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
@@ -229,6 +238,9 @@ contract("FixedPoint", function(accounts) {
     // 1 / 3 = 0.3 repeating, which can't be represented and gets rounded up to 0.333333333333333334.
     quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("1"), web3.utils.toWei("3"));
     assert.equal(quotient.toString(), "3".repeat(17) + "4");
+    // 1e-18 / 1e19 = 1e-37, which can't be represented and gets ceil'd to 1.
+    quotient = await fixedPoint.wrapDivCeil("1", web3.utils.toWei(web3.utils.toWei("10")));
+    assert.equal(quotient.toString(), "1");
 
     // Reverts on division by zero.
     assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));

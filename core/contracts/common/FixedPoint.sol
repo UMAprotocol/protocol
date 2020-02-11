@@ -129,10 +129,14 @@ library FixedPoint {
 
     /** @dev Multiplies two `Unsigned`s, reverting on overflow, and ceil's the resultant product rather than the default floor behavior. */
     function mulCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        // To ensure ceiling occurs post-truncation, add 9 of the least significant digit remaining post-truncation
-        // (i.e., the 18th digit). If the 19th digit is [1,9], then the 18th digit will get incremented by one and then be correctly
-        // ceil'd after truncation.
-        return Unsigned(a.rawValue.mul(b.rawValue).add(9 * 10**17) / FP_SCALING_FACTOR);
+        uint mulRaw = a.rawValue.mul(b.rawValue);
+        uint mod = mulRaw.mod(FP_SCALING_FACTOR);
+        uint mulFloor = mulRaw / FP_SCALING_FACTOR;
+        if (mod != 0) {
+            return Unsigned(mulFloor.add(1));
+        } else {
+            return Unsigned(mulFloor);
+        }
     }
 
     function mulCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
@@ -156,10 +160,14 @@ library FixedPoint {
 
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0, and ceil's the resultant product rather than the default floor behavior. */
     function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        // After scaling up a by FP_SCALING_FACTOR, multiply it again by 10 before dividing it by b
-        // This leaves the quotient as "one digit too significant", to which we add 9 in its least significant digit,
-        // before dividing by 10 which returns the correctly truncated ceil'd number
-        return Unsigned(a.rawValue.mul(FP_SCALING_FACTOR.mul(10)).div(b.rawValue).add(9).div(10));
+        uint divRaw = a.rawValue.mul(FP_SCALING_FACTOR);
+        uint mod = divRaw.mod(b.rawValue);
+        uint divFloor = divRaw.div(b.rawValue);
+        if (mod != 0) {
+            return Unsigned(divFloor.add(1));
+        } else {
+            return Unsigned(divFloor);
+        }
     }
 
     function divCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
