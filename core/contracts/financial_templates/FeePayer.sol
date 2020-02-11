@@ -3,10 +3,10 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../FixedPoint.sol";
+import "../common/FixedPoint.sol";
+import "../oracle/interfaces/StoreInterface.sol";
 import "../Finder.sol";
 import "../Testable.sol";
-import "../StoreInterface.sol";
 
 contract FeePayer is Testable {
     using SafeMath for uint;
