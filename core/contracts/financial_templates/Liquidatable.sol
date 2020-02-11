@@ -3,10 +3,10 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-// import "../OracleInteface.sol";
 import "../common/FixedPoint.sol";
 import "../common/Testable.sol";
 import "./PricelessPositionManager.sol";
+import "../oracle/interfaces/StoreInterface.sol";
 
 /**
 @title Liquidatable
@@ -221,7 +221,7 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond.
+     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond and pay a fixed final fee charged on each price request.
      * @dev Can only dispute a liquidation before the liquidation expires and if there are no
      * other pending disputes.
      * @param id of the disputed liquidation.
@@ -243,6 +243,18 @@ contract Liquidatable is PricelessPositionManager {
 
         // Enqueue a request with the DVM.
         _requestOraclePrice(disputedLiquidation.liquidationTime);
+
+        // Pay a final fee
+        StoreInterface store = StoreInterface(finder.getImplementationAddress("Store"));
+        FixedPoint.Unsigned memory finalFee = store.computeFinalFee(address(collateralCurrency));
+        if (finalFee.isGreaterThan(0)) {
+            require(
+                collateralCurrency.transferFrom(msg.sender, address(this), finalFee.rawValue),
+                "failed to transfer final fee from sender"
+            );
+            collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
+            store.payOracleFeesErc20(address(collateralCurrency));
+        }
 
         emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }

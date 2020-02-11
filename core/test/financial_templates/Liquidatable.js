@@ -322,6 +322,17 @@ contract("Liquidatable", function(accounts) {
         assert.equal(hexToUtf8(pendingRequests[0]["identifier"]), hexToUtf8(priceTrackingIdentifier));
         assert.equal(pendingRequests[0].time, liquidationTime);
       });
+      it("Dispute pays a final fee", async () => {
+        const finalFeeAmount = toWei('1')
+        // Set final fee to a flat 1 collateral token
+        await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount });
+        // Mint final fee amount to disputer
+        await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+        const storeInitialBalance = toBN(await collateralToken.balanceOf(store.address));
+        await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+        const storeAfterDisputeBalance = toBN(await collateralToken.balanceOf(store.address));
+        assert.equal(storeAfterDisputeBalance.sub(storeInitialBalance), toBN(finalFeeAmount));
+      })
       it("Throw if liquidation has already been disputed", async () => {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         // Mint enough tokens to disputer for another dispute bond
