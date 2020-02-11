@@ -233,8 +233,7 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory finalFee = store.computeFinalFee(address(collateralCurrency));
         if (finalFee.isGreaterThan(0)) {
             require(
-                collateralCurrency.transferFrom(msg.sender, address(this), finalFee.rawValue),
-                "failed to transfer final fee from sender"
+                collateralCurrency.transferFrom(msg.sender, address(this), finalFee.rawValue)
             );
             collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
             store.payOracleFeesErc20(address(collateralCurrency));

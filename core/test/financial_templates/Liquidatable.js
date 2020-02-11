@@ -13,6 +13,7 @@ ERC20Mintable.setProvider(web3.currentProvider);
 const Liquidatable = artifacts.require("Liquidatable");
 
 // Other UMA related contracts and mocks
+const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -69,6 +70,7 @@ contract("Liquidatable", function(accounts) {
   let mockOracle;
   let finder;
   let liquidatableParameters;
+  let store;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -148,6 +150,9 @@ contract("Liquidatable", function(accounts) {
 
     // Set allowance for contract to pull synthetic tokens from liquidator
     await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, { from: liquidator });
+
+    // Get store
+    store = await Store.deployed();
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -302,7 +307,7 @@ contract("Liquidatable", function(accounts) {
         assert.equal(liquidation.disputer, disputer);
         assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
       });
-      it("Dispute emits and event", async () => {
+      it("Dispute emits an event", async () => {
         const disputeResult = await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         truffleAssert.eventEmitted(disputeResult, "LiquidationDisputed", ev => {
           return (
@@ -328,10 +333,22 @@ contract("Liquidatable", function(accounts) {
         await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount });
         // Mint final fee amount to disputer
         await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+        // Increase allowance for contract to spend disputer's tokens
+        await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, { from: disputer })
+       
+        // Check that store's collateral balance increases
         const storeInitialBalance = toBN(await collateralToken.balanceOf(store.address));
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         const storeAfterDisputeBalance = toBN(await collateralToken.balanceOf(store.address));
-        assert.equal(storeAfterDisputeBalance.sub(storeInitialBalance), toBN(finalFeeAmount));
+        assert.equal(storeAfterDisputeBalance.sub(storeInitialBalance).toString(), finalFeeAmount);
+
+        // Check that collateral in liquidation contract remains the same
+        const expectedContractBalance = toBN(amountOfCollateral).add(disputeBond)
+        assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), expectedContractBalance.toString());
+
+        // Set the store fees back to 0 to prevent it from affecting other tests.
+        await store.setFinalFee(collateralToken.address, { rawValue: "0" });
+
       })
       it("Throw if liquidation has already been disputed", async () => {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
