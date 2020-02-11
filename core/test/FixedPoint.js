@@ -147,7 +147,7 @@ contract("FixedPoint", function(accounts) {
     assert(await didContractThrow(fixedPoint.wrapMul(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2"))));
   });
 
-  it("Multiplication, rounded up", async function() {
+  it("Multiplication, with ceil", async function() {
     const fixedPoint = await FixedPointTest.new();
 
     // Whole numbers above 10**18.
@@ -158,8 +158,8 @@ contract("FixedPoint", function(accounts) {
     product = await fixedPoint.wrapMulCeil(web3.utils.toWei("0.0001"), web3.utils.toWei("5"));
     assert.equal(product.toString(), web3.utils.toWei("0.0005"));
 
-    // Fractions, precision loss, rounding up.
-    // 1.4 * 2e-18 = 2.8e-18, which can't be represented and gets rounded up to 3.
+    // Fractions, precision loss, ceiling.
+    // 1.4 * 2e-18 = 2.8e-18, which can't be represented and gets ceil'd to 3.
     product = await fixedPoint.wrapMulCeil(web3.utils.toWei("1.4"), "2");
     assert.equal(product.toString(), "3");
 
@@ -205,7 +205,7 @@ contract("FixedPoint", function(accounts) {
     assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
   });
 
-  it("Division, rounded up", async function() {
+  it("Division, with ceil", async function() {
     const fixedPoint = await FixedPointTest.new();
 
     // Normal division case.
@@ -217,9 +217,9 @@ contract("FixedPoint", function(accounts) {
     assert.equal(quotient.toString(), web3.utils.toWei("200"));
 
     // Fractions, precision loss, rounding down.
-    // 2 / 3 = 0.6 repeating, which can't be represented and gets rounded up to 0.666666666666666667.
-    quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("2"), web3.utils.toWei("3"));
-    assert.equal(quotient.toString(), "6".repeat(17) + "7");
+    // 1 / 3 = 0.3 repeating, which can't be represented and gets rounded up to 0.333333333333333334.
+    quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("1"), web3.utils.toWei("3"));
+    assert.equal(quotient.toString(), "3".repeat(17) + "4");
 
     // Reverts on division by zero.
     assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
