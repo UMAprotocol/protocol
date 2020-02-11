@@ -697,5 +697,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
     assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+
+    // Set the store fees back to 0 to prevent it from affecting other tests.
+    await store.setFinalFee(collateral.address, { rawValue: "0" });
   });
 });
