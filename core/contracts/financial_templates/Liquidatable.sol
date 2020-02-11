@@ -191,7 +191,7 @@ contract Liquidatable is PricelessPositionManager {
         uuid = newLength.sub(1);
 
         // Destroy tokens
-        require(tokenCurrency.transferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue));
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue);
         tokenCurrency.burn(positionToLiquidate.tokensOutstanding.rawValue);
 
         // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
@@ -218,7 +218,8 @@ contract Liquidatable is PricelessPositionManager {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
-        require(collateralCurrency.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue));
+
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
 
         // Request a price from DVM,
         // Liquidation is pending dispute until DVM returns a price
@@ -312,13 +313,13 @@ contract Liquidatable is PricelessPositionManager {
 
                 // Pay DISPUTER: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
-                require(collateralCurrency.transfer(msg.sender, payToDisputer.rawValue));
+                collateralCurrency.safeTransfer(msg.sender, payToDisputer.rawValue);
             } else if (msg.sender == sponsor) {
                 // Pay SPONSOR: remaining collateral (locked collateral - TRV) + sponsor reward
                 FixedPoint.Unsigned memory remainingCollateral;
                 remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
                 FixedPoint.Unsigned memory payToSponsor = sponsorDisputeReward.add(remainingCollateral);
-                require(collateralCurrency.transfer(msg.sender, payToSponsor.rawValue));
+                collateralCurrency.safeTransfer(msg.sender, payToSponsor.rawValue);
             } else if (msg.sender == liquidation.liquidator) {
                 // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
                 // If TRV > Collateral, then subtract rewards from locked collateral
@@ -326,7 +327,7 @@ contract Liquidatable is PricelessPositionManager {
                 // the constructor when these params are set
                 FixedPoint.Unsigned memory payToLiquidator;
                 payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
-                require(collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue));
+                collateralCurrency.safeTransfer(msg.sender, payToLiquidator.rawValue);
             }
             // Free up space once all locked collateral is withdrawn
             if (collateralCurrency.balanceOf(address(this)) == 0) {
@@ -336,7 +337,7 @@ contract Liquidatable is PricelessPositionManager {
             // Pay LIQUIDATOR: lockedCollateral + dispute bond
             if (msg.sender == liquidation.liquidator) {
                 FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
-                require(collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue));
+                collateralCurrency.safeTransfer(msg.sender, payToLiquidator.rawValue);
                 delete liquidations[sponsor][id];
             } else {
                 require(false);
@@ -344,7 +345,7 @@ contract Liquidatable is PricelessPositionManager {
         } else if (liquidation.state == Status.PreDispute) {
             // Pay LIQUIDATOR: lockedCollateral
             if (msg.sender == liquidation.liquidator) {
-                require(collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue));
+                collateralCurrency.safeTransfer(msg.sender, liquidation.lockedCollateral.rawValue);
                 delete liquidations[sponsor][id];
             } else {
                 require(false);
