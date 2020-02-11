@@ -1,5 +1,6 @@
 pragma solidity ^0.5.0;
 
+import "../../interfaces/VotingInterface.sol";
 import "../VoteTiming.sol";
 
 // Wraps the library VoteTiming for testing purposes.
@@ -16,7 +17,7 @@ contract VoteTimingTest {
         return voteTiming.computeCurrentRoundId(currentTime);
     }
 
-    function wrapComputeCurrentPhase(uint currentTime) external view returns (VoteTiming.Phase) {
+    function wrapComputeCurrentPhase(uint currentTime) external view returns (VotingInterface.Phase) {
         return voteTiming.computeCurrentPhase(currentTime);
     }
 
