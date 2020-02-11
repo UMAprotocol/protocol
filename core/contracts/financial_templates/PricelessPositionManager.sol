@@ -79,17 +79,17 @@ contract PricelessPositionManager is FeePayer {
     );
 
     modifier onlyPreExpiration() {
-        require(getCurrentTime() < expirationTimestamp, "Cannot operate on a position past its expiry time");
+        require(getCurrentTime() < expirationTimestamp);
         _;
     }
 
     modifier onlyPostExpiration() {
-        require(getCurrentTime() >= expirationTimestamp, "Cannot operate on a position before its expiry time");
+        require(getCurrentTime() >= expirationTimestamp);
         _;
     }
 
     modifier onlyCollateralizedPosition(address sponsor) {
-        require(_getCollateral(positions[sponsor]).isGreaterThan(0), "Position has no collateral and so is invalid");
+        require(_getCollateral(positions[sponsor]).isGreaterThan(0));
         _;
     }
 
@@ -118,12 +118,9 @@ contract PricelessPositionManager is FeePayer {
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
-        require(
-            getCollateral(newSponsorAddress).isEqual(FixedPoint.fromUnscaledUint(0)),
-            "Cannot transfer to an address that already has a position"
-        );
+        require(getCollateral(newSponsorAddress).isEqual(FixedPoint.fromUnscaledUint(0)));
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0, "Cannot transfer with a pending withdrawal request");
+        require(positionData.requestPassTimestamp == 0);
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
 
@@ -139,15 +136,12 @@ contract PricelessPositionManager is FeePayer {
     // TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0, "Cannot deposit with a pending withdrawal request");
+        require(positionData.requestPassTimestamp == 0);
         _addCollateral(positionData, collateralAmount);
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
 
         // Move collateral currency from sender to contract.
-        require(
-            collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue),
-            "Deposit collateral currency transfer failed"
-        );
+        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
 
         emit Deposit(msg.sender, collateralAmount.rawValue);
     }
@@ -165,17 +159,14 @@ contract PricelessPositionManager is FeePayer {
         fees()
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0, "Cannot withdraw with a pending withdrawal request");
+        require(positionData.requestPassTimestamp == 0);
 
         _removeCollateral(positionData, collateralAmount);
-        require(_checkCollateralizationRatio(positionData), "Cannot withdraw below global collateralization ratio");
+        require(_checkCollateralizationRatio(positionData));
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
 
         // Move collateral currency from contract to sender.
-        require(
-            collateralCurrency.transfer(msg.sender, collateralAmount.rawValue),
-            "Withdrawal of collateral currency failed."
-        );
+        require(collateralCurrency.transfer(msg.sender, collateralAmount.rawValue));
 
         emit Withdrawal(msg.sender, collateralAmount.rawValue);
     }
@@ -193,14 +184,11 @@ contract PricelessPositionManager is FeePayer {
         onlyCollateralizedPosition(msg.sender)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0, "Cannot have concurrent withdrawal requests");
+        require(positionData.requestPassTimestamp == 0);
 
         // Not just pre-expiration: make sure the proposed expiration of this request is itself before expiry.
         uint requestPassTime = getCurrentTime() + withdrawalLiveness;
-        require(
-            requestPassTime < expirationTimestamp,
-            "Cannot request withdrawal that would pass after contract expires"
-        );
+        require(requestPassTime < expirationTimestamp);
 
         // Update the position object for the user.
         positionData.requestPassTimestamp = requestPassTime;
@@ -218,7 +206,7 @@ contract PricelessPositionManager is FeePayer {
     // TODO: Decide whether to fold this functionality into withdraw() method above.
     function withdrawPassedRequest() public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp < getCurrentTime(), "Cannot withdraw before request is passed");
+        require(positionData.requestPassTimestamp < getCurrentTime());
 
         _removeCollateral(positionData, positionData.withdrawalRequestAmount);
         totalPositionCollateral = totalPositionCollateral.sub(positionData.withdrawalRequestAmount);
@@ -226,10 +214,7 @@ contract PricelessPositionManager is FeePayer {
         positionData.requestPassTimestamp = 0;
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        require(
-            collateralCurrency.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue),
-            "Withdrawing tokens from position to caller failed."
-        );
+        require(collateralCurrency.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue));
 
         emit RequestWithdrawalExecuted(msg.sender, positionData.withdrawalRequestAmount.rawValue);
     }
@@ -239,7 +224,7 @@ contract PricelessPositionManager is FeePayer {
      */
     function cancelWithdrawal() public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp != 0, "Cannot cancel if no pending withdrawal request");
+        require(positionData.requestPassTimestamp != 0);
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
@@ -261,20 +246,17 @@ contract PricelessPositionManager is FeePayer {
         fees()
     {
         PositionData storage positionData = positions[msg.sender];
-        require(positionData.requestPassTimestamp == 0, "Cannot create with a pending withdrawal request");
+        require(positionData.requestPassTimestamp == 0);
         _addCollateral(positionData, collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
-        require(_checkCollateralizationRatio(positionData), "Cannot create below global collateralization ratio");
+        require(_checkCollateralizationRatio(positionData));
 
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
         // Transfer tokens into the contract from caller and mint the caller synthetic tokens.
-        require(
-            collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue),
-            "Transferring collateral failed"
-        );
-        require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
+        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
 
         emit PositionCreated(msg.sender, collateralAmount.rawValue, numTokens.rawValue);
     }
@@ -289,8 +271,8 @@ contract PricelessPositionManager is FeePayer {
         fees()
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0, "Cannot redeem with a pending withdrawal request");
-        require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Can't redeem more than position size");
+        require(positionData.requestPassTimestamp == 0);
+        require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
         FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(_getCollateral(positionData));
@@ -309,15 +291,9 @@ contract PricelessPositionManager is FeePayer {
         }
 
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
-        require(
-            collateralCurrency.transfer(msg.sender, collateralRedeemed.rawValue),
-            "Transfering collateral from caller to contract failed"
-        );
+        require(collateralCurrency.transfer(msg.sender, collateralRedeemed.rawValue));
 
-        require(
-            tokenCurrency.transferFrom(msg.sender, address(this), numTokens.rawValue),
-            "Burning tokens from caller failed"
-        );
+        require(tokenCurrency.transferFrom(msg.sender, address(this), numTokens.rawValue));
         tokenCurrency.burn(numTokens.rawValue);
 
         emit Redeem(msg.sender, collateralRedeemed.rawValue, numTokens.rawValue);
@@ -393,14 +369,8 @@ contract PricelessPositionManager is FeePayer {
         }
 
         // Transfer tokens and collateral.
-        require(
-            collateralCurrency.transfer(msg.sender, totalRedeemableCollateral.rawValue),
-            "Collateral redemption send failed"
-        );
-        require(
-            tokenCurrency.transferFrom(msg.sender, address(this), tokensToRedeem.rawValue),
-            "Token redemption send failed"
-        );
+        require(collateralCurrency.transfer(msg.sender, totalRedeemableCollateral.rawValue));
+        require(tokenCurrency.transferFrom(msg.sender, address(this), tokensToRedeem.rawValue));
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
         // Decrement total contract collateral and oustanding debt.
