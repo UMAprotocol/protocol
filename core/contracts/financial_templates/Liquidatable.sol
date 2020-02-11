@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // import "../OracleInteface.sol";
-import "../FixedPoint.sol";
-import "../Testable.sol";
+import "../common/FixedPoint.sol";
+import "../common/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 /**
@@ -178,10 +178,8 @@ contract Liquidatable is PricelessPositionManager {
     function createLiquidation(address sponsor) public returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
-        require(
-            FixedPoint.isGreaterThan(positionToLiquidate.collateral, 0),
-            "Cant liquidate a position with no collateral"
-        );
+        FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate);
+        require(positionCollateral.isGreaterThan(0), "Cant liquidate a position with no collateral");
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
@@ -190,9 +188,9 @@ contract Liquidatable is PricelessPositionManager {
                 expiry: getCurrentTime() + liquidationLiveness,
                 liquidator: msg.sender,
                 state: Status.PreDispute,
-                lockedCollateral: positionToLiquidate.collateral,
+                lockedCollateral: positionCollateral,
                 tokensOutstanding: positionToLiquidate.tokensOutstanding,
-                liquidatedCollateral: positionToLiquidate.collateral.sub(positionToLiquidate.withdrawalRequestAmount),
+                liquidatedCollateral: positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount),
                 disputer: address(0),
                 liquidationTime: getCurrentTime(),
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
