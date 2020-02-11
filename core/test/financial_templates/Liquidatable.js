@@ -328,14 +328,14 @@ contract("Liquidatable", function(accounts) {
         assert.equal(pendingRequests[0].time, liquidationTime);
       });
       it("Dispute pays a final fee", async () => {
-        const finalFeeAmount = toWei('1')
+        const finalFeeAmount = toWei("1");
         // Set final fee to a flat 1 collateral token
         await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount });
         // Mint final fee amount to disputer
         await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
         // Increase allowance for contract to spend disputer's tokens
-        await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, { from: disputer })
-       
+        await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, { from: disputer });
+
         // Check that store's collateral balance increases
         const storeInitialBalance = toBN(await collateralToken.balanceOf(store.address));
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
@@ -343,13 +343,15 @@ contract("Liquidatable", function(accounts) {
         assert.equal(storeAfterDisputeBalance.sub(storeInitialBalance).toString(), finalFeeAmount);
 
         // Check that collateral in liquidation contract remains the same
-        const expectedContractBalance = toBN(amountOfCollateral).add(disputeBond)
-        assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), expectedContractBalance.toString());
+        const expectedContractBalance = toBN(amountOfCollateral).add(disputeBond);
+        assert.equal(
+          (await collateralToken.balanceOf(liquidationContract.address)).toString(),
+          expectedContractBalance.toString()
+        );
 
         // Set the store fees back to 0 to prevent it from affecting other tests.
         await store.setFinalFee(collateralToken.address, { rawValue: "0" });
-
-      })
+      });
       it("Throw if liquidation has already been disputed", async () => {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         // Mint enough tokens to disputer for another dispute bond
