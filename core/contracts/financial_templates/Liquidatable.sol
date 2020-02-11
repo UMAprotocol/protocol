@@ -300,8 +300,7 @@ contract Liquidatable is PricelessPositionManager {
         require(
             (msg.sender == liquidation.disputer) ||
                 (msg.sender == liquidation.liquidator) ||
-                (msg.sender == liquidation.sponsor),
-            "must be a disputer, liquidator, or sponsor to request a withdrawal on a liquidation"
+                (msg.sender == liquidation.sponsor)
         );
 
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
@@ -328,10 +327,7 @@ contract Liquidatable is PricelessPositionManager {
             if (msg.sender == liquidation.disputer) {
                 // Pay DISPUTER: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
-                require(
-                    collateralCurrency.transfer(msg.sender, payToDisputer.rawValue),
-                    "failed to transfer reward for a successful dispute to disputer"
-                );
+                require(collateralCurrency.transfer(msg.sender, payToDisputer.rawValue));
                 delete liquidation.disputer;
                 withdrawalMade = payToDisputer.rawValue;
             } else if (msg.sender == sponsor) {
@@ -339,10 +335,7 @@ contract Liquidatable is PricelessPositionManager {
                 FixedPoint.Unsigned memory remainingCollateral;
                 remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
                 FixedPoint.Unsigned memory payToSponsor = sponsorDisputeReward.add(remainingCollateral);
-                require(
-                    collateralCurrency.transfer(msg.sender, payToSponsor.rawValue),
-                    "failed to transfer reward for a successful dispute to sponsor"
-                );
+                require(collateralCurrency.transfer(msg.sender, payToSponsor.rawValue));
                 delete liquidation.sponsor;
                 withdrawalMade = payToSponsor.rawValue;
             } else if (msg.sender == liquidation.liquidator) {
@@ -353,10 +346,7 @@ contract Liquidatable is PricelessPositionManager {
                 FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
                     disputerDisputeReward
                 );
-                require(
-                    collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
-                    "failed to transfer reward for a successful dispute to liquidator"
-                );
+                require(collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue));
                 delete liquidation.liquidator;
                 withdrawalMade = payToLiquidator.rawValue;
             }
@@ -367,19 +357,15 @@ contract Liquidatable is PricelessPositionManager {
             //In the case of a failed dispute only the liquidator can withdraw.
         } else if (liquidation.state == Status.DisputeFailed && msg.sender == liquidation.liquidator) {
             FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
-            require( // Pay LIQUIDATOR: lockedCollateral + dispute bond
-                collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
-                "failed to transfer locked collateral plus dispute bond to liquidator"
-            );
+            require(collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue));
+            // Pay LIQUIDATOR: lockedCollateral + dispute bond
             delete liquidation.liquidator;
             withdrawalMade = payToLiquidator.rawValue;
             delete liquidations[sponsor][id];
             //If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
         } else if (liquidation.state == Status.PreDispute && msg.sender == liquidation.liquidator) {
-            require( // Pay LIQUIDATOR: lockedCollateral
-                collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
-                "failed to transfer locked collateral to liquidator"
-            );
+            require(collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue));
+            // Pay LIQUIDATOR: lockedCollateral
             delete liquidation.liquidator;
             withdrawalMade = liquidation.lockedCollateral.rawValue;
             delete liquidations[sponsor][id];
@@ -389,7 +375,7 @@ contract Liquidatable is PricelessPositionManager {
             emit LiquidationWithdrawn(msg.sender);
             return withdrawalMade;
         }
-        require(false, "Either caller has already withdrawn or can not perform operation on liquidation");
+        require(false);
     }
 
     function _getLiquidationData(address sponsor, uint uuid)
@@ -401,10 +387,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // Revert if the caller is attempting to access an invalid liquidation (one that has never been created or one
         // has never been initialized).
-        require(
-            uuid < liquidationArray.length && liquidationArray[uuid].state != Status.Uninitialized,
-            "Invalid uuid or liquidation object"
-        );
+        require(uuid < liquidationArray.length && liquidationArray[uuid].state != Status.Uninitialized);
         return liquidationArray[uuid];
     }
 }
