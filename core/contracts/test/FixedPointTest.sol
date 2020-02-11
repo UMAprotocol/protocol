@@ -20,6 +20,10 @@ contract FixedPointTest {
         return FixedPoint.Unsigned(a).isGreaterThan(FixedPoint.Unsigned(b));
     }
 
+    function wrapIsGreaterThanOrEqual(uint a, uint b) external pure returns (bool) {
+        return FixedPoint.Unsigned(a).isGreaterThanOrEqual(FixedPoint.Unsigned(b));
+    }
+
     function wrapMixedIsGreaterThan(uint a, uint b) external pure returns (bool) {
         return FixedPoint.Unsigned(a).isGreaterThan(b);
     }
@@ -30,6 +34,10 @@ contract FixedPointTest {
 
     function wrapIsLessThan(uint a, uint b) external pure returns (bool) {
         return FixedPoint.Unsigned(a).isLessThan(FixedPoint.Unsigned(b));
+    }
+
+    function wrapIsLessThanOrEqual(uint a, uint b) external pure returns (bool) {
+        return FixedPoint.Unsigned(a).isLessThanOrEqual(FixedPoint.Unsigned(b));
     }
 
     function wrapMixedIsLessThan(uint a, uint b) external pure returns (bool) {

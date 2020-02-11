@@ -41,6 +41,21 @@ library FixedPoint {
         return fromUnscaledUint(a).rawValue > b.rawValue;
     }
 
+    /** @dev Whether `a` is greater than or equal to `b`. */
+    function isGreaterThanOrEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
+        return a.rawValue >= b.rawValue;
+    }
+
+    /** @dev Whether `a` is greater than or equal to `b`. */
+    function isGreaterThanOrEqual(Unsigned memory a, uint b) internal pure returns (bool) {
+        return a.rawValue >= fromUnscaledUint(b).rawValue;
+    }
+
+    /** @dev Whether `a` is greater than or equal to `b`. */
+    function isGreaterThanOrEqual(uint a, Unsigned memory b) internal pure returns (bool) {
+        return fromUnscaledUint(a).rawValue >= b.rawValue;
+    }
+
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue < b.rawValue;
@@ -54,6 +69,21 @@ library FixedPoint {
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(uint a, Unsigned memory b) internal pure returns (bool) {
         return fromUnscaledUint(a).rawValue < b.rawValue;
+    }
+
+    /** @dev Whether `a` is less than or equal to `b`. */
+    function isLessThanOrEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
+        return a.rawValue <= b.rawValue;
+    }
+
+    /** @dev Whether `a` is less than or equal to `b`. */
+    function isLessThanOrEqual(Unsigned memory a, uint b) internal pure returns (bool) {
+        return a.rawValue <= fromUnscaledUint(b).rawValue;
+    }
+
+    /** @dev Whether `a` is less than or equal to `b`. */
+    function isLessThanOrEqual(uint a, Unsigned memory b) internal pure returns (bool) {
+        return fromUnscaledUint(a).rawValue <= b.rawValue;
     }
 
     /** @dev Adds two `Unsigned`s, reverting on overflow. */

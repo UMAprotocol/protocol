@@ -26,9 +26,18 @@ contract("FixedPoint", function(accounts) {
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isTrue(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
 
+    assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("0"), web3.utils.toWei("0")));
     assert.isFalse(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("1")));
     assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isFalse(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("3")));
+
+    assert.isTrue(await fixedPoint.wrapIsGreaterThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("1")));
+    assert.isTrue(await fixedPoint.wrapIsGreaterThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("2")));
+    assert.isFalse(await fixedPoint.wrapIsGreaterThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("3")));
+
+    assert.isFalse(await fixedPoint.wrapIsLessThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("1")));
+    assert.isTrue(await fixedPoint.wrapIsLessThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("2")));
+    assert.isTrue(await fixedPoint.wrapIsLessThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("3")));
   });
 
   it("Mixed Comparison", async function() {
@@ -159,8 +168,8 @@ contract("FixedPoint", function(accounts) {
     assert.equal(product.toString(), web3.utils.toWei("0.0005"));
 
     // Fractions, precision loss, ceiling.
-    // 1.4 * 2e-18 = 2.8e-18, which can't be represented and gets ceil'd to 3.
-    product = await fixedPoint.wrapMulCeil(web3.utils.toWei("1.4"), "2");
+    // 1.2 * 2e-18 = 2.4e-18, which can't be represented and gets ceil'd to 3.
+    product = await fixedPoint.wrapMulCeil(web3.utils.toWei("1.2"), "2");
     assert.equal(product.toString(), "3");
 
     // Reverts on overflow.
