@@ -499,7 +499,7 @@ contract PricelessPositionManager is FeePayer {
         // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
         // Adjust internal variables below.
         // Compute fee percentage that was paid by the entire contract (fees / collateral).
-        // Unlike payFees, we are spreading fees across all locked collateral and NOT all PfC, which 
+        // Unlike payFees, we are spreading fees across all locked collateral and NOT all PfC, which
         // could mean that fees are not spread across liquidations (if PfC !== collateral)
         FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialTotalPositionCollateral);
 
