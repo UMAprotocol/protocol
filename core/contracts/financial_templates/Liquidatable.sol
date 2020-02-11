@@ -165,7 +165,7 @@ contract Liquidatable is PricelessPositionManager {
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
-    function createLiquidation(address sponsor) public returns (uint uuid) {
+    function createLiquidation(address sponsor) external returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate);
@@ -214,7 +214,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param id of the disputed liquidation.
      * @param sponsor the address of the sponsor who's liquidation is being disputed.
      */
-    function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
+    function dispute(uint id, address sponsor) external onlyPreExpiryAndPreDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
@@ -241,7 +241,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param id to uniquely identify the dispute to settle
      * @param sponsor the address of the sponsor who's dispute is being settled
      */
-    function settleDispute(uint id, address sponsor) public onlyPendingDispute(id, sponsor) {
+    function settleDispute(uint id, address sponsor) external onlyPendingDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
@@ -288,7 +288,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param id uniquly identifies the sponsor's liqudation
      * @param sponsor address of the sponsor associated with the liquidation
      */
-    function withdrawLiquidation(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
+    function withdrawLiquidation(uint id, address sponsor) external onlyPostExpiryOrPostDispute(id, sponsor) {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         require(msg.sender == liquidation.disputer || msg.sender == liquidation.liquidator || msg.sender == sponsor);
 
