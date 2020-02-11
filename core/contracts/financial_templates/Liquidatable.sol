@@ -335,7 +335,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // Once a caller has been paid their address is set to address(0) within the struct.
         // This prevents them from being paid multiple from the same liquidation.
-        
+
         // Once a payment has been recorded this flag is set to inform clean up at function end.
         uint withdrawalMade = 0;
         if (liquidation.state == Status.DisputeSucceeded) {
