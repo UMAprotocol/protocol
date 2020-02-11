@@ -119,7 +119,7 @@ contract PricelessPositionManager is FeePayer {
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
-        require(getCollateral(newSponsorAddress).isEqual(FixedPoint.fromUnscaledUint(0)));
+        require(_getCollateral(positions[newSponsorAddress]).isEqual(FixedPoint.fromUnscaledUint(0)));
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         positions[newSponsorAddress] = positionData;
@@ -205,7 +205,7 @@ contract PricelessPositionManager is FeePayer {
     // TODO: is onlyCollateralizedPosition(msg.sender) correct here? if a position withdraws all their collateral will this still work?
     // TODO: this currently does not decrement the sponsors oustanding withdrawalRequestAmount. should it?
     // TODO: Decide whether to fold this functionality into withdraw() method above.
-    function withdrawPassedRequest() public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
+    function withdrawPassedRequest() external onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime());
 
@@ -223,7 +223,7 @@ contract PricelessPositionManager is FeePayer {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() public onlyPreExpiration() {
+    function cancelWithdrawal() external onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp != 0);
 
@@ -334,7 +334,7 @@ contract PricelessPositionManager is FeePayer {
      * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
      * expiration. Once this has been resolved token holders can withdraw.
      */
-    function expire() public onlyPostExpiration() {
+    function expire() external onlyPostExpiration() {
         _requestOraclePrice(expirationTimestamp);
 
         emit ContractExpired(msg.sender);
@@ -345,7 +345,7 @@ contract PricelessPositionManager is FeePayer {
      * the prevailing price defined by the DVM from the `expire` function. 
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
-    function settleExpired() public onlyPostExpiration() {
+    function settleExpired() external onlyPostExpiration() {
         // Get the current settlement price. If it is not resolved will revert.
         FixedPoint.Unsigned memory settlementPrice = _getOraclePrice(expirationTimestamp);
 
@@ -386,7 +386,7 @@ contract PricelessPositionManager is FeePayer {
      * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't a
      * user-readable value.
      */
-    function getCollateral(address sponsor) public view returns (FixedPoint.Unsigned memory) {
+    function getCollateral(address sponsor) external view returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
         return _getCollateral(positions[sponsor]);
     }
@@ -451,7 +451,7 @@ contract PricelessPositionManager is FeePayer {
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
-    function _getOraclePrice(uint requestedTime) public view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");
