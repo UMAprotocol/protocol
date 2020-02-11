@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "prettier": "1.19.1",
+    "eslint": "5.16.0",
     "prettier-plugin-solidity": "1.0.0-alpha.36",
     "solidity-coverage": "^0.7.1",
     "truffle-deploy-registry": "^0.5.1"
@@ -36,7 +37,6 @@
     "@truffle/hdwallet-provider": "^1.0.25",
     "@umaprotocol/truffle-ledger-provider": "^1.0.3",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
-    "babel-eslint": "^10.0.3",
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",
@@ -50,7 +50,6 @@
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
     "node-metamask": "^1.1.2",
-    "ora": "^4.0.3",
     "require-context": "^1.1.0",
     "secp256k1": "^3.7.1",
     "truffle": "5.1.4",
