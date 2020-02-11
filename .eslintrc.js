@@ -1,7 +1,6 @@
 module.exports = {
   env: {
-    browser: true,
-    es6: true
+    browser: true
   },
   extends: "eslint:recommended",
   parserOptions: {
@@ -9,9 +8,9 @@ module.exports = {
     sourceType: "module"
   },
   rules: {
-    indent: ["error", 2],
+    indent: ["error", 2, { SwitchCase: 1 }],
     "linebreak-style": ["error", "unix"],
-    quotes: ["error", "double"],
+    quotes: ["error", "double", { avoidEscape: true }],
     semi: ["error", "always"],
     "spaced-comment": ["error", "always", { exceptions: ["-", "+"] }],
     "no-undef": [0],
