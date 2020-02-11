@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 
+const style = require("./textStyle");
 const vote = require("./vote");
 const wallet = require("./wallet");
 const admin = require("./admin.js");
@@ -26,7 +27,12 @@ async function topMenu() {
   return result["topMenu"];
 }
 
+/**
+ * Top-level menu of CLI tool, and main node JS entry point.
+ */
 async function run() {
+  // TODO: Should do a check here to detect if contracts are deployed,
+  // as wallet, vote, and admin modules all assume they are deployed
   let run = true;
   while (run) {
     const choice = await topMenu();
@@ -39,6 +45,22 @@ async function run() {
         break;
       case ACTIONS.admin:
         await admin(artifacts, web3);
+        break;
+      // HELP
+      case ACTIONS.help:
+        console.group(`${style.help(`Welcome to the UMA Voting Tool`)}:`);
+        console.log(
+          `${style.help(
+            ACTIONS.wallet
+          )}: Displays your token balances and provides functionality for generating new voting accounts.`
+        );
+        console.log(
+          `${style.help(
+            ACTIONS.vote
+          )}: Review pending price requests that you can vote on (as well as other helpful information about the current voting round). You can also commit votes, reveal votes, and retrieve rewards.`
+        );
+        console.log(`${style.help(ACTIONS.admin)}: View pending UMA Admin proposals.`);
+        console.groupEnd();
         break;
       case ACTIONS.exit:
         run = false;
