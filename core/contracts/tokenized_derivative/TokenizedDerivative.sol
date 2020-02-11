@@ -2,12 +2,12 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
+import "../common/ExpandedIERC20.sol";
 import "../common/FixedPoint.sol";
 import "../oracle/interfaces/AdministrateeInterface.sol";
 import "../oracle/interfaces/OracleInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../ExpandedIERC20.sol";
 import "../Finder.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
