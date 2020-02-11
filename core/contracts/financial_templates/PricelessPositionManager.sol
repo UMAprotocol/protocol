@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../common/FixedPoint.sol";
 import "../common/Testable.sol";
 import "../oracle/interfaces/OracleInterface.sol";
@@ -21,6 +22,8 @@ import "./FeePayer.sol";
 contract PricelessPositionManager is FeePayer {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
+    using SafeERC20 for IERC20;
+    using SafeERC20 for Token;
 
     // Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
     // and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
@@ -119,7 +122,7 @@ contract PricelessPositionManager is FeePayer {
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
-        require(getCollateral(newSponsorAddress).isEqual(FixedPoint.fromUnscaledUint(0)));
+        require(_getCollateral(positions[newSponsorAddress]).isEqual(FixedPoint.fromUnscaledUint(0)));
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         positions[newSponsorAddress] = positionData;
@@ -142,7 +145,7 @@ contract PricelessPositionManager is FeePayer {
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
 
         // Move collateral currency from sender to contract.
-        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
 
         emit Deposit(msg.sender, collateralAmount.rawValue);
     }
@@ -167,7 +170,7 @@ contract PricelessPositionManager is FeePayer {
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
 
         // Move collateral currency from contract to sender.
-        require(collateralCurrency.transfer(msg.sender, collateralAmount.rawValue));
+        collateralCurrency.safeTransfer(msg.sender, collateralAmount.rawValue);
 
         emit Withdrawal(msg.sender, collateralAmount.rawValue);
     }
@@ -205,7 +208,7 @@ contract PricelessPositionManager is FeePayer {
     // TODO: is onlyCollateralizedPosition(msg.sender) correct here? if a position withdraws all their collateral will this still work?
     // TODO: this currently does not decrement the sponsors oustanding withdrawalRequestAmount. should it?
     // TODO: Decide whether to fold this functionality into withdraw() method above.
-    function withdrawPassedRequest() public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
+    function withdrawPassedRequest() external onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime());
 
@@ -215,7 +218,7 @@ contract PricelessPositionManager is FeePayer {
         positionData.requestPassTimestamp = 0;
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        require(collateralCurrency.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue));
+        collateralCurrency.safeTransfer(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, positionData.withdrawalRequestAmount.rawValue);
     }
@@ -223,7 +226,7 @@ contract PricelessPositionManager is FeePayer {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() public onlyPreExpiration() {
+    function cancelWithdrawal() external onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp != 0);
 
@@ -256,8 +259,8 @@ contract PricelessPositionManager is FeePayer {
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
         // Transfer tokens into the contract from caller and mint the caller synthetic tokens.
-        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
-        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
 
         emit PositionCreated(msg.sender, collateralAmount.rawValue, numTokens.rawValue);
     }
@@ -292,9 +295,8 @@ contract PricelessPositionManager is FeePayer {
         }
 
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
-        require(collateralCurrency.transfer(msg.sender, collateralRedeemed.rawValue));
-
-        require(tokenCurrency.transferFrom(msg.sender, address(this), numTokens.rawValue));
+        collateralCurrency.safeTransfer(msg.sender, collateralRedeemed.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
         tokenCurrency.burn(numTokens.rawValue);
 
         emit Redeem(msg.sender, collateralRedeemed.rawValue, numTokens.rawValue);
@@ -334,7 +336,7 @@ contract PricelessPositionManager is FeePayer {
      * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
      * expiration. Once this has been resolved token holders can withdraw.
      */
-    function expire() public onlyPostExpiration() {
+    function expire() external onlyPostExpiration() {
         _requestOraclePrice(expirationTimestamp);
 
         emit ContractExpired(msg.sender);
@@ -345,7 +347,7 @@ contract PricelessPositionManager is FeePayer {
      * the prevailing price defined by the DVM from the `expire` function. 
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
-    function settleExpired() public onlyPostExpiration() {
+    function settleExpired() external onlyPostExpiration() {
         // Get the current settlement price. If it is not resolved will revert.
         FixedPoint.Unsigned memory settlementPrice = _getOraclePrice(expirationTimestamp);
 
@@ -369,9 +371,9 @@ contract PricelessPositionManager is FeePayer {
             delete positions[msg.sender];
         }
 
-        // Transfer tokens and collateral.
-        require(collateralCurrency.transfer(msg.sender, totalRedeemableCollateral.rawValue));
-        require(tokenCurrency.transferFrom(msg.sender, address(this), tokensToRedeem.rawValue));
+        // Transfer tokens & collateral and burn the redeemed tokens.
+        collateralCurrency.safeTransfer(msg.sender, totalRedeemableCollateral.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
         // Decrement total contract collateral and oustanding debt.
@@ -386,7 +388,7 @@ contract PricelessPositionManager is FeePayer {
      * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't a
      * user-readable value.
      */
-    function getCollateral(address sponsor) public view returns (FixedPoint.Unsigned memory) {
+    function getCollateral(address sponsor) external view returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
         return _getCollateral(positions[sponsor]);
     }
@@ -451,7 +453,7 @@ contract PricelessPositionManager is FeePayer {
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
-    function _getOraclePrice(uint requestedTime) public view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");

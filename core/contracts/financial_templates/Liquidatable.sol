@@ -48,18 +48,18 @@ contract Liquidatable is PricelessPositionManager {
     mapping(address => LiquidationData[]) public liquidations;
 
     // Amount of time for pending liquidation before expiry
-    uint liquidationLiveness;
+    uint public liquidationLiveness;
     // Required collateral:TRV ratio for a position to be considered sufficiently collateralized.
-    FixedPoint.Unsigned collateralRequirement;
+    FixedPoint.Unsigned public collateralRequirement;
     // Percent of a Liquidation/Position's lockedCollateral to be deposited by a potential disputer
     // Represented as a multiplier, for example 1.5e18 = "150%" and 0.05e18 = "5%"
-    FixedPoint.Unsigned disputeBondPct;
+    FixedPoint.Unsigned public disputeBondPct;
     // Percent of oraclePrice paid to sponsor in the Disputed state (i.e. following a successful dispute)
     // Represented as a multipler, see above
-    FixedPoint.Unsigned sponsorDisputeRewardPct;
+    FixedPoint.Unsigned public sponsorDisputeRewardPct;
     // Percent of oraclePrice paid to disputer in the Disputed state (i.e. following a successful dispute)
     // Represented as a multipler, see above
-    FixedPoint.Unsigned disputerDisputeRewardPct;
+    FixedPoint.Unsigned public disputerDisputeRewardPct;
 
     event LiquidationCreated(
         address indexed sponsor,
@@ -167,7 +167,7 @@ contract Liquidatable is PricelessPositionManager {
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
-    function createLiquidation(address sponsor) public returns (uint uuid) {
+    function createLiquidation(address sponsor) external returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate);
@@ -194,7 +194,7 @@ contract Liquidatable is PricelessPositionManager {
         uuid = newLength.sub(1);
 
         // Destroy tokens
-        require(tokenCurrency.transferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue));
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue);
         tokenCurrency.burn(positionToLiquidate.tokensOutstanding.rawValue);
 
         // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
@@ -217,11 +217,12 @@ contract Liquidatable is PricelessPositionManager {
      * @param id of the disputed liquidation.
      * @param sponsor the address of the sponsor who's liquidation is being disputed.
      */
-    function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
+    function dispute(uint id, address sponsor) external onlyPreExpiryAndPreDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
-        require(collateralCurrency.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue));
+
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
 
         // Request a price from DVM,
         // Liquidation is pending dispute until DVM returns a price
@@ -244,7 +245,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param id to uniquely identify the dispute to settle
      * @param sponsor the address of the sponsor who's dispute is being settled
      */
-    function settleDispute(uint id, address sponsor) public onlyPendingDispute(id, sponsor) {
+    function settleDispute(uint id, address sponsor) external onlyPendingDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
