@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../common/FixedPoint.sol";
 import "../common/Testable.sol";
 import "../oracle/interfaces/OracleInterface.sol";
+import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../Finder.sol";
 import "./Token.sol";
 import "./FeePayer.sol";
@@ -417,14 +418,9 @@ contract PricelessPositionManager is FeePayer {
         return positions[sponsor];
     }
 
-    function _getIdentifierWhitelistAddress() internal view returns (address) {
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
-        return finder.getImplementationAddress(identifierWhitelistInterface);
-    }
-
-    function _getStoreAddress() internal view returns (address) {
-        bytes32 storeInterface = "Store";
-        return finder.getImplementationAddress(storeInterface);
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(identifierWhitelistInterface));
     }
 
     function _getCollateral(PositionData storage positionData)
@@ -445,19 +441,19 @@ contract PricelessPositionManager is FeePayer {
         positionData.rawCollateral = positionData.rawCollateral.add(adjustedCollateral);
     }
 
-    function _getOracleAddress() internal view returns (address) {
+    function _getOracle() internal view returns (OracleInterface) {
         bytes32 oracleInterface = "Oracle";
-        return finder.getImplementationAddress(oracleInterface);
+        return OracleInterface(finder.getImplementationAddress(oracleInterface));
     }
 
     function _requestOraclePrice(uint requestedTime) internal {
-        OracleInterface oracle = OracleInterface(_getOracleAddress());
+        OracleInterface oracle = _getOracle();
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
     function _getOraclePrice(uint requestedTime) public view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
-        OracleInterface oracle = OracleInterface(_getOracleAddress());
+        OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");
         int oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
 
