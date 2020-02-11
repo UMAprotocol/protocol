@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../common/FixedPoint.sol";
 import "../common/Testable.sol";
 import "../oracle/interfaces/OracleInterface.sol";
+import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../Finder.sol";
 import "./Token.sol";
 import "./FeePayer.sol";
@@ -447,14 +448,9 @@ contract PricelessPositionManager is FeePayer {
         return positions[sponsor];
     }
 
-    function _getIdentifierWhitelistAddress() internal view returns (address) {
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
-        return finder.getImplementationAddress(identifierWhitelistInterface);
-    }
-
-    function _getStoreAddress() internal view returns (address) {
-        bytes32 storeInterface = "Store";
-        return finder.getImplementationAddress(storeInterface);
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(identifierWhitelistInterface));
     }
 
     function _getCollateral(PositionData storage positionData)
