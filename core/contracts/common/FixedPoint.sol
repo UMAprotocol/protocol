@@ -165,10 +165,8 @@ library FixedPoint {
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0, and ceil's the resultant product rather than the default floor behavior. */
     function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         uint divRaw = a.rawValue.mul(FP_SCALING_FACTOR);
-        // No need to use SafeMath because FP_SCALING_FACTOR != 0.
-        uint mod = divRaw % b.rawValue;
         uint divFloor = divRaw.div(b.rawValue);
-        if (mod != 0) {
+        if (divFloor.mul(b.rawValue) != divRaw) {
             return Unsigned(divFloor.add(1));
         } else {
             return Unsigned(divFloor);
