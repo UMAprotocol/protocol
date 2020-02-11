@@ -24,7 +24,7 @@ contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
 
-    enum Status { PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
+    enum Status { Uninitialized, PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
         /** Following variables set upon creation of liquidation */
@@ -415,9 +415,9 @@ contract Liquidatable is PricelessPositionManager {
         LiquidationData[] storage liquidationArray = liquidations[sponsor];
 
         // Revert if the caller is attempting to access an invalid liquidation (one that has never been created or one
-        // that has an invalid expiry time).
+        // has never been initialized).
         require(
-            uuid < liquidationArray.length && liquidationArray[uuid].expiry != 0,
+            uuid < liquidationArray.length && liquidationArray[uuid].state != Status.Uninitialized,
             "Invalid uuid or liquidation object"
         );
         return liquidationArray[uuid];

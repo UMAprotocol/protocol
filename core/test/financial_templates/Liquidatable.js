@@ -81,10 +81,11 @@ contract("Liquidatable", function(accounts) {
 
   // States for Liquidation to be in
   const STATES = {
-    PRE_DISPUTE: "0",
-    PENDING_DISPUTE: "1",
-    DISPUTE_SUCCEEDED: "2",
-    DISPUTE_FAILED: "3"
+    UNINITIALIZED: "0",
+    PRE_DISPUTE: "1",
+    PENDING_DISPUTE: "2",
+    DISPUTE_SUCCEEDED: "3",
+    DISPUTE_FAILED: "4"
   };
 
   beforeEach(async () => {
