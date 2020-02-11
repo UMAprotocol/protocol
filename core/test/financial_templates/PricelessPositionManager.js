@@ -374,7 +374,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.transfer(other, { from: sponsor })));
   });
 
-  it("Frozen post expiry", async function() {
+  it("Frozen when pre expiry and undercollateralized", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
     await pricelessPositionManager.create(
@@ -483,7 +483,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // For the sponsor, they are entitled to the underlying value of their remaining synthetic tokens + the excess collateral
     // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
-    // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the diffrence between the two.
+    // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 1.2 = 90
     const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
@@ -504,7 +504,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
-    assert(sponsorFinalSynthetic, 0);
+    assert(sponsorFinalSynthetic, 0);    
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
@@ -591,5 +591,109 @@ contract("PricelessPositionManager", function(accounts) {
     await store.setFixedOracleFeePerSecond({ rawValue: "0" });
   });
 
-  //TODO: check position is correctly deleted on settle expired
+  it("Final fees", async function() {
+    // Create a new position
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    const numTokens = toWei("50");
+    const amountCollateral = toWei("100");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    const tokenHolderTokens = toWei("25");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
+      from: sponsor
+    });
+
+    // Set store final fees to 1 collateral token.
+    const finalFeePaid = toWei('1')
+    await store.setFinalFee(collateral.address, { rawValue: finalFeePaid });
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
+    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
+    
+    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
+    const expireResult = await pricelessPositionManager.expire({ from: other });
+    truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
+      return ev.caller == other;
+    });
+
+    // Check that final fees were paid correctly and position's locked collateral was decremented
+    let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+
+    assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
+    assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
+
+    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
+    // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
+    const redemptionPrice = 1.2;
+    const redemptionPriceWei = toWei(redemptionPrice.toString());
+    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), redemptionPriceWei);
+
+    // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
+    // They have 25 tokens settled at a price of 1.2 should yield 30 units of underling (or 60 USD as underlying is Dai).
+    const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+    assert(tokenHolderInitialSynthetic, tokenHolderTokens);
+
+    // Approve the tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
+      from: tokenHolder
+    });
+    let settleExpiredResult = await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+
+    // The token holder should gain the value of their synthetic tokens in underlying.
+    // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
+    const expectedTokenHolderFinalCollateral = tokenHolderInitialSynthetic.muln(redemptionPrice);
+    assert(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
+
+    // The token holder should have no synthetic positions left after settlement.
+    assert(tokenHolderFinalSynthetic, 0);
+
+    //Check the event returned the correct values
+    truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
+      return (
+        ev.caller == tokenHolder &&
+        ev.collateralAmountReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
+        ev.tokensBurned == tokenHolderInitialSynthetic.toString()
+      );
+    });
+
+    // For the sponsor, they are entitled to the underlying value of their remaining synthetic tokens + the excess collateral
+    // in their position at time of settlement - final fees. The sponsor had 100 units of collateral in their position and the final TRV
+    // of their synthetics they sold is 60. Their redeemed amount for this excess collateral is the difference between the two.
+    // The sponsor also has 25 synthetic tokens that they did not sell. This makes their expected redemption = 100 - 60 + 25 * 1.2 - 1 = 69
+    const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
+    const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // Approve tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, sponsorInitialSynthetic, {
+      from: sponsor
+    });
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
+    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // The token Sponsor should gain the value of their synthetics in underlying
+    // + their excess collateral from the over collateralization in their position
+    const expectedSponsorCollateralUnderlying = toBN(amountCollateral).sub(toBN(numTokens).muln(redemptionPrice)).sub(toBN(finalFeePaid));
+    const expectedSponsorCollateralSynthetic = sponsorInitialSynthetic.muln(redemptionPrice);
+    const totalSponsorCollateralReturned = expectedSponsorCollateralUnderlying + expectedSponsorCollateralSynthetic;
+    assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
+
+    // The token Sponsor should have no synthetic positions left after settlement.
+    assert(sponsorFinalSynthetic, 0);    
+
+    // Last check is that after redemption the position in the positions mapping has been removed.
+    const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
+    assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
+    assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
+    assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+  });
 });

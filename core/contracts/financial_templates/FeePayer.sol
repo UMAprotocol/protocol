@@ -44,7 +44,7 @@ contract FeePayer is Testable {
     }
 
     /**
-     * @notice Pays UMA DVM fees to the Store contract.
+     * @notice Pays UMA DVM regular fees to the Store contract. These must be paid periodically for the life of the contract.
      * @return the amount of collateral that was paid to the Store.
      */
 
@@ -68,6 +68,24 @@ contract FeePayer is Testable {
         }
 
         return regularFee.add(latePenalty);
+    }
+
+    /**
+     * @notice Pays UMA DVM final fees to the Store contract. This is a flat fee charged for each price request.
+     * @return the amount of collateral that was paid to the Store.
+     */
+    function payFinalFees() public returns (FixedPoint.Unsigned memory totalPaid) {
+        StoreInterface store = StoreInterface(finder.getImplementationAddress("Store"));
+        FixedPoint.Unsigned memory finalFee = store.computeFinalFee(
+            address(collateralCurrency)
+        );
+
+        if (finalFee.isGreaterThan(0)) {
+            collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
+            store.payOracleFeesErc20(address(collateralCurrency));
+        }
+
+        return finalFee;
     }
 
     /**
