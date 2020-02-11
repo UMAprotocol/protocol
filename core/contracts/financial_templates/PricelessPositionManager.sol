@@ -471,19 +471,19 @@ contract PricelessPositionManager is FeePayer {
         positionData.rawCollateral = positionData.rawCollateral.add(adjustedCollateral);
     }
 
-    function _getOracleAddress() internal view returns (address) {
+    function _getOracle() internal view returns (OracleInterface) {
         bytes32 oracleInterface = "Oracle";
-        return finder.getImplementationAddress(oracleInterface);
+        return OracleInterface(finder.getImplementationAddress(oracleInterface));
     }
 
     function _requestOraclePrice(uint requestedTime) internal {
-        OracleInterface oracle = OracleInterface(_getOracleAddress());
+        OracleInterface oracle = _getOracle();
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
     function _getOraclePrice(uint requestedTime) public view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
-        OracleInterface oracle = OracleInterface(_getOracleAddress());
+        OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");
         int oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
 
