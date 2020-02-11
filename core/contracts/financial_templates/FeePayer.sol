@@ -76,9 +76,7 @@ contract FeePayer is Testable {
      */
     function payFinalFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = StoreInterface(finder.getImplementationAddress("Store"));
-        FixedPoint.Unsigned memory finalFee = store.computeFinalFee(
-            address(collateralCurrency)
-        );
+        FixedPoint.Unsigned memory finalFee = store.computeFinalFee(address(collateralCurrency));
 
         if (finalFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);

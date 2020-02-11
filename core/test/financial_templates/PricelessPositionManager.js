@@ -504,7 +504,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
-    assert(sponsorFinalSynthetic, 0);    
+    assert(sponsorFinalSynthetic, 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
@@ -605,7 +605,7 @@ contract("PricelessPositionManager", function(accounts) {
     });
 
     // Set store final fees to 1 collateral token.
-    const finalFeePaid = toWei('1')
+    const finalFeePaid = toWei("1");
     await store.setFinalFee(collateral.address, { rawValue: finalFeePaid });
 
     // Advance time until after expiration. Token holders and sponsors should now be able to to settle.
@@ -614,7 +614,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
-    
+
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     const expireResult = await pricelessPositionManager.expire({ from: other });
     truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
@@ -681,13 +681,15 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The token Sponsor should gain the value of their synthetics in underlying
     // + their excess collateral from the over collateralization in their position
-    const expectedSponsorCollateralUnderlying = toBN(amountCollateral).sub(toBN(numTokens).muln(redemptionPrice)).sub(toBN(finalFeePaid));
+    const expectedSponsorCollateralUnderlying = toBN(amountCollateral)
+      .sub(toBN(numTokens).muln(redemptionPrice))
+      .sub(toBN(finalFeePaid));
     const expectedSponsorCollateralSynthetic = sponsorInitialSynthetic.muln(redemptionPrice);
     const totalSponsorCollateralReturned = expectedSponsorCollateralUnderlying + expectedSponsorCollateralSynthetic;
     assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
-    assert(sponsorFinalSynthetic, 0);    
+    assert(sponsorFinalSynthetic, 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
