@@ -108,7 +108,7 @@ library FixedPoint {
 
     /** @dev Multiplies an `Unsigned` by an unscaled uint, reverting on overflow, and rounds the resultant product up rather than by default, down. */
     function mulCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
-        return Unsigned(a.rawValue.mul(b).add(0.5 * 10**18));
+        return mulCeil(a, fromUnscaledUint(b));
     }
 
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
@@ -140,7 +140,7 @@ library FixedPoint {
 
     /** @dev Divides with truncation an `Unsigned` by an unscaled uint, reverting on division by 0, and rounds the resultant quotient up rather than by default, down. */
     function divCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
-        return Unsigned(a.rawValue.mul(10).div(b).add(5).div(10));
+        return divCeil(a, fromUnscaledUint(b));
     }
 
     /** @dev Divides with truncation an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */
