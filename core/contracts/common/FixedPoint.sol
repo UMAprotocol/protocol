@@ -22,6 +22,11 @@ library FixedPoint {
     }
 
     /** @dev Whether `a` is equal to `b`. */
+    function isEqual(Unsigned memory a, uint b) internal pure returns (bool) {
+        return a.rawValue == fromUnscaledUint(b).rawValue;
+    }
+
+    /** @dev Whether `a` is equal to `b`. */
     function isEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue == b.rawValue;
     }
@@ -130,9 +135,8 @@ library FixedPoint {
     /** @dev Multiplies two `Unsigned`s, reverting on overflow, and ceil's the resultant product rather than the default floor behavior. */
     function mulCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         uint mulRaw = a.rawValue.mul(b.rawValue);
-        uint mod = mulRaw.mod(FP_SCALING_FACTOR);
         uint mulFloor = mulRaw / FP_SCALING_FACTOR;
-        if (mod != 0) {
+        if (mulFloor * FP_SCALING_FACTOR != mulRaw) {
             return Unsigned(mulFloor.add(1));
         } else {
             return Unsigned(mulFloor);
@@ -161,7 +165,8 @@ library FixedPoint {
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0, and ceil's the resultant product rather than the default floor behavior. */
     function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         uint divRaw = a.rawValue.mul(FP_SCALING_FACTOR);
-        uint mod = divRaw.mod(b.rawValue);
+        // No need to use SafeMath because FP_SCALING_FACTOR != 0.
+        uint mod = divRaw % b.rawValue;
         uint divFloor = divRaw.div(b.rawValue);
         if (mod != 0) {
             return Unsigned(divFloor.add(1));

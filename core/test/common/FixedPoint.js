@@ -26,6 +26,7 @@ contract("FixedPoint", function(accounts) {
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isTrue(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
 
+    assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("1"), web3.utils.toWei("1").toString()));
     assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("0"), web3.utils.toWei("0")));
     assert.isFalse(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("1")));
     assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("2")));
