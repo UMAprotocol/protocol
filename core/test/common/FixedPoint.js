@@ -225,12 +225,11 @@ contract("FixedPoint", function(accounts) {
     let product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("1.5"), "3");
     assert.equal(product, web3.utils.toWei("4.5"));
 
-    // TODO: This test overflows
-    // // We can handle outputs up to 10^59.
-    // const tenToSixty = web3.utils.toBN("10").pow(web3.utils.toBN("60"));
-    // const tenToFiftyNine = web3.utils.toBN("10").pow(web3.utils.toBN("59"));
-    // product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("0.1"), tenToSixty);
-    // assert.equal(product.toString(), web3.utils.toWei(tenToFiftyNine.toString()));
+    // We can handle outputs up to 10^59.
+    const tenToSixty = web3.utils.toBN("10").pow(web3.utils.toBN("60"));
+    const tenToFiftyNine = web3.utils.toBN("10").pow(web3.utils.toBN("59"));
+    product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("0.1"), tenToSixty);
+    assert.equal(product.toString(), web3.utils.toWei(tenToFiftyNine.toString()));
 
     // Reverts on overflow.
     // (uint_max / 2) * 3 overflows.

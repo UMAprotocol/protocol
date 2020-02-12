@@ -145,7 +145,8 @@ library FixedPoint {
     }
 
     function mulCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
-        return mulCeil(a, fromUnscaledUint(b));
+        // Since b is an int, there is no risk of truncation and we can just mul it normally
+        return Unsigned(a.rawValue.mul(b));
     }
 
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
