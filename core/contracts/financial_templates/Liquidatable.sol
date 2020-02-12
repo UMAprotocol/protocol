@@ -233,7 +233,7 @@ contract Liquidatable is PricelessPositionManager {
         _requestOraclePrice(disputedLiquidation.liquidationTime);
 
         // Pay a final fee
-        payFinalFees(msg.sender);
+        _payFinalFees(msg.sender);
 
         emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }
