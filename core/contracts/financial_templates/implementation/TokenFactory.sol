@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 import "./Token.sol";
-import "./TokenInterface.sol";
+import "../interfaces/TokenInterface.sol";
 
 /**
  * @notice A burnable and mintable ERC20.

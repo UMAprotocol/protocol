@@ -3,6 +3,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title Interface for mintable and burnable token. Adds methods to IERC20 that PricelessPositionManager calls.
+ * @dev Technically this is not an "interface" because PricelessPositionManager needs to use SafeERC20 for TokenInterface
+ * in order to make safeTransferFrom() calls. However, you cannot use the "using" keyword with interfaces
  */
 contract TokenInterface is IERC20 {
     /**
@@ -22,17 +24,6 @@ contract TokenInterface is IERC20 {
      * - the caller must have the {MinterRole}.
      */
     function addMinter(address account) external;
-
-    // /**
-    //  * @dev Moves `amount` tokens from `sender` to `recipient` using the
-    //  * allowance mechanism. `amount` is then deducted from the caller's
-    //  * allowance.
-    //  *
-    //  * Returns a boolean value indicating whether the operation succeeded.
-    //  *
-    //  * Emits a {Transfer} event.
-    //  */
-    // function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 
     /**
      * @dev Destroys `amount` tokens from the caller.
