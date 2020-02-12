@@ -11,7 +11,6 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../Finder.sol";
 import "./TokenFactory.sol";
 import "../interfaces/TokenInterface.sol";
-import "../../oracle/interfaces/StoreInterface.sol";
 import "./FeePayer.sol";
 
 /**
@@ -107,12 +106,12 @@ contract PricelessPositionManager is FeePayer {
         address _finderAddress,
         bytes32 _priceFeedIdentifier,
         string memory _syntheticName,
-        string memory _syntheticSymbol
+        string memory _syntheticSymbol,
+        address _tokenFactoryAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        bytes32 tokenFactory = "TokenFactory";
-        TokenFactory tf = TokenFactory(finder.getImplementationAddress(tokenFactory));
+        TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         priceIdentifer = _priceFeedIdentifier;
         positionFeeAdjustment = FixedPoint.fromUnscaledUint(1);

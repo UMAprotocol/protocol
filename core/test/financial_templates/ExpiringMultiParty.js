@@ -5,6 +5,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 // Helper Contracts
 const Finder = artifacts.require("Finder");
+const TokenFactory = artifacts.require("TokenFactory");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
@@ -20,6 +21,7 @@ contract("ExpiringMultiParty", function(accounts) {
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",

@@ -2,7 +2,7 @@ pragma solidity ^0.5.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title Interface for mintable and burnable token. Adds methods to IERC20 that PricelessPositionManager calls.
+ * @title Interface for mintable and burnable token. Adds only methods to IERC20 that PricelessPositionManager calls.
  * @dev Technically this is not an "interface" because PricelessPositionManager needs to use SafeERC20 for TokenInterface
  * in order to make safeTransferFrom() calls. However, you cannot use the "using" keyword with interfaces
  */
