@@ -291,6 +291,11 @@ contract("FixedPoint", function(accounts) {
 
     // Reverts on division by zero.
     assert(await didContractThrow(fixedPoint.wrapMixedDiv("1", "0")));
+
+    // large denominator
+    const bigDenominator = web3.utils.toBN("10").pow(web3.utils.toBN("76"));
+    quotient = await fixedPoint.wrapMixedDiv(web3.utils.toWei('1'), bigDenominator)
+    console.log(quotient.toString())
   });
 
   it("Mixed division, with ceil", async function() {
