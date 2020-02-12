@@ -83,17 +83,17 @@ contract PricelessPositionManager is FeePayer {
     );
 
     modifier onlyPreExpiration() {
-        require(getCurrentTime() < expirationTimestamp);
+        _isPreExpiration();
         _;
     }
 
     modifier onlyPostExpiration() {
-        require(getCurrentTime() >= expirationTimestamp);
+        _isPostExpiration();
         _;
     }
 
     modifier onlyCollateralizedPosition(address sponsor) {
-        require(_getCollateral(positions[sponsor]).isGreaterThan(0));
+        _isCollateralizedPosition(sponsor);
         _;
     }
 
@@ -491,4 +491,22 @@ contract PricelessPositionManager is FeePayer {
         require(value >= 0, "Uint underflow");
         return uint(value);
     }
+
+    /**
+     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
+     * unneccessarily increase contract bytecode size
+     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
+     */
+    function _isPreExpiration() internal view {
+        require(getCurrentTime() < expirationTimestamp);
+    }
+
+    function _isPostExpiration() internal view {
+        require(getCurrentTime() >= expirationTimestamp);
+    }
+
+    function _isCollateralizedPosition(address sponsor) internal view {
+        require(_getCollateral(positions[sponsor]).isGreaterThan(0));
+    }
+
 }
