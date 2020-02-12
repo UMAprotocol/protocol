@@ -337,7 +337,7 @@ contract PricelessPositionManager is FeePayer {
      */
     function expire() external onlyPostExpiration() {
         _requestOraclePrice(expirationTimestamp);
-        _payFinalFees();
+        _payOracleRequestFees();
 
         emit ContractExpired(msg.sender);
     }
@@ -453,9 +453,9 @@ contract PricelessPositionManager is FeePayer {
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
-    function _payFinalFees() private {
+    function _payOracleRequestFees() private {
         // Send the fee payment.
-        FixedPoint.Unsigned memory totalPaid = super._payFinalFees(address(this));
+        FixedPoint.Unsigned memory totalPaid = _payFinalFees(address(this));
 
         // Exit early if totalCollaterall == 0 to prevent divide by 0.
         if (totalPositionCollateral.isEqual(FixedPoint.fromUnscaledUint(0))) {
