@@ -9,7 +9,10 @@ import "../common/Testable.sol";
 import "../oracle/interfaces/OracleInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../Finder.sol";
-import "./Token.sol";
+import "./TokenFactory.sol";
+import "./TokenInterface.sol";
+import "../oracle/interfaces/StoreInterface.sol";
+// import "./Token.sol";
 import "./FeePayer.sol";
 
 /**
@@ -23,7 +26,7 @@ contract PricelessPositionManager is FeePayer {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for Token;
+    using SafeERC20 for TokenInterface;
 
     // Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
     // and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
@@ -47,7 +50,7 @@ contract PricelessPositionManager is FeePayer {
     FixedPoint.Unsigned public totalTokensOutstanding;
 
     // Synthetic token created by this contract.
-    Token public tokenCurrency;
+    TokenInterface public tokenCurrency;
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
@@ -109,8 +112,10 @@ contract PricelessPositionManager is FeePayer {
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
-        tokenCurrency = Token(address(mintableToken));
+        // Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
+        bytes32 tokenFactory = "TokenFactory";
+        TokenFactory tf = TokenFactory(finder.getImplementationAddress(tokenFactory));
+        tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         priceIdentifer = _priceFeedIdentifier;
         positionFeeAdjustment = FixedPoint.fromUnscaledUint(1);
     }
