@@ -81,10 +81,11 @@ contract("Liquidatable", function(accounts) {
 
   // States for Liquidation to be in
   const STATES = {
-    PRE_DISPUTE: "0",
-    PENDING_DISPUTE: "1",
-    DISPUTE_SUCCEEDED: "2",
-    DISPUTE_FAILED: "3"
+    UNINITIALIZED: "0",
+    PRE_DISPUTE: "1",
+    PENDING_DISPUTE: "2",
+    DISPUTE_SUCCEEDED: "3",
+    DISPUTE_FAILED: "4"
   };
 
   beforeEach(async () => {
@@ -486,6 +487,13 @@ contract("Liquidatable", function(accounts) {
       it("Liquidator calls", async () => {
         await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
         assert.equal((await collateralToken.balanceOf(liquidator)).toString(), amountOfCollateral.toString());
+
+        //Liquidator should not be able to call multiple times. Only one withdrawal
+        assert(
+          await didContractThrow(
+            liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
+          )
+        );
       });
       it("After liquidator calls, liquidation is deleted and last used index remains the same", async () => {
         // Withdraw from disputed liquidation and delete it
@@ -553,18 +561,39 @@ contract("Liquidatable", function(accounts) {
           // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
           const expectedPayment = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
           assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPayment.toString());
+
+          //Sponsor should not be able to call again
+          assert(
+            await didContractThrow(
+              liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor })
+            )
+          );
         });
         it("Liquidator calls", async () => {
           await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
           // Expected Liquidator payment => TRV - dispute reward - sponsor reward
           const expectedPayment = settlementTRV.sub(disputerDisputeReward).sub(sponsorDisputeReward);
           assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
+
+          //Liquidator should not be able to call again
+          assert(
+            await didContractThrow(
+              liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
+            )
+          );
         });
         it("Disputer calls", async () => {
           await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
           // Expected Disputer payment => disputer reward + dispute bond
           const expectedPayment = disputerDisputeReward.add(disputeBond);
           assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPayment.toString());
+
+          //Disputer should not be able to call again
+          assert(
+            await didContractThrow(
+              liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer })
+            )
+          );
         });
         it("Rando calls", async () => {
           assert(
