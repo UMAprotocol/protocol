@@ -294,8 +294,8 @@ contract("FixedPoint", function(accounts) {
 
     // large denominator, should floor to 0
     const bigDenominator = web3.utils.toBN("10").pow(web3.utils.toBN("76"));
-    quotient = await fixedPoint.wrapMixedDiv(web3.utils.toWei('1'), bigDenominator)
-    assert.equal(quotient.toString(), '0')
+    quotient = await fixedPoint.wrapMixedDiv(web3.utils.toWei("1"), bigDenominator);
+    assert.equal(quotient.toString(), "0");
   });
 
   it("Mixed division, with ceil", async function() {
@@ -311,7 +311,7 @@ contract("FixedPoint", function(accounts) {
     // large denominator, will overflow and revert because the denominator first needs to be cast to an Unsigned,
     // even though you'd think this should return '1'
     const bigDenominator = web3.utils.toBN("10").pow(web3.utils.toBN("76"));
-    assert(await didContractThrow(fixedPoint.wrapMixedDivCeil(web3.utils.toWei('1'), bigDenominator)))
+    assert(await didContractThrow(fixedPoint.wrapMixedDivCeil(web3.utils.toWei("1"), bigDenominator)));
   });
 
   it("Mixed division opposite", async function() {
