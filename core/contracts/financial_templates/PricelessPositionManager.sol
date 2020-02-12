@@ -12,7 +12,6 @@ import "../Finder.sol";
 import "./TokenFactory.sol";
 import "./TokenInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
-// import "./Token.sol";
 import "./FeePayer.sol";
 
 /**
@@ -112,7 +111,6 @@ contract PricelessPositionManager is FeePayer {
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        // Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
         bytes32 tokenFactory = "TokenFactory";
         TokenFactory tf = TokenFactory(finder.getImplementationAddress(tokenFactory));
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);

@@ -34,7 +34,7 @@ contract TokenInterface is IERC20 {
     //  */
     // function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 
-     /**
+    /**
      * @dev Destroys `amount` tokens from the caller.
      *
      * See {ERC20-_burn}.
