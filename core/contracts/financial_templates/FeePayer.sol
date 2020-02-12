@@ -71,6 +71,25 @@ contract FeePayer is Testable {
     }
 
     /**
+     * @notice Pays UMA DVM final fees to the Store contract. This is a flat fee charged for each price request.
+     * @return the amount of collateral that was paid to the Store.
+     */
+    function payFinalFees(address payer) internal returns (FixedPoint.Unsigned memory totalPaid) {
+        StoreInterface store = _getStore();
+        FixedPoint.Unsigned memory finalFee = store.computeFinalFee(address(collateralCurrency));
+
+        if (finalFee.isGreaterThan(0)) {
+            if (payer != address(this)) {
+                require(collateralCurrency.transferFrom(payer, address(this), finalFee.rawValue));
+            }
+            collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
+            store.payOracleFeesErc20(address(collateralCurrency));
+        }
+
+        return finalFee;
+    }
+
+    /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
      * @dev Derived contracts are expected to implement this function so the payFees() method can correctly compute
      * the owed fees.

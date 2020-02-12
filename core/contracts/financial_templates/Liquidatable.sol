@@ -233,13 +233,7 @@ contract Liquidatable is PricelessPositionManager {
         _requestOraclePrice(disputedLiquidation.liquidationTime);
 
         // Pay a final fee
-        StoreInterface store = _getStore();
-        FixedPoint.Unsigned memory finalFee = store.computeFinalFee(address(collateralCurrency));
-        if (finalFee.isGreaterThan(0)) {
-            require(collateralCurrency.transferFrom(msg.sender, address(this), finalFee.rawValue));
-            collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
-            store.payOracleFeesErc20(address(collateralCurrency));
-        }
+        payFinalFees(msg.sender);
 
         emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }
