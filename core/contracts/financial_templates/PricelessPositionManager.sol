@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../common/FixedPoint.sol";
 import "../common/Testable.sol";
 import "../oracle/interfaces/OracleInterface.sol";
@@ -21,6 +22,8 @@ import "./FeePayer.sol";
 contract PricelessPositionManager is FeePayer {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
+    using SafeERC20 for IERC20;
+    using SafeERC20 for Token;
 
     // Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
     // and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
@@ -80,17 +83,17 @@ contract PricelessPositionManager is FeePayer {
     );
 
     modifier onlyPreExpiration() {
-        require(getCurrentTime() < expirationTimestamp);
+        _isPreExpiration();
         _;
     }
 
     modifier onlyPostExpiration() {
-        require(getCurrentTime() >= expirationTimestamp);
+        _isPostExpiration();
         _;
     }
 
     modifier onlyCollateralizedPosition(address sponsor) {
-        require(_getCollateral(positions[sponsor]).isGreaterThan(0));
+        _isCollateralizedPosition(sponsor);
         _;
     }
 
@@ -142,7 +145,7 @@ contract PricelessPositionManager is FeePayer {
         totalPositionCollateral = totalPositionCollateral.add(collateralAmount);
 
         // Move collateral currency from sender to contract.
-        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
 
         emit Deposit(msg.sender, collateralAmount.rawValue);
     }
@@ -167,7 +170,7 @@ contract PricelessPositionManager is FeePayer {
         totalPositionCollateral = totalPositionCollateral.sub(collateralAmount);
 
         // Move collateral currency from contract to sender.
-        require(collateralCurrency.transfer(msg.sender, collateralAmount.rawValue));
+        collateralCurrency.safeTransfer(msg.sender, collateralAmount.rawValue);
 
         emit Withdrawal(msg.sender, collateralAmount.rawValue);
     }
@@ -215,7 +218,7 @@ contract PricelessPositionManager is FeePayer {
         positionData.requestPassTimestamp = 0;
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        require(collateralCurrency.transfer(msg.sender, positionData.withdrawalRequestAmount.rawValue));
+        collateralCurrency.safeTransfer(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, positionData.withdrawalRequestAmount.rawValue);
     }
@@ -256,8 +259,8 @@ contract PricelessPositionManager is FeePayer {
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
         // Transfer tokens into the contract from caller and mint the caller synthetic tokens.
-        require(collateralCurrency.transferFrom(msg.sender, address(this), collateralAmount.rawValue));
-        require(tokenCurrency.mint(msg.sender, numTokens.rawValue));
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
+        require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
 
         emit PositionCreated(msg.sender, collateralAmount.rawValue, numTokens.rawValue);
     }
@@ -292,9 +295,8 @@ contract PricelessPositionManager is FeePayer {
         }
 
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
-        require(collateralCurrency.transfer(msg.sender, collateralRedeemed.rawValue));
-
-        require(tokenCurrency.transferFrom(msg.sender, address(this), numTokens.rawValue));
+        collateralCurrency.safeTransfer(msg.sender, collateralRedeemed.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
         tokenCurrency.burn(numTokens.rawValue);
 
         emit Redeem(msg.sender, collateralRedeemed.rawValue, numTokens.rawValue);
@@ -369,9 +371,9 @@ contract PricelessPositionManager is FeePayer {
             delete positions[msg.sender];
         }
 
-        // Transfer tokens and collateral.
-        require(collateralCurrency.transfer(msg.sender, totalRedeemableCollateral.rawValue));
-        require(tokenCurrency.transferFrom(msg.sender, address(this), tokensToRedeem.rawValue));
+        // Transfer tokens & collateral and burn the redeemed tokens.
+        collateralCurrency.safeTransfer(msg.sender, totalRedeemableCollateral.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
         // Decrement total contract collateral and oustanding debt.
@@ -489,4 +491,22 @@ contract PricelessPositionManager is FeePayer {
         require(value >= 0, "Uint underflow");
         return uint(value);
     }
+
+    /**
+     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
+     * unneccessarily increase contract bytecode size
+     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
+     */
+    function _isPreExpiration() internal view {
+        require(getCurrentTime() < expirationTimestamp);
+    }
+
+    function _isPostExpiration() internal view {
+        require(getCurrentTime() >= expirationTimestamp);
+    }
+
+    function _isCollateralizedPosition(address sponsor) internal view {
+        require(_getCollateral(positions[sponsor]).isGreaterThan(0));
+    }
+
 }
