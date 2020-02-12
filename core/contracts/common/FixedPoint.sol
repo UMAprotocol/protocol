@@ -177,6 +177,9 @@ library FixedPoint {
     }
 
     function divCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        // Because it is possible that a quotient gets truncated, we can't just call "Unsigned(a.rawValue.div(b))"
+        // similarly to mulCeil with a uint as the second parameter. Therefore we need to convert b into an Unsigned.
+        // This creates the possibility of overflow if b is very large.
         return divCeil(a, fromUnscaledUint(b));
     }
 
