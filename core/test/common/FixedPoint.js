@@ -26,8 +26,6 @@ contract("FixedPoint", function(accounts) {
     assert.isFalse(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isTrue(await fixedPoint.wrapIsLessThan(web3.utils.toWei("2"), web3.utils.toWei("3")));
 
-    assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("1"), web3.utils.toWei("1").toString()));
-    assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("0"), web3.utils.toWei("0")));
     assert.isFalse(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("1")));
     assert.isTrue(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("2")));
     assert.isFalse(await fixedPoint.wrapIsEqual(web3.utils.toWei("2"), web3.utils.toWei("3")));
@@ -44,21 +42,41 @@ contract("FixedPoint", function(accounts) {
   it("Mixed Comparison", async function() {
     const fixedPoint = await FixedPointTest.new();
 
+    assert.isTrue(await fixedPoint.wrapMixedIsEqual(web3.utils.toWei("2"), "2"));
+    assert.isTrue(await fixedPoint.wrapMixedIsEqual(web3.utils.toWei("0"), "0"));
+    assert.isFalse(await fixedPoint.wrapMixedIsEqual(web3.utils.toWei("1"), "3"));
+
     assert.isTrue(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "1"));
     assert.isFalse(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "2"));
     assert.isFalse(await fixedPoint.wrapMixedIsGreaterThan(web3.utils.toWei("2"), "3"));
+
+    assert.isTrue(await fixedPoint.wrapMixedIsGreaterThanOrEqual(web3.utils.toWei("2"), "1"));
+    assert.isTrue(await fixedPoint.wrapMixedIsGreaterThanOrEqual(web3.utils.toWei("2"), "2"));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThanOrEqual(web3.utils.toWei("2"), "3"));
 
     assert.isTrue(await fixedPoint.wrapMixedIsGreaterThanOpposite("4", web3.utils.toWei("3")));
     assert.isFalse(await fixedPoint.wrapMixedIsGreaterThanOpposite("3", web3.utils.toWei("3")));
     assert.isFalse(await fixedPoint.wrapMixedIsGreaterThanOpposite("2", web3.utils.toWei("3")));
 
+    assert.isTrue(await fixedPoint.wrapMixedIsGreaterThanOrEqualOpposite("4", web3.utils.toWei("3")));
+    assert.isTrue(await fixedPoint.wrapMixedIsGreaterThanOrEqualOpposite("3", web3.utils.toWei("3")));
+    assert.isFalse(await fixedPoint.wrapMixedIsGreaterThanOrEqualOpposite("2", web3.utils.toWei("3")));
+
     assert.isFalse(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "1"));
     assert.isFalse(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "2"));
     assert.isTrue(await fixedPoint.wrapMixedIsLessThan(web3.utils.toWei("2"), "3"));
 
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThanOrEqual(web3.utils.toWei("2"), "1"));
+    assert.isTrue(await fixedPoint.wrapMixedIsLessThanOrEqual(web3.utils.toWei("2"), "2"));
+    assert.isTrue(await fixedPoint.wrapMixedIsLessThanOrEqual(web3.utils.toWei("2"), "3"));
+
     assert.isFalse(await fixedPoint.wrapMixedIsLessThanOpposite("3", web3.utils.toWei("2")));
     assert.isFalse(await fixedPoint.wrapMixedIsLessThanOpposite("2", web3.utils.toWei("2")));
     assert.isTrue(await fixedPoint.wrapMixedIsLessThanOpposite("1", web3.utils.toWei("2")));
+
+    assert.isFalse(await fixedPoint.wrapMixedIsLessThanOrEqualOpposite("3", web3.utils.toWei("2")));
+    assert.isTrue(await fixedPoint.wrapMixedIsLessThanOrEqualOpposite("2", web3.utils.toWei("2")));
+    assert.isTrue(await fixedPoint.wrapMixedIsLessThanOrEqualOpposite("1", web3.utils.toWei("2")));
   });
 
   it("Addition", async function() {
@@ -201,6 +219,24 @@ contract("FixedPoint", function(accounts) {
     assert(await didContractThrow(fixedPoint.wrapMixedMul(uint_max.div(web3.utils.toBN("2")), "3")));
   });
 
+  it("Mixed multiplication, with ceil", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    let product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("1.5"), "3");
+    assert.equal(product, web3.utils.toWei("4.5"));
+
+    // TODO: This test overflows
+    // // We can handle outputs up to 10^59.
+    // const tenToSixty = web3.utils.toBN("10").pow(web3.utils.toBN("60"));
+    // const tenToFiftyNine = web3.utils.toBN("10").pow(web3.utils.toBN("59"));
+    // product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("0.1"), tenToSixty);
+    // assert.equal(product.toString(), web3.utils.toWei(tenToFiftyNine.toString()));
+
+    // Reverts on overflow.
+    // (uint_max / 2) * 3 overflows.
+    assert(await didContractThrow(fixedPoint.wrapMixedMulCeil(uint_max.div(web3.utils.toBN("2")), "3")));
+  });
+
   it("Division", async function() {
     const fixedPoint = await FixedPointTest.new();
 
@@ -256,6 +292,17 @@ contract("FixedPoint", function(accounts) {
 
     // Reverts on division by zero.
     assert(await didContractThrow(fixedPoint.wrapMixedDiv("1", "0")));
+  });
+
+  it("Mixed division, with ceil", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    // Normal mixed division case.
+    let quotient = await fixedPoint.wrapMixedDivCeil(web3.utils.toWei("150.3"), "3");
+    assert.equal(quotient.toString(), web3.utils.toWei("50.1"));
+
+    // Reverts on division by zero.
+    assert(await didContractThrow(fixedPoint.wrapMixedDivCeil("1", "0")));
   });
 
   it("Mixed division opposite", async function() {

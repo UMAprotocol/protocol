@@ -136,7 +136,8 @@ library FixedPoint {
     function mulCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         uint mulRaw = a.rawValue.mul(b.rawValue);
         uint mulFloor = mulRaw / FP_SCALING_FACTOR;
-        if (mulFloor * FP_SCALING_FACTOR != mulRaw) {
+        uint mod = mulRaw.mod(FP_SCALING_FACTOR);
+        if (mod != 0) {
             return Unsigned(mulFloor.add(1));
         } else {
             return Unsigned(mulFloor);
@@ -166,7 +167,8 @@ library FixedPoint {
     function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         uint divRaw = a.rawValue.mul(FP_SCALING_FACTOR);
         uint divFloor = divRaw.div(b.rawValue);
-        if (divFloor.mul(b.rawValue) != divRaw) {
+        uint mod = divRaw.mod(b.rawValue);
+        if (mod != 0) {
             return Unsigned(divFloor.add(1));
         } else {
             return Unsigned(divFloor);
