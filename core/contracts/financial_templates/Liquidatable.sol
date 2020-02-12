@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../common/FixedPoint.sol";
 import "../common/Testable.sol";
 import "./PricelessPositionManager.sol";
-import "../oracle/interfaces/StoreInterface.sol";
 
 /**
 @title Liquidatable
