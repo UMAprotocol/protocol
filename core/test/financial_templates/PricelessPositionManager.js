@@ -616,14 +616,10 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
-    const expireResult = await pricelessPositionManager.expire({ from: other });
-    truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
-      return ev.caller == other;
-    });
+    await pricelessPositionManager.expire({ from: other });
 
     // Check that final fees were paid correctly and position's locked collateral was decremented
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-
     assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
 
@@ -637,9 +633,8 @@ contract("PricelessPositionManager", function(accounts) {
     // They have 25 tokens settled at a price of 1.2 should yield 30 units of underling (or 60 USD as underlying is Dai).
     const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
-    assert(tokenHolderInitialSynthetic, tokenHolderTokens);
 
-    // Approve the tokens to be moved by the contract and execute the settlement.
+    // Approve the tokens to be moved by the contract and execute the settlement for the token holder.
     await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
@@ -690,6 +685,9 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert(sponsorFinalSynthetic, 0);
+
+    // The contract should have no more collateral tokens
+    assert(await collateral.balanceOf(pricelessPositionManager.address), 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);

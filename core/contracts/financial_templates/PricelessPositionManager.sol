@@ -452,13 +452,11 @@ contract PricelessPositionManager is FeePayer {
     }
 
     function _payFinalFee() internal {
-        FixedPoint.Unsigned memory initialTotalPositionCollateral = totalPositionCollateral;
-
         // Send the fee payment.
         FixedPoint.Unsigned memory totalPaid = super.payFinalFees();
 
-        // Exit early if pfc == 0 to prevent divide by 0.
-        if (initialTotalPositionCollateral.isEqual(FixedPoint.fromUnscaledUint(0))) {
+        // Exit early if totalCollaterall == 0 to prevent divide by 0.
+        if (totalPositionCollateral.isEqual(FixedPoint.fromUnscaledUint(0))) {
             return;
         }
 
@@ -466,8 +464,8 @@ contract PricelessPositionManager is FeePayer {
         // Adjust internal variables below.
         // Compute fee percentage that was paid by the entire contract (fees / collateral).
         // Unlike payFees, we are spreading fees across all locked collateral and NOT all PfC, which
-        // could mean that fees are not spread across liquidations (if PfC !== collateral)
-        FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialTotalPositionCollateral);
+        // implies that we are not forcing liquidations to be responsible for paying final fees when the position expires
+        FixedPoint.Unsigned memory feePercentage = totalPaid.div(totalPositionCollateral);
 
         // Compute adjustment to be applied to the position collateral (1 - feePercentage).
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
