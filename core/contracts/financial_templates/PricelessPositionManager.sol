@@ -453,9 +453,9 @@ contract PricelessPositionManager is FeePayer {
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
-    function _payFinalFee() internal {
+    function _payFinalFee() private {
         // Send the fee payment.
-        FixedPoint.Unsigned memory totalPaid = super.payFinalFees();
+        FixedPoint.Unsigned memory totalPaid = payFinalFees();
 
         // Exit early if totalCollaterall == 0 to prevent divide by 0.
         if (totalPositionCollateral.isEqual(FixedPoint.fromUnscaledUint(0))) {
@@ -477,7 +477,7 @@ contract PricelessPositionManager is FeePayer {
         positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
     }
 
-    function _getOraclePrice(uint requestedTime) public view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");

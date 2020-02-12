@@ -74,8 +74,8 @@ contract FeePayer is Testable {
      * @notice Pays UMA DVM final fees to the Store contract. This is a flat fee charged for each price request.
      * @return the amount of collateral that was paid to the Store.
      */
-    function payFinalFees() public returns (FixedPoint.Unsigned memory totalPaid) {
-        StoreInterface store = StoreInterface(finder.getImplementationAddress("Store"));
+    function payFinalFees() internal returns (FixedPoint.Unsigned memory totalPaid) {
+        StoreInterface store = _getStore();
         FixedPoint.Unsigned memory finalFee = store.computeFinalFee(address(collateralCurrency));
 
         if (finalFee.isGreaterThan(0)) {
