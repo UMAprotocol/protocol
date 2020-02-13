@@ -3,7 +3,6 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/FixedPoint.sol";
-import "../implementation/VoteTiming.sol";
 
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
@@ -13,6 +12,10 @@ contract VotingInterface {
         bytes32 identifier;
         uint time;
     }
+
+    // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
+    // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
+    enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
 
     /**
      * @notice Commit your vote for a price request for `identifier` at `time`.
@@ -36,7 +39,7 @@ contract VotingInterface {
     /**
      * @notice Gets the current vote phase (commit or reveal) based on the current block time.
      */
-    function getVotePhase() external view returns (VoteTiming.Phase);
+    function getVotePhase() external view returns (Phase);
 
     /**
      * @notice Gets the current vote round id based on the current block time.

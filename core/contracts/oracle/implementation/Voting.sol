@@ -305,7 +305,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
     }
 
-    function getVotePhase() external view returns (VoteTiming.Phase) {
+    function getVotePhase() external view returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -317,7 +317,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
         uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Commit, "Cannot commit in reveal phase");
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
 
         // At this point, the computed and last updated round ID should be equal.
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
@@ -337,7 +337,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     function revealVote(bytes32 identifier, uint time, int price, int salt) public onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == VoteTiming.Phase.Reveal, "Cannot reveal in commit phase");
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the
         // round is over.
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
