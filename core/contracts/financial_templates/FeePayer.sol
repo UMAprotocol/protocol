@@ -80,7 +80,7 @@ contract FeePayer is Testable {
 
         if (finalFee.isGreaterThan(0)) {
             if (payer != address(this)) {
-                require(collateralCurrency.transferFrom(payer, address(this), finalFee.rawValue));
+                collateralCurrency.safeTransferFrom(payer, address(this), finalFee.rawValue);
             }
             collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
             store.payOracleFeesErc20(address(collateralCurrency));

@@ -457,10 +457,12 @@ contract PricelessPositionManager is FeePayer {
         // Send the fee payment.
         FixedPoint.Unsigned memory totalPaid = _payFinalFees(address(this));
 
-        // Exit early if totalCollaterall == 0 to prevent divide by 0.
-        if (totalPositionCollateral.isEqual(FixedPoint.fromUnscaledUint(0))) {
-            return;
-        }
+        // If totalPositionCollateral <= fees, then there is not enough collateral
+        // in the active position (NOT including liquidations which have their own collateral pool!) to
+        // pay the final fee and have excess collateral available for redemptions.
+        // i.e. without this check, the fee would be paid from the liquidation pool of collateral
+        require(totalPositionCollateral.isGreaterThan(totalPaid));
+        // TODO(#925): If this reverts here, then the position cannot expire. Collateral may be locked in contract.
 
         // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
         // Adjust internal variables below.

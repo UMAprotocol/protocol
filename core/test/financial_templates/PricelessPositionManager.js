@@ -454,7 +454,7 @@ contract("PricelessPositionManager", function(accounts) {
     // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
     const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
-    assert(tokenHolderInitialSynthetic, tokenHolderTokens);
+    assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
     // Approve the tokens to be moved by the contract and execute the settlement.
     await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
@@ -467,10 +467,12 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should gain the value of their synthetic tokens in underlying.
     // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
     const expectedTokenHolderFinalCollateral = tokenHolderInitialSynthetic.muln(redemptionPrice);
+
+    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
     assert(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
 
     // The token holder should have no synthetic positions left after settlement.
-    assert(tokenHolderFinalSynthetic, 0);
+    assert.equal(tokenHolderFinalSynthetic, 0);
 
     //Check the event returned the correct values
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
@@ -501,10 +503,12 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedSponsorCollateralUnderlying = toBN(amountCollateral).sub(toBN(numTokens).muln(redemptionPrice));
     const expectedSponsorCollateralSynthetic = sponsorInitialSynthetic.muln(redemptionPrice);
     const totalSponsorCollateralReturned = expectedSponsorCollateralUnderlying + expectedSponsorCollateralSynthetic;
+
+    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
     assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
-    assert(sponsorFinalSynthetic, 0);
+    assert.equal(sponsorFinalSynthetic, 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
@@ -645,10 +649,12 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should gain the value of their synthetic tokens in underlying.
     // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
     const expectedTokenHolderFinalCollateral = tokenHolderInitialSynthetic.muln(redemptionPrice);
+
+    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
     assert(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
 
     // The token holder should have no synthetic positions left after settlement.
-    assert(tokenHolderFinalSynthetic, 0);
+    assert.equal(tokenHolderFinalSynthetic, 0);
 
     //Check the event returned the correct values
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
@@ -681,13 +687,15 @@ contract("PricelessPositionManager", function(accounts) {
       .sub(toBN(finalFeePaid));
     const expectedSponsorCollateralSynthetic = sponsorInitialSynthetic.muln(redemptionPrice);
     const totalSponsorCollateralReturned = expectedSponsorCollateralUnderlying + expectedSponsorCollateralSynthetic;
+
+    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
     assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
-    assert(sponsorFinalSynthetic, 0);
+    assert.equal(sponsorFinalSynthetic, 0);
 
     // The contract should have no more collateral tokens
-    assert(await collateral.balanceOf(pricelessPositionManager.address), 0);
+    assert.equal(await collateral.balanceOf(pricelessPositionManager.address), 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
@@ -695,6 +703,32 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
     assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
+
+    // Set the store fees back to 0 to prevent it from affecting other tests.
+    await store.setFinalFee(collateral.address, { rawValue: "0" });
+  });
+
+  it("Not enough collateral to pay final fees, reverts expire", async function() {
+    // Create a new position
+    await collateral.approve(pricelessPositionManager.address, toWei("2"), { from: sponsor });
+    const numTokens = toWei("2");
+    const amountCollateral = toWei("2");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Set store final fees >= collateral in positions.
+    const finalFeePaid = toWei("3");
+    await store.setFinalFee(collateral.address, { rawValue: finalFeePaid });
+
+    // Advance time until after expiration.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
+    assert(await didContractThrow(pricelessPositionManager.expire({ from: other })));
+
+    // Position has frozen collateral
+    let frozenCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+    assert.equal(frozenCollateralAmount.rawValue.toString(), amountCollateral);
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
     await store.setFinalFee(collateral.address, { rawValue: "0" });
