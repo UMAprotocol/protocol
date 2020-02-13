@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 // import "../OracleInteface.sol";
-import "../common/FixedPoint.sol";
-import "../common/Testable.sol";
+import "../../common/FixedPoint.sol";
+import "../../common/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 /**
@@ -122,6 +122,7 @@ contract Liquidatable is PricelessPositionManager {
         uint withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
+        address tokenFactoryAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -143,7 +144,8 @@ contract Liquidatable is PricelessPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.syntheticName,
-            params.syntheticSymbol
+            params.syntheticSymbol,
+            params.tokenFactoryAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
