@@ -36,6 +36,7 @@ contract("TokenFactory", function(accounts) {
     });
     const token = await Token.at(tokenAddress);
     assert(await token.isMinter(tokenCreator));
+    assert(!(await token.isMinter(contractDeployer)));
   });
   it("Token can execute expected methods", async () => {
     const tokenAddress = await tokenFactory.createToken.call(

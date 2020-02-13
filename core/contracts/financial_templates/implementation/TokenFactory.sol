@@ -3,15 +3,20 @@ import "./Token.sol";
 import "../interfaces/TokenInterface.sol";
 
 /**
- * @notice A factory for creating new tokens and adding the creator as a minter for the newly created tokens.
+ * @notice A factory for creating new mintable and burnable tokens.
  */
 contract TokenFactory {
-    function createToken(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
-        public
+    /**
+     * @notice Create a new token and return to the caller. The caller will hold the minter role
+     * and TokenFactory will renounce its minter role.
+     */
+    function createToken(string calldata tokenName, string calldata tokenSymbol, uint8 tokenDecimals)
+        external
         returns (TokenInterface newToken)
     {
         Token mintableToken = new Token(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addMinter(msg.sender);
+        mintableToken.renounceMinter();
         newToken = TokenInterface(address(mintableToken));
     }
 }
