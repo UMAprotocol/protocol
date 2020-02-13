@@ -24,19 +24,21 @@ contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
 
-    enum Status { PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
+    enum Status { Uninitialized, PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
-        // * Following variables set upon creation of liquidation *
+        /** Following variables set upon creation of liquidation */
         uint expiry; // When Liquidation ends and becomes 'Expired'
-        address liquidator; // caller who created this liquidation
+        address sponsor; // Address of the liquidated position's sponsor
+        address liquidator; // Address who created this liquidation
         Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
-        // * Following variables determined by the position that is being liquidated *
+        /** Following variables determined by the position that is being liquidated */
         FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned lockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
-        FixedPoint.Unsigned liquidatedCollateral; // Amount of collateral being liquidated, which could be different from
+        // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
-        // * Following variables set upon a dispute request *
+        FixedPoint.Unsigned liquidatedCollateral;
+        /** Following variables set upon a dispute request */
         address disputer; // Person who is disputing a liquidation
         uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
         FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
@@ -46,18 +48,18 @@ contract Liquidatable is PricelessPositionManager {
     mapping(address => LiquidationData[]) public liquidations;
 
     // Amount of time for pending liquidation before expiry
-    uint liquidationLiveness;
+    uint public liquidationLiveness;
     // Required collateral:TRV ratio for a position to be considered sufficiently collateralized.
-    FixedPoint.Unsigned collateralRequirement;
+    FixedPoint.Unsigned public collateralRequirement;
     // Percent of a Liquidation/Position's lockedCollateral to be deposited by a potential disputer
     // Represented as a multiplier, for example 1.5e18 = "150%" and 0.05e18 = "5%"
-    FixedPoint.Unsigned disputeBondPct;
+    FixedPoint.Unsigned public disputeBondPct;
     // Percent of oraclePrice paid to sponsor in the Disputed state (i.e. following a successful dispute)
     // Represented as a multipler, see above
-    FixedPoint.Unsigned sponsorDisputeRewardPct;
+    FixedPoint.Unsigned public sponsorDisputeRewardPct;
     // Percent of oraclePrice paid to disputer in the Disputed state (i.e. following a successful dispute)
     // Represented as a multipler, see above
-    FixedPoint.Unsigned disputerDisputeRewardPct;
+    FixedPoint.Unsigned public disputerDisputeRewardPct;
 
     event LiquidationCreated(
         address indexed sponsor,
@@ -91,10 +93,7 @@ contract Liquidatable is PricelessPositionManager {
     // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
     modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
-        require(
-            (getCurrentTime() < liquidation.expiry) && (liquidation.state == Status.PreDispute),
-            "Liquidation has expired or has already been disputed"
-        );
+        require((getCurrentTime() < liquidation.expiry) && (liquidation.state == Status.PreDispute));
         _;
     }
     // Callable either post the liquidation's expiry or after a dispute has been resolved,
@@ -105,21 +104,17 @@ contract Liquidatable is PricelessPositionManager {
         require(
             (state == Status.DisputeSucceeded) ||
                 (state == Status.DisputeFailed) ||
-                ((liquidation.expiry <= getCurrentTime()) && (state == Status.PreDispute)),
-            "Liquidation has not expired or is pending dispute"
+                ((liquidation.expiry <= getCurrentTime()) && (state == Status.PreDispute))
         );
         _;
     }
     // Callable only after a liquidation has been disputed but has not yet resolved
     modifier onlyPendingDispute(uint id, address sponsor) {
-        require(
-            _getLiquidationData(sponsor, id).state == Status.PendingDispute,
-            "Liquidation is not currently pending dispute"
-        );
+        require(_getLiquidationData(sponsor, id).state == Status.PendingDispute);
         _;
     }
 
-    // Define the contract's constructor parameters as a struct to enable more variables to be spesified.
+    // Define the contract's constructor parameters as a struct to enable more variables to be specified.
     struct ConstructorParams {
         // Params for PricelessPositionManager only.
         bool isTest;
@@ -151,11 +146,8 @@ contract Liquidatable is PricelessPositionManager {
             params.syntheticSymbol
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1), "The collateral requirement must be at minimum 100%");
-        require(
-            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
-            "Dispute rewards should sum to < 100%"
-        );
+        require(params.collateralRequirement.isGreaterThan(1));
+        require(params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1));
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
@@ -171,21 +163,22 @@ contract Liquidatable is PricelessPositionManager {
      * @dev This method generates an ID that will uniquely identify liquidation
      * for the sponsor.
      * @param sponsor address to liquidate
-     * @return uuid of the newoly created liquidation
+     * @return uuid of the newly created liquidation
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
-    function createLiquidation(address sponsor) public returns (uint uuid) {
+    function createLiquidation(address sponsor) external returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate);
-        require(positionCollateral.isGreaterThan(0), "Cant liquidate a position with no collateral");
+        require(positionCollateral.isGreaterThan(0));
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
         uint newLength = liquidations[sponsor].push(
             LiquidationData({
                 expiry: getCurrentTime() + liquidationLiveness,
+                sponsor: sponsor,
                 liquidator: msg.sender,
                 state: Status.PreDispute,
                 lockedCollateral: positionCollateral,
@@ -201,10 +194,7 @@ contract Liquidatable is PricelessPositionManager {
         uuid = newLength.sub(1);
 
         // Destroy tokens
-        require(
-            tokenCurrency.transferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue),
-            "failed to transfer synthetic tokens from sender"
-        );
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue);
         tokenCurrency.burn(positionToLiquidate.tokensOutstanding.rawValue);
 
         // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
@@ -227,14 +217,12 @@ contract Liquidatable is PricelessPositionManager {
      * @param id of the disputed liquidation.
      * @param sponsor the address of the sponsor who's liquidation is being disputed.
      */
-    function dispute(uint id, address sponsor) public onlyPreExpiryAndPreDispute(id, sponsor) {
+    function dispute(uint id, address sponsor) external onlyPreExpiryAndPreDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct);
-        require(
-            collateralCurrency.transferFrom(msg.sender, address(this), disputeBondAmount.rawValue),
-            "failed to transfer dispute bond from sender"
-        );
+
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
 
         // Request a price from DVM,
         // Liquidation is pending dispute until DVM returns a price
@@ -257,7 +245,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param id to uniquely identify the dispute to settle
      * @param sponsor the address of the sponsor who's dispute is being settled
      */
-    function settleDispute(uint id, address sponsor) public onlyPendingDispute(id, sponsor) {
+    function settleDispute(uint id, address sponsor) external onlyPendingDispute(id, sponsor) {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
@@ -301,91 +289,93 @@ contract Liquidatable is PricelessPositionManager {
      * @dev If the dispute SUCCEEDED: the sponsor, liquidator, and disputer are eligible for payment
      * If the dispute FAILED: only the liquidator can receive payment
      * Once all collateral is withdrawn, delete the liquidation data.
-     * @param id uniquly identifies the sponsor's liqudation
+     * @param id uniquely identifies the sponsor's liquidation
      * @param sponsor address of the sponsor associated with the liquidation
      */
-    function withdrawLiquidation(uint id, address sponsor) public onlyPostExpiryOrPostDispute(id, sponsor) {
+    function withdrawLiquidation(uint id, address sponsor)
+        public
+        onlyPostExpiryOrPostDispute(id, sponsor)
+        returns (uint)
+    {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         require(
-            (msg.sender == liquidation.disputer) || (msg.sender == liquidation.liquidator) || (msg.sender == sponsor),
-            "must be a disputer, liquidator, or sponsor to request a withdrawal on a liquidation"
+            (msg.sender == liquidation.disputer) ||
+                (msg.sender == liquidation.liquidator) ||
+                (msg.sender == liquidation.sponsor)
         );
 
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
             liquidation.settlementPrice
         );
 
-        // Calculate rewards as a function of the TRV
+        // Calculate rewards as a function of the TRV.
         FixedPoint.Unsigned memory disputerDisputeReward = disputerDisputeRewardPct.mul(tokenRedemptionValue);
         FixedPoint.Unsigned memory sponsorDisputeReward = sponsorDisputeRewardPct.mul(tokenRedemptionValue);
 
-        // Dispute bond can always be paid out
+        // Dispute bond can always be paid out.
         FixedPoint.Unsigned memory disputeBondAmount = liquidation.lockedCollateral.mul(disputeBondPct);
 
-        if (liquidation.state == Status.DisputeSucceeded) {
-            if (msg.sender == liquidation.disputer) {
-                // TODO: right now this call can siphon out funds if the disputer calls it multiple times.
-                // This needs to be addressed in a futuer PR + unit test coverage to ensure that if multiple
-                // calls are done by the sponsor, disputor or liquidator they can only withdraw what is
-                // entitled to them ONCE
+        // There are three main outcome states: either the dispute succeeded, failed or was not updated.
+        // Based on the state, different parties of a liquidation can withdraw different amounts.
+        // Once a caller has been paid their address deleted from the struct.
+        // This prevents them from being paid multiple from times the same liquidation.
 
+        // Once a payment has been recorded this uint is set to inform clean up at function end.
+        uint withdrawalMade = 0;
+        if (liquidation.state == Status.DisputeSucceeded) {
+            // If the dispute is successful then all three users can withdraw from the contract.
+            if (msg.sender == liquidation.disputer) {
                 // Pay DISPUTER: disputer reward + dispute bond
                 FixedPoint.Unsigned memory payToDisputer = disputerDisputeReward.add(disputeBondAmount);
-                require(
-                    collateralCurrency.transfer(msg.sender, payToDisputer.rawValue),
-                    "failed to transfer reward for a successful dispute to disputer"
-                );
+                require(collateralCurrency.transfer(msg.sender, payToDisputer.rawValue));
+                delete liquidation.disputer;
+                withdrawalMade = payToDisputer.rawValue;
             } else if (msg.sender == sponsor) {
                 // Pay SPONSOR: remaining collateral (locked collateral - TRV) + sponsor reward
                 FixedPoint.Unsigned memory remainingCollateral;
                 remainingCollateral = liquidation.lockedCollateral.sub(tokenRedemptionValue);
                 FixedPoint.Unsigned memory payToSponsor = sponsorDisputeReward.add(remainingCollateral);
-                require(
-                    collateralCurrency.transfer(msg.sender, payToSponsor.rawValue),
-                    "failed to transfer reward for a successful dispute to sponsor"
-                );
+                require(collateralCurrency.transfer(msg.sender, payToSponsor.rawValue));
+                delete liquidation.sponsor;
+                withdrawalMade = payToSponsor.rawValue;
             } else if (msg.sender == liquidation.liquidator) {
                 // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
                 // If TRV > Collateral, then subtract rewards from locked collateral
                 // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
                 // the constructor when these params are set
-                FixedPoint.Unsigned memory payToLiquidator;
-                payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
-                require(
-                    collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
-                    "failed to transfer reward for a successful dispute to liquidator"
+                FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
+                    disputerDisputeReward
                 );
+                require(collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue));
+                delete liquidation.liquidator;
+                withdrawalMade = payToLiquidator.rawValue;
             }
             // Free up space once all locked collateral is withdrawn
             if (collateralCurrency.balanceOf(address(this)) == 0) {
                 delete liquidations[sponsor][id];
             }
-        } else if (liquidation.state == Status.DisputeFailed) {
+            //In the case of a failed dispute only the liquidator can withdraw.
+        } else if (liquidation.state == Status.DisputeFailed && msg.sender == liquidation.liquidator) {
             // Pay LIQUIDATOR: lockedCollateral + dispute bond
-            if (msg.sender == liquidation.liquidator) {
-                FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
-                require(
-                    collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue),
-                    "failed to transfer locked collateral plus dispute bond to liquidator"
-                );
-                delete liquidations[sponsor][id];
-            } else {
-                require(false, "only the liquidator can withdraw on an unsuccessfully disputed liquidation");
-            }
-        } else if (liquidation.state == Status.PreDispute) {
+            FixedPoint.Unsigned memory payToLiquidator = liquidation.lockedCollateral.add(disputeBondAmount);
+            require(collateralCurrency.transfer(msg.sender, payToLiquidator.rawValue));
+            withdrawalMade = payToLiquidator.rawValue;
+            delete liquidation.liquidator;
+            delete liquidations[sponsor][id];
+            //If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
+        } else if (liquidation.state == Status.PreDispute && msg.sender == liquidation.liquidator) {
             // Pay LIQUIDATOR: lockedCollateral
-            if (msg.sender == liquidation.liquidator) {
-                require(
-                    collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue),
-                    "failed to transfer locked collateral to liquidator"
-                );
-                delete liquidations[sponsor][id];
-            } else {
-                require(false, "only the liquidator can withdraw on a non-disputed, expired liquidation");
-            }
+            require(collateralCurrency.transfer(msg.sender, liquidation.lockedCollateral.rawValue));
+            withdrawalMade = liquidation.lockedCollateral.rawValue;
+            delete liquidation.liquidator;
+            delete liquidations[sponsor][id];
         }
-
-        emit LiquidationWithdrawn(msg.sender);
+        if (withdrawalMade > 0) {
+            // TODO: add this amount to the event in the issue #875.
+            emit LiquidationWithdrawn(msg.sender);
+            return withdrawalMade;
+        }
+        require(false);
     }
 
     function _getLiquidationData(address sponsor, uint uuid)
@@ -396,11 +386,8 @@ contract Liquidatable is PricelessPositionManager {
         LiquidationData[] storage liquidationArray = liquidations[sponsor];
 
         // Revert if the caller is attempting to access an invalid liquidation (one that has never been created or one
-        // that was deleted after resolution).
-        require(
-            uuid < liquidationArray.length && liquidationArray[uuid].liquidator != address(0),
-            "Invalid liquidation: liquidator address is not set"
-        );
+        // has never been initialized).
+        require(uuid < liquidationArray.length && liquidationArray[uuid].state != Status.Uninitialized);
         return liquidationArray[uuid];
     }
 }
