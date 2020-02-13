@@ -22,6 +22,11 @@ library FixedPoint {
     }
 
     /** @dev Whether `a` is equal to `b`. */
+    function isEqual(Unsigned memory a, uint b) internal pure returns (bool) {
+        return a.rawValue == fromUnscaledUint(b).rawValue;
+    }
+
+    /** @dev Whether `a` is equal to `b`. */
     function isEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue == b.rawValue;
     }
@@ -41,6 +46,21 @@ library FixedPoint {
         return fromUnscaledUint(a).rawValue > b.rawValue;
     }
 
+    /** @dev Whether `a` is greater than or equal to `b`. */
+    function isGreaterThanOrEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
+        return a.rawValue >= b.rawValue;
+    }
+
+    /** @dev Whether `a` is greater than or equal to `b`. */
+    function isGreaterThanOrEqual(Unsigned memory a, uint b) internal pure returns (bool) {
+        return a.rawValue >= fromUnscaledUint(b).rawValue;
+    }
+
+    /** @dev Whether `a` is greater than or equal to `b`. */
+    function isGreaterThanOrEqual(uint a, Unsigned memory b) internal pure returns (bool) {
+        return fromUnscaledUint(a).rawValue >= b.rawValue;
+    }
+
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue < b.rawValue;
@@ -54,6 +74,21 @@ library FixedPoint {
     /** @dev Whether `a` is less than `b`. */
     function isLessThan(uint a, Unsigned memory b) internal pure returns (bool) {
         return fromUnscaledUint(a).rawValue < b.rawValue;
+    }
+
+    /** @dev Whether `a` is less than or equal to `b`. */
+    function isLessThanOrEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
+        return a.rawValue <= b.rawValue;
+    }
+
+    /** @dev Whether `a` is less than or equal to `b`. */
+    function isLessThanOrEqual(Unsigned memory a, uint b) internal pure returns (bool) {
+        return a.rawValue <= fromUnscaledUint(b).rawValue;
+    }
+
+    /** @dev Whether `a` is less than or equal to `b`. */
+    function isLessThanOrEqual(uint a, Unsigned memory b) internal pure returns (bool) {
+        return fromUnscaledUint(a).rawValue <= b.rawValue;
     }
 
     /** @dev Adds two `Unsigned`s, reverting on overflow. */
@@ -97,6 +132,23 @@ library FixedPoint {
         return Unsigned(a.rawValue.mul(b));
     }
 
+    /** @dev Multiplies two `Unsigned`s, reverting on overflow, and ceil's the resultant product rather than the default floor behavior. */
+    function mulCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        uint mulRaw = a.rawValue.mul(b.rawValue);
+        uint mulFloor = mulRaw / FP_SCALING_FACTOR;
+        uint mod = mulRaw.mod(FP_SCALING_FACTOR);
+        if (mod != 0) {
+            return Unsigned(mulFloor.add(1));
+        } else {
+            return Unsigned(mulFloor);
+        }
+    }
+
+    function mulCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        // Since b is an int, there is no risk of truncation and we can just mul it normally
+        return Unsigned(a.rawValue.mul(b));
+    }
+
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
     function div(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
@@ -110,6 +162,25 @@ library FixedPoint {
     /** @dev Divides with truncation an `Unsigned` by an unscaled uint, reverting on division by 0. */
     function div(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
         return Unsigned(a.rawValue.div(b));
+    }
+
+    /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0, and ceil's the resultant product rather than the default floor behavior. */
+    function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        uint divRaw = a.rawValue.mul(FP_SCALING_FACTOR);
+        uint divFloor = divRaw.div(b.rawValue);
+        uint mod = divRaw.mod(b.rawValue);
+        if (mod != 0) {
+            return Unsigned(divFloor.add(1));
+        } else {
+            return Unsigned(divFloor);
+        }
+    }
+
+    function divCeil(Unsigned memory a, uint b) internal pure returns (Unsigned memory) {
+        // Because it is possible that a quotient gets truncated, we can't just call "Unsigned(a.rawValue.div(b))"
+        // similarly to mulCeil with a uint as the second parameter. Therefore we need to convert b into an Unsigned.
+        // This creates the possibility of overflow if b is very large.
+        return divCeil(a, fromUnscaledUint(b));
     }
 
     /** @dev Divides with truncation an unscaled uint by an `Unsigned`, reverting on overflow or division by 0. */
