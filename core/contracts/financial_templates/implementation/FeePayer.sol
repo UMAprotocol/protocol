@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../common/FixedPoint.sol";
 import "../../common/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
-import "../../Finder.sol";
+import "../../oracle/interfaces/FinderInterface.sol";
 
 contract FeePayer is Testable {
     using SafeMath for uint;
@@ -22,7 +22,7 @@ contract FeePayer is Testable {
     /**
      * Finder contract used to look up addresses for UMA system contracts.
      */
-    Finder public finder;
+    FinderInterface public finder;
 
     /**
      * Tracks the last block time when the fees were paid.
@@ -39,7 +39,7 @@ contract FeePayer is Testable {
 
     constructor(address collateralAddress, address finderAddress, bool _isTest) public Testable(_isTest) {
         collateralCurrency = IERC20(collateralAddress);
-        finder = Finder(finderAddress);
+        finder = FinderInterface(finderAddress);
         lastPaymentTime = getCurrentTime();
     }
 

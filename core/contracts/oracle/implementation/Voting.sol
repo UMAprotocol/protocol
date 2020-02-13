@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/FixedPoint.sol";
 import "../../common/Testable.sol";
-import "../../Finder.sol";
+import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
@@ -138,7 +138,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     VotingToken public votingToken;
 
     // Reference to the Finder.
-    Finder private finder;
+    FinderInterface private finder;
 
     // If non-zero, this contract has been migrated to this address. All voters and financial contracts should query the
     // new address only.
@@ -193,7 +193,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
         identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
-        finder = Finder(_finder);
+        finder = FinderInterface(_finder);
         rewardsExpirationTimeout = _rewardsExpirationTimeout;
     }
 

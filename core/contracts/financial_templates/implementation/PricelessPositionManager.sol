@@ -8,7 +8,6 @@ import "../../common/FixedPoint.sol";
 import "../../common/Testable.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../Finder.sol";
 import "./TokenFactory.sol";
 import "../interfaces/TokenInterface.sol";
 import "./FeePayer.sol";

@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../../common/MultiRole.sol";
 import "../../common/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
-import "../../Finder.sol";
+import "../interfaces/FinderInterface.sol";
 import "./Voting.sol";
 
 /**
@@ -23,14 +23,14 @@ contract DesignatedVoting is MultiRole, Withdrawable {
 
     // Reference to the UMA Finder contract, allowing Voting upgrades to be performed without requiring any calls to
     // this contract.
-    Finder private finder;
+    FinderInterface private finder;
 
     constructor(address finderAddress, address ownerAddress, address voterAddress) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), voterAddress);
         setWithdrawRole(uint(Roles.Owner));
 
-        finder = Finder(finderAddress);
+        finder = FinderInterface(finderAddress);
     }
 
     /**
