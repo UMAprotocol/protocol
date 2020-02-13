@@ -14,7 +14,8 @@ contract VotingInterface {
     }
 
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
-    enum Phase { Commit, Reveal, PLACEHOLDER_LAST_VALUE }
+    // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
+    enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
 
     /**
      * @notice Commit your vote for a price request for `identifier` at `time`.
