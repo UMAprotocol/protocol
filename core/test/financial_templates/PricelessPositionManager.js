@@ -505,7 +505,9 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedSponsorCollateralUnderlying = toBN(toWei("30"));
     // Value of remaining synthetic tokens = 50 * 1.2 = 60
     const expectedSponsorCollateralSynthetic = toBN(toWei("60"));
-    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(expectedSponsorCollateralSynthetic)
+    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
+      expectedSponsorCollateralSynthetic
+    );
     assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), expectedTotalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
@@ -686,7 +688,9 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedSponsorCollateralUnderlying = toBN(toWei("39"));
     // Value of remaining synthetic tokens = 25 * 1.2 = 30
     const expectedSponsorCollateralSynthetic = toBN(toWei("30"));
-    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(expectedSponsorCollateralSynthetic)
+    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
+      expectedSponsorCollateralSynthetic
+    );
     assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), expectedTotalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
