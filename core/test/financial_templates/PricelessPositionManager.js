@@ -11,6 +11,7 @@ const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("Token");
+const TokenFactory = artifacts.require("TokenFactory");
 
 // Helper Contracts
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
@@ -97,6 +98,7 @@ contract("PricelessPositionManager", function(accounts) {
       priceTrackingIdentifier, //_priceFeedIdentifier
       syntheticName, //_syntheticName
       syntheticSymbol, //_syntheticSymbol
+      TokenFactory.address, //_tokenFactoryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());

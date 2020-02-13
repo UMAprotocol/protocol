@@ -4,12 +4,13 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../common/FixedPoint.sol";
-import "../common/Testable.sol";
-import "../oracle/interfaces/OracleInterface.sol";
-import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../Finder.sol";
-import "./Token.sol";
+import "../../common/FixedPoint.sol";
+import "../../common/Testable.sol";
+import "../../oracle/interfaces/OracleInterface.sol";
+import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
+import "../../Finder.sol";
+import "./TokenFactory.sol";
+import "../interfaces/TokenInterface.sol";
 import "./FeePayer.sol";
 
 /**
@@ -23,7 +24,7 @@ contract PricelessPositionManager is FeePayer {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for Token;
+    using SafeERC20 for TokenInterface;
 
     // Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
     // and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
@@ -47,7 +48,7 @@ contract PricelessPositionManager is FeePayer {
     FixedPoint.Unsigned public totalTokensOutstanding;
 
     // Synthetic token created by this contract.
-    Token public tokenCurrency;
+    TokenInterface public tokenCurrency;
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
@@ -105,12 +106,13 @@ contract PricelessPositionManager is FeePayer {
         address _finderAddress,
         bytes32 _priceFeedIdentifier,
         string memory _syntheticName,
-        string memory _syntheticSymbol
+        string memory _syntheticSymbol,
+        address _tokenFactoryAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
-        tokenCurrency = Token(address(mintableToken));
+        TokenFactory tf = TokenFactory(_tokenFactoryAddress);
+        tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         priceIdentifer = _priceFeedIdentifier;
         positionFeeAdjustment = FixedPoint.fromUnscaledUint(1);
     }
