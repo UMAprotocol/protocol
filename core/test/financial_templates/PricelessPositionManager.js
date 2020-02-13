@@ -468,10 +468,9 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The token holder should gain the value of their synthetic tokens in underlying.
     // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
-    const expectedTokenHolderFinalCollateral = tokenHolderInitialSynthetic.muln(redemptionPrice);
-
-    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
-    assert(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
+    // When redeeming 50 tokens at a price of 1.2 we expect to receive 60 collateral tokens (50 * 1.2)
+    const expectedTokenHolderFinalCollateral = toWei("60");
+    assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
 
     // The token holder should have no synthetic positions left after settlement.
     assert.equal(tokenHolderFinalSynthetic, 0);
@@ -502,12 +501,12 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The token Sponsor should gain the value of their synthetics in underlying
     // + their excess collateral from the over collateralization in their position
-    const expectedSponsorCollateralUnderlying = toBN(amountCollateral).sub(toBN(numTokens).muln(redemptionPrice));
-    const expectedSponsorCollateralSynthetic = sponsorInitialSynthetic.muln(redemptionPrice);
-    const totalSponsorCollateralReturned = expectedSponsorCollateralUnderlying + expectedSponsorCollateralSynthetic;
-
-    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
-    assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
+    // Excess collateral = 150 - 100 * 1.2 = 30
+    const expectedSponsorCollateralUnderlying = toBN(toWei("30"));
+    // Value of remaining synthetic tokens = 50 * 1.2 = 60
+    const expectedSponsorCollateralSynthetic = toBN(toWei("60"));
+    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(expectedSponsorCollateralSynthetic)
+    assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), expectedTotalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);
@@ -650,10 +649,9 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The token holder should gain the value of their synthetic tokens in underlying.
     // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
-    const expectedTokenHolderFinalCollateral = tokenHolderInitialSynthetic.muln(redemptionPrice);
-
-    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
-    assert(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
+    // When redeeming 25 tokens at a price of 1.2 we expect to receive 30 collateral tokens (25 * 1.2)
+    const expectedTokenHolderFinalCollateral = toWei("30");
+    assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
 
     // The token holder should have no synthetic positions left after settlement.
     assert.equal(tokenHolderFinalSynthetic, 0);
@@ -684,14 +682,12 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The token Sponsor should gain the value of their synthetics in underlying
     // + their excess collateral from the over collateralization in their position
-    const expectedSponsorCollateralUnderlying = toBN(amountCollateral)
-      .sub(toBN(numTokens).muln(redemptionPrice))
-      .sub(toBN(finalFeePaid));
-    const expectedSponsorCollateralSynthetic = sponsorInitialSynthetic.muln(redemptionPrice);
-    const totalSponsorCollateralReturned = expectedSponsorCollateralUnderlying + expectedSponsorCollateralSynthetic;
-
-    // @dev: Can't use assert.equal here because of rounding errors presumably caused by settleExpired
-    assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), totalSponsorCollateralReturned);
+    // Excess collateral = 100 - 50 * 1.2 - 1 = 39
+    const expectedSponsorCollateralUnderlying = toBN(toWei("39"));
+    // Value of remaining synthetic tokens = 25 * 1.2 = 30
+    const expectedSponsorCollateralSynthetic = toBN(toWei("30"));
+    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(expectedSponsorCollateralSynthetic)
+    assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), expectedTotalSponsorCollateralReturned);
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);
