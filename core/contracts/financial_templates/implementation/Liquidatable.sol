@@ -371,14 +371,11 @@ contract Liquidatable is PricelessPositionManager {
             delete liquidations[sponsor][id];
         }
 
-        if (withdrawalAmount.isGreaterThan(0)) {
-            collateralCurrency.safeTransfer(msg.sender, withdrawalAmount.rawValue);
+        require(withdrawalAmount.isGreaterThan(0));
+        collateralCurrency.safeTransfer(msg.sender, withdrawalAmount.rawValue);
 
-            // TODO: add this amount to the event in the issue #875.
-            emit LiquidationWithdrawn(msg.sender);
-            return withdrawalAmount;
-        }
-        require(false);
+        // TODO: add this amount to the event in the issue #875.
+        emit LiquidationWithdrawn(msg.sender);
     }
 
     function _getLiquidationData(address sponsor, uint uuid)
