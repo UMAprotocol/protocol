@@ -7,7 +7,7 @@ import "../../common/FixedPoint.sol";
 import "../../common/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "./Voting.sol";
+import "../interfaces/VotingInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -127,7 +127,7 @@ contract Governor is MultiRole, Testable {
         bytes32 identifier = _constructIdentifier(id);
 
         // Request a vote on this proposal in the DVM.
-        Voting voting = _getVoting();
+        VotingInterface voting = _getVoting();
         IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
         supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -154,8 +154,8 @@ contract Governor is MultiRole, Testable {
         }
     }
 
-    function _getVoting() private view returns (Voting voting) {
-        return Voting(finder.getImplementationAddress("Oracle"));
+    function _getVoting() private view returns (VotingInterface voting) {
+        return VotingInterface(finder.getImplementationAddress("Oracle"));
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
