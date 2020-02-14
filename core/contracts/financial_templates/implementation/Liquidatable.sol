@@ -3,8 +3,9 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "../common/FixedPoint.sol";
-import "../common/Testable.sol";
+// import "../OracleInteface.sol";
+import "../../common/FixedPoint.sol";
+import "../../common/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 /**
@@ -121,6 +122,7 @@ contract Liquidatable is PricelessPositionManager {
         uint withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
+        address tokenFactoryAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -142,7 +144,8 @@ contract Liquidatable is PricelessPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.syntheticName,
-            params.syntheticSymbol
+            params.syntheticSymbol,
+            params.tokenFactoryAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
@@ -162,15 +165,22 @@ contract Liquidatable is PricelessPositionManager {
      * @dev This method generates an ID that will uniquely identify liquidation
      * for the sponsor.
      * @param sponsor address to liquidate
+     * @param amountToLiquidate amount of liquidatedCollateral that liquidator wants to liquidate
      * @return uuid of the newly created liquidation
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
-    function createLiquidation(address sponsor) external returns (uint uuid) {
+    function createLiquidation(address sponsor, FixedPoint.Unsigned calldata amountToLiquidate)
+        external
+        returns (uint uuid)
+    {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate);
         require(positionCollateral.isGreaterThan(0));
+
+        // Caller is required to include in order to prevent front-running attacks that modify the liquidatedCollateral amount
+        require(amountToLiquidate.isEqual(positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount)));
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.

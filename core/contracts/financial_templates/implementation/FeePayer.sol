@@ -3,10 +3,10 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../common/FixedPoint.sol";
-import "../common/Testable.sol";
-import "../oracle/interfaces/StoreInterface.sol";
-import "../Finder.sol";
+import "../../common/FixedPoint.sol";
+import "../../common/Testable.sol";
+import "../../oracle/interfaces/StoreInterface.sol";
+import "../../oracle/interfaces/FinderInterface.sol";
 
 contract FeePayer is Testable {
     using SafeMath for uint;
@@ -22,7 +22,7 @@ contract FeePayer is Testable {
     /**
      * Finder contract used to look up addresses for UMA system contracts.
      */
-    Finder public finder;
+    FinderInterface public finder;
 
     /**
      * Tracks the last block time when the fees were paid.
@@ -39,12 +39,12 @@ contract FeePayer is Testable {
 
     constructor(address collateralAddress, address finderAddress, bool _isTest) public Testable(_isTest) {
         collateralCurrency = IERC20(collateralAddress);
-        finder = Finder(finderAddress);
+        finder = FinderInterface(finderAddress);
         lastPaymentTime = getCurrentTime();
     }
 
     /**
-     * @notice Pays UMA DVM fees to the Store contract.
+     * @notice Pays UMA DVM regular fees to the Store contract. These must be paid periodically for the life of the contract.
      * @return the amount of collateral that was paid to the Store.
      */
 
@@ -80,7 +80,7 @@ contract FeePayer is Testable {
 
         if (finalFee.isGreaterThan(0)) {
             if (payer != address(this)) {
-                require(collateralCurrency.transferFrom(payer, address(this), finalFee.rawValue));
+                collateralCurrency.safeTransferFrom(payer, address(this), finalFee.rawValue);
             }
             collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
             store.payOracleFeesErc20(address(collateralCurrency));

@@ -17,6 +17,7 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const TokenFactory = artifacts.require("TokenFactory");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -118,6 +119,7 @@ contract("Liquidatable", function(accounts) {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: priceTrackingIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
@@ -158,7 +160,15 @@ contract("Liquidatable", function(accounts) {
 
   describe("Attempting to liquidate a position that does not exist", () => {
     it("should revert", async () => {
-      assert(await didContractThrow(liquidationContract.createLiquidation(sponsor, { from: liquidator })));
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: amountOfCollateralToLiquidate.toString() },
+            { from: liquidator }
+          )
+        )
+      );
     });
   });
 
@@ -175,15 +185,35 @@ contract("Liquidatable", function(accounts) {
     });
     it("Liquidator does not have enough tokens to retire position", async () => {
       await syntheticToken.transfer(contractDeployer, toWei("1"), { from: liquidator });
-      assert(await didContractThrow(liquidationContract.createLiquidation(sponsor, { from: liquidator })));
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: amountOfCollateralToLiquidate.toString() },
+            { from: liquidator }
+          )
+        )
+      );
     });
     it("Returns correct UUID", async () => {
-      const uuid = await liquidationContract.createLiquidation.call(sponsor, { from: liquidator });
-      await liquidationContract.createLiquidation(sponsor, { from: liquidator });
+      const uuid = await liquidationContract.createLiquidation.call(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
       assert.equal(uuid.toString(), liquidationParams.uuid.toString());
     });
     it("Emits an event", async () => {
-      const createLiquidationResult = await liquidationContract.createLiquidation(sponsor, { from: liquidator });
+      const createLiquidationResult = await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
       truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
         return (
           ev.sponsor == sponsor,
@@ -197,7 +227,11 @@ contract("Liquidatable", function(accounts) {
     });
     it("Increments UUID after creation", async () => {
       // Create first liquidation
-      await liquidationContract.createLiquidation(sponsor, { from: liquidator });
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
 
       // Open a new position:
       // - Mint collateral to sponsor
@@ -216,13 +250,29 @@ contract("Liquidatable", function(accounts) {
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
 
       // Create second liquidation
-      const uuid = await liquidationContract.createLiquidation.call(sponsor, { from: liquidator });
-      await liquidationContract.createLiquidation(sponsor, { from: liquidator });
+      const uuid = await liquidationContract.createLiquidation.call(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
       assert.equal(
         uuid.toString(),
         toBN(liquidationParams.uuid)
           .addn(1)
           .toString()
+      );
+    });
+    it("Liquidation amount is not specified correctly", async () => {
+      const invalidAmount = amountOfCollateralToLiquidate.sub(toBN(toWei("1")));
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(sponsor, { rawValue: invalidAmount.toString() }, { from: liquidator })
+        )
       );
     });
   });
@@ -239,7 +289,11 @@ contract("Liquidatable", function(accounts) {
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
       // Create a Liquidation
       liquidationTime = await liquidationContract.getCurrentTime();
-      await liquidationContract.createLiquidation(sponsor, { from: liquidator });
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
     });
 
     describe("Get a Liquidation", () => {
@@ -548,8 +602,16 @@ contract("Liquidatable", function(accounts) {
         await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
 
         // Create another liquidation
-        const uuid = await liquidationContract.createLiquidation.call(sponsor, { from: liquidator });
-        await liquidationContract.createLiquidation(sponsor, { from: liquidator });
+        const uuid = await liquidationContract.createLiquidation.call(
+          sponsor,
+          { rawValue: amountOfCollateralToLiquidate.toString() },
+          { from: liquidator }
+        );
+        await liquidationContract.createLiquidation(
+          sponsor,
+          { rawValue: amountOfCollateralToLiquidate.toString() },
+          { from: liquidator }
+        );
         assert.equal(
           uuid.toString(),
           toBN(liquidationParams.uuid)
@@ -760,7 +822,11 @@ contract("Liquidatable", function(accounts) {
       // Transfer synthetic tokens to a liquidator
       await edgeSyntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
       // Create a Liquidation
-      await edgeLiquidationContract.createLiquidation(sponsor, { from: liquidator });
+      await edgeLiquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: amountOfCollateralToLiquidate.toString() },
+        { from: liquidator }
+      );
       // Dispute
       await edgeLiquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       // Settle the dispute as SUCCESSFUL
