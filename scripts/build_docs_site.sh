@@ -49,7 +49,7 @@ mkdir -p $START_DIR/modules/contracts/pages
 cp $START_DIR/documentation/explainers/*.jpeg $START_DIR/modules/explainers/assets/images/
 
 $START_DIR/ci/docgen.sh
-cp $START_DIR/docs/*.adoc $START_DIR/modules/contracts/pages/
+find $START_DIR/docs -name "*.adoc" -exec cp '{}' $START_DIR/modules/contracts/pages/ \;
 node $START_DIR/scripts/gen-nav.js $START_DIR/modules/contracts/pages Contracts > $START_DIR/modules/contracts/nav.adoc
 
 shopt -s nullglob
