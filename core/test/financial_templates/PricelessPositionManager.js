@@ -602,6 +602,45 @@ contract("PricelessPositionManager", function(accounts) {
     await store.setFixedOracleFeePerSecond({ rawValue: "0" });
   });
 
+  it("Basic fees: Rounding error causes redeemable collateral to sometimes be lower than expected", async function() {
+    // Set up position.
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+
+    // Here, we choose a collateral amount that will produce rounding errors:
+    // - Collateral = 3 wei (3e-18)
+    // - 50% fees per second * 1 second * 3e-18 collateral = 1.5e-18 fees, however this gets floored by `Store.computeFee()` to 1e-18 fees
+    // - Fees paid as % of collateral = 1e-18 / 3e-18 = 0.33...33 repeating, which cannot be represented by FixedPoint
+    // - This will get ceil'd up to 0.33...34
+    // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower: (1-0.33..34) versus (1+0.33..33)
+    // - Ultimately this adjusts the collateral available for redemption to be lower than anticipated
+    await pricelessPositionManager.create({ rawValue: "3" }, { rawValue: toWei("1") }, { from: sponsor });
+
+    // Set store fees to 50% per second.
+    await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.5") });
+
+    // Move time in the contract forward by 1 second to capture a 50% fee.
+    const startTime = await pricelessPositionManager.getCurrentTime();
+    await pricelessPositionManager.setCurrentTime(startTime.addn(1));
+
+    // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
+    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN("1"));
+
+    // Pay the fees, then check the collateral and the store balance.
+    await pricelessPositionManager.payFees();
+    // However, due to the rounding error mentioned above, `getCollateral()` will return
+    // slightly less than what we are expecting:
+    // We are expecting there to be (3 wei collateral - 1 wei fee = 2 wei collateral) in the contract
+    let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+    assert(toBN(collateralAmount.rawValue).lt(toBN("2")));
+    // Store should still receive the correct fee
+    assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
+    // Check that the contract itself actually has more collateral than `getCollateral()` returns
+    assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "2");
+
+    // Set the store fees back to 0 to prevent it from affecting other tests.
+    await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+  });
+
   it("Final fees", async function() {
     // Create a new position
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });

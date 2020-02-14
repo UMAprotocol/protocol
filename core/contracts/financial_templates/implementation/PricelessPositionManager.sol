@@ -323,14 +323,14 @@ contract PricelessPositionManager is FeePayer {
         // Compute fee percentage that was paid by the entire contract (fees / pfc).
         // TODO(#873): do we want to add add divCeil and mulCeil here to make sure that all rounding favors the contract rather than the user?
         // Similar issue to _payOracleFees
-        FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialPfc);
+        FixedPoint.Unsigned memory feePercentage = totalPaid.divCeil(initialPfc);
 
         // Compute adjustment to be applied to the position collateral (1 - feePercentage).
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
 
         // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
-        totalPositionCollateral = totalPositionCollateral.mul(adjustment);
-        positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
+        totalPositionCollateral = totalPositionCollateral.mulCeil(adjustment);
+        positionFeeAdjustment = positionFeeAdjustment.mulCeil(adjustment);
     }
 
     /**
