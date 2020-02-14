@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-// import "../OracleInteface.sol";
 import "../../common/FixedPoint.sol";
 import "../../common/Testable.sol";
 import "./PricelessPositionManager.sol";
@@ -220,7 +219,7 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond.
+     * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond and pay a fixed final fee charged on each price request.
      * @dev Can only dispute a liquidation before the liquidation expires and if there are no
      * other pending disputes.
      * @param id of the disputed liquidation.
@@ -240,6 +239,9 @@ contract Liquidatable is PricelessPositionManager {
 
         // Enqueue a request with the DVM.
         _requestOraclePrice(disputedLiquidation.liquidationTime);
+
+        // Pay a final fee
+        _payFinalFees(msg.sender);
 
         emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }
