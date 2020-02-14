@@ -510,7 +510,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
-      expectedTotalSponsorCollateralReturned.toString()
+      expectedTotalSponsorCollateralReturned
     );
 
     // The token Sponsor should have no synthetic positions left after settlement.
@@ -696,7 +696,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
-      expectedTotalSponsorCollateralReturned.toString()
+      expectedTotalSponsorCollateralReturned
     );
 
     // The token Sponsor should have no synthetic positions left after settlement.
