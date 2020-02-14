@@ -8,7 +8,7 @@ import "../oracle/interfaces/AdministrateeInterface.sol";
 import "../oracle/interfaces/OracleInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../Finder.sol";
+import "../oracle/interfaces/FinderInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 
@@ -112,7 +112,7 @@ library TDS {
         // Other addresses/contracts
         address sponsor;
         address apDelegate;
-        Finder finder;
+        FinderInterface finder;
         PriceFeedInterface priceFeed;
         ReturnCalculatorInterface returnCalculator;
         IERC20 marginCurrency;
@@ -645,7 +645,7 @@ library TokenizedDerivativeUtils {
         s.externalAddresses.marginCurrency = IERC20(params.marginCurrency);
 
         s.externalAddresses.returnCalculator = ReturnCalculatorInterface(params.returnCalculator);
-        s.externalAddresses.finder = Finder(params.finderAddress);
+        s.externalAddresses.finder = FinderInterface(params.finderAddress);
         s.externalAddresses.priceFeed = PriceFeedInterface(params.priceFeedAddress);
 
         // Verify that the price feed and Oracle support the given s.fixedParameters.product.

@@ -3,7 +3,6 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/Withdrawable.sol";
-import "../../Finder.sol";
 import "./DesignatedVoting.sol";
 
 /**

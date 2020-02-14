@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../../common/MultiRole.sol";
 import "../../common/FixedPoint.sol";
 import "../../common/Testable.sol";
-import "../../Finder.sol";
+import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Voting.sol";
 
@@ -35,7 +35,7 @@ contract Governor is MultiRole, Testable {
         uint requestTime;
     }
 
-    Finder private finder;
+    FinderInterface private finder;
     Proposal[] public proposals;
 
     /**
@@ -49,7 +49,7 @@ contract Governor is MultiRole, Testable {
     event ProposalExecuted(uint indexed id, uint transactionIndex);
 
     constructor(address _finderAddress, bool _isTest) public Testable(_isTest) {
-        finder = Finder(_finderAddress);
+        finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createExclusiveRole(uint(Roles.Proposer), uint(Roles.Owner), msg.sender);
     }
