@@ -508,7 +508,10 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
       expectedSponsorCollateralSynthetic
     );
-    assert(sponsorFinalCollateral.sub(sponsorInitialCollateral), expectedTotalSponsorCollateralReturned);
+    assert.equal(
+      sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
+      expectedTotalSponsorCollateralReturned.toString()
+    );
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);
