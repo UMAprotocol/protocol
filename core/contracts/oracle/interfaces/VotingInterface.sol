@@ -84,19 +84,4 @@ contract VotingInterface {
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory)
         public
         returns (FixedPoint.Unsigned memory);
-
-    /**
-     * @notice Makes a price request to the Oracle uniquely identified by (`identifier`, `time`).
-     */
-    function requestPrice(bytes32 identifier, uint time) external;
-
-    /**
-     * @notice Checks to see if there is a price that has or can be resolved for an (identifier, time) pair.
-     */
-    function hasPrice(bytes32 identifier, uint time) external view returns (bool _hasPrice);
-
-    /**
-     * @notice Returns the price if it exists, otherwise throws.
-     */
-    function getPrice(bytes32 identifier, uint time) external view returns (int);
 }

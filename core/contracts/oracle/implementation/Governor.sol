@@ -7,7 +7,7 @@ import "../../common/FixedPoint.sol";
 import "../../common/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/VotingInterface.sol";
+import "../interfaces/OracleInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -59,7 +59,7 @@ contract Governor is MultiRole, Testable {
      */
     function executeProposal(uint id, uint transactionIndex) external {
         Proposal storage proposal = proposals[id];
-        int price = _getVoting().getPrice(_constructIdentifier(id), proposal.requestTime);
+        int price = _getOracle().getPrice(_constructIdentifier(id), proposal.requestTime);
 
         Transaction storage transaction = proposal.transactions[transactionIndex];
 
@@ -127,11 +127,11 @@ contract Governor is MultiRole, Testable {
         bytes32 identifier = _constructIdentifier(id);
 
         // Request a vote on this proposal in the DVM.
-        VotingInterface voting = _getVoting();
+        OracleInterface oracle = _getOracle();
         IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
         supportedIdentifiers.addSupportedIdentifier(identifier);
 
-        voting.requestPrice(identifier, time);
+        oracle.requestPrice(identifier, time);
         supportedIdentifiers.removeSupportedIdentifier(identifier);
 
         emit NewProposal(id, transactions);
@@ -154,8 +154,8 @@ contract Governor is MultiRole, Testable {
         }
     }
 
-    function _getVoting() private view returns (VotingInterface voting) {
-        return VotingInterface(finder.getImplementationAddress("Oracle"));
+    function _getOracle() private view returns (OracleInterface oracle) {
+        return OracleInterface(finder.getImplementationAddress("Oracle"));
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
