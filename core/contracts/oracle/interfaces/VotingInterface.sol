@@ -13,6 +13,26 @@ contract VotingInterface {
         uint time;
     }
 
+    // Captures the necessary data for making a commitment.
+    // Used as a parameter when making batch commitments.
+    // Not used as a data structure for storage.
+    struct Commitment {
+        bytes32 identifier;
+        uint time;
+        bytes32 hash;
+        bytes encryptedVote;
+    }
+
+    // Captures the necessary data for revealing a vote.
+    // Used as a parameter when making batch reveals.
+    // Not used as a data structure for storage.
+    struct Reveal {
+        bytes32 identifier;
+        uint time;
+        int price;
+        int salt;
+    }
+
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
     // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
     enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
@@ -25,11 +45,23 @@ contract VotingInterface {
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external;
 
     /**
+     * @notice Commit multiple votes in a single transaction. Look at `project-root/common/Constants.js` for the tested maximum number of commitments that can fit in one transaction.
+     * @dev For more information on commits, review the comment for `commitVote`.
+     */
+    function batchCommit(Commitment[] calldata commits) external;
+
+    /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with. Only the
      * committer can reveal their vote.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external;
+
+    /**
+     * @notice Reveal multiple votes in a single transaction. Look at `project-root/common/Constants.js` for the tested maximum number of reveals that can fit in one transaction.
+     * @dev For more information on reveals, review the comment for `revealVote`.
+     */
+    function batchReveal(Reveal[] calldata reveals) external;
 
     /**
      * @notice Gets the queries that are being voted on this round.
@@ -52,4 +84,19 @@ contract VotingInterface {
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory)
         public
         returns (FixedPoint.Unsigned memory);
+
+    /**
+     * @notice Makes a price request to the Oracle uniquely identified by (`identifier`, `time`).
+     */
+    function requestPrice(bytes32 identifier, uint time) external;
+
+    /**
+     * @notice Checks to see if there is a price that has or can be resolved for an (identifier, time) pair.
+     */
+    function hasPrice(bytes32 identifier, uint time) external view returns (bool _hasPrice);
+
+    /**
+     * @notice Returns the price if it exists, otherwise throws.
+     */
+    function getPrice(bytes32 identifier, uint time) external view returns (int);
 }

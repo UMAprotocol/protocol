@@ -57,26 +57,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         bytes32 revealHash;
     }
 
-    // Captures the necessary data for making a commitment.
-    // Used as a parameter when making batch commitments.
-    // Not used as a data structure for storage.
-    struct Commitment {
-        bytes32 identifier;
-        uint time;
-        bytes32 hash;
-        bytes encryptedVote;
-    }
-
-    // Captures the necessary data for revealing a vote.
-    // Used as a parameter when making batch reveals.
-    // Not used as a data structure for storage.
-    struct Reveal {
-        bytes32 identifier;
-        uint time;
-        int price;
-        int salt;
-    }
-
     struct Round {
         // Voting token snapshot ID for this round. If this is 0, no snapshot has been taken.
         uint snapshotId;
