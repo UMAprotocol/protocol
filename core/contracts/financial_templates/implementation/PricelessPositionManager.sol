@@ -315,8 +315,7 @@ contract PricelessPositionManager is FeePayer {
         totalPaid = super.payFees();
 
         // Exit early if pfc == 0 to prevent divide by 0.
-        // TODO(#884): replace this with a FixedPoint.equal().
-        if (initialPfc.rawValue == 0) {
+        if (initialPfc.isEqual(FixedPoint.fromUnscaledUint(0))) {
             return totalPaid;
         }
 
@@ -335,10 +334,11 @@ contract PricelessPositionManager is FeePayer {
 
     /**
      * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
-     * expiration. Once this has been resolved token holders can withdraw.
+     * expiration. In addition, pay the final fee at this time. Once this has been resolved token holders can withdraw.
      */
     function expire() external onlyPostExpiration() {
         _requestOraclePrice(expirationTimestamp);
+        _payOracleRequestFees();
 
         emit ContractExpired(msg.sender);
     }
@@ -452,6 +452,32 @@ contract PricelessPositionManager is FeePayer {
     function _requestOraclePrice(uint requestedTime) internal {
         OracleInterface oracle = _getOracle();
         oracle.requestPrice(priceIdentifer, requestedTime);
+    }
+
+    function _payOracleRequestFees() private {
+        // Send the fee payment.
+        FixedPoint.Unsigned memory totalPaid = _payFinalFees(address(this));
+
+        // If totalPositionCollateral <= fees, then there is not enough collateral
+        // in the active position (NOT including liquidations which have their own collateral pool!) to
+        // pay the final fee and have excess collateral available for redemptions.
+        // i.e. without this check, the fee would be paid from the liquidation pool of collateral
+        require(totalPositionCollateral.isGreaterThan(totalPaid));
+        // TODO(#925): If this reverts here, then the position cannot expire. Collateral may be locked in contract.
+
+        // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
+        // Adjust internal variables below.
+        // Compute fee percentage that was paid by the entire contract (fees / collateral).
+        // Unlike payFees, we are spreading fees across all locked collateral and NOT all PfC, which
+        // implies that we are not forcing liquidations to be responsible for paying final fees when the position expires
+        FixedPoint.Unsigned memory feePercentage = totalPaid.div(totalPositionCollateral);
+
+        // Compute adjustment to be applied to the position collateral (1 - feePercentage).
+        FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
+
+        // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
+        totalPositionCollateral = totalPositionCollateral.mul(adjustment);
+        positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
     }
 
     function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
