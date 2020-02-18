@@ -329,8 +329,8 @@ contract PricelessPositionManager is FeePayer {
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
 
         // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
-        totalPositionCollateral = totalPositionCollateral.mulCeil(adjustment);
-        positionFeeAdjustment = positionFeeAdjustment.mulCeil(adjustment);
+        totalPositionCollateral = totalPositionCollateral.mul(adjustment);
+        positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
     }
 
     /**
@@ -480,8 +480,8 @@ contract PricelessPositionManager is FeePayer {
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
 
         // Apply fee percentage to adjust totalPositionCollateral and positionFeeAdjustment.
-        totalPositionCollateral = totalPositionCollateral.mulCeil(adjustment);
-        positionFeeAdjustment = positionFeeAdjustment.mulCeil(adjustment);
+        totalPositionCollateral = totalPositionCollateral.mul(adjustment);
+        positionFeeAdjustment = positionFeeAdjustment.mul(adjustment);
     }
 
     function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
