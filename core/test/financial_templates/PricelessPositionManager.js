@@ -781,6 +781,7 @@ contract("PricelessPositionManager", function(accounts) {
     // Expire the contract, causing the contract to pay its final fees
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
     await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
     await pricelessPositionManager.expire({ from: other });
 
     // Absent any rounding errors, `getCollateral` should return (initial-collateral - final-fees) = 30 wei - 1 wei = 29 wei.
@@ -793,7 +794,6 @@ contract("PricelessPositionManager", function(accounts) {
     assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
 
     // The actual amount of fees paid to the store is as expected = 1e-18
-    const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
