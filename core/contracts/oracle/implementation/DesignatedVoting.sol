@@ -6,7 +6,6 @@ import "../../common/MultiRole.sol";
 import "../../common/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
-import "./Voting.sol";
 
 /**
  * @title Proxy to allow voting from another address
@@ -43,7 +42,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     /**
      * @notice Forwards a batch commit to Voting.
      */
-    function batchCommit(Voting.Commitment[] calldata commits) external onlyRoleHolder(uint(Roles.Voter)) {
+    function batchCommit(VotingInterface.Commitment[] calldata commits) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().batchCommit(commits);
     }
 
@@ -57,7 +56,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     /**
      * @notice Forwards a batch reveal to Voting.
      */
-    function batchReveal(Voting.Reveal[] calldata reveals) external onlyRoleHolder(uint(Roles.Voter)) {
+    function batchReveal(VotingInterface.Reveal[] calldata reveals) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().batchReveal(reveals);
     }
 
@@ -72,7 +71,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
         return _getVotingAddress().retrieveRewards(address(this), roundId, toRetrieve);
     }
 
-    function _getVotingAddress() private view returns (Voting) {
-        return Voting(finder.getImplementationAddress("Oracle"));
+    function _getVotingAddress() private view returns (VotingInterface) {
+        return VotingInterface(finder.getImplementationAddress("Oracle"));
     }
 }
