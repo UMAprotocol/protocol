@@ -267,8 +267,8 @@ contract("Liquidatable", function(accounts) {
           .toString()
       );
     });
-    it("Liquidation amount is not specified correctly", async () => {
-      const invalidAmount = amountOfCollateralToLiquidate.sub(toBN(toWei("1")));
+    it("Liquidation amount not greater than or equal to the underlying collateral in the contract", async () => {
+      const invalidAmount = amountOfCollateralToLiquidate.sub(toBN(toWei("149.99")));
       assert(
         await didContractThrow(
           liquidationContract.createLiquidation(sponsor, { rawValue: invalidAmount.toString() }, { from: liquidator })
