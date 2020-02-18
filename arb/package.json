@@ -1,7 +1,0 @@
-{
-  "name": "arb",
-  "version": "0.1.0",
-  "description": "Arbitrage automation and libraries for UMA",
-  "private": true,
-  "dependencies": {}
-}
