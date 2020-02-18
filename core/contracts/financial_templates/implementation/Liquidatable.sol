@@ -181,7 +181,11 @@ contract Liquidatable is PricelessPositionManager {
         require(positionCollateral.isGreaterThan(0));
 
         // Caller is required to include in order to prevent front-running attacks that modify the liquidatedCollateral amount
-        require(amountToLiquidate.isEqual(positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount)));
+        // @dev amountToLiquidate is >= underlying collateral because the position is still liquidatable if the underlying collateral declines
+        // while the liquidation transaction is pending
+        require(
+            amountToLiquidate.isGreaterThanOrEqual(positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount))
+        );
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
