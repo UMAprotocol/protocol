@@ -353,7 +353,6 @@ contract("PricelessPositionManager", function(accounts) {
     // To maintain 10 tokens, need at least 15.833 collateral => can withdraw from 25 down to 16 but not to 15.
     assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("10") }, { from: other })));
     await pricelessPositionManager.withdraw({ rawValue: toWei("9") }, { from: other });
-
   });
 
   it("Transfer", async function() {
