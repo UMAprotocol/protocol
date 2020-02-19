@@ -724,7 +724,7 @@ contract("Liquidatable", function(accounts) {
             return ev.caller == sponsor;
           });
         });
-        it.only("Fees on liquidation", async () => {
+        it("Fees on liquidation", async () => {
           // Charge a 50% fee per second.
           await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
 
