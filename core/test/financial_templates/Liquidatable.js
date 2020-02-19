@@ -303,7 +303,7 @@ contract("Liquidatable", function(accounts) {
       });
       it("Liquidation decrease underlying token debt and collateral", async () => {
         const totalPositionCollateralAfter = await liquidationContract.totalPositionCollateral();
-        assert.equal(totalPositionCollateralAfter.toNumber(), 0);
+        assert.equal(totalPositionCollateralAfter.rawValue, 0);
         const totalTokensOutstandingAfter = await liquidationContract.totalTokensOutstanding();
         assert.equal(totalTokensOutstandingAfter.toNumber(), 0);
       });
@@ -311,7 +311,7 @@ contract("Liquidatable", function(accounts) {
         const newLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
         assert.equal(newLiquidation.state.toString(), STATES.PRE_DISPUTE);
         assert.equal(newLiquidation.tokensOutstanding.toString(), liquidationParams.tokensOutstanding.toString());
-        assert.equal(newLiquidation.lockedCollateral.toString(), liquidationParams.lockedCollateral.toString());
+        assert.equal((await liquidationContract.getLockedCollateral(sponsor, liquidationParams.uuid)).toString(), liquidationParams.lockedCollateral.toString());
         assert.equal(newLiquidation.liquidatedCollateral.toString(), liquidationParams.liquidatedCollateral.toString());
         assert.equal(
           newLiquidation.expiry.toString(),

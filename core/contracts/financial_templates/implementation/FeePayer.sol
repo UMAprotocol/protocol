@@ -65,6 +65,12 @@ contract FeePayer is Testable {
         StoreInterface store = _getStore();
         uint time = getCurrentTime();
         FixedPoint.Unsigned memory _pfc = pfc();
+
+        // Exit early if there is no pfc (thus, no fees to be paid).
+        if (_pfc.isEqual(0)) {
+            return totalPaid;
+        }
+
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
             lastPaymentTime,
             time,
@@ -92,28 +98,29 @@ contract FeePayer is Testable {
      */
     function _payFinalFees(address payer) internal returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
-        FixedPoint.Unsigned memory finalFee = store.computeFinalFee(address(collateralCurrency));
+        totalPaid = store.computeFinalFee(address(collateralCurrency));
 
-        if (finalFee.isGreaterThan(0)) {
-            if (payer != address(this)) {
-                // If the payer is not the contract pull the collateral from the payer.
-                collateralCurrency.safeTransferFrom(payer, address(this), finalFee.rawValue);
-            } else {
-                // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
-                FixedPoint.Unsigned memory _pfc = pfc();
-
-                // The final fee must be < pfc or the fee will be larger than 100%.
-                require(_pfc.isGreaterThan(finalFee));
-
-                // Add the adjustment.
-                FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(pfc());
-                cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
-            }
-            collateralCurrency.safeIncreaseAllowance(address(store), finalFee.rawValue);
-            store.payOracleFeesErc20(address(collateralCurrency));
+        if (totalPaid.isEqual(0)) {
+            return totalPaid;
         }
 
-        return finalFee;
+        if (payer != address(this)) {
+            // If the payer is not the contract pull the collateral from the payer.
+            collateralCurrency.safeTransferFrom(payer, address(this), totalPaid.rawValue);
+        } else {
+            // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
+            FixedPoint.Unsigned memory _pfc = pfc();
+
+            // The final fee must be < pfc or the fee will be larger than 100%.
+            require(_pfc.isGreaterThan(totalPaid));
+
+            // Add the adjustment.
+            FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(pfc());
+            cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+        }
+
+        collateralCurrency.safeIncreaseAllowance(address(store), totalPaid.rawValue);
+        store.payOracleFeesErc20(address(collateralCurrency));
     }
 
     /**

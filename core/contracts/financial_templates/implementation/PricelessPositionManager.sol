@@ -359,6 +359,10 @@ contract PricelessPositionManager is FeePayer {
         return _getCollateral(positions[sponsor].rawCollateral);
     }
 
+    function totalPositionCollateral() external view returns (FixedPoint.Unsigned memory) {
+        return _getCollateral(rawTotalPositionCollateral);
+    }
+
     /**
      * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
      */
