@@ -59,17 +59,6 @@ contract PricelessPositionManager is FeePayer {
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
 
-    /**
-     * @dev Percentage adjustment that must be applied to rawCollateral so it takes fees into account.
-     *
-     * To adjust rawCollateral to a user-readable collateral value:
-     * `realCollateral = rawCollateral * positionFeeAdjustment`
-     *
-     * When adding or removing collateral, the following adjustment must be made:
-     * `updatedRawCollateral = rawCollateral + (addedCollateral / positionFeeAdjustment)`
-     */
-    FixedPoint.Unsigned public positionFeeAdjustment;
-
     event Transfer(address indexed oldSponsor, address indexed newSponsor);
     event Deposit(address indexed sponsor, uint indexed collateralAmount);
     event Withdrawal(address indexed sponsor, uint indexed collateralAmount);
@@ -116,7 +105,6 @@ contract PricelessPositionManager is FeePayer {
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         priceIdentifer = _priceFeedIdentifier;
-        positionFeeAdjustment = FixedPoint.fromUnscaledUint(1);
     }
 
     /**
