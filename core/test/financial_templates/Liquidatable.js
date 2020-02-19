@@ -724,6 +724,64 @@ contract("Liquidatable", function(accounts) {
             return ev.caller == sponsor;
           });
         });
+        it.only("Fees on liquidation", async () => {
+          // Charge a 50% fee per second.
+          await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
+
+          // Advance time to charge fee.
+          let currentTime = await liquidationContract.getCurrentTime();
+          await liquidationContract.setCurrentTime(currentTime.addn(1));
+
+          // Withdraw liquidation
+          const sponsorAmount = (
+            await liquidationContract.withdrawLiquidation.call(liquidationParams.uuid, sponsor, { from: sponsor })
+          ).rawValue;
+          const liquidatorAmount = (
+            await liquidationContract.withdrawLiquidation.call(liquidationParams.uuid, sponsor, { from: liquidator })
+          ).rawValue;
+          const disputerAmount = (
+            await liquidationContract.withdrawLiquidation.call(liquidationParams.uuid, sponsor, { from: disputer })
+          ).rawValue;
+
+          // TOT_COL  - TRV - TOT_COL_FEE + TS_REWARD    = TS_WITHDRAW
+          // 150      - 100 - (0.1 * 150) + (0.05 * 100) = 40
+          assert.equal(sponsorAmount, toWei("40"));
+
+          // TRV - TS_REWARD    - DISPUTER_REWARD = LIQ_WITHDRAW
+          // 100 - (0.05 * 100) - (0.05 * 100)    = 90
+          assert.equal(liquidatorAmount, toWei("90"));
+
+          // BOND        - BOND_FEE          + DISPUTER_REWARD = DISPUTER_WITHDRAW
+          // (0.1 * 150) - (0.1 * 0.1 * 150) + (0.5 * 100)     = 18.5
+          assert.equal(disputerAmount, toWei("18.5"));
+
+          // Sponsor balance check.
+          let startBalance = await collateralToken.balanceOf(sponsor);
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
+          assert.equal(
+            (await collateralToken.balanceOf(sponsor)).toString(),
+            startBalance.add(toBN(sponsorAmount)).toString()
+          );
+
+          // Liquidator balance check.
+          startBalance = await collateralToken.balanceOf(liquidator);
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+          assert.equal(
+            (await collateralToken.balanceOf(liquidator)).toString(),
+            startBalance.add(toBN(liquidatorAmount)).toString()
+          );
+
+          // Disputer balance check.
+          startBalance = await collateralToken.balanceOf(disputer);
+          await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
+          assert.equal(
+            (await collateralToken.balanceOf(disputer)).toString(),
+            startBalance.add(toBN(disputerAmount)).toString()
+          );
+
+          // Clean up store fees.
+          await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+        });
       });
       describe("Dispute failed", () => {
         beforeEach(async () => {
