@@ -319,10 +319,11 @@ contract PricelessPositionManager is FeePayer {
             return totalPaid;
         }
 
-        // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
         // Adjust internal variables below.
         // Compute fee percentage that was paid by the entire contract (fees / pfc).
-        FixedPoint.Unsigned memory feePercentage = totalPaid.div(initialPfc);
+        // TODO(#873): do we want to add add divCeil and mulCeil here to make sure that all rounding favors the contract rather than the user?
+        // Similar issue to _payOracleFees
+        FixedPoint.Unsigned memory feePercentage = totalPaid.divCeil(initialPfc);
 
         // Compute adjustment to be applied to the position collateral (1 - feePercentage).
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
@@ -465,12 +466,15 @@ contract PricelessPositionManager is FeePayer {
         require(totalPositionCollateral.isGreaterThan(totalPaid));
         // TODO(#925): If this reverts here, then the position cannot expire. Collateral may be locked in contract.
 
-        // TODO(#873): add divCeil and mulCeil to make sure that all rounding favors the contract rather than the user.
-        // Adjust internal variables below.
         // Compute fee percentage that was paid by the entire contract (fees / collateral).
         // Unlike payFees, we are spreading fees across all locked collateral and NOT all PfC, which
         // implies that we are not forcing liquidations to be responsible for paying final fees when the position expires
-        FixedPoint.Unsigned memory feePercentage = totalPaid.div(totalPositionCollateral);
+
+        // TODO(#934. #925) we ceil() the fee percentage so that the contract behaves as if MORE fees were paid
+        // than in actuality. This causes the contract to act as if it has LESS collateral than in actuality.
+        // Therefore we avoid the situation in which there is MORE adjusted-collateral in the contract
+        // than in actuality. This could have the side effect of having leftover collateral in the contract, which we want to upper bound.
+        FixedPoint.Unsigned memory feePercentage = totalPaid.divCeil(totalPositionCollateral);
 
         // Compute adjustment to be applied to the position collateral (1 - feePercentage).
         FixedPoint.Unsigned memory adjustment = FixedPoint.fromUnscaledUint(1).sub(feePercentage);
