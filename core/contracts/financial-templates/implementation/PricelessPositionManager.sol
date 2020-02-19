@@ -200,7 +200,7 @@ contract PricelessPositionManager is FeePayer {
     // TODO: is onlyCollateralizedPosition(msg.sender) correct here? if a position withdraws all their collateral will this still work?
     // TODO: this currently does not decrement the sponsors oustanding withdrawalRequestAmount. should it?
     // TODO: Decide whether to fold this functionality into withdraw() method above.
-    function withdrawPassedRequest() external onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
+    function withdrawPassedRequest() external onlyPreExpiration() onlyCollateralizedPosition(msg.sender) fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime());
 
@@ -300,7 +300,7 @@ contract PricelessPositionManager is FeePayer {
      * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
      * expiration. In addition, pay the final fee at this time. Once this has been resolved token holders can withdraw.
      */
-    function expire() external onlyPostExpiration() {
+    function expire() external onlyPostExpiration() fees() {
         // The final fee for this request is paid out of the contract rather than by the caller.
         _payFinalFees(address(this));
         _requestOraclePrice(expirationTimestamp);
@@ -313,7 +313,7 @@ contract PricelessPositionManager is FeePayer {
      * the prevailing price defined by the DVM from the `expire` function. 
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
-    function settleExpired() external onlyPostExpiration() {
+    function settleExpired() external onlyPostExpiration() fees() {
         // Get the current settlement price. If it is not resolved will revert.
         FixedPoint.Unsigned memory settlementPrice = _getOraclePrice(expirationTimestamp);
 
