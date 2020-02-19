@@ -53,9 +53,6 @@ contract Liquidatable is PricelessPositionManager {
     // Total collateral in liquidation.
     FixedPoint.Unsigned public rawLiquidationCollateral;
 
-    // Adjustment parameter applied to locked collateral to compensate for fees.
-    FixedPoint.Unsigned public liquidationFeeAdjustment;
-
     // Immutable contract parameters.
 
     // Amount of time for pending liquidation before expiry
