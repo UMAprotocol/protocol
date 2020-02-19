@@ -311,7 +311,10 @@ contract("Liquidatable", function(accounts) {
         const newLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
         assert.equal(newLiquidation.state.toString(), STATES.PRE_DISPUTE);
         assert.equal(newLiquidation.tokensOutstanding.toString(), liquidationParams.tokensOutstanding.toString());
-        assert.equal((await liquidationContract.getLockedCollateral(sponsor, liquidationParams.uuid)).toString(), liquidationParams.lockedCollateral.toString());
+        assert.equal(
+          (await liquidationContract.getLockedCollateral(sponsor, liquidationParams.uuid)).toString(),
+          liquidationParams.lockedCollateral.toString()
+        );
         assert.equal(newLiquidation.liquidatedCollateral.toString(), liquidationParams.liquidatedCollateral.toString());
         assert.equal(
           newLiquidation.expiry.toString(),
