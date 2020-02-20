@@ -31,8 +31,13 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   // If the user is using the two key contract, then the account is the designated voting contract's address
   const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
-  const rewards = await getAvailableRewards(web3, voting, account);
-  const resolvedPrices = await getResolvedPrices(web3, voting, account);
+  // TODO(#901): MetaMask provider sometimes has trouble reading past events
+  let rewards;
+  let resolvedPrices;
+  if (web3.currentProvider.label !== 'metamask') {
+    rewards = await getAvailableRewards(web3, voting, account);
+    resolvedPrices = await getResolvedPrices(web3, voting, account);
+  }
   style.spinnerReadingContracts.stop();
 
   // TODO: #901 Can't access Voting.rounds in latest deployed Contract https://etherscan.io/address/0xfe3c4f1ec9f5df918d42ef7ed3fba81cc0086c5f#readContract
@@ -87,36 +92,40 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   }
 
   // Display rewards to be retrieved in a table
-  console.log(`${style.success(`- Voting Rewards Available`)}:`);
-  if (rewards.roundIds.length > 0) {
-    const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
-    const rewardsTable = Object.values(rewards.rewardsByRoundId)
-      .reduce(reducer)
-      .map(reward => {
-        return {
-          round_id: reward.roundId,
-          name: reward.name,
-          reward_tokens: web3.utils.fromWei(reward.potentialRewards)
-        };
-      });
-    console.table(rewardsTable);
+  if (rewards) {
+    console.log(`${style.success(`- Voting Rewards Available`)}:`);
+    if (rewards.roundIds.length > 0) {
+      const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
+      const rewardsTable = Object.values(rewards.rewardsByRoundId)
+        .reduce(reducer)
+        .map(reward => {
+          return {
+            round_id: reward.roundId,
+            name: reward.name,
+            reward_tokens: web3.utils.fromWei(reward.potentialRewards)
+          };
+        });
+      console.table(rewardsTable);
+    }  
   }
 
   // Display resolved prices that voter voted on
-  console.log(`${style.success(`- Resolved Prices of Votes Participated In`)}:`);
-  if (Object.keys(resolvedPrices).length > 0) {
-    const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
-    const resolvedPricesTable = Object.values(resolvedPrices)
-      .reduce(reducer)
-      .map(resolution => {
-        return {
-          round_id: resolution.roundId,
-          identifier: resolution.identifier,
-          time: resolution.time,
-          price: resolution.price
-        };
-      });
-    console.table(resolvedPricesTable);
+  if (resolvedPrices) {
+    console.log(`${style.success(`- Resolved Prices of Votes Participated In`)}:`);
+    if (Object.keys(resolvedPrices).length > 0) {
+      const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
+      const resolvedPricesTable = Object.values(resolvedPrices)
+        .reduce(reducer)
+        .map(resolution => {
+          return {
+            round_id: resolution.roundId,
+            identifier: resolution.identifier,
+            time: resolution.time,
+            price: resolution.price
+          };
+        });
+      console.table(resolvedPricesTable);
+    }  
   }
 
   console.log(`\n`);
