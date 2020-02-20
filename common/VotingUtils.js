@@ -1,4 +1,9 @@
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle, deriveKeyPairFromSignatureMetamask } = require("./Crypto");
+const {
+  decryptMessage,
+  encryptMessage,
+  deriveKeyPairFromSignatureTruffle,
+  deriveKeyPairFromSignatureMetamask
+} = require("./Crypto");
 const { getKeyGenMessage, computeTopicHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 
@@ -20,10 +25,10 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
   let derivedPublicKey;
   if (web3.currentProvider.label === "metamask") {
     const { publicKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account);
-    derivedPublicKey = publicKey
+    derivedPublicKey = publicKey;
   } else {
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account);
-    derivedPublicKey = publicKey
+    derivedPublicKey = publicKey;
   }
   const encryptedVote = await encryptMessage(derivedPublicKey, JSON.stringify(vote));
 
@@ -52,10 +57,10 @@ const constructReveal = async (request, roundId, web3, account, votingContract) 
   let derivedPrivateKey;
   if (web3.currentProvider.label === "metamask") {
     const { privateKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account);
-    derivedPrivateKey = privateKey
+    derivedPrivateKey = privateKey;
   } else {
     const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account);
-    derivedPrivateKey = privateKey
+    derivedPrivateKey = privateKey;
   }
   const vote = JSON.parse(await decryptMessage(derivedPrivateKey, encryptedCommit));
 

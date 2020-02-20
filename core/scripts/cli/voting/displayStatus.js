@@ -34,7 +34,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   // TODO(#901): MetaMask provider sometimes has trouble reading past events
   let rewards;
   let resolvedPrices;
-  if (web3.currentProvider.label !== 'metamask') {
+  if (web3.currentProvider.label !== "metamask") {
     rewards = await getAvailableRewards(web3, voting, account);
     resolvedPrices = await getResolvedPrices(web3, voting, account);
   }
@@ -106,7 +106,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
           };
         });
       console.table(rewardsTable);
-    }  
+    }
   }
 
   // Display resolved prices that voter voted on
@@ -125,7 +125,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
           };
         });
       console.table(resolvedPricesTable);
-    }  
+    }
   }
 
   console.log(`\n`);

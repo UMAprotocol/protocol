@@ -12,9 +12,8 @@ const inquirer = require("inquirer");
  * @param {* Object} voting deployed Voting.sol contract instance
  */
 const retrieveRewards = async (web3, voting, designatedVoting) => {
-
   // TODO(#901): MetaMask provider sometimes has trouble reading past events, making retrieving rewards troublesome
-  if (web3.currentProvider.label === 'metamask') {
+  if (web3.currentProvider.label === "metamask") {
     console.log(`Sorry! Retrieving rewards is not yet supported for Metamask providers.`);
     return;
   }

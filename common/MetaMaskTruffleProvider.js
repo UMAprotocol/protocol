@@ -8,7 +8,7 @@ class MetaMaskTruffleProvider {
     this.wrappedProvider = null;
     this.wrappedProviderPromise = this.getOrConstructWrappedProvider();
     // Adding this "label" property is a hacky solution so that truffle can detect that we are using a Metamask provider.
-    this.label = "metamask"
+    this.label = "metamask";
   }
 
   // Passes the call through, by attaching a callback to the wrapper provider promise.
