@@ -254,7 +254,7 @@ contract PricelessPositionManager is FeePayer {
     {
         PositionData storage positionData = positions[msg.sender];
         require(positionData.requestPassTimestamp == 0);
-        if (positionData.tokensOutstanding.rawValue == 0) {
+        if (positionData.tokensOutstanding.isEqual(0)) {
             emit NewSponsor(msg.sender);
         }
         _addCollateral(positionData, collateralAmount);
