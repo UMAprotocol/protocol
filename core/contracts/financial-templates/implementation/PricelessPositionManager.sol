@@ -59,6 +59,12 @@ contract PricelessPositionManager is FeePayer {
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
 
+    // Whether the contract has received an expiry price.
+    bool hasExpiryPrice;
+
+    // The expiry price pulled from the DVM.
+    uint expiryPrice;
+
     event Transfer(address indexed oldSponsor, address indexed newSponsor);
     event Deposit(address indexed sponsor, uint indexed collateralAmount);
     event Withdrawal(address indexed sponsor, uint indexed collateralAmount);
@@ -319,18 +325,21 @@ contract PricelessPositionManager is FeePayer {
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
     function settleExpired() external onlyPostExpiration() fees() {
-        // Get the current settlement price. If it is not resolved will revert.
-        FixedPoint.Unsigned memory settlementPrice = _getOraclePrice(expirationTimestamp);
+        // Get the current settlement price and store it. If it is not resolved will revert.
+        if (!hasExpiryPrice) {
+            expiryPrice = _getOraclePrice(expirationTimestamp);
+            hasExpiryPrice = true;
+        }
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
-        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(settlementPrice);
+        FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(expiryPrice);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
         PositionData storage positionData = positions[msg.sender];
         if (_getCollateral(positionData.rawCollateral).isGreaterThan(0)) {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
-            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(settlementPrice);
+            FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(expiryPrice);
             FixedPoint.Unsigned memory positionRedeemableCollateral = _getCollateral(positionData.rawCollateral).sub(
                 tokenDebtValueInCollateral
             );
