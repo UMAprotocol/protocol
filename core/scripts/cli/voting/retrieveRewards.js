@@ -57,7 +57,9 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
     console.log(`\n`);
     console.groupEnd();
   } else {
-    console.log(`You have no rewards to retrieve.`);
+    console.log(
+      `You have no rewards to retrieve. If you are using a MetaMask provider, then we might not be able to detect all of your rewards to be retrieved, sorry!`
+    );
   }
 };
 

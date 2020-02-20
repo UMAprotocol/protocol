@@ -77,7 +77,11 @@ const votingMenu = async function(web3, artifacts) {
             ACTIONS.reveal
           )}: Prompts user to select batch of votes to reveal. Only possible during the Reveal phase.`
         );
-        console.log(`${style.help(ACTIONS.rewards)}: Prompts user to select resolved votes to retrieve rewards for.`);
+        console.log(
+          `${style.help(
+            ACTIONS.rewards
+          )}: Prompts user to select resolved votes to retrieve rewards for. This might not work perfectly if you are using a Metamask provider.`
+        );
         console.groupEnd();
         break;
 
