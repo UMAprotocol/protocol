@@ -68,5 +68,27 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         { sponsor: accounts[1], numTokens: toWei("45"), amountCollateral: toWei("100") }
       ]
     );
+
+    // Liquidations.
+    const syntheticToken = await ERC20Mintable.at(await emp.tokenCurrency());
+    await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[0] });
+    const id = await emp.createLiquidation.call(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
+    await emp.createLiquidation(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
+
+    await updateAndVerify(
+      client,
+      [accounts[0], accounts[1]],
+      [{ sponsor: accounts[0], numTokens: toWei("100"), amountCollateral: toWei("20") }]
+    );
+    const expectedLiquidations = [
+      {
+        sponsor: accounts[1],
+        id: id.toString(),
+        numTokens: toWei("45"),
+        amountCollateral: toWei("100"),
+        liquidationTime: (await emp.getCurrentTime()).toString()
+      }
+    ];
+    assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
   });
 });
