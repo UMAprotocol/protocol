@@ -60,10 +60,10 @@ contract PricelessPositionManager is FeePayer {
     uint public withdrawalLiveness;
 
     // Whether the contract has received an expiry price.
-    bool hasExpiryPrice;
+    bool public hasExpiryPrice;
 
     // The expiry price pulled from the DVM.
-    uint expiryPrice;
+    FixedPoint.Unsigned public expiryPrice;
 
     event Transfer(address indexed oldSponsor, address indexed newSponsor);
     event Deposit(address indexed sponsor, uint indexed collateralAmount);
