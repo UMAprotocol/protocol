@@ -725,7 +725,7 @@ contract("Liquidatable", function(accounts) {
           });
         });
         it("Fees on liquidation", async () => {
-          // Charge a 50% fee per second.
+          // Charge a 10% fee per second.
           await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
 
           // Advance time to charge fee.
