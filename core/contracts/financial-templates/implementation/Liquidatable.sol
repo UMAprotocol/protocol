@@ -370,12 +370,8 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * @notice After a liquidation has been disputed, it can be settled by any caller enabling withdrawal to occur.
-     * @dev This is only possible after the DVM has resolved a price. Callers should
-     * call hasPrice() on the DVM before calling this to ensure
-     * that the DVM has resolved a price. This method then calculates whether the
-     * dispute on the liquidation was successful using only the settlement price,
-     * tokens outstanding, locked collateral (post-pending withdrawals), and liquidation ratio
+     * @notice This settles a liquidation if it is in the PendingDispute state. If not, it will immediately return.
+     * If the liquidation is in the PendingDispute state, but a price is not available, this will revert.
      * @param id to uniquely identify the dispute to settle
      * @param sponsor the address of the sponsor who's dispute is being settled
      */
