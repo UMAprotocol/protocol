@@ -30,7 +30,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   // If the user is using the two key contract, then the account is the designated voting contract's address
   const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
-  let rewards = await getAvailableRewards(web3, voting, account);
+  const rewards = await getAvailableRewards(web3, voting, account);
   // TODO(#901): MetaMask provider sometimes has trouble reading past events
   let resolvedPrices;
   if (web3.currentProvider.label !== "metamask") {
