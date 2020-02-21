@@ -56,8 +56,7 @@ contract("ExpiringMultiParty", function(accounts) {
       from: accounts[0]
     });
 
-    // Catch the address of the new multiparty contract from the event. Ensure that the assigned party member
-    // is correct.
+    // Catch the address of the new contract from the event. Ensure that the assigned party member is correct.
     let expiringMultiPartyAddress;
     truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", ev => {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
