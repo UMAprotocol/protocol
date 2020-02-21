@@ -1,4 +1,5 @@
 const style = require("../textStyle");
+const argv = require("minimist")(process.argv.slice());
 
 /**
  * Return the list of votes (that the voter has participated in) that have successfully resolved a price
@@ -9,6 +10,11 @@ const style = require("../textStyle");
  * @param {* String} account Etheruem account of voter
  */
 const getResolvedVotesByRound = async (web3, votingContract, account) => {
+  // TODO(#901): MetaMask provider sometimes has trouble reading past events
+  if (argv.network === "metamask") {
+    return;
+  }
+
   // First check list of votes revealed by user to determine which
   // price requests a user has voted on
   const revealedVotes = await votingContract.getPastEvents("VoteRevealed", {
