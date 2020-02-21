@@ -150,6 +150,9 @@ contract("PricelessPositionManager", function(accounts) {
         ev.tokenAmount == createTokens.toString()
       );
     });
+    truffleAssert.eventEmitted(createResult, "NewSponsor", ev => {
+      return ev.sponsor == sponsor;
+    });
 
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
@@ -366,6 +369,9 @@ contract("PricelessPositionManager", function(accounts) {
     const result = await pricelessPositionManager.transfer(other, { from: sponsor });
     truffleAssert.eventEmitted(result, "Transfer", ev => {
       return ev.oldSponsor == sponsor && ev.newSponsor == other;
+    });
+    truffleAssert.eventEmitted(result, "NewSponsor", ev => {
+      return ev.sponsor == other;
     });
 
     assert.equal((await pricelessPositionManager.positions(sponsor)).rawCollateral.toString(), toWei("0"));

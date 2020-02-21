@@ -5,7 +5,7 @@ necessary if the identifier (or underlying asset) you want to track isn't suppor
 identifiers, see [identifiers.json](https://github.com/UMAprotocol/protocol/blob/master/core/config/identifiers.json).
 
 If you'd like more information on what an identifier is and how to configure a price feed, please see
-[our explainer](../explainers/price-feed-configuration.md).
+[our explainer](../explainers/price_feed_configuration.md).
 
 ## Prerequisites
 
@@ -121,4 +121,4 @@ is greater than the previous timestamp you provided, but not in the future.
 To deploy a Tokenized Derivative that uses your price feed, you'll want to change the `priceFeedAddress` parameter to
 your price feed address from above and the `product` parameter to `Custom Index (1)` (converted to `bytes32`). The
 specific instructions for how to deploy a custom TokenizedDerivative are in
-[this tutorial](./customizing-tokens-via-cli.md) - you'll just need to remember these two parameters.
+[this tutorial](./customizing_tokens_via_cli.md) - you'll just need to remember these two parameters.
