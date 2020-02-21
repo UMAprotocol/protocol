@@ -22,7 +22,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   };
 
   before(async function() {
-    collateralToken = await ERC20Mintable.new({ from: accounts[0] });
+    collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
     await collateralToken.mint(accounts[0], toWei("100000"), { from: accounts[0] });
     await collateralToken.mint(accounts[1], toWei("100000"), { from: accounts[0] });
   });
