@@ -27,7 +27,7 @@ in ETH, and depend upon the price of BTC/USD.
 ## Prerequisites
 
 All of our tutorials require that you complete the steps in [Prerequisites](./prerequisites.md). If you are new to the UMA
-system, start with [Creating tokens locally](./creating-tokens-locally.md) to get a gentle introduction.
+system, start with [Creating tokens locally](./creating_tokens_locally.md) to get a gentle introduction.
 
 Make sure you have testnet ETH or are running locally. All commands should be run from the `core` directory.
 
