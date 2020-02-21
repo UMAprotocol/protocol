@@ -17,13 +17,13 @@ contract TokenInterface is IERC20 {
     function mint(address account, uint256 amount) external returns (bool);
 
     /**
-     * @dev Add minter role for account
+     * @dev Set minter role to account
      *
      * Requirements:
      *
      * - the caller must have the {MinterRole}.
      */
-    function addMinter(address account) external;
+    function resetMinter(address account) external;
 
     /**
      * @dev Destroys `amount` tokens from the caller.

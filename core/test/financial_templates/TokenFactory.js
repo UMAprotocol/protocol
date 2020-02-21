@@ -38,23 +38,19 @@ contract("TokenFactory", function(accounts) {
     });
     const token = await Token.at(tokenAddress);
 
-    // Creator should be only minter and the admin
-    assert.equal((await token.getMinterCount()).toString(), "1");
-    assert(await token.isMinter(tokenCreator));
+    // Creator should be only minter
     assert(!(await token.isMinter(contractDeployer)));
-    assert(await token.isMinterAdmin(tokenCreator));
-    assert(!(await token.isMinterAdmin(contractDeployer)));
+    assert(await token.isMinter(tokenCreator));
 
-    // Creator should be able to add new minters
-    await token.addMinter(rando, { from: tokenCreator });
-    assert.equal((await token.getMinterCount()).toString(), "2");
+    // Creator should be able to add a new minter
+    await token.resetMinter(rando, { from: tokenCreator });
     assert(await token.isMinter(rando));
+    assert(!(await token.isMinter(tokenCreator)));
 
-    // Rando cannot add new minters and can renounce minter role
-    assert(await didContractThrow(token.addMinter(contractDeployer, { from: rando })));
-    await token.renounceMinter({ from: rando });
-    assert.equal((await token.getMinterCount()).toString(), "1");
+    // Rando resets minter role back to Creator
+    await token.resetMinter(tokenCreator, { from: rando });
     assert(!(await token.isMinter(rando)));
+    assert(await token.isMinter(tokenCreator));
   });
   it("Token can execute expected methods", async () => {
     const tokenAddress = await tokenFactory.createToken.call(
