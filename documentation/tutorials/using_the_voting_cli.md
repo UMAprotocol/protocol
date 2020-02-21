@@ -26,7 +26,7 @@ uma --network <provider>
 
 # Providers
 
-We strongly recommend using a non-Metamask provider and prefer the "NETWORK_privatekey" option. Storing a private key in an environment variable is a safe compromise between convenience and security provided your local machine is not compromised. To set an environment variable, run:
+We strongly recommend using a non-Metamask provider and prefer the "NETWORK_privatekey" option. For more on the specific issues that using a Metamask provider opens, see [Known Bugs](#known-bugs)  Storing a private key in an environment variable is a safe compromise between convenience and security provided your local machine is not compromised. To set an environment variable, run:
 ```sh
 export ENV_VARIABLE_NAME="VALUE"
 ```
