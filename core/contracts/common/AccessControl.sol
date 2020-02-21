@@ -14,64 +14,43 @@ contract AccessControl is IAccessControl {
 
     struct Role {
         EnumerableSet.AddressSet members;
-        address admin;        
+        address admin;
     }
 
-    mapping (bytes32 => Role) _roles;
+    mapping(bytes32 => Role) _roles;
 
-    function hasRole(bytes32 roleId, address account)
-        public view returns (bool)
-    {
+    function hasRole(bytes32 roleId, address account) public view returns (bool) {
         return _roles[roleId].members.contains(account);
     }
 
-    function getRoleAdmin(bytes32 roleId)
-        public
-        view
-        returns (address)
-    {
+    function getRoleAdmin(bytes32 roleId) public view returns (address) {
         return _roles[roleId].admin;
     }
 
-    function getRoleMembersCount(bytes32 roleId)
-        public
-        view
-        returns (uint256)
-    {
+    function getRoleMembersCount(bytes32 roleId) public view returns (uint256) {
         return _roles[roleId].members.length();
     }
-    
-    function getRoleMember(bytes32 roleId, uint256 index)
-        external
-        view
-        returns (address)
-    {
+
+    function getRoleMember(bytes32 roleId, uint256 index) external view returns (address) {
         return _roles[roleId].members.get(index);
     }
 
     function grantRole(bytes32 roleId, address account) external {
-        require(_roles[roleId].admin == msg.sender,
-            "AccessControl: sender must be the admin to grant"
-        );
+        require(_roles[roleId].admin == msg.sender, "AccessControl: sender must be the admin to grant");
 
         _grantRole(roleId, account);
     }
 
     function revokeRole(bytes32 roleId, address account) external {
-        require(_roles[roleId].admin == msg.sender,
-            "AccessControl: sender must be the admin to revoke"
-        );
+        require(_roles[roleId].admin == msg.sender, "AccessControl: sender must be the admin to revoke");
 
         _revokeRole(roleId, account);
     }
 
     function renounceRole(bytes32 roleId, address account) public {
-        require(account == msg.sender, 
-            "AccessControl: can only renounce roles for self");
-        
-        require(hasRole(roleId, msg.sender),
-            "AccessControl: sender have the role to revoke"
-        );
+        require(account == msg.sender, "AccessControl: can only renounce roles for self");
+
+        require(hasRole(roleId, msg.sender), "AccessControl: sender have the role to revoke");
 
         _revokeRole(roleId, account);
     }

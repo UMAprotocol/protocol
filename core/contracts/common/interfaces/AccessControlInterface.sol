@@ -18,7 +18,7 @@ interface IAccessControl {
 
     // Returns a role's admin role
     function getRoleAdmin(bytes32 roleId) external view returns (address);
-    
+
     // Operations
 
     // Gives a role to an account. Caller must have its admin role

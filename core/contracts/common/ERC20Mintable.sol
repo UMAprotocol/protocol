@@ -24,12 +24,12 @@ contract ERC20Mintable is ERC20, AccessControl {
         _;
     }
 
-    constructor () internal {
+    constructor() internal {
         _setRoleAdmin(MINTER_ROLE, _msgSender());
         _addMinter(_msgSender());
     }
 
-     /** @dev Creates `amount` tokens and assigns them to `account`, increasing
+    /** @dev Creates `amount` tokens and assigns them to `account`, increasing
      * the total supply.
      *
      * Emits a {Transfer} event with `from` set to the zero address.
@@ -54,7 +54,7 @@ contract ERC20Mintable is ERC20, AccessControl {
         _addMinter(account);
     }
 
-     /** @dev Change the minter admin
+    /** @dev Change the minter admin
      *
      * Requirements
      *
