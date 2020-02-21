@@ -12,6 +12,11 @@ const ERC20Mintable = truffleContract(ERC20MintableData);
 ERC20Mintable.setProvider(web3.currentProvider);
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
+  let collateralToken;
+  let emp;
+  let client;
+  let syntheticToken;
+
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
     await client._update();
 
@@ -19,11 +24,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     assert.deepStrictEqual(expectedPositions.sort(), client.getAllPositions().sort());
   };
 
-  it("All Positions", async function() {
-    const collateralToken = await ERC20Mintable.new({ from: accounts[0] });
+  before(async function() {
+    collateralToken = await ERC20Mintable.new({ from: accounts[0] });
     await collateralToken.mint(accounts[0], toWei("100000"), { from: accounts[0] });
     await collateralToken.mint(accounts[1], toWei("100000"), { from: accounts[0] });
+  });
 
+  beforeEach(async function() {
     const constructorParams = {
       isTest: true,
       expirationTimestamp: "12345678900",
@@ -40,11 +47,17 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
-    const emp = await ExpiringMultiParty.new(constructorParams);
-    const client = new ExpiringMultiPartyClient(emp.address);
+    emp = await ExpiringMultiParty.new(constructorParams);
+    client = new ExpiringMultiPartyClient(emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[0] });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[1] });
 
+    syntheticToken = await ERC20Mintable.at(await emp.tokenCurrency());
+    await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[0] });
+    await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[1] });
+  });
+
+  it("All Positions", async function() {
     await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: accounts[0] });
     await updateAndVerify(
       client,
@@ -70,8 +83,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // Liquidations.
-    const syntheticToken = await ERC20Mintable.at(await emp.tokenCurrency());
-    await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[0] });
     const id = await emp.createLiquidation.call(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
     await emp.createLiquidation(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
 
@@ -90,5 +101,18 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       }
     ];
     assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
+  });
+
+  it("Undercollateralized", async function() {
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
+
+    await client._update();
+    // At 150% collateralization requirement, the position is just collateralized enough at a token price of 1.
+    assert.deepStrictEqual([], client.getUnderCollateralizedPositions(toWei("1")));
+    // Undercollateralized at a price just above 1.
+    assert.deepStrictEqual(
+      [{ sponsor: accounts[0], numTokens: toWei("100"), amountCollateral: toWei("150") }],
+      client.getUnderCollateralizedPositions(toWei("1.00000000000000001"))
+    );
   });
 });
