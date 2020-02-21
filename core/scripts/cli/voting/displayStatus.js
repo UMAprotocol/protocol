@@ -30,11 +30,12 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   // If the user is using the two key contract, then the account is the designated voting contract's address
   const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
-  const rewards = await getAvailableRewards(web3, voting, account);
   // TODO(#901): MetaMask provider sometimes has trouble reading past events
   let resolvedPrices;
+  let rewards;
   if (web3.currentProvider.label !== "metamask") {
     resolvedPrices = await getResolvedPrices(web3, voting, account);
+    rewards = await getAvailableRewards(web3, voting, account);
   }
   style.spinnerReadingContracts.stop();
 
@@ -90,19 +91,21 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   }
 
   // Display rewards to be retrieved in a table
-  console.log(`${style.success(`- Voting Rewards Available`)}:`);
-  if (rewards.roundIds.length > 0) {
-    const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
-    const rewardsTable = Object.values(rewards.rewardsByRoundId)
-      .reduce(reducer)
-      .map(reward => {
-        return {
-          round_id: reward.roundId,
-          name: reward.name,
-          reward_tokens: web3.utils.fromWei(reward.potentialRewards)
-        };
-      });
-    console.table(rewardsTable);
+  if (rewards) {
+    console.log(`${style.success(`- Voting Rewards Available`)}:`);
+    if (rewards.roundIds.length > 0) {
+      const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
+      const rewardsTable = Object.values(rewards.rewardsByRoundId)
+        .reduce(reducer)
+        .map(reward => {
+          return {
+            round_id: reward.roundId,
+            name: reward.name,
+            reward_tokens: web3.utils.fromWei(reward.potentialRewards)
+          };
+        });
+      console.table(rewardsTable);
+    }
   }
 
   // Display resolved prices that voter voted on
