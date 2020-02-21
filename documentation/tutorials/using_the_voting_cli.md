@@ -4,7 +4,7 @@ We provide a user-friendly command line interface for voting on price requests a
 
 # Installation
 
-Until the Voting CLI is [published as an npm package](https://docs.npmjs.com/cli/publish), the only way to run the CLI locally is to clone the repo and then symlink the CLI command to your global directory.
+We will walk you through setting up the CLI by first cloning the repo and then symlink-ing the CLI command to your global directory.
 
 We assume that you have followed the [Prerequisites](./prerequisites.md) (cloned the monorepo and installed dependencies for the root directory via `npm install`) and are in the root directory (i.e. `protocol`).
 
@@ -26,7 +26,7 @@ uma --network <provider>
 
 # Providers
 
-We strongly recommend using a non-Metamask provider and prefer the "NETWORK_privatekey" option. For more on the specific issues that using a Metamask provider opens, see [Known Bugs](#known-bugs)  Storing a private key in an environment variable is a safe compromise between convenience and security provided your local machine is not compromised. To set an environment variable, run:
+We strongly recommend using a non-Metamask provider and prefer the "NETWORK_privatekey" option. For more on the specific issues that using a Metamask provider opens, see [Known Bugs](#known-bugs). Storing a private key in an environment variable is a safe compromise between convenience and security provided your local machine is not compromised. To set an environment variable, run:
 ```sh
 export ENV_VARIABLE_NAME="VALUE"
 ```
