@@ -3,6 +3,7 @@ const style = require("../textStyle");
 const { batchRetrieveRewards } = require("../../../../common/VotingUtils");
 const getAvailableRewards = require("./getRewardsByRoundId");
 const inquirer = require("inquirer");
+const argv = require("minimist")(process.argv.slice());
 
 /**
  * This prompts the user to select from a list of round ID's that have one or more rewards that can be retrieved.
@@ -12,6 +13,14 @@ const inquirer = require("inquirer");
  * @param {* Object} voting deployed Voting.sol contract instance
  */
 const retrieveRewards = async (web3, voting, designatedVoting) => {
+  // TODO(#901): MetaMask provider sometimes has trouble reading past events
+  if (argv.network === "metamask") {
+    console.log(
+      `Sorry, we currently do not support retrieving rewards for Metamask users! Try again with another web3 provider.`
+    );
+    return;
+  }
+
   style.spinnerReadingContracts.start();
   // If the user is using the two key contract, then the account is the designated voting contract's address
   const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
@@ -21,7 +30,7 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
   if (roundIds.length > 0) {
     console.group(
       `${style.instruction(
-        `\nPlease select which round ID of resolved price requests you would like to retrieve rewards for`
+        `\nPlease select which round ID of resolved price requests you would like to retrieve rewards for:`
       )}`
     );
     roundIds.push({ name: "back" });
@@ -57,7 +66,7 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
     console.log(`\n`);
     console.groupEnd();
   } else {
-    console.log(`You have no rewards to retrieve`);
+    console.log(`You have no rewards to retrieve.`);
   }
 };
 

@@ -1,4 +1,5 @@
 const style = require("../textStyle");
+const argv = require("minimist")(process.argv.slice());
 
 /**
  * Given a list of revealed votes for a user, return
@@ -18,6 +19,11 @@ const style = require("../textStyle");
  * @param {* String} account Etheruem account of voter
  */
 const getRewardsByRound = async (web3, votingContract, account) => {
+  // TODO(#901): MetaMask provider sometimes has trouble reading past events
+  if (argv.network === "metamask") {
+    return;
+  }
+
   // All rewards available must be tied to formerly revealed votes
   const revealedVotes = await votingContract.getPastEvents("VoteRevealed", {
     filter: { voter: account },
