@@ -9,12 +9,35 @@ class ExpiringMultiPartyClient {
     this.positions = [];
     this.undisputedLiquidations = [];
     this.emp = new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
+
+    this.collateralRequirement = null;
     // TODO: Ideally, we'd want to subscribe to events here, but subscriptions don't work with Truffle HDWalletProvider.
     // One possibility is to experiment with WebSocketProvider instead.
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
   getAllPositions = () => this.positions;
+
+  // Returns an array of { sponsor, numTokens, amountCollateral } for each position that is undercollateralized
+  // according to the provided `tokenRedemptionValue`.
+  getUnderCollateralizedPositions = tokenRedemptionValue => {
+    const { toBN, toWei } = web3.utils;
+    const trv = toBN(tokenRedemptionValue);
+    const fixedPointAdjustment = toBN(toWei("1"));
+    return this.positions.filter(position =>
+      // The formula for an undercollateralized position is:
+      // (numTokens * trv) * collateralRequirement > amountCollateral.
+      // Need to adjust by 10**18 twice because each value is represented as a fixed point scaled up by 10**18.
+      toBN(position.numTokens)
+        .mul(trv)
+        .mul(this.collateralRequirement)
+        .gt(
+          toBN(position.amountCollateral)
+            .mul(fixedPointAdjustment)
+            .mul(fixedPointAdjustment)
+        )
+    );
+  };
 
   // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
   getUndisputedLiquidations = () => this.undisputedLiquidations;
@@ -38,6 +61,8 @@ class ExpiringMultiPartyClient {
   };
 
   _update = async () => {
+    this.collateralRequirement = web3.utils.toBN((await this.emp.methods.collateralRequirement().call()).toString());
+
     const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0 });
     this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
 
