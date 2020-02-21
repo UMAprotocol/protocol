@@ -3,8 +3,9 @@ const { toWei } = web3.utils;
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-
 const Finder = artifacts.require("Finder");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
@@ -16,6 +17,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   let emp;
   let client;
   let syntheticToken;
+  let mockOracle;
 
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
     await client._update();
@@ -28,6 +30,16 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     collateralToken = await ERC20Mintable.new({ from: accounts[0] });
     await collateralToken.mint(accounts[0], toWei("100000"), { from: accounts[0] });
     await collateralToken.mint(accounts[1], toWei("100000"), { from: accounts[0] });
+
+    // Create identifier whitelist and register the price tracking ticker with it.
+    identifierWhitelist = await IdentifierWhitelist.new();
+    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
+
+    // Create a mockOracle and finder. Register the mockMoracle with the finder.
+    mockOracle = await MockOracle.new(identifierWhitelist.address);
+    finder = await Finder.deployed();
+    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 
   beforeEach(async function() {
@@ -105,6 +117,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
   it("Undercollateralized", async function() {
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
+    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: accounts[1] });
 
     await client._update();
     // At 150% collateralization requirement, the position is just collateralized enough at a token price of 1.
@@ -114,5 +127,25 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       [{ sponsor: accounts[0], numTokens: toWei("100"), amountCollateral: toWei("150") }],
       client.getUnderCollateralizedPositions(toWei("1.00000000000000001"))
     );
+
+    // Create a new liquidation for account[0]'s position.
+    const id = await emp.createLiquidation.call(accounts[0], { rawValue: toWei("150") }, { from: accounts[1] });
+    await emp.createLiquidation(accounts[0], { rawValue: toWei("150") }, { from: accounts[1] });
+    await client._update();
+
+    const liquidations = client.getUndisputedLiquidations();
+    // Disputable if the disputer believes the price was `1`, and not disputable if they believe the price was just
+    // above `1`.
+    assert(client.isDisputable(liquidations[0], toWei("1")));
+    assert.isFalse(client.isDisputable(liquidations[0], toWei("1.00000000000000001")));
+
+    // Dispute the liquidation and make sure it no longer shows up in the list.
+    // We need to advance the Oracle time forward to make `requestPrice` work.
+    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
+    await emp.dispute(id.toString(), accounts[0], { from: accounts[0] });
+    await client._update();
+
+    // The disputed liquidation should longer show up as undisputed.
+    assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
   });
 });
