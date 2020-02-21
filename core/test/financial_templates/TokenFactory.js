@@ -1,3 +1,5 @@
+const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+
 // Tested Contract
 const TokenFactory = artifacts.require("TokenFactory");
 
@@ -22,7 +24,7 @@ contract("TokenFactory", function(accounts) {
   before(async () => {
     tokenFactory = await TokenFactory.deployed();
   });
-  it("Can create new tokens and transfers minter role successfully", async () => {
+  it("Can create new tokens and transfers minter and admin role successfully", async () => {
     const tokenAddress = await tokenFactory.createToken.call(
       tokenDetails.name,
       tokenDetails.symbol,
@@ -35,8 +37,24 @@ contract("TokenFactory", function(accounts) {
       from: tokenCreator
     });
     const token = await Token.at(tokenAddress);
+
+    // Creator should be only minter and the admin
+    assert.equal((await token.getMinterCount()).toString(), '1')
     assert(await token.isMinter(tokenCreator));
     assert(!(await token.isMinter(contractDeployer)));
+    assert(await token.isMinterAdmin(tokenCreator));
+    assert(!(await token.isMinterAdmin(contractDeployer)));
+
+    // Creator should be able to add new minters
+    await token.addMinter(rando, { from: tokenCreator });
+    assert.equal((await token.getMinterCount()).toString(), '2')
+    assert(await token.isMinter(rando));
+
+    // Rando cannot add new minters and can renounce minter role
+    assert(await didContractThrow(token.addMinter(contractDeployer, { from: rando })))
+    await token.renounceMinter({ from: rando })
+    assert.equal((await token.getMinterCount()).toString(), '1')
+    assert(!(await token.isMinter(rando)));
   });
   it("Token can execute expected methods", async () => {
     const tokenAddress = await tokenFactory.createToken.call(

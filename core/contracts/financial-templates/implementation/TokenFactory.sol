@@ -7,8 +7,8 @@ import "../interfaces/TokenInterface.sol";
  */
 contract TokenFactory {
     /**
-     * @notice Create a new token and return to the caller. The caller will hold the minter role
-     * and TokenFactory will renounce its minter role.
+     * @notice Create a new token and return to the caller. The caller will hold the only minter role
+     * and become the new token's minter admin, capable of adding new minters.
      */
     function createToken(string calldata tokenName, string calldata tokenSymbol, uint8 tokenDecimals)
         external
@@ -16,7 +16,7 @@ contract TokenFactory {
     {
         Token mintableToken = new Token(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addMinter(msg.sender);
-        mintableToken.renounceMinter();
+        mintableToken.setMinterAdmin(msg.sender);
         newToken = TokenInterface(address(mintableToken));
     }
 }
