@@ -24,15 +24,13 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
   const hash = web3.utils.soliditySha3(priceWei, salt);
 
   const vote = { price: priceWei, salt };
-  let derivedPublicKey;
+  let publicKey;
   if (argv.network === "metamask") {
-    const { publicKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account);
-    derivedPublicKey = publicKey;
+    publicKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account)).publicKey;
   } else {
-    const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account);
-    derivedPublicKey = publicKey;
+    publicKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account)).publicKey;
   }
-  const encryptedVote = await encryptMessage(derivedPublicKey, JSON.stringify(vote));
+  const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
 
   return {
     identifier: request.identifier,
@@ -56,15 +54,13 @@ const constructReveal = async (request, roundId, web3, account, votingContract) 
   const topicHash = computeTopicHash(request, roundId);
   const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
 
-  let derivedPrivateKey;
+  let privateKey;
   if (argv.network === "metamask") {
-    const { privateKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account);
-    derivedPrivateKey = privateKey;
+    privateKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account)).privateKey;
   } else {
-    const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account);
-    derivedPrivateKey = privateKey;
+    privateKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account)).privateKey;
   }
-  const vote = JSON.parse(await decryptMessage(derivedPrivateKey, encryptedCommit));
+  const vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
 
   return {
     identifier: request.identifier,
