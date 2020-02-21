@@ -105,10 +105,10 @@ contract PricelessPositionManager is FeePayer {
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
-        
+
         IdentifierWhitelistInterface identiferWhiteList = _getIdentifierWhitelist();
         require(identiferWhiteList.isIdentifierSupported(_priceIdentifier));
-        
+
         priceIdentifer = _priceIdentifier;
     }
 
