@@ -25,6 +25,7 @@ contract Liquidatable is PricelessPositionManager {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
+    // Because of the check in withdrawable(), the order of these enum values should not change.
     enum Status { Uninitialized, PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
@@ -378,7 +379,8 @@ contract Liquidatable is PricelessPositionManager {
     function _settle(uint id, address sponsor) internal {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
 
-        // If this dispute cannot be settled, just return.
+        // Settlement only happens when state == PendingDispute and will only happen once per liquidation.
+        // If this liquidation is not ready to be settled, this method should return immediately.
         if (liquidation.state != Status.PendingDispute) {
             return;
         }
