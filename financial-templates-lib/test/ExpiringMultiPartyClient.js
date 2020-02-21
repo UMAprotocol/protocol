@@ -6,6 +6,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 const Finder = artifacts.require("Finder");
 const TokenFactory = artifacts.require("TokenFactory");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);
@@ -40,6 +41,12 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
+
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
+      from: accounts[0]
+    });
+
     const emp = await ExpiringMultiParty.new(constructorParams);
     const client = new ExpiringMultiPartyClient(emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[0] });
