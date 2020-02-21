@@ -897,7 +897,7 @@ contract("PricelessPositionManager", function(accounts) {
     await store.setFinalFee(collateral.address, { rawValue: "0" });
   });
 
-  it.only("Oracle swap post expiry", async function() {
+  it("Oracle swap post expiry", async function() {
     // Approvals
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: tokenHolder });
@@ -942,6 +942,16 @@ contract("PricelessPositionManager", function(accounts) {
     await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
       from: contractDeployer
     });
+
+    // Settle expired should still work even if the new oracle has no price.
+    initialCollateral = await collateral.balanceOf(sponsor);
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    collateralPaid = (await collateral.balanceOf(sponsor)).sub(initialCollateral);
+
+    // Sponsor should have received 300 - 240 = 60 collateral tokens.
+    assert.equal(collateralPaid, toWei("60"));
+
+    // Push a different price to the new oracle to ensure the contract still uses the old price.
     await newMockOracle.requestPrice(priceTrackingIdentifier, expirationTime);
     await newMockOracle.pushPrice(priceTrackingIdentifier, expirationTime, toWei("0.8"));
 
