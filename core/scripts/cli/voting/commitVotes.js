@@ -4,6 +4,7 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 const { constructCommitment, batchCommitVotes } = require("../../../../common/VotingUtils");
+const networkUtils = require("../../../../common/PublicNetworks");
 
 /**
  * This prompts the user twice from the command line interface:
@@ -79,6 +80,16 @@ const commitVotes = async (web3, voting, designatedVoting) => {
         const { successes, batches } = await batchCommitVotes(newCommitments, voting, account);
         style.spinnerWritingContracts.stop();
 
+        // Construct etherscan link based on network
+        const networkId = web3.networkId;
+        let url;
+        if (networkUtils[networkId]) {
+          url = `${networkUtils[networkId].etherscan}/tx/`;
+        } else {
+          // No URL for localhost, just show transaction ID
+          url = "";
+        }
+
         // Print results
         console.log(
           style.success(
@@ -89,7 +100,7 @@ const commitVotes = async (web3, voting, designatedVoting) => {
         );
         console.group(style.success(`Receipts:`));
         successes.forEach(committedVote => {
-          console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${committedVote.txnHash}`)}`);
+          console.log(`- transaction: ${style.link(`${url}${committedVote.txnHash}`)}`);
           console.log(`    - salt: ${committedVote.salt}`);
           console.log(`    - voted price: ${web3.utils.fromWei(committedVote.price)}`);
         });

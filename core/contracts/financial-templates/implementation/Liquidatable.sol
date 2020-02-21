@@ -422,6 +422,10 @@ contract Liquidatable is PricelessPositionManager {
         return _getCollateral(liquidations[sponsor][uuid].rawLockedCollateral);
     }
 
+    function getLiquidations(address sponsor) external view returns (LiquidationData[] memory) {
+        return liquidations[sponsor];
+    }
+
     function _getLiquidationData(address sponsor, uint uuid)
         internal
         view
