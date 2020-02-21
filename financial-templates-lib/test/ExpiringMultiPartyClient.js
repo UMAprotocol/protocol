@@ -6,10 +6,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 const Finder = artifacts.require("Finder");
 const TokenFactory = artifacts.require("TokenFactory");
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
+const ERC20Mintable = artifacts.require("Token");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
@@ -20,7 +17,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   };
 
   it("All Positions", async function() {
-    const collateralToken = await ERC20Mintable.new({ from: accounts[0] });
+    const collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
     await collateralToken.mint(accounts[0], toWei("100000"), { from: accounts[0] });
     await collateralToken.mint(accounts[1], toWei("100000"), { from: accounts[0] });
 

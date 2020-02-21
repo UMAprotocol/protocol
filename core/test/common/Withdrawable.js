@@ -3,10 +3,7 @@ const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const WithdrawableTest = artifacts.require("WithdrawableTest");
 
 // Pull in contracts from dependencies.
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
+const ERC20Mintable = artifacts.require("Token");
 
 contract("Withdrawable", function(accounts) {
   let token;
@@ -16,7 +13,7 @@ contract("Withdrawable", function(accounts) {
 
   before(async function() {
     // Create token contract and mint tokens for use by rando.
-    token = await ERC20Mintable.new({ from: owner });
+    token = await ERC20Mintable.new("TEST-TOKEN", "UMA", "18", { from: owner });
     await token.mint(rando, web3.utils.toWei("100", "ether"), { from: owner });
   });
 

@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "../interfaces/AccessControlInterface.sol";
+import "./interfaces/AccessControlInterface.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 // Sourced from proposed OpenZeppelin implementation of ERC20Mintable with v3 contracts
@@ -49,7 +49,7 @@ contract AccessControl is IAccessControl {
         return _roles[roleId].members.get(index);
     }
 
-    function grantRole(bytes32 roleId, address account) public {
+    function grantRole(bytes32 roleId, address account) external {
         require(_roles[roleId].admin == msg.sender,
             "AccessControl: sender must be the admin to grant"
         );
@@ -57,7 +57,7 @@ contract AccessControl is IAccessControl {
         _grantRole(roleId, account);
     }
 
-    function revokeRole(bytes32 roleId, address account) public {
+    function revokeRole(bytes32 roleId, address account) external {
         require(_roles[roleId].admin == msg.sender,
             "AccessControl: sender must be the admin to revoke"
         );

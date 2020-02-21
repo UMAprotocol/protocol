@@ -3,7 +3,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 
 import "../interfaces/TokenInterface.sol";
-import "./ERC20Mintable.sol";
+import "../../common/ERC20Mintable.sol";
 
 /**
  * @notice A burnable and mintable ERC20.

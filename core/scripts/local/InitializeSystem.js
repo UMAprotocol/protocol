@@ -1,3 +1,5 @@
+// @dev: Last tested Feb 22, 2020, this script does work
+
 const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -13,6 +15,8 @@ const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 const argv = require("minimist")(process.argv.slice());
 
+// TODO: Need to replace openzeppelin's ERC20Mintable with our own version since we have
+// upgraded to v3
 const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
 const truffleContract = require("@truffle/contract");
 const ERC20Mintable = truffleContract(ERC20MintableData);

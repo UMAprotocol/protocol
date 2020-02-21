@@ -7,7 +7,7 @@ import "./AccessControl.sol";
  * @dev Extension of {ERC20} that adds a set of accounts
  * which have permission to mint (create) new tokens as they see fit.
  *
- * At construction, the deployer of the contract is the only admin capable of adding new minters.
+ * At construction, the deployer of the contract is the only admin capable of adding new minters and is initially the only minter.
  */
 contract ERC20Mintable is ERC20, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -26,6 +26,7 @@ contract ERC20Mintable is ERC20, AccessControl {
 
     constructor () internal {
         _setRoleAdmin(MINTER_ROLE, _msgSender());
+        _addMinter(_msgSender());
     }
 
      /** @dev Creates `amount` tokens and assigns them to `account`, increasing
@@ -86,12 +87,7 @@ contract ERC20Mintable is ERC20, AccessControl {
     }
 
     function _addMinter(address account) internal {
-        grantRole(MINTER_ROLE, account);
+        _grantRole(MINTER_ROLE, account);
         emit MinterAdded(account);
-    }
-
-    function _removeMinter(address account) internal {
-        renounceRole(MINTER_ROLE, account);
-        emit MinterRemoved(account);
     }
 }

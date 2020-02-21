@@ -17,6 +17,7 @@ contract TokenFactory {
         Token mintableToken = new Token(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addMinter(msg.sender);
         mintableToken.setMinterAdmin(msg.sender);
+        mintableToken.renounceMinter();
         newToken = TokenInterface(address(mintableToken));
     }
 }

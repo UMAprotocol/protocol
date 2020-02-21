@@ -14,10 +14,7 @@ const Token = artifacts.require("Token");
 const TokenFactory = artifacts.require("TokenFactory");
 
 // Helper Contracts
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
+const ERC20Mintable = artifacts.require("Token");
 
 contract("PricelessPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
@@ -63,7 +60,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await ERC20Mintable.new({ from: collateralOwner });
+    collateral = await ERC20Mintable.new("COLLATERAL_TOKEN", "UMA", "18", { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 
