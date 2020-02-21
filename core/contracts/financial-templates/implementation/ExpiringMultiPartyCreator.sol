@@ -2,20 +2,15 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../AddressWhitelist.sol";
-import "../ContractCreator.sol";
-import "../Testable.sol";
+import "../../tokenized-derivative/AddressWhitelist.sol";
+import "../../tokenized-derivative/ContractCreator.sol";
+import "../../common/Testable.sol";
 import "./ExpiringMultiParty.sol";
 
-contract TokenizedDerivativeCreator is ContractCreator, Testable {
-    constructor(
-        address _finderAddress,
-        address _returnCalculatorWhitelist,
-        address _marginCurrencyWhitelist,
-        bool _isTest
-    ) public ContractCreator(_finderAddress) Testable(_isTest) {}
+contract ExpiringMultiPartyCreator is ContractCreator, Testable {
+    constructor(bool _isTest, address _finderAddress) public ContractCreator(_finderAddress) Testable(_isTest) {}
 
-    event CreatedExpiringMultiParty(address contractAddress);
+    event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
     function createExpiringMultiParty(ExpiringMultiParty.ConstructorParams memory params) public returns (address) {
         ExpiringMultiParty derivative = new ExpiringMultiParty(params);
@@ -25,7 +20,7 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
 
         _registerContract(parties, address(derivative));
 
-        emit CreatedExpiringMultiParty(address(derivative));
+        emit CreatedExpiringMultiParty(address(derivative), msg.sender);
 
         return address(derivative);
     }
