@@ -96,7 +96,7 @@ contract("Liquidatable", function(accounts) {
     collateralToken = await ERC20Mintable.new({ from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
+    identifierWhitelist = await IdentifierWhitelist.deployed();
     priceTrackingIdentifier = web3.utils.utf8ToHex("ETHUSD");
     await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
       from: contractDeployer
@@ -110,12 +110,6 @@ contract("Liquidatable", function(accounts) {
 
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
-      from: contractDeployer
-    });
-
-    // Register the identifer white list with the finder as well
-    const identifierWhitelistName = web3.utils.utf8ToHex("IdentifierWhitelist");
-    await finder.changeImplementationAddress(identifierWhitelistName, identifierWhitelist.address, {
       from: contractDeployer
     });
 

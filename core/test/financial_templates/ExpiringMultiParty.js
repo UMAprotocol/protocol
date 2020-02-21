@@ -38,12 +38,6 @@ contract("ExpiringMultiParty", function(accounts) {
       from: accounts[0]
     });
 
-    // Register the identifer white list with the finder as well
-    const identifierWhitelistName = web3.utils.utf8ToHex("IdentifierWhitelist");
-    await finder.changeImplementationAddress(identifierWhitelistName, identifierWhitelist.address, {
-      from: accounts[0]
-    });
-
     await ExpiringMultiParty.new(constructorParams);
   });
 });

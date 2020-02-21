@@ -103,22 +103,13 @@ contract PricelessPositionManager is FeePayer {
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-<<<<<<< HEAD:core/contracts/financial_templates/PricelessPositionManager.sol
-        collateralCurrency = IERC20(_collateralAddress);
-        Token mintableToken = new Token(_syntheticName, _syntheticSymbol, 18);
-        tokenCurrency = Token(address(mintableToken));
-        finder = Finder(_finderAddress);
-        priceIdentifer = _priceIdentifier;
-
-        IdentifierWhitelistInterface identiferWhiteList = IdentifierWhitelistInterface(
-            _getIdentifierWhitelistAddress()
-        );
-        require(identiferWhiteList.isIdentifierSupported(_priceIdentifier), "Price identifer not supported");
-=======
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
-        priceIdentifer = _priceFeedIdentifier;
->>>>>>> master:core/contracts/financial-templates/implementation/PricelessPositionManager.sol
+        
+        IdentifierWhitelistInterface identiferWhiteList = _getIdentifierWhitelist();
+        require(identiferWhiteList.isIdentifierSupported(_priceIdentifier));
+        
+        priceIdentifer = _priceIdentifier;
     }
 
     /**

@@ -72,7 +72,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
+    identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
       from: contractDeployer
     });
@@ -84,12 +84,6 @@ contract("PricelessPositionManager", function(accounts) {
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
-      from: contractDeployer
-    });
-
-    // Register the identifer white list with the finder as well
-    const identifierWhitelistName = web3.utils.utf8ToHex("IdentifierWhitelist");
-    await finder.changeImplementationAddress(identifierWhitelistName, identifierWhitelist.address, {
       from: contractDeployer
     });
 
@@ -131,7 +125,7 @@ contract("PricelessPositionManager", function(accounts) {
           withdrawalLiveness, //_withdrawalLiveness (unchanged)
           collateral.address, //_collateralAddress (unchanged)
           finder.address, //_finderAddress (unchanged)
-          web3.utils.utf8ToHex("UNKNOWN"), //Some identifer that the white list tracker does not know
+          web3.utils.utf8ToHex("UNKNOWN"), //Some identifer that the whitelist tracker does not know
           syntheticName, //_syntheticName (unchanged)
           syntheticSymbol, //_syntheticSymbol (unchanged)
           { from: contractDeployer }
