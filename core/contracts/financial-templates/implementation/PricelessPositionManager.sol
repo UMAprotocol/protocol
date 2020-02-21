@@ -66,6 +66,7 @@ contract PricelessPositionManager is FeePayer {
     event RequestWithdrawalExecuted(address indexed sponsor, uint indexed collateralAmount);
     event RequestWithdrawalCanceled(address indexed sponsor, uint indexed collateralAmount);
     event PositionCreated(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
+    event NewSponsor(address indexed sponsor);
     event Redeem(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
     event ContractExpired(address indexed caller);
     event SettleExpiredPosition(
@@ -121,6 +122,7 @@ contract PricelessPositionManager is FeePayer {
         delete positions[msg.sender];
 
         emit Transfer(msg.sender, newSponsorAddress);
+        emit NewSponsor(newSponsorAddress);
     }
 
     /**
@@ -243,6 +245,9 @@ contract PricelessPositionManager is FeePayer {
     {
         PositionData storage positionData = positions[msg.sender];
         require(positionData.requestPassTimestamp == 0);
+        if (positionData.tokensOutstanding.isEqual(0)) {
+            emit NewSponsor(msg.sender);
+        }
         _addCollateral(positionData.rawCollateral, collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
         require(_checkCollateralizationRatio(positionData));

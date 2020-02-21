@@ -10,7 +10,7 @@ All of our tutorials require that you complete the steps in [Prerequisites](./pr
 ## Deploy smart contracts to Ganache
 
 First, we'll start a blockchain locally using Ganache and deploy the UMA smart contracts to it. The underlying products
-we can track are configured via a json file `identifiers.json`. More details on this can be found [here](../explainers/price-feed-configuration.md).
+we can track are configured via a json file `identifiers.json`. More details on this can be found [here](../explainers/price_feed_configuration.md).
 
 Run all commands in this section from the `core/` directory.
 
@@ -55,4 +55,4 @@ Run all commands in this section from the `sponsor-dapp-v2/` directory.
 We now have a synthetic token tracking the BTC/USD price.
 
 To see our token valuation change as the BTC price changes, we can either push more prices using
-`ManualPublishPriceFeed.js`, as above, or see the price-feed-configuration.md doc to set up a real price feed.
+`ManualPublishPriceFeed.js`, as above, or see the [doc](../explainers/price_feed_configuration.md) to set up a real price feed.

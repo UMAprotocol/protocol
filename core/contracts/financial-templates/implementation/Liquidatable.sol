@@ -370,6 +370,10 @@ contract Liquidatable is PricelessPositionManager {
         return _getCollateral(liquidations[sponsor][uuid].rawLockedCollateral);
     }
 
+    function getLiquidations(address sponsor) external view returns (LiquidationData[] memory) {
+        return liquidations[sponsor];
+    }
+    
     /**
      * @notice This settles a liquidation if it is in the PendingDispute state. If not, it will immediately return.
      * If the liquidation is in the PendingDispute state, but a price is not available, this will revert.
