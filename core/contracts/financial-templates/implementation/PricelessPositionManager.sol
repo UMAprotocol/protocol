@@ -106,8 +106,7 @@ contract PricelessPositionManager is FeePayer {
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
 
-        IdentifierWhitelistInterface identiferWhiteList = _getIdentifierWhitelist();
-        require(identiferWhiteList.isIdentifierSupported(_priceIdentifier));
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
         priceIdentifer = _priceIdentifier;
     }
