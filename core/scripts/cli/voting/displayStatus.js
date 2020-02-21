@@ -30,13 +30,8 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   // If the user is using the two key contract, then the account is the designated voting contract's address
   const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
   const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
-  // TODO(#901): MetaMask provider sometimes has trouble reading past events
-  let resolvedPrices;
-  let rewards;
-  if (web3.currentProvider.label !== "metamask") {
-    resolvedPrices = await getResolvedPrices(web3, voting, account);
-    rewards = await getAvailableRewards(web3, voting, account);
-  }
+  const resolvedPrices = await getResolvedPrices(web3, voting, account);
+  const rewards = await getAvailableRewards(web3, voting, account);
   style.spinnerReadingContracts.stop();
 
   // TODO: #901 Can't access Voting.rounds in latest deployed Contract https://etherscan.io/address/0xfe3c4f1ec9f5df918d42ef7ed3fba81cc0086c5f#readContract
@@ -107,7 +102,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
       console.table(rewardsTable);
     }
   } else {
-    console.log(`${style.warning(`- Cannot display available voting rewards for Metamask users`)}:`);
+    console.log(`${style.warning(`- Cannot display available voting rewards for Metamask users`)}`);
   }
 
   // Display resolved prices that voter voted on
@@ -128,7 +123,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
       console.table(resolvedPricesTable);
     }
   } else {
-    console.log(`${style.warning(`- Cannot display past vote results for Metamask users`)}:`);
+    console.log(`${style.warning(`- Cannot display past vote results for Metamask users`)}`);
   }
 
   console.log(`\n`);

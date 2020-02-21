@@ -7,6 +7,8 @@ const {
 const { getKeyGenMessage, computeTopicHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 
+const argv = require("minimist")(process.argv.slice());
+
 /**
  * Generate a salt and use it to encrypt a committed vote in response to a price request
  * Return committed vote details to the voter
@@ -23,7 +25,7 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
 
   const vote = { price: priceWei, salt };
   let derivedPublicKey;
-  if (web3.currentProvider.label === "metamask") {
+  if (argv.network === "metamask") {
     const { publicKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account);
     derivedPublicKey = publicKey;
   } else {
@@ -55,7 +57,7 @@ const constructReveal = async (request, roundId, web3, account, votingContract) 
   const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
 
   let derivedPrivateKey;
-  if (web3.currentProvider.label === "metamask") {
+  if (argv.network === "metamask") {
     const { privateKey } = await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account);
     derivedPrivateKey = privateKey;
   } else {
