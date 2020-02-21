@@ -82,8 +82,6 @@ Selecting these lead to further menus with relevant actions:
 - *Vote*: Commit and reveal votes, retrieve rewards, and view results of previous votes.
 - *Admin*: Vote on system administrator proposals
 
-# Development
-
-## Known Bugs:
+# Known Bugs:
 
 - Metamask: retrieving rewards and viewing past vote results does not work well with the Metamask provider, specifically because it does not do a great job of reading past event logs. To read more technical details about the issue, go [here](https://github.com/UMAprotocol/protocol/issues/901).
