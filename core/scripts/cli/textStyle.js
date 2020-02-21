@@ -8,6 +8,7 @@ const style = {
   // Colors
   instruction: chalkPipe("bgRed"),
   success: chalkPipe("bgGreen"),
+  warning: chalkPipe("bgYellow"),
   help: chalkPipe("bgCyan"),
 
   // Links

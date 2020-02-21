@@ -107,7 +107,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
       console.table(rewardsTable);
     }
   } else {
-    console.log(`- Cannot display available voting rewards for Metamask users`);
+    console.log(`${style.warning(`- Cannot display available voting rewards for Metamask users`)}:`);
   }
 
   // Display resolved prices that voter voted on
@@ -128,7 +128,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
       console.table(resolvedPricesTable);
     }
   } else {
-    console.log(`- Cannot display past vote results for Metamask users`);
+    console.log(`${style.warning(`- Cannot display past vote results for Metamask users`)}:`);
   }
 
   console.log(`\n`);
