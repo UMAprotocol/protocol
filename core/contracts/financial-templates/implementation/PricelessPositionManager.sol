@@ -102,7 +102,7 @@ contract PricelessPositionManager is FeePayer {
         uint _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
-        bytes32 _priceFeedIdentifier,
+        bytes32 _priceIdentifier,
         string memory _syntheticName,
         string memory _syntheticSymbol,
         address _tokenFactoryAddress
@@ -111,7 +111,10 @@ contract PricelessPositionManager is FeePayer {
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
-        priceIdentifer = _priceFeedIdentifier;
+
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
+
+        priceIdentifer = _priceIdentifier;
     }
 
     /**

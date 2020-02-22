@@ -41,7 +41,7 @@ contract("PricelessPositionManager", function(accounts) {
   const syntheticSymbol = "UMATEST";
   const withdrawalLiveness = 1000;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-  const priceTrackingIdentifier = web3.utils.utf8ToHex("ETHUSD");
+  const priceTrackingIdentifier = web3.utils.utf8ToHex("UMATEST");
 
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
@@ -72,7 +72,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
+    identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
       from: contractDeployer
     });
@@ -115,6 +115,23 @@ contract("PricelessPositionManager", function(accounts) {
     // Synthetic token
     assert.equal(await tokenCurrency.name(), syntheticName);
     assert.equal(await tokenCurrency.symbol(), syntheticSymbol);
+
+    //Reverts on bad constructor input (unknown identifer)
+    assert(
+      await didContractThrow(
+        PricelessPositionManager.new(
+          true, //_isTest (unchanged)
+          expirationTimestamp, //_expirationTimestamp (unchanged)
+          withdrawalLiveness, //_withdrawalLiveness (unchanged)
+          collateral.address, //_collateralAddress (unchanged)
+          finder.address, //_finderAddress (unchanged)
+          web3.utils.utf8ToHex("UNKNOWN"), //Some identifer that the whitelist tracker does not know
+          syntheticName, //_syntheticName (unchanged)
+          syntheticSymbol, //_syntheticSymbol (unchanged)
+          { from: contractDeployer }
+        )
+      )
+    );
   });
 
   it("Lifecycle", async function() {
