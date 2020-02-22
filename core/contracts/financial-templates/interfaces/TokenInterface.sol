@@ -17,24 +17,6 @@ contract TokenInterface is IERC20 {
     function mint(address account, uint256 amount) external returns (bool);
 
     /**
-     * @dev Add minter role to account.
-     *
-     * Requirements:
-     *
-     * - the caller must have the Owner role.
-     */
-    function addMinter(address account) external;
-
-    /**
-     * @dev Removes minter role from account.
-     *
-     * Requirements:
-     *
-     * - the caller must have the Owner role.
-     */
-    function removeMinter(address account) external;
-
-    /**
      * @dev Destroys `amount` tokens from the caller.
      *
      * Requirements:
@@ -42,31 +24,4 @@ contract TokenInterface is IERC20 {
      * - the caller must have the burner role.
      */
     function burn(uint256 amount) external;
-
-    /**
-     * @dev Add burner role to account
-     *
-     * Requirements:
-     *
-     * - the caller must have the Owner role.
-     */
-    function addBurner(address account) external;
-
-    /**
-     * @dev Removes burner role from account.
-     *
-     * Requirements:
-     *
-     * - the caller must have the Owner role.
-     */
-    function removeBurner(address account) external;
-
-    /**
-     * @dev Reset Owner role to account
-     *
-     * Requirements:
-     *
-     * - the caller must have the Owner role.
-     */
-    function resetOwner(address account) external;
 }

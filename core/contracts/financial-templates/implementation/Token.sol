@@ -35,10 +35,28 @@ contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
         return true;
     }
 
+    function burn(uint256 amount) external onlyRoleHolder(uint(Roles.Burner)) {
+        _burn(msg.sender, amount);
+    }
+
+    /**
+     * @dev Add minter role to account.
+     *
+     * Requirements:
+     *
+     * - the caller must have the Owner role.
+     */
     function addMinter(address account) external {
         addMember(uint(Roles.Minter), account);
     }
 
+    /**
+     * @dev Remove minter role from account.
+     *
+     * Requirements:
+     *
+     * - the caller must have the Owner role.
+     */
     function removeMinter(address account) external {
         removeMember(uint(Roles.Minter), account);
     }
@@ -47,14 +65,24 @@ contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
         return holdsRole(uint(Roles.Minter), account);
     }
 
-    function burn(uint256 amount) external onlyRoleHolder(uint(Roles.Burner)) {
-        _burn(msg.sender, amount);
-    }
-
+    /**
+     * @dev Add burner role to account
+     *
+     * Requirements:
+     *
+     * - the caller must have the Owner role.
+     */
     function addBurner(address account) external {
         addMember(uint(Roles.Burner), account);
     }
 
+    /**
+     * @dev Removes burner role from account.
+     *
+     * Requirements:
+     *
+     * - the caller must have the Owner role.
+     */
     function removeBurner(address account) external {
         removeMember(uint(Roles.Burner), account);
     }
@@ -63,6 +91,13 @@ contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
         return holdsRole(uint(Roles.Burner), account);
     }
 
+    /**
+     * @dev Reset Owner role to account
+     *
+     * Requirements:
+     *
+     * - the caller must have the Owner role.
+     */
     function resetOwner(address account) external {
         resetMember(uint(Roles.Owner), account);
     }
