@@ -6,7 +6,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 const Finder = artifacts.require("Finder");
 const TokenFactory = artifacts.require("TokenFactory");
-const ERC20Mintable = artifacts.require("Token");
+const Token = artifacts.require("Token");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
   let collateralToken;
@@ -22,7 +22,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   };
 
   before(async function() {
-    collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
+    collateralToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
     await collateralToken.mint(accounts[0], toWei("100000"), { from: accounts[0] });
     await collateralToken.mint(accounts[1], toWei("100000"), { from: accounts[0] });
   });
@@ -49,7 +49,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[0] });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[1] });
 
-    syntheticToken = await ERC20Mintable.at(await emp.tokenCurrency());
+    syntheticToken = await Token.at(await emp.tokenCurrency());
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[0] });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[1] });
   });

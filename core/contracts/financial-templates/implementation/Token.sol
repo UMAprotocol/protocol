@@ -6,7 +6,8 @@ import "../interfaces/TokenInterface.sol";
 import "../../common/MultiRole.sol";
 
 /**
- * @notice A burnable and mintable ERC20. There can only be one minter at a time, and the contract deployer will be the only initial minter.
+ * @notice A burnable and mintable ERC20. There can only be one minter at a time
+ * and the contract deployer will be the only initial minter.
  */
 contract Token is TokenInterface, ERC20Detailed, ERC20Burnable, MultiRole {
     enum Roles {

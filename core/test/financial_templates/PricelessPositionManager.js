@@ -13,9 +13,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("Token");
 const TokenFactory = artifacts.require("TokenFactory");
 
-// Helper Contracts
-const ERC20Mintable = artifacts.require("Token");
-
 contract("PricelessPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
   const contractDeployer = accounts[0];
@@ -60,7 +57,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await ERC20Mintable.new("COLLATERAL_TOKEN", "UMA", "18", { from: collateralOwner });
+    collateral = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 

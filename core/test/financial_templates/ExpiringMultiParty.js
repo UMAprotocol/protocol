@@ -6,11 +6,11 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 // Helper Contracts
 const Finder = artifacts.require("Finder");
 const TokenFactory = artifacts.require("TokenFactory");
-const ERC20Mintable = artifacts.require("Token");
+const Token = artifacts.require("Token");
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Can deploy", async function() {
-    const collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
+    const collateralToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
 
     const constructorParams = {
       isTest: true,
