@@ -54,8 +54,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       from: accounts[0]
     });
 
-    const emp = await ExpiringMultiParty.new(constructorParams);
-    const client = new ExpiringMultiPartyClient(emp.address);
+    emp = await ExpiringMultiParty.new(constructorParams);
+    client = new ExpiringMultiPartyClient(emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[0] });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[1] });
 
