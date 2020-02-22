@@ -896,4 +896,69 @@ contract("PricelessPositionManager", function(accounts) {
     // Set the store fees back to 0 to prevent it from affecting other tests.
     await store.setFinalFee(collateral.address, { rawValue: "0" });
   });
+
+  it("Oracle swap post expiry", async function() {
+    // Approvals
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: tokenHolder });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
+
+    // Create one position with 200 synthetic tokens to mint with 300 tokens of collateral. For this test say the
+    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    const numTokens = toWei("200");
+    const amountCollateral = toWei("300");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer 100 the tokens from the sponsor to two separate holders. IRL this happens through the sponsor selling
+    // tokens.
+    const tokenHolderTokens = toWei("100");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
+      from: sponsor
+    });
+    await tokenCurrency.transfer(other, tokenHolderTokens, {
+      from: sponsor
+    });
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
+    await pricelessPositionManager.expire({ from: other });
+
+    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
+    // feed. With 200 units of outstanding tokens this results in a token redemption value of: TRV = 200 * 1.2 = 240 USD.
+    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime, toWei("1.2"));
+
+    // Token holder should receive 120 collateral tokens for their 100 synthetic tokens.
+    let initialCollateral = await collateral.balanceOf(tokenHolder);
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    let collateralPaid = (await collateral.balanceOf(tokenHolder)).sub(initialCollateral);
+    assert.equal(collateralPaid, toWei("120"));
+
+    // Create new oracle, replace it in the finder, and push a different price to it.
+    const newMockOracle = await MockOracle.new(identifierWhitelist.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
+      from: contractDeployer
+    });
+
+    // Settle expired should still work even if the new oracle has no price.
+    initialCollateral = await collateral.balanceOf(sponsor);
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    collateralPaid = (await collateral.balanceOf(sponsor)).sub(initialCollateral);
+
+    // Sponsor should have received 300 - 240 = 60 collateral tokens.
+    assert.equal(collateralPaid, toWei("60"));
+
+    // Push a different price to the new oracle to ensure the contract still uses the old price.
+    await newMockOracle.requestPrice(priceTrackingIdentifier, expirationTime);
+    await newMockOracle.pushPrice(priceTrackingIdentifier, expirationTime, toWei("0.8"));
+
+    // Second token holder should receive the same payout as the first despite the oracle price being changed.
+    initialCollateral = await collateral.balanceOf(other);
+    await pricelessPositionManager.settleExpired({ from: other });
+    collateralPaid = (await collateral.balanceOf(other)).sub(initialCollateral);
+    assert.equal(collateralPaid, toWei("120"));
+  });
 });
