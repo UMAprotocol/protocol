@@ -27,7 +27,9 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     constructor() public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), new address[](0));
-        _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), new address[](0));
+        address[] memory initialBurners = new address[](1);
+        initialBurners[0] = msg.sender;
+        _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), initialBurners);
     }
 
     /**

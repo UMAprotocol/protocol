@@ -24,7 +24,7 @@ contract("TokenFactory", function(accounts) {
   before(async () => {
     tokenFactory = await TokenFactory.deployed();
   });
-  it("Can create new tokens and transfers minter and admin role successfully", async () => {
+  it("Can create new tokens and transfers roles successfully", async () => {
     const tokenAddress = await tokenFactory.createToken.call(
       tokenDetails.name,
       tokenDetails.symbol,
@@ -42,15 +42,25 @@ contract("TokenFactory", function(accounts) {
     assert(!(await token.isMinter(contractDeployer)));
     assert(await token.isMinter(tokenCreator));
 
-    // Creator should be able to add a new minter
-    await token.resetMinter(rando, { from: tokenCreator });
-    assert(await token.isMinter(rando));
-    assert(!(await token.isMinter(tokenCreator)));
+    // Creator should be only burner
+    assert(!(await token.isBurner(contractDeployer)));
+    assert(await token.isBurner(tokenCreator));
 
-    // Rando resets minter role back to Creator
-    await token.resetMinter(tokenCreator, { from: rando });
+    // Contract deployer should no longer be capable of adding new roles
+    assert(await didContractThrow(token.addMinter(rando, { from: contractDeployer })));
+    assert(await didContractThrow(token.addBurner(rando, { from: contractDeployer })));
+
+    // Creator should be able to add and remove a new minter
+    await token.addMinter(rando, { from: tokenCreator });
+    assert(await token.isMinter(rando));
+    await token.removeMinter(rando, { from: tokenCreator });
     assert(!(await token.isMinter(rando)));
-    assert(await token.isMinter(tokenCreator));
+
+    // Creator should be able to add a new burner
+    await token.addBurner(rando, { from: tokenCreator });
+    assert(await token.isBurner(rando));
+    await token.removeBurner(rando, { from: tokenCreator });
+    assert(!(await token.isBurner(rando)));
   });
   it("Token can execute expected methods", async () => {
     const tokenAddress = await tokenFactory.createToken.call(
@@ -88,7 +98,11 @@ contract("TokenFactory", function(accounts) {
     );
     assert.equal((await token.balanceOf(contractDeployer)).toString(), amountToTransfer);
 
-    // Burn transferred tokens
+    // Other account cannot burn any tokens because they are not a burner
+    assert(await didContractThrow(token.burn(amountToTransfer, { from: contractDeployer })));
+
+    // Token creator grants burning privileges to recipient of tokens
+    await token.addBurner(contractDeployer, { from: tokenCreator });
     await token.burn(amountToTransfer, { from: contractDeployer });
     assert.equal((await token.balanceOf(contractDeployer)).toString(), "0");
 
@@ -101,6 +115,7 @@ contract("TokenFactory", function(accounts) {
 
     // Burn remaining tokens
     await token.burn(amountToTransfer, { from: tokenCreator });
+    await token.addBurner(rando, { from: tokenCreator });
     await token.burn(toWei("8.5".toString()), { from: rando });
     assert.equal((await token.balanceOf(rando)).toString(), "0");
     assert.equal((await token.totalSupply()).toString(), "0");
