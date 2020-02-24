@@ -370,7 +370,7 @@ contract("Liquidatable", function(accounts) {
             ev.liquidator == liquidator &&
             ev.disputer == disputer &&
             ev.disputeId == 0 &&
-            ev.disputeBondAmount == toWei("15").toString() //10% of the collateral as disputeBondPct * amountOfCollateral
+            ev.disputeBondAmount == toWei("15").toString() // 10% of the collateral as disputeBondPct * amountOfCollateral
           );
         });
       });
@@ -488,7 +488,7 @@ contract("Liquidatable", function(accounts) {
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
-        //Any price above 1.25 for a debt of 100 with 150 units of underlying should result in failed dispute and a successful liquidation.
+        // Any price above 1.25 for a debt of 100 with 150 units of underlying should result in failed dispute and a successful liquidation.
 
         const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1.3");
@@ -586,7 +586,7 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
         assert.equal((await collateralToken.balanceOf(liquidator)).toString(), amountOfCollateral.toString());
 
-        //Liquidator should not be able to call multiple times. Only one withdrawal
+        // Liquidator should not be able to call multiple times. Only one withdrawal
         assert(
           await didContractThrow(
             liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
@@ -667,7 +667,7 @@ contract("Liquidatable", function(accounts) {
           const expectedPayment = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
           assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPayment.toString());
 
-          //Sponsor should not be able to call again
+          // Sponsor should not be able to call again
           assert(
             await didContractThrow(
               liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor })
@@ -680,7 +680,7 @@ contract("Liquidatable", function(accounts) {
           const expectedPayment = settlementTRV.sub(disputerDisputeReward).sub(sponsorDisputeReward);
           assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
 
-          //Liquidator should not be able to call again
+          // Liquidator should not be able to call again
           assert(
             await didContractThrow(
               liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
@@ -693,7 +693,7 @@ contract("Liquidatable", function(accounts) {
           const expectedPayment = disputerDisputeReward.add(disputeBond);
           assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPayment.toString());
 
-          //Disputer should not be able to call again
+          // Disputer should not be able to call again
           assert(
             await didContractThrow(
               liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer })

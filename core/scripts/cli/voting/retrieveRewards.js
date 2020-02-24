@@ -16,7 +16,7 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
   // TODO(#901): MetaMask provider sometimes has trouble reading past events
   if (argv.network === "metamask") {
     console.log(
-      `Sorry, we currently do not support retrieving rewards for Metamask users! Try again with another web3 provider.`
+      "Sorry, we currently do not support retrieving rewards for Metamask users! Try again with another web3 provider."
     );
     return;
   }
@@ -30,14 +30,15 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
   if (roundIds.length > 0) {
     console.group(
       `${style.instruction(
-        `\nPlease select which round ID of resolved price requests you would like to retrieve rewards for:`
+        "\nPlease select which round ID of resolved price requests you would like to retrieve rewards for:"
       )}`
     );
     roundIds.push({ name: "back" });
     const list = await inquirer.prompt({
       type: "list",
       name: "roundIdList",
-      message: `You will retrieve rewards for all price requests for the round ID you select. You can only retrieve rewards for price requests that you have voted (committed AND revealed) and that have resolved.`,
+      message:
+        "You will retrieve rewards for all price requests for the round ID you select. You can only retrieve rewards for price requests that you have voted (committed AND revealed) and that have resolved.",
       choices: roundIds
     });
     if (list["roundIdList"] !== "back") {
@@ -57,16 +58,16 @@ const retrieveRewards = async (web3, voting, designatedVoting) => {
           } in ${batches} batch${batches === 1 ? "" : "es"}.`
         )
       );
-      console.group(style.success(`Receipts:`));
+      console.group(style.success("Receipts:"));
       for (let i = 0; i < successes.length; i++) {
         console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${successes[i].txnHash}`)}`);
       }
       console.groupEnd();
     }
-    console.log(`\n`);
+    console.log("\n");
     console.groupEnd();
   } else {
-    console.log(`You have no rewards to retrieve.`);
+    console.log("You have no rewards to retrieve.");
   }
 };
 
