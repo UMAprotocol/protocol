@@ -1,6 +1,4 @@
 const inquirer = require("inquirer");
-
-// Wallet module helpers
 const createNewAccount = require("./wallet/createNewAccount");
 const readDefaultAccount = require("./wallet/readDefaultAccountInfo");
 const style = require("./textStyle");
@@ -25,7 +23,10 @@ const wallet = async () => {
   return await inquirer.prompt(prompts);
 };
 
-module.exports = async function(web3, artifacts) {
+/**
+ * Menu for Wallet subactions of CLI
+ */
+const walletMenu = async function(web3, artifacts) {
   try {
     const inputs = (await wallet())["walletTopMenu"];
     switch (inputs) {
@@ -41,16 +42,16 @@ module.exports = async function(web3, artifacts) {
 
       // HELP
       case ACTIONS.help:
-        console.group(`${style.bgCyan("Wallet actions")}:`);
+        console.group(`${style.help(`Wallet actions`)}:`);
         console.log(
-          `${style.bgCyan(
-            "- Info"
-          )}: displays balance information for your default account from which you will send UMA-related transactions`
+          `${style.help(
+            ACTIONS.info
+          )}: Displays balance information for your default account from which you will send UMA-related transactions`
         );
         console.log(
-          `${style.bgCyan(
-            "- Generate Account"
-          )}: create and display credentials for a new Ethereum account. If you want to make this your default signing account for UMA-related transactions then you can import it into Metamask or save it into your environment variable "MNEMONIC".`
+          `${style.help(
+            ACTIONS.generate
+          )}: Create and display credentials for a new Ethereum account. If you want to make this your default signing account for UMA-related transactions then you can import it into Metamask or save it into your environment variable "MNEMONIC".`
         );
         console.groupEnd();
         break;
@@ -67,3 +68,5 @@ module.exports = async function(web3, artifacts) {
   }
   return;
 };
+
+module.exports = walletMenu;

@@ -40,6 +40,7 @@ function DesignatedVotingTransfer({ votingAccount }) {
       <div>
         You have {web3.utils.fromWei(currentAccountBalance)} tokens that will NOT be voted with. You'll need to first
         transfer them to your DesignatedVoting instance at address {votingAccount}.
+        <br />
         <b>Make sure you control the cold wallet key before transferring!</b>
       </div>
       <div>

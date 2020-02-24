@@ -10,7 +10,7 @@
     "eslint_vanilla": "eslint 'core/**/*.js'",
     "prettier": "npm run prettier_vanilla -- --write",
     "prettier_check": "npm run prettier_vanilla -- --check",
-    "prettier_vanilla": "prettier --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol'"
+    "prettier_vanilla": "prettier --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol' 'financial-templates-lib/*.js'"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
@@ -49,8 +49,8 @@
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
+    "node-metamask": "github:UMAprotocol/node-metamask",
     "ora": "^4.0.3",
-    "node-metamask": "^1.1.2",
     "require-context": "^1.1.0",
     "secp256k1": "^3.7.1",
     "truffle": "5.1.4",

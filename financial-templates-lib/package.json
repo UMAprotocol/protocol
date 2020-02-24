@@ -1,0 +1,7 @@
+{
+  "name": "financial-templates-lib",
+  "version": "0.1.0",
+  "description": "Arbitrage automation and libraries for UMA financial templates",
+  "private": true,
+  "dependencies": {}
+}

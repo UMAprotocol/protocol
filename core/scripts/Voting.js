@@ -1,14 +1,19 @@
 const Voting = artifacts.require("Voting");
 const { VotePhasesEnum } = require("../../common/Enums");
 const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../common/Constants");
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../common/Crypto");
-const { computeTopicHash, getKeyGenMessage } = require("../../common/EncryptionHelper");
+const { computeTopicHash } = require("../../common/EncryptionHelper");
 const publicNetworks = require("../../common/PublicNetworks");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
 require("dotenv").config();
 const gmailSend = require("gmail-send")();
 const moment = require("moment");
+const {
+  constructCommitment: _constructCommitment,
+  constructReveal: _constructReveal,
+  batchRevealVotes,
+  batchCommitVotes
+} = require("../../common/VotingUtils");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 
@@ -462,21 +467,7 @@ class VotingSystem {
 
   async constructCommitment(request, roundId, isProd) {
     const fetchedPrice = await fetchPrice(request, isProd);
-    const salt = web3.utils.toBN(web3.utils.randomHex(32));
-    const hash = web3.utils.soliditySha3(fetchedPrice, salt);
-
-    const vote = { price: fetchedPrice, salt };
-    const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
-    const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
-
-    return {
-      identifier: request.identifier,
-      time: request.time,
-      hash,
-      encryptedVote,
-      price: fetchedPrice,
-      salt
-    };
+    return await _constructCommitment(request, roundId, web3, web3.utils.fromWei(fetchedPrice), this.account);
   }
 
   async runBatchCommit(requests, roundId, isProd) {
@@ -516,26 +507,9 @@ class VotingSystem {
       }
 
       if (newCommitments.length > 0) {
-        // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
-        const { receipt } = await this.voting.batchCommit(
-          newCommitments.map(commitment => {
-            // This filters out the parts of the commitment that we don't need to send to solidity.
-            // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
-            // the solidity struct.
-            const { price, salt, ...rest } = commitment;
-            return rest;
-          }),
-          { from: this.account }
-        );
-
-        // Add the batch transaction hash to each commitment.
-        newCommitments.forEach(commitment => {
-          commitment.txnHash = receipt.transactionHash;
-        });
-
-        // Append any of new batch's commitments to running commitment list
-        commitments = commitments.concat(newCommitments);
-        batches += 1;
+        const { successes, batches: _batches } = await batchCommitVotes(newCommitments, this.voting, this.account);
+        commitments = commitments.concat(successes);
+        batches += _batches;
       }
     }
 
@@ -544,27 +518,14 @@ class VotingSystem {
   }
 
   async constructReveal(request, roundId, isProd) {
-    const encryptedCommit = await this.getMessage(request, roundId);
-
-    let vote;
-
-    // Catch messages that are indecipherable and handle by skipping over the request.
     try {
-      const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), this.account);
-      vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
+      return await _constructReveal(request, roundId, web3, this.account, this.voting);
     } catch (e) {
       if (isProd) {
         console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
       }
       return null;
     }
-
-    return {
-      identifier: request.identifier,
-      time: request.time,
-      price: vote.price.toString(),
-      salt: web3.utils.hexToNumberString("0x" + vote.salt.toString())
-    };
   }
 
   async runBatchReveal(requests, roundId, isProd) {
@@ -599,16 +560,9 @@ class VotingSystem {
 
       // Append any of new batch's reveals to running reveals list
       if (newReveals.length > 0) {
-        // Always call `batchReveal`, even if there's only one reveal.
-        const { receipt } = await this.voting.batchReveal(newReveals, { from: this.account });
-
-        // Add the batch transaction hash to each reveal.
-        newReveals.forEach(reveal => {
-          reveal.txnHash = receipt.transactionHash;
-        });
-
-        reveals = reveals.concat(newReveals);
-        batches += 1;
+        const { successes, batches: _batches } = await batchRevealVotes(newReveals, this.voting, this.account);
+        reveals = reveals.concat(successes);
+        batches += _batches;
       }
     }
 
