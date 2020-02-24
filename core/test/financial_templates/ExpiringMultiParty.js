@@ -7,14 +7,11 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
+const Token = artifacts.require("Token");
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Can deploy", async function() {
-    const collateralToken = await ERC20Mintable.new({ from: accounts[0] });
+    const collateralToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
 
     const constructorParams = {
       isTest: true,
