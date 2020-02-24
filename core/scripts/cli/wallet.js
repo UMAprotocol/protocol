@@ -42,7 +42,7 @@ const walletMenu = async function(web3, artifacts) {
 
       // HELP
       case ACTIONS.help:
-        console.group(`${style.help(`Wallet actions`)}:`);
+        console.group(`${style.help("Wallet actions")}:`);
         console.log(
           `${style.help(
             ACTIONS.info

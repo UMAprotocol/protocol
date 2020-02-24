@@ -18,6 +18,7 @@ module.exports = {
     "no-case-declarations": [0],
     "no-constant-condition": [0],
     "no-redeclare": [0],
-    "no-console": [0]
+    "no-console": [0],
+    "no-irregular-whitespace": [0]
   }
 };

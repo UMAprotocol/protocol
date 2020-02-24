@@ -48,26 +48,26 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
   // Compute time until next phase and round
   const { minutesInLastHour, hoursUntilNextPhase, hoursUntilNextRound } = votePhaseTime(currentTime, roundPhase);
 
-  console.group(`${style.success(`\n** Your voting status **`)}`);
+  console.group(`${style.success("\n** Your voting status **")}`);
   if (designatedVoting) {
-    console.log(`${style.success(`- Voting by proxy with the two key contract @`)}: ${designatedVoting.address}`);
+    console.log(`${style.success("- Voting by proxy with the two key contract @")}: ${designatedVoting.address}`);
   }
-  console.log(`${style.success(`- Current round ID`)}: ${roundId.toString()}`);
+  console.log(`${style.success("- Current round ID")}: ${roundId.toString()}`);
   console.log(
-    `${style.success(`- Current round phase`)}: ${
+    `${style.success("- Current round phase")}: ${
       roundPhase.toString() === VotePhasesEnum.COMMIT ? "Commit" : "Reveal"
     }`
   );
   // console.log(`${style.success(`- Round Inflation`)}: ${inflationRate.toString()} %`);
   // console.log(`${style.success(`- Round GAT`)}: ${gatPercentage.toString()} %`);
-  console.log(`${style.success(`- Contract time`)}: ${style.formatSecondsToUtc(currentTime)}`);
+  console.log(`${style.success("- Contract time")}: ${style.formatSecondsToUtc(currentTime)}`);
   console.log(
     `${style.success(
       `- Time until ${roundPhase === VotePhasesEnum.COMMIT ? "Reveal" : "Commit"}`
     )} phase: ${hoursUntilNextPhase} hours, ${minutesInLastHour} minutes`
   );
   console.log(
-    `${style.success(`- Time until next voting round`)}: ${hoursUntilNextRound} hours, ${minutesInLastHour} minutes`
+    `${style.success("- Time until next voting round")}: ${hoursUntilNextRound} hours, ${minutesInLastHour} minutes`
   );
 
   // Display pending requests in a table
@@ -87,7 +87,7 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
 
   // Display rewards to be retrieved in a table
   if (rewards) {
-    console.log(`${style.success(`- Voting Rewards Available`)}:`);
+    console.log(`${style.success("- Voting Rewards Available")}:`);
     if (rewards.roundIds.length > 0) {
       const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
       const rewardsTable = Object.values(rewards.rewardsByRoundId)
@@ -102,12 +102,12 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
       console.table(rewardsTable);
     }
   } else {
-    console.log(`${style.warning(`- Cannot display available voting rewards for Metamask users`)}`);
+    console.log(`${style.warning("- Cannot display available voting rewards for Metamask users")}`);
   }
 
   // Display resolved prices that voter voted on
   if (resolvedPrices) {
-    console.log(`${style.success(`- Resolved Prices of Votes Participated In`)}:`);
+    console.log(`${style.success("- Resolved Prices of Votes Participated In")}:`);
     if (Object.keys(resolvedPrices).length > 0) {
       const reducer = (accumulator, currentValue) => accumulator.concat(currentValue);
       const resolvedPricesTable = Object.values(resolvedPrices)
@@ -123,10 +123,10 @@ const displayVoteStatus = async (web3, voting, designatedVoting) => {
       console.table(resolvedPricesTable);
     }
   } else {
-    console.log(`${style.warning(`- Cannot display past vote results for Metamask users`)}`);
+    console.log(`${style.warning("- Cannot display past vote results for Metamask users")}`);
   }
 
-  console.log(`\n`);
+  console.log("\n");
   console.groupEnd();
 };
 

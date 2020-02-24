@@ -589,7 +589,7 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
         assert.equal((await collateralToken.balanceOf(liquidator)).toString(), amountOfCollateral.toString());
 
-        //Liquidator should not be able to call multiple times. Only one withdrawal
+        // Liquidator should not be able to call multiple times. Only one withdrawal
         assert(
           await didContractThrow(
             liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
@@ -670,7 +670,7 @@ contract("Liquidatable", function(accounts) {
           const expectedPayment = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
           assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPayment.toString());
 
-          //Sponsor should not be able to call again
+          // Sponsor should not be able to call again
           assert(
             await didContractThrow(
               liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor })
@@ -683,7 +683,7 @@ contract("Liquidatable", function(accounts) {
           const expectedPayment = settlementTRV.sub(disputerDisputeReward).sub(sponsorDisputeReward);
           assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
 
-          //Liquidator should not be able to call again
+          // Liquidator should not be able to call again
           assert(
             await didContractThrow(
               liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator })
@@ -696,7 +696,7 @@ contract("Liquidatable", function(accounts) {
           const expectedPayment = disputerDisputeReward.add(disputeBond);
           assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPayment.toString());
 
-          //Disputer should not be able to call again
+          // Disputer should not be able to call again
           assert(
             await didContractThrow(
               liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer })
