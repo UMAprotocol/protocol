@@ -1,7 +1,7 @@
-// Tested Contract
+// Tested contract
 const TokenFactory = artifacts.require("TokenFactory");
 
-// Helper Contracts
+// Helper contracts
 const Token = artifacts.require("Token");
 
 const { toWei, toBN } = web3.utils;
