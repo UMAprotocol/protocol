@@ -113,6 +113,22 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       }
     ];
     assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
+
+    // Expire the liquidation by manipulating Date.now to be just after the liquidation's expiry.
+    const expiryTime = (await emp.liquidations(accounts[1], id.toString())).expiry;
+    let oldNow = Date.now;
+    Date.now = () => {
+      return Number(expiryTime) * 1000 + 1;
+    };
+
+    await updateAndVerify(
+      client,
+      [accounts[0], accounts[1]],
+      [{ sponsor: accounts[0], numTokens: toWei("100"), amountCollateral: toWei("20") }]
+    );
+    assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+
+    Date.now = oldNow;
   });
 
   it("Undercollateralized", async function() {
@@ -136,7 +152,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     const liquidations = client.getUndisputedLiquidations();
     // Disputable if the disputer believes the price was `1`, and not disputable if they believe the price was just
     // above `1`.
-    assert(client.isDisputable(liquidations[0], toWei("1")));
+    assert.isTrue(client.isDisputable(liquidations[0], toWei("1")));
     assert.isFalse(client.isDisputable(liquidations[0], toWei("1.00000000000000001")));
 
     // Dispute the liquidation and make sure it no longer shows up in the list.

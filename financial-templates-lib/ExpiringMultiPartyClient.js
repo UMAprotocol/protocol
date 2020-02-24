@@ -87,10 +87,11 @@ class ExpiringMultiPartyClient {
 
     const nextUndisputedLiquidations = [];
     const predisputeState = "1";
+    const currentTime = Date.now() / 1000;
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
-        if (liquidation.state == predisputeState) {
+        if (liquidation.state == predisputeState && Number(liquidation.expiry) > currentTime) {
           nextUndisputedLiquidations.push({
             sponsor: liquidation.sponsor,
             id: id.toString(),
