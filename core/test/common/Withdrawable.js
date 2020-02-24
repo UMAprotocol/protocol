@@ -3,7 +3,7 @@ const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const WithdrawableTest = artifacts.require("WithdrawableTest");
 
 // Pull in contracts from dependencies.
-const Token = artifacts.require("Token");
+const Token = artifacts.require("PermissionedExpandedERC20");
 
 contract("Withdrawable", function(accounts) {
   let token;
@@ -13,7 +13,7 @@ contract("Withdrawable", function(accounts) {
 
   before(async function() {
     // Create token contract and mint tokens for use by rando.
-    token = await Token.new("TEST-TOKEN", "UMA", "18", { from: owner });
+    token = await Token.new({ from: owner });
     await token.mint(rando, web3.utils.toWei("100", "ether"), { from: owner });
   });
 

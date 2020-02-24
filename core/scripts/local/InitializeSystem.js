@@ -11,7 +11,7 @@ const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 const argv = require("minimist")(process.argv.slice());
 
-const Token = artifacts.require("Token");
+const Token = artifacts.require("PermissionedExpandedERC20");
 
 // Deploys a TokenizedDerivative. Used for deploying a contract to Ganache for local testing.
 const initializeSystem = async function(callback) {
@@ -51,7 +51,7 @@ const initializeSystem = async function(callback) {
     }
 
     // Create and register a margin currency.
-    const marginToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: sponsor });
+    const marginToken = await Token.new({ from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     const marginCurrencyWhitelist = await AddressWhitelist.at(
       await tokenizedDerivativeCreator.marginCurrencyWhitelist()

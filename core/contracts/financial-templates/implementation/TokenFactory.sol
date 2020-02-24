@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
-import "./Token.sol";
-import "../interfaces/TokenInterface.sol";
+import "./SyntheticToken.sol";
+import "../../common/ExpandedIERC20.sol";
 
 /**
  * @notice A factory for creating new mintable and burnable tokens.
@@ -12,14 +12,13 @@ contract TokenFactory {
      */
     function createToken(string calldata tokenName, string calldata tokenSymbol, uint8 tokenDecimals)
         external
-        returns (TokenInterface newToken)
+        returns (ExpandedIERC20 newToken)
     {
-        Token mintableToken = new Token(tokenName, tokenSymbol, tokenDecimals);
+        SyntheticToken mintableToken = new SyntheticToken(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addMinter(msg.sender);
         mintableToken.addBurner(msg.sender);
         mintableToken.removeMinter(address(this));
-        mintableToken.removeBurner(address(this));
         mintableToken.resetOwner(msg.sender);
-        newToken = TokenInterface(address(mintableToken));
+        newToken = ExpandedIERC20(address(mintableToken));
     }
 }

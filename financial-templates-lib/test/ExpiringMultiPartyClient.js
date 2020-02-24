@@ -7,7 +7,7 @@ const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
-const Token = artifacts.require("Token");
+const Token = artifacts.require("PermissionedExpandedERC20");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
   let collateralToken;
@@ -24,7 +24,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   };
 
   before(async function() {
-    collateralToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: accounts[0] });
+    collateralToken = await Token.new({ from: accounts[0] });
     await collateralToken.mint(accounts[0], toWei("100000"), { from: accounts[0] });
     await collateralToken.mint(accounts[1], toWei("100000"), { from: accounts[0] });
 
