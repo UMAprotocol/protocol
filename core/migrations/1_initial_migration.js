@@ -1,4 +1,3 @@
-const argv = require("minimist")(process.argv.slice());
 const Migrations = artifacts.require("./Migrations.sol");
 const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationUtils.js");
 
