@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../common/Testable.sol";
 import "../common/AddressWhitelist.sol";
-import "../common/ContractCreator.sol";
+import "../oracle/implementation/ContractCreator.sol";
 import "./TokenizedDerivative.sol";
 
 /**
