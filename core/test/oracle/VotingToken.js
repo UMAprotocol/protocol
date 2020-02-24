@@ -8,10 +8,6 @@ contract("VotingToken", function(accounts) {
   const voter = accounts[2];
   const buybackUser = accounts[3];
 
-  // Corresponds to VotingToken.Roles enum.
-  const minterRoleEnumValue = 1;
-  const burnerRoleEnumValue = 2;
-
   const { toBN, toWei } = web3.utils;
 
   it("Minting/Burning", async function() {
@@ -25,11 +21,11 @@ contract("VotingToken", function(accounts) {
     assert.equal(await votingToken.balanceOf(voter), "0");
 
     // Contracts can't authorize themselves to mint tokens.
-    assert(await didContractThrow(votingToken.resetMember(1, votingContractAddress, { from: votingContractAddress })));
+    assert(await didContractThrow(votingToken.addMinter(votingContractAddress, { from: votingContractAddress })));
     // Set minter. In prod, this will be the address of the voting contract.
-    await votingToken.addMember(minterRoleEnumValue, votingContractAddress, { from: governance });
+    await votingToken.addMinter(votingContractAddress, { from: governance });
     // Set burner.
-    await votingToken.addMember(burnerRoleEnumValue, buybackUser, { from: governance });
+    await votingToken.addBurner(buybackUser, { from: governance });
 
     const numTokens = toWei("100");
     // Voters can't mint themselves new tokens.

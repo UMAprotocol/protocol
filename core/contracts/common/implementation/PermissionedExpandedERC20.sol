@@ -19,9 +19,9 @@ contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20Detailed, ERC20, Mult
         Burner
     }
 
-    constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals) 
-        public 
-        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals) 
+    constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
+        public
+        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals)
     {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         address[] memory initialMinters = new address[](1);

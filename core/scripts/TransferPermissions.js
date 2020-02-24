@@ -43,7 +43,7 @@ async function transferPermissions(multisig) {
 
   // VotingToken should be owned by the governor.
   const votingToken = await VotingToken.deployed();
-  await votingToken.resetMember(ownerRole, governor.address);
+  await votingToken.resetOwner(governor.address);
 }
 
 // This script moves certain permissions from the truffle in-memory hot key to the governor and foundation multisig.

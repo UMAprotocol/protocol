@@ -38,8 +38,7 @@ contract("Governor", function(accounts) {
     let votingToken = await VotingToken.deployed();
 
     // Allow account1 to mint tokens.
-    const minterRole = 1;
-    await votingToken.addMember(minterRole, account1);
+    await votingToken.addMinter(account1);
 
     // Mint 99 tokens to this account so it has 99% of the tokens.
     await votingToken.mint(account1, toWei("99", "ether"));

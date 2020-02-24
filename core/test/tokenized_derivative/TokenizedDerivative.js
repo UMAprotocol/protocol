@@ -2592,7 +2592,7 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Unapproved margin currency.
-      const unapprovedCurrency = await Token.new({ from: sponsor });
+      const unapprovedCurrency = await Token.new("COLLATERAL-TOKEN", "COL", "18", { from: sponsor });
       const unapprovedCurrencyParams = { ...defaultConstructorParams, marginCurrency: unapprovedCurrency.address };
       assert(
         await didContractThrow(

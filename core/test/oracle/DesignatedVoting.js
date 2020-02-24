@@ -35,7 +35,7 @@ contract("DesignatedVoting", function(accounts) {
 
     tokenBalance = web3.utils.toWei("100000000");
     // The admin can burn tokens for the purposes of this test.
-    await votingToken.addMember("2", umaAdmin);
+    await votingToken.addBurner(umaAdmin);
     await votingToken.transfer(tokenOwner, tokenBalance, { from: umaAdmin });
 
     const registry = await Registry.deployed();

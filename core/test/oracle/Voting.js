@@ -40,8 +40,7 @@ contract("Voting", function(accounts) {
     registry = await Registry.deployed();
 
     // Allow account1 to mint tokens.
-    const minterRole = 1;
-    await votingToken.addMember(minterRole, account1);
+    await votingToken.addMinter(account1);
 
     // account1 starts with 100MM tokens, so divide up the tokens accordingly:
     // 1: 32MM

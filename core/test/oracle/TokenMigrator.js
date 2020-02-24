@@ -4,12 +4,6 @@ const TokenMigrator = artifacts.require("TokenMigrator");
 const VotingToken = artifacts.require("VotingToken");
 
 contract("TokenMigrator", function(accounts) {
-  // Corresponds to VotingToken.Roles enum.
-  const minterRoleEnumValue = 1;
-  const burnerRoleEnumValue = 2;
-
-  let tokenMigrator;
-
   const owner = accounts[0];
   const tokenHolder1 = accounts[1];
   const tokenHolder2 = accounts[2];
@@ -20,12 +14,12 @@ contract("TokenMigrator", function(accounts) {
   beforeEach(async function() {
     oldToken = await VotingToken.new({ from: owner });
     newToken = await VotingToken.new({ from: owner });
-    await oldToken.addMember(minterRoleEnumValue, owner, { from: owner });
+    await oldToken.addMinter(owner, { from: owner });
   });
 
   const createMigrator = async rate => {
     const migrator = await TokenMigrator.new({ rawValue: rate }, oldToken.address, newToken.address);
-    await newToken.addMember(minterRoleEnumValue, migrator.address, { from: owner });
+    await newToken.addMinter(migrator.address, { from: owner });
     return migrator;
   };
 
