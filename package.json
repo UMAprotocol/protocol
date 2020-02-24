@@ -19,8 +19,9 @@
     "url": "https://github.com/UMAprotocol/protocol.git"
   },
   "devDependencies": {
-    "prettier": "1.19.1",
     "eslint": "5.16.0",
+    "husky": "^4.2.3",
+    "prettier": "1.19.1",
     "prettier-plugin-solidity": "1.0.0-alpha.36",
     "solidity-coverage": "^0.7.1",
     "truffle-deploy-registry": "^0.5.1"
@@ -65,5 +66,10 @@
   },
   "bin": {
     "uma": "./core/scripts/cli/cli_entry.sh"
+  },
+  "husky": {
+    "hooks": {
+      "pre-push": "npm run lint"
+    }
   }
 }
