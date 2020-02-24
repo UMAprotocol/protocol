@@ -1,4 +1,4 @@
-const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
+econst TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const Registry = artifacts.require("Registry");
 const { getKeysForNetwork } = require("../../common/MigrationUtils.js");
 const { RegistryRolesEnum } = require("../../common/Enums.js");
