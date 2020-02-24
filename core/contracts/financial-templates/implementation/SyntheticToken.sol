@@ -9,11 +9,9 @@ import "../../common/implementation/PermissionedExpandedERC20.sol";
  * of the factory's methods from the factory contract itself.
  */
 contract SyntheticToken is PermissionedExpandedERC20, ERC20Detailed {
-
     constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
         public
         ERC20Detailed(tokenName, tokenSymbol, tokenDecimals)
         PermissionedExpandedERC20()
-    {
-    }
+    {}
 }

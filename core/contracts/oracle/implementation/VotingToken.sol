@@ -13,6 +13,5 @@ contract VotingToken is PermissionedExpandedERC20, ERC20Snapshot {
     string public constant symbol = "UMA"; // solhint-disable-line const-name-snakecase
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
-    constructor() public PermissionedExpandedERC20() {
-    }
+    constructor() public PermissionedExpandedERC20() {}
 }

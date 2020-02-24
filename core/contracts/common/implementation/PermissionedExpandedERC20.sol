@@ -18,8 +18,7 @@ contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
         Burner
     }
 
-    constructor() public
-    {
+    constructor() public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         address[] memory initialMinters = new address[](1);
         initialMinters[0] = msg.sender;
