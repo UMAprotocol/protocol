@@ -7,6 +7,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("Token");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
   let collateralToken;
@@ -44,6 +45,12 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
+
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
+      from: accounts[0]
+    });
+
     emp = await ExpiringMultiParty.new(constructorParams);
     client = new ExpiringMultiPartyClient(emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[0] });
