@@ -12,7 +12,7 @@ import "./ExpiringMultiParty.sol";
 @notice Factory contract to create and register new instances of expiring multiparty contracts
 */
 contract ExpiringMultiPartyCreator is ContractCreator, Testable {
-    constructor(bool _isTest, address _finderAddress) public ContractCreator(_finderAddress) Testable(_isTest) {}
+    constructor(address _finderAddress, bool _isTest) public ContractCreator(_finderAddress) Testable(_isTest) {}
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 

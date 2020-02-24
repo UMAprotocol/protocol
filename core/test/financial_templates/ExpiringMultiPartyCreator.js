@@ -34,7 +34,8 @@ contract("ExpiringMultiParty", function(accounts) {
     finder = await Finder.deployed();
     registry = await Registry.deployed();
 
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(true, finder.address, { from: contractCreator });
+    // expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(finder.address, true, { from: contractCreator });
+    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator
