@@ -32,7 +32,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
     /**
-     * @notice Creates an instance of expiring multi party and registers it within the finder
+     * @notice Creates an instance of expiring multi party and registers it within the registry
      * @dev caller is automatically registered as the first (and only) party member.
      * @param params is a `ConstructorParams` object from ExpiringMultiParty
      */
