@@ -38,7 +38,7 @@ async function run() {
   await supportedIdentifiers.addSupportedIdentifier(identifier);
 
   // Allow owner to mint new tokens
-  await votingToken.addMember("1", owner);
+  await votingToken.addMinter(owner);
 
   for (var i = 0; i < numVoters; i++) {
     const voter = getVoter(accounts, i);

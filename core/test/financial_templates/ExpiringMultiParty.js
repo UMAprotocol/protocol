@@ -11,7 +11,7 @@ const Token = artifacts.require("PermissionedExpandedERC20");
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Can deploy", async function() {
-    const collateralToken = await Token.new({ from: accounts[0] });
+    const collateralToken = await Token.new("COLLATERAL-TOKEN", "COL", "18", { from: accounts[0] });
 
     const constructorParams = {
       isTest: true,

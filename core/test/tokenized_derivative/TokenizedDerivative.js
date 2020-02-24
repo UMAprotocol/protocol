@@ -70,7 +70,7 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedFinder.changeImplementationAddress(oracleInterfaceName, mockOracle.address);
 
     // Create an arbitrary ERC20 margin token.
-    marginToken = await Token.new({ from: sponsor });
+    marginToken = await Token.new("COLLATERAL-TOKEN", "COL", "18", { from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     await marginToken.mint(apDelegate, web3.utils.toWei("100", "ether"), { from: sponsor });
     let marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());

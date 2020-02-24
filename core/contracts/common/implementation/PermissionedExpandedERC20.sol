@@ -1,5 +1,6 @@
 pragma solidity ^0.5.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "../interfaces/ExpandedIERC20.sol";
 import "./MultiRole.sol";
 
@@ -8,7 +9,7 @@ import "./MultiRole.sol";
  * be the owner who is capable of adding new roles. Also, similar to openzeppelin's deprecated ERC20Mintable contract,
  * the deployer will be the only minter initially.
  */
-contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
+contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20Detailed, ERC20, MultiRole {
     enum Roles {
         // Can set roles.
         Owner,
@@ -18,7 +19,10 @@ contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
         Burner
     }
 
-    constructor() public {
+    constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals) 
+        public 
+        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals) 
+    {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         address[] memory initialMinters = new address[](1);
         initialMinters[0] = msg.sender;

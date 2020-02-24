@@ -7,7 +7,7 @@ const createMarginToken = async function(callback) {
     const deployer = (await web3.eth.getAccounts())[0];
 
     // Deploy the token.
-    const marginToken = await Token.new({ from: deployer });
+    const marginToken = await Token.new("COLLATERAL-TOKEN", "COL", "18", { from: deployer });
 
     // Mint deployer 1 million tokens.
     await marginToken.mint(deployer, web3.utils.toWei("1000000", "ether"), { from: deployer });

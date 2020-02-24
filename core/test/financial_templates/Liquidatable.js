@@ -90,7 +90,7 @@ contract("Liquidatable", function(accounts) {
 
   beforeEach(async () => {
     // Create Collateral and Synthetic ERC20's
-    collateralToken = await Token.new({ from: contractDeployer });
+    collateralToken = await Token.new("COLLATERAL-TOKEN", "COL", "18", { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();

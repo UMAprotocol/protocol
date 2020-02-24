@@ -57,7 +57,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await Token.new({ from: collateralOwner });
+    collateral = await Token.new("COLLATERAL-TOKEN", "COL", "18", { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 

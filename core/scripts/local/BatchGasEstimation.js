@@ -40,7 +40,7 @@ async function run() {
   await identifierWhitelist.addSupportedIdentifier(identifier);
 
   // Allow owner to mint new tokens
-  await votingToken.addMember("1", owner);
+  await votingToken.addMinter(owner);
 
   // Transfer tokens to the voter such they they have enough to pass all votes on their own
   const ownerBalance = await votingToken.balanceOf(owner);
