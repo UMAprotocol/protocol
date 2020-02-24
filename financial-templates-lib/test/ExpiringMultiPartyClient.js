@@ -8,7 +8,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("PermissionedExpandedERC20");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
   let collateralToken;
