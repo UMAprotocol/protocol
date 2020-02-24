@@ -4,10 +4,15 @@ import "../../common/FixedPoint.sol";
 
 /**
  * @title Computes vote results.
- * @dev The result is the mode of the added votes, if the mode's frequency is >50%. Otherwise, the vote is unresolved.
+ * @dev The result is the mode of the added votes, if the mode's frequency is >50%.
+ * Otherwise, the vote is unresolved.
  */
 library ResultComputation {
     using FixedPoint for FixedPoint.Unsigned;
+
+    /****************************************
+     *     INTERNAL VARIABLES AND STORAGE   *
+     ****************************************/
 
     struct Data {
         // Maps price to number of tokens that voted for that price.
@@ -18,9 +23,31 @@ library ResultComputation {
         int currentMode;
     }
 
+    /****************************************
+     *          VOTING FUNCTIONS            *
+     ****************************************/
+
     /**
-     * @dev Returns whether the result is resolved, and if so, what value it resolved to. `price` should be ignored if
-     * `isResolved` is false.
+     * @notice Adds a new vote to be used when computing the result.
+     */
+    function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens) internal {
+        data.totalVotes = data.totalVotes.add(numberTokens);
+        data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
+        if (
+            votePrice != data.currentMode &&
+            data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])
+        ) {
+            data.currentMode = votePrice;
+        }
+    }
+
+    /****************************************
+     *        VOTING STATE GETTERS          *
+     ****************************************/
+
+    /**
+     * @notice Returns whether the result is resolved, and if so, what value it resolved to.
+     * @dev `price` should be ignored if `isResolved` is false.
      * @param minVoteThreshold Minimum number of tokens that must have been voted for the result to be valid. Can be
      * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      */
@@ -45,30 +72,16 @@ library ResultComputation {
     }
 
     /**
-     * @dev Adds a new vote to be used when computing the result.
-     */
-    function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens) internal {
-        data.totalVotes = data.totalVotes.add(numberTokens);
-        data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
-        if (
-            votePrice != data.currentMode &&
-            data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])
-        ) {
-            data.currentMode = votePrice;
-        }
-    }
-
-    /**
-     * @dev Checks whether a `voteHash` is considered correct. Should only be called after a vote is resolved, i.e.,
-     * via `getResolvedPrice`.
+     * @notice Checks whether a `voteHash` is considered correct.
+     * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
      */
     function wasVoteCorrect(Data storage data, bytes32 voteHash) internal view returns (bool) {
         return voteHash == keccak256(abi.encode(data.currentMode));
     }
 
     /**
-     * @dev Gets the total number of tokens whose votes are considered correct. Should only be called after a vote is
-     * resolved, i.e., via `getResolvedPrice`.
+     * @notice Gets the total number of tokens whose votes are considered correct.
+     * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
      */
     function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (FixedPoint.Unsigned memory) {
         return data.voteFrequency[data.currentMode];

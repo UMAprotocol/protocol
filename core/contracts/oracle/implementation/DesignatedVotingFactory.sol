@@ -6,18 +6,25 @@ import "../../common/Withdrawable.sol";
 import "./DesignatedVoting.sol";
 
 /**
- * @title Factory to allow looking up deployed DesignatedVoting instances
- * @dev Allows off-chain infrastructure, such as a dApp, to look up a hot wallet's deployed DesignatedVoting contract.
+ * @title Factory to create new instances of DesignatedVoting and to looking up deployed instances
+ * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
 contract DesignatedVotingFactory is Withdrawable {
+    /****************************************
+     *    INTERNAL VARIABLES AND STORAGE    *
+     ****************************************/
+
     enum Roles {
-        // Can withdraw any ETH or ERC20 sent accidentally to this contract.
-        Withdrawer
+        Withdrawer // Can withdraw any ETH or ERC20 sent accidentally to this contract.
     }
 
     address private finder;
     mapping(address => DesignatedVoting) public designatedVotingContracts;
 
+    /**
+     * @notice Construct the DesignatedVotingFactory contract.
+     * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
+     */
     constructor(address finderAddress) public {
         finder = finderAddress;
 
@@ -26,6 +33,8 @@ contract DesignatedVotingFactory is Withdrawable {
 
     /**
      * @notice Deploys a new `DesignatedVoting` contract.
+     * @param ownerAddress defines who will own the deployed instance of the designatedVoting contract.
+     * @return designatedVoting.
      */
     function newDesignatedVoting(address ownerAddress) external returns (DesignatedVoting designatedVoting) {
         require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
@@ -36,6 +45,7 @@ contract DesignatedVotingFactory is Withdrawable {
 
     /**
      * @notice Associates a `DesignatedVoting` instance with `msg.sender`.
+     * @param designatedVotingAddress the address to designate voting to.
      */
     function setDesignatedVoting(address designatedVotingAddress) external {
         require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");

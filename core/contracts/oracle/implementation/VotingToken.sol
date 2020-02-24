@@ -24,6 +24,9 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     string public constant symbol = "UMA"; // solhint-disable-line const-name-snakecase
     uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
+    /**
+     * @notice Construct the VotingToken contract.
+     */
     constructor() public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), new address[](0));
@@ -31,7 +34,7 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     }
 
     /**
-     * @dev Mints `value` tokens to `recipient`, returning true on success.
+     * @notice Mints `value` tokens to `recipient`, returning true on success.
      */
     function mint(address recipient, uint value) external onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
         _mint(recipient, value);
@@ -39,7 +42,7 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     }
 
     /**
-     * @dev Burns `value` tokens owned by `msg.sender`.
+     * @notice Burns `value` tokens owned by `msg.sender`.
      */
     function burn(uint value) external onlyRoleHolder(uint(Roles.Burner)) {
         _burn(msg.sender, value);
