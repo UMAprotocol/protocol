@@ -390,10 +390,7 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        liquidation.rawSettlementPrice = _addCollateral(
-            liquidation.rawsSettlementPrice,
-            _getOraclePrice(liquidation.liquidationTime)
-        );
+        liquidation.settlementPrice = _getOraclePrice(liquidation.liquidationTime);
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
