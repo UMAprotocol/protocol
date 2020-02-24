@@ -61,7 +61,7 @@ const votingMenu = async function(web3, artifacts) {
 
       // HELP
       case ACTIONS.help:
-        console.group(`${style.help(`Voting actions`)}:`);
+        console.group(`${style.help("Voting actions")}:`);
         console.log(
           `${style.help(
             ACTIONS.info

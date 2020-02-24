@@ -84,15 +84,15 @@ contract("PricelessPositionManager", function(accounts) {
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
     pricelessPositionManager = await PricelessPositionManager.new(
-      true, //_isTest
-      expirationTimestamp, //_expirationTimestamp
-      withdrawalLiveness, //_withdrawalLiveness
-      collateral.address, //_collateralAddress
-      Finder.address, //_finderAddress
-      priceTrackingIdentifier, //_priceFeedIdentifier
-      syntheticName, //_syntheticName
-      syntheticSymbol, //_syntheticSymbol
-      TokenFactory.address, //_tokenFactoryAddress
+      true, // _isTest
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      Finder.address, // _finderAddress
+      priceTrackingIdentifier, // _priceFeedIdentifier
+      syntheticName, // _syntheticName
+      syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());
@@ -110,18 +110,18 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await tokenCurrency.name(), syntheticName);
     assert.equal(await tokenCurrency.symbol(), syntheticSymbol);
 
-    //Reverts on bad constructor input (unknown identifer)
+    // Reverts on bad constructor input (unknown identifer)
     assert(
       await didContractThrow(
         PricelessPositionManager.new(
-          true, //_isTest (unchanged)
-          expirationTimestamp, //_expirationTimestamp (unchanged)
-          withdrawalLiveness, //_withdrawalLiveness (unchanged)
-          collateral.address, //_collateralAddress (unchanged)
-          finder.address, //_finderAddress (unchanged)
-          web3.utils.utf8ToHex("UNKNOWN"), //Some identifer that the whitelist tracker does not know
-          syntheticName, //_syntheticName (unchanged)
-          syntheticSymbol, //_syntheticSymbol (unchanged)
+          true, // _isTest (unchanged)
+          expirationTimestamp, // _expirationTimestamp (unchanged)
+          withdrawalLiveness, // _withdrawalLiveness (unchanged)
+          collateral.address, // _collateralAddress (unchanged)
+          finder.address, // _finderAddress (unchanged)
+          web3.utils.utf8ToHex("UNKNOWN"), // Some identifer that the whitelist tracker does not know
+          syntheticName, // _syntheticName (unchanged)
+          syntheticSymbol, // _syntheticSymbol (unchanged)
           { from: contractDeployer }
         )
       )
@@ -492,7 +492,7 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should have no synthetic positions left after settlement.
     assert.equal(tokenHolderFinalSynthetic, 0);
 
-    //Check the event returned the correct values
+    // Check the event returned the correct values
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
@@ -719,7 +719,7 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should have no synthetic positions left after settlement.
     assert.equal(tokenHolderFinalSynthetic, 0);
 
-    //Check the event returned the correct values
+    // Check the event returned the correct values
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
