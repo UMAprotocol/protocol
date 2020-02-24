@@ -32,18 +32,17 @@ contract Liquidatable is PricelessPositionManager {
         /** Following variables set upon creation of liquidation */
         address sponsor; // Address of the liquidated position's sponsor
         address liquidator; // Address who created this liquidation
-        address disputer; // Person who is disputing a liquidation
         Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
         uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
-
         /** Following variables determined by the position that is being liquidated */
         FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned rawLockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
         // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
         FixedPoint.Unsigned liquidatedCollateral;
-
-        /** Following variables set upon a resolution of a dispute */
+        /* Set upon initiation of a dispute */
+        address disputer; // Person who is disputing a liquidation
+        /** Set upon a resolution of a dispute */
         FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
     }
 
@@ -110,7 +109,8 @@ contract Liquidatable is PricelessPositionManager {
 
         // Must be disputed or the liquidation has passed expiry.
         require(
-            (state > Status.PreDispute) || ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
+            (state > Status.PreDispute) ||
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
         );
         _;
     }
@@ -390,7 +390,10 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         // Get the returned price from the oracle. If this has not yet resolved will revert.
-        liquidation.rawSettlementPrice = _addCollateral(liquidation.rawsSettlementPrice, _getOraclePrice(liquidation.liquidationTime));
+        liquidation.rawSettlementPrice = _addCollateral(
+            liquidation.rawsSettlementPrice,
+            _getOraclePrice(liquidation.liquidationTime)
+        );
 
         // Find the value of the tokens in the underlying collateral.
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
