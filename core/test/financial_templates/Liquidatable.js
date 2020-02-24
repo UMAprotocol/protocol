@@ -4,10 +4,7 @@ const truffleAssert = require("truffle-assertions");
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
+const Token = artifacts.require("Token");
 
 // Contracts to unit test
 const Liquidatable = artifacts.require("Liquidatable");
@@ -93,7 +90,7 @@ contract("Liquidatable", function(accounts) {
 
   beforeEach(async () => {
     // Create Collateral and Synthetic ERC20's
-    collateralToken = await ERC20Mintable.new({ from: contractDeployer });
+    collateralToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -134,7 +131,7 @@ contract("Liquidatable", function(accounts) {
     liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
 
     // Get newly created synthetic token
-    syntheticToken = await ERC20Mintable.at(await liquidationContract.tokenCurrency());
+    syntheticToken = await Token.at(await liquidationContract.tokenCurrency());
 
     // Reset start time signifying the beginning of the first liquidation
     await liquidationContract.setCurrentTime(startTime);
@@ -871,7 +868,7 @@ contract("Liquidatable", function(accounts) {
       // Create  Liquidation
       const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
       // Get newly created synthetic token
-      const edgeSyntheticToken = await ERC20Mintable.at(await edgeLiquidationContract.tokenCurrency());
+      const edgeSyntheticToken = await Token.at(await edgeLiquidationContract.tokenCurrency());
       // Reset start time signifying the beginning of the first liquidation
       await edgeLiquidationContract.setCurrentTime(startTime);
       // Mint collateral to sponsor

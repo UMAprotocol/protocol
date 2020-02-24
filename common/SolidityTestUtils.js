@@ -1,3 +1,5 @@
+// Attempts to execute a promise and returns false if no error is thrown,
+// or an Array of the error messages
 async function didContractThrow(promise) {
   try {
     await promise;
