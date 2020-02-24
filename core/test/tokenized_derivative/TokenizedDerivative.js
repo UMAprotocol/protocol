@@ -14,7 +14,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 // Pull in contracts from dependencies.
-const Token = artifacts.require("Token");
+const Token = artifacts.require("PermissionedExpandedERC20");
 
 const BigNumber = require("bignumber.js");
 const truffleAssert = require("truffle-assertions");
@@ -70,7 +70,7 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedFinder.changeImplementationAddress(oracleInterfaceName, mockOracle.address);
 
     // Create an arbitrary ERC20 margin token.
-    marginToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: sponsor });
+    marginToken = await Token.new({ from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     await marginToken.mint(apDelegate, web3.utils.toWei("100", "ether"), { from: sponsor });
     let marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());
@@ -2592,7 +2592,7 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Unapproved margin currency.
-      const unapprovedCurrency = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: sponsor });
+      const unapprovedCurrency = await Token.new({ from: sponsor });
       const unapprovedCurrencyParams = { ...defaultConstructorParams, marginCurrency: unapprovedCurrency.address };
       assert(
         await didContractThrow(

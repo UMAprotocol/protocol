@@ -2,7 +2,7 @@ const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const { getKeysForNetwork, deploy, addToTdr, enableControllableTiming } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
 const { interfaceName } = require("../utils/Constants.js");
 
 module.exports = async function(deployer, network, accounts) {
@@ -56,9 +56,6 @@ module.exports = async function(deployer, network, accounts) {
     }
   );
 
-  // Corresponds to VotingToken.Roles.Minter.
-  const minterRoleEnumValue = 1;
-
   // Set the minter to be the Voting contract.
-  await votingToken.addMember(minterRoleEnumValue, voting.address, { from: keys.deployer });
+  await votingToken.addMinter(voting.address, { from: keys.deployer });
 };

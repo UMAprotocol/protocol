@@ -1,15 +1,14 @@
 pragma solidity ^0.5.0;
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-import "../interfaces/TokenInterface.sol";
-import "../../common/MultiRole.sol";
+import "../interfaces/ExpandedIERC20.sol";
+import "./MultiRole.sol";
 
 /**
- * @notice A burnable and mintable ERC20. The contract deployer will initially 
- * be the only minter and burner as well as the owner who is capable of adding new roles.
+ * @title A burnable and mintable ERC20 with designated roles. The contract deployer will initially 
+ * be the owner who is capable of adding new roles. Also, similar to openzeppelin's deprecated ERC20Mintable contract,
+ * the deployer will be the only minter initially.
  */
-contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
+contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     enum Roles {
         // Can set roles.
         Owner,
@@ -19,15 +18,13 @@ contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
         Burner
     }
 
-    constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
-        public
-        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals)
+    constructor() public
     {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        address[] memory initialRoleHolders = new address[](1);
-        initialRoleHolders[0] = msg.sender;
-        _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), initialRoleHolders);
-        _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), initialRoleHolders);
+        address[] memory initialMinters = new address[](1);
+        initialMinters[0] = msg.sender;
+        _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), initialMinters);
+        _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), new address[](0));
     }
 
     function mint(address recipient, uint value) external onlyRoleHolder(uint(Roles.Minter)) returns (bool) {

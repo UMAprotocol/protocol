@@ -10,7 +10,7 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Token = artifacts.require("Token");
+const Token = artifacts.require("PermissionedExpandedERC20");
 const TokenFactory = artifacts.require("TokenFactory");
 
 contract("PricelessPositionManager", function(accounts) {
@@ -57,7 +57,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: collateralOwner });
+    collateral = await Token.new({ from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 

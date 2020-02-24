@@ -4,7 +4,7 @@ const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const TokenFactory = artifacts.require("TokenFactory");
 
 // Helper Contracts
-const Token = artifacts.require("Token");
+const Token = artifacts.require("PermissionedExpandedERC20");
 
 const { toWei, toBN } = web3.utils;
 
@@ -46,7 +46,7 @@ contract("TokenFactory", function(accounts) {
     assert.isFalse(await token.isBurner(contractDeployer));
     assert.isTrue(await token.isBurner(tokenCreator));
 
-    // Contract deployer should no longer be capable of adding new roles
+    // Contract deployer should not be capable of adding new roles
     assert(await didContractThrow(token.addMinter(rando, { from: contractDeployer })));
     assert(await didContractThrow(token.addBurner(rando, { from: contractDeployer })));
 

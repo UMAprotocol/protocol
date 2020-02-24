@@ -6,9 +6,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["token_convers
 const VotingToken = artifacts.require("VotingToken");
 const Voting = artifacts.require("Voting");
 const TokenMigrator = artifacts.require("TokenMigrator");
-const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationUtils.js");
-
-const minterRoleEnumValue = 1;
+const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
 
 const { toWei } = web3.utils;
 
@@ -40,14 +38,13 @@ module.exports = async function(deployer, network, accounts) {
     );
 
     // Allow the tokenMigrator to mint new tokens.
-    await newToken.addMember(minterRoleEnumValue, tokenMigrator.address, { from: keys.deployer });
+    await newToken.addMinter(tokenMigrator.address, { from: keys.deployer });
   } else {
     // No migration, so new tokens should be minted.
 
-    // Give the deployment key minting permissions, mint the initial token distribution of 100MM, and then remove the
-    // minting priviledges.
-    await newToken.addMember(minterRoleEnumValue, keys.deployer, { from: keys.deployer });
+    // Mint the initial token distribution of 100MM, and then remove the
+    // minting priviledges from the deployer.
     await newToken.mint(keys.deployer, toWei("100000000"), { from: keys.deployer });
-    await newToken.removeMember(minterRoleEnumValue, keys.deployer, { from: keys.deployer });
+    await newToken.removeMinter(keys.deployer, { from: keys.deployer });
   }
 };
