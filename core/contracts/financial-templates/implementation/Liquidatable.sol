@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "../../common/FixedPoint.sol";
-import "../../common/Testable.sol";
+import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 /**

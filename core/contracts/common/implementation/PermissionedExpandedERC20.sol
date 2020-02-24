@@ -2,7 +2,7 @@ pragma solidity ^0.5.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./MultiRole.sol";
-import "./ExpandedIERC20.sol";
+import "../interfaces/ExpandedIERC20.sol";
 
 /**
  * @title An ERC20 with permissioned burning and minting. The contract deployer will initially 

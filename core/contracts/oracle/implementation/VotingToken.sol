@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "../../common/PermissionedExpandedERC20.sol";
+import "../../common/implementation/PermissionedExpandedERC20.sol";
 import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
 
 /**

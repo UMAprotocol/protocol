@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 import "./SyntheticToken.sol";
-import "../../common/ExpandedIERC20.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 
 /**
  * @notice A factory for creating new mintable and burnable tokens.

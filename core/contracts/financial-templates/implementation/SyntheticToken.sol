@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "../../common/PermissionedExpandedERC20.sol";
+import "../../common/implementation/PermissionedExpandedERC20.sol";
 
 /**
  * @notice A burnable and mintable ERC20. The contract deployer will initially 
