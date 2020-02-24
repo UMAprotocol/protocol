@@ -9,9 +9,9 @@ import "../../common/implementation/PermissionedExpandedERC20.sol";
  */
 contract VotingToken is PermissionedExpandedERC20, ERC20Snapshot {
     // Standard ERC20 metadata.
-    string public _name = "UMA Voting Token v1"; // solhint-disable-line const-name-snakecase
-    string public _symbol = "UMA"; // solhint-disable-line const-name-snakecase
-    uint8 public _decimals = 18; // solhint-disable-line const-name-snakecase
+    string private constant tokenName = "UMA Voting Token v1"; // solhint-disable-line const-name-snakecase
+    string private constant tokenSymbol = "UMA"; // solhint-disable-line const-name-snakecase
+    uint8 private constant tokenDecimals = 18; // solhint-disable-line const-name-snakecase
 
-    constructor() public PermissionedExpandedERC20(_name, _symbol, _decimals) {}
+    constructor() public PermissionedExpandedERC20(tokenName, tokenSymbol, tokenDecimals) {}
 }
