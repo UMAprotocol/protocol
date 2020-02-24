@@ -39,12 +39,12 @@ contract("TokenFactory", function(accounts) {
     const token = await Token.at(tokenAddress);
 
     // Creator should be only minter
-    assert(!(await token.isMinter(contractDeployer)));
-    assert(await token.isMinter(tokenCreator));
+    assert.isFalse(await token.isMinter(contractDeployer));
+    assert.isTrue(await token.isMinter(tokenCreator));
 
     // Creator should be only burner
-    assert(!(await token.isBurner(contractDeployer)));
-    assert(await token.isBurner(tokenCreator));
+    assert.isFalse(await token.isBurner(contractDeployer));
+    assert.isTrue(await token.isBurner(tokenCreator));
 
     // Contract deployer should no longer be capable of adding new roles
     assert(await didContractThrow(token.addMinter(rando, { from: contractDeployer })));
@@ -52,15 +52,15 @@ contract("TokenFactory", function(accounts) {
 
     // Creator should be able to add and remove a new minter
     await token.addMinter(rando, { from: tokenCreator });
-    assert(await token.isMinter(rando));
+    assert.isTrue(await token.isMinter(rando));
     await token.removeMinter(rando, { from: tokenCreator });
-    assert(!(await token.isMinter(rando)));
+    assert.isFalse(await token.isMinter(rando));
 
     // Creator should be able to add a new burner
     await token.addBurner(rando, { from: tokenCreator });
-    assert(await token.isBurner(rando));
+    assert.isTrue(await token.isBurner(rando));
     await token.removeBurner(rando, { from: tokenCreator });
-    assert(!(await token.isBurner(rando)));
+    assert.isFalse(await token.isBurner(rando));
   });
   it("Token can execute expected methods", async () => {
     const tokenAddress = await tokenFactory.createToken.call(

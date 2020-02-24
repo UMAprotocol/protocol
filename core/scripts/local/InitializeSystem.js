@@ -1,5 +1,3 @@
-// @dev: Last tested Feb 22, 2020, this script does work
-
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
