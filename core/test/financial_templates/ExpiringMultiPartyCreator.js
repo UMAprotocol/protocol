@@ -41,11 +41,9 @@ contract("ExpiringMultiParty", function(accounts) {
     });
 
     constructorParams = {
-      isTest: true,
       expirationTimestamp: "1234567890",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
-      finderAddress: finder.address,
       tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
