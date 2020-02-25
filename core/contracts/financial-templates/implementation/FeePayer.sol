@@ -9,7 +9,7 @@ import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 
 
-contract FeePayer is Testable {
+abstract contract FeePayer is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -60,7 +60,7 @@ contract FeePayer is Testable {
 
     /**
      * @notice Pays UMA DVM regular fees to the Store contract. These must be paid periodically for the life of the contract.
-     * @return the amount of collateral that the contract paid (sum of the amount paid to the store and the caller).
+     * @return totalPaid The amount of collateral that the contract paid (sum of the amount paid to the store and the caller).
      */
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
@@ -95,7 +95,7 @@ contract FeePayer is Testable {
 
     /**
      * @notice Pays UMA DVM final fees to the Store contract. This is a flat fee charged for each price request.
-     * @return the amount of collateral that was paid to the Store.
+     * @return totalPaid The amount of collateral that was paid to the Store.
      */
     function _payFinalFees(address payer) internal returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
@@ -129,7 +129,7 @@ contract FeePayer is Testable {
      * @dev Derived contracts are expected to implement this function so the payFees() method can correctly compute
      * the owed fees.
      */
-    function pfc() public view returns (FixedPoint.Unsigned memory);
+    function pfc() public virtual view returns (FixedPoint.Unsigned memory);
 
     function _getStore() internal view returns (StoreInterface) {
         bytes32 storeInterface = "Store";

@@ -29,7 +29,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
-    function computeReturn(int oldPrice, int newPrice) external view returns (int assetReturn) {
+    function computeReturn(int oldPrice, int newPrice) external override view returns (int assetReturn) {
         if (oldPrice == 0) {
             // To avoid a divide-by-zero, just return 0 instead of hitting an exception.
             return 0;
@@ -48,7 +48,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         }
     }
 
-    function leverage() external view returns (int _leverage) {
+    function leverage() external override view returns (int _leverage) {
         return leverageMultiplier;
     }
 }

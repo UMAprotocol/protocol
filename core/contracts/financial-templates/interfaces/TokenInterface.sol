@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev Technically this is not an "interface" because PricelessPositionManager needs to use SafeERC20 for TokenInterface
  * in order to make safeTransferFrom() calls. However, you cannot use the "using" keyword with interfaces
  */
-contract TokenInterface is IERC20 {
+abstract contract TokenInterface is IERC20 {
     /**
      * @dev Creates new tokens and sends to account.
      *
@@ -15,7 +15,7 @@ contract TokenInterface is IERC20 {
      *
      * - the caller must have the minter role.
      */
-    function mint(address account, uint256 amount) external returns (bool);
+    function mint(address account, uint256 amount) external virtual returns (bool);
 
     /**
      * @dev Destroys `amount` tokens from the caller.
@@ -24,5 +24,5 @@ contract TokenInterface is IERC20 {
      *
      * - the caller must have the burner role.
      */
-    function burn(uint256 amount) external;
+    function burn(uint256 amount) external virtual;
 }

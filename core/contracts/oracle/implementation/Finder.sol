@@ -13,12 +13,12 @@ contract Finder is FinderInterface, Ownable {
 
     event InterfaceImplementationChanged(bytes32 indexed interfaceName, address indexed newImplementationAddress);
 
-    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external onlyOwner {
+    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external override onlyOwner {
         interfacesImplemented[interfaceName] = implementationAddress;
         emit InterfaceImplementationChanged(interfaceName, implementationAddress);
     }
 
-    function getImplementationAddress(bytes32 interfaceName) external view returns (address implementationAddress) {
+    function getImplementationAddress(bytes32 interfaceName) external override view returns (address implementationAddress) {
         implementationAddress = interfacesImplemented[interfaceName];
         require(implementationAddress != address(0x0), "No implementation for interface found");
     }

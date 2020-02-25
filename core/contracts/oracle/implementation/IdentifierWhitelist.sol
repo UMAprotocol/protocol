@@ -17,7 +17,7 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will be
      * succeed after this call.
      */
-    function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
+    function addSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
             emit SupportedIdentifierAdded(identifier);
@@ -28,7 +28,7 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @notice Removes the identifier from the whitelist. Price requests using this identifier will no longer succeed
      * after this call.
      */
-    function removeSupportedIdentifier(bytes32 identifier) external onlyOwner {
+    function removeSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = false;
             emit SupportedIdentifierRemoved(identifier);
@@ -38,7 +38,7 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
     /**
      * @notice Checks whether an identifier is on the whitelist.
      */
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
+    function isIdentifierSupported(bytes32 identifier) external override view returns (bool) {
         return supportedIdentifiers[identifier];
     }
 }

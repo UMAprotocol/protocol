@@ -8,11 +8,11 @@ contract MockAdministratee is AdministrateeInterface {
     uint public timesRemargined;
     uint public timesEmergencyShutdown;
 
-    function remargin() external {
+    function remargin() external override {
         timesRemargined++;
     }
 
-    function emergencyShutdown() external {
+    function emergencyShutdown() external override {
         timesEmergencyShutdown++;
     }
 }

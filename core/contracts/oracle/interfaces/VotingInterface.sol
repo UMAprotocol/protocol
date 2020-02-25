@@ -8,7 +8,7 @@ import "../../common/FixedPoint.sol";
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
  */
-contract VotingInterface {
+abstract contract VotingInterface {
     struct PendingRequest {
         bytes32 identifier;
         uint time;
@@ -43,46 +43,47 @@ contract VotingInterface {
      * @dev (`identifier`, `time`) must correspond to a price request that's currently in the commit phase. `hash`
      * should be the keccak256 hash of the price you want to vote for and a `int salt`. Commits can be changed.
      */
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) external;
+    function commitVote(bytes32 identifier, uint time, bytes32 hash) external virtual;
 
     /**
      * @notice Commit multiple votes in a single transaction. Look at `project-root/common/Constants.js` for the tested maximum number of commitments that can fit in one transaction.
      * @dev For more information on commits, review the comment for `commitVote`.
      */
-    function batchCommit(Commitment[] calldata commits) external;
+    function batchCommit(Commitment[] calldata commits) external virtual;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with. Only the
      * committer can reveal their vote.
      */
-    function revealVote(bytes32 identifier, uint time, int price, int salt) external;
+    function revealVote(bytes32 identifier, uint time, int price, int salt) external virtual;
 
     /**
      * @notice Reveal multiple votes in a single transaction. Look at `project-root/common/Constants.js` for the tested maximum number of reveals that can fit in one transaction.
      * @dev For more information on reveals, review the comment for `revealVote`.
      */
-    function batchReveal(Reveal[] calldata reveals) external;
+    function batchReveal(Reveal[] calldata reveals) external virtual;
 
     /**
      * @notice Gets the queries that are being voted on this round.
      */
-    function getPendingRequests() external view returns (PendingRequest[] memory);
+    function getPendingRequests() external virtual view returns (PendingRequest[] memory);
 
     /**
      * @notice Gets the current vote phase (commit or reveal) based on the current block time.
      */
-    function getVotePhase() external view returns (Phase);
+    function getVotePhase() external virtual view returns (Phase);
 
     /**
      * @notice Gets the current vote round id based on the current block time.
      */
-    function getCurrentRoundId() external view returns (uint);
+    function getCurrentRoundId() external virtual view returns (uint);
 
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
      */
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory)
         public
+        virtual
         returns (FixedPoint.Unsigned memory);
 }

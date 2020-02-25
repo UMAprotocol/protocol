@@ -190,7 +190,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
-        uint newLength = liquidations[sponsor].push(
+        liquidations[sponsor].push(
             LiquidationData({
                 expiry: getCurrentTime() + liquidationLiveness,
                 sponsor: sponsor,
@@ -204,6 +204,7 @@ contract Liquidatable is PricelessPositionManager {
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
             })
         );
+        uint newLength = liquidations[sponsor].length;
 
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, positionCollateral);
@@ -363,7 +364,7 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
      */
-    function pfc() public view returns (FixedPoint.Unsigned memory) {
+    function pfc() public override view returns (FixedPoint.Unsigned memory) {
         return super.pfc().add(_getCollateral(rawLiquidationCollateral));
     }
 

@@ -193,7 +193,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         _;
     }
 
-    function requestPrice(bytes32 identifier, uint time) external onlyRegisteredDerivative() {
+    function requestPrice(bytes32 identifier, uint time) external override onlyRegisteredDerivative() {
         uint blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
         require(identifierWhitelist.isIdentifierSupported(identifier), "Unsupported identifier request");
@@ -220,7 +220,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
     }
 
-    function batchCommit(Commitment[] calldata commits) external {
+    function batchCommit(Commitment[] calldata commits) external override {
         for (uint i = 0; i < commits.length; i++) {
             if (commits[i].encryptedVote.length == 0) {
                 commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
@@ -235,7 +235,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
     }
 
-    function batchReveal(Reveal[] calldata reveals) external {
+    function batchReveal(Reveal[] calldata reveals) external override {
         for (uint i = 0; i < reveals.length; i++) {
             revealVote(reveals[i].identifier, reveals[i].time, reveals[i].price, reveals[i].salt);
         }
@@ -248,11 +248,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         migratedAddress = newVotingAddress;
     }
 
-    function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool _hasPrice) {
+    function hasPrice(bytes32 identifier, uint time) external override view onlyRegisteredDerivative() returns (bool _hasPrice) {
         (_hasPrice, , ) = _getPriceOrError(identifier, time);
     }
 
-    function getPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (int) {
+    function getPrice(bytes32 identifier, uint time) external override view onlyRegisteredDerivative() returns (int) {
         (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
         // If the price wasn't available, revert with the provided message.
@@ -260,7 +260,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         return price;
     }
 
-    function getPendingRequests() external view returns (PendingRequest[] memory pendingRequests) {
+    function getPendingRequests() external override view returns (PendingRequest[] memory pendingRequests) {
         uint blockTime = getCurrentTime();
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -286,15 +286,15 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
     }
 
-    function getVotePhase() external view returns (Phase) {
+    function getVotePhase() external override view returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
-    function getCurrentRoundId() external view returns (uint) {
+    function getCurrentRoundId() external override view returns (uint) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) public onlyIfNotMigrated() {
+    function commitVote(bytes32 identifier, uint time, bytes32 hash) public override onlyIfNotMigrated() {
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
         uint blockTime = getCurrentTime();
@@ -316,7 +316,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
     }
 
-    function revealVote(bytes32 identifier, uint time, int price, int salt) public onlyIfNotMigrated() {
+    function revealVote(bytes32 identifier, uint time, int price, int salt) public override onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the
@@ -390,6 +390,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
+        override 
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
         if (migratedAddress != address(0)) {

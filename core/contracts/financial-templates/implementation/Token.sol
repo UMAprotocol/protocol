@@ -31,12 +31,12 @@ contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
         _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), initialRoleHolders);
     }
 
-    function mint(address recipient, uint value) external onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
+    function mint(address recipient, uint value) external override onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
         _mint(recipient, value);
         return true;
     }
 
-    function burn(uint256 amount) external onlyRoleHolder(uint(Roles.Burner)) {
+    function burn(uint256 amount) external override onlyRoleHolder(uint(Roles.Burner)) {
         _burn(msg.sender, amount);
     }
 

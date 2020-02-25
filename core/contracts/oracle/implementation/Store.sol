@@ -31,11 +31,11 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
     }
 
-    function payOracleFees() external payable {
+    function payOracleFees() external override payable {
         require(msg.value > 0);
     }
 
-    function payOracleFeesErc20(address erc20Address) external {
+    function payOracleFeesErc20(address erc20Address) external override {
         IERC20 erc20 = IERC20(erc20Address);
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(authorizedAmount > 0);
@@ -44,6 +44,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
 
     function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
         external
+        override
         view
         returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
     {
@@ -57,7 +58,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         return (regularFee, latePenalty);
     }
 
-    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory finalFee) {
+    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory finalFee) {
         finalFee = finalFees[currency];
     }
 

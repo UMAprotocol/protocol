@@ -111,18 +111,17 @@ contract Governor is MultiRole, Testable {
         // Note: doing all of this array manipulation manually is necessary because directly setting an array of
         // structs in storage to an an array of structs in memory is currently not implemented in solidity :/.
 
-        // Add an element to the proposals array.
-        proposals.length = proposals.length.add(1);
+        // Add a zero-initialized element to the proposals array.
+        proposals.push();
 
         // Initialize the new proposal.
         Proposal storage proposal = proposals[id];
         proposal.requestTime = time;
 
         // Initialize the transaction array.
-        proposal.transactions.length = transactions.length;
         for (uint i = 0; i < transactions.length; i++) {
             require(transactions[i].to != address(0), "The to address cannot be 0x0");
-            proposal.transactions[i] = transactions[i];
+            proposal.transactions.push(transactions[i]);
         }
 
         bytes32 identifier = _constructIdentifier(id);

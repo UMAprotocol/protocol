@@ -59,6 +59,7 @@ contract Registry is RegistryInterface, MultiRole {
 
     function registerDerivative(address[] calldata parties, address derivativeAddress)
         external
+        override
         onlyRoleHolder(uint(Roles.DerivativeCreator))
     {
         Derivative storage derivative = derivativeMap[derivativeAddress];
@@ -74,35 +75,37 @@ contract Registry is RegistryInterface, MultiRole {
         // add the derivative as one of the party members own derivatives and store the index.
         derivative.valid = Validity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
-            uint newLength = partyMap[parties[i]].derivatives.push(derivativeAddress);
+            partyMap[parties[i]].derivatives.push(derivativeAddress);
+            uint newLength = partyMap[parties[i]].derivatives.length;
             partyMap[parties[i]].derivativeIndex[derivativeAddress] = newLength - 1;
         }
 
         emit NewDerivativeRegistered(derivativeAddress, msg.sender, parties);
     }
 
-    function isDerivativeRegistered(address derivative) external view returns (bool) {
+    function isDerivativeRegistered(address derivative) external override view returns (bool) {
         return derivativeMap[derivative].valid == Validity.Valid;
     }
 
-    function getRegisteredDerivatives(address party) external view returns (address[] memory) {
+    function getRegisteredDerivatives(address party) external override view returns (address[] memory) {
         return partyMap[party].derivatives;
     }
 
-    function addPartyToDerivative(address party) external {
+    function addPartyToDerivative(address party) external override {
         address derivativeAddress = msg.sender;
 
         require(derivativeMap[derivativeAddress].valid == Validity.Valid, "Can only add to valid derivative");
         require(!isPartyMemberOfDerivative(party, derivativeAddress), "Can only register a party once");
 
         // Push the derivative and store the index.
-        uint derivativeIndex = partyMap[party].derivatives.push(derivativeAddress);
+        partyMap[party].derivatives.push(derivativeAddress);
+        uint derivativeIndex = partyMap[party].derivatives.length;
         partyMap[party].derivativeIndex[derivativeAddress] = derivativeIndex - 1;
 
         emit PartyMemberAdded(derivativeAddress, party);
     }
 
-    function removePartyFromDerivative(address party) external {
+    function removePartyFromDerivative(address party) external override {
         address derivativeAddress = msg.sender;
         PartyMember storage partyMember = partyMap[party];
         uint256 numberOfDerivatives = partyMember.derivatives.length;
@@ -130,11 +133,11 @@ contract Registry is RegistryInterface, MultiRole {
         emit PartyMemberRemoved(derivativeAddress, party);
     }
 
-    function getAllRegisteredDerivatives() external view returns (address[] memory derivatives) {
+    function getAllRegisteredDerivatives() external override view returns (address[] memory derivatives) {
         return registeredDerivatives;
     }
 
-    function isPartyMemberOfDerivative(address party, address derivativeAddress) public view returns (bool) {
+    function isPartyMemberOfDerivative(address party, address derivativeAddress) public override view returns (bool) {
         uint index = partyMap[party].derivativeIndex[derivativeAddress];
         return partyMap[party].derivatives.length > index && partyMap[party].derivatives[index] == derivativeAddress;
     }

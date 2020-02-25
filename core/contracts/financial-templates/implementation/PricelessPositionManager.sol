@@ -384,7 +384,7 @@ contract PricelessPositionManager is FeePayer {
     /**
      * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
      */
-    function pfc() public view returns (FixedPoint.Unsigned memory) {
+    function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
     }
 

@@ -34,7 +34,7 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     /**
      * @dev Mints `value` tokens to `recipient`, returning true on success.
      */
-    function mint(address recipient, uint value) external onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
+    function mint(address recipient, uint value) external override onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
         _mint(recipient, value);
         return true;
     }
@@ -42,7 +42,7 @@ contract VotingToken is ExpandedIERC20, ERC20Snapshot, MultiRole {
     /**
      * @dev Burns `value` tokens owned by `msg.sender`.
      */
-    function burn(uint value) external onlyRoleHolder(uint(Roles.Burner)) {
+    function burn(uint value) external override onlyRoleHolder(uint(Roles.Burner)) {
         _burn(msg.sender, value);
     }
 }
