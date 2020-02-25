@@ -8,14 +8,14 @@ contract MockAdministratee is AdministrateeInterface {
     uint public timesRemargined;
     uint public timesEmergencyShutdown;
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function remargin() external override {
         timesRemargined++;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function emergencyShutdown() external override {
         timesEmergencyShutdown++;
     }

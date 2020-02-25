@@ -193,8 +193,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         _;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function requestPrice(bytes32 identifier, uint time) external override onlyRegisteredDerivative() {
         uint blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
@@ -222,8 +222,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function batchCommit(Commitment[] calldata commits) external override {
         for (uint i = 0; i < commits.length; i++) {
             if (commits[i].encryptedVote.length == 0) {
@@ -239,8 +239,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function batchReveal(Reveal[] calldata reveals) external override {
         for (uint i = 0; i < reveals.length; i++) {
             revealVote(reveals[i].identifier, reveals[i].time, reveals[i].price, reveals[i].salt);
@@ -254,14 +254,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         migratedAddress = newVotingAddress;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function hasPrice(bytes32 identifier, uint time) external override view onlyRegisteredDerivative() returns (bool _hasPrice) {
         (_hasPrice, , ) = _getPriceOrError(identifier, time);
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function getPrice(bytes32 identifier, uint time) external override view onlyRegisteredDerivative() returns (int) {
         (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
@@ -270,8 +270,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         return price;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function getPendingRequests() external override view returns (PendingRequest[] memory pendingRequests) {
         uint blockTime = getCurrentTime();
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
@@ -298,20 +298,20 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function getVotePhase() external override view returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function getCurrentRoundId() external override view returns (uint) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function commitVote(bytes32 identifier, uint time, bytes32 hash) public override onlyIfNotMigrated() {
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
@@ -334,8 +334,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         emit VoteCommitted(msg.sender, currentRoundId, identifier, time);
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function revealVote(bytes32 identifier, uint time, int price, int salt) public override onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
@@ -408,8 +408,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         rewardsExpirationTimeout = _rewardsExpirationTimeout;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
         override 

@@ -57,6 +57,8 @@ contract Registry is RegistryInterface, MultiRole {
         _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Owner), new address[](0));
     }
 
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function registerDerivative(address[] calldata parties, address derivativeAddress)
         external
         override
@@ -83,20 +85,20 @@ contract Registry is RegistryInterface, MultiRole {
         emit NewDerivativeRegistered(derivativeAddress, msg.sender, parties);
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function isDerivativeRegistered(address derivative) external override view returns (bool) {
         return derivativeMap[derivative].valid == Validity.Valid;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function getRegisteredDerivatives(address party) external override view returns (address[] memory) {
         return partyMap[party].derivatives;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function addPartyToDerivative(address party) external override {
         address derivativeAddress = msg.sender;
 
@@ -111,8 +113,8 @@ contract Registry is RegistryInterface, MultiRole {
         emit PartyMemberAdded(derivativeAddress, party);
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function removePartyFromDerivative(address party) external override {
         address derivativeAddress = msg.sender;
         PartyMember storage partyMember = partyMap[party];
@@ -141,14 +143,14 @@ contract Registry is RegistryInterface, MultiRole {
         emit PartyMemberRemoved(derivativeAddress, party);
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function getAllRegisteredDerivatives() external override view returns (address[] memory derivatives) {
         return registeredDerivatives;
     }
 
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function isPartyMemberOfDerivative(address party, address derivativeAddress) public override view returns (bool) {
         uint index = partyMap[party].derivativeIndex[derivativeAddress];
         return partyMap[party].derivatives.length > index && partyMap[party].derivatives[index] == derivativeAddress;

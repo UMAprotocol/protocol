@@ -364,8 +364,8 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
      */
-     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-     // prettier-ignore
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function pfc() public override view returns (FixedPoint.Unsigned memory) {
         return super.pfc().add(_getCollateral(rawLiquidationCollateral));
     }
