@@ -133,7 +133,7 @@ module.exports = {
   plugins: ["solidity-coverage"],
   compilers: {
     solc: {
-      version: "0.5.13",
+      version: "0.6.0",
       settings: {
         optimizer: {
           enabled: true,

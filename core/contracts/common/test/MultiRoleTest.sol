@@ -2,7 +2,7 @@
   MultiRoleTest contract.
 */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "../MultiRole.sol";
 

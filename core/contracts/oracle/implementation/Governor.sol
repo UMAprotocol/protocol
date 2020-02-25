@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -150,7 +150,7 @@ contract Governor is MultiRole, Testable {
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)
-            success := call(gas, to, value, inputData, inputDataSize, 0, 0)
+            success := call(gas(), to, value, inputData, inputDataSize, 0, 0)
         }
     }
 
