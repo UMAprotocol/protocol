@@ -10,7 +10,7 @@ const createMarginToken = async function(callback) {
     const marginToken = await Token.new({ from: deployer });
 
     // Mint deployer 1 million tokens.
-    await marginToken.addMember(1, deployer, { from: deployer })
+    await marginToken.addMember(1, deployer, { from: deployer });
     await marginToken.mint(deployer, web3.utils.toWei("1000000", "ether"), { from: deployer });
 
     // Whitelist token.

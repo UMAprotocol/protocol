@@ -137,7 +137,7 @@ contract("Liquidatable", function(accounts) {
     await liquidationContract.setCurrentTime(startTime);
 
     // Mint collateral to sponsor
-    await collateralToken.addMember(1, contractDeployer, { from: contractDeployer })
+    await collateralToken.addMember(1, contractDeployer, { from: contractDeployer });
     await collateralToken.mint(sponsor, amountOfCollateral, { from: contractDeployer });
 
     // Mint dispute bond to disputer

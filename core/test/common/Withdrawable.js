@@ -14,7 +14,7 @@ contract("Withdrawable", function(accounts) {
   before(async function() {
     // Create token contract and mint tokens for use by rando.
     token = await Token.new({ from: owner });
-    await token.addMember(1, owner, { from: owner })
+    await token.addMember(1, owner, { from: owner });
     await token.mint(rando, web3.utils.toWei("100", "ether"), { from: owner });
   });
 

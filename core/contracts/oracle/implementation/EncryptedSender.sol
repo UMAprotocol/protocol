@@ -1,6 +1,5 @@
 pragma solidity ^0.5.0;
 
-
 /**
  * @title Contract for sending keyed encrypted messages via the EVM
  * @dev This contract uses topic hashes as keys and can store a single arbitrary encrypted message per topic at any

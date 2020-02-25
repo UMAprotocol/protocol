@@ -12,7 +12,6 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "./TokenFactory.sol";
 import "./FeePayer.sol";
 
-
 /**
  * @title Financial contract with priceless position management.
  * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.

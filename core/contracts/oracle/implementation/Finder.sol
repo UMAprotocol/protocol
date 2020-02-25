@@ -4,7 +4,6 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 import "../interfaces/FinderInterface.sol";
 
-
 /**
  * @title Implementation of the FinderInterface.
  */

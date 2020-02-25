@@ -11,7 +11,6 @@ import "../interfaces/OracleInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */

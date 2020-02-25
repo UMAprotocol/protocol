@@ -1,6 +1,5 @@
 pragma solidity ^0.5.0;
 
-
 /**
  * @title Provides addresses of the live contracts implementing certain interfaces. 
  * @dev Examples are the Oracle or Store interfaces.

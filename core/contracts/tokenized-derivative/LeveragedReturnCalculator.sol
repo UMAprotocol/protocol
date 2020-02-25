@@ -4,7 +4,6 @@ import "./ReturnCalculatorInterface.sol";
 import "../common/implementation/Withdrawable.sol";
 import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
 
-
 /**
  * @title Computes return values based on a fixed leverage.
  */

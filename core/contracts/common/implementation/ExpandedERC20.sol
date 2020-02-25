@@ -4,7 +4,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./MultiRole.sol";
 import "../interfaces/ExpandedIERC20.sol";
 
-
 /**
  * @title An ERC20 with permissioned burning and minting. The contract deployer will initially 
  * be the owner who is capable of adding new roles. 

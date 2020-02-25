@@ -7,7 +7,6 @@ import "../../tokenized-derivative/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "./ExpiringMultiParty.sol";
 
-
 /**
 @title Expiring Multi Party Contract creator
 @notice Factory contract to create and register new instances of expiring multiparty contracts
@@ -59,7 +58,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         // Known from creator deployment.
         constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
-
 
         // Input from function call
         constructorParams.expirationTimestamp = params.expirationTimestamp;

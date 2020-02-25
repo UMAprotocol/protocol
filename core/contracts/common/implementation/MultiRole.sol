@@ -1,6 +1,5 @@
 pragma solidity ^0.5.0;
 
-
 library Exclusive {
     struct RoleMembership {
         address member;
@@ -23,7 +22,6 @@ library Exclusive {
         resetMember(roleMembership, initialMember);
     }
 }
-
 
 library Shared {
     struct RoleMembership {
@@ -48,7 +46,6 @@ library Shared {
         }
     }
 }
-
 
 /**
  * @title Base class to manage permissions for the derived class.

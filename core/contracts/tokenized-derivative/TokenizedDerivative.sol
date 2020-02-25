@@ -17,7 +17,6 @@ import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 library TokenizedDerivativeParams {
     enum ReturnType { Linear, Compound }
 
@@ -40,7 +39,6 @@ library TokenizedDerivativeParams {
         uint creationTime;
     }
 }
-
 
 /**
  * @title Tokenized Derivative Storage
@@ -141,7 +139,6 @@ library TDS {
         WithdrawThrottle withdrawThrottle;
     }
 }
-
 
 /**
  * @dev Implements the functionality of `TokenizedDerivative` by operating on the data contained in a `TDS.Storage`.
@@ -1124,7 +1121,6 @@ library TokenizedDerivativeUtils {
         return uint(value);
     }
 }
-
 
 /**
  * @title A synthetic token whose value tracks an arbitrary price feed.

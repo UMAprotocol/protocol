@@ -7,7 +7,6 @@ import "./AddressWhitelist.sol";
 import "./ContractCreator.sol";
 import "./TokenizedDerivative.sol";
 
-
 /**
  * @title Contract creator for TokenizedDerivative.
  */

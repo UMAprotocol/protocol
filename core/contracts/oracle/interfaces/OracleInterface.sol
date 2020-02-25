@@ -1,6 +1,5 @@
 pragma solidity ^0.5.0;
 
-
 /**
  * @title Financial contract facing Oracle interface.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
