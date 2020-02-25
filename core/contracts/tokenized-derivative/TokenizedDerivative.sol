@@ -1207,6 +1207,8 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between
      * long and short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function remargin() external override {
         derivativeStorage._remargin();
     }
@@ -1232,6 +1234,8 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Moves the contract into the Emergency state, where it waits on an Oracle price for the most recent
      * remargin time.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function emergencyShutdown() external override {
         derivativeStorage._emergencyShutdown();
     }
@@ -1270,6 +1274,8 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Destroys `value` tokens from the caller.
      * @dev Only this contract or its libraries are allowed to burn tokens.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function burn(uint value) external override onlyThis {
         _burn(msg.sender, value);
     }
@@ -1278,6 +1284,8 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Creates `value` tokens and assigns them to `to`, increasing the total supply.
      * @dev Only this contract or its libraries are allowed to mint tokens.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function mint(address to, uint256 value) external override onlyThis returns (bool) {
         _mint(to, value);
         return true;

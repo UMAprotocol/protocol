@@ -31,11 +31,15 @@ contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
         _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), initialRoleHolders);
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function mint(address recipient, uint value) external override onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
         _mint(recipient, value);
         return true;
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function burn(uint256 amount) external override onlyRoleHolder(uint(Roles.Burner)) {
         _burn(msg.sender, amount);
     }

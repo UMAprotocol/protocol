@@ -29,6 +29,8 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function computeReturn(int oldPrice, int newPrice) external override view returns (int assetReturn) {
         if (oldPrice == 0) {
             // To avoid a divide-by-zero, just return 0 instead of hitting an exception.
@@ -48,6 +50,8 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         }
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function leverage() external override view returns (int _leverage) {
         return leverageMultiplier;
     }

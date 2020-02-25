@@ -384,6 +384,8 @@ contract PricelessPositionManager is FeePayer {
     /**
      * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
     }

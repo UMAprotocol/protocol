@@ -13,11 +13,15 @@ contract Finder is FinderInterface, Ownable {
 
     event InterfaceImplementationChanged(bytes32 indexed interfaceName, address indexed newImplementationAddress);
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external override onlyOwner {
         interfacesImplemented[interfaceName] = implementationAddress;
         emit InterfaceImplementationChanged(interfaceName, implementationAddress);
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function getImplementationAddress(bytes32 interfaceName) external override view returns (address implementationAddress) {
         implementationAddress = interfacesImplemented[interfaceName];
         require(implementationAddress != address(0x0), "No implementation for interface found");

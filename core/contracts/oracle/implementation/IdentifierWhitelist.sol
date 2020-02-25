@@ -17,6 +17,8 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @notice Adds the provided identifier as a supported identifier. Price requests using this identifier will be
      * succeed after this call.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function addSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
@@ -28,6 +30,8 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @notice Removes the identifier from the whitelist. Price requests using this identifier will no longer succeed
      * after this call.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function removeSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = false;
@@ -38,6 +42,8 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
     /**
      * @notice Checks whether an identifier is on the whitelist.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function isIdentifierSupported(bytes32 identifier) external override view returns (bool) {
         return supportedIdentifiers[identifier];
     }

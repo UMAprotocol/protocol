@@ -54,10 +54,14 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
     /**
      * @notice Whether this feed has ever published any prices for this identifier.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function isIdentifierSupported(bytes32 identifier) external override view returns (bool isSupported) {
         isSupported = _isIdentifierSupported(identifier);
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function latestPrice(bytes32 identifier) external override view returns (uint publishTime, int price) {
         require(_isIdentifierSupported(identifier));
         publishTime = prices[identifier].timestamp;

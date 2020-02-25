@@ -31,10 +31,14 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function payOracleFees() external override payable {
         require(msg.value > 0);
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function payOracleFeesErc20(address erc20Address) external override {
         IERC20 erc20 = IERC20(erc20Address);
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
@@ -42,6 +46,8 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
         external
         override
@@ -58,6 +64,8 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         return (regularFee, latePenalty);
     }
 
+     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+     // prettier-ignore
     function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory finalFee) {
         finalFee = finalFees[currency];
     }
