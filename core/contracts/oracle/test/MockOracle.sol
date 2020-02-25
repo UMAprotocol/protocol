@@ -6,6 +6,7 @@ import "../../common/Testable.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 
+
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
     // Represents an available price. Have to keep a separate bool to allow for price=0.

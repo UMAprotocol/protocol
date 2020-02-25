@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../interfaces/TokenInterface.sol";
 import "../../common/MultiRole.sol";
 
+
 /**
  * @notice A burnable and mintable ERC20. The contract deployer will initially 
  * be the only minter and burner as well as the owner who is capable of adding new roles.

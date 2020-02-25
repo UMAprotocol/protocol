@@ -6,6 +6,7 @@ import "../common/Testable.sol";
 import "../common/Withdrawable.sol";
 import "./PriceFeedInterface.sol";
 
+
 /**
  * @title Implementation of PriceFeedInterface with the ability to manually push prices.
  */

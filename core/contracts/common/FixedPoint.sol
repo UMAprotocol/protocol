@@ -2,6 +2,7 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+
 /**
  * @title Library for fixed point arithmetic on uints
  */

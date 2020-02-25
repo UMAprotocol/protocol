@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../../common/Withdrawable.sol";
 import "./DesignatedVoting.sol";
 
+
 /**
  * @title Factory to allow looking up deployed DesignatedVoting instances
  * @dev Allows off-chain infrastructure, such as a dApp, to look up a hot wallet's deployed DesignatedVoting contract.

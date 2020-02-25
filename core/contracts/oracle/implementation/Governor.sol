@@ -11,6 +11,7 @@ import "../interfaces/OracleInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
@@ -147,10 +148,13 @@ contract Governor is MultiRole, Testable {
         // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
         // solhint-disable-next-line no-inline-assembly
+
+        // Ignoring this line for now because solidity 0.6 changed the "gas" instruction to "gas()", which prettier does not accept
+        // prettier-ignore
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)
-            success := call(gas, to, value, inputData, inputDataSize, 0, 0)
+            success := call(gas(), to, value, inputData, inputDataSize, 0, 0)
         }
     }
 

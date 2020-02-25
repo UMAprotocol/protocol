@@ -1,5 +1,6 @@
 pragma solidity ^0.6.0;
 
+
 /**
  * @title Used internally by Truffle migrations.
  * @dev See https://www.trufflesuite.com/docs/truffle/getting-started/running-migrations#initial-migration for details.

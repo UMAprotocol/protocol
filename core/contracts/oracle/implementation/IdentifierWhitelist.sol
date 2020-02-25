@@ -3,6 +3,7 @@ pragma solidity ^0.6.0;
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 
+
 /**
  * @title Stores a whitelist of supported identifiers that the oracle can provide prices for.
  */

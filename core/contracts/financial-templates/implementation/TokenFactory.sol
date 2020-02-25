@@ -2,6 +2,7 @@ pragma solidity ^0.6.0;
 import "./Token.sol";
 import "../interfaces/TokenInterface.sol";
 
+
 /**
  * @notice A factory for creating new mintable and burnable tokens.
  */

@@ -1,5 +1,6 @@
 pragma solidity ^0.6.0;
 
+
 /**
  * @title This interface allows contracts to query unverified prices.
  */

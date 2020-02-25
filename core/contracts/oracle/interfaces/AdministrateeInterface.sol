@@ -1,5 +1,6 @@
 pragma solidity ^0.6.0;
 
+
 /**
  * @title Interface that all derivative contracts expose to the admin.
  */

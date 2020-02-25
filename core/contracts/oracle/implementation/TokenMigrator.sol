@@ -6,6 +6,7 @@ import "../../common/FixedPoint.sol";
 import "../../common/ExpandedIERC20.sol";
 import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
 
+
 /**
  * @title Migration contract for VotingTokens.
  * @dev Handles migrating token holders from one token to the next.

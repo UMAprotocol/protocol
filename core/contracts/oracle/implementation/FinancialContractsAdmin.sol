@@ -3,6 +3,7 @@ pragma solidity ^0.6.0;
 import "../interfaces/AdministrateeInterface.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 
+
 /**
  * @title Admin for financial contracts in the UMA system.
  * @dev Allows appropriately permissioned admin roles to interact with financial contracts.

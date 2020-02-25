@@ -1,6 +1,7 @@
 pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+
 /**
  * @title Interface for mintable and burnable tokens.
  * @dev Technically this is not an "interface" because PricelessPositionManager needs to use SafeERC20 for TokenInterface
