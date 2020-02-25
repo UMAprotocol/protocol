@@ -1,4 +1,4 @@
-const { toWei } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 
 const truffleAssert = require("truffle-assertions");
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
@@ -77,9 +77,12 @@ contract("ExpiringMultiParty", function(accounts) {
 
     // Instantiate an instance of the expiringMultiParty and check a few constants that should hold true
     let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
-    assert(await expiringMultiParty.expirationTimestamp(), constructorParams.expirationTimestamp);
-    assert(await expiringMultiParty.withdrawalLiveness(), constructorParams.withdrawalLiveness);
-    assert(await expiringMultiParty.priceIdentifer(), constructorParams.priceFeedIdentifier);
+    assert.equal(await expiringMultiParty.expirationTimestamp(), constructorParams.expirationTimestamp);
+    assert.equal(await expiringMultiParty.withdrawalLiveness(), constructorParams.withdrawalLiveness);
+    assert.equal(
+      hexToUtf8(await expiringMultiParty.priceIdentifer()),
+      hexToUtf8(constructorParams.priceFeedIdentifier)
+    );
   });
 
   it("Creation correctly registers ExpiringMultiParty within the registry", async function() {
