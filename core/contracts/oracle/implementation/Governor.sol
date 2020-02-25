@@ -150,7 +150,7 @@ contract Governor is MultiRole, Testable {
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)
-            success := call(gas(), to, value, inputData, inputDataSize, 0, 0)
+            success := call(gas, to, value, inputData, inputDataSize, 0, 0)
         }
     }
 
