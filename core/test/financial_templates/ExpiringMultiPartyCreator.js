@@ -55,12 +55,12 @@ contract("ExpiringMultiParty", function(accounts) {
   });
 
   it("Can create new instances of ExpiringMultiParty", async function() {
-    // Use .call to get the returned value from the function
+    // Use `.call` to get the returned value from the function.
     let functionReturnedAddress = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, {
       from: contractCreator
     });
 
-    // Execute without the .call to perform state change. catch the result to query the event.
+    // Execute without the `.call` to perform state change. catch the result to query the event.
     let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
       from: contractCreator
     });
