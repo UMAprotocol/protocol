@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 
+
 /**
  * @title Interface that allows derivative contracts to pay oracle fees for their use of the system.
  */

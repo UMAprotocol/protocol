@@ -7,7 +7,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
-const Token = artifacts.require("PermissionedExpandedERC20");
+const Token = artifacts.require("ExpandedERC20");
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Can deploy", async function() {

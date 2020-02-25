@@ -14,7 +14,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 // Pull in contracts from dependencies.
-const Token = artifacts.require("PermissionedExpandedERC20");
+const Token = artifacts.require("ExpandedERC20");
 
 const BigNumber = require("bignumber.js");
 const truffleAssert = require("truffle-assertions");
@@ -71,6 +71,7 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Create an arbitrary ERC20 margin token.
     marginToken = await Token.new({ from: sponsor });
+    await marginToken.addMember(1, sponsor, { from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     await marginToken.mint(apDelegate, web3.utils.toWei("100", "ether"), { from: sponsor });
     let marginCurrencyWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.marginCurrencyWhitelist());

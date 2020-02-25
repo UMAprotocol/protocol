@@ -4,8 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import "../../tokenized-derivative/AddressWhitelist.sol";
 import "../../tokenized-derivative/ContractCreator.sol";
-import "../../common/Testable.sol";
+import "../../common/implementation/Testable.sol";
 import "./ExpiringMultiParty.sol";
+
 
 /**
 @title Expiring Multi Party Contract creator
@@ -58,6 +59,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         // Known from creator deployment.
         constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
+
 
         // Input from function call
         constructorParams.expirationTimestamp = params.expirationTimestamp;

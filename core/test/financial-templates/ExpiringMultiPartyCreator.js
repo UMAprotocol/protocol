@@ -8,19 +8,17 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 
 // Helper Contracts
 const Finder = artifacts.require("Finder");
-const ERC20Mintable = artifacts.require("Token");
+const Token = artifacts.require("ExpandedERC20");
 const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-
-ERC20Mintable.setProvider(web3.currentProvider);
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 
 contract("ExpiringMultiParty", function(accounts) {
   let contractCreator = accounts[0];
 
   // Contract variables
   let collateralToken;
-  let finder;
   let expiringMultiPartyCreator;
   let registry;
 
@@ -28,11 +26,10 @@ contract("ExpiringMultiParty", function(accounts) {
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "COL", 18, { from: contractCreator });
-    finder = await Finder.deployed();
+    collateralToken = await Token.new({ from: contractCreator });
     registry = await Registry.deployed();
 
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(true, finder.address, { from: contractCreator });
+    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(true, Finder.address, { from: contractCreator });
 
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator
@@ -52,6 +49,11 @@ contract("ExpiringMultiParty", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
+
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
+      from: contractCreator
+    });
   });
 
   it("Can create new instances of ExpiringMultiParty", async function() {

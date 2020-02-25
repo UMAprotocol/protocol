@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 import "../implementation/Testable.sol";
 
+
 // TestableTest is derived from the abstract contract Testable for testing purposes.
 contract TestableTest is Testable {
     // solhint-disable-next-line no-empty-blocks

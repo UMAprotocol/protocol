@@ -1,6 +1,6 @@
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Token = artifacts.require("PermissionedExpandedERC20");
+const Token = artifacts.require("ExpandedERC20");
 
 const createMarginToken = async function(callback) {
   try {
@@ -10,6 +10,7 @@ const createMarginToken = async function(callback) {
     const marginToken = await Token.new({ from: deployer });
 
     // Mint deployer 1 million tokens.
+    await marginToken.addMember(1, deployer, { from: deployer })
     await marginToken.mint(deployer, web3.utils.toWei("1000000", "ether"), { from: deployer });
 
     // Whitelist token.

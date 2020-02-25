@@ -5,6 +5,7 @@ pragma solidity ^0.5.0;
 
 import "../LeveragedReturnCalculator.sol";
 
+
 contract LeveragedReturnCalculatorTest is LeveragedReturnCalculator {
     // Store in/out for computeReturn().
     int private oldPriceInput;
@@ -50,9 +51,16 @@ contract LeveragedReturnCalculatorTest is LeveragedReturnCalculator {
     }
 }
 
+
 // Instantiations of different leverage tests.
 /* solhint-disable no-empty-blocks, two-lines-top-level-separator */
 contract Leveraged1xTest is LeveragedReturnCalculatorTest(1) {}
+
+
 contract Leveraged4xTest is LeveragedReturnCalculatorTest(4) {}
+
+
 contract LeveragedShort1xTest is LeveragedReturnCalculatorTest(-1) {}
+
+
 contract LeveragedShort3xTest is LeveragedReturnCalculatorTest(-3) {}

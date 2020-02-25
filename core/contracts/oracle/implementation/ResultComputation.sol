@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 
 import "../../common/implementation/FixedPoint.sol";
 
+
 /**
  * @title Computes vote results.
  * @dev The result is the mode of the added votes, if the mode's frequency is >50%. Otherwise, the vote is unresolved.

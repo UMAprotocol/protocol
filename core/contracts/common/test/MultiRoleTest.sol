@@ -6,6 +6,7 @@ pragma solidity ^0.5.0;
 
 import "../implementation/MultiRole.sol";
 
+
 // The purpose of this contract is to make the MultiRole creation methods externally callable for testing purposes.
 contract MultiRoleTest is MultiRole {
     function createSharedRole(uint roleId, uint managingRoleId, address[] calldata initialMembers) external {

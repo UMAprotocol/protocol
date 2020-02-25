@@ -4,11 +4,12 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./MultiRole.sol";
 import "../interfaces/ExpandedIERC20.sol";
 
+
 /**
  * @title An ERC20 with permissioned burning and minting. The contract deployer will initially 
- * be the only minter and the owner who is capable of adding new roles. 
+ * be the owner who is capable of adding new roles. 
  */
-contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
+contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     enum Roles {
         // Can set the minter and burner.
         Owner,
@@ -20,9 +21,7 @@ contract PermissionedExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
 
     constructor() public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        address[] memory initialMinters = new address[](1);
-        initialMinters[0] = msg.sender;
-        _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), initialMinters);
+        _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), new address[](0));
         _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), new address[](0));
     }
 

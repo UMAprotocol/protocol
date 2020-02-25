@@ -7,6 +7,7 @@ import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
 
+
 /**
  * @title Proxy to allow voting from another address
  * @dev Allows a UMA token holder to designate another address to vote on their behalf. Each voter must deploy their own

@@ -1,6 +1,6 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 
-const Token = artifacts.require("PermissionedExpandedERC20");
+const Token = artifacts.require("ExpandedERC20");
 const Store = artifacts.require("Store");
 
 contract("Store", function(accounts) {
@@ -111,12 +111,14 @@ contract("Store", function(accounts) {
     const secondMarginToken = await Token.new({ from: erc20TokenOwner });
 
     // Mint 100 tokens of each to the contract and verify balances.
+    await firstMarginToken.addMember(1, erc20TokenOwner, { from: erc20TokenOwner });
     await firstMarginToken.mint(derivative, web3.utils.toWei("100", "ether"), { from: erc20TokenOwner });
     let firstTokenBalanceInStore = await firstMarginToken.balanceOf(store.address);
     let firstTokenBalanceInDerivative = await firstMarginToken.balanceOf(derivative);
     assert.equal(firstTokenBalanceInStore, 0);
     assert.equal(firstTokenBalanceInDerivative, web3.utils.toWei("100", "ether"));
 
+    await secondMarginToken.addMember(1, erc20TokenOwner, { from: erc20TokenOwner });
     await secondMarginToken.mint(derivative, web3.utils.toWei("100", "ether"), { from: erc20TokenOwner });
     let secondTokenBalanceInStore = await secondMarginToken.balanceOf(store.address);
     let secondTokenBalanceInDerivative = await secondMarginToken.balanceOf(derivative);

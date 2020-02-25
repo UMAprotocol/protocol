@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
 
+
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
  */

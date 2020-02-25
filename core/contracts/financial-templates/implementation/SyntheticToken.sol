@@ -1,18 +1,17 @@
 pragma solidity ^0.5.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "../../common/implementation/PermissionedExpandedERC20.sol";
+import "../../common/implementation/ExpandedERC20.sol";
+
 
 /**
  * @notice A burnable and mintable ERC20. The contract deployer will initially 
  * be the only minter and burner as well as the owner who is capable of adding new roles. 
  * The contract deployer will also be the only initial minter of the contract.
  */
-contract SyntheticToken is PermissionedExpandedERC20, ERC20Detailed {
+contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
         public
-        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals)
-        PermissionedExpandedERC20()
-    {}
+        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals) {}
 
     /**
      * @dev Add minter role to account.

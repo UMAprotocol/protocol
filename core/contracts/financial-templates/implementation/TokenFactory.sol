@@ -2,6 +2,7 @@ pragma solidity ^0.5.0;
 import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 
+
 /**
  * @notice A factory for creating new mintable and burnable tokens.
  */
@@ -17,7 +18,6 @@ contract TokenFactory {
         SyntheticToken mintableToken = new SyntheticToken(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addMinter(msg.sender);
         mintableToken.addBurner(msg.sender);
-        mintableToken.removeMinter(address(this));
         mintableToken.resetOwner(msg.sender);
         newToken = ExpandedIERC20(address(mintableToken));
     }

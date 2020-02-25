@@ -8,6 +8,7 @@ import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 
+
 contract FeePayer is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
