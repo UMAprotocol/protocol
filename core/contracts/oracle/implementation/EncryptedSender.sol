@@ -11,7 +11,6 @@ pragma solidity ^0.5.0;
  * These authorized parties can overwrite, but not delete the previous message for a particular topic.
  */
 contract EncryptedSender {
-
     /****************************************
      *     DATA STRUCTURES AND STORAGE      *
      ****************************************/
@@ -113,7 +112,7 @@ contract EncryptedSender {
     function getPublicKey(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].publicKey;
     }
-    
+
     /**
      * @notice check if an address is an authorized sender.
      * @param sender address of the encrypted sender.
