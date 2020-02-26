@@ -9,7 +9,7 @@ module.exports = async function(deployer, network, accounts) {
 
   const finder = await Finder.deployed();
 
-  await deploy(deployer, network, ExpiringMultiPartyCreator, finder.address, controllableTiming, {
+  await deploy(deployer, network, ExpiringMultiPartyCreator, controllableTiming, finder.address, {
     from: keys.deployer
   });
 };
