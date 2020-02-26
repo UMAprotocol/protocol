@@ -8,8 +8,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v79898979-dependency-cache-{{ checksum "package.json" }}
-            - v79898979-dependency-cache-
+            - v798989791-dependency-cache-{{ checksum "package.json" }}
+            - v798989791-dependency-cache-
       - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
@@ -17,7 +17,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v79898979-dependency-cache-{{ checksum "package.json" }}
+          key: v798989791-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -74,8 +74,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v49898989898-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v49898989898-sec-toolbox-deps-
+            - v498989898981-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v498989898981-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -92,7 +92,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v49898989898-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v498989898981-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -131,13 +131,13 @@ jobs:
           command: apk update && apk add make git python g++ curl ca-certificates openssl libusb-dev eudev-dev linux-headers && update-ca-certificates
       - restore_cache:
           keys:
-            - v20098989-coverage-dependency-cache-{{ checksum "package.json" }}
-            - v20098989-coverage-dependency-cache-
+            - v200989891-coverage-dependency-cache-{{ checksum "package.json" }}
+            - v200989891-coverage-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v20098989-coverage-dependency-cache-{{ checksum "package.json" }}
+          key: v200989891-coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
