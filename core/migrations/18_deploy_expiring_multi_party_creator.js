@@ -1,6 +1,5 @@
 const Finder = artifacts.require("Finder");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
