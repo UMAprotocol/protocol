@@ -73,6 +73,7 @@ class ExpiringMultiPartyClient {
 
   _update = async () => {
     this.collateralRequirement = web3.utils.toBN((await this.emp.methods.collateralRequirement().call()).toString());
+    this.liquidationLiveness = Number(await this.emp.methods.liquidationLiveness().call());
 
     const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0 });
     this.sponsorAddresses = [...new Set(events.map(e => e.returnValues.sponsor))];
@@ -91,7 +92,10 @@ class ExpiringMultiPartyClient {
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
-        if (liquidation.state == predisputeState && Number(liquidation.expiry) > currentTime) {
+        if (
+          liquidation.state == predisputeState &&
+          Number(liquidation.liquidationTime) + this.liquidationLiveness > currentTime
+        ) {
           nextUndisputedLiquidations.push({
             sponsor: liquidation.sponsor,
             id: id.toString(),

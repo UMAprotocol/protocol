@@ -8,20 +8,17 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 
 // Helper Contracts
 const Finder = artifacts.require("Finder");
-const ERC20Mintable = artifacts.require("Token");
+const Token = artifacts.require("ExpandedERC20");
 const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-
-ERC20Mintable.setProvider(web3.currentProvider);
 
 contract("ExpiringMultiParty", function(accounts) {
   let contractCreator = accounts[0];
 
   // Contract variables
   let collateralToken;
-  let finder;
   let expiringMultiPartyCreator;
   let registry;
 
@@ -29,8 +26,7 @@ contract("ExpiringMultiParty", function(accounts) {
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "COL", 18, { from: contractCreator });
-    finder = await Finder.deployed();
+    collateralToken = await Token.new({ from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
