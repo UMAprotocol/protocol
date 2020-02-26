@@ -137,7 +137,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v2-coverage-dependency-cache-{{ checksum "package.json" }}
+          key: v20098989-coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
