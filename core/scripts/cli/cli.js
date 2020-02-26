@@ -48,7 +48,7 @@ async function run() {
         break;
       // HELP
       case ACTIONS.help:
-        console.group(`${style.help(`Welcome to the UMA Voting Tool`)}:`);
+        console.group(`${style.help("Welcome to the UMA Voting Tool")}:`);
         console.log(
           `${style.help(
             ACTIONS.wallet

@@ -25,6 +25,7 @@ contract Liquidatable is PricelessPositionManager {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
+    // Because of the check in withdrawable(), the order of these enum values should not change.
     enum Status { Uninitialized, PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
@@ -95,30 +96,21 @@ contract Liquidatable is PricelessPositionManager {
     // TODO: add more fields to this event after refactoring the withdrawn function
     event LiquidationWithdrawn(address caller);
 
-    // TODO: could this modifier be replaced with one called `onlyPreDispute` and then the function can use
-    // the `onlyPreExpiration` modifier from the base contract and this one in conjunction?
-
-    // Callable before the liquidation's expiry AND there is no pending dispute on the liquidation
-    modifier onlyPreExpiryAndPreDispute(uint id, address sponsor) {
+    // Callable if the liquidation is in a state where it can be disputed.
+    modifier disputable(uint id, address sponsor) {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         require((getCurrentTime() < liquidation.expiry) && (liquidation.state == Status.PreDispute));
         _;
     }
-    // Callable either post the liquidation's expiry or after a dispute has been resolved,
-    // i.e. once a dispute has been requested, the liquidation's expiry ceases to matter
-    modifier onlyPostExpiryOrPostDispute(uint id, address sponsor) {
+    // Callable if the liquidation is in a state where someone can withdraw.
+    modifier withdrawable(uint id, address sponsor) {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
         Status state = liquidation.state;
+
+        // Must be disputed or the liquidation has passed expiry.
         require(
-            (state == Status.DisputeSucceeded) ||
-                (state == Status.DisputeFailed) ||
-                ((liquidation.expiry <= getCurrentTime()) && (state == Status.PreDispute))
+            (state > Status.PreDispute) || ((liquidation.expiry <= getCurrentTime()) && (state == Status.PreDispute))
         );
-        _;
-    }
-    // Callable only after a liquidation has been disputed but has not yet resolved
-    modifier onlyPendingDispute(uint id, address sponsor) {
-        require(_getLiquidationData(sponsor, id).state == Status.PendingDispute);
         _;
     }
 
@@ -242,7 +234,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param id of the disputed liquidation.
      * @param sponsor the address of the sponsor who's liquidation is being disputed.
      */
-    function dispute(uint id, address sponsor) external onlyPreExpiryAndPreDispute(id, sponsor) fees() {
+    function dispute(uint id, address sponsor) external disputable(id, sponsor) fees() {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = _getCollateral(disputedLiquidation.rawLockedCollateral).mul(
@@ -267,54 +259,6 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * @notice After a liquidation has been disputed, it can be settled by any caller enabling withdrawal to occur.
-     * @dev This is only possible after the DVM has resolved a price. Callers should
-     * call hasPrice() on the DVM before calling this to ensure
-     * that the DVM has resolved a price. This method then calculates whether the
-     * dispute on the liquidation was successful using only the settlement price,
-     * tokens outstanding, locked collateral (post-pending withdrawals), and liquidation ratio
-     * @param id to uniquely identify the dispute to settle
-     * @param sponsor the address of the sponsor who's dispute is being settled
-     */
-    function settleDispute(uint id, address sponsor) external onlyPendingDispute(id, sponsor) {
-        LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
-
-        // Get the returned price from the oracle. If this has not yet resolved will revert.
-        disputedLiquidation.settlementPrice = _getOraclePrice(disputedLiquidation.liquidationTime);
-
-        // Find the value of the tokens in the underlying collateral.
-        FixedPoint.Unsigned memory tokenRedemptionValue = disputedLiquidation.tokensOutstanding.mul(
-            disputedLiquidation.settlementPrice
-        );
-
-        // The required collateral is the value of the tokens in underlying * required collateral ratio.
-        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
-
-        // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
-        // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
-
-        // TODO: refactor this to use `isGreaterThanOrEqual` when the fixedpoint lib is updated
-        bool disputeSucceeded = requiredCollateral.isLessThan(disputedLiquidation.liquidatedCollateral);
-        // bool disputeSucceeded = disputedLiquidation.liquidatedCollateral.isGreaterThan(requiredCollateral);
-
-        if (disputeSucceeded) {
-            disputedLiquidation.state = Status.DisputeSucceeded;
-
-        } else {
-            disputedLiquidation.state = Status.DisputeFailed;
-        }
-
-        emit DisputeSettled(
-            msg.sender,
-            sponsor,
-            disputedLiquidation.liquidator,
-            disputedLiquidation.disputer,
-            id,
-            disputeSucceeded
-        );
-    }
-
-    /**
      * @notice After a dispute has settled or after a non-disputed liquidation has expired,
      * the sponsor, liquidator, and/or disputer can call this method to receive payments.
      * @dev If the dispute SUCCEEDED: the sponsor, liquidator, and disputer are eligible for payment
@@ -325,7 +269,7 @@ contract Liquidatable is PricelessPositionManager {
      */
     function withdrawLiquidation(uint id, address sponsor)
         public
-        onlyPostExpiryOrPostDispute(id, sponsor)
+        withdrawable(id, sponsor)
         fees()
         returns (FixedPoint.Unsigned memory withdrawalAmount)
     {
@@ -335,6 +279,10 @@ contract Liquidatable is PricelessPositionManager {
                 (msg.sender == liquidation.liquidator) ||
                 (msg.sender == liquidation.sponsor)
         );
+
+        // Settles the liquidation if necessary.
+        // Note: this will fail if the price has not resolved yet.
+        _settle(id, sponsor);
 
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
             liquidation.settlementPrice
@@ -420,6 +368,44 @@ contract Liquidatable is PricelessPositionManager {
 
     function getLockedCollateral(address sponsor, uint uuid) external view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(liquidations[sponsor][uuid].rawLockedCollateral);
+    }
+
+    function getLiquidations(address sponsor) external view returns (LiquidationData[] memory) {
+        return liquidations[sponsor];
+    }
+
+    /**
+     * @notice This settles a liquidation if it is in the PendingDispute state. If not, it will immediately return.
+     * If the liquidation is in the PendingDispute state, but a price is not available, this will revert.
+     * @param id to uniquely identify the dispute to settle
+     * @param sponsor the address of the sponsor who's dispute is being settled
+     */
+    function _settle(uint id, address sponsor) internal {
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
+
+        // Settlement only happens when state == PendingDispute and will only happen once per liquidation.
+        // If this liquidation is not ready to be settled, this method should return immediately.
+        if (liquidation.state != Status.PendingDispute) {
+            return;
+        }
+
+        // Get the returned price from the oracle. If this has not yet resolved will revert.
+        liquidation.settlementPrice = _getOraclePrice(liquidation.liquidationTime);
+
+        // Find the value of the tokens in the underlying collateral.
+        FixedPoint.Unsigned memory tokenRedemptionValue = liquidation.tokensOutstanding.mul(
+            liquidation.settlementPrice
+        );
+
+        // The required collateral is the value of the tokens in underlying * required collateral ratio.
+        FixedPoint.Unsigned memory requiredCollateral = tokenRedemptionValue.mul(collateralRequirement);
+
+        // If the position has more than the required collateral it is solvent and the dispute is valid(liquidation is invalid)
+        // Note that this check uses the liquidatedCollateral not the lockedCollateral as this considers withdrawals.
+        bool disputeSucceeded = liquidation.liquidatedCollateral.isGreaterThanOrEqual(requiredCollateral);
+        liquidation.state = disputeSucceeded ? Status.DisputeSucceeded : Status.DisputeFailed;
+
+        emit DisputeSettled(msg.sender, sponsor, liquidation.liquidator, liquidation.disputer, id, disputeSucceeded);
     }
 
     function _getLiquidationData(address sponsor, uint uuid)

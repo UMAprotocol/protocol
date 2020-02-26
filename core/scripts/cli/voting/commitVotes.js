@@ -4,6 +4,7 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 const { constructCommitment, batchCommitVotes } = require("../../../../common/VotingUtils");
+const networkUtils = require("../../../../common/PublicNetworks");
 
 /**
  * This prompts the user twice from the command line interface:
@@ -29,10 +30,10 @@ const commitVotes = async (web3, voting, designatedVoting) => {
 
   if (roundPhase === VotePhasesEnum.REVEAL) {
     console.log(
-      `The current vote phase is the "reveal" phase; in the reveal phase, you can only reveal already committed votes. You cannot vote on price requests in this phase.`
+      'The current vote phase is the "reveal" phase; in the reveal phase, you can only reveal already committed votes. You cannot vote on price requests in this phase.'
     );
   } else if (filteredRequests.length === 0) {
-    console.log(`No pending price requests to commit votes for!`);
+    console.log("No pending price requests to commit votes for!");
   } else {
     // To display properly, give each request a 'name' parameter and set 'value' to the price request
     for (let i = 0; i < filteredRequests.length; i++) {
@@ -45,7 +46,8 @@ const commitVotes = async (web3, voting, designatedVoting) => {
     const checkbox = await inquirer.prompt({
       type: "checkbox",
       name: "requestsCheckbox",
-      message: `Please select which price requests you would like to commit votes for. Afterwards, you will be prompted to manually enter in a price for each request in the order shown. You can change these votes later.`,
+      message:
+        "Please select which price requests you would like to commit votes for. Afterwards, you will be prompted to manually enter in a price for each request in the order shown. You can change these votes later.",
       choices: filteredRequests
     });
 
@@ -61,7 +63,7 @@ const commitVotes = async (web3, voting, designatedVoting) => {
           type: "number",
           name: "price",
           default: 0.0,
-          message: style.instruction(`Enter a positive price. Invalid input will default to 0!`),
+          message: style.instruction("Enter a positive price. Invalid input will default to 0!"),
           validate: value => value >= 0 || "Price must be positive"
         });
 
@@ -79,6 +81,16 @@ const commitVotes = async (web3, voting, designatedVoting) => {
         const { successes, batches } = await batchCommitVotes(newCommitments, voting, account);
         style.spinnerWritingContracts.stop();
 
+        // Construct etherscan link based on network
+        const networkId = web3.networkId;
+        let url;
+        if (networkUtils[networkId]) {
+          url = `${networkUtils[networkId].etherscan}/tx/`;
+        } else {
+          // No URL for localhost, just show transaction ID
+          url = "";
+        }
+
         // Print results
         console.log(
           style.success(
@@ -87,18 +99,18 @@ const commitVotes = async (web3, voting, designatedVoting) => {
             } in ${batches} batch${batches === 1 ? "" : "es"}. (Failures = ${failures.length})`
           )
         );
-        console.group(style.success(`Receipts:`));
+        console.group(style.success("Receipts:"));
         successes.forEach(committedVote => {
-          console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${committedVote.txnHash}`)}`);
+          console.log(`- transaction: ${style.link(`${url}${committedVote.txnHash}`)}`);
           console.log(`    - salt: ${committedVote.salt}`);
           console.log(`    - voted price: ${web3.utils.fromWei(committedVote.price)}`);
         });
         console.groupEnd();
       } else {
-        console.log(`You have not entered valid prices for any votes`);
+        console.log("You have not entered valid prices for any votes");
       }
     } else {
-      console.log(`You have not selected any requests.`);
+      console.log("You have not selected any requests.");
     }
   }
 };

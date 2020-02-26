@@ -24,10 +24,10 @@ const revealVotes = async (web3, voting, designatedVoting) => {
 
   if (roundPhase.toString() === VotePhasesEnum.COMMIT) {
     console.log(
-      `The current vote phase is the "commit" phase; in the commit phase you can vote on pending price requests. You cannot reveal votes during this phase.`
+      'The current vote phase is the "commit" phase; in the commit phase you can vote on pending price requests. You cannot reveal votes during this phase.'
     );
   } else if (filteredRequests.length === 0) {
-    console.log(`No pending votes to reveal!`);
+    console.log("No pending votes to reveal!");
   } else {
     // To display properly, give each request a 'value' parameter
     for (let i = 0; i < filteredRequests.length; i++) {
@@ -41,7 +41,8 @@ const revealVotes = async (web3, voting, designatedVoting) => {
     const checkbox = await inquirer.prompt({
       type: "checkbox",
       name: "requestsCheckbox",
-      message: `Please select which price requests you would like to reveal votes for. Revealing a vote makes the vote final.`,
+      message:
+        "Please select which price requests you would like to reveal votes for. Revealing a vote makes the vote final.",
       choices: filteredRequests
     });
     if (checkbox["requestsCheckbox"]) {
@@ -73,16 +74,16 @@ const revealVotes = async (web3, voting, designatedVoting) => {
             } in ${batches} batch${batches === 1 ? "" : "es"}. (Failures = ${failures.length})`
           )
         );
-        console.group(style.success(`Receipts:`));
+        console.group(style.success("Receipts:"));
         for (let i = 0; i < successes.length; i++) {
           console.log(`- transaction: ${style.link(`https://etherscan.io/tx/${successes[i].txnHash}`)}`);
         }
         console.groupEnd();
       } else {
-        console.log(`You have not successfully revealed any votes`);
+        console.log("You have not successfully revealed any votes");
       }
     } else {
-      console.log(`You have not selected any requests.`);
+      console.log("You have not selected any requests.");
     }
   }
 };

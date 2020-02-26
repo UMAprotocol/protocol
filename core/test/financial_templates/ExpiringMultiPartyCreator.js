@@ -1,4 +1,4 @@
-const { toWei } = web3.utils;
+const { toWei, hexToUtf8 } = web3.utils;
 
 const truffleAssert = require("truffle-assertions");
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
@@ -8,9 +8,7 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 
 // Helper Contracts
 const Finder = artifacts.require("Finder");
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
+const ERC20Mintable = artifacts.require("Token");
 const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -30,23 +28,20 @@ contract("ExpiringMultiParty", function(accounts) {
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await ERC20Mintable.new({ from: contractCreator });
+    collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "COL", 18, { from: contractCreator });
     finder = await Finder.deployed();
     registry = await Registry.deployed();
 
-    // expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(finder.address, true, { from: contractCreator });
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
+    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(true, finder.address, { from: contractCreator });
 
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator
     });
 
     constructorParams = {
-      isTest: true,
       expirationTimestamp: "1234567890",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
-      finderAddress: finder.address,
       tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
@@ -60,6 +55,12 @@ contract("ExpiringMultiParty", function(accounts) {
   });
 
   it("Can create new instances of ExpiringMultiParty", async function() {
+    // Use `.call` to get the returned value from the function.
+    let functionReturnedAddress = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, {
+      from: contractCreator
+    });
+
+    // Execute without the `.call` to perform state change. catch the result to query the event.
     let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
       from: contractCreator
     });
@@ -71,11 +72,17 @@ contract("ExpiringMultiParty", function(accounts) {
       return ev.expiringMultiPartyAddress != 0 && ev.partyMemberAddress == contractCreator;
     });
 
+    // Ensure value returned from the event is the same as returned from the function
+    assert.equal(functionReturnedAddress, expiringMultiPartyAddress);
+
     // Instantiate an instance of the expiringMultiParty and check a few constants that should hold true
     let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
-    assert(await expiringMultiParty.expirationTimestamp(), constructorParams.expirationTimestamp);
-    assert(await expiringMultiParty.withdrawalLiveness(), constructorParams.withdrawalLiveness);
-    assert(await expiringMultiParty.priceIdentifer(), constructorParams.priceFeedIdentifier);
+    assert.equal(await expiringMultiParty.expirationTimestamp(), constructorParams.expirationTimestamp);
+    assert.equal(await expiringMultiParty.withdrawalLiveness(), constructorParams.withdrawalLiveness);
+    assert.equal(
+      hexToUtf8(await expiringMultiParty.priceIdentifer()),
+      hexToUtf8(constructorParams.priceFeedIdentifier)
+    );
   });
 
   it("Creation correctly registers ExpiringMultiParty within the registry", async function() {

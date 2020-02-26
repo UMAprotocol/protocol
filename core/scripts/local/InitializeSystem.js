@@ -1,10 +1,8 @@
 const Finder = artifacts.require("Finder");
-const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const Registry = artifacts.require("Registry");
-const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const identifiers = require("../../config/identifiers");
@@ -13,10 +11,7 @@ const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 const argv = require("minimist")(process.argv.slice());
 
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
+const Token = artifacts.require("Token");
 
 // Deploys a TokenizedDerivative. Used for deploying a contract to Ganache for local testing.
 const initializeSystem = async function(callback) {
@@ -30,11 +25,8 @@ const initializeSystem = async function(callback) {
     const deployedRegistry = await Registry.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry))
     );
-    const deployedVoting = await Voting.at(
-      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
-    );
     const deployedIdentifierWhitelist = await IdentifierWhitelist.at(
-      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentiferWhitelist))
+      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist))
     );
     const deployedManualPriceFeed = await ManualPriceFeed.deployed();
 
@@ -59,7 +51,7 @@ const initializeSystem = async function(callback) {
     }
 
     // Create and register a margin currency.
-    const marginToken = await ERC20Mintable.new({ from: sponsor });
+    const marginToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     const marginCurrencyWhitelist = await AddressWhitelist.at(
       await tokenizedDerivativeCreator.marginCurrencyWhitelist()

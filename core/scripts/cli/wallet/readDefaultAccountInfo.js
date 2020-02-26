@@ -26,24 +26,24 @@ const readDefaultAccountInfo = async (web3, artifacts) => {
     let designatedVotingContract = await getTwoKeyContract(web3, artifacts);
     style.spinnerReadingContracts.stop();
 
-    console.group(style.success(`\n** Ethereum Account Info **`));
-    console.log(`- ${style.success(`Address`)}: ${address}`);
-    console.log(`- ${style.success(`Balance`)}: ${fromWei(balance)} ETH`);
-    console.log(`- ${style.success(`Balance`)}: ${fromWei(votingBalance)} UMA voting token`);
-    console.log(`\n`);
+    console.group(style.success("\n** Ethereum Account Info **"));
+    console.log(`- ${style.success("Address")}: ${address}`);
+    console.log(`- ${style.success("Balance")}: ${fromWei(balance)} ETH`);
+    console.log(`- ${style.success("Balance")}: ${fromWei(votingBalance)} UMA voting token`);
+    console.log("\n");
     console.groupEnd();
 
     if (designatedVotingContract) {
-      console.group(style.success(`\n** Two Key Contract Info **`));
+      console.group(style.success("\n** Two Key Contract Info **"));
       const designatedVotingBalance = await votingToken.balanceOf(designatedVotingContract.address);
-      console.log(`- ${style.success(`Balance`)}: ${fromWei(designatedVotingBalance)} UMA voting token`);
-      console.log(`\n`);
+      console.log(`- ${style.success("Balance")}: ${fromWei(designatedVotingBalance)} UMA voting token`);
+      console.log("\n");
       console.groupEnd();
     }
   } catch (err) {
     console.error(err);
     console.error(
-      `Failed to read default account information. Are you sure the contracts are deployed to this network?`
+      "Failed to read default account information. Are you sure the contracts are deployed to this network?"
     );
   }
 };

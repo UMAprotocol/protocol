@@ -1,10 +1,6 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleAssert = require("truffle-assertions");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
+const Token = artifacts.require("Token");
 const Store = artifacts.require("Store");
 
 contract("Store", function(accounts) {
@@ -69,7 +65,7 @@ contract("Store", function(accounts) {
   });
 
   it("Final fees", async function() {
-    //Add final fee and confirm
+    // Add final fee and confirm
     await store.setFinalFee(arbitraryTokenAddr, { rawValue: web3.utils.toWei("5", "ether") }, { from: owner });
     const fee = await store.computeFinalFee(arbitraryTokenAddr);
     assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
@@ -111,8 +107,8 @@ contract("Store", function(accounts) {
   });
 
   it("Pay fees in ERC20 token", async function() {
-    const firstMarginToken = await ERC20Mintable.new({ from: erc20TokenOwner });
-    const secondMarginToken = await ERC20Mintable.new({ from: erc20TokenOwner });
+    const firstMarginToken = await Token.new("COLLATERAL", "UMA", "18", { from: erc20TokenOwner });
+    const secondMarginToken = await Token.new("COLLATERAL", "UMA", "18", { from: erc20TokenOwner });
 
     // Mint 100 tokens of each to the contract and verify balances.
     await firstMarginToken.mint(derivative, web3.utils.toWei("100", "ether"), { from: erc20TokenOwner });
