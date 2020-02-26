@@ -274,9 +274,6 @@ workflows:
           context: api_keys
           requires:
             - build
-      - docs:
-          requires:
-            - checkout_and_install
       - dapp_test:
           requires:
             - build
