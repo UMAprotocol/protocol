@@ -8,7 +8,7 @@ $(npm bin)/truffle version
 
 run_slither() {
     cd $1
-    truffle compile 
+    $(npm bin)/truffle compile 
     mkdir -p node_modules/
     cp -r ../node_modules/@openzeppelin ./node_modules/@openzeppelin
 
