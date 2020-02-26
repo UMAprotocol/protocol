@@ -8,8 +8,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v7-dependency-cache-{{ checksum "package.json" }}
-            - v7-dependency-cache-
+            - v79898979-dependency-cache-{{ checksum "package.json" }}
+            - v79898979-dependency-cache-
       - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
@@ -17,7 +17,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v7-dependency-cache-{{ checksum "package.json" }}
+          key: v79898979-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
