@@ -1,6 +1,13 @@
-const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("./Crypto");
+const {
+  decryptMessage,
+  encryptMessage,
+  deriveKeyPairFromSignatureTruffle,
+  deriveKeyPairFromSignatureMetamask
+} = require("./Crypto");
 const { getKeyGenMessage, computeTopicHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
+
+const argv = require("minimist")(process.argv.slice());
 
 /**
  * Generate a salt and use it to encrypt a committed vote in response to a price request
@@ -17,7 +24,12 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
   const hash = web3.utils.soliditySha3(priceWei, salt);
 
   const vote = { price: priceWei, salt };
-  const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account);
+  let publicKey;
+  if (argv.network === "metamask") {
+    publicKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account)).publicKey;
+  } else {
+    publicKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account)).publicKey;
+  }
   const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
 
   return {
@@ -42,7 +54,12 @@ const constructReveal = async (request, roundId, web3, account, votingContract) 
   const topicHash = computeTopicHash(request, roundId);
   const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
 
-  const { privateKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account);
+  let privateKey;
+  if (argv.network === "metamask") {
+    privateKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account)).privateKey;
+  } else {
+    privateKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account)).privateKey;
+  }
   const vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
 
   return {

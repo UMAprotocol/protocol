@@ -13,12 +13,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("Token");
 const TokenFactory = artifacts.require("TokenFactory");
 
-// Helper Contracts
-const ERC20MintableData = require("@openzeppelin/contracts/build/contracts/ERC20Mintable.json");
-const truffleContract = require("@truffle/contract");
-const ERC20Mintable = truffleContract(ERC20MintableData);
-ERC20Mintable.setProvider(web3.currentProvider);
-
 contract("PricelessPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
   const contractDeployer = accounts[0];
@@ -41,7 +35,7 @@ contract("PricelessPositionManager", function(accounts) {
   const syntheticSymbol = "UMATEST";
   const withdrawalLiveness = 1000;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-  const priceTrackingIdentifier = web3.utils.utf8ToHex("ETHUSD");
+  const priceTrackingIdentifier = web3.utils.utf8ToHex("UMATEST");
 
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
@@ -63,7 +57,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await ERC20Mintable.new({ from: collateralOwner });
+    collateral = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 
@@ -72,7 +66,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new({ from: contractDeployer });
+    identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
       from: contractDeployer
     });
@@ -90,15 +84,15 @@ contract("PricelessPositionManager", function(accounts) {
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
     pricelessPositionManager = await PricelessPositionManager.new(
-      true, //_isTest
-      expirationTimestamp, //_expirationTimestamp
-      withdrawalLiveness, //_withdrawalLiveness
-      collateral.address, //_collateralAddress
-      Finder.address, //_finderAddress
-      priceTrackingIdentifier, //_priceFeedIdentifier
-      syntheticName, //_syntheticName
-      syntheticSymbol, //_syntheticSymbol
-      TokenFactory.address, //_tokenFactoryAddress
+      true, // _isTest
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      Finder.address, // _finderAddress
+      priceTrackingIdentifier, // _priceFeedIdentifier
+      syntheticName, // _syntheticName
+      syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());
@@ -115,6 +109,23 @@ contract("PricelessPositionManager", function(accounts) {
     // Synthetic token
     assert.equal(await tokenCurrency.name(), syntheticName);
     assert.equal(await tokenCurrency.symbol(), syntheticSymbol);
+
+    // Reverts on bad constructor input (unknown identifer)
+    assert(
+      await didContractThrow(
+        PricelessPositionManager.new(
+          true, // _isTest (unchanged)
+          expirationTimestamp, // _expirationTimestamp (unchanged)
+          withdrawalLiveness, // _withdrawalLiveness (unchanged)
+          collateral.address, // _collateralAddress (unchanged)
+          finder.address, // _finderAddress (unchanged)
+          web3.utils.utf8ToHex("UNKNOWN"), // Some identifer that the whitelist tracker does not know
+          syntheticName, // _syntheticName (unchanged)
+          syntheticSymbol, // _syntheticSymbol (unchanged)
+          { from: contractDeployer }
+        )
+      )
+    );
   });
 
   it("Lifecycle", async function() {
@@ -481,7 +492,7 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should have no synthetic positions left after settlement.
     assert.equal(tokenHolderFinalSynthetic, 0);
 
-    //Check the event returned the correct values
+    // Check the event returned the correct values
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
@@ -708,7 +719,7 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should have no synthetic positions left after settlement.
     assert.equal(tokenHolderFinalSynthetic, 0);
 
-    //Check the event returned the correct values
+    // Check the event returned the correct values
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
@@ -895,5 +906,70 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
     await store.setFinalFee(collateral.address, { rawValue: "0" });
+  });
+
+  it("Oracle swap post expiry", async function() {
+    // Approvals
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: tokenHolder });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
+
+    // Create one position with 200 synthetic tokens to mint with 300 tokens of collateral. For this test say the
+    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    const numTokens = toWei("200");
+    const amountCollateral = toWei("300");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer 100 the tokens from the sponsor to two separate holders. IRL this happens through the sponsor selling
+    // tokens.
+    const tokenHolderTokens = toWei("100");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
+      from: sponsor
+    });
+    await tokenCurrency.transfer(other, tokenHolderTokens, {
+      from: sponsor
+    });
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
+    await pricelessPositionManager.expire({ from: other });
+
+    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
+    // feed. With 200 units of outstanding tokens this results in a token redemption value of: TRV = 200 * 1.2 = 240 USD.
+    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime, toWei("1.2"));
+
+    // Token holder should receive 120 collateral tokens for their 100 synthetic tokens.
+    let initialCollateral = await collateral.balanceOf(tokenHolder);
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    let collateralPaid = (await collateral.balanceOf(tokenHolder)).sub(initialCollateral);
+    assert.equal(collateralPaid, toWei("120"));
+
+    // Create new oracle, replace it in the finder, and push a different price to it.
+    const newMockOracle = await MockOracle.new(identifierWhitelist.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
+      from: contractDeployer
+    });
+
+    // Settle expired should still work even if the new oracle has no price.
+    initialCollateral = await collateral.balanceOf(sponsor);
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    collateralPaid = (await collateral.balanceOf(sponsor)).sub(initialCollateral);
+
+    // Sponsor should have received 300 - 240 = 60 collateral tokens.
+    assert.equal(collateralPaid, toWei("60"));
+
+    // Push a different price to the new oracle to ensure the contract still uses the old price.
+    await newMockOracle.requestPrice(priceTrackingIdentifier, expirationTime);
+    await newMockOracle.pushPrice(priceTrackingIdentifier, expirationTime, toWei("0.8"));
+
+    // Second token holder should receive the same payout as the first despite the oracle price being changed.
+    initialCollateral = await collateral.balanceOf(other);
+    await pricelessPositionManager.settleExpired({ from: other });
+    collateralPaid = (await collateral.balanceOf(other)).sub(initialCollateral);
+    assert.equal(collateralPaid, toWei("120"));
   });
 });

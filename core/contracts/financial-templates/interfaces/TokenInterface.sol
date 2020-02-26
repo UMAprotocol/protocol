@@ -2,33 +2,26 @@ pragma solidity ^0.5.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title Interface for mintable and burnable token. Adds only methods to IERC20 that PricelessPositionManager calls.
+ * @title Interface for mintable and burnable tokens.
  * @dev Technically this is not an "interface" because PricelessPositionManager needs to use SafeERC20 for TokenInterface
  * in order to make safeTransferFrom() calls. However, you cannot use the "using" keyword with interfaces
  */
 contract TokenInterface is IERC20 {
     /**
-     * @dev See {ERC20-_mint}.
+     * @dev Creates new tokens and sends to account.
      *
      * Requirements:
      *
-     * - the caller must have the {MinterRole}.
+     * - the caller must have the minter role.
      */
     function mint(address account, uint256 amount) external returns (bool);
 
     /**
-     * @dev Add minter role for account
+     * @dev Destroys `amount` tokens from the caller.
      *
      * Requirements:
      *
-     * - the caller must have the {MinterRole}.
-     */
-    function addMinter(address account) external;
-
-    /**
-     * @dev Destroys `amount` tokens from the caller.
-     *
-     * See {ERC20-_burn}.
+     * - the caller must have the burner role.
      */
     function burn(uint256 amount) external;
 }
