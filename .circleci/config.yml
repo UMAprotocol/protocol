@@ -131,8 +131,8 @@ jobs:
           command: apk update && apk add make git python g++ curl ca-certificates openssl libusb-dev eudev-dev linux-headers && update-ca-certificates
       - restore_cache:
           keys:
-            - v2-coverage-dependency-cache-{{ checksum "package.json" }}
-            - v2-coverage-dependency-cache-
+            - v20098989-coverage-dependency-cache-{{ checksum "package.json" }}
+            - v20098989-coverage-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
