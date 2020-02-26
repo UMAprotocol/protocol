@@ -265,7 +265,7 @@ workflows:
       - coverage:
           context: api_keys
       # - slither
-      - echidna
+      # - echidna
       - build:
           requires:
             - checkout_and_install
@@ -276,9 +276,9 @@ workflows:
           context: api_keys
           requires:
             - build
-      - docs:
-          requires:
-            - checkout_and_install
+      # - docs:
+      #     requires:
+      #       - checkout_and_install
       - dapp_test:
           requires:
             - build
