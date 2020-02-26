@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 
 /**
- * @title Contract for sending keyed encrypted messages via the EVM
+ * @title Contract for sending keyed encrypted messages via the EVM.
  * @dev This contract uses topic hashes as keys and can store a single arbitrary encrypted message per topic at any
  * given time. Note: there's technically nothing that requires the topics hashed or for the messages to be encrypted.
  * This contract is built for the following specific use case:
@@ -11,6 +11,7 @@ pragma solidity ^0.5.0;
  * These authorized parties can overwrite, but not delete the previous message for a particular topic.
  */
 contract EncryptedSender {
+
     /****************************************
      *     DATA STRUCTURES AND STORAGE      *
      ****************************************/
@@ -90,18 +91,14 @@ contract EncryptedSender {
         recipients[msg.sender].topics[topicHash].publicKey = publicKey;
     }
 
-    /**
-     * @notice Returns true if the `sender` is authorized to send to the `recipient`.
-     */
-
     /****************************************
      *        ENCRYPTED DATA GETTERS        *
      ****************************************/
 
     /**
      * @notice Gets the current stored message corresponding to `recipient` and `topicHash`.
-     * @dev To decrypt messages (this requires access to the recipient's private keys), use the decryptMessage()
-     * function in common/Crypto.js.
+     * @dev To decrypt messages (this requires access to the recipient's private keys),
+     * use the decryptMessage() function in common/Crypto.js.
      */
     function getMessage(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].message;
@@ -116,7 +113,13 @@ contract EncryptedSender {
     function getPublicKey(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].publicKey;
     }
-
+    
+    /**
+     * @notice check if an address is an authorized sender.
+     * @param sender address of the encrypted sender.
+     * @param recipient address of the message recipient.
+     * @return bool true if the `sender` is authorized to send to the `recipient`.
+     */
     function isAuthorizedSender(address sender, address recipient) public view returns (bool) {
         // Note: the recipient is always authorized to send messages to themselves.
         return recipients[recipient].authorizedSenders[sender] || recipient == sender;

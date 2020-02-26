@@ -482,7 +482,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
                 voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
             ) {
                 // The price was successfully resolved during the voter's last voting round, the voter revealed
-                // and was correct, so they are elgible for a reward.
+                // and was correct, so they are eligible for a reward.
                 // Compute the reward and add to the cumulative reward.
                 FixedPoint.Unsigned memory reward = snapshotBalance.mul(totalRewardPerVote).div(
                     voteInstance.resultComputation.getTotalCorrectlyVotedTokens()

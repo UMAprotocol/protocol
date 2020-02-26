@@ -18,10 +18,8 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      ****************************************/
 
     enum Roles {
-        // Can set the Voter and Withdrawer roles.
-        Owner,
-        // Can vote through this contract.
-        Voter
+        Owner, // Can set the Voter and Withdrawer roles.
+        Voter // Can vote through this contract.
     }
 
     // Reference to the UMA Finder contract, allowing Voting upgrades to be performed

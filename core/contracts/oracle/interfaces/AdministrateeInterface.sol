@@ -10,7 +10,7 @@ interface AdministrateeInterface {
     function emergencyShutdown() external;
 
     /**
-     * @notice A core contract method called independently or as a part of other financial contract transactions. 
+     * @notice A core contract method called independently or as a part of other financial contract transactions.
      * @dev It pays fees and moves money between margin accounts to make sure they reflect the NAV of the contract.
      */
     function remargin() external;

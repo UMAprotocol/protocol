@@ -11,7 +11,7 @@ library ResultComputation {
     using FixedPoint for FixedPoint.Unsigned;
 
     /****************************************
-     *     INTERNAL VARIABLES AND STORAGE   *
+     *   INTERNAL LIBRARY DATA STRUCTURE    *
      ****************************************/
 
     struct Data {
@@ -24,7 +24,7 @@ library ResultComputation {
     }
 
     /****************************************
-     *          VOTING FUNCTIONS            *
+     *            VOTING FUNCTIONS          *
      ****************************************/
 
     /**
@@ -48,8 +48,11 @@ library ResultComputation {
     /**
      * @notice Returns whether the result is resolved, and if so, what value it resolved to.
      * @dev `price` should be ignored if `isResolved` is false.
+     * @param data contains information against which the `minVoteThreshold` is applied.
      * @param minVoteThreshold Minimum number of tokens that must have been voted for the result to be valid. Can be
      * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
+     * @return isResolved indicates if the price has been resolved correctly.
+     * @return price the price that the dvm resolved to.
      */
     function getResolvedPrice(Data storage data, FixedPoint.Unsigned memory minVoteThreshold)
         internal
@@ -74,6 +77,9 @@ library ResultComputation {
     /**
      * @notice Checks whether a `voteHash` is considered correct.
      * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
+     * @param data contains information against which the `voteHash` is checked.
+     * @param voteHash the committed hash submitted by the voter.
+     * @return bool true if the vote was correct.
      */
     function wasVoteCorrect(Data storage data, bytes32 voteHash) internal view returns (bool) {
         return voteHash == keccak256(abi.encode(data.currentMode));
@@ -82,6 +88,8 @@ library ResultComputation {
     /**
      * @notice Gets the total number of tokens whose votes are considered correct.
      * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
+     * @param data contains all votes against which the correctly voted tokens are counted.
+     * @return FixedPoint.Unsigned which indicates the correctly frequency of the correctly voted tokens.
      */
     function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (FixedPoint.Unsigned memory) {
         return data.voteFrequency[data.currentMode];
