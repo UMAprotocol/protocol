@@ -84,6 +84,8 @@ contract EncryptedSender {
      * @dev setting the public key is optional - if the publicKey is communicated or can be derived offchain by
      * the sender, there is no need to set it here.  Because there are no specific requirements for the
      * publicKey, there is also no verification of its validity other than its length.
+     * @param publicKey set the key for a given `topicHash`.
+     * @param topicHash set for a given recipient `msg.sender`'s `publicKey`.
      */
     function setPublicKey(bytes memory publicKey, bytes32 topicHash) public {
         require(publicKey.length == 64, "Public key is the wrong length");
@@ -98,16 +100,22 @@ contract EncryptedSender {
      * @notice Gets the current stored message corresponding to `recipient` and `topicHash`.
      * @dev To decrypt messages (this requires access to the recipient's private keys),
      * use the decryptMessage() function in common/Crypto.js.
+     * @param recipient of the message sent.
+     * @param topicHash of the message received.
+     * @return bytes of the message retrieved.
      */
     function getMessage(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].message;
     }
 
     /**
-     * @notice Gets the stored public key for a particular `recipient` and `topicHash`. Return value will be 0 length
-     * if no public key has been set.
-     * @dev Senders may need this public key to encrypt messages that only the `recipient` can read. If the public key
-     * is communicated offchain, this field may be left empty.
+     * @notice Gets the stored public key for a particular `recipient` and `topicHash`.
+     * Return value will be 0 length if no public key has been set.
+     * @dev Senders may need this public key to encrypt messages that only the `recipient` can read.
+     * If the public key is communicated offchain, this field may be left empty.
+     * @param recipient address of the public key.
+     * @param topic hash of the recipient.
+     * @param bytes public key returned.
      */
     function getPublicKey(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].publicKey;

@@ -6,7 +6,7 @@ import "../interfaces/FinderInterface.sol";
 
 /**
  * @title Provides addresses of the live contracts implementing certain interfaces.
- * @dev Examples are the Oracle or Store interfaces.
+ * @dev Examples of interfaces with implementations that Finder locates are the Oracle and Store interfaces.
  */
 contract Finder is FinderInterface, Ownable {
     mapping(bytes32 => address) public interfacesImplemented;

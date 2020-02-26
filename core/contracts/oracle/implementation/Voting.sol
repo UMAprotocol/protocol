@@ -120,7 +120,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     FinderInterface private finder;
 
     // If non-zero, this contract has been migrated to this address. All voters and
-    //financial contracts should query the new address only.
+    // financial contracts should query the new address only.
     address public migratedAddress;
 
     // Max value of an unsigned integer.
