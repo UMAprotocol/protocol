@@ -2,9 +2,9 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../../common/MultiRole.sol";
-import "../../common/FixedPoint.sol";
-import "../../common/Testable.sol";
+import "../../common/implementation/MultiRole.sol";
+import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleInterface.sol";

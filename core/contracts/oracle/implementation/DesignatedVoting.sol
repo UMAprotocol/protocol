@@ -2,8 +2,8 @@ pragma solidity ^0.5.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../../common/MultiRole.sol";
-import "../../common/Withdrawable.sol";
+import "../../common/implementation/MultiRole.sol";
+import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
 

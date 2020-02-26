@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
-import "../../common/MultiRole.sol";
+import "../../common/implementation/MultiRole.sol";
 import "../interfaces/RegistryInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";

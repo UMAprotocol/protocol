@@ -4,12 +4,12 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../../common/FixedPoint.sol";
-import "../../common/Testable.sol";
+import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/Testable.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "./TokenFactory.sol";
-import "../interfaces/TokenInterface.sol";
 import "./FeePayer.sol";
 
 /**
@@ -23,7 +23,7 @@ contract PricelessPositionManager is FeePayer {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
-    using SafeERC20 for TokenInterface;
+    using SafeERC20 for ExpandedIERC20;
 
     // Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
     // and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
@@ -50,7 +50,7 @@ contract PricelessPositionManager is FeePayer {
     FixedPoint.Unsigned public rawTotalPositionCollateral;
 
     // Synthetic token created by this contract.
-    TokenInterface public tokenCurrency;
+    ExpandedIERC20 public tokenCurrency;
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
@@ -480,5 +480,4 @@ contract PricelessPositionManager is FeePayer {
     function _isCollateralizedPosition(address sponsor) internal view {
         require(_getCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
     }
-
 }

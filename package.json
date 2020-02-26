@@ -3,9 +3,14 @@
   "version": "0.1.0",
   "description": "UMA Protocol Smart Contracts",
   "scripts": {
+    "lint": "npm run eslint && npm run prettier",
+    "lint_check": "npm run eslint_check && npm run prettier_check",
+    "eslint": "npm run eslint_vanilla -- --fix",
+    "eslint_check": "npm run eslint_vanilla",
+    "eslint_vanilla": "eslint 'core/**/*.js'",
     "prettier": "npm run prettier_vanilla -- --write",
     "prettier_check": "npm run prettier_vanilla -- --check",
-    "prettier_vanilla": "prettier --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'sponsor-dapp/src/**/*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol' 'financial-templates-lib/*.js'"
+    "prettier_vanilla": "prettier --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol' 'financial-templates-lib/*.js'"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
@@ -14,6 +19,8 @@
     "url": "https://github.com/UMAprotocol/protocol.git"
   },
   "devDependencies": {
+    "eslint": "5.16.0",
+    "husky": "^4.2.3",
     "prettier": "1.19.1",
     "prettier-plugin-solidity": "1.0.0-alpha.36",
     "solidity-coverage": "^0.7.1",
@@ -34,7 +41,6 @@
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",
-    "eslint": "5.16.0",
     "eth-crypto": "^1.3.4",
     "express": "^4.17.1",
     "ganache-cli": "^6.7.0",
@@ -60,5 +66,10 @@
   },
   "bin": {
     "uma": "./core/scripts/cli/cli_entry.sh"
+  },
+  "husky": {
+    "hooks": {
+      "pre-push": "npm run lint_check"
+    }
   }
 }

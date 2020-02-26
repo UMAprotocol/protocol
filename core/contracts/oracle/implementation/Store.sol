@@ -2,9 +2,9 @@ pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "../../common/FixedPoint.sol";
-import "../../common/MultiRole.sol";
-import "../../common/Withdrawable.sol";
+import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/MultiRole.sol";
+import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/StoreInterface.sol";
 
 /**
