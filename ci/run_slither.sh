@@ -3,11 +3,12 @@ set -e
 
 PROTOCOL_DIR=$(pwd)
 sudo chmod -R a+rwx /usr/local/lib/node_modules
-
 $(npm bin)/truffle version
+
 
 run_slither() {
     cd $1
+    $(npm bin)/truffle version
     $(npm bin)/truffle compile 
     mkdir -p node_modules/
     cp -r ../node_modules/@openzeppelin ./node_modules/@openzeppelin
