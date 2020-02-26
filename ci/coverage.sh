@@ -8,4 +8,4 @@ PROTOCOL_DIR=$(pwd)
 
 # $1 is the truffle directory over which we want to run the coverage tool.
 cd $TRUFFLE_DIR
-$(npm bin)/truffle run coverage --temp build --network coverage
+node --max-old-space-size=4096 $(npm bin)/truffle run coverage --temp build --network coverage
