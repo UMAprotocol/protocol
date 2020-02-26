@@ -114,8 +114,8 @@ contract EncryptedSender {
      * @dev Senders may need this public key to encrypt messages that only the `recipient` can read.
      * If the public key is communicated offchain, this field may be left empty.
      * @param recipient address of the public key.
-     * @param topic hash of the recipient.
-     * @param bytes public key returned.
+     * @param topicHash hash of the recipient.
+     * @return bytes public key returned.
      */
     function getPublicKey(address recipient, bytes32 topicHash) external view returns (bytes memory) {
         return recipients[recipient].topics[topicHash].publicKey;
