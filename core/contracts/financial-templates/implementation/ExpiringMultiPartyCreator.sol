@@ -7,6 +7,7 @@ import "../../tokenized-derivative/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "./ExpiringMultiParty.sol";
 
+
 /**
 @title Expiring Multi Party Contract creator
 @notice Factory contract to create and register new instances of expiring multiparty contracts
