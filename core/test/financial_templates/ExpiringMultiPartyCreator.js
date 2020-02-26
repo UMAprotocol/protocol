@@ -12,6 +12,7 @@ const ERC20Mintable = artifacts.require("Token");
 const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 
 ERC20Mintable.setProvider(web3.currentProvider);
 
@@ -31,8 +32,7 @@ contract("ExpiringMultiParty", function(accounts) {
     collateralToken = await ERC20Mintable.new("COLLATERAL_TOKEN", "COL", 18, { from: contractCreator });
     finder = await Finder.deployed();
     registry = await Registry.deployed();
-
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(true, finder.address, { from: contractCreator });
+    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator
@@ -52,6 +52,11 @@ contract("ExpiringMultiParty", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
+
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
+      from: contractCreator
+    });
   });
 
   it("Can create new instances of ExpiringMultiParty", async function() {
