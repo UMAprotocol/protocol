@@ -1,6 +1,6 @@
 pragma solidity ^0.5.0;
 
-import "../../common/FixedPoint.sol";
+import "../../common/implementation/FixedPoint.sol";
 
 /**
  * @title Computes vote results.

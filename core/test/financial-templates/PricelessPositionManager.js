@@ -10,7 +10,8 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Token = artifacts.require("Token");
+const MarginToken = artifacts.require("ExpandedERC20");
+const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
 
 contract("PricelessPositionManager", function(accounts) {
@@ -57,7 +58,8 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: collateralOwner });
+    collateral = await MarginToken.new({ from: collateralOwner });
+    await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
 
@@ -95,7 +97,7 @@ contract("PricelessPositionManager", function(accounts) {
       TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
-    tokenCurrency = await Token.at(await pricelessPositionManager.tokenCurrency());
+    tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
   });
 
   it("Correct deployment and variable assignment", async function() {
