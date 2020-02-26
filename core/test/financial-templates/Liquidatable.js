@@ -4,7 +4,7 @@ const truffleAssert = require("truffle-assertions");
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
-const Token = artifacts.require("Token");
+const Token = artifacts.require("ExpandedERC20");
 
 // Contracts to unit test
 const Liquidatable = artifacts.require("Liquidatable");
@@ -90,7 +90,7 @@ contract("Liquidatable", function(accounts) {
 
   beforeEach(async () => {
     // Create Collateral and Synthetic ERC20's
-    collateralToken = await Token.new("COLLATERAL_TOKEN", "UMA", "18", { from: contractDeployer });
+    collateralToken = await Token.new({ from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -137,6 +137,7 @@ contract("Liquidatable", function(accounts) {
     await liquidationContract.setCurrentTime(startTime);
 
     // Mint collateral to sponsor
+    await collateralToken.addMember(1, contractDeployer, { from: contractDeployer });
     await collateralToken.mint(sponsor, amountOfCollateral, { from: contractDeployer });
 
     // Mint dispute bond to disputer

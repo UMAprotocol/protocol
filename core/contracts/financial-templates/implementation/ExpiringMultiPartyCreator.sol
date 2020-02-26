@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/AddressWhitelist.sol";
 import "../../oracle/implementation/ContractCreator.sol";
-import "../../common/Testable.sol";
+import "../../common/implementation/Testable.sol";
 import "./ExpiringMultiParty.sol";
 
 /**
