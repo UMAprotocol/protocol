@@ -6,12 +6,12 @@ sudo chmod -R a+rwx /usr/local/lib/node_modules
 
 
 run_slither() {
-    # cd $1
-    # mkdir -p node_modules/
-    # cp -r ../node_modules/@openzeppelin ./node_modules/@openzeppelin
+    cd $1
+    mkdir -p node_modules/
+    cp -r ../node_modules/@openzeppelin ./node_modules/@openzeppelin
     # truffle compile 
 
-    # cd $PROTOCOL_DIR
+    cd $PROTOCOL_DIR
     slither --truffle-version=5.1.14 --exclude=naming-convention,solc-version,pragma,external-function,reentrancy-benign,reentrancy-no-eth,arbitrary-send,locked-ether,reentrancy-eth,uninitialized-state-variables,incorrect-equality,reentrancy-events,assembly,shadowing-local,low-level-calls,constant-function-state $1
 }
 
