@@ -40,7 +40,7 @@ contract Liquidatable is PricelessPositionManager {
         // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
         FixedPoint.Unsigned liquidatedCollateral;
-        /* Set upon initiation of a dispute */
+        /** Set upon initiation of a dispute */
         address disputer; // Person who is disputing a liquidation
         /** Set upon a resolution of a dispute */
         FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
