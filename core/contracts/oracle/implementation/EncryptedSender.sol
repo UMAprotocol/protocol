@@ -58,6 +58,9 @@ contract EncryptedSender {
      * previous messages sent to this `recipient` with this `topicHash`.
      * @dev To construct an encrypted message, use the encryptMessage() in common/Crypto.js.
      * The public key for the recipient can be obtained using the getPublicKey() method.
+     * @param recipient_ recipient of the message sent.
+     * @param topicHash categorizes the message sent.
+     * @param message defines the message sent.
      */
     function sendMessage(address recipient_, bytes32 topicHash, bytes memory message) public {
         Recipient storage recipient = recipients[recipient_];
@@ -65,6 +68,11 @@ contract EncryptedSender {
         recipient.topics[topicHash].message = message;
     }
 
+    /**
+     * @notice removes a message from a recipient for a specific topic hash.
+     * @param recipient_ address to remove the message from.
+     * @param topicHash category of the message to remove.
+     */
     function removeMessage(address recipient_, bytes32 topicHash) public {
         Recipient storage recipient = recipients[recipient_];
         require(isAuthorizedSender(msg.sender, recipient_), "Not authorized to remove message");
