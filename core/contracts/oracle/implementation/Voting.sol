@@ -2,8 +2,8 @@ pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../../common/FixedPoint.sol";
-import "../../common/Testable.sol";
+import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";

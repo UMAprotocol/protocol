@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "../../common/FixedPoint.sol";
+import "../../common/implementation/FixedPoint.sol";
 
 
 /**

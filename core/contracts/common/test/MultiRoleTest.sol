@@ -4,7 +4,7 @@
 
 pragma solidity ^0.6.0;
 
-import "../MultiRole.sol";
+import "../implementation/MultiRole.sol";
 
 
 // The purpose of this contract is to make the MultiRole creation methods externally callable for testing purposes.

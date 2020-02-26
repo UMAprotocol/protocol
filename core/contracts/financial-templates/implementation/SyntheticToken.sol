@@ -1,48 +1,18 @@
 pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-import "../interfaces/TokenInterface.sol";
-import "../../common/MultiRole.sol";
+import "../../common/implementation/ExpandedERC20.sol";
 
 
 /**
  * @notice A burnable and mintable ERC20. The contract deployer will initially 
- * be the only minter and burner as well as the owner who is capable of adding new roles.
+ * be the only minter and burner as well as the owner who is capable of adding new roles. 
+ * The contract deployer will also be the only initial minter of the contract.
  */
-contract Token is TokenInterface, ERC20Detailed, ERC20, MultiRole {
-    enum Roles {
-        // Can set roles.
-        Owner,
-        // Addresses that can mint new tokens.
-        Minter,
-        // Addresses that can burn tokens that address owns.
-        Burner
-    }
-
+contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
         public
         ERC20Detailed(tokenName, tokenSymbol, tokenDecimals)
-    {
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        address[] memory initialRoleHolders = new address[](1);
-        initialRoleHolders[0] = msg.sender;
-        _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), initialRoleHolders);
-        _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), initialRoleHolders);
-    }
-
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function mint(address recipient, uint value) external override onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
-        _mint(recipient, value);
-        return true;
-    }
-
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function burn(uint256 amount) external override onlyRoleHolder(uint(Roles.Burner)) {
-        _burn(msg.sender, amount);
-    }
+    {}
 
     /**
      * @dev Add minter role to account.

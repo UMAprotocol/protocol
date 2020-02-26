@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../../common/FixedPoint.sol";
+import "../../common/implementation/FixedPoint.sol";
 
 
 /**

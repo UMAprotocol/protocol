@@ -4,7 +4,7 @@ const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const TokenFactory = artifacts.require("TokenFactory");
 
 // Helper contracts
-const Token = artifacts.require("Token");
+const Token = artifacts.require("SyntheticToken");
 
 const { toWei, toBN } = web3.utils;
 

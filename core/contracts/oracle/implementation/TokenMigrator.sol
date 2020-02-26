@@ -2,8 +2,8 @@ pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../../common/FixedPoint.sol";
-import "../../common/ExpandedIERC20.sol";
+import "../../common/implementation/FixedPoint.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
 
 
