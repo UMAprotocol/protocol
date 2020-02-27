@@ -309,10 +309,7 @@ contract("Liquidatable", function(accounts) {
         const newLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
         assert.equal(newLiquidation.state.toString(), STATES.PRE_DISPUTE);
         assert.equal(newLiquidation.tokensOutstanding.toString(), liquidationParams.tokensOutstanding.toString());
-        assert.equal(
-          (await liquidationContract.getLockedCollateral(sponsor, liquidationParams.uuid)).toString(),
-          liquidationParams.lockedCollateral.toString()
-        );
+        assert.equal(newLiquidation.lockedCollateral.toString(), liquidationParams.lockedCollateral.toString());
         assert.equal(newLiquidation.liquidatedCollateral.toString(), liquidationParams.liquidatedCollateral.toString());
         assert.equal(newLiquidation.liquidator, liquidator);
         assert.equal(newLiquidation.disputer, zeroAddress);
@@ -748,17 +745,17 @@ contract("Liquidatable", function(accounts) {
             await liquidationContract.withdrawLiquidation.call(liquidationParams.uuid, sponsor, { from: disputer })
           ).rawValue;
 
-          // TOT_COL  - TRV - TOT_COL_FEE + TS_REWARD    = TS_WITHDRAW
-          // 150      - 100 - (0.1 * 150) + (0.05 * 100) = 40
-          assert.equal(sponsorAmount, toWei("40"));
+          // (TOT_COL  - TRV + TS_REWARD   ) * (1 - FEE_PERCENTAGE) = TS_WITHDRAW
+          // (150      - 100 + (0.05 * 100)) * (1 - 0.1           ) = 49.5
+          assert.equal(sponsorAmount, toWei("49.5"));
 
-          // TRV - TS_REWARD    - DISPUTER_REWARD = LIQ_WITHDRAW
-          // 100 - (0.05 * 100) - (0.05 * 100)    = 90
-          assert.equal(liquidatorAmount, toWei("90"));
+          // (TRV - TS_REWARD    - DISPUTER_REWARD) * (1 - FEE_PERCENTAGE) = LIQ_WITHDRAW
+          // (100 - (0.05 * 100) - (0.05 * 100)   ) * (1 - 0.1           )  = 81.0
+          assert.equal(liquidatorAmount, toWei("81"));
 
-          // BOND        - BOND_FEE          + DISPUTER_REWARD = DISPUTER_WITHDRAW
-          // (0.1 * 150) - (0.1 * 0.1 * 150) + (0.5 * 100)     = 18.5
-          assert.equal(disputerAmount, toWei("18.5"));
+          // (BOND        + DISPUTER_REWARD) * (1 - FEE_PERCENTAGE) = DISPUTER_WITHDRAW
+          // ((0.1 * 150) + (0.05 * 100)    ) * (1 - 0.1           ) = 18.0
+          assert.equal(disputerAmount, toWei("18"));
 
           // Sponsor balance check.
           let startBalance = await collateralToken.balanceOf(sponsor);
