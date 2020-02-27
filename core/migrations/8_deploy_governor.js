@@ -1,7 +1,6 @@
 const Governor = artifacts.require("Governor");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
-const Voting = artifacts.require("Voting");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 
