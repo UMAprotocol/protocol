@@ -45,7 +45,7 @@ contract("EncryptedStore", function(accounts) {
     const encryptedMessage = await encryptMessage(publicKey, message);
 
     // Send the message.
-    await encryptedStore.sendMessage(topicHash, encryptedMessage, { from: senderAccount });
+    await encryptedStore.storeMessage(topicHash, encryptedMessage, { from: senderAccount });
 
     // Pull down the encrypted message and decrypt it.
     const pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
@@ -64,7 +64,7 @@ contract("EncryptedStore", function(accounts) {
     const message = identifier;
 
     // Send the message.
-    await encryptedStore.sendMessage(topicHash, message, { from: senderAccount });
+    await encryptedStore.storeMessage(topicHash, message, { from: senderAccount });
     let pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
     assert.equal(pulledMessage, message);
 

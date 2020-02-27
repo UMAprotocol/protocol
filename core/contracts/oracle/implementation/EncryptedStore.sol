@@ -34,11 +34,11 @@ contract EncryptedStore {
     }
 
     /**
-     * @notice Sends `message` categorized by a particular `topicHash`. This will overwrite any
+     * @notice Stores `message` categorized by a particular `topicHash`. This will overwrite any
      * previous messages sent by this caller with this `topicHash`.
      * @dev To construct an encrypted message, use the encryptMessage() in common/Crypto.js.
      */
-    function sendMessage(bytes32 topicHash, bytes memory message) public {
+    function storeMessage(bytes32 topicHash, bytes memory message) public {
         Store storage ownerStore = stores[msg.sender];
         ownerStore.topics[topicHash].message = message;
     }

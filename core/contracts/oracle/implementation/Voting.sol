@@ -363,7 +363,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         uint roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        sendMessage(topicHash, encryptedVote);
+        storeMessage(topicHash, encryptedVote);
     }
 
     /**
