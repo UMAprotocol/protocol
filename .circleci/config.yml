@@ -233,7 +233,6 @@ workflows:
       - coverage:
           context: api_keys
       - slither
-      - echidna
       - build:
           requires:
             - checkout_and_install
