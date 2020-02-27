@@ -378,7 +378,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function emergencyShutdown() external onlyPreExpiration() onlyOpenState() {
         require(msg.sender == _getFinancialContractsAdminAddress());
-        
+
         contractState = ContractState.ExpiredPriceRequested;
         // Expiratory time now becomes the current time (emergency shutdown time).
         // Price requested at this time stamp. `settleExpired` can now withdraw at this timestamp.
