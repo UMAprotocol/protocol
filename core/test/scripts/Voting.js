@@ -173,7 +173,7 @@ contract("scripts/Voting.js", function(accounts) {
     // Replace the message with an indecipherable string.
     const roundId = await voting.getCurrentRoundId();
     const topicHash = computeTopicHash({ identifier, time }, roundId);
-    await voting.storeMessage(voter, topicHash, web3.utils.randomHex(64), { from: voter });
+    await voting.storeMessage(topicHash, web3.utils.randomHex(64), { from: voter });
 
     // Replace the voting system object with a new one so the class can't persist the commit.
     votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);
