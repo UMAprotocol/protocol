@@ -8,7 +8,7 @@ import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "./EncryptedSender.sol";
+import "./EncryptedStore.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, Ownable, OracleInterface, VotingInterface, EncryptedSender {
+contract Voting is Testable, Ownable, OracleInterface, VotingInterface, EncryptedStore {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
