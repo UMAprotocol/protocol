@@ -1,7 +1,7 @@
 const Finder = artifacts.require("Finder");
 const Store = artifacts.require("Store");
 
-const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
 const { interfaceName } = require("../utils/Constants.js");
 
 module.exports = async function(deployer, network, accounts) {
