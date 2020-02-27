@@ -20,14 +20,6 @@ async function run() {
       // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
       // Liquidate any undercollateralized positions!
       // Withdraw money from any liquidations that are expired or DisputeFailed.
-        //
-        //
-        // DISPUTER
-        // Steps:
-        // Call client.getUndisputedLiquidations()
-        // For each liquidation, get the price at liquidation time
-        // If that price makes the liquidation invalid, then dispute it!
-        // Withdraw money from any liquidations that are in DisputeSucceeded.
     } catch (error) {
       console.log("Poll error:", error);
     }
