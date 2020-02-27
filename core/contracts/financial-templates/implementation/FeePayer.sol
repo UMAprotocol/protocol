@@ -159,7 +159,11 @@ contract FeePayer is Testable {
     }
 
     // Effectively performs the opposite operation from _getCollateral().
-    function _convertCollateral(FixedPoint.Unsigned memory collateral) internal view returns (FixedPoint.Unsigned memory rawCollateral) {
+    function _convertCollateral(FixedPoint.Unsigned memory collateral)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory rawCollateral)
+    {
         return collateral.div(cumulativeFeeMultiplier);
     }
 }
