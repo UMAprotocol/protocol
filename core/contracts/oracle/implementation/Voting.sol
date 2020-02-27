@@ -351,7 +351,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         // Remove the stored message for this price request, if it exists.
         bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        removeMessage(msg.sender, topicHash);
+        removeMessage(topicHash);
 
         emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
@@ -363,7 +363,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         uint roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        sendMessage(msg.sender, topicHash, encryptedVote);
+        sendMessage(topicHash, encryptedVote);
     }
 
     /**
