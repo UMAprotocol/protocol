@@ -65,7 +65,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     /**
      * @notice Forwards a reveal to Voting.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
-     * @param time specifies the unix timestamp of the price is being voted on.
+     * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
