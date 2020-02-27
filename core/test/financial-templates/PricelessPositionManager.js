@@ -1007,7 +1007,7 @@ contract("PricelessPositionManager", function(accounts) {
     const shutdownTimestamp = expirationTimestamp - 1000;
     await pricelessPositionManager.setCurrentTime(shutdownTimestamp);
 
-    // Should revert if emergency shutdown initialized by non-FinancialContractsAdmin.
+    // Should revert if emergency shutdown initialized by non-FinancialContractsAdmin (governor).
     assert(
       await didContractThrow(
         pricelessPositionManager.emergencyShutdown({
@@ -1028,7 +1028,7 @@ contract("PricelessPositionManager", function(accounts) {
       );
     });
 
-    // Check contract state change correctly.
+    // Check contract state change correctly to requested oracle price and the contract expiration has updated.
     assert.equal(await pricelessPositionManager.contractState(), STATES.EXPIRED_PRICE_REQUESTED);
     assert.equal((await pricelessPositionManager.expirationTimestamp()).toString(), shutdownTimestamp.toString());
 
@@ -1051,6 +1051,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
+    // Say they resolve to a price of 1.1 USD per synthetic token. 
     await mockOracle.pushPrice(priceTrackingIdentifier, shutdownTimestamp, toWei("1.1"));
 
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
@@ -1076,8 +1077,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(tokenHolderFinalSynthetic, 0);
 
     // If the tokenHolder tries to withdraw again they should get no additional tokens; all have been withdrawn (same as normal expiratory).
-    const tokenHolderInitialCollateral_secondWithdrawl = await collateral.balanceOf(tokenHolder);
-    const tokenHolderInitialSynthetic_secondWithdrawl = await tokenCurrency.balanceOf(tokenHolder);
+    const tokenHolderInitialCollateral_secondWithdrawal = await collateral.balanceOf(tokenHolder);
+    const tokenHolderInitialSynthetic_secondWithdrawal = await tokenCurrency.balanceOf(tokenHolder);
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
     await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
@@ -1085,21 +1086,22 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.settleExpired({
       from: tokenHolder
     });
-    const tokenHolderFinalCollateral_secondWithdrawl = await collateral.balanceOf(tokenHolder);
-    const tokenHolderFinalSynthetic_secondWithdrawl = await tokenCurrency.balanceOf(tokenHolder);
+    const tokenHolderFinalCollateral_secondWithdrawal = await collateral.balanceOf(tokenHolder);
+    const tokenHolderFinalSynthetic_secondWithdrawal = await tokenCurrency.balanceOf(tokenHolder);
     assert.equal(
-      tokenHolderInitialCollateral_secondWithdrawl.toString(),
-      tokenHolderFinalCollateral_secondWithdrawl.toString()
+      tokenHolderInitialCollateral_secondWithdrawal.toString(),
+      tokenHolderFinalCollateral_secondWithdrawal.toString()
     );
     assert.equal(
-      tokenHolderInitialSynthetic_secondWithdrawl.toString(),
-      tokenHolderFinalSynthetic_secondWithdrawl.toString()
+      tokenHolderInitialSynthetic_secondWithdrawal.toString(),
+      tokenHolderFinalSynthetic_secondWithdrawal.toString()
     );
 
     // For the sponsor, they are entitled to the underlying value of their remaining synthetic tokens + the excess collateral
     // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
-    // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
-    // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 1.1 = 85
+    // of their synthetics they sold is 110. Their redeemed amount for this excess collateral is the difference between the two.
+    // The sponsor also has 50 synthetic tokens that they did not sell. 
+    // This makes their expected redemption = 150 - 110 + 50 * 1.1 = 95
     const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
 
