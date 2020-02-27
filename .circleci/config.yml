@@ -64,7 +64,7 @@ jobs:
       # TODO(#977) Solc 0.6 not supported, skipping this test
       - run:
           name: Generate Docs
-          command: ./scripts/false_positive.sh
+          command: ./ci/false_positive.sh
       - store_artifacts:
           path: build/site
   slither:
