@@ -396,7 +396,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
-    //TODO: is this how we want this function to be implemented? 
+    //TODO: is this how we want this function to be implemented?
     function remargin() external onlyPreExpiration() {
         _payFinalFees(address(this));
     }

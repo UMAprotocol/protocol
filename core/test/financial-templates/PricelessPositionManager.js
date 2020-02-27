@@ -1051,7 +1051,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
-    // Say they resolve to a price of 1.1 USD per synthetic token. 
+    // Say they resolve to a price of 1.1 USD per synthetic token.
     await mockOracle.pushPrice(priceTrackingIdentifier, shutdownTimestamp, toWei("1.1"));
 
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
@@ -1100,7 +1100,7 @@ contract("PricelessPositionManager", function(accounts) {
     // For the sponsor, they are entitled to the underlying value of their remaining synthetic tokens + the excess collateral
     // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
     // of their synthetics they sold is 110. Their redeemed amount for this excess collateral is the difference between the two.
-    // The sponsor also has 50 synthetic tokens that they did not sell. 
+    // The sponsor also has 50 synthetic tokens that they did not sell.
     // This makes their expected redemption = 150 - 110 + 50 * 1.1 = 95
     const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
