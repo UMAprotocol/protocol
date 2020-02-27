@@ -66,7 +66,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @notice Forwards a reveal to Voting.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
-     * @param price voted on during the commit phase.
+     * @param price used along with the salt to produce the hash during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external onlyRoleHolder(uint(Roles.Voter)) {
