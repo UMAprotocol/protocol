@@ -39,6 +39,13 @@ contract("PricelessPositionManager", function(accounts) {
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
   const priceTrackingIdentifier = web3.utils.utf8ToHex("UMATEST");
 
+  // Contract state
+  const STATES = {
+    OPEN: "0",
+    EXPIRED_PRICE_REQUESTED: "1",
+    EXPIRED_PRICE_RECEIVED: "2"
+  };
+
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
     const expectedTotalCollateral = expectedSponsorCollateral.add(initialPositionCollateral);
@@ -976,7 +983,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
-  it("Emergency shutdown during synthetic lifespan", async function() {
+  it.only("Emergency shutdown: shutdown lifecycle", async function() {
     //To mock the emergency shutdown, register a controlled EOA as the `Governor` within the `Finder`.
     const mockFinancialContractsAdmin = web3.utils.utf8ToHex("FinancialContractsAdmin");
     await finder.changeImplementationAddress(mockFinancialContractsAdmin, mockGovernor, {
@@ -997,11 +1004,26 @@ contract("PricelessPositionManager", function(accounts) {
     });
 
     // Some time passes and the UMA token holders decide that Emergency shutdown needs to occur.
-    // Advance time until somewhere during the contact lifecycle
-    const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() - 1000);
+    const shutdownTimestamp = expirationTimestamp - 1000;
+    await pricelessPositionManager.setCurrentTime(shutdownTimestamp);
 
+    // Should revert if emergency shutdown initialized by non-FinancialContractsAdmin.
+    assert(await didContractThrow(pricelessPositionManager.emergencyShutdown({ from: other })));
+
+    // FinancialContractAdmin can initiate emergency shutdown.
+    const emergencyShutdownResult = await pricelessPositionManager.emergencyShutdown({ from: mockGovernor });
+
+    // Check the event returned the correct values
+    truffleAssert.eventEmitted(emergencyShutdownResult, "EmergencyShutdown", ev => {
+      return (
+        ev.caller == mockGovernor &&
+        ev.originalExpirationTimestamp == expirationTimestamp &&
+        ev.shutdownTimestamp == shutdownTimestamp
+      );
+    });
+
+    // Check contract state change correctly.
+    assert.equal(await pricelessPositionManager.contractState(), STATES.EXPIRED_PRICE_REQUESTED);
+    assert.equal((await pricelessPositionManager.expirationTimestamp()).toString(), shutdownTimestamp.toString())
   });
-
-  it
 });

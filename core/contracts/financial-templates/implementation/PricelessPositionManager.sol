@@ -55,7 +55,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
-    // Time that this contract expires.
+    // Time that this contract expires. Is updated if emergency shutdown occures.
     uint public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
@@ -65,7 +65,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // Enum to store the state of the PricelessPositionManager. Is set on expiration or emergency shutdown.
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
-    ContractState contractState;
+    ContractState public contractState;
 
     event Transfer(address indexed oldSponsor, address indexed newSponsor);
     event Deposit(address indexed sponsor, uint indexed collateralAmount);
@@ -377,7 +377,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     function emergencyShutdown() external onlyPreExpiration() onlyOpenState() {
-        require(msg.sender == _getFinancialContractsAdminAddress);
+        require(msg.sender == _getFinancialContractsAdminAddress());
         
         contractState = ContractState.ExpiredPriceRequested;
         // Expiratory time now becomes the current time (emergency shutdown time).
