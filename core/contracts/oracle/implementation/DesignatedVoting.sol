@@ -30,7 +30,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @notice Construct the DesignatedVoting contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
      * @param ownerAddress the address of the owner of the DesignatedVoting contract.
-     * @param voterAddress the address that has delegated their votes to the owner.
+     * @param voterAddress the address to which the owner has delegated their voting power.
      */
     constructor(address finderAddress, address ownerAddress, address voterAddress) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
