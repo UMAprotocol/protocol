@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 # Note: this script should be run from inside the trailofbits/eth-security-toolbox docker container with this
 # repository mounted at ~/protocol.
 # An example run command would look like the following:
@@ -13,7 +14,7 @@ run_echidna_test() {
     local contract_name=$2
     local output=$(echidna-test $solidity_fname $contract_name --config=$config_fname)
     echo "$output"
-    local num_failures=$(echo $output | grep -ci "failed")
+    local num_failures=$(echo $output | grep -ci "failed\|does not exist")
     if [ $num_failures -ne 0 ]
     then
         # If we found failures, exit.
