@@ -395,6 +395,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
+    //TODO: is this how we want this function to be implemented? 
     function remargin() external onlyPreExpiration() {
         _payFinalFees(address(this));
     }
@@ -507,7 +508,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * unnecessarily increase contract bytecode size.
      * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
      */
-
     function _isContractStateOpen() internal view {
         require(contractState == ContractState.Open);
     }

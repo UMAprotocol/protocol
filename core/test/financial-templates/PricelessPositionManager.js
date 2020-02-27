@@ -506,7 +506,7 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
-        ev.collateralAmountReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
+        ev.collateralReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
         ev.tokensBurned == tokenHolderInitialSynthetic.toString()
       );
     });
@@ -733,7 +733,7 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
-        ev.collateralAmountReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
+        ev.collateralReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
         ev.tokensBurned == tokenHolderInitialSynthetic.toString()
       );
     });
@@ -1137,10 +1137,10 @@ contract("PricelessPositionManager", function(accounts) {
       from: contractDeployer
     });
 
-    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. 
+    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral.
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
-    
+
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
     await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
