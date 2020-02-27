@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 
-import "../oracle/interfaces/FinderInterface.sol";
-import "../oracle/implementation/Registry.sol";
+import "../interfaces/FinderInterface.sol";
+import "./Registry.sol";
 
 
 // TODO(ptare): Make this (and all contracts) Withdrawable.

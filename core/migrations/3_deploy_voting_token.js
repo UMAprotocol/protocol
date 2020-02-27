@@ -4,9 +4,8 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["token_conversion_rate"] });
 
 const VotingToken = artifacts.require("VotingToken");
-const Voting = artifacts.require("Voting");
 const TokenMigrator = artifacts.require("TokenMigrator");
-const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
 
 const minterRoleEnumValue = 1;
 

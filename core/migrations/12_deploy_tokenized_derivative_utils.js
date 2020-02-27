@@ -1,5 +1,5 @@
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
-const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

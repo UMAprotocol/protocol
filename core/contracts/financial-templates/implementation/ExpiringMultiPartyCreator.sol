@@ -2,8 +2,7 @@ pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
-import "../../tokenized-derivative/AddressWhitelist.sol";
-import "../../tokenized-derivative/ContractCreator.sol";
+import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "./ExpiringMultiParty.sol";
 

@@ -1,7 +1,7 @@
 const LeveragedReturnCalculator = artifacts.require("LeveragedReturnCalculator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
-const { getKeysForNetwork, deploy, addToTdr } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

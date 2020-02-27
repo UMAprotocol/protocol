@@ -314,12 +314,6 @@ contract("Liquidatable", function(accounts) {
           liquidationParams.lockedCollateral.toString()
         );
         assert.equal(newLiquidation.liquidatedCollateral.toString(), liquidationParams.liquidatedCollateral.toString());
-        assert.equal(
-          newLiquidation.expiry.toString(),
-          toBN(startTime)
-            .add(liquidationLiveness)
-            .toString()
-        );
         assert.equal(newLiquidation.liquidator, liquidator);
         assert.equal(newLiquidation.disputer, zeroAddress);
         assert.equal(newLiquidation.liquidationTime.toString(), liquidationTime.toString());
