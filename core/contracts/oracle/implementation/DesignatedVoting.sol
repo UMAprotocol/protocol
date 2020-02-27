@@ -83,8 +83,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
 
     /**
      * @notice Forwards a reward retrieval to Voting.
-     * @dev the caller in the retrieval is the address of this contract.
-     * Normally Voting.sol would use this as an input param.
+     * @dev rewards are added to the tokens already held by this contract.
      * @param roundId defines the round from which voting rewards will be retrieved from.
      * @param toRetrieve is an array of PendingRequests which rewards are retrieved from.
      */
