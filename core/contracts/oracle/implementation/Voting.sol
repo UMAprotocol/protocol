@@ -91,11 +91,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     mapping(uint => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) public priceRequests;
+    mapping(bytes32 => PriceRequest) private priceRequests;
 
     // Price request ids for price requests that haven't yet been marked as resolved. These requests may be for future
     // rounds.
-    bytes32[] public pendingPriceRequests;
+    bytes32[] private pendingPriceRequests;
 
     VoteTiming.Data public voteTiming;
 
