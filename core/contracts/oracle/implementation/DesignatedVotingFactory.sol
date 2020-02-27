@@ -46,6 +46,8 @@ contract DesignatedVotingFactory is Withdrawable {
     /**
      * @notice Associates a `DesignatedVoting` instance with `msg.sender`.
      * @param designatedVotingAddress the address to designate voting to.
+     * @dev This is generally only used if the owner of a `DesignatedVoting` contract changes their `voter` address and
+     * wants that reflected here.
      */
     function setDesignatedVoting(address designatedVotingAddress) external {
         require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");

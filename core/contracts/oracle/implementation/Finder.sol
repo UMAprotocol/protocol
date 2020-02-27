@@ -16,7 +16,7 @@ contract Finder is FinderInterface, Ownable {
     /**
      * @notice Updates the address of the contract that implements `interfaceName`.
      * @param interfaceName bytes32 of the interface name that is either changed or registered.
-     * @param implementationAddress address of the interface's contract.
+     * @param implementationAddress address of the implementation contract.
      */
     function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external onlyOwner {
         interfacesImplemented[interfaceName] = implementationAddress;

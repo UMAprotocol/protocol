@@ -155,9 +155,9 @@ contract Registry is RegistryInterface, MultiRole {
 
     /**
      * @notice Returns whether the derivative has been registered with the registry.
-     * @dev If registered is therefore an authorized participant in the UMA system.
+     * @dev If it is registered, it is an authorized participant in the UMA system.
      * @param derivative address of the derivative contract.
-     * @return bool indicating if the derivative is registered.
+     * @return bool indicates whether the derivative is registered.
      */
     function isDerivativeRegistered(address derivative) external view returns (bool) {
         return derivativeMap[derivative].valid == Validity.Valid;
@@ -165,8 +165,8 @@ contract Registry is RegistryInterface, MultiRole {
 
     /**
      * @notice Returns a list of all derivatives that are associated with a particular party.
-     * @param party address of the party member.
-     * @return an array of addresses of all the derivatives the party member is registered to.
+     * @param party address of the party.
+     * @return an array of the derivatives the party is registered to.
      */
     function getRegisteredDerivatives(address party) external view returns (address[] memory) {
         return partyMap[party].derivatives;
