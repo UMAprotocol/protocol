@@ -184,7 +184,7 @@ contract Registry is RegistryInterface, MultiRole {
      * @notice checks if a party member is part of a derivative.
      * @param party party to check.
      * @param derivativeAddress address to check against the party.
-     * @return bool indicating if the address member is party of the derivative party.
+     * @return bool indicating if the address is a party of the derivative.
      */
     function isPartyMemberOfDerivative(address party, address derivativeAddress) public view returns (bool) {
         uint index = partyMap[party].derivativeIndex[derivativeAddress];
