@@ -976,11 +976,32 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
-  it("Emergency shutdown", async function() {
-    //To mock the emergency shutdown, register a controlled EOA as the Governor within the finder.
+  it("Emergency shutdown during synthetic lifespan", async function() {
+    //To mock the emergency shutdown, register a controlled EOA as the `Governor` within the `Finder`.
     const mockFinancialContractsAdmin = web3.utils.utf8ToHex("FinancialContractsAdmin");
     await finder.changeImplementationAddress(mockFinancialContractsAdmin, mockGovernor, {
       from: contractDeployer
     });
+
+    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
+    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    const numTokens = toWei("100");
+    const amountCollateral = toWei("150");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    const tokenHolderTokens = toWei("50");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
+      from: sponsor
+    });
+
+    // Some time passes and the UMA token holders decide that Emergency shutdown needs to occur.
+    // Advance time until somewhere during the contact lifecycle
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() - 1000);
+
   });
+
+  it
 });
