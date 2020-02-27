@@ -4,11 +4,13 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
+import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "./TokenFactory.sol";
 import "./FeePayer.sol";
 
@@ -18,8 +20,7 @@ import "./FeePayer.sol";
  * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
  */
 
-// TODO: implement the AdministrateeInterface.sol interfaces and emergency shut down.
-contract PricelessPositionManager is FeePayer {
+contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -59,11 +60,12 @@ contract PricelessPositionManager is FeePayer {
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
 
-    // Whether the contract has received an expiry price.
-    bool public hasExpiryPrice;
-
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
+
+    // Enum to store the state of the PricelessPositionManager. Is set on expiration or emergency shutdown.
+    enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
+    ContractState contractState;
 
     event Transfer(address indexed oldSponsor, address indexed newSponsor);
     event Deposit(address indexed sponsor, uint indexed collateralAmount);
@@ -75,11 +77,8 @@ contract PricelessPositionManager is FeePayer {
     event NewSponsor(address indexed sponsor);
     event Redeem(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
     event ContractExpired(address indexed caller);
-    event SettleExpiredPosition(
-        address indexed caller,
-        uint indexed collateralAmountReturned,
-        uint indexed tokensBurned
-    );
+    event SettleExpiredPosition(address indexed caller, uint indexed collateralReturned, uint indexed tokensBurned);
+    event EmergencyShutdown(address indexed caller, uint originalExpirationTimestamp, uint shutdownTimestamp);
 
     modifier onlyPreExpiration() {
         _isPreExpiration();
@@ -93,6 +92,13 @@ contract PricelessPositionManager is FeePayer {
 
     modifier onlyCollateralizedPosition(address sponsor) {
         _isCollateralizedPosition(sponsor);
+        _;
+    }
+
+    // Check that the current state of the pricelessPositionManager is Open.
+    // This prevents multiple calls to `expire` and `EmergencyShutdown` post expiration.
+    modifier onlyOpenState() {
+        _isContractStateOpen();
         _;
     }
 
@@ -241,7 +247,7 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
-     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`. 
+     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if the minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
@@ -314,7 +320,11 @@ contract PricelessPositionManager is FeePayer {
      * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
      * expiration. In addition, pay the final fee at this time. Once this has been resolved token holders can withdraw.
      */
-    function expire() external onlyPostExpiration() fees() {
+    // TODO: what are the implications of calling this multiple times? can this not drain the contract by paying
+    // the final fee over and over again?
+    function expire() external onlyPostExpiration() onlyOpenState() fees() {
+        contractState = ContractState.ExpiredPriceRequested;
+
         // The final fee for this request is paid out of the contract rather than by the caller.
         _payFinalFees(address(this));
         _requestOraclePrice(expirationTimestamp);
@@ -324,14 +334,14 @@ contract PricelessPositionManager is FeePayer {
 
     /**
      * @notice After a contract has passed maturity all token holders can redeem their tokens for underlying at
-     * the prevailing price defined by the DVM from the `expire` function. 
+     * the prevailing price defined by the DVM from the `expire` function.
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
     function settleExpired() external onlyPostExpiration() fees() {
         // Get the current settlement price and store it. If it is not resolved will revert.
-        if (!hasExpiryPrice) {
+        if (contractState != ContractState.ExpiredPriceReceived) {
             expiryPrice = _getOraclePrice(expirationTimestamp);
-            hasExpiryPrice = true;
+            contractState = ContractState.ExpiredPriceReceived;
         }
 
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
@@ -364,6 +374,23 @@ contract PricelessPositionManager is FeePayer {
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
         emit SettleExpiredPosition(msg.sender, totalRedeemableCollateral.rawValue, tokensToRedeem.rawValue);
+    }
+
+    function emergencyShutdown() external onlyPreExpiration() onlyOpenState() {
+        require(msg.sender == _getFinancialContractsAdminAddress);
+        
+        contractState = ContractState.ExpiredPriceRequested;
+        // Expiratory time now becomes the current time (emergency shutdown time).
+        // Price requested at this time stamp. `settleExpired` can now withdraw at this timestamp.
+        uint oldExpirationTimestamp = expirationTimestamp;
+        expirationTimestamp = getCurrentTime();
+        _requestOraclePrice(expirationTimestamp);
+
+        emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
+    }
+
+    function remargin() external onlyPreExpiration() {
+        _payFinalFees(address(this));
     }
 
     /**
@@ -417,6 +444,11 @@ contract PricelessPositionManager is FeePayer {
         return OracleInterface(finder.getImplementationAddress(oracleInterface));
     }
 
+    function _getFinancialContractsAdminAddress() internal view returns (address) {
+        bytes32 financialContractsAdminInterface = "FinancialContractsAdmin";
+        return finder.getImplementationAddress(financialContractsAdminInterface);
+    }
+
     function _requestOraclePrice(uint requestedTime) internal {
         OracleInterface oracle = _getOracle();
         oracle.requestPrice(priceIdentifer, requestedTime);
@@ -466,9 +498,14 @@ contract PricelessPositionManager is FeePayer {
 
     /**
      * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
-     * unneccessarily increase contract bytecode size
+     * unnecessarily increase contract bytecode size.
      * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
      */
+
+    function _isContractStateOpen() internal view {
+        require(contractState == ContractState.Open);
+    }
+
     function _isPreExpiration() internal view {
         require(getCurrentTime() < expirationTimestamp);
     }

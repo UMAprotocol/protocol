@@ -174,6 +174,7 @@ contract Liquidatable is PricelessPositionManager {
     function createLiquidation(address sponsor, FixedPoint.Unsigned calldata amountToLiquidate)
         external
         fees()
+        onlyPreExpiration()
         returns (uint uuid)
     {
         // Attempt to retrieve Position data for sponsor

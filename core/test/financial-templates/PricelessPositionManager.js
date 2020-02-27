@@ -21,6 +21,7 @@ contract("PricelessPositionManager", function(accounts) {
   const tokenHolder = accounts[2];
   const other = accounts[3];
   const collateralOwner = accounts[4];
+  const mockGovernor = accounts[5];
 
   // Contracts
   let collateral;
@@ -973,5 +974,13 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.settleExpired({ from: other });
     collateralPaid = (await collateral.balanceOf(other)).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
+  });
+
+  it("Emergency shutdown", async function() {
+    //To mock the emergency shutdown, register a controlled EOA as the Governor within the finder.
+    const mockFinancialContractsAdmin = web3.utils.utf8ToHex("FinancialContractsAdmin");
+    await finder.changeImplementationAddress(mockFinancialContractsAdmin, mockGovernor, {
+      from: contractDeployer
+    });
   });
 });
