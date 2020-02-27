@@ -136,7 +136,7 @@ contract FeePayer is Testable {
     }
 
     // The following methods are used by derived classes to interact with collateral that is adjusted by fees.
-    function _getCollateral(FixedPoint.Unsigned storage rawCollateral)
+    function _getCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
         returns (FixedPoint.Unsigned memory collateral)
@@ -156,5 +156,10 @@ contract FeePayer is Testable {
     {
         FixedPoint.Unsigned memory adjustedCollateral = collateralToAdd.div(cumulativeFeeMultiplier);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
+    }
+
+    // Effectively performs the opposite operation from _getCollateral().
+    function _convertCollateral(FixedPoint.Unsigned memory collateral) internal view returns (FixedPoint.Unsigned memory rawCollateral) {
+        return collateral.div(cumulativeFeeMultiplier);
     }
 }

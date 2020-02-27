@@ -171,8 +171,6 @@ contract Liquidatable is PricelessPositionManager {
      * @param amountToLiquidate amount of liquidatedCollateral that liquidator wants to liquidate
      * @return uuid of the newly created liquidation
      */
-
-    // TODO: Perhaps pass this ID via an event rather than a return value
     function createLiquidation(address sponsor, FixedPoint.Unsigned calldata amountToLiquidate)
         external
         fees()
@@ -200,7 +198,7 @@ contract Liquidatable is PricelessPositionManager {
                 lockedCollateral: _getCollateral(positionToLiquidate.rawCollateral),
                 tokensOutstanding: positionToLiquidate.tokensOutstanding,
                 liquidatedCollateral: positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount),
-                rawFeeAttenuation: FixedPoint.fromUnscaledUint(1).div(cumulativeFeeMultiplier),
+                rawFeeAttenuation: _convertCollateral(FixedPoint.fromUnscaledUint(1)),
                 disputer: address(0),
                 liquidationTime: getCurrentTime(),
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
