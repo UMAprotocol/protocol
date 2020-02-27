@@ -983,7 +983,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
-  it.only("Emergency shutdown: lifecycle", async function() {
+  it("Emergency shutdown: lifecycle", async function() {
     // To mock the emergency shutdown, register a controlled EOA as the `Governor` within the `Finder`.
     const mockFinancialContractsAdmin = web3.utils.utf8ToHex("FinancialContractsAdmin");
     await finder.changeImplementationAddress(mockFinancialContractsAdmin, mockGovernor, {
@@ -1019,7 +1019,7 @@ contract("PricelessPositionManager", function(accounts) {
     // FinancialContractAdmin can initiate emergency shutdown.
     const emergencyShutdownResult = await pricelessPositionManager.emergencyShutdown({ from: mockGovernor });
 
-    // Check the event returned the correct values
+    // Check the event returned the correct values.
     truffleAssert.eventEmitted(emergencyShutdownResult, "EmergencyShutdown", ev => {
       return (
         ev.caller == mockGovernor &&
@@ -1069,10 +1069,6 @@ contract("PricelessPositionManager", function(accounts) {
     });
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
-
-    // The token holder should gain the value of their synthetic tokens in underlying.
-    // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
-    // When redeeming 50 tokens at a price of 1.1 we expect to receive 55 collateral tokens (50 * 1.1)
     const expectedTokenHolderFinalCollateral = toWei("55");
     assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
 
@@ -1133,5 +1129,29 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);
+  });
+
+  it("Emergency shutdown: reject emergency shutdown post expiratory", async function() {
+    // To mock the emergency shutdown, register a controlled EOA as the `Governor` within the `Finder`.
+    await finder.changeImplementationAddress(web3.utils.utf8ToHex("FinancialContractsAdmin"), mockGovernor, {
+      from: contractDeployer
+    });
+
+    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. 
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
+    
+    // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // Emergency shutdown should revert as post expiration.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.emergencyShutdown({
+          from: mockGovernor
+        })
+      )
+    );
   });
 });
