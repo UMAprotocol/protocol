@@ -1,14 +1,13 @@
 const { delay } = require("./delay");
 
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-
 // A thick client for getting information about an ExpiringMultiParty.
 class ExpiringMultiPartyClient {
-  constructor(empAddress) {
+  constructor(abi, web3, empAddress) {
+    this.web3 = web3;
     this.sponsorAddresses = [];
     this.positions = [];
     this.undisputedLiquidations = [];
-    this.emp = new web3.eth.Contract(ExpiringMultiParty.abi, empAddress);
+    this.emp = new web3.eth.Contract(abi, empAddress);
 
     this.collateralRequirement = null;
     // TODO: Ideally, we'd want to subscribe to events here, but subscriptions don't work with Truffle HDWalletProvider.
@@ -56,7 +55,7 @@ class ExpiringMultiPartyClient {
   };
 
   _isUnderCollateralized = (numTokens, amountCollateral, trv) => {
-    const { toBN, toWei } = web3.utils;
+    const { toBN, toWei } = this.web3.utils;
     const fixedPointAdjustment = toBN(toWei("1"));
     // The formula for an undercollateralized position is:
     // (numTokens * trv) * collateralRequirement > amountCollateral.
@@ -72,7 +71,9 @@ class ExpiringMultiPartyClient {
   };
 
   _update = async () => {
-    this.collateralRequirement = web3.utils.toBN((await this.emp.methods.collateralRequirement().call()).toString());
+    this.collateralRequirement = this.web3.utils.toBN(
+      (await this.emp.methods.collateralRequirement().call()).toString()
+    );
     this.liquidationLiveness = Number(await this.emp.methods.liquidationLiveness().call());
 
     const events = await this.emp.getPastEvents("NewSponsor", { fromBlock: 0 });
