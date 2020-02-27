@@ -61,7 +61,8 @@ contract("Voting", function(accounts) {
   });
 
   it("Constructor", async function() {
-    const invalidGat = { rawValue: web3.utils.toWei("5") };
+    // GAT must be <= 1.0 (100%)
+    const invalidGat = { rawValue: web3.utils.toWei("1.000001") };
     const finder = await Finder.deployed();
     assert(
       await didContractThrow(
