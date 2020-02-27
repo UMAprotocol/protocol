@@ -48,7 +48,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @notice Forwards a commit to Voting.
      * @param identifier uniquely identifies the feed for this vote. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
-     * @param hash is the keccak256 hash of the price you want to vote for and a `int salt`.
+     * @param hash is the keccak256 hash of the price you want to vote for and a random integer salt value.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().commitVote(identifier, time, hash);
