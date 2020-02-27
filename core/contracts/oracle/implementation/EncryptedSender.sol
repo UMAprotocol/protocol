@@ -46,7 +46,7 @@ contract EncryptedSender {
     }
 
     /**
-     * @notice Revokes `sender`'s authorization to send messages to the caller.
+     * @notice Revokes `sender`s authorization to send messages to the caller.
      * @param sender address of of the authorized sender to remove.
      */
     function removeAuthorizedSender(address sender) external {
@@ -85,7 +85,7 @@ contract EncryptedSender {
      * the sender, there is no need to set it here.  Because there are no specific requirements for the
      * publicKey, there is also no verification of its validity other than its length.
      * @param publicKey set the key for a given `topicHash`.
-     * @param topicHash set for a given recipient `msg.sender`'s `publicKey`.
+     * @param topicHash set for a given recipient `msg.sender`s `publicKey`.
      */
     function setPublicKey(bytes memory publicKey, bytes32 topicHash) public {
         require(publicKey.length == 64, "Public key is the wrong length");

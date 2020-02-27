@@ -4,8 +4,7 @@ import "../../common/implementation/FixedPoint.sol";
 
 /**
  * @title Computes vote results.
- * @dev The result is the mode of the added votes, if the mode's frequency is >50%.
- * Otherwise, the vote is unresolved.
+ * @dev The result is the mode of the added votes. Otherwise, the vote is unresolved.
  */
 library ResultComputation {
     using FixedPoint for FixedPoint.Unsigned;
@@ -29,6 +28,9 @@ library ResultComputation {
 
     /**
      * @notice Adds a new vote to be used when computing the result.
+     * @param data contains information to which the vote is applied.
+     * @param votePrice is the value specified in the vote for the given `numberTokens`.
+     * @param numberTokens is the number of tokens that voted on the `votePrice`.
      */
     function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens) internal {
         data.totalVotes = data.totalVotes.add(numberTokens);

@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/ownership/Ownable.sol";
  * @title Admin for financial contracts in the UMA system.
  * @dev Allows appropriately permissioned admin roles to interact with financial contracts.
  */
-
 contract FinancialContractsAdmin is Ownable {
     /**
      * @notice Calls emergency shutdown on the provided financial contract.

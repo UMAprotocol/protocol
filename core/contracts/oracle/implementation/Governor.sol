@@ -138,7 +138,7 @@ contract Governor is MultiRole, Testable {
     }
 
     /***************************************
-    *          VOTING STATE GETTERS        *
+    *       GOVERNOR STATE GETTERS         *
     ****************************************/
 
     /**
