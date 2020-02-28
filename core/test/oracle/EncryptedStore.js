@@ -36,7 +36,7 @@ contract("EncryptedStore", function(accounts) {
       senderAccount
     );
 
-    // Prepare message to send.
+    // Prepare message to store.
     const salt = getRandomUnsignedInt().toString();
     const price = getRandomSignedInt().toString();
     const message = salt + "," + price;
