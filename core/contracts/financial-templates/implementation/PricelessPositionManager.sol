@@ -55,7 +55,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
-    // Time that this contract expires. Is updated if emergency shutdown occures.
+    // Time that this contract expires. Should not change post-construction unless a emergency shutdown occurs.
     uint public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
