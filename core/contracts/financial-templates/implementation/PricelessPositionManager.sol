@@ -501,7 +501,7 @@ contract PricelessPositionManager is FeePayer {
     }
 
     function _isPreSiphon() internal view {
-        require (getCurrentTime() < expirationTimestamp + siphonDelay);
+        require(getCurrentTime() < expirationTimestamp + siphonDelay);
     }
 
     function _isCollateralizedPosition(address sponsor) internal view {

@@ -53,7 +53,7 @@ contract("Liquidatable", function(accounts) {
   const expirationTimestamp = toBN(startTime)
     .add(positionLiveness)
     .toString();
-  const siphonDelay = "100000"
+  const siphonDelay = "100000";
   const withdrawalLiveness = toBN(60)
     .muln(60)
     .muln(1);

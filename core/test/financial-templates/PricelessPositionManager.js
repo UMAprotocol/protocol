@@ -90,7 +90,7 @@ contract("PricelessPositionManager", function(accounts) {
       true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
-      siphonDelay, //__siphonDelay
+      siphonDelay, // __siphonDelay
       collateral.address, // _collateralAddress
       Finder.address, // _finderAddress
       priceTrackingIdentifier, // _priceFeedIdentifier
@@ -976,7 +976,7 @@ contract("PricelessPositionManager", function(accounts) {
     collateralPaid = (await collateral.balanceOf(other)).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
   });
-  
+
   it.only("Contract siphon", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
     // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
