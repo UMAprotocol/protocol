@@ -29,8 +29,8 @@ contract DesignatedVoting is MultiRole, Withdrawable {
     /**
      * @notice Construct the DesignatedVoting contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
-     * @param ownerAddress the address of the owner of the DesignatedVoting contract.
-     * @param voterAddress the address to which the owner has delegated their voting power.
+     * @param ownerAddress address of the owner of the DesignatedVoting contract.
+     * @param voterAddress address to which the owner has delegated their voting power.
      */
     constructor(address finderAddress, address ownerAddress, address voterAddress) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
@@ -48,7 +48,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @notice Forwards a commit to Voting.
      * @param identifier uniquely identifies the feed for this vote. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
-     * @param hash is the keccak256 hash of the price you want to vote for and a random integer salt value.
+     * @param hash the keccak256 hash of the price you want to vote for and a random integer salt value.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().commitVote(identifier, time, hash);
@@ -66,8 +66,8 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @notice Forwards a reveal to Voting.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
-     * @param price used along with the salt to produce the hash during the commit phase.
-     * @param salt used along with the price to produce the hash during the commit phase.
+     * @param price used along with the `salt` to produce the `hash` during the commit phase.
+     * @param salt used along with the `price` to produce the `hash` during the commit phase.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().revealVote(identifier, time, price, salt);
@@ -85,7 +85,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @notice Forwards a reward retrieval to Voting.
      * @dev rewards are added to the tokens already held by this contract.
      * @param roundId defines the round from which voting rewards will be retrieved from.
-     * @param toRetrieve is an array of PendingRequests which rewards are retrieved from.
+     * @param toRetrieve an array of PendingRequests which rewards are retrieved from.
      */
     function retrieveRewards(uint roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public

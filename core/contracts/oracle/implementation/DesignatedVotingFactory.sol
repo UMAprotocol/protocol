@@ -45,7 +45,7 @@ contract DesignatedVotingFactory is Withdrawable {
 
     /**
      * @notice Associates a `DesignatedVoting` instance with `msg.sender`.
-     * @param designatedVotingAddress the address to designate voting to.
+     * @param designatedVotingAddress address to designate voting to.
      * @dev This is generally only used if the owner of a `DesignatedVoting` contract changes their `voter` address and
      * wants that reflected here.
      */

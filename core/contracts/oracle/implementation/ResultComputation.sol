@@ -29,8 +29,8 @@ library ResultComputation {
     /**
      * @notice Adds a new vote to be used when computing the result.
      * @param data contains information to which the vote is applied.
-     * @param votePrice is the value specified in the vote for the given `numberTokens`.
-     * @param numberTokens is the number of tokens that voted on the `votePrice`.
+     * @param votePrice value specified in the vote for the given `numberTokens`.
+     * @param numberTokens number of tokens that voted on the `votePrice`.
      */
     function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens) internal {
         data.totalVotes = data.totalVotes.add(numberTokens);
@@ -51,7 +51,7 @@ library ResultComputation {
      * @notice Returns whether the result is resolved, and if so, what value it resolved to.
      * @dev `price` should be ignored if `isResolved` is false.
      * @param data contains information against which the `minVoteThreshold` is applied.
-     * @param minVoteThreshold Minimum number of tokens that must have been voted for the result to be valid. Can be
+     * @param minVoteThreshold min number of tokens that must have been voted for the result to be valid. Can be
      * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      * @return isResolved indicates if the price has been resolved correctly.
      * @return price the price that the dvm resolved to.
@@ -80,7 +80,7 @@ library ResultComputation {
      * @notice Checks whether a `voteHash` is considered correct.
      * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
      * @param data contains information against which the `voteHash` is checked.
-     * @param voteHash the committed hash submitted by the voter.
+     * @param voteHash committed hash submitted by the voter.
      * @return bool true if the vote was correct.
      */
     function wasVoteCorrect(Data storage data, bytes32 voteHash) internal view returns (bool) {

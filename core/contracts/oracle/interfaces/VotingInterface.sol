@@ -43,7 +43,7 @@ contract VotingInterface {
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price is being voted on.
-     * @param hash is the keccak256 hash of the price you want to vote for and a `int salt`.
+     * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external;
 
@@ -99,7 +99,7 @@ contract VotingInterface {
      * @notice Retrieves rewards owed for a set of resolved price requests.
      * @dev Can only retrieve rewards if calling for a valid round and if the
      * call is done within the timeout threshold (not expired).
-     * @param voterAddress is the voter for which rewards will be retrieved. Does not have to be the caller.
+     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId defines the round from which voting rewards will be retrieved from.
      * @param toRetrieve is an array of PendingRequests which rewards are retrieved from.
      * @return totalRewardToIssue the total amount of rewards returned to the voter.

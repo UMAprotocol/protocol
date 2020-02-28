@@ -18,7 +18,7 @@ interface StoreInterface {
      * @notice Pays oracle fees in the margin currency, erc20Address, to the store.
      * @dev To be used if the margin currency is an ERC20 token rather than ETH.
      * All approved tokens are transferred.
-     * @param erc20Address is the address of the ERC20 token used to pay the fee.
+     * @param erc20Address address of the ERC20 token used to pay the fee.
      */
     function payOracleFeesErc20(address erc20Address) external;
 
@@ -26,7 +26,7 @@ interface StoreInterface {
      * @notice Computes the regular oracle fees that a contract should pay for a period.
      * @param startTime defines the beginning time from which the fee is paid.
      * @param endTime defines the end time until which the fee is paid.
-     * @param pfc` is the "profit from corruption", or the maximum amount of margin currency that a
+     * @param pfc` "profit from corruption", or the maximum amount of margin currency that a
      * token sponsor could extract from the contract through corrupting the price feed in their favor.
      * @return regularFee amount owed for the duration from start to end time for the given pfc.
      * @return latePenalty, if any, for paying the fee after the deadline.

@@ -152,7 +152,7 @@ contract Governor is MultiRole, Testable {
     /**
      * @notice Gets the proposal data for a particular id.
      * @dev after a proposal is executed, its data will be zeroed out.
-     * @param id to uniquely identify the identity of the proposal.
+     * @param id uniquely identify the identity of the proposal.
      * @return proposal struct containing transactions[] and requestTime.
      */
     function getProposal(uint id) external view returns (Proposal memory proposal) {

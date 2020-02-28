@@ -160,7 +160,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param _inflationRate percentage inflation per round used to increase token supply of correct voters.
      * @param _rewardsExpirationTimeout timeout, in seconds, within which rewards must be claimed.
      * @param _votingToken address of the UMA token contract used to commit votes.
-     * @param _identifierWhitelist defines what identifiers can have have synthetics created against.
+     * @param _identifierWhitelist defines the identifiers that can have have synthetics created against.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _isTest whether this contract is being constructed for the purpose of running automated tests.
      */
@@ -269,7 +269,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     /**
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
-     * @param requests is an array of time PendingRequest which includes a identifier and timestamp for each request.
+     * @param requests array of time PendingRequest which includes a identifier and timestamp for each request.
      * @return A list, in the same order as the input list, giving the status of each of the specified price requests.
      */
     function getPriceRequestStatuses(PendingRequest[] memory requests)
@@ -304,8 +304,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
-     * @param time specifies the unix timestamp of the price is being voted on.
-     * @param hash is the keccak256 hash of the price you want to vote for and a `int salt`.
+     * @param time unix timestamp of the price is being voted on.
+     * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) public onlyIfNotMigrated() {
         require(hash != bytes32(0), "Invalid provided hash");
@@ -385,7 +385,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     * @dev The encryption mechanism uses encrypt from a signature from a users price key. See `EncryptedSender.sol`
     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
     * @param time unix timestamp of for the price request.
-    * @param hash is the keccak256 hash of the price you want to vote for and a `int salt`.
+    * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
     */
     function commitAndPersistEncryptedVote(bytes32 identifier, uint time, bytes32 hash, bytes memory encryptedVote)
@@ -425,7 +425,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * Look at `project-root/common/Constants.js` for the tested maximum number of reveals.
      * that can fit in one transaction.
      * @dev For more information on reveals, review the comment for `revealVote`.
-     * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
+     * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
     function batchReveal(Reveal[] calldata reveals) external {
         for (uint i = 0; i < reveals.length; i++) {
@@ -437,10 +437,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @notice Retrieves rewards owed for a set of resolved price requests.
      * @dev Can only retrieve rewards if calling for a valid round and if the
      * call is done within the timeout threshold (not expired).
-     * @param voterAddress is the voter for which rewards will be retrieved. Does not have to be the caller.
-     * @param roundId defines the round from which voting rewards will be retrieved from.
-     * @param toRetrieve is an array of PendingRequests which rewards are retrieved from.
-     * @return totalRewardToIssue the total amount of rewards returned to the voter.
+     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
+     * @param roundId the round from which voting rewards will be retrieved from.
+     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     * @return totalRewardToIssue total amount of rewards returned to the voter.
      */
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
@@ -518,7 +518,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     /**
      * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests returns a `PendingRequest` array containing identifiers
+     * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
     function getPendingRequests() external view returns (PendingRequest[] memory pendingRequests) {

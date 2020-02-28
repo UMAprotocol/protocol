@@ -29,8 +29,8 @@ contract TokenMigrator {
      * @notice Construct the TokenMigrator contract.
      * @dev This function triggers the snapshot upon which all migrations will be based.
      * @param _rate the number of old tokens it takes to generate one new token.
-     * @param _oldToken the address of the token being migrated from.
-     * @param _newToken the address of the token being migrated to.
+     * @param _oldToken address of the token being migrated from.
+     * @param _newToken address of the token being migrated to.
      */
     constructor(FixedPoint.Unsigned memory _rate, address _oldToken, address _newToken) public {
         rate = _rate;

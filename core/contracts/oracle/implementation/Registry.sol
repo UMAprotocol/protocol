@@ -71,7 +71,7 @@ contract Registry is RegistryInterface, MultiRole {
     /**
      * @notice Registers a new derivative.
      * @dev Only authorized derivative creators can call this method.
-     * @param parties is an array of addresses who become party members to a derivative.
+     * @param parties an array of addresses who become party members to a derivative.
      * @param derivativeAddress defines the address of the deployed derivative.
      */
     function registerDerivative(address[] calldata parties, address derivativeAddress)
@@ -101,7 +101,7 @@ contract Registry is RegistryInterface, MultiRole {
     /**
      * @notice Adds a party member to the calling derivative.
      * @dev msg.sender must be the derivative contract to which the party member is added.
-     * @param party defines the address to be added to the derivatives.
+     * @param party address to be added to the derivatives.
      */
     function addPartyToDerivative(address party) external {
         address derivativeAddress = msg.sender;
@@ -119,7 +119,7 @@ contract Registry is RegistryInterface, MultiRole {
     /**
      * @notice Removes a party member to the calling derivative.
      * @dev msg.sender must be the derivative contract to which the party member is added.
-     * @param party defines the address to be removed to the derivatives.
+     * @param party address to be removed to the derivatives.
      */
     function removePartyFromDerivative(address party) external {
         address derivativeAddress = msg.sender;
