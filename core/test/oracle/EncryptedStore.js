@@ -68,7 +68,7 @@ contract("EncryptedStore", function(accounts) {
     let pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
     assert.equal(pulledMessage, message);
 
-    // Sender can remove the message.
+    // User can remove their own message.
     await encryptedStore.removeMessage(topicHash, { from: senderAccount });
     pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
     assert.equal(pulledMessage, null);
