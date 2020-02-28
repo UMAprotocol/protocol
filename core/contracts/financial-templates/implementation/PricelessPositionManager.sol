@@ -83,7 +83,6 @@ contract PricelessPositionManager is FeePayer {
         uint indexed collateralAmountReturned,
         uint indexed tokensBurned
     );
-    event test(string err);
 
     modifier onlyPreExpiration() {
         _isPreExpiration();
