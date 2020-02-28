@@ -8,7 +8,7 @@ import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/StoreInterface.sol";
 
 
-/** 
+/**
  * @title An implementation of StoreInterface that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
 contract Store is StoreInterface, MultiRole, Withdrawable {

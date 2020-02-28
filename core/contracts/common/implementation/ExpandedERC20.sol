@@ -6,8 +6,8 @@ import "../interfaces/ExpandedIERC20.sol";
 
 
 /**
- * @title An ERC20 with permissioned burning and minting. The contract deployer will initially 
- * be the owner who is capable of adding new roles. 
+ * @title An ERC20 with permissioned burning and minting. The contract deployer will initially
+ * be the owner who is capable of adding new roles.
  */
 contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     enum Roles {

@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 
 /**
- * @title Provides addresses of the live contracts implementing certain interfaces. 
+ * @title Provides addresses of the live contracts implementing certain interfaces.
  * @dev Examples are the Oracle or Store interfaces.
  */
 interface FinderInterface {

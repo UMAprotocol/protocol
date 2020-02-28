@@ -1214,7 +1214,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     }
 
     /**
-     * @notice Forgo the Oracle verified price and settle the contract with last remargin price. 
+     * @notice Forgo the Oracle verified price and settle the contract with last remargin price.
      * @dev This method is only callable on contracts in the `Defaulted` state, and the default penalty is always
      * transferred from the short to the long account.
      */

@@ -22,7 +22,7 @@
     "eslint": "5.16.0",
     "husky": "^4.2.3",
     "prettier": "1.19.1",
-    "prettier-plugin-solidity": "1.0.0-alpha.41",
+    "prettier-plugin-solidity": "^1.0.0-alpha.42",
     "solidity-coverage": "^0.7.2",
     "truffle-deploy-registry": "^0.5.1"
   },

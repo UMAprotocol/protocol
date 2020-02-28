@@ -5,7 +5,7 @@ import "../interfaces/VotingInterface.sol";
 
 
 /**
- * @title Library to compute rounds and phases for an equal length commit-reveal voting cycle. 
+ * @title Library to compute rounds and phases for an equal length commit-reveal voting cycle.
  */
 library VoteTiming {
     using SafeMath for uint;

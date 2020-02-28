@@ -242,7 +242,7 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
-     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`. 
+     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if the minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
@@ -325,7 +325,7 @@ contract PricelessPositionManager is FeePayer {
 
     /**
      * @notice After a contract has passed maturity all token holders can redeem their tokens for underlying at
-     * the prevailing price defined by the DVM from the `expire` function. 
+     * the prevailing price defined by the DVM from the `expire` function.
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
     function settleExpired() external onlyPostExpiration() fees() {

@@ -4,8 +4,8 @@ import "../../common/implementation/ExpandedERC20.sol";
 
 
 /**
- * @notice A burnable and mintable ERC20. The contract deployer will initially 
- * be the only minter and burner as well as the owner who is capable of adding new roles. 
+ * @notice A burnable and mintable ERC20. The contract deployer will initially
+ * be the only minter and burner as well as the owner who is capable of adding new roles.
  * The contract deployer will also be the only initial minter of the contract.
  */
 contract SyntheticToken is ExpandedERC20, ERC20Detailed {

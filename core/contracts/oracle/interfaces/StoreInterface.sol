@@ -9,7 +9,7 @@ import "../../common/implementation/FixedPoint.sol";
  * @title Interface that allows derivative contracts to pay oracle fees for their use of the system.
  */
 interface StoreInterface {
-    /** 
+    /**
      * @dev Pays Oracle fees in ETH to the store. To be used by contracts whose margin currency is ETH.
      */
     function payOracleFees() external payable;
@@ -21,7 +21,7 @@ interface StoreInterface {
     function payOracleFeesErc20(address erc20Address) external;
 
     /**
-     * @dev Computes the regular oracle fees that a contract should pay for a period. 
+     * @dev Computes the regular oracle fees that a contract should pay for a period.
      * pfc` is the "profit from corruption", or the maximum amount of margin currency that a
      * token sponsor could extract from the contract through corrupting the price feed
      * in their favor.
