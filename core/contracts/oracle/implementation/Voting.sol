@@ -168,7 +168,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         bool _isTest
     ) public Testable(_isTest) {
         voteTiming.init(phaseLength);
-        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+        require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
