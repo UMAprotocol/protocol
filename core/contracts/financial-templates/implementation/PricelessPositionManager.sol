@@ -122,7 +122,7 @@ contract PricelessPositionManager is FeePayer {
 
         priceIdentifer = _priceIdentifier;
     }
-
+\
     /**
      * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
