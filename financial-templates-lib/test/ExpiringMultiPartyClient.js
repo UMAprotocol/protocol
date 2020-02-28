@@ -74,13 +74,15 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   });
 
   it("All Positions", async function() {
+    // Create a position and check that it is detected correctly from the client.
     await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: accounts[0] });
     await updateAndVerify(
       client,
-      [accounts[0]],
-      [{ sponsor: accounts[0], numTokens: toWei("50"), amountCollateral: toWei("10") }]
+      [accounts[0]], //expected sponsor
+      [{ sponsor: accounts[0], numTokens: toWei("50"), amountCollateral: toWei("10") }] //expected position
     );
 
+    // Calling create again from the same sponsor should add additional collateral & debt.
     await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: accounts[0] });
     await updateAndVerify(
       client,
@@ -88,6 +90,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       [{ sponsor: accounts[0], numTokens: toWei("100"), amountCollateral: toWei("20") }]
     );
 
+    // Calling create from a new address will create a new position and this should be added the the client.
     await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: accounts[1] });
     await updateAndVerify(
       client,
@@ -98,7 +101,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       ]
     );
 
-    // Liquidations.
+    // If a position is liquidated it should be removed from the clients state.
     const id = await emp.createLiquidation.call(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
     await emp.createLiquidation(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
 
@@ -133,6 +136,26 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
 
     Date.now = oldNow;
+
+    // Pending withdrawals state should be correctly identified.
+    await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: accounts[0] });
+    await client._update();
+    const expectedPendingWithdrawals = [
+      {
+        sponsor: accounts[0],
+        requestPassTimestamp: (await emp.getCurrentTime()).add(await emp.withdrawalLiveness()).toString(),
+        withdrawalRequestAmount: toWei("10"),
+        numTokens: toWei("100"),
+        amountCollateral: toWei("20")
+      }
+    ];
+
+    assert.deepStrictEqual(expectedPendingWithdrawals, client.getPendingWithdrawals());
+
+    // Remove the pending withdrawal and ensure it is removed from the client.
+    await emp.cancelWithdrawal({ from: accounts[0] });
+    await client._update();
+    assert.deepStrictEqual([], client.getPendingWithdrawals());
   });
 
   it("Undercollateralized", async function() {

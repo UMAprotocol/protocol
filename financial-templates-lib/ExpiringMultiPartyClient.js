@@ -7,6 +7,7 @@ class ExpiringMultiPartyClient {
     this.sponsorAddresses = [];
     this.positions = [];
     this.undisputedLiquidations = [];
+    this.pendingWithdrawals = [];
     this.emp = new web3.eth.Contract(abi, empAddress);
 
     this.collateralRequirement = null;
@@ -29,6 +30,10 @@ class ExpiringMultiPartyClient {
   // To check whether a liquidation can be disputed, call `isDisputable` with the token redemption value at
   // `liquidationTime`.
   getUndisputedLiquidations = () => this.undisputedLiquidations;
+
+  // Returns an array of { sponsor, requestPassTimestamp, withdrawalRequestAmount, numTokens, amountCollateral } for each
+  // pending withdrawal.
+  getPendingWithdrawals = () => this.pendingWithdrawals;
 
   // Whether the given `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
   // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
@@ -107,8 +112,8 @@ class ExpiringMultiPartyClient {
         }
       }
     }
+    this.undisputedLiquidations = nextUndisputedLiquidations;
 
-    // TODO: Need to handle pending withdrawal requests here.
     this.positions = this.sponsorAddresses.reduce(
       (acc, address, i) =>
         // Filter out empty positions.
@@ -123,7 +128,20 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    this.undisputedLiquidations = nextUndisputedLiquidations;
+
+    let nextPendingWithdrawals = [];
+    for (const [id, address] of this.sponsorAddresses.entries()) {
+      if (positions[id].requestPassTimestamp > 0) {
+        nextPendingWithdrawals.push({
+          sponsor: address,
+          requestPassTimestamp: positions[id].requestPassTimestamp,
+          withdrawalRequestAmount: positions[id].withdrawalRequestAmount.toString(),
+          numTokens: positions[id].tokensOutstanding.toString(),
+          amountCollateral: collateral[id].toString()
+        });
+      }
+    }
+    this.pendingWithdrawals = nextPendingWithdrawals;
   };
 }
 
