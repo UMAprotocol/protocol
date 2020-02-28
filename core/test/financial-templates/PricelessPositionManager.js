@@ -1041,6 +1041,15 @@ contract("PricelessPositionManager", function(accounts) {
       )
     );
 
+    // Expire should not be able to be called as the contract has been emergency shutdown.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.expire({
+          from: other
+        })
+      )
+    );
+
     // Before the DVM has resolved a price withdrawals should be disabled (as with settlement at maturity).
     assert(
       await didContractThrow(
