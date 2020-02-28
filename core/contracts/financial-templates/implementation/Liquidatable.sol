@@ -235,7 +235,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param id of the disputed liquidation.
      * @param sponsor the address of the sponsor who's liquidation is being disputed.
      */
-    function dispute(uint id, address sponsor) external disputable(id, sponsor) fees() {
+    function dispute(uint id, address sponsor) external disputable(id, sponsor) onlyPreExpiration() fees() {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
         FixedPoint.Unsigned memory disputeBondAmount = _getCollateral(disputedLiquidation.rawLockedCollateral).mul(
@@ -270,6 +270,7 @@ contract Liquidatable is PricelessPositionManager {
      */
     function withdrawLiquidation(uint id, address sponsor)
         public
+        onlyPreExpiration()
         withdrawable(id, sponsor)
         fees()
         returns (FixedPoint.Unsigned memory withdrawalAmount)
