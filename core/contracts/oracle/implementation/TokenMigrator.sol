@@ -51,7 +51,7 @@ contract TokenMigrator {
             return;
         }
 
-        FixedPoint.Unsigned memory newBalance = oldBalance.divCeil(rate);
+        FixedPoint.Unsigned memory newBalance = oldBalance.div(rate);
         require(newToken.mint(tokenHolder, newBalance.rawValue), "Mint failed");
     }
 }

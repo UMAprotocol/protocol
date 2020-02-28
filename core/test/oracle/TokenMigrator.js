@@ -63,26 +63,26 @@ contract("TokenMigrator", function(accounts) {
     assert.equal((await newToken.balanceOf(tokenHolder1)).toString(), web3.utils.toWei("0.5", "ether"));
   });
 
-  it("Migration rate creates new token amount with repeating decimals, least significant decimal gets rounded up", async function() {
+  it("Migration rate creates new token amount with repeating decimals, least significant decimal gets floor'd", async function() {
     // Case 1:
     // - Token-Holder-1 has 1 old token
     // - Migration rate = (3 new token : 1 new token)
-    // - Token-Holder-2 should have 0.3333....34 new tokens since 0.33-repeating can't be represented by FixedPoint and gets rounded up
+    // - Token-Holder-2 should have 0.3333....33 new tokens since 0.33-repeating can't be represented by FixedPoint and gets floor'd
     await oldToken.mint(tokenHolder1, web3.utils.toWei("1", "ether"), { from: owner });
     const migrator = await createMigrator(web3.utils.toWei("3", "ether"));
     await migrator.migrateTokens(tokenHolder1);
-    assert.equal((await newToken.balanceOf(tokenHolder1)).toString(), "3".repeat(17) + "4");
+    assert.equal((await newToken.balanceOf(tokenHolder1)).toString(), "3".repeat(18));
   });
 
-  it("Migration rate causes really small token holders to get rounded up", async function() {
+  it("Migration rate causes really small token holders to get floor'd", async function() {
     // Case 2:
     // - Token-Holder-1 has 1 wei old token
-    // - Migration rate = (5 new token: 1 new token)
-    // - Token-Holder-2 should have 1 wei new tokens since <1 wei can't be represented by FixedPoint and gets rounded up
+    // - Migration rate = (2 new token: 1 new token)
+    // - Token-Holder-2 should have 0 new tokens since <1 wei can't be represented by FixedPoint and gets floor'd
     await oldToken.mint(tokenHolder1, "1", { from: owner });
-    const migrator = await createMigrator(web3.utils.toWei("5", "ether"));
+    const migrator = await createMigrator(web3.utils.toWei("2", "ether"));
     await migrator.migrateTokens(tokenHolder1);
-    assert.equal((await newToken.balanceOf(tokenHolder1)).toString(), "1");
+    assert.equal((await newToken.balanceOf(tokenHolder1)).toString(), "0");
   });
 
   it("Repeated Migration", async function() {
