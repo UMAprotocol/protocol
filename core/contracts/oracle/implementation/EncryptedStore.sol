@@ -6,7 +6,7 @@ pragma solidity ^0.5.0;
  * given time.
  * There's technically nothing that requires the topics hashed or for the messages to be encrypted.
  * This contract is built for the following specific use case:
- * - The sender knows the topics ahead of time. This can either be communicated elsewhere or be implicit.
+ * - The user knows the topics ahead of time. This can either be communicated elsewhere or be implicit.
  * - Only one message per topic is stored at any given time.
  */
 contract EncryptedStore {
