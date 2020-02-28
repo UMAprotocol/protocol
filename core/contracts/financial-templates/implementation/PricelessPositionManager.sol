@@ -58,6 +58,9 @@ contract PricelessPositionManager is FeePayer {
     uint public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
+    // Time that has to elapse for the contract to be siphoned. This occures if a long period (>6 months) has
+    // occured post settlement and there is remaining unclaimed collateral in the contract.
+    uint public siphonDelay;
 
     // Whether the contract has received an expiry price.
     bool public hasExpiryPrice;
@@ -80,6 +83,7 @@ contract PricelessPositionManager is FeePayer {
         uint indexed collateralAmountReturned,
         uint indexed tokensBurned
     );
+    event test(string err);
 
     modifier onlyPreExpiration() {
         _isPreExpiration();
@@ -88,6 +92,7 @@ contract PricelessPositionManager is FeePayer {
 
     modifier onlyPostExpiration() {
         _isPostExpiration();
+        _isPreSiphon();
         _;
     }
 
@@ -100,6 +105,7 @@ contract PricelessPositionManager is FeePayer {
         bool _isTest,
         uint _expirationTimestamp,
         uint _withdrawalLiveness,
+        uint _siphonDelay,
         address _collateralAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
@@ -109,6 +115,7 @@ contract PricelessPositionManager is FeePayer {
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
+        siphonDelay = _siphonDelay;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
 
@@ -367,6 +374,17 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
+     * @notice If token holders or sponsors do not redeem their positions for underlying collateral within
+     * a pre-defined `siphonDelay`, all underlying collateral is sent to the Store. This delay is set to
+     * be sufficiently long such that token holders have a reasonable period of time to withdrawal (>6 months).
+     */
+    function siphonContractCollateral() external {
+        require(getCurrentTime() > expirationTimestamp + siphonDelay);
+        uint contractCollateralBallance = collateralCurrency.balanceOf(address(this));
+        collateralCurrency.transfer(_getStoreAddress(), contractCollateralBallance);
+    }
+
+    /**
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't a
      * user-readable value.
@@ -415,6 +433,11 @@ contract PricelessPositionManager is FeePayer {
     function _getOracle() internal view returns (OracleInterface) {
         bytes32 oracleInterface = "Oracle";
         return OracleInterface(finder.getImplementationAddress(oracleInterface));
+    }
+
+    function _getStoreAddress() internal view returns (address) {
+        bytes32 storeInterface = "Store";
+        return finder.getImplementationAddress(storeInterface);
     }
 
     function _requestOraclePrice(uint requestedTime) internal {
@@ -475,6 +498,10 @@ contract PricelessPositionManager is FeePayer {
 
     function _isPostExpiration() internal view {
         require(getCurrentTime() >= expirationTimestamp);
+    }
+
+    function _isPreSiphon() internal view {
+        require (getCurrentTime() < expirationTimestamp + siphonDelay);
     }
 
     function _isCollateralizedPosition(address sponsor) internal view {
