@@ -23,7 +23,7 @@ contract("EncryptedStore", function(accounts) {
     assert.equal(await decryptMessage(privateKey, encryptedMessage), message);
   });
 
-  it("Send a message", async function() {
+  it("Store a message", async function() {
     // Hash topic for lookup.
     const identifier = web3.utils.utf8ToHex("identifier");
     const time = "1000";
