@@ -5,7 +5,7 @@ const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = re
 const EncryptedStore = artifacts.require("EncryptedStore");
 
 contract("EncryptedStore", function(accounts) {
-  const senderAccount = accounts[0];
+  const userAccount = accounts[0];
   const rando = accounts[1];
 
   before(async function() {
