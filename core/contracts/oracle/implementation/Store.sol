@@ -118,7 +118,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
     }
 
     /**
-     * @notice Sets a new weekly delay fee
+     * @notice Sets a new weekly delay fee.
      * @param newWeeklyDelayFee fee escalation per week of late fee payment.
      */
     function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
@@ -126,7 +126,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
     }
 
     /**
-     * @notice Sets a new final fee for a particular currency
+     * @notice Sets a new final fee for a particular currency.
      * @param currency defines the token currency used to pay the final fee.
      * @param finalFee final fee amount.
      */
