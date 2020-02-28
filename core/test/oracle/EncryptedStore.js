@@ -1,4 +1,3 @@
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { decryptMessage, encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../../common/Crypto.js");
 
@@ -6,7 +5,6 @@ const EncryptedStore = artifacts.require("EncryptedStore");
 
 contract("EncryptedStore", function(accounts) {
   const userAccount = accounts[0];
-  const rando = accounts[1];
 
   before(async function() {
     encryptedStore = await EncryptedStore.new();
@@ -17,7 +15,7 @@ contract("EncryptedStore", function(accounts) {
     const { publicKey, privateKey } = await deriveKeyPairFromSignatureTruffle(
       web3,
       "Some message to sign",
-      senderAccount
+      userAccount
     );
     const encryptedMessage = await encryptMessage(publicKey, message);
     assert.equal(await decryptMessage(privateKey, encryptedMessage), message);
@@ -33,7 +31,7 @@ contract("EncryptedStore", function(accounts) {
     const { publicKey, privateKey } = await deriveKeyPairFromSignatureTruffle(
       web3,
       "Signed message for topic hash: " + topicHash,
-      senderAccount
+      userAccount
     );
 
     // Prepare message to store.
@@ -45,10 +43,10 @@ contract("EncryptedStore", function(accounts) {
     const encryptedMessage = await encryptMessage(publicKey, message);
 
     // Store the message.
-    await encryptedStore.storeMessage(topicHash, encryptedMessage, { from: senderAccount });
+    await encryptedStore.storeMessage(topicHash, encryptedMessage, { from: userAccount });
 
     // Pull down the encrypted message and decrypt it.
-    const pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
+    const pulledMessage = await encryptedStore.getMessage(userAccount, topicHash);
     const decryptedMessage = await decryptMessage(privateKey, pulledMessage);
 
     // decryptedMessage should match the plaintext message from above.
@@ -64,18 +62,18 @@ contract("EncryptedStore", function(accounts) {
     const message = identifier;
 
     // Send the message.
-    await encryptedStore.storeMessage(topicHash, message, { from: senderAccount });
-    let pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
+    await encryptedStore.storeMessage(topicHash, message, { from: userAccount });
+    let pulledMessage = await encryptedStore.getMessage(userAccount, topicHash);
     assert.equal(pulledMessage, message);
 
     // User can remove their own message.
-    await encryptedStore.removeMessage(topicHash, { from: senderAccount });
-    pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
+    await encryptedStore.removeMessage(topicHash, { from: userAccount });
+    pulledMessage = await encryptedStore.getMessage(userAccount, topicHash);
     assert.equal(pulledMessage, null);
 
     // Removing a message when none exists does not throw and does nothing
-    await encryptedStore.removeMessage(topicHash, { from: senderAccount });
-    pulledMessage = await encryptedStore.getMessage(senderAccount, topicHash);
+    await encryptedStore.removeMessage(topicHash, { from: userAccount });
+    pulledMessage = await encryptedStore.getMessage(userAccount, topicHash);
     assert.equal(pulledMessage, null);
   });
 });
