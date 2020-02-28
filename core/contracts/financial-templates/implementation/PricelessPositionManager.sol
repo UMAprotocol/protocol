@@ -338,6 +338,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
     function settleExpired() external onlyPostExpiration() fees() {
+        // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
+        require(contractState != ContractState.Open);
+
         // Get the current settlement price and store it. If it is not resolved will revert.
         if (contractState != ContractState.ExpiredPriceReceived) {
             expiryPrice = _getOraclePrice(expirationTimestamp);
