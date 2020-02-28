@@ -44,7 +44,7 @@ contract("EncryptedStore", function(accounts) {
     // Encrypt the message.
     const encryptedMessage = await encryptMessage(publicKey, message);
 
-    // Send the message.
+    // Store the message.
     await encryptedStore.storeMessage(topicHash, encryptedMessage, { from: senderAccount });
 
     // Pull down the encrypted message and decrypt it.
