@@ -1023,9 +1023,8 @@ contract("PricelessPositionManager", function(accounts) {
     const ppmCollateralBefore = await collateral.balanceOf(pricelessPositionManager.address);
     assert.equal(ppmCollateralBefore.toString(), toWei("60"));
 
-    // The store should have zero balance before.
+    // Grab the store balance from before. This is non-zero as fees have been accrued in previous tests.
     const storeCollateralBefore = await collateral.balanceOf(store.address);
-    assert.equal(storeCollateralBefore.toString(), 0);
 
     // Execute the siphon action. Anyone can call this
     await pricelessPositionManager.siphonContractCollateral({ from: other });
