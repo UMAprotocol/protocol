@@ -378,8 +378,8 @@ contract PricelessPositionManager is FeePayer {
      */
     function siphonContractCollateral() external {
         require(getCurrentTime() > expirationTimestamp + siphonDelay);
-        uint contractCollateralBallance = collateralCurrency.balanceOf(address(this));
-        collateralCurrency.safeTransfer(_getStoreAddress(), contractCollateralBallance);
+        uint contractCollateralBalance = collateralCurrency.balanceOf(address(this));
+        collateralCurrency.safeTransfer(_getStoreAddress(), contractCollateralBalance);
     }
 
     /**
