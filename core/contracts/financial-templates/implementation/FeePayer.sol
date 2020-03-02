@@ -135,7 +135,7 @@ contract FeePayer is Testable {
         return StoreInterface(finder.getImplementationAddress(storeInterface));
     }
 
-    // The following methods are used by derived classes to interact with collateral that is adjusted by fees.
+    // Gets a user-readable collateral value from a raw value that takes fees into account.
     function _getCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
@@ -144,26 +144,26 @@ contract FeePayer is Testable {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
 
-    function _removeCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToRemove)
-        internal
-    {
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToRemove.div(cumulativeFeeMultiplier);
-        rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
-    }
-
-    function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
-        internal
-    {
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToAdd.div(cumulativeFeeMultiplier);
-        rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
-    }
-
-    // Effectively performs the opposite operation from _getCollateral().
+    // Converts a user-readable collateral value into a raw value that takes fees into accounts.
     function _convertCollateral(FixedPoint.Unsigned memory collateral)
         internal
         view
         returns (FixedPoint.Unsigned memory rawCollateral)
     {
         return collateral.div(cumulativeFeeMultiplier);
+    }
+
+    function _removeCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToRemove)
+        internal
+    {
+        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToRemove);
+        rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
+    }
+
+    function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
+        internal
+    {
+        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToAdd);
+        rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
     }
 }

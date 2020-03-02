@@ -40,8 +40,8 @@ contract Liquidatable is PricelessPositionManager {
         // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
         FixedPoint.Unsigned liquidatedCollateral;
-        // Treated like a collateral value to track the attenuation of the final payouts due to fees.
-        FixedPoint.Unsigned rawFeeAttenuation;
+        // Unit value (starts at 1) that is used to track the fee/unit of collateral for the liquidation.
+        FixedPoint.Unsigned rawUnitCollateral;
         /** Set upon initiation of a dispute */
         address disputer; // Person who is disputing a liquidation
         /** Set upon a resolution of a dispute */
@@ -198,7 +198,7 @@ contract Liquidatable is PricelessPositionManager {
                 lockedCollateral: _getCollateral(positionToLiquidate.rawCollateral),
                 tokensOutstanding: positionToLiquidate.tokensOutstanding,
                 liquidatedCollateral: positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount),
-                rawFeeAttenuation: _convertCollateral(FixedPoint.fromUnscaledUint(1)),
+                rawUnitCollateral: _convertCollateral(FixedPoint.fromUnscaledUint(1)),
                 disputer: address(0),
                 liquidationTime: getCurrentTime(),
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
@@ -238,8 +238,9 @@ contract Liquidatable is PricelessPositionManager {
     function dispute(uint id, address sponsor) external disputable(id, sponsor) fees() {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, id);
 
+        // Multiply by the unit collateral so the dispute bond is a percentage of the locked collateral after fees.
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct).mul(
-            _getCollateral(disputedLiquidation.rawFeeAttenuation)
+            _getCollateral(disputedLiquidation.rawUnitCollateral)
         );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
@@ -285,8 +286,9 @@ contract Liquidatable is PricelessPositionManager {
         // Note: this will fail if the price has not resolved yet.
         _settle(id, sponsor);
 
-        // Calculate rewards as a function of the TRV.
-        FixedPoint.Unsigned memory feeAttenuation = _getCollateral(liquidation.rawFeeAttenuation);
+        // Calculate rewards as a function of the TRV. Note: all payouts are scaled by the unit collateral value so
+        // all payouts are charged the fees pro rata.
+        FixedPoint.Unsigned memory feeAttenuation = _getCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation
             .tokensOutstanding
             .mul(liquidation.settlementPrice)
