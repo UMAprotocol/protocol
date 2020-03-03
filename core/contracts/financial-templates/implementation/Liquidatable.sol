@@ -30,19 +30,19 @@ contract Liquidatable is PricelessPositionManager {
 
     struct LiquidationData {
         /** Following variables set upon creation of liquidation */
-        uint expiry; // When Liquidation ends and becomes 'Expired'
         address sponsor; // Address of the liquidated position's sponsor
         address liquidator; // Address who created this liquidation
         Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
+        uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
         /** Following variables determined by the position that is being liquidated */
         FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned rawLockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
         // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
         FixedPoint.Unsigned liquidatedCollateral;
-        /** Following variables set upon a dispute request */
+        /** Set upon initiation of a dispute */
         address disputer; // Person who is disputing a liquidation
-        uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
+        /** Set upon a resolution of a dispute */
         FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
     }
 
@@ -99,7 +99,7 @@ contract Liquidatable is PricelessPositionManager {
     // Callable if the liquidation is in a state where it can be disputed.
     modifier disputable(uint id, address sponsor) {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, id);
-        require((getCurrentTime() < liquidation.expiry) && (liquidation.state == Status.PreDispute));
+        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
         _;
     }
     // Callable if the liquidation is in a state where someone can withdraw.
@@ -109,7 +109,8 @@ contract Liquidatable is PricelessPositionManager {
 
         // Must be disputed or the liquidation has passed expiry.
         require(
-            (state > Status.PreDispute) || ((liquidation.expiry <= getCurrentTime()) && (state == Status.PreDispute))
+            (state > Status.PreDispute) ||
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
         );
         _;
     }
@@ -191,7 +192,6 @@ contract Liquidatable is PricelessPositionManager {
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
         uint newLength = liquidations[sponsor].push(
             LiquidationData({
-                expiry: getCurrentTime() + liquidationLiveness,
                 sponsor: sponsor,
                 liquidator: msg.sender,
                 state: Status.PreDispute,
@@ -419,5 +419,9 @@ contract Liquidatable is PricelessPositionManager {
         // has never been initialized).
         require(uuid < liquidationArray.length && liquidationArray[uuid].state != Status.Uninitialized);
         return liquidationArray[uuid];
+    }
+
+    function _getLiquidationExpiry(LiquidationData storage liquidation) internal view returns (uint) {
+        return liquidation.liquidationTime.add(liquidationLiveness);
     }
 }

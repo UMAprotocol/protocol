@@ -1,5 +1,4 @@
 const TokenFactory = artifacts.require("TokenFactory");
-
 const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {

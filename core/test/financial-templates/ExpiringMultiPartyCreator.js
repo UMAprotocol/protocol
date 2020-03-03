@@ -28,8 +28,7 @@ contract("ExpiringMultiParty", function(accounts) {
   beforeEach(async () => {
     collateralToken = await Token.new({ from: contractCreator });
     registry = await Registry.deployed();
-
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.new(true, Finder.address, { from: contractCreator });
+    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
     await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator

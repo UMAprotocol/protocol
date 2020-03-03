@@ -8,7 +8,7 @@ import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "./EncryptedSender.sol";
+import "./EncryptedStore.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, Ownable, OracleInterface, VotingInterface, EncryptedSender {
+contract Voting is Testable, Ownable, OracleInterface, VotingInterface, EncryptedStore {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -90,11 +90,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     mapping(uint => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) public priceRequests;
+    mapping(bytes32 => PriceRequest) private priceRequests;
 
-    // Price request ids for price requests that haven't yet been
-    // marked as resolved. These requests may be for future rounds.
-    bytes32[] public pendingPriceRequests;
+    // Price request ids for price requests that haven't yet been marked as resolved. 
+    // These requests may be for future rounds.
+    bytes32[] private pendingPriceRequests;
 
     VoteTiming.Data public voteTiming;
 
@@ -174,8 +174,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
-        voteTiming.init(_phaseLength);
-        require(_gatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+        voteTiming.init(phaseLength);
+        require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
@@ -374,7 +374,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         // Remove the stored message for this price request, if it exists.
         bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        removeMessage(msg.sender, topicHash);
+        removeMessage(topicHash);
 
         emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
@@ -395,7 +395,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
         uint roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        sendMessage(msg.sender, topicHash, encryptedVote);
+        storeMessage(topicHash, encryptedVote);
     }
 
     /**
