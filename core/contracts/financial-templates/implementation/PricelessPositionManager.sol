@@ -59,6 +59,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     uint public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
+    // Time that has to elapse for the contract to be siphoned. This occurs if `siphonDelay`
+    // seconds have past after the expiration timestamp and there is remaining unclaimed
+    // collateral in the contract.
+    uint public siphonDelay;
 
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
@@ -87,6 +91,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     modifier onlyPostExpiration() {
         _onlyPostExpiration();
+        _onlyPreSiphon();
         _;
     }
 
@@ -106,6 +111,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         bool _isTest,
         uint _expirationTimestamp,
         uint _withdrawalLiveness,
+        uint _siphonDelay,
         address _collateralAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
@@ -115,6 +121,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
+        siphonDelay = _siphonDelay;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
 
@@ -122,7 +129,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         priceIdentifer = _priceIdentifier;
     }
-
     /**
      * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
@@ -380,6 +386,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
+     * @notice If token holders or sponsors do not redeem their positions for underlying collateral within
+     * a pre-defined `siphonDelay`, all underlying collateral is sent to the Store. This delay
+     * should be set to be sufficiently long such that token holders have a reasonable
+     * period of time to withdrawal.
+     */
+    function siphonContractCollateral() external {
+        require(getCurrentTime() > expirationTimestamp.add(siphonDelay));
+        uint contractCollateralBalance = collateralCurrency.balanceOf(address(this));
+        collateralCurrency.safeTransfer(_getStoreAddress(), contractCollateralBalance);
+    }
+
+    /**
     * @notice Premature contract settlement under emergency circumstances.
     * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
     * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
@@ -456,6 +474,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return OracleInterface(finder.getImplementationAddress(oracleInterface));
     }
 
+    function _getStoreAddress() internal view returns (address) {
+        bytes32 storeInterface = "Store";
+        return finder.getImplementationAddress(storeInterface);
+    }
+
     function _getFinancialContractsAdminAddress() internal view returns (address) {
         bytes32 financialContractsAdminInterface = "FinancialContractsAdmin";
         return finder.getImplementationAddress(financialContractsAdminInterface);
@@ -523,6 +546,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function _onlyPostExpiration() internal view {
         require(getCurrentTime() >= expirationTimestamp);
+    }
+
+    function _onlyPreSiphon() internal view {
+        require(getCurrentTime() < expirationTimestamp.add(siphonDelay));
     }
 
     function _onlyCollateralizedPosition(address sponsor) internal view {
