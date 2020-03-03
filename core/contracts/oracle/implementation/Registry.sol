@@ -8,17 +8,19 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 /**
  * @title Registry for derivatives and approved derivative creators.
- * @dev Maintains a whitelist of derivative creators that are allowed to register new derivatives
- * and stores party members of a derivative.
+ * @dev Maintains a whitelist of derivative creators that are allowed
+ * to register new derivatives and stores party members of a derivative.
  */
 contract Registry is RegistryInterface, MultiRole {
     using SafeMath for uint;
 
+    /****************************************
+     *    INTERNAL VARIABLES AND STORAGE    *
+     ****************************************/
+
     enum Roles {
-        // The owner manages the set of DerivativeCreators.
-        Owner,
-        // Can register derivatives.
-        DerivativeCreator
+        Owner, // The owner manages the set of DerivativeCreators.
+        DerivativeCreator // Can register derivatives.
     }
 
     // This enum is required because a WasValid state is required to ensure that derivatives cannot be re-registered.
@@ -31,8 +33,7 @@ contract Registry is RegistryInterface, MultiRole {
     }
 
     struct PartyMember {
-        // Each derivative address is stored in this array.
-        address[] derivatives;
+        address[] derivatives; // Each derivative address is stored in this array.
         // The index of each derivative is mapped to it's address for constant time look up and deletion.
         mapping(address => uint) derivativeIndex;
     }
@@ -46,16 +47,33 @@ contract Registry is RegistryInterface, MultiRole {
     // Map each party member to their associated derivatives struct.
     mapping(address => PartyMember) private partyMap;
 
+    /****************************************
+     *                EVENTS                *
+     ****************************************/
+
     event NewDerivativeRegistered(address indexed derivativeAddress, address indexed creator, address[] parties);
     event PartyMemberAdded(address indexed derivativeAddress, address indexed party);
     event PartyMemberRemoved(address indexed derivativeAddress, address indexed party);
 
+    /**
+     * @notice Construct the Registry contract.
+     */
     constructor() public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         // Start with no derivative creators registered.
         _createSharedRole(uint(Roles.DerivativeCreator), uint(Roles.Owner), new address[](0));
     }
 
+    /****************************************
+     *        REGISTRATION FUNCTIONS        *
+     ****************************************/
+
+    /**
+     * @notice Registers a new derivative.
+     * @dev Only authorized derivative creators can call this method.
+     * @param parties an array of addresses who become party members to a derivative.
+     * @param derivativeAddress defines the address of the deployed derivative.
+     */
     function registerDerivative(address[] calldata parties, address derivativeAddress)
         external
         onlyRoleHolder(uint(Roles.DerivativeCreator))
@@ -63,14 +81,14 @@ contract Registry is RegistryInterface, MultiRole {
         Derivative storage derivative = derivativeMap[derivativeAddress];
         require(derivativeMap[derivativeAddress].valid == Validity.Invalid, "Can only register once");
 
-        // Store derivative address as a registered deriviative.
+        // Store derivative address as a registered derivative.
         registeredDerivatives.push(derivativeAddress);
 
         // No length check necessary because we should never hit (2^127 - 1) derivatives.
         derivative.index = uint128(registeredDerivatives.length.sub(1));
 
         // For all parties in the array add them to the derivative party members.
-        // add the derivative as one of the party members own derivatives and store the index.
+        // Add the derivative as one of the party members own derivatives and store the index.
         derivative.valid = Validity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
             uint newLength = partyMap[parties[i]].derivatives.push(derivativeAddress);
@@ -80,14 +98,11 @@ contract Registry is RegistryInterface, MultiRole {
         emit NewDerivativeRegistered(derivativeAddress, msg.sender, parties);
     }
 
-    function isDerivativeRegistered(address derivative) external view returns (bool) {
-        return derivativeMap[derivative].valid == Validity.Valid;
-    }
-
-    function getRegisteredDerivatives(address party) external view returns (address[] memory) {
-        return partyMap[party].derivatives;
-    }
-
+    /**
+     * @notice Adds a party member to the calling derivative.
+     * @dev msg.sender must be the derivative contract to which the party member is added.
+     * @param party address to be added to the derivatives.
+     */
     function addPartyToDerivative(address party) external {
         address derivativeAddress = msg.sender;
 
@@ -101,6 +116,11 @@ contract Registry is RegistryInterface, MultiRole {
         emit PartyMemberAdded(derivativeAddress, party);
     }
 
+    /**
+     * @notice Removes a party member to the calling derivative.
+     * @dev msg.sender must be the derivative contract to which the party member is added.
+     * @param party address to be removed to the derivatives.
+     */
     function removePartyFromDerivative(address party) external {
         address derivativeAddress = msg.sender;
         PartyMember storage partyMember = partyMap[party];
@@ -129,10 +149,43 @@ contract Registry is RegistryInterface, MultiRole {
         emit PartyMemberRemoved(derivativeAddress, party);
     }
 
-    function getAllRegisteredDerivatives() external view returns (address[] memory derivatives) {
+    /****************************************
+     *         REGISTRY STATE GETTERS       *
+     ****************************************/
+
+    /**
+     * @notice Returns whether the derivative has been registered with the registry.
+     * @dev If it is registered, it is an authorized participant in the UMA system.
+     * @param derivative address of the derivative contract.
+     * @return bool indicates whether the derivative is registered.
+     */
+    function isDerivativeRegistered(address derivative) external view returns (bool) {
+        return derivativeMap[derivative].valid == Validity.Valid;
+    }
+
+    /**
+     * @notice Returns a list of all derivatives that are associated with a particular party.
+     * @param party address of the party.
+     * @return an array of the derivatives the party is registered to.
+     */
+    function getRegisteredDerivatives(address party) external view returns (address[] memory) {
+        return partyMap[party].derivatives;
+    }
+
+    /**
+     * @notice Returns all registered derivatives.
+     * @return all registered derivative addresses within the system.
+     */
+    function getAllRegisteredDerivatives() external view returns (address[] memory) {
         return registeredDerivatives;
     }
 
+    /**
+     * @notice checks if a party member is part of a derivative.
+     * @param party party to check.
+     * @param derivativeAddress address to check against the party.
+     * @return bool indicating if the address is a party of the derivative.
+     */
     function isPartyMemberOfDerivative(address party, address derivativeAddress) public view returns (bool) {
         uint index = partyMap[party].derivativeIndex[derivativeAddress];
         return partyMap[party].derivatives.length > index && partyMap[party].derivatives[index] == derivativeAddress;

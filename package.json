@@ -62,7 +62,7 @@
     "web3-utils": "^1.2.4"
   },
   "optionalDependencies": {
-    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork"
+    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork-no-inheritance"
   },
   "bin": {
     "uma": "./core/scripts/cli/cli_entry.sh"

@@ -13,18 +13,24 @@ import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
 contract TokenMigrator {
     using FixedPoint for FixedPoint.Unsigned;
 
+    /****************************************
+     *    INTERNAL VARIABLES AND STORAGE    *
+     ****************************************/
+
     ERC20Snapshot public oldToken;
     ExpandedIERC20 public newToken;
+
     uint public snapshotId;
     FixedPoint.Unsigned public rate;
+
     mapping(address => bool) public hasMigrated;
 
     /**
      * @notice Construct the TokenMigrator contract.
      * @dev This function triggers the snapshot upon which all migrations will be based.
      * @param _rate the number of old tokens it takes to generate one new token.
-     * @param _oldToken the address of the token being migrated from.
-     * @param _newToken the address of the token being migrated to.
+     * @param _oldToken address of the token being migrated from.
+     * @param _newToken address of the token being migrated to.
      */
     constructor(FixedPoint.Unsigned memory _rate, address _oldToken, address _newToken) public {
         // Prevents division by 0 in migrateTokens().
@@ -38,8 +44,9 @@ contract TokenMigrator {
 
     /**
      * @notice Migrates the tokenHolder's old tokens to new tokens.
-     * @dev This function can only be called once per `tokenHolder`. Anyone can call this method on behalf of any other
-     * token holder since there is no disadvantage to receiving the tokens earlier.
+     * @dev This function can only be called once per `tokenHolder`. Anyone can call this method
+     * on behalf of any other token holder since there is no disadvantage to receiving the tokens earlier.
+     * @param tokenHolder address of the token holder to migrate.
      */
     function migrateTokens(address tokenHolder) external {
         require(!hasMigrated[tokenHolder], "Already migrated tokens");

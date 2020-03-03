@@ -38,50 +38,73 @@ contract VotingInterface {
     enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
 
     /**
-     * @notice Commit your vote for a price request for `identifier` at `time`.
-     * @dev (`identifier`, `time`) must correspond to a price request that's currently in the commit phase. `hash`
-     * should be the keccak256 hash of the price you want to vote for and a `int salt`. Commits can be changed.
+     * @notice Commit a vote for a price request for `identifier` at `time`.
+     * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
+     * Commits can be changed.
+     * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
+     * @param time unix timestamp of the price is being voted on.
+     * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external;
 
     /**
-     * @notice Commit multiple votes in a single transaction. Look at `project-root/common/Constants.js` for the tested maximum number of commitments that can fit in one transaction.
-     * @dev For more information on commits, review the comment for `commitVote`.
+     * @notice Submit a batch of commits in a single transaction.
+     * @dev Using `encryptedVote` is optional. If included then commitment is stored on chain.
+     * Look at `project-root/common/Constants.js` for the tested maximum number of
+     * commitments that can fit in one transaction.
+     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
     function batchCommit(Commitment[] calldata commits) external;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with. Only the
-     * committer can reveal their vote.
+     * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with.
+     * Only the committer can reveal their vote.
+     * @param identifier voted on in the commit phase. EG BTC/USD price pair.
+     * @param time specifies the unix timestamp of the price is being voted on.
+     * @param price voted on during the commit phase.
+     * @param salt value used to hide the commitment price during the commit phase.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external;
 
     /**
-     * @notice Reveal multiple votes in a single transaction. Look at `project-root/common/Constants.js` for the tested maximum number of reveals that can fit in one transaction.
+     * @notice Reveal multiple votes in a single transaction.
+     * Look at `project-root/common/Constants.js` for the tested maximum number of reveals.
+     * that can fit in one transaction.
      * @dev For more information on reveals, review the comment for `revealVote`.
+     * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
     function batchReveal(Reveal[] calldata reveals) external;
 
     /**
      * @notice Gets the queries that are being voted on this round.
+     * @return pendingRequests `PendingRequest` array containing identifiers
+     * and timestamps for all pending requests.
      */
     function getPendingRequests() external view returns (PendingRequest[] memory);
 
     /**
-     * @notice Gets the current vote phase (commit or reveal) based on the current block time.
+     * @notice Returns the current voting phase, as a function of the current time.
+     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
     function getVotePhase() external view returns (Phase);
 
     /**
-     * @notice Gets the current vote round id based on the current block time.
+     * @notice Returns the current round ID, as a function of the current time.
+     * @return uint representing the unique round ID.
      */
     function getCurrentRoundId() external view returns (uint);
 
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
+     * @dev Can only retrieve rewards if calling for a valid round and if the
+     * call is done within the timeout threshold (not expired).
+     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
+     * @param roundId the round from which voting rewards will be retrieved from.
+     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     * @return totalRewardToIssue total amount of rewards returned to the voter.
      */
-    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory)
+    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
         returns (FixedPoint.Unsigned memory);
 }
