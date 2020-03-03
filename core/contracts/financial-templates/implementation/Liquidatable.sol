@@ -40,7 +40,7 @@ contract Liquidatable is PricelessPositionManager {
         // Amount of collateral being liquidated, which could be different from
         // lockedCollateral if there were pending withdrawals at the time of liquidation
         FixedPoint.Unsigned liquidatedCollateral;
-        // Unit value (starts at 1) that is used to track the fee/unit of collateral for the liquidation.
+        // Unit value (starts at 1) that is used to track the fees per unit of collateral over the course of the liquidation.
         FixedPoint.Unsigned rawUnitCollateral;
         /** Set upon initiation of a dispute */
         address disputer; // Person who is disputing a liquidation

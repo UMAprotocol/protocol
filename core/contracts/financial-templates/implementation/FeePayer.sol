@@ -135,7 +135,9 @@ contract FeePayer is Testable {
         return StoreInterface(finder.getImplementationAddress(storeInterface));
     }
 
-    // Gets a user-readable collateral value from a raw value that takes fees into account.
+    // Returns the user's collateral minus any fees that have been subtracted since it was originally deposited into
+    // the contract. Note: if the contract has paid fees since it was deployed, the raw value should be larger than the
+    // returned value.
     function _getCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
@@ -144,7 +146,8 @@ contract FeePayer is Testable {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
 
-    // Converts a user-readable collateral value into a raw value that takes fees into accounts.
+    // Converts a user-readable collateral value into a raw value that accounts for already-assessed fees. If any fees
+    // have been taken from this contract in the past, then the raw value will be larger than the user-readable value.
     function _convertCollateral(FixedPoint.Unsigned memory collateral)
         internal
         view
