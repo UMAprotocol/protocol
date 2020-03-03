@@ -15,6 +15,7 @@ const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -23,6 +24,7 @@ contract("Liquidatable", function(accounts) {
   const liquidator = accounts[2];
   const disputer = accounts[3];
   const rando = accounts[4];
+  const mockGovernor = accounts[5];
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   // Amount of tokens to mint for test
@@ -69,6 +71,7 @@ contract("Liquidatable", function(accounts) {
   let finder;
   let liquidatableParameters;
   let store;
+  let financialContractsAdmin;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -154,6 +157,9 @@ contract("Liquidatable", function(accounts) {
 
     // Get store
     store = await Store.deployed();
+
+    // Get financialContractsAdmin
+    financialContractsAdmin = await FinancialContractsAdmin.deployed();
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -906,6 +912,36 @@ contract("Liquidatable", function(accounts) {
       // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
       const expectedPaymentSponsor = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
+    });
+  });
+  describe("Emergency shutdown", () => {
+    it("Liquidations are disabled if emergency shutdown", async () => {
+      // Create position.
+      await liquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Transfer synthetic tokens to a liquidator.
+      await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+
+      // Advance time until some point during contract life.
+      const expirationTime = await liquidationContract.expirationTimestamp();
+      await liquidationContract.setCurrentTime(expirationTime.toNumber() - 1000);
+
+      // Emergency shutdown the priceless position manager via the financialContractsAdmin.
+      await financialContractsAdmin.callEmergencyShutdown(liquidationContract.address);
+
+      // At this point a liquidation should not be able to be created.
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: amountOfCollateral.toString() },
+            { from: liquidator }
+          )
+        )
+      );
     });
   });
 });
