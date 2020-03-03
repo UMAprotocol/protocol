@@ -25,7 +25,7 @@ interface StoreInterface {
     /**
      * @notice Computes the regular oracle fees that a contract should pay for a period.
      * @param startTime defines the beginning time from which the fee is paid.
-     * @param endTime defines the end time until which the fee is paid.
+     * @param endTime end time until which the fee is paid.
      * @param pfc` "profit from corruption", or the maximum amount of margin currency that a
      * token sponsor could extract from the contract through corrupting the price feed in their favor.
      * @return regularFee amount owed for the duration from start to end time for the given pfc.
@@ -38,7 +38,7 @@ interface StoreInterface {
 
     /**
      * @notice Computes the final oracle fees that a contract should pay at settlement.
-     * @param currency defines the token used to pay the final fee.
+     * @param currency token used to pay the final fee.
      * @return finalFee amount due.
      */
     function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory finalFee);

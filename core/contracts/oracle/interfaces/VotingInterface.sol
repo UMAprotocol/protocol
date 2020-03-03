@@ -42,7 +42,7 @@ contract VotingInterface {
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
-     * @param time specifies the unix timestamp of the price is being voted on.
+     * @param time unix timestamp of the price is being voted on.
      * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external;
@@ -69,23 +69,23 @@ contract VotingInterface {
 
     /**
      * @notice Reveal multiple votes in a single transaction.
-     * Look at `project-root/common/Constants.js` for the tested maximum number of reveals
+     * Look at `project-root/common/Constants.js` for the tested maximum number of reveals.
      * that can fit in one transaction.
      * @dev For more information on reveals, review the comment for `revealVote`.
-     * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
+     * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
     function batchReveal(Reveal[] calldata reveals) external;
 
     /**
      * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests returns a `PendingRequest` array containing identifiers
+     * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
     function getPendingRequests() external view returns (PendingRequest[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
-     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
+     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
     function getVotePhase() external view returns (Phase);
 
@@ -100,9 +100,9 @@ contract VotingInterface {
      * @dev Can only retrieve rewards if calling for a valid round and if the
      * call is done within the timeout threshold (not expired).
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
-     * @param roundId defines the round from which voting rewards will be retrieved from.
-     * @param toRetrieve is an array of PendingRequests which rewards are retrieved from.
-     * @return totalRewardToIssue the total amount of rewards returned to the voter.
+     * @param roundId the round from which voting rewards will be retrieved from.
+     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     * @return totalRewardToIssue total amount of rewards returned to the voter.
      */
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public

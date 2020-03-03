@@ -32,9 +32,9 @@ library VoteTiming {
     }
 
     /**
-     * @notice compute the round end time as a function of the roundID.
+     * @notice compute the round end time as a function of the round Id.
      * @param data input data object.
-     * @param roundId for the current round.
+     * @param roundId uniquely identifies the current round.
      * @return timestamp unix time of when the current round will end.
      */
     function computeRoundEndTime(Data storage data, uint roundId) internal view returns (uint timestamp) {
