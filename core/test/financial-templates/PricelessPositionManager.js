@@ -986,8 +986,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
-  it("Contract siphon", async function() {
-  it("Emergency shutdown: lifecycle", async function() {
+  it("Post expiration siphon", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
     // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
@@ -1049,6 +1048,18 @@ contract("PricelessPositionManager", function(accounts) {
 
     // If the token holder tries to withdraw now they cant as it is post siphon.
     assert(await didContractThrow(pricelessPositionManager.settleExpired({ from: tokenHolder })));
+  });
+
+  it("Emergency shutdown: lifecycle", async function() {
+    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
+    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    const numTokens = toWei("100");
+    const amountCollateral = toWei("150");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    const tokenHolderTokens = toWei("50");
     await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, { from: sponsor });
 
     // Some time passes and the UMA token holders decide that Emergency shutdown needs to occur.

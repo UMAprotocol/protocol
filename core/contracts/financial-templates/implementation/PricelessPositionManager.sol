@@ -21,7 +21,7 @@ import "./FeePayer.sol";
  */
 
 contract PricelessPositionManager is FeePayer, AdministrateeInterface {
-    using SafeMath for uin
+    using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
@@ -393,6 +393,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(getCurrentTime() > expirationTimestamp + siphonDelay);
         uint contractCollateralBalance = collateralCurrency.balanceOf(address(this));
         collateralCurrency.safeTransfer(_getStoreAddress(), contractCollateralBalance);
+    }
+
+    /**
     * @notice Premature contract settlement under emergency circumstances.
     * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
     * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
@@ -472,6 +475,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _getStoreAddress() internal view returns (address) {
         bytes32 storeInterface = "Store";
         return finder.getImplementationAddress(storeInterface);
+    }
+
     function _getFinancialContractsAdminAddress() internal view returns (address) {
         bytes32 financialContractsAdminInterface = "FinancialContractsAdmin";
         return finder.getImplementationAddress(financialContractsAdminInterface);
