@@ -92,7 +92,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // Maps price request IDs to the PriceRequest struct.
     mapping(bytes32 => PriceRequest) private priceRequests;
 
-    // Price request ids for price requests that haven't yet been marked as resolved. 
+    // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
     bytes32[] private pendingPriceRequests;
 
