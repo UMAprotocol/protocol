@@ -165,28 +165,45 @@ contract Liquidatable is PricelessPositionManager {
      * synthetic tokens to retire the position's outstanding tokens.
      * @dev This method generates an ID that will uniquely identify liquidation
      * for the sponsor.
-     * @param sponsor address to liquidate
-     * @param amountToLiquidate amount of liquidatedCollateral that liquidator wants to liquidate
      * @return uuid of the newly created liquidation
      */
 
     // TODO: Perhaps pass this ID via an event rather than a return value
-    function createLiquidation(address sponsor, FixedPoint.Unsigned calldata amountToLiquidate)
-        external
-        fees()
-        returns (uint uuid)
-    {
+    function createLiquidation(
+        address sponsor,
+        FixedPoint.Unsigned calldata collateralPerToken,
+        FixedPoint.Unsigned calldata maxTokensToLiquidate
+    ) external fees() returns (uint uuid) {
         // Attempt to retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate.rawCollateral);
-        require(positionCollateral.isGreaterThan(0));
-
-        // Caller is required to include in order to prevent front-running attacks that modify the liquidatedCollateral amount
-        // @dev amountToLiquidate is >= underlying collateral because the position is still liquidatable if the underlying collateral declines
-        // while the liquidation transaction is pending
-        require(
-            amountToLiquidate.isGreaterThanOrEqual(positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount))
+        FixedPoint.Unsigned memory liquidatedCollateral = positionCollateral.sub(
+            positionToLiquidate.withdrawalRequestAmount
         );
+        // FixedPoint.Unsigned memory temp = maxTokensToLiquidate;
+        FixedPoint.Unsigned memory tokensToLiquidate = FixedPoint.Unsigned(maxTokensToLiquidate.rawValue).isGreaterThan(
+            positionToLiquidate.tokensOutstanding
+        )
+            ? positionToLiquidate.tokensOutstanding
+            : FixedPoint.Unsigned(maxTokensToLiquidate.rawValue);
+
+        // There should be collateral to liquidate.
+        require(positionCollateral.isGreaterThan(FixedPoint.fromUnscaledUint(0)));
+
+        // Position has C collateral. Pending withdrawal of W collateral. T tokens outstanding.
+        // Liquidator wants to liquidate L tokens, with up to P collateral per token.
+        // Position is treated like it has (C - W) collateral.
+        // Liquidation is allowed if P >= (C - W) / T, to address any front running.
+        // Burn L tokens and set T = T - L.
+        // We've blown away L / T of the Position.
+        // C = (1 - L/T) * C
+        // W = (1 - L/T) * W
+        // Liquidation has L/T * C rawLockedCollateral and L/T * W of liquidatedCollateral.
+
+        // Only liquidate if P >= (C - W) / T => P * T >= C - W.
+        require(collateralPerToken.mul(positionToLiquidate.tokensOutstanding).isGreaterThanOrEqual(liquidatedCollateral));
+
+        FixedPoint.Unsigned memory ratio = tokensToLiquidate.div(positionToLiquidate.tokensOutstanding);
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
@@ -195,9 +212,9 @@ contract Liquidatable is PricelessPositionManager {
                 sponsor: sponsor,
                 liquidator: msg.sender,
                 state: Status.PreDispute,
-                rawLockedCollateral: positionToLiquidate.rawCollateral,
-                tokensOutstanding: positionToLiquidate.tokensOutstanding,
-                liquidatedCollateral: positionCollateral.sub(positionToLiquidate.withdrawalRequestAmount),
+                rawLockedCollateral: ratio.mul(positionToLiquidate.rawCollateral),
+                tokensOutstanding: tokensToLiquidate,
+                liquidatedCollateral: ratio.mul(liquidatedCollateral),
                 disputer: address(0),
                 liquidationTime: getCurrentTime(),
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
@@ -211,20 +228,21 @@ contract Liquidatable is PricelessPositionManager {
         uuid = newLength.sub(1);
 
         // Destroy tokens
-        tokenCurrency.safeTransferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue);
-        tokenCurrency.burn(positionToLiquidate.tokensOutstanding.rawValue);
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToLiquidate.rawValue);
+        tokenCurrency.burn(tokensToLiquidate.rawValue);
 
         // Remove underlying collateral and debt from position and decrement the overall contract collateral and debt.
-        _deleteSponsorPosition(sponsor);
+        // _deleteSponsorPosition(sponsor);
+        _reduceSponsorPosition(sponsor, ratio.mul(positionToLiquidate.rawCollateral), tokensToLiquidate);
 
-        emit LiquidationCreated(
-            sponsor,
-            msg.sender,
-            uuid,
-            liquidations[sponsor][uuid].tokensOutstanding.rawValue,
-            _getCollateral(liquidations[sponsor][uuid].rawLockedCollateral).rawValue,
-            liquidations[sponsor][uuid].liquidatedCollateral.rawValue
-        );
+       emit LiquidationCreated(
+           sponsor,
+           msg.sender,
+           uuid,
+           liquidations[sponsor][uuid].tokensOutstanding.rawValue,
+           _getCollateral(liquidations[sponsor][uuid].rawLockedCollateral).rawValue,
+           liquidations[sponsor][uuid].liquidatedCollateral.rawValue
+       );
     }
 
     /**

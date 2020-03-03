@@ -241,7 +241,7 @@ contract PricelessPositionManager is FeePayer {
     }
 
     /**
-     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`. 
+     * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if the minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
@@ -324,7 +324,7 @@ contract PricelessPositionManager is FeePayer {
 
     /**
      * @notice After a contract has passed maturity all token holders can redeem their tokens for underlying at
-     * the prevailing price defined by the DVM from the `expire` function. 
+     * the prevailing price defined by the DVM from the `expire` function.
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
     function settleExpired() external onlyPostExpiration() fees() {
@@ -385,6 +385,31 @@ contract PricelessPositionManager is FeePayer {
      */
     function pfc() public view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
+    }
+
+    function _reduceSponsorPosition(
+        address sponsor,
+        FixedPoint.Unsigned memory collateral,
+        FixedPoint.Unsigned memory tokens
+    ) internal {
+        PositionData storage positionData = _getPositionData(sponsor);
+
+        // Decrease the sponsors position size of collateral and tokens.
+        _removeCollateral(positionData.rawCollateral, collateral);
+        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokens);
+
+        // Decrease the contract's collateral and tokens.
+        _removeCollateral(rawTotalPositionCollateral, collateral);
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokens);
+
+        // This operation could have some rounding issues.
+        if (
+            positionData.rawCollateral.isEqual(FixedPoint.fromUnscaledUint(0)) &&
+            positionData.tokensOutstanding.isEqual(FixedPoint.fromUnscaledUint(0))
+        ) {
+            delete positions[sponsor];
+        }
+
     }
 
     function _deleteSponsorPosition(address sponsor) internal {
