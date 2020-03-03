@@ -135,8 +135,10 @@ contract FeePayer is Testable {
         return StoreInterface(finder.getImplementationAddress(storeInterface));
     }
 
-    // The following methods are used by derived classes to interact with collateral that is adjusted by fees.
-    function _getCollateral(FixedPoint.Unsigned storage rawCollateral)
+    // Returns the user's collateral minus any fees that have been subtracted since it was originally deposited into
+    // the contract. Note: if the contract has paid fees since it was deployed, the raw value should be larger than the
+    // returned value.
+    function _getCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
         returns (FixedPoint.Unsigned memory collateral)
@@ -144,17 +146,27 @@ contract FeePayer is Testable {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
 
+    // Converts a user-readable collateral value into a raw value that accounts for already-assessed fees. If any fees
+    // have been taken from this contract in the past, then the raw value will be larger than the user-readable value.
+    function _convertCollateral(FixedPoint.Unsigned memory collateral)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory rawCollateral)
+    {
+        return collateral.div(cumulativeFeeMultiplier);
+    }
+
     function _removeCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToRemove)
         internal
     {
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToRemove.div(cumulativeFeeMultiplier);
+        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToRemove);
         rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
     }
 
     function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
         internal
     {
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToAdd.div(cumulativeFeeMultiplier);
+        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
     }
 }
