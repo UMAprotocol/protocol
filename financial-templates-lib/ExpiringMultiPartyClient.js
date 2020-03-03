@@ -31,10 +31,6 @@ class ExpiringMultiPartyClient {
   // `liquidationTime`.
   getUndisputedLiquidations = () => this.undisputedLiquidations;
 
-  // Returns an array of { sponsor, requestPassTimestamp, withdrawalRequestAmount, numTokens, amountCollateral } for each
-  // pending withdrawal.
-  getPendingWithdrawals = () => this.pendingWithdrawals;
-
   // Whether the given `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
   // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
   isDisputable = (liquidation, tokenRedemptionValue) => {
@@ -122,26 +118,15 @@ class ExpiringMultiPartyClient {
           : acc.concat([
               {
                 sponsor: address,
+                requestPassTimestamp: positions[i].requestPassTimestamp,
+                withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
                 numTokens: positions[i].tokensOutstanding.toString(),
-                amountCollateral: collateral[i].toString()
+                amountCollateral: collateral[i].toString(),
+                hasPendingWithdrawal: positions[i].requestPassTimestamp > 0
               }
             ]),
       []
     );
-
-    let nextPendingWithdrawals = [];
-    for (const [id, address] of this.sponsorAddresses.entries()) {
-      if (positions[id].requestPassTimestamp > 0) {
-        nextPendingWithdrawals.push({
-          sponsor: address,
-          requestPassTimestamp: positions[id].requestPassTimestamp,
-          withdrawalRequestAmount: positions[id].withdrawalRequestAmount.toString(),
-          numTokens: positions[id].tokensOutstanding.toString(),
-          amountCollateral: collateral[id].toString()
-        });
-      }
-    }
-    this.pendingWithdrawals = nextPendingWithdrawals;
   };
 }
 
