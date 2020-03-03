@@ -1,6 +1,10 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
+// Script to test
 const { Liquidator } = require("../Liquidator.js");
+
+// Helper client script
+const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -101,8 +105,11 @@ contract("Liquidator.js", function(accounts) {
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
 
+    // Create a new instance of the ExpiringMultiPartyClient to construct the liquidator
+    empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+
     // Create a new instance of the liquidator to test
-    liquidator = new Liquidator(ExpiringMultiParty.abi, web3, emp.address);
+    liquidator = new Liquidator(empClient, accounts[0]);
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {

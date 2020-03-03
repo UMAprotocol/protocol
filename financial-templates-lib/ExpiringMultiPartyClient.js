@@ -8,6 +8,7 @@ class ExpiringMultiPartyClient {
     this.positions = [];
     this.undisputedLiquidations = [];
     this.emp = new web3.eth.Contract(abi, empAddress);
+    this.empAddress = empAddress;
 
     this.collateralRequirement = null;
     // TODO: Ideally, we'd want to subscribe to events here, but subscriptions don't work with Truffle HDWalletProvider.
