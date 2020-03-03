@@ -9,22 +9,30 @@ import "../interfaces/FinderInterface.sol";
 
 
 /**
- * @title Proxy to allow voting from another address
- * @dev Allows a UMA token holder to designate another address to vote on their behalf. Each voter must deploy their own
- * instance of this contract.
+ * @title Proxy to allow voting from another address.
+ * @dev Allows a UMA token holder to designate another address to vote on their behalf.
+ * Each voter must deploy their own instance of this contract.
  */
 contract DesignatedVoting is MultiRole, Withdrawable {
+    /****************************************
+     *    INTERNAL VARIABLES AND STORAGE    *
+     ****************************************/
+
     enum Roles {
-        // Can set the Voter and Withdrawer roles.
-        Owner,
-        // Can vote through this contract.
-        Voter
+        Owner, // Can set the Voter and Withdrawer roles.
+        Voter // Can vote through this contract.
     }
 
-    // Reference to the UMA Finder contract, allowing Voting upgrades to be performed without requiring any calls to
-    // this contract.
+    // Reference to the UMA Finder contract, allowing Voting upgrades to be performed
+    // without requiring any calls to this contract.
     FinderInterface private finder;
 
+    /**
+     * @notice Construct the DesignatedVoting contract.
+     * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
+     * @param ownerAddress address of the owner of the DesignatedVoting contract.
+     * @param voterAddress address to which the owner has delegated their voting power.
+     */
     constructor(address finderAddress, address ownerAddress, address voterAddress) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), voterAddress);
@@ -33,8 +41,15 @@ contract DesignatedVoting is MultiRole, Withdrawable {
         finder = FinderInterface(finderAddress);
     }
 
+    /****************************************
+     *   VOTING AND REWARD FUNCTIONALITY    *
+     ****************************************/
+
     /**
      * @notice Forwards a commit to Voting.
+     * @param identifier uniquely identifies the feed for this vote. EG BTC/USD price pair.
+     * @param time specifies the unix timestamp of the price being voted on.
+     * @param hash the keccak256 hash of the price you want to vote for and a random integer salt value.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().commitVote(identifier, time, hash);
@@ -42,6 +57,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
 
     /**
      * @notice Forwards a batch commit to Voting.
+     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
     function batchCommit(VotingInterface.Commitment[] calldata commits) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().batchCommit(commits);
@@ -49,6 +65,10 @@ contract DesignatedVoting is MultiRole, Withdrawable {
 
     /**
      * @notice Forwards a reveal to Voting.
+     * @param identifier voted on in the commit phase. EG BTC/USD price pair.
+     * @param time specifies the unix timestamp of the price being voted on.
+     * @param price used along with the `salt` to produce the `hash` during the commit phase.
+     * @param salt used along with the `price` to produce the `hash` during the commit phase.
      */
     function revealVote(bytes32 identifier, uint time, int price, int salt) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().revealVote(identifier, time, price, salt);
@@ -56,6 +76,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
 
     /**
      * @notice Forwards a batch reveal to Voting.
+     * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
      */
     function batchReveal(VotingInterface.Reveal[] calldata reveals) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().batchReveal(reveals);
@@ -63,6 +84,9 @@ contract DesignatedVoting is MultiRole, Withdrawable {
 
     /**
      * @notice Forwards a reward retrieval to Voting.
+     * @dev rewards are added to the tokens already held by this contract.
+     * @param roundId defines the round from which voting rewards will be retrieved from.
+     * @param toRetrieve an array of PendingRequests which rewards are retrieved from.
      */
     function retrieveRewards(uint roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public
