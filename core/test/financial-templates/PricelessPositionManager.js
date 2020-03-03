@@ -13,6 +13,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("PricelessPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
@@ -28,6 +29,7 @@ contract("PricelessPositionManager", function(accounts) {
   let tokenCurrency;
   let identifierWhitelist;
   let mockOracle;
+  let financialContractsAdmin;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -37,6 +39,13 @@ contract("PricelessPositionManager", function(accounts) {
   const withdrawalLiveness = 1000;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
   const priceTrackingIdentifier = web3.utils.utf8ToHex("UMATEST");
+
+  // Contract state
+  const STATES = {
+    OPEN: "0",
+    EXPIRED_PRICE_REQUESTED: "1",
+    EXPIRED_PRICE_RECEIVED: "2"
+  };
 
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
@@ -79,9 +88,9 @@ contract("PricelessPositionManager", function(accounts) {
     });
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
-      from: contractDeployer
-    });
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractDeployer });
+
+    financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
@@ -498,7 +507,7 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
-        ev.collateralAmountReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
+        ev.collateralReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
         ev.tokensBurned == tokenHolderInitialSynthetic.toString()
       );
     });
@@ -725,7 +734,7 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
       return (
         ev.caller == tokenHolder &&
-        ev.collateralAmountReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
+        ev.collateralReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
         ev.tokensBurned == tokenHolderInitialSynthetic.toString()
       );
     });
@@ -973,5 +982,138 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.settleExpired({ from: other });
     collateralPaid = (await collateral.balanceOf(other)).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
+  });
+
+  it("Emergency shutdown: lifecycle", async function() {
+    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
+    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    const numTokens = toWei("100");
+    const amountCollateral = toWei("150");
+    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    const tokenHolderTokens = toWei("50");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, { from: sponsor });
+
+    // Some time passes and the UMA token holders decide that Emergency shutdown needs to occur.
+    const shutdownTimestamp = expirationTimestamp - 1000;
+    await pricelessPositionManager.setCurrentTime(shutdownTimestamp);
+
+    // Should revert if emergency shutdown initialized by non-FinancialContractsAdmin (governor).
+    assert(await didContractThrow(pricelessPositionManager.emergencyShutdown({ from: other })));
+
+    // FinancialContractAdmin can initiate emergency shutdown.
+    await financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address);
+
+    // Because the emergency shutdown is called by the `financialContractsAdmin`, listening for events can not
+    // happen in the standard way as done in other tests. However, we can directly query the `pricelessPositionManager`
+    // to see it's past events to ensure that the right parameters were emmited.
+    const eventResult = await pricelessPositionManager.getPastEvents("EmergencyShutdown");
+    assert.equal(eventResult[0].args.caller, financialContractsAdmin.address);
+    assert.equal(eventResult[0].args.originalExpirationTimestamp.toString(), expirationTimestamp.toString());
+    assert.equal(eventResult[0].args.shutdownTimestamp.toString(), shutdownTimestamp.toString());
+
+    // Check contract state change correctly to requested oracle price and the contract expiration has updated.
+    assert.equal(await pricelessPositionManager.contractState(), STATES.EXPIRED_PRICE_REQUESTED);
+    assert.equal((await pricelessPositionManager.expirationTimestamp()).toString(), shutdownTimestamp.toString());
+
+    // Emergency shutdown should not be able to be called a second time.
+    assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));
+
+    // Expire should not be able to be called as the contract has been emergency shutdown.
+    assert(await didContractThrow(pricelessPositionManager.expire({ from: other })));
+
+    // Before the DVM has resolved a price withdrawals should be disabled (as with settlement at maturity).
+    assert(await didContractThrow(pricelessPositionManager.settleExpired({ from: sponsor })));
+
+    // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
+    // Say they resolve to a price of 1.1 USD per synthetic token.
+    await mockOracle.pushPrice(priceTrackingIdentifier, shutdownTimestamp, toWei("1.1"));
+
+    // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
+    // From the token holder's perspective, they are entitled to the value of their tokens, notated in the underlying.
+    // They have 50 tokens settled at a price of 1.1 should yield 55 units of underling (or 55 USD as underlying is Dai).
+    const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+    assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
+
+    // Approve the tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
+      from: tokenHolder
+    });
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
+    const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+    const expectedTokenHolderFinalCollateral = toWei("55");
+    assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
+
+    // The token holder should have no synthetic positions left after settlement.
+    assert.equal(tokenHolderFinalSynthetic, 0);
+
+    // If the tokenHolder tries to withdraw again they should get no additional tokens; all have been withdrawn (same as normal expiratory).
+    const tokenHolderInitialCollateral_secondWithdrawal = await collateral.balanceOf(tokenHolder);
+    const tokenHolderInitialSynthetic_secondWithdrawal = await tokenCurrency.balanceOf(tokenHolder);
+    assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
+    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, { from: tokenHolder });
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    const tokenHolderFinalCollateral_secondWithdrawal = await collateral.balanceOf(tokenHolder);
+    const tokenHolderFinalSynthetic_secondWithdrawal = await tokenCurrency.balanceOf(tokenHolder);
+    assert.equal(
+      tokenHolderInitialCollateral_secondWithdrawal.toString(),
+      tokenHolderFinalCollateral_secondWithdrawal.toString()
+    );
+    assert.equal(
+      tokenHolderInitialSynthetic_secondWithdrawal.toString(),
+      tokenHolderFinalSynthetic_secondWithdrawal.toString()
+    );
+
+    // For the sponsor, they are entitled to the underlying value of their remaining synthetic tokens + the excess collateral
+    // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
+    // of their synthetics they sold is 110. Their redeemed amount for this excess collateral is the difference between the two.
+    // The sponsor also has 50 synthetic tokens that they did not sell.
+    // This makes their expected redemption = 150 - 110 + 50 * 1.1 = 95
+    const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
+    const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // Approve tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(pricelessPositionManager.address, sponsorInitialSynthetic, {
+      from: sponsor
+    });
+    await pricelessPositionManager.settleExpired({
+      from: sponsor
+    });
+    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
+    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // The token Sponsor should gain the value of their synthetics in underlying
+    // + their excess collateral from the over collateralization in their position
+    // Excess collateral = 150 - 100 * 1.1 = 30
+    const expectedSponsorCollateralUnderlying = toBN(toWei("40"));
+    // Value of remaining synthetic tokens = 50 * 1.1 = 55
+    const expectedSponsorCollateralSynthetic = toBN(toWei("55"));
+    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
+      expectedSponsorCollateralSynthetic
+    );
+    assert.equal(
+      sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
+      expectedTotalSponsorCollateralReturned
+    );
+
+    // The token Sponsor should have no synthetic positions left after settlement.
+    assert.equal(sponsorFinalSynthetic, 0);
+  });
+
+  it("Emergency shutdown: reject emergency shutdown post expiratory", async function() {
+    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral.
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // Emergency shutdown should revert as post expiration.
+    assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));
   });
 });
