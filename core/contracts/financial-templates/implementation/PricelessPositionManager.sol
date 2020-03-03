@@ -384,7 +384,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
     * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
     * to occur via the standard settleExpired function call. Contract state is set to `ExpiredPriceRequested`
-    * which prevents re-entry into this function or the `expire` function.
+    * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
+    * `emergencyShutdown` as the governor who would call the function would also receive the fees.
     */
     function emergencyShutdown() external onlyPreExpiration() onlyOpenState() {
         require(msg.sender == _getFinancialContractsAdminAddress());
