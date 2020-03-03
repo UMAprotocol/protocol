@@ -387,8 +387,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice If token holders or sponsors do not redeem their positions for underlying collateral within
-     * a pre-defined `siphonDelay`, all underlying collateral is sent to the Store. This delay is set to
-     * be sufficiently long such that token holders have a reasonable period of time to withdrawal.
+     * a pre-defined `siphonDelay`, all underlying collateral is sent to the Store. This delay
+     * should be set to be sufficiently long such that token holders have a reasonable
+     * period of time to withdrawal.
      */
     function siphonContractCollateral() external {
         require(getCurrentTime() > expirationTimestamp.add(siphonDelay));
