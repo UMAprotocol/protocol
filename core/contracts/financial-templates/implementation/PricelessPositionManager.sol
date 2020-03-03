@@ -59,7 +59,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     uint public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
-    // Time that has to elapse for the contract to be siphoned. This occures if a long period (>6 months) has
+    // Time that has to elapse for the contract to be siphoned. This occures if a long period has
     // occured post expiration and there is remaining unclaimed collateral in the contract.
     uint public siphonDelay;
 
@@ -387,7 +387,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice If token holders or sponsors do not redeem their positions for underlying collateral within
      * a pre-defined `siphonDelay`, all underlying collateral is sent to the Store. This delay is set to
-     * be sufficiently long such that token holders have a reasonable period of time to withdrawal (>6 months).
+     * be sufficiently long such that token holders have a reasonable period of time to withdrawal.
      */
     function siphonContractCollateral() external {
         require(getCurrentTime() > expirationTimestamp.add(siphonDelay));
