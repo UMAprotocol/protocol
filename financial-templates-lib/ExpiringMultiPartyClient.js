@@ -107,8 +107,8 @@ class ExpiringMultiPartyClient {
         }
       }
     }
+    this.undisputedLiquidations = nextUndisputedLiquidations;
 
-    // TODO: Need to handle pending withdrawal requests here.
     this.positions = this.sponsorAddresses.reduce(
       (acc, address, i) =>
         // Filter out empty positions.
@@ -117,13 +117,15 @@ class ExpiringMultiPartyClient {
           : acc.concat([
               {
                 sponsor: address,
+                requestPassTimestamp: positions[i].requestPassTimestamp,
+                withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
                 numTokens: positions[i].tokensOutstanding.toString(),
-                amountCollateral: collateral[i].toString()
+                amountCollateral: collateral[i].toString(),
+                hasPendingWithdrawal: positions[i].requestPassTimestamp > 0
               }
             ]),
       []
     );
-    this.undisputedLiquidations = nextUndisputedLiquidations;
   };
 }
 

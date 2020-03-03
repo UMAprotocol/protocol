@@ -55,6 +55,7 @@ contract("Liquidatable", function(accounts) {
   const expirationTimestamp = toBN(startTime)
     .add(positionLiveness)
     .toString();
+  const siphonDelay = "100000";
   const withdrawalLiveness = toBN(60)
     .muln(60)
     .muln(1);
@@ -117,6 +118,7 @@ contract("Liquidatable", function(accounts) {
       isTest: true,
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
+      siphonDelay: siphonDelay,
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
