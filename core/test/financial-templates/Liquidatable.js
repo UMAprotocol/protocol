@@ -15,6 +15,7 @@ const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -70,6 +71,7 @@ contract("Liquidatable", function(accounts) {
   let finder;
   let liquidatableParameters;
   let store;
+  let financialContractsAdmin;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -155,6 +157,9 @@ contract("Liquidatable", function(accounts) {
 
     // Get store
     store = await Store.deployed();
+
+    // Get financialContractsAdmin
+    financialContractsAdmin = await FinancialContractsAdmin.deployed();
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -914,11 +919,6 @@ contract("Liquidatable", function(accounts) {
   });
   describe("Emergency shutdown", () => {
     it("Liquidations are disabled if emergency shutdown", async () => {
-      // To mock the emergency shutdown, register a controlled EOA as the `Governor` within the `Finder`.
-      await finder.changeImplementationAddress(web3.utils.utf8ToHex("FinancialContractsAdmin"), mockGovernor, {
-        from: contractDeployer
-      });
-
       // Create position.
       await liquidationContract.create(
         { rawValue: amountOfCollateral.toString() },
@@ -932,8 +932,8 @@ contract("Liquidatable", function(accounts) {
       const expirationTime = await liquidationContract.expirationTimestamp();
       await liquidationContract.setCurrentTime(expirationTime.toNumber() - 1000);
 
-      // Emergency shutdown the priceless position manager via liquidatable.
-      liquidationContract.emergencyShutdown({ from: mockGovernor });
+      // Emergency shutdown the priceless position manager via the financialContractsAdmin.
+      await financialContractsAdmin.callEmergencyShutdown(liquidationContract.address);
 
       // At this point a liquidation should not be able to be created.
       assert(

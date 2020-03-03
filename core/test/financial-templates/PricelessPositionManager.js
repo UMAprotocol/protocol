@@ -13,6 +13,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("PricelessPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
@@ -21,7 +22,6 @@ contract("PricelessPositionManager", function(accounts) {
   const tokenHolder = accounts[2];
   const other = accounts[3];
   const collateralOwner = accounts[4];
-  const mockGovernor = accounts[5];
 
   // Contracts
   let collateral;
@@ -29,6 +29,7 @@ contract("PricelessPositionManager", function(accounts) {
   let tokenCurrency;
   let identifierWhitelist;
   let mockOracle;
+  let financialContractsAdmin;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -87,9 +88,9 @@ contract("PricelessPositionManager", function(accounts) {
     });
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
-      from: contractDeployer
-    });
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractDeployer });
+
+    financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
@@ -983,13 +984,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
-  it("Emergency shutdown: lifecycle", async function() {
-    // To mock the emergency shutdown, register a controlled EOA as the `Governor` within the `Finder`.
-    const mockFinancialContractsAdmin = web3.utils.utf8ToHex("FinancialContractsAdmin");
-    await finder.changeImplementationAddress(mockFinancialContractsAdmin, mockGovernor, {
-      from: contractDeployer
-    });
-
+  it.only("Emergency shutdown: lifecycle", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
     // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
@@ -999,65 +994,38 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
     const tokenHolderTokens = toWei("50");
-    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
-      from: sponsor
-    });
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, { from: sponsor });
 
     // Some time passes and the UMA token holders decide that Emergency shutdown needs to occur.
     const shutdownTimestamp = expirationTimestamp - 1000;
     await pricelessPositionManager.setCurrentTime(shutdownTimestamp);
 
     // Should revert if emergency shutdown initialized by non-FinancialContractsAdmin (governor).
-    assert(
-      await didContractThrow(
-        pricelessPositionManager.emergencyShutdown({
-          from: other
-        })
-      )
-    );
+    assert(await didContractThrow(pricelessPositionManager.emergencyShutdown({ from: other })));
 
     // FinancialContractAdmin can initiate emergency shutdown.
-    const emergencyShutdownResult = await pricelessPositionManager.emergencyShutdown({ from: mockGovernor });
+    await financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address);
 
-    // Check the event returned the correct values.
-    truffleAssert.eventEmitted(emergencyShutdownResult, "EmergencyShutdown", ev => {
-      return (
-        ev.caller == mockGovernor &&
-        ev.originalExpirationTimestamp == expirationTimestamp &&
-        ev.shutdownTimestamp == shutdownTimestamp
-      );
-    });
+    // Because the emergency shutdown is called by the `financialContractsAdmin`, listening for events can not
+    // happen in the standard way as done in other tests. However, we can directly query the `pricelessPositionManager`
+    // to see it's past events to ensure that the right parameters were emmited.
+    const eventResult = await pricelessPositionManager.getPastEvents("EmergencyShutdown");
+    assert.equal(eventResult[0].args.caller, financialContractsAdmin.address);
+    assert.equal(eventResult[0].args.originalExpirationTimestamp.toString(), expirationTimestamp.toString());
+    assert.equal(eventResult[0].args.shutdownTimestamp.toString(), shutdownTimestamp.toString());
 
     // Check contract state change correctly to requested oracle price and the contract expiration has updated.
     assert.equal(await pricelessPositionManager.contractState(), STATES.EXPIRED_PRICE_REQUESTED);
     assert.equal((await pricelessPositionManager.expirationTimestamp()).toString(), shutdownTimestamp.toString());
 
     // Emergency shutdown should not be able to be called a second time.
-    assert(
-      await didContractThrow(
-        pricelessPositionManager.emergencyShutdown({
-          from: mockGovernor
-        })
-      )
-    );
+    assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));
 
     // Expire should not be able to be called as the contract has been emergency shutdown.
-    assert(
-      await didContractThrow(
-        pricelessPositionManager.expire({
-          from: other
-        })
-      )
-    );
+    assert(await didContractThrow(pricelessPositionManager.expire({ from: other })));
 
     // Before the DVM has resolved a price withdrawals should be disabled (as with settlement at maturity).
-    assert(
-      await didContractThrow(
-        pricelessPositionManager.settleExpired({
-          from: sponsor
-        })
-      )
-    );
+    assert(await didContractThrow(pricelessPositionManager.settleExpired({ from: sponsor })));
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
     // Say they resolve to a price of 1.1 USD per synthetic token.
@@ -1074,9 +1042,7 @@ contract("PricelessPositionManager", function(accounts) {
     await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
-    await pricelessPositionManager.settleExpired({
-      from: tokenHolder
-    });
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     const expectedTokenHolderFinalCollateral = toWei("55");
@@ -1089,12 +1055,8 @@ contract("PricelessPositionManager", function(accounts) {
     const tokenHolderInitialCollateral_secondWithdrawal = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic_secondWithdrawal = await tokenCurrency.balanceOf(tokenHolder);
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
-    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
-      from: tokenHolder
-    });
-    await pricelessPositionManager.settleExpired({
-      from: tokenHolder
-    });
+    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, { from: tokenHolder });
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
     const tokenHolderFinalCollateral_secondWithdrawal = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic_secondWithdrawal = await tokenCurrency.balanceOf(tokenHolder);
     assert.equal(
@@ -1143,11 +1105,6 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   it("Emergency shutdown: reject emergency shutdown post expiratory", async function() {
-    // To mock the emergency shutdown, register a controlled EOA as the `Governor` within the `Finder`.
-    await finder.changeImplementationAddress(web3.utils.utf8ToHex("FinancialContractsAdmin"), mockGovernor, {
-      from: contractDeployer
-    });
-
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral.
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
@@ -1157,12 +1114,6 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
 
     // Emergency shutdown should revert as post expiration.
-    assert(
-      await didContractThrow(
-        pricelessPositionManager.emergencyShutdown({
-          from: mockGovernor
-        })
-      )
-    );
+    assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));
   });
 });
