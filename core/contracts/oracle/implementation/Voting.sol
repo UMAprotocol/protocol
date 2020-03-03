@@ -247,8 +247,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param time unix timestamp of for the price request.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool hasPrice) {
-        (hasPrice, , ) = _getPriceOrError(identifier, time);
+    function hasPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (bool _hasPrice) {
+        (_hasPrice, , ) = _getPriceOrError(identifier, time);
     }
 
     /**
@@ -259,10 +259,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @return int representing the resolved price for the given identifier and timestamp.
      */
     function getPrice(bytes32 identifier, uint time) external view onlyRegisteredDerivative() returns (int) {
-        (bool hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
+        (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
         // If the price wasn't available, revert with the provided message.
-        require(hasPrice, message);
+        require(_hasPrice, message);
         return price;
     }
 
