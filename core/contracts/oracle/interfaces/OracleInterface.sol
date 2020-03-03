@@ -8,7 +8,7 @@ interface OracleInterface {
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
      * @dev Time must be in the past and the identifier must be supported.
-     * @param identifier uniquely identifies the price requested. eg BTC/USD, bytes32 encoded could be requested.
+     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
      */
     function requestPrice(bytes32 identifier, uint time) external;
@@ -16,7 +16,7 @@ interface OracleInterface {
     /**
      * @notice Whether the price for `identifier` and `time` is available.
      * @dev Time must be in the past and the identifier must be supported.
-     * @param identifier uniquely identifies the price requested. eg BTC/USD, bytes32 encoded could be requested.
+     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
      */

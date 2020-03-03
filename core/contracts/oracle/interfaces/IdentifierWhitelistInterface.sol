@@ -9,20 +9,20 @@ interface IdentifierWhitelistInterface {
     /**
      * @notice Adds the provided identifier as a supported identifier.
      * @dev Price requests using this identifier will be succeed after this call.
-     * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
+     * @param identifier bytes32 encoding of the string identifier. Eg: BTC/USD.
      */
     function addSupportedIdentifier(bytes32 identifier) external;
 
     /**
      * @notice Removes the identifier from the whitelist.
      * @dev Price requests using this identifier will no longer succeed after this call.
-     * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
+     * @param identifier bytes32 encoding of the string identifier. Eg: BTC/USD.
      */
     function removeSupportedIdentifier(bytes32 identifier) external;
 
     /**
      * @notice Checks whether an identifier is on the whitelist.
-     * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
+     * @param identifier bytes32 encoding of the string identifier. Eg: BTC/USD.
      * @return bool if the identifier is supported (or not).
      */
     function isIdentifierSupported(bytes32 identifier) external view returns (bool);
