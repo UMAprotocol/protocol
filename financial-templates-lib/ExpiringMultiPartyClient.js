@@ -7,7 +7,6 @@ class ExpiringMultiPartyClient {
     this.sponsorAddresses = [];
     this.positions = [];
     this.undisputedLiquidations = [];
-    this.pendingWithdrawals = [];
     this.emp = new web3.eth.Contract(abi, empAddress);
 
     this.collateralRequirement = null;
