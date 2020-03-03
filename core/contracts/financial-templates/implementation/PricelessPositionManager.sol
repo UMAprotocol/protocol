@@ -390,7 +390,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * be sufficiently long such that token holders have a reasonable period of time to withdrawal (>6 months).
      */
     function siphonContractCollateral() external {
-        require(getCurrentTime() > expirationTimestamp + siphonDelay);
+        require(getCurrentTime() > expirationTimestamp.add(siphonDelay));
         uint contractCollateralBalance = collateralCurrency.balanceOf(address(this));
         collateralCurrency.safeTransfer(_getStoreAddress(), contractCollateralBalance);
     }
