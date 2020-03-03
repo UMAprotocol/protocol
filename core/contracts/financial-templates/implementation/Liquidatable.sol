@@ -192,6 +192,8 @@ contract Liquidatable is PricelessPositionManager {
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
+        // UUID is the index of the new LiquidationData that we will push into the array, which is equal to the current length of the array pre-push.
+        uuid = liquidations[sponsor].length;
         liquidations[sponsor].push(
             LiquidationData({
                 sponsor: sponsor,
@@ -206,13 +208,9 @@ contract Liquidatable is PricelessPositionManager {
                 settlementPrice: FixedPoint.fromUnscaledUint(0)
             })
         );
-        uint newLength = liquidations[sponsor].length;
 
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, positionCollateral);
-
-        // UUID is the index of the LiquidationData that was just pushed into the array, which is length - 1.
-        uuid = newLength.sub(1);
 
         // Destroy tokens
         tokenCurrency.safeTransferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue);

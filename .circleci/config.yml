@@ -124,7 +124,7 @@ jobs:
       # so we want to continue generic testing against the bare node image.
       # TODO(mrice32): we could probably fix this if we just created our own image on top of the node image that opens
       # port 8545.
-      - image: trufflesuite/ganache-cli 
+      - image: trufflesuite/ganache-cli
     working_directory: ~/protocol
     steps:
       - checkout

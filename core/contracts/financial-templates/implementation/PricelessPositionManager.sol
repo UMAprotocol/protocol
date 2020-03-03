@@ -388,7 +388,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
-    function emergencyShutdown() external onlyPreExpiration() onlyOpenState() {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() {
         require(msg.sender == _getFinancialContractsAdminAddress());
 
         contractState = ContractState.ExpiredPriceRequested;
@@ -402,7 +404,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     //TODO is this how we want this function to be implemented?
-    function remargin() external onlyPreExpiration() {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function remargin() external override onlyPreExpiration() {
         return;
     }
 
