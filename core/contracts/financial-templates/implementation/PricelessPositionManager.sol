@@ -547,7 +547,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     function _onlyPreSiphon() internal view {
-        require(getCurrentTime() < expirationTimestamp + siphonDelay);
+        require(getCurrentTime() < expirationTimestamp.add(siphonDelay));
     }
 
     function _onlyCollateralizedPosition(address sponsor) internal view {
