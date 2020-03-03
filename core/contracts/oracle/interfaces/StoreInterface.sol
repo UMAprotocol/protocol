@@ -30,7 +30,7 @@ interface StoreInterface {
      * @param pfc` "profit from corruption", or the maximum amount of margin currency that a
      * token sponsor could extract from the contract through corrupting the price feed in their favor.
      * @return regularFee amount owed for the duration from start to end time for the given pfc.
-     * @return latePenalty, if any, for paying the fee after the deadline.
+     * @return latePenalty for paying the fee after the deadline.
      */
     function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
         external

@@ -128,8 +128,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     uint private constant UINT_MAX = ~uint(0);
 
     /***************************************
-    *                EVENTS                *
-    ****************************************/
+     *                EVENTS                *
+     ****************************************/
 
     event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
 
@@ -248,7 +248,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
-     * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
+     * @return _hasPrice bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
@@ -277,7 +277,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of time PendingRequest which includes a identifier and timestamp for each request.
-     * @return A list, in the same order as the input list, giving the status of each of the specified price requests.
+     * @return requestStates A lis, in the same order as the input list, giving the status of each of the specified price requests.
      */
     function getPriceRequestStatuses(PendingRequest[] memory requests)
         public
@@ -391,14 +391,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     }
 
     /**
-    * @notice commits a vote and stores an encrypted version which can be later decrypted
-    * to recover the voter's price & salt.
-    * @dev The encryption mechanism uses encrypt from a signature from a users price key. See `EncryptedSender.sol`
-    * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
-    * @param time unix timestamp of for the price request.
-    * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
-    * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
-    */
+     * @notice commits a vote and stores an encrypted version which can be later decrypted
+     * to recover the voter's price & salt.
+     * @dev The encryption mechanism uses encrypt from a signature from a users price key. See `EncryptedSender.sol`
+     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
+     * @param time unix timestamp of for the price request.
+     * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
+     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
+     */
     function commitAndPersistEncryptedVote(bytes32 identifier, uint time, bytes32 hash, bytes memory encryptedVote)
         public
     {
@@ -539,7 +539,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view returns (PendingRequest[] memory pendingRequests) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function getPendingRequests() external override view returns (PendingRequest[] memory pendingRequests) {
         uint blockTime = getCurrentTime();
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 

@@ -30,5 +30,5 @@ interface OracleInterface {
      * @param time unix timestamp of for the price request.
      * @return int representing the resolved price for the given identifer and timestamp.
      */
-    function getPrice(bytes32 identifier, uint time) external view returns (int price);
+    function getPrice(bytes32 identifier, uint time) external view returns (int);
 }

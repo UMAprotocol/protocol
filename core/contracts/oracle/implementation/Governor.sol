@@ -138,8 +138,8 @@ contract Governor is MultiRole, Testable {
     }
 
     /***************************************
-    *       GOVERNOR STATE GETTERS         *
-    ****************************************/
+     *       GOVERNOR STATE GETTERS         *
+     ****************************************/
 
     /**
      * @notice Gets the total number of proposals (includes executed and non-executed).

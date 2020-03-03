@@ -159,9 +159,6 @@ contract Registry is RegistryInterface, MultiRole {
         emit PartyMemberRemoved(derivativeAddress, party);
     }
 
-        return registeredDerivatives;
-    }
-
     /****************************************
      *         REGISTRY STATE GETTERS       *
      ****************************************/
@@ -195,7 +192,7 @@ contract Registry is RegistryInterface, MultiRole {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function getAllRegisteredDerivatives() external override view returns (address[] memory derivatives) {
+    function getAllRegisteredDerivatives() external override view returns (address[] memory) {
         return registeredDerivatives;
     }
 

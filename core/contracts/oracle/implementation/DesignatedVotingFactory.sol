@@ -35,7 +35,7 @@ contract DesignatedVotingFactory is Withdrawable {
     /**
      * @notice Deploys a new `DesignatedVoting` contract.
      * @param ownerAddress defines who will own the deployed instance of the designatedVoting contract.
-     * @return designatedVoting.
+     * @return designatedVoting a new DesignatedVoting contract.
      */
     function newDesignatedVoting(address ownerAddress) external returns (DesignatedVoting designatedVoting) {
         require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");

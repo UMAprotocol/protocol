@@ -7,6 +7,7 @@ import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/StoreInterface.sol";
 
+
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
