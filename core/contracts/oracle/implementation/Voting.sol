@@ -174,7 +174,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         address _finder,
         bool _isTest
     ) public Testable(_isTest) {
-        voteTiming.init(phaseLength);
+        voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
