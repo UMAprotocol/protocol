@@ -81,24 +81,24 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     event EmergencyShutdown(address indexed caller, uint originalExpirationTimestamp, uint shutdownTimestamp);
 
     modifier onlyPreExpiration() {
-        _isPreExpiration();
+        _onlyPreExpiration();
         _;
     }
 
     modifier onlyPostExpiration() {
-        _isPostExpiration();
+        _onlyPostExpiration();
         _;
     }
 
     modifier onlyCollateralizedPosition(address sponsor) {
-        _isCollateralizedPosition(sponsor);
+        _onlyCollateralizedPosition(sponsor);
         _;
     }
 
     // Check that the current state of the pricelessPositionManager is Open.
     // This prevents multiple calls to `expire` and `EmergencyShutdown` post expiration.
     modifier onlyOpenState() {
-        _isContractStateOpen();
+        _onlyOpenState();
         _;
     }
 
@@ -512,19 +512,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * unnecessarily increase contract bytecode size.
      * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
      */
-    function _isContractStateOpen() internal view {
+    function _onlyOpenState() internal view {
         require(contractState == ContractState.Open);
     }
 
-    function _isPreExpiration() internal view {
+    function _onlyPreExpiration() internal view {
         require(getCurrentTime() < expirationTimestamp);
     }
 
-    function _isPostExpiration() internal view {
+    function _onlyPostExpiration() internal view {
         require(getCurrentTime() >= expirationTimestamp);
     }
 
-    function _isCollateralizedPosition(address sponsor) internal view {
+    function _onlyCollateralizedPosition(address sponsor) internal view {
         require(_getCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
     }
 }
