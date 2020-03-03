@@ -59,8 +59,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     uint public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
-    // Time that has to elapse for the contract to be siphoned. This occures if a long period has
-    // occured post expiration and there is remaining unclaimed collateral in the contract.
+    // Time that has to elapse for the contract to be siphoned. This occurs if `siphonDelay`
+    // seconds have past after the expiration timestamp and there is remaining unclaimed
+    // collateral in the contract.
     uint public siphonDelay;
 
     // The expiry price pulled from the DVM.
