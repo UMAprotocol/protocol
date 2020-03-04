@@ -1,13 +1,14 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
 
+
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
  */
-contract VotingInterface {
+abstract contract VotingInterface {
     struct PendingRequest {
         bytes32 identifier;
         uint time;
@@ -45,7 +46,7 @@ contract VotingInterface {
      * @param time unix timestamp of the price is being voted on.
      * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
      */
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) external;
+    function commitVote(bytes32 identifier, uint time, bytes32 hash) external virtual;
 
     /**
      * @notice Submit a batch of commits in a single transaction.
@@ -54,7 +55,7 @@ contract VotingInterface {
      * commitments that can fit in one transaction.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(Commitment[] calldata commits) external;
+    function batchCommit(Commitment[] calldata commits) external virtual;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
@@ -65,7 +66,7 @@ contract VotingInterface {
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint time, int price, int salt) external;
+    function revealVote(bytes32 identifier, uint time, int price, int salt) external virtual;
 
     /**
      * @notice Reveal multiple votes in a single transaction.
@@ -74,26 +75,26 @@ contract VotingInterface {
      * @dev For more information on reveals, review the comment for `revealVote`.
      * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(Reveal[] calldata reveals) external;
+    function batchReveal(Reveal[] calldata reveals) external virtual;
 
     /**
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view returns (PendingRequest[] memory);
+    function getPendingRequests() external virtual view returns (PendingRequest[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external view returns (Phase);
+    function getVotePhase() external virtual view returns (Phase);
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint representing the unique round ID.
      */
-    function getCurrentRoundId() external view returns (uint);
+    function getCurrentRoundId() external virtual view returns (uint);
 
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
@@ -106,5 +107,6 @@ contract VotingInterface {
      */
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
+        virtual
         returns (FixedPoint.Unsigned memory);
 }

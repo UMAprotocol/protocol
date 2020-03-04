@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -6,6 +6,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/StoreInterface.sol";
+
 
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
@@ -49,7 +50,9 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      * @notice Pays Oracle fees in ETH to the store.
      * @dev To be used by contracts whose margin currency is ETH.
      */
-    function payOracleFees() external payable {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function payOracleFees() external override payable {
         require(msg.value > 0);
     }
 
@@ -59,7 +62,9 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      * All approved tokens are transferred.
      * @param erc20Address address of the ERC20 token used to pay the fee.
      */
-    function payOracleFeesErc20(address erc20Address) external {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function payOracleFeesErc20(address erc20Address) external override {
         IERC20 erc20 = IERC20(erc20Address);
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(authorizedAmount > 0);
@@ -75,8 +80,11 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      * @return regularFee amount owed for the duration from start to end time for the given pfc.
      * @return latePenalty penalty percentage, if any, for paying the fee after the deadline.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
         external
+        override
         view
         returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
     {
@@ -95,7 +103,9 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      * @param currency token used to pay the final fee.
      * @return finalFee amount due denominated in units of `currency`.
      */
-    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory finalFee) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory finalFee) {
         finalFee = finalFees[currency];
     }
 

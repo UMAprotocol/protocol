@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -6,6 +6,7 @@ import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
+
 
 /**
  * @title Proxy to allow voting from another address.

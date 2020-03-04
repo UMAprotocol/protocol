@@ -1,6 +1,7 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
+
 
 /**
  * @title Interface for a registry of derivatives and derivative creators.
@@ -20,20 +21,20 @@ interface RegistryInterface {
      * @param derivative address of the derivative contract.
      * @return bool indicates whether the derivative is registered.
      */
-    function isDerivativeRegistered(address derivative) external view returns (bool isRegistered);
+    function isDerivativeRegistered(address derivative) external view returns (bool);
 
     /**
      * @notice Returns a list of all derivatives that are associated with a particular party.
      * @param party address of the party.
      * @return an array of the derivatives the party is registered to.
      */
-    function getRegisteredDerivatives(address party) external view returns (address[] memory derivatives);
+    function getRegisteredDerivatives(address party) external view returns (address[] memory);
 
     /**
      * @notice Returns all registered derivatives.
      * @return all registered derivative addresses within the system.
      */
-    function getAllRegisteredDerivatives() external view returns (address[] memory derivatives);
+    function getAllRegisteredDerivatives() external view returns (address[] memory);
 
     /**
      * @notice Adds a party member to the calling derivative.

@@ -1,7 +1,8 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "../interfaces/FinderInterface.sol";
 import "./Registry.sol";
+
 
 // TODO(ptare): Make this (and all contracts) Withdrawable.
 /**

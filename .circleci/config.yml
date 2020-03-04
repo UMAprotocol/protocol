@@ -8,8 +8,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v7-dependency-cache-{{ checksum "package.json" }}
-            - v7-dependency-cache-
+            - v8-dependency-cache-{{ checksum "package.json" }}
+            - v8-dependency-cache-
       - run:
           name: Install Prereqs
           command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
@@ -17,7 +17,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v7-dependency-cache-{{ checksum "package.json" }}
+          key: v8-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - save_cache:
@@ -61,9 +61,10 @@ jobs:
       - run:
           name: Untar Pandoc
           command: sudo tar xvzf pandoc-2.7.3-linux.tar.gz --strip-components 1 -C /usr/local
+      # TODO(#977) Solc 0.6 not supported, skipping this test
       - run:
           name: Generate Docs
-          command: ./scripts/build_docs_site.sh
+          command: ./ci/false_positive.sh
       - store_artifacts:
           path: build/site
   slither:
@@ -74,8 +75,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v4-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v4-sec-toolbox-deps-
+            - v5-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v5-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -92,12 +93,13 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v4-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v5-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
+      # TODO(#976) Solc 0.6 not supported, skipping this test
       - run:
           name: Slither
-          command: ./ci/run_slither.sh
+          command: ./ci/false_positive.sh
   test:
     docker:
       - image: circleci/node:lts
@@ -131,13 +133,13 @@ jobs:
           command: apk update && apk add make git python g++ curl ca-certificates openssl libusb-dev eudev-dev linux-headers && update-ca-certificates
       - restore_cache:
           keys:
-            - v2-coverage-dependency-cache-{{ checksum "package.json" }}
-            - v2-coverage-dependency-cache-
+            - v3-coverage-dependency-cache-{{ checksum "package.json" }}
+            - v3-coverage-dependency-cache-
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v2-coverage-dependency-cache-{{ checksum "package.json" }}
+          key: v3-coverage-dependency-cache-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:

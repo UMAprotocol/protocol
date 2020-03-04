@@ -1,8 +1,9 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 
 import "../interfaces/FinderInterface.sol";
+
 
 /**
  * @title Provides addresses of the live contracts implementing certain interfaces.
@@ -18,7 +19,9 @@ contract Finder is FinderInterface, Ownable {
      * @param interfaceName bytes32 of the interface name that is either changed or registered.
      * @param implementationAddress address of the implementation contract.
      */
-    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external onlyOwner {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external override onlyOwner {
         interfacesImplemented[interfaceName] = implementationAddress;
 
         emit InterfaceImplementationChanged(interfaceName, implementationAddress);
@@ -29,7 +32,9 @@ contract Finder is FinderInterface, Ownable {
      * @param interfaceName queried interface.
      * @return implementationAddress address of the defined interface.
      */
-    function getImplementationAddress(bytes32 interfaceName) external view returns (address implementationAddress) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function getImplementationAddress(bytes32 interfaceName) external override view returns (address implementationAddress) {
         implementationAddress = interfacesImplemented[interfaceName];
         require(implementationAddress != address(0x0), "No implementation for interface found");
     }

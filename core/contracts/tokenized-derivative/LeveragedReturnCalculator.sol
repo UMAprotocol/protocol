@@ -1,8 +1,9 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "./ReturnCalculatorInterface.sol";
 import "../common/implementation/Withdrawable.sol";
 import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
+
 
 /**
  * @title Computes return values based on a fixed leverage.
@@ -28,7 +29,9 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
-    function computeReturn(int oldPrice, int newPrice) external view returns (int assetReturn) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function computeReturn(int oldPrice, int newPrice) external override view returns (int assetReturn) {
         if (oldPrice == 0) {
             // To avoid a divide-by-zero, just return 0 instead of hitting an exception.
             return 0;
@@ -47,7 +50,9 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         }
     }
 
-    function leverage() external view returns (int _leverage) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function leverage() external override view returns (int _leverage) {
         return leverageMultiplier;
     }
 }

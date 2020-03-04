@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
@@ -16,6 +16,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 library TokenizedDerivativeParams {
     enum ReturnType { Linear, Compound }
@@ -39,6 +40,7 @@ library TokenizedDerivativeParams {
         uint creationTime;
     }
 }
+
 
 /**
  * @title Tokenized Derivative Storage
@@ -139,6 +141,7 @@ library TDS {
         WithdrawThrottle withdrawThrottle;
     }
 }
+
 
 /**
  * @dev Implements the functionality of `TokenizedDerivative` by operating on the data contained in a `TDS.Storage`.
@@ -1122,6 +1125,7 @@ library TokenizedDerivativeUtils {
     }
 }
 
+
 /**
  * @title A synthetic token whose value tracks an arbitrary price feed.
  */
@@ -1203,12 +1207,14 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between
      * long and short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
      */
-    function remargin() external {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function remargin() external override {
         derivativeStorage._remargin();
     }
 
     /**
-     * @notice Forgo the Oracle verified price and settle the contract with last remargin price. 
+     * @notice Forgo the Oracle verified price and settle the contract with last remargin price.
      * @dev This method is only callable on contracts in the `Defaulted` state, and the default penalty is always
      * transferred from the short to the long account.
      */
@@ -1228,7 +1234,9 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Moves the contract into the Emergency state, where it waits on an Oracle price for the most recent
      * remargin time.
      */
-    function emergencyShutdown() external {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function emergencyShutdown() external override {
         derivativeStorage._emergencyShutdown();
     }
 
@@ -1266,7 +1274,9 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Destroys `value` tokens from the caller.
      * @dev Only this contract or its libraries are allowed to burn tokens.
      */
-    function burn(uint value) external onlyThis {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function burn(uint value) external override onlyThis {
         _burn(msg.sender, value);
     }
 
@@ -1274,7 +1284,9 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Creates `value` tokens and assigns them to `to`, increasing the total supply.
      * @dev Only this contract or its libraries are allowed to mint tokens.
      */
-    function mint(address to, uint256 value) external onlyThis returns (bool) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function mint(address to, uint256 value) external override onlyThis returns (bool) {
         _mint(to, value);
         return true;
     }

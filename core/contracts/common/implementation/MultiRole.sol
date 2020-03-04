@@ -1,4 +1,5 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
+
 
 library Exclusive {
     struct RoleMembership {
@@ -23,6 +24,7 @@ library Exclusive {
     }
 }
 
+
 library Shared {
     struct RoleMembership {
         mapping(address => bool) members;
@@ -46,6 +48,7 @@ library Shared {
         }
     }
 }
+
 
 /**
  * @title Base class to manage permissions for the derived class.

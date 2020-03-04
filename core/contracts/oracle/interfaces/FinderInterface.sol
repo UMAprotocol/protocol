@@ -1,4 +1,5 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
+
 
 /**
  * @title Provides addresses of the live contracts implementing certain interfaces.

@@ -34,5 +34,6 @@ gsutil cp gs://staging-deployment-configuration/sponsor-v2-app.yaml sponsor-dapp
 ./scripts/deploy_dapp.sh sponsor-dapp-v2 sponsor-dapp-v2/app.yaml -q
 
 # Deploy docs
-./scripts/deploy_docs.sh documentation/gae_app.yaml -q
+# TODO(#977) Solc 0.6 not supported, skipping this
+# ./scripts/deploy_docs.sh documentation/gae_app.yaml -q
 

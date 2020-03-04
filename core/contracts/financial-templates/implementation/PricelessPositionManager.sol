@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -13,6 +13,7 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "./TokenFactory.sol";
 import "./FeePayer.sol";
+
 
 /**
  * @title Financial contract with priceless position management.
@@ -129,6 +130,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         priceIdentifer = _priceIdentifier;
     }
+
     /**
      * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
      * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
@@ -398,14 +400,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-    * @notice Premature contract settlement under emergency circumstances.
-    * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
-    * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
-    * to occur via the standard settleExpired function call. Contract state is set to `ExpiredPriceRequested`
-    * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
-    * `emergencyShutdown` as the governor who would call the function would also receive the fees.
-    */
-    function emergencyShutdown() external onlyPreExpiration() onlyOpenState() {
+     * @notice Premature contract settlement under emergency circumstances.
+     * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
+     * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
+     * to occur via the standard settleExpired function call. Contract state is set to `ExpiredPriceRequested`
+     * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
+     * `emergencyShutdown` as the governor who would call the function would also receive the fees.
+     */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() {
         require(msg.sender == _getFinancialContractsAdminAddress());
 
         contractState = ContractState.ExpiredPriceRequested;
@@ -419,7 +423,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     //TODO is this how we want this function to be implemented?
-    function remargin() external onlyPreExpiration() {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function remargin() external override onlyPreExpiration() {
         return;
     }
 
@@ -440,7 +446,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
      */
-    function pfc() public view returns (FixedPoint.Unsigned memory) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
     }
 

@@ -1,6 +1,7 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "../implementation/FixedPoint.sol";
+
 
 // Wraps the FixedPoint library for testing purposes.
 contract FixedPointTest {

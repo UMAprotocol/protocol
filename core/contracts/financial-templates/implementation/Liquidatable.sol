@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "./PricelessPositionManager.sol";
+
 
 /**
 @title Liquidatable
@@ -193,7 +194,9 @@ contract Liquidatable is PricelessPositionManager {
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
-        uint newLength = liquidations[sponsor].push(
+        // UUID is the index of the new LiquidationData that we will push into the array, which is equal to the current length of the array pre-push.
+        uuid = liquidations[sponsor].length;
+        liquidations[sponsor].push(
             LiquidationData({
                 sponsor: sponsor,
                 liquidator: msg.sender,
@@ -210,9 +213,6 @@ contract Liquidatable is PricelessPositionManager {
 
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, positionCollateral);
-
-        // UUID is the index of the LiquidationData that was just pushed into the array, which is length - 1.
-        uuid = newLength.sub(1);
 
         // Destroy tokens
         tokenCurrency.safeTransferFrom(msg.sender, address(this), positionToLiquidate.tokensOutstanding.rawValue);
@@ -367,7 +367,9 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
      */
-    function pfc() public view returns (FixedPoint.Unsigned memory) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function pfc() public override view returns (FixedPoint.Unsigned memory) {
         return super.pfc().add(_getCollateral(rawLiquidationCollateral));
     }
 

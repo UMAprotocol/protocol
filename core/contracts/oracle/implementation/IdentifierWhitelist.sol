@@ -1,7 +1,8 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
+
 
 /**
  * @title Stores a whitelist of supported identifiers that the oracle can provide prices for.
@@ -29,7 +30,9 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @dev Price requests using this identifier will be succeed after this call.
      * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
      */
-    function addSupportedIdentifier(bytes32 identifier) external onlyOwner {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function addSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
             emit SupportedIdentifierAdded(identifier);
@@ -41,7 +44,9 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @dev Price requests using this identifier will no longer succeed after this call.
      * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
      */
-    function removeSupportedIdentifier(bytes32 identifier) external onlyOwner {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function removeSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = false;
             emit SupportedIdentifierRemoved(identifier);
@@ -57,7 +62,9 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
      * @return bool if the identifier is supported (or not).
      */
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function isIdentifierSupported(bytes32 identifier) external override view returns (bool) {
         return supportedIdentifiers[identifier];
     }
 }

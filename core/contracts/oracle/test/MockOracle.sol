@@ -1,10 +1,11 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/Testable.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
+
 
 // A mock oracle used for testing.
 contract MockOracle is OracleInterface, Testable {
@@ -44,7 +45,10 @@ contract MockOracle is OracleInterface, Testable {
     }
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
-    function requestPrice(bytes32 identifier, uint time) external {
+
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function requestPrice(bytes32 identifier, uint time) external override {
         require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
@@ -70,18 +74,21 @@ contract MockOracle is OracleInterface, Testable {
             queryIndices[queryToCopy.identifier][queryToCopy.time].index = indexToReplace;
             requestedPrices[indexToReplace] = queryToCopy;
         }
-        requestedPrices.length = requestedPrices.length - 1;
     }
 
     // Checks whether a price has been resolved.
-    function hasPrice(bytes32 identifier, uint time) external view returns (bool hasPriceAvailable) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function hasPrice(bytes32 identifier, uint time) external override view returns (bool hasPriceAvailable) {
         require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
     }
 
     // Gets a price that has already been resolved.
-    function getPrice(bytes32 identifier, uint time) external view returns (int price) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function getPrice(bytes32 identifier, uint time) external override view returns (int price) {
         require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);

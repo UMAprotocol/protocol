@@ -1,13 +1,14 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
+
 
 /**
  * @notice A factory for creating new mintable and burnable tokens.
  */
 contract TokenFactory {
     /**
-     * @notice Create a new token and return to the caller. The caller will become the only minter and burner 
+     * @notice Create a new token and return to the caller. The caller will become the only minter and burner
      * and the new owner capable of adding new roles.
      */
     function createToken(string calldata tokenName, string calldata tokenSymbol, uint8 tokenDecimals)

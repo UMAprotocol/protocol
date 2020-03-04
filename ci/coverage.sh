@@ -8,4 +8,7 @@ PROTOCOL_DIR=$(pwd)
 
 # $1 is the truffle directory over which we want to run the coverage tool.
 cd $TRUFFLE_DIR
-$(npm bin)/truffle run coverage --temp build --network coverage
+# Truffle compile can take a lot of memory, which I've experienced with the solc-0.6 compatible versions,
+# so I explicitly increase the javascript heap size.
+# More details here: https://github.com/trufflesuite/truffle/issues/957
+node --max-old-space-size=4096 $(npm bin)/truffle run coverage --temp build --network coverage

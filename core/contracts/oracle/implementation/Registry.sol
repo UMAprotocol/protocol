@@ -1,10 +1,11 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";
 import "../interfaces/RegistryInterface.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 /**
  * @title Registry for derivatives and approved derivative creators.
@@ -74,8 +75,11 @@ contract Registry is RegistryInterface, MultiRole {
      * @param parties an array of addresses who become party members to a derivative.
      * @param derivativeAddress defines the address of the deployed derivative.
      */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
     function registerDerivative(address[] calldata parties, address derivativeAddress)
         external
+        override
         onlyRoleHolder(uint(Roles.DerivativeCreator))
     {
         Derivative storage derivative = derivativeMap[derivativeAddress];
@@ -91,7 +95,8 @@ contract Registry is RegistryInterface, MultiRole {
         // Add the derivative as one of the party members own derivatives and store the index.
         derivative.valid = Validity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
-            uint newLength = partyMap[parties[i]].derivatives.push(derivativeAddress);
+            partyMap[parties[i]].derivatives.push(derivativeAddress);
+            uint newLength = partyMap[parties[i]].derivatives.length;
             partyMap[parties[i]].derivativeIndex[derivativeAddress] = newLength - 1;
         }
 
@@ -103,14 +108,17 @@ contract Registry is RegistryInterface, MultiRole {
      * @dev msg.sender must be the derivative contract to which the party member is added.
      * @param party address to be added to the derivatives.
      */
-    function addPartyToDerivative(address party) external {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function addPartyToDerivative(address party) external override {
         address derivativeAddress = msg.sender;
 
         require(derivativeMap[derivativeAddress].valid == Validity.Valid, "Can only add to valid derivative");
         require(!isPartyMemberOfDerivative(party, derivativeAddress), "Can only register a party once");
 
         // Push the derivative and store the index.
-        uint derivativeIndex = partyMap[party].derivatives.push(derivativeAddress);
+        partyMap[party].derivatives.push(derivativeAddress);
+        uint derivativeIndex = partyMap[party].derivatives.length;
         partyMap[party].derivativeIndex[derivativeAddress] = derivativeIndex - 1;
 
         emit PartyMemberAdded(derivativeAddress, party);
@@ -121,7 +129,9 @@ contract Registry is RegistryInterface, MultiRole {
      * @dev msg.sender must be the derivative contract to which the party member is added.
      * @param party address to be removed to the derivatives.
      */
-    function removePartyFromDerivative(address party) external {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function removePartyFromDerivative(address party) external override {
         address derivativeAddress = msg.sender;
         PartyMember storage partyMember = partyMap[party];
         uint256 numberOfDerivatives = partyMember.derivatives.length;
@@ -159,7 +169,9 @@ contract Registry is RegistryInterface, MultiRole {
      * @param derivative address of the derivative contract.
      * @return bool indicates whether the derivative is registered.
      */
-    function isDerivativeRegistered(address derivative) external view returns (bool) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function isDerivativeRegistered(address derivative) external override view returns (bool) {
         return derivativeMap[derivative].valid == Validity.Valid;
     }
 
@@ -168,7 +180,9 @@ contract Registry is RegistryInterface, MultiRole {
      * @param party address of the party.
      * @return an array of the derivatives the party is registered to.
      */
-    function getRegisteredDerivatives(address party) external view returns (address[] memory) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function getRegisteredDerivatives(address party) external override view returns (address[] memory) {
         return partyMap[party].derivatives;
     }
 
@@ -176,7 +190,9 @@ contract Registry is RegistryInterface, MultiRole {
      * @notice Returns all registered derivatives.
      * @return all registered derivative addresses within the system.
      */
-    function getAllRegisteredDerivatives() external view returns (address[] memory) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function getAllRegisteredDerivatives() external override view returns (address[] memory) {
         return registeredDerivatives;
     }
 
@@ -186,7 +202,9 @@ contract Registry is RegistryInterface, MultiRole {
      * @param derivativeAddress address to check against the party.
      * @return bool indicating if the address is a party of the derivative.
      */
-    function isPartyMemberOfDerivative(address party, address derivativeAddress) public view returns (bool) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function isPartyMemberOfDerivative(address party, address derivativeAddress) public override view returns (bool) {
         uint index = partyMap[party].derivativeIndex[derivativeAddress];
         return partyMap[party].derivatives.length > index && partyMap[party].derivatives[index] == derivativeAddress;
     }
