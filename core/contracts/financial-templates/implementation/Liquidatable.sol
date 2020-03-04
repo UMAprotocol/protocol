@@ -191,7 +191,9 @@ contract Liquidatable is PricelessPositionManager {
 
         // DO SOME CHECKS HERE IN A SEPARATE FUNCTION.
         FixedPoint.Unsigned memory startCollateral = _getCollateral(positionToLiquidate.rawCollateral);
-        FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = collateral.sub(positionToLiquidate.withdrawalRequestAmount);
+        FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = startCollateral.sub(
+            positionToLiquidate.withdrawalRequestAmount
+        );
         FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
         // The actual amount of collateral that gets moved to the liquidation.
@@ -228,14 +230,14 @@ contract Liquidatable is PricelessPositionManager {
 
         _reduceSponsorPosition(sponsor, ratio);
 
-       emit LiquidationCreated(
-           sponsor,
-           msg.sender,
-           uuid,
-           tokensToLiquidate.rawValue,
-           lockedCollateral.rawValue,
-           liquidatedCollateral.rawValue
-       );
+        emit LiquidationCreated(
+            sponsor,
+            msg.sender,
+            uuid,
+            tokensToLiquidate.rawValue,
+            lockedCollateral.rawValue,
+            liquidatedCollateral.rawValue
+        );
     }
 
     /**

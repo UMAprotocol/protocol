@@ -452,10 +452,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return _getCollateral(rawTotalPositionCollateral);
     }
 
-    function _reduceSponsorPosition(
-        address sponsor,
-        FixedPoint.Unsigned memory ratio,
-    ) internal {
+    function _reduceSponsorPosition(address sponsor, FixedPoint.Unsigned memory ratio) internal {
         // Rounding issues.
         if (ratio.rawValue == 1) {
             _deleteSponsorPosition(sponsor);
@@ -465,15 +462,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = _getPositionData(sponsor);
         FixedPoint.Unsigned memory collateralToRemove = _getCollateral(positionData.rawCollateral).mul(ratio);
         FixedPoint.Unsigned memory withdrawalAmountToRemove = positionData.withdrawalRequestAmount.mul(ratio);
+        FixedPoint.Unsigned memory tokensToRemove = positionData.tokensOutstanding.mul(ratio);
 
         // Decrease the sponsors position size of collateral, tokens, and withdrawal.
         _removeCollateral(positionData.rawCollateral, collateralToRemove);
-        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokens);
+        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
 
         // Decrease the contract's collateral and tokens.
         _removeCollateral(rawTotalPositionCollateral, collateralToRemove);
-        totalTokensOutstanding = totalTokensOutstanding.sub(tokens);
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
 
     function _deleteSponsorPosition(address sponsor) internal {
