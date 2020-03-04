@@ -73,6 +73,7 @@ contract("Liquidator.js", function(accounts) {
       isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
+      siphonDelay: "10000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
@@ -94,9 +95,9 @@ contract("Liquidator.js", function(accounts) {
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
 
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor3 });
+    await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor1 });
+    await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor2 });
+    await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor3 });
     await collateralToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
@@ -145,7 +146,7 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     // Sponsor2: 100 * 1.3 * 1.2 > 150 [undercollateralized]
     // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
-    
+
     await liquidator.queryAndLiquidate(toWei("1.3"));
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
@@ -169,5 +170,24 @@ contract("Liquidator.js", function(accounts) {
     //Sponsor3 should have all their collateral left and no liquidations.
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
     assert.equal((await emp.getCollateral(sponsor3)).rawValue, toWei("175"));
+  });
+
+  it.only("set up positions", async function() {
+    console.log("seeding emp @", emp.address);
+    for (let i = 1; i < 6; i++) {
+      console.log("Creating position for account", accounts[i]);
+      await collateralToken.mint(accounts[i], toWei("100000"), { from: contractCreator });
+      await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[i] });
+      await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[i] });
+    }
+
+    // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+    await emp.create({ rawValue: toWei("100000") }, { rawValue: toWei("50000") }, { from: liquidatorBot });
+  });
+  it("batch liquidation", async function() {
+    console.log("Liquidating @ 1");
+    await liquidator.queryAndLiquidate(toWei("1"));
+    console.log("Liquidating @ 1.3");
+    await liquidator.queryAndLiquidate(toWei("1.3"));
   });
 });
