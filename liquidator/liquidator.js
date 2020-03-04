@@ -1,37 +1,43 @@
-const argv = require("minimist")(process.argv.slice(), { string: ["address"] });
+// When running this script it assumed that the account has enough tokens and allowance from the unlocked truffle
+// wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
+class Liquidator {
+  constructor(expiringMultiPartyClient, account) {
+    this.account = account;
 
-const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient.js");
-const { delay } = require("../financial-templates-lib/delay.js");
+    // Expiring multiparty contract to read contract state
+    this.empClient = expiringMultiPartyClient;
 
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-
-// TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
-// Currently, you can run it with `truffle exec ../liquidator/liquidator.js --address=<address>` *from the core
-// directory*.
-async function run() {
-  const client = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, argv.address);
-  client.start();
-  while (true) {
-    try {
-      console.log("Polling");
-      // Steps:
-      // Get most recent price from a price feed.
-      // Call client.getUnderCollateralizedPositions()
-      // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
-      // Liquidate any undercollateralized positions!
-      // Withdraw money from any liquidations that are expired or DisputeFailed.
-    } catch (error) {
-      console.log("Poll error:", error);
-    }
-    await delay(Number(10_000));
+    // Instance of the expiring multiparty to perform on-chain liquidations
+    this.empContract = this.empClient.emp;
   }
+
+  // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
+  queryAndLiquidate = async priceFeed => {
+    console.log("Checking for under collateralized positions at the price", priceFeed);
+    await this.empClient._update();
+    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
+    console.log("Undercollateralized positions:", underCollateralizedPositions);
+
+    for (const position of underCollateralizedPositions) {
+      console.log("Liquidating sponsor", position.sponsor);
+      // Create the liquidation transaction
+
+      // TODO calculate the amountToLiquidate as a function of the total collateral within the position
+      // and the current price of the collateral. This will require knowing how much the collateral and the
+      // synthetic are worth.
+
+      this.empContract.methods
+        .createLiquidation(position.sponsor, {
+          rawValue: position.amountCollateral
+        })
+        .send({ from: this.account, gas: 1500000 })
+        .then(transaction => {
+          console.log("Liquidation transaction hash", transaction);
+        });
+    }
+  };
 }
 
-module.exports = async function(callback) {
-  try {
-    await run();
-  } catch (err) {
-    callback(err);
-  }
-  callback();
+module.exports = {
+  Liquidator
 };
