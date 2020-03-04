@@ -138,25 +138,36 @@ contract("Liquidator.js", function(accounts) {
     assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
     assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
 
-    // Next, assume the price feed given to the liquidator has moved such that one of the two sponsors
-    // is now under collateralize. The liquidator bot should correctly identify this and liquidate the position.
-    // A price of 1.1 USD per token puts sponsor1 at an under colleteralized position (100 * 1.1 * 1.2 > 125),
-    // while sponsor2 remains collateralize (100 * 1.1 * 1.2 < 150).
-    await liquidator.queryAndLiquidate(toWei("1.1"));
+    // Next, assume the price feed given to the liquidator has moved such that two of the three sponsors
+    // is now undercollateralize. The liquidator bot should correctly identify this and liquidate the positions.
+    // A price of 1.3 USD per token puts sponsor1 and sponsor2 at undercollateralized while sponsor3 remains
+    // collateralized. Numerically debt * price * coltReq > debt for collateralized position.
+    // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+    // Sponsor2: 100 * 1.3 * 1.2 > 150 [undercollateralized]
+    // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
+    
+    await liquidator.queryAndLiquidate(toWei("1.3"));
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
     assert.equal((await emp.getLiquidations(sponsor1))[0].liquidator, liquidatorBot);
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE); //state 1 is
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor1))[0].liquidatedCollateral, toWei("125"));
 
     // Sponsor1 should have zero collateral left in their position from the liquidation.
     assert.equal((await emp.getCollateral(sponsor1)).rawValue, 0);
 
-    //Sponsor2 and Sponsor3 should have all their collateral left and no liquidations.
-    assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+    // Sponsor2 should be in a liquidation state with the bot as the liquidator.
+    assert.equal((await emp.getLiquidations(sponsor2))[0].sponsor, sponsor2);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].liquidator, liquidatorBot);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].liquidatedCollateral, toWei("150"));
+
+    // Sponsor2 should have zero collateral left in their position from the liquidation.
+    assert.equal((await emp.getCollateral(sponsor2)).rawValue, 0);
+
+    //Sponsor3 should have all their collateral left and no liquidations.
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
-    assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
     assert.equal((await emp.getCollateral(sponsor3)).rawValue, toWei("175"));
   });
 });

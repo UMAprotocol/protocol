@@ -1,5 +1,5 @@
-// When running this script it assumes to have enough tokens and allowance from the unlocked truffle wallet.
-// Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
+// When running this script it assumed that the account has enough tokens and allowance from the unlocked truffle
+// wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 class Liquidator {
   constructor(expiringMultiPartyClient, account) {
     this.account = account;
