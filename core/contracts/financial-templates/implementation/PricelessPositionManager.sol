@@ -454,27 +454,26 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function _reduceSponsorPosition(
         address sponsor,
-        FixedPoint.Unsigned memory collateral,
-        FixedPoint.Unsigned memory tokens
+        FixedPoint.Unsigned memory ratio,
     ) internal {
-        PositionData storage positionData = _getPositionData(sponsor);
-
-        // Decrease the sponsors position size of collateral and tokens.
-        _removeCollateral(positionData.rawCollateral, collateral);
-        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokens);
-
-        // Decrease the contract's collateral and tokens.
-        _removeCollateral(rawTotalPositionCollateral, collateral);
-        totalTokensOutstanding = totalTokensOutstanding.sub(tokens);
-
-        // This operation could have some rounding issues.
-        if (
-            positionData.rawCollateral.isEqual(FixedPoint.fromUnscaledUint(0)) &&
-            positionData.tokensOutstanding.isEqual(FixedPoint.fromUnscaledUint(0))
-        ) {
-            delete positions[sponsor];
+        // Rounding issues.
+        if (ratio.rawValue == 1) {
+            _deleteSponsorPosition(sponsor);
+            return;
         }
 
+        PositionData storage positionData = _getPositionData(sponsor);
+        FixedPoint.Unsigned memory collateralToRemove = _getCollateral(positionData.rawCollateral).mul(ratio);
+        FixedPoint.Unsigned memory withdrawalAmountToRemove = positionData.withdrawalRequestAmount.mul(ratio);
+
+        // Decrease the sponsors position size of collateral, tokens, and withdrawal.
+        _removeCollateral(positionData.rawCollateral, collateralToRemove);
+        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokens);
+        positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
+
+        // Decrease the contract's collateral and tokens.
+        _removeCollateral(rawTotalPositionCollateral, collateralToRemove);
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokens);
     }
 
     function _deleteSponsorPosition(address sponsor) internal {
