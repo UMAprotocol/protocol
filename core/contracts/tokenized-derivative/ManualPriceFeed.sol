@@ -1,10 +1,11 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/Withdrawable.sol";
 import "./PriceFeedInterface.sol";
+
 
 /**
  * @title Implementation of PriceFeedInterface with the ability to manually push prices.
@@ -53,11 +54,15 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
     /**
      * @notice Whether this feed has ever published any prices for this identifier.
      */
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool isSupported) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function isIdentifierSupported(bytes32 identifier) external override view returns (bool isSupported) {
         isSupported = _isIdentifierSupported(identifier);
     }
 
-    function latestPrice(bytes32 identifier) external view returns (uint publishTime, int price) {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function latestPrice(bytes32 identifier) external override view returns (uint publishTime, int price) {
         require(_isIdentifierSupported(identifier));
         publishTime = prices[identifier].timestamp;
         price = prices[identifier].price;

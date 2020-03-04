@@ -4,6 +4,7 @@ set -e
 PROTOCOL_DIR=$(pwd)
 sudo chmod -R a+rwx /usr/local/lib/node_modules
 
+
 run_slither() {
     cd $1
     mkdir -p node_modules/

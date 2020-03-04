@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -8,7 +8,8 @@ import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 
-contract FeePayer is Testable {
+
+abstract contract FeePayer is Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -59,7 +60,7 @@ contract FeePayer is Testable {
 
     /**
      * @notice Pays UMA DVM regular fees to the Store contract. These must be paid periodically for the life of the contract.
-     * @return the amount of collateral that the contract paid (sum of the amount paid to the store and the caller).
+     * @return totalPaid The amount of collateral that the contract paid (sum of the amount paid to the store and the caller).
      */
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
@@ -94,7 +95,7 @@ contract FeePayer is Testable {
 
     /**
      * @notice Pays UMA DVM final fees to the Store contract. This is a flat fee charged for each price request.
-     * @return the amount of collateral that was paid to the Store.
+     * @return totalPaid The amount of collateral that was paid to the Store.
      */
     function _payFinalFees(address payer) internal returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
@@ -128,15 +129,17 @@ contract FeePayer is Testable {
      * @dev Derived contracts are expected to implement this function so the payFees() method can correctly compute
      * the owed fees.
      */
-    function pfc() public view returns (FixedPoint.Unsigned memory);
+    function pfc() public virtual view returns (FixedPoint.Unsigned memory);
 
     function _getStore() internal view returns (StoreInterface) {
         bytes32 storeInterface = "Store";
         return StoreInterface(finder.getImplementationAddress(storeInterface));
     }
 
-    // The following methods are used by derived classes to interact with collateral that is adjusted by fees.
-    function _getCollateral(FixedPoint.Unsigned storage rawCollateral)
+    // Returns the user's collateral minus any fees that have been subtracted since it was originally deposited into
+    // the contract. Note: if the contract has paid fees since it was deployed, the raw value should be larger than the
+    // returned value.
+    function _getCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
         returns (FixedPoint.Unsigned memory collateral)
@@ -144,17 +147,27 @@ contract FeePayer is Testable {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
 
+    // Converts a user-readable collateral value into a raw value that accounts for already-assessed fees. If any fees
+    // have been taken from this contract in the past, then the raw value will be larger than the user-readable value.
+    function _convertCollateral(FixedPoint.Unsigned memory collateral)
+        internal
+        view
+        returns (FixedPoint.Unsigned memory rawCollateral)
+    {
+        return collateral.div(cumulativeFeeMultiplier);
+    }
+
     function _removeCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToRemove)
         internal
     {
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToRemove.div(cumulativeFeeMultiplier);
+        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToRemove);
         rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
     }
 
     function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
         internal
     {
-        FixedPoint.Unsigned memory adjustedCollateral = collateralToAdd.div(cumulativeFeeMultiplier);
+        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
     }
 }

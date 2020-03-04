@@ -8,7 +8,7 @@
     "moment": "^2.24.0",
     "node-sass": "^4.12.0",
     "@umaprotocol/react-plugin": "^1.5.5",
-    "@umaprotocol/store": "^1.5.5",
+    "@umaprotocol/store": "^1.5.6",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "react-ga": "^2.5.7",

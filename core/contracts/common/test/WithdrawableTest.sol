@@ -1,6 +1,7 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "../implementation/Withdrawable.sol";
+
 
 // WithdrawableTest is derived from the abstract contract Withdrawable for testing purposes.
 contract WithdrawableTest is Withdrawable {
