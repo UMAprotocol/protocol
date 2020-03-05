@@ -43,7 +43,6 @@ class Liquidator {
     // Resolve all promises in parallel.
     let promiseResponse = await Promise.all(liquidationPromises);
     
-    // Iterate for logging and printing.
     for (const response of promiseResponse) {
       const logResult = {
         tx: response.transactionHash,

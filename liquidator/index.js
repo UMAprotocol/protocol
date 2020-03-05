@@ -1,4 +1,4 @@
-const argv = require("minimist")(process.argv.slice(), { string: ["address"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["address"], integer: ["price"] });
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
 const { delay } = require("../financial-templates-lib/delay");
@@ -19,31 +19,32 @@ async function run() {
     console.log("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
     return;
   }
-  console.log("Starting liquidator bot! Running against expiring multi party contract at address", argv.address);
-
-  console.log("accounts");
+  console.log("Starting liquidator bot!\nRunning on expiring multi party contract @", argv.address);
+  
+  // Setup web3 accounts an contract instance
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(argv.address);
 
+  // Client and liquidator bot
   let empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
   let liquidator = new Liquidator(empClient, accounts[0]);
-  await liquidator.queryAndLiquidate(toWei("1.3"));
 
-  // while (true) {
-  //   try {
-  //     console.log("Polling");
-  //     // Steps:
-  //     // Get most recent price from a price feed.
-  //     // Call client.getUnderCollateralizedPositions()
-  //     // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
-  //     // Liquidate any undercollateralized positions!
-  //     // Withdraw money from any liquidations that are expired or DisputeFailed.
-  //     liquidator.queryAndLiquidate(1.3);
-  //   } catch (error) {
-  //     console.log("Poll error:", error);
-  //   }
-  //   await delay(Number(10_000));
-  // }
+  while (true) {
+    try {
+      // Steps:
+      // Get most recent price from a price feed.
+      // Call client.getUnderCollateralizedPositions()
+      // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
+      // Liquidate any undercollateralized positions!
+      // Withdraw money from any liquidations that are expired or DisputeFailed.
+
+      console.log("Executing Liquidator");
+      await liquidator.queryAndLiquidate(toWei(argv.price.toString()));
+    } catch (error) {
+      console.log("Poll error:", error);
+    }
+    await delay(Number(10_000));
+  }
 }
 
 module.exports = async function(callback) {
