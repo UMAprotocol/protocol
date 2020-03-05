@@ -170,6 +170,9 @@ contract Liquidatable is PricelessPositionManager {
      * synthetic tokens to retire the position's outstanding tokens.
      * @dev This method generates an ID that will uniquely identify liquidation
      * for the sponsor.
+     * @param sponsor address to liquidate
+     * @param collateralPerToken abort the liquidation if the position's collateral per token exceeds this value
+     * @param maxTokensToLiquidate max number of tokes to liquidate
      * @return uuid of the newly created liquidation
      */
     // TODO: Perhaps pass this ID via an event rather than a return value
@@ -186,15 +189,22 @@ contract Liquidatable is PricelessPositionManager {
         )
             ? positionToLiquidate.tokensOutstanding
             : FixedPoint.Unsigned(maxTokensToLiquidate.rawValue);
-        // What ratio of the Position is getting liquidated, will be used to scale everything else.
+        // The ratio of the Position is getting liquidated, will be used to scale everything else.
         FixedPoint.Unsigned memory ratio = tokensToLiquidate.div(positionToLiquidate.tokensOutstanding);
 
-        // DO SOME CHECKS HERE IN A SEPARATE FUNCTION.
+        // Starting values for the Position being liquidated.
         FixedPoint.Unsigned memory startCollateral = _getCollateral(positionToLiquidate.rawCollateral);
         FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = startCollateral.sub(
             positionToLiquidate.withdrawalRequestAmount
         );
         FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
+
+        // Check that there is some collateral in the contract.
+        require(startCollateral.isGreaterThan(FixedPoint.Unsigned(0)));
+        // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
+        // what the liquidator was willing to liquidate at.
+        // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
+        require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
 
         // The actual amount of collateral that gets moved to the liquidation.
         FixedPoint.Unsigned memory lockedCollateral = startCollateral.mul(ratio);
@@ -228,7 +238,8 @@ contract Liquidatable is PricelessPositionManager {
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToLiquidate.rawValue);
         tokenCurrency.burn(tokensToLiquidate.rawValue);
 
-        _reduceSponsorPosition(sponsor, ratio);
+        // Adjust the sponsor's remaining position.
+        _reduceSponsorPosition(sponsor, ratio, tokensToLiquidate, lockedCollateral);
 
         emit LiquidationCreated(
             sponsor,

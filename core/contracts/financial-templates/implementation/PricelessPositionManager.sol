@@ -452,24 +452,29 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return _getCollateral(rawTotalPositionCollateral);
     }
 
-    function _reduceSponsorPosition(address sponsor, FixedPoint.Unsigned memory ratio) internal {
-        // Rounding issues.
+    function _reduceSponsorPosition(
+        address sponsor,
+        FixedPoint.Unsigned memory ratio,
+        FixedPoint.Unsigned memory tokensToRemove,
+        FixedPoint.Unsigned memory collateralToRemove
+    ) internal {
+        // TODO: High danger of rounding issues resulting in small positions being left.
         if (ratio.rawValue == 1) {
             _deleteSponsorPosition(sponsor);
             return;
         }
 
         PositionData storage positionData = _getPositionData(sponsor);
-        FixedPoint.Unsigned memory collateralToRemove = _getCollateral(positionData.rawCollateral).mul(ratio);
-        FixedPoint.Unsigned memory withdrawalAmountToRemove = positionData.withdrawalRequestAmount.mul(ratio);
-        FixedPoint.Unsigned memory tokensToRemove = positionData.tokensOutstanding.mul(ratio);
 
-        // Decrease the sponsors position size of collateral, tokens, and withdrawal.
+        // Decrease the sponsor's collateral and tokens.
         _removeCollateral(positionData.rawCollateral, collateralToRemove);
         positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
+
+        // Scale withdrawal amount down by ratio as well.
+        FixedPoint.Unsigned memory withdrawalAmountToRemove = positionData.withdrawalRequestAmount.mul(ratio);
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
 
-        // Decrease the contract's collateral and tokens.
+        // Decrease the contract's global counters of collateral and tokens.
         _removeCollateral(rawTotalPositionCollateral, collateralToRemove);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
