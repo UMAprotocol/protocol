@@ -189,12 +189,12 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
                     MODIFIERS
     ****************************************/
 
-    modifier onlyRegisteredDerivative() {
+    modifier onlyRegisteredContract() {
         if (migratedAddress != address(0)) {
             require(msg.sender == migratedAddress);
         } else {
             Registry registry = Registry(finder.getImplementationAddress("Registry"));
-            require(registry.isDerivativeRegistered(msg.sender));
+            require(registry.isContractRegistered(msg.sender));
         }
         _;
     }
@@ -216,7 +216,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function requestPrice(bytes32 identifier, uint time) external override onlyRegisteredDerivative() {
+    function requestPrice(bytes32 identifier, uint time) external override onlyRegisteredContract() {
         uint blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
         require(identifierWhitelist.isIdentifierSupported(identifier), "Unsupported identifier request");
@@ -252,7 +252,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function hasPrice(bytes32 identifier, uint time) external override view onlyRegisteredDerivative() returns (bool _hasPrice) {
+    function hasPrice(bytes32 identifier, uint time) external override view onlyRegisteredContract() returns (bool _hasPrice) {
         (_hasPrice, , ) = _getPriceOrError(identifier, time);
     }
 
@@ -265,7 +265,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function getPrice(bytes32 identifier, uint time) external override view onlyRegisteredDerivative() returns (int) {
+    function getPrice(bytes32 identifier, uint time) external override view onlyRegisteredContract() returns (int) {
         (bool _hasPrice, int price, string memory message) = _getPriceOrError(identifier, time);
 
         // If the price wasn't available, revert with the provided message.

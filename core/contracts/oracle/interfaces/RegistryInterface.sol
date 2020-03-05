@@ -4,57 +4,57 @@ pragma experimental ABIEncoderV2;
 
 
 /**
- * @title Interface for a registry of derivatives and derivative creators.
+ * @title Interface for a registry of contracts and contract creators.
  */
 interface RegistryInterface {
     /**
-     * @notice Registers a new derivative.
-     * @dev Only authorized derivative creators can call this method.
-     * @param parties an array of addresses who become party members to a derivative.
-     * @param derivativeAddress defines the address of the deployed derivative.
+     * @notice Registers a new contract.
+     * @dev Only authorized contract creators can call this method.
+     * @param parties an array of addresses who become parties in the contract.
+     * @param contractAddress defines the address of the deployed contract.
      */
-    function registerDerivative(address[] calldata parties, address derivativeAddress) external;
+    function registerContract(address[] calldata parties, address contractAddress) external;
 
     /**
-     * @notice Returns whether the derivative has been registered with the registry.
+     * @notice Returns whether the contract has been registered with the registry.
      * @dev If it is registered, it is an authorized participant in the UMA system.
-     * @param derivative address of the derivative contract.
-     * @return bool indicates whether the derivative is registered.
+     * @param contractAddress address of the contract.
+     * @return bool indicates whether the contract is registered.
      */
-    function isDerivativeRegistered(address derivative) external view returns (bool);
+    function isContractRegistered(address contractAddress) external view returns (bool);
 
     /**
-     * @notice Returns a list of all derivatives that are associated with a particular party.
+     * @notice Returns a list of all contracts that are associated with a particular party.
      * @param party address of the party.
-     * @return an array of the derivatives the party is registered to.
+     * @return an array of the contracts the party is registered to.
      */
-    function getRegisteredDerivatives(address party) external view returns (address[] memory);
+    function getRegisteredContracts(address party) external view returns (address[] memory);
 
     /**
-     * @notice Returns all registered derivatives.
-     * @return all registered derivative addresses within the system.
+     * @notice Returns all registered contracts.
+     * @return all registered contract addresses within the system.
      */
-    function getAllRegisteredDerivatives() external view returns (address[] memory);
+    function getAllRegisteredContracts() external view returns (address[] memory);
 
     /**
-     * @notice Adds a party member to the calling derivative.
-     * @dev msg.sender must be the derivative contract to which the party member is added.
-     * @param party address to be added to the derivatives.
+     * @notice Adds a party to the calling contract.
+     * @dev msg.sender must be the contract to which the party member is added.
+     * @param party address to be added to the contract.
      */
-    function addPartyToDerivative(address party) external;
+    function addPartyToContract(address party) external;
 
     /**
-     * @notice Removes a party member to the calling derivative.
-     * @dev msg.sender must be the derivative contract to which the party member is added.
-     * @param party address to be removed to the derivatives.
+     * @notice Removes a party member to the calling contract.
+     * @dev msg.sender must be the contract to which the party member is added.
+     * @param party address to be removed from the contract.
      */
-    function removePartyFromDerivative(address party) external;
+    function removePartyFromContract(address party) external;
 
     /**
-     * @notice checks if a party member is part of a derivative.
+     * @notice checks if an address is a party in a contract.
      * @param party party to check.
-     * @param derivativeAddress address to check against the party.
-     * @return bool indicating if the address is a party of the derivative.
+     * @param contractAddress address to check against the party.
+     * @return bool indicating if the address is a party of the contract.
      */
-    function isPartyMemberOfDerivative(address party, address derivativeAddress) external view returns (bool);
+    function isPartyMemberOfContract(address party, address contractAddress) external view returns (bool);
 }
