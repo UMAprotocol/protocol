@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8 } = web3.utils;
-
+const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
@@ -13,6 +13,7 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 contract("ExpiringMultiParty", function(accounts) {
   let contractCreator = accounts[0];
@@ -21,6 +22,7 @@ contract("ExpiringMultiParty", function(accounts) {
   let collateralToken;
   let expiringMultiPartyCreator;
   let registry;
+  let collateralTokenWhitelist;
 
   // Re-used variables
   let constructorParams;
@@ -29,10 +31,13 @@ contract("ExpiringMultiParty", function(accounts) {
     collateralToken = await Token.new({ from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
-
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator
     });
+
+    // Whitelist collateral currency
+    collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     constructorParams = {
       expirationTimestamp: "1234567890",
@@ -54,6 +59,19 @@ contract("ExpiringMultiParty", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: contractCreator
     });
+  });
+
+  it("Collateral token must be whitelisted", async function() {
+    // Change only the collateral token address
+    constructorParams.collateralAddress = await Token.new({ from: contractCreator }).address;
+
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
   });
 
   it("Can create new instances of ExpiringMultiParty", async function() {
