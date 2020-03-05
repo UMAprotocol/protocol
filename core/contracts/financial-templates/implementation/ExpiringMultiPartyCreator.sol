@@ -13,6 +13,8 @@ import "./ExpiringMultiParty.sol";
 constraining the parameters used to construct a new EMP.
 */
 contract ExpiringMultiPartyCreator is ContractCreator, Testable {
+    using FixedPoint for FixedPoint.Unsigned;
+
     struct Params {
         uint expirationTimestamp;
         uint siphonDelay;
@@ -42,6 +44,11 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // However, the parameter is a reflection of how long we expect it to take disputers to notice bad liquidations.
     // Malicious liquidators would also need to attack the base chain for this long to prevent dispute transactions from processing.
     uint public constant STRICT_LIQUIDATION_LIVENESS = 3600;
+    // - Minimum dispute bond: 0%. We think this should be positive so that every dispute has some cost so that disputers are disincentivized from
+    // wrongly disputing sponsors.
+    uint public constant MIN_DISPUTE_BOND_PCT = 0;
+    // - Synthetic name and symbol cannot be the null string: "".
+    string internal constant STRING_NULL = "";
 
     constructor(bool _isTest, address _finderAddress) public ContractCreator(_finderAddress) Testable(_isTest) {}
 
@@ -77,6 +84,9 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
         // Enforce configuration constrainments
         require(params.expirationTimestamp <= LATEST_EXPIRATION_TIMESTAMP);
+        require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
+        require(!_stringsEqual(params.syntheticName, STRING_NULL));
+        require(!_stringsEqual(params.syntheticSymbol, STRING_NULL));
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
         constructorParams.liquidationLiveness = STRICT_LIQUIDATION_LIVENESS;
 
@@ -92,5 +102,23 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.disputeBondPct = params.disputeBondPct;
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
+    }
+
+    /**
+     * @notice Compares two strings. Taken from the StringUtils contract in the Ethereum Dapp-bin
+     * (https://github.com/ethereum/dapp-bin/blob/master/library/stringUtils.sol).
+     * @param a The first string.
+     * @param b The first string.
+     * @return result 'true' if the strings are equal, otherwise 'false'.
+     */
+    function _stringsEqual(string memory a, string memory b) internal pure returns (bool result) {
+        bytes memory ba = bytes(a);
+        bytes memory bb = bytes(b);
+
+        if (ba.length != bb.length) return false;
+        for (uint i = 0; i < ba.length; i++) {
+            if (ba[i] != bb[i]) return false;
+        }
+        return true;
     }
 }

@@ -54,10 +54,49 @@ contract("ExpiringMultiParty", function(accounts) {
     });
   });
 
-  it("Cannot set expiration timestamp past limit set by EMP creator", async function() {
+  it("Cannot set expiration timestamp above limit set by EMP creator", async function() {
     // Change only expiration timestamp.
     const latestExpirationAllowed = await expiringMultiPartyCreator.LATEST_EXPIRATION_TIMESTAMP();
     constructorParams.expirationTimestamp = latestExpirationAllowed.add(toBN("1")).toString();
+
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Cannot set dispute bond percentage below limit set by EMP creator", async function() {
+    // Change only dispute bond %.
+    constructorParams.disputeBondPct = { rawValue: toWei("0") };
+
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Cannot have empty synthetic token symbol", async function() {
+    // Change only synthetic token symbol.
+    constructorParams.syntheticSymbol = "";
+
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
+
+  it("Cannot have empty synthetic token name", async function() {
+    // Change only synthetic token name.
+    constructorParams.syntheticName = "";
 
     assert(
       await didContractThrow(
