@@ -15,7 +15,7 @@ contract("DesignatedVoting", function(accounts) {
   const umaAdmin = accounts[0];
   const tokenOwner = accounts[1];
   const voter = accounts[2];
-  const registeredDerivative = accounts[3];
+  const registeredContract = accounts[3];
 
   let voting;
   let votingToken;
@@ -39,8 +39,8 @@ contract("DesignatedVoting", function(accounts) {
     await votingToken.transfer(tokenOwner, tokenBalance, { from: umaAdmin });
 
     const registry = await Registry.deployed();
-    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, umaAdmin);
-    await registry.registerDerivative([], registeredDerivative, { from: umaAdmin });
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, umaAdmin);
+    await registry.registerContract([], registeredContract, { from: umaAdmin });
   });
 
   it("Deposit and withdraw", async function() {
@@ -87,7 +87,7 @@ contract("DesignatedVoting", function(accounts) {
     const identifier = web3.utils.utf8ToHex("one-voter");
     const time = "1000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     const price = getRandomSignedInt();
@@ -113,7 +113,7 @@ contract("DesignatedVoting", function(accounts) {
     // Check the resolved price.
     const roundId = await voting.getCurrentRoundId();
     await moveToNextRound(voting);
-    assert.equal((await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(), price);
+    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price);
 
     // Retrieve rewards and check that rewards accrued to the `designatedVoting` contract.
     await designatedVoting.retrieveRewards(roundId, [{ identifier, time }], { from: voter });
@@ -146,8 +146,8 @@ contract("DesignatedVoting", function(accounts) {
     const time1 = "1000";
     const time2 = "2000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
-    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
-    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time1, { from: registeredContract });
+    await voting.requestPrice(identifier, time2, { from: registeredContract });
     await moveToNextRound(voting);
 
     const roundId = await voting.getCurrentRoundId();
@@ -193,8 +193,8 @@ contract("DesignatedVoting", function(accounts) {
 
     // Check the resolved price.
     await moveToNextRound(voting);
-    assert.equal((await voting.getPrice(identifier, time1, { from: registeredDerivative })).toString(), price1);
-    assert.equal((await voting.getPrice(identifier, time2, { from: registeredDerivative })).toString(), price2);
+    assert.equal((await voting.getPrice(identifier, time1, { from: registeredContract })).toString(), price1);
+    assert.equal((await voting.getPrice(identifier, time2, { from: registeredContract })).toString(), price2);
 
     // Reset the state.
     await designatedVoting.withdrawErc20(votingToken.address, tokenBalance, { from: tokenOwner });

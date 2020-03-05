@@ -5,17 +5,17 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 
 contract("scripts/DecodeTransactionData.js", function(accounts) {
-  it("Decode registerDerivative", async function() {
-    const derivativeAddress = web3.utils.randomHex(20);
+  it("Decode registerContract", async function() {
+    const contractAddress = web3.utils.randomHex(20);
 
     const registry = await Registry.deployed();
-    const txnData = registry.contract.methods.registerDerivative([], derivativeAddress).encodeABI();
+    const txnData = registry.contract.methods.registerContract([], contractAddress).encodeABI();
 
     const expectedObject = {
-      name: "registerDerivative",
+      name: "registerContract",
       params: {
         parties: [],
-        derivativeAddress: derivativeAddress
+        contractAddress: contractAddress
       }
     };
 

@@ -21,8 +21,8 @@ contract("Voting", function(accounts) {
   const account2 = accounts[1];
   const account3 = accounts[2];
   const account4 = accounts[3];
-  const registeredDerivative = accounts[4];
-  const unregisteredDerivative = accounts[5];
+  const registeredContract = accounts[4];
+  const unregisteredContract = accounts[5];
   const migratedVoting = accounts[6];
 
   const setNewInflationRate = async inflationRate => {
@@ -55,9 +55,9 @@ contract("Voting", function(accounts) {
     // Set the inflation rate to 0 by default, so the balances stay fixed until inflation is tested.
     await setNewInflationRate("0");
 
-    // Register derivative with Registry.
-    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, account1);
-    await registry.registerDerivative([], registeredDerivative, { from: account1 });
+    // Register contract with Registry.
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
+    await registry.registerContract([], registeredContract, { from: account1 });
   });
 
   it("Constructor", async function() {
@@ -94,7 +94,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
     const currentTime = (await voting.getCurrentTime()).toNumber();
     assert.equal((await voting.getCurrentRoundId()).toString(), Math.floor(currentTime / 172800));
@@ -149,7 +149,7 @@ contract("Voting", function(accounts) {
     // Make the Oracle support this identifier.
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     const price1 = getRandomSignedInt();
@@ -205,8 +205,8 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier2);
 
     // Send the requests.
-    await voting.requestPrice(identifier1, time2, { from: registeredDerivative });
-    await voting.requestPrice(identifier2, time1, { from: registeredDerivative });
+    await voting.requestPrice(identifier1, time2, { from: registeredContract });
+    await voting.requestPrice(identifier2, time1, { from: registeredContract });
 
     // Move to voting round.
     await moveToNextRound(voting);
@@ -247,14 +247,14 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier2);
 
     // Requests should not be added to the current voting round.
-    await voting.requestPrice(identifier1, time1, { from: registeredDerivative });
-    await voting.requestPrice(identifier2, time2, { from: registeredDerivative });
+    await voting.requestPrice(identifier1, time1, { from: registeredContract });
+    await voting.requestPrice(identifier2, time2, { from: registeredContract });
 
     // Since the round for these requests has not started, the price retrieval should fail.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredDerivative }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredDerivative }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredDerivative })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredDerivative })));
+    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
+    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredContract })));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredContract })));
 
     // Move to the voting round.
     await moveToNextRound(voting);
@@ -272,10 +272,10 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier2, time2, hash2);
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredDerivative }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredDerivative }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredDerivative })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredDerivative })));
+    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
+    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredContract })));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredContract })));
 
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting);
@@ -285,23 +285,23 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier2, time2, price2, salt2);
 
     // Prices cannot be provided until both commit and reveal for the current round have finished.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredDerivative }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredDerivative }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredDerivative })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredDerivative })));
+    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
+    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredContract })));
+    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredContract })));
 
     // Move past the voting round.
     await moveToNextRound(voting);
 
     // Note: all voting results are currently hardcoded to 1.
-    assert.isTrue(await voting.hasPrice(identifier1, time1, { from: registeredDerivative }));
-    assert.isTrue(await voting.hasPrice(identifier2, time2, { from: registeredDerivative }));
+    assert.isTrue(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
+    assert.isTrue(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
     assert.equal(
-      (await voting.getPrice(identifier1, time1, { from: registeredDerivative })).toString(),
+      (await voting.getPrice(identifier1, time1, { from: registeredContract })).toString(),
       price1.toString()
     );
     assert.equal(
-      (await voting.getPrice(identifier2, time2, { from: registeredDerivative })).toString(),
+      (await voting.getPrice(identifier2, time2, { from: registeredContract })).toString(),
       price2.toString()
     );
   });
@@ -321,8 +321,8 @@ contract("Voting", function(accounts) {
     // Time 2 is in the past and should succeed.
     const timeSucceed = startingTime.subn(1).toString();
 
-    assert(await didContractThrow(voting.requestPrice(identifier, timeFail, { from: registeredDerivative })));
-    await voting.requestPrice(identifier, timeSucceed, { from: registeredDerivative });
+    assert(await didContractThrow(voting.requestPrice(identifier, timeFail, { from: registeredContract })));
+    await voting.requestPrice(identifier, timeSucceed, { from: registeredContract });
 
     // Finalize this vote.
     await moveToNextRound(voting);
@@ -347,15 +347,15 @@ contract("Voting", function(accounts) {
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
 
     // Cannot get the price before the voting round begins.
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
 
     await moveToNextRound(voting);
 
     // Cannot get the price while the voting is ongoing.
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
 
     // Commit vote.
     const price = getRandomSignedInt();
@@ -368,15 +368,12 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, price, salt);
 
     // Cannot get the price during the reveal phase.
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
 
     await moveToNextRound(voting);
 
     // After the voting round is over, the price should be retrievable.
-    assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
-      price.toString()
-    );
+    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
   });
 
   it("Pending Requests", async function() {
@@ -397,7 +394,7 @@ contract("Voting", function(accounts) {
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
-    await voting.requestPrice(identifier1, time1, { from: registeredDerivative });
+    await voting.requestPrice(identifier1, time1, { from: registeredContract });
 
     // Pending requests should be empty before the voting round begins.
     assert.equal((await voting.getPendingRequests()).length, 0);
@@ -407,7 +404,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getPendingRequests()).length, 1);
 
     // Add a new request during the voting round.
-    await voting.requestPrice(identifier2, time2, { from: registeredDerivative });
+    await voting.requestPrice(identifier2, time2, { from: registeredContract });
 
     // Pending requests should still be 1 because this request should not be voted on until next round.
     assert.equal((await voting.getPendingRequests()).length, 1);
@@ -458,7 +455,7 @@ contract("Voting", function(accounts) {
     assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
 
     // Can't request prices for unsupported identifiers.
-    assert(await didContractThrow(voting.requestPrice(supported, "0", { from: registeredDerivative })));
+    assert(await didContractThrow(voting.requestPrice(supported, "0", { from: registeredContract })));
   });
 
   it("Simple vote resolution", async function() {
@@ -469,7 +466,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
 
     const price = 123;
     const salt = getRandomUnsignedInt();
@@ -490,10 +487,7 @@ contract("Voting", function(accounts) {
     // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
     // tokens to exceed the GAT.
     await moveToNextRound(voting);
-    assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
-      price.toString()
-    );
+    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
   });
 
   it("Equally split vote", async function() {
@@ -504,7 +498,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     // Commit votes.
@@ -525,7 +519,7 @@ contract("Voting", function(accounts) {
 
     // Should not have the price since the vote was equally split.
     await moveToNextRound(voting);
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
+    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
 
     // Cleanup: resolve the vote this round.
     await voting.commitVote(identifier, time, hash1, { from: account1 });
@@ -541,7 +535,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     // Commit votes.
@@ -570,7 +564,7 @@ contract("Voting", function(accounts) {
     // Price should resolve to the one that 2 and 3 voted for.
     await moveToNextRound(voting);
     assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
+      (await voting.getPrice(identifier, time, { from: registeredContract })).toString(),
       winningPrice.toString()
     );
   });
@@ -583,7 +577,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     // Commit vote.
@@ -600,7 +594,7 @@ contract("Voting", function(accounts) {
     // Since the GAT was not hit, the price should not resolve.
     await moveToNextRound(voting);
     const newRoundId = await voting.getCurrentRoundId();
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
+    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
 
     // Can't claim rewards if the price wasn't resolved.
     const req = [{ identifier: identifier, time: time }];
@@ -620,10 +614,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, price, salt, { from: account4 });
 
     await moveToNextRound(voting);
-    assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
-      price.toString()
-    );
+    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
 
     // Must specify the right roundId when retrieving rewards.
     assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
@@ -636,7 +627,7 @@ contract("Voting", function(accounts) {
     // As the previous request has been filled, we need to progress time such that we
     // can vote on the same identifier and request a new price to vote on.
     time += 10;
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     // Commit votes.
@@ -649,10 +640,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, price, salt, { from: account1 });
 
     await moveToNextRound(voting);
-    assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
-      price.toString()
-    );
+    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
 
     // Must specify the right roundId when retrieving rewards.
     assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
@@ -667,7 +655,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     // Commit votes.
@@ -713,7 +701,7 @@ contract("Voting", function(accounts) {
     // The resulting price should be the winningPrice that account3 voted for.
     await moveToNextRound(voting);
     assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
+      (await voting.getPrice(identifier, time, { from: registeredContract })).toString(),
       winningPrice.toString()
     );
 
@@ -721,18 +709,18 @@ contract("Voting", function(accounts) {
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
   });
 
-  it("Only registered derivatives", async function() {
+  it("Only registered contracts", async function() {
     const identifier = web3.utils.utf8ToHex("only-registered");
     const time = "1000";
 
     // Make the Oracle support this identifier.
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
-    // Unregistered derivatives can't request prices.
-    assert(await didContractThrow(voting.requestPrice(identifier, time, { from: unregisteredDerivative })));
+    // Unregistered contracts can't request prices.
+    assert(await didContractThrow(voting.requestPrice(identifier, time, { from: unregisteredContract })));
 
     // Request the price and resolve the price.
-    voting.requestPrice(identifier, time, { from: registeredDerivative });
+    voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
     const winningPrice = 123;
     const salt = getRandomUnsignedInt();
@@ -742,13 +730,13 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
     await moveToNextRound(voting);
 
-    // Sanity check that registered derivatives can retrieve prices.
-    assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
-    assert.equal(await voting.getPrice(identifier, time, { from: registeredDerivative }), winningPrice);
+    // Sanity check that registered contracts can retrieve prices.
+    assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredContract }));
+    assert.equal(await voting.getPrice(identifier, time, { from: registeredContract }), winningPrice);
 
-    // Unregistered derivatives can't retrieve prices.
-    assert(await didContractThrow(voting.hasPrice(identifier, time, { from: unregisteredDerivative })));
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredDerivative })));
+    // Unregistered contracts can't retrieve prices.
+    assert(await didContractThrow(voting.hasPrice(identifier, time, { from: unregisteredContract })));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredContract })));
   });
 
   it("View methods", async function() {
@@ -759,18 +747,18 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses`` for a price was that was never requested.
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
     let statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
     assert.equal(statuses[0].status.toString(), "0");
     assert.equal(statuses[0].lastVotingRound.toString(), "0");
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a price scheduled for the next round.
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredDerivative })));
+    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
+    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
     statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
     assert.equal(statuses[0].status.toString(), "3");
     assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).addn(1).toString());
@@ -801,11 +789,8 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a resolved price request.
-    assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredDerivative }));
-    assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredDerivative })).toString(),
-      price.toString()
-    );
+    assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredContract }));
+    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
     statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
     assert.equal(statuses[0].status.toString(), "2");
     assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).subn(1).toString());
@@ -825,7 +810,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     const winningPrice = 456;
@@ -902,7 +887,7 @@ contract("Voting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time1, { from: registeredContract });
     await moveToNextRound(voting);
 
     // Commit votes.
@@ -987,7 +972,7 @@ contract("Voting", function(accounts) {
     let currentRoundId = await voting.getCurrentRoundId();
 
     // New price requests trigger events.
-    result = await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    result = await voting.requestPrice(identifier, time, { from: registeredContract });
     truffleAssert.eventEmitted(result, "PriceRequestAdded", ev => {
       return (
         // The vote is added to the next round, so we have to add 1 to the current round id.
@@ -1001,7 +986,7 @@ contract("Voting", function(accounts) {
     currentRoundId = await voting.getCurrentRoundId();
 
     // Repeated price requests don't trigger events.
-    result = await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    result = await voting.requestPrice(identifier, time, { from: registeredContract });
     truffleAssert.eventNotEmitted(result, "PriceRequestAdded");
 
     // Commit vote.
@@ -1076,7 +1061,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     const price = getRandomSignedInt();
@@ -1121,7 +1106,7 @@ contract("Voting", function(accounts) {
     const time = "1000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
-    await voting.requestPrice(identifier, time, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
 
     const price = getRandomSignedInt();
@@ -1165,7 +1150,7 @@ contract("Voting", function(accounts) {
       });
 
       await supportedIdentifiers.addSupportedIdentifier(identifier);
-      await voting.requestPrice(identifier, requestTime, { from: registeredDerivative });
+      await voting.requestPrice(identifier, requestTime, { from: registeredContract });
     }
 
     await moveToNextRound(voting);
@@ -1229,8 +1214,8 @@ contract("Voting", function(accounts) {
     const time2 = "1001";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
-    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
-    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time1, { from: registeredContract });
+    await voting.requestPrice(identifier, time2, { from: registeredContract });
     await moveToNextRound(voting);
 
     const price1 = getRandomSignedInt();
@@ -1318,8 +1303,8 @@ contract("Voting", function(accounts) {
     );
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
-    await voting.requestPrice(identifier, time1, { from: registeredDerivative });
-    await voting.requestPrice(identifier, time2, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time1, { from: registeredContract });
+    await voting.requestPrice(identifier, time2, { from: registeredContract });
     await moveToNextRound(voting);
     const price = 123;
     const salt = getRandomSignedInt();
@@ -1330,7 +1315,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
 
     // New voting can only call methods after the migration, not before.
-    assert(await voting.hasPrice(identifier, time1, { from: registeredDerivative }));
+    assert(await voting.hasPrice(identifier, time1, { from: registeredContract }));
     assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: migratedVoting })));
 
     // Need permissions to migrate.
@@ -1339,7 +1324,7 @@ contract("Voting", function(accounts) {
 
     // Now only new voting can call methods.
     assert(await voting.hasPrice(identifier, time1, { from: migratedVoting }));
-    assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: registeredDerivative })));
+    assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: registeredContract })));
     assert(await didContractThrow(voting.commitVote(identifier, time2, hash, { from: account1 })));
   });
 });

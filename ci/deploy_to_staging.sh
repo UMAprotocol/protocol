@@ -27,12 +27,6 @@ gsutil cp gs://staging-deployment-configuration/voter-app.yaml voter-dapp/app.ya
 # Deploy voter dapp
 ./scripts/deploy_dapp.sh voter-dapp voter-dapp/app.yaml -q
 
-# Copy the staging config into the sponsor-dapp-v2 dir
-gsutil cp gs://staging-deployment-configuration/sponsor-v2-app.yaml sponsor-dapp-v2/app.yaml
-
-# Deploy sponsor-dapp-v2
-./scripts/deploy_dapp.sh sponsor-dapp-v2 sponsor-dapp-v2/app.yaml -q
-
 # Deploy docs
 # TODO(#977) Solc 0.6 not supported, skipping this
 # ./scripts/deploy_docs.sh documentation/gae_app.yaml -q

@@ -10,7 +10,7 @@ module.exports = async function(deployer, network, accounts) {
   const tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
 
   // Add creator contract to the registry.
-  await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, tokenizedDerivativeCreator.address, {
+  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, tokenizedDerivativeCreator.address, {
     from: keys.deployer
   });
 };

@@ -90,8 +90,8 @@ contract("TokenizedDerivative", function(accounts) {
 
     // Add the owner to the list of registered derivatives so it's allowed to query oracle prices.
     let creator = accounts[5];
-    await deployedRegistry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, creator);
-    await deployedRegistry.registerDerivative([], owner, { from: creator });
+    await deployedRegistry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator);
+    await deployedRegistry.registerContract([], owner, { from: creator });
   });
 
   const computeNewNav = (previousNav, priceReturn, fees) => {
@@ -184,7 +184,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       await tokenizedDerivativeCreator.createTokenizedDerivative(constructorParams, { from: sponsor });
 
-      const derivativeArray = await deployedRegistry.getRegisteredDerivatives(sponsor);
+      const derivativeArray = await deployedRegistry.getRegisteredContracts(sponsor);
       const derivativeAddress = derivativeArray[derivativeArray.length - 1];
       derivativeContract = await TokenizedDerivative.at(derivativeAddress);
 

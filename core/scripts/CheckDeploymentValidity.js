@@ -12,16 +12,12 @@ const checkDeploymentValidity = async function(callback) {
     const migrations = await Migrations.deployed();
     await migrations.last_completed_migration();
 
-    // Registry
-    const registry = await Registry.deployed();
-    await registry.getAllRegisteredDerivatives();
-
     // Finder
     const finder = await Finder.deployed();
     const registryImplementationAddress = await finder.getImplementationAddress(
       web3.utils.utf8ToHex(interfaceName.Registry)
     );
-    if (registryImplementationAddress != registry.address) {
+    if (registryImplementationAddress != Registry.address) {
       throw "Incorrect implementation address for Registry";
     }
 

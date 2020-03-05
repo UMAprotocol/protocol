@@ -30,7 +30,7 @@ contract("ExpiringMultiParty", function(accounts) {
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
-    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, expiringMultiPartyCreator.address, {
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator
     });
 
@@ -97,7 +97,7 @@ contract("ExpiringMultiParty", function(accounts) {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
       return ev.expiringMultiPartyAddress != 0 && ev.partyMemberAddress == contractCreator;
     });
-    assert.isTrue(await registry.isDerivativeRegistered(expiringMultiPartyAddress));
-    assert.isTrue(await registry.isPartyMemberOfDerivative(contractCreator, expiringMultiPartyAddress));
+    assert.isTrue(await registry.isContractRegistered(expiringMultiPartyAddress));
+    assert.isTrue(await registry.isPartyMemberOfContract(contractCreator, expiringMultiPartyAddress));
   });
 });
