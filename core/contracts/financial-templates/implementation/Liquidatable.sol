@@ -211,6 +211,9 @@ contract Liquidatable is PricelessPositionManager {
         // For purposes of disputes, it's actually this liquidatedCollateral value that's used. This value is net of
         // withdrawal requests.
         FixedPoint.Unsigned memory liquidatedCollateral = startCollateralNetOfWithdrawal.mul(ratio);
+        // Part of the withdrawal request is also removed. Ideally:
+        // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
+        FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(ratio);
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
@@ -231,15 +234,15 @@ contract Liquidatable is PricelessPositionManager {
             })
         );
 
+        // Adjust the sponsor's remaining position.
+        _reduceSponsorPosition(sponsor, tokensToLiquidate, lockedCollateral, withdrawalAmountToRemove);
+
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, lockedCollateral);
 
         // Destroy tokens
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToLiquidate.rawValue);
         tokenCurrency.burn(tokensToLiquidate.rawValue);
-
-        // Adjust the sponsor's remaining position.
-        _reduceSponsorPosition(sponsor, ratio, tokensToLiquidate, lockedCollateral);
 
         emit LiquidationCreated(
             sponsor,
