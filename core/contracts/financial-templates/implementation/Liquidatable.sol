@@ -127,7 +127,6 @@ contract Liquidatable is PricelessPositionManager {
         uint siphonDelay;
         address collateralAddress;
         address finderAddress;
-        address tokenFactoryAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -150,8 +149,7 @@ contract Liquidatable is PricelessPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.syntheticName,
-            params.syntheticSymbol,
-            params.tokenFactoryAddress
+            params.syntheticSymbol
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
