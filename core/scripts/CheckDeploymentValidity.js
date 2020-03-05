@@ -14,7 +14,7 @@ const checkDeploymentValidity = async function(callback) {
 
     // Registry
     const registry = await Registry.deployed();
-    await registry.getAllRegisteredDerivatives();
+    await registry.getAllRegisteredContracts();
 
     // Finder
     const finder = await Finder.deployed();

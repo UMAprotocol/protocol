@@ -13,18 +13,18 @@ async function getDeployAddress() {
   return accounts[0];
 }
 
-async function registerDerivative(registry) {
+async function registerContract(registry) {
   const deployAddress = await getDeployAddress();
 
-  if (!(await registry.holdsRole(RegistryRolesEnum.DERIVATIVE_CREATOR, deployAddress))) {
+  if (!(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, deployAddress))) {
     // Wrapping with an if isn't strictly necessary, but saves gas when script is used regularly.
-    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, deployAddress);
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployAddress);
     console.log("Creator Added:", deployAddress);
   }
 
-  if (!(await registry.isDerivativeRegistered(deployAddress))) {
-    await registry.registerDerivative([], deployAddress);
-    console.log("Registered derivative:", deployAddress);
+  if (!(await registry.isContractRegistered(deployAddress))) {
+    await registry.registerContract([], deployAddress);
+    console.log("Registered contract:", deployAddress);
   }
 }
 
@@ -40,7 +40,7 @@ async function run(deployedFinder, identifier, timeString) {
     const deployedRegistry = await Registry.at(
       await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry))
     );
-    await registerDerivative(deployedRegistry);
+    await registerContract(deployedRegistry);
 
     const identifierInBytes = web3.utils.fromAscii(identifier);
 

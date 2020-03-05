@@ -1,7 +1,7 @@
 // Corresponds to Registry.Roles.
 const RegistryRolesEnum = {
   OWNER: "0",
-  DERIVATIVE_CREATOR: "1"
+  CONTRACT_CREATOR: "1"
 };
 
 // Corresponds to VoteTiming.Phase.

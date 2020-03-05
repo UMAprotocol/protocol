@@ -14,9 +14,9 @@ module.exports = async function(deployer, network, accounts) {
 
   // Add governor to registry so it can send price requests.
   const registry = await Registry.deployed();
-  await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, keys.deployer, { from: keys.deployer });
-  await registry.registerDerivative([], governor.address, { from: keys.deployer });
-  await registry.removeMember(RegistryRolesEnum.DERIVATIVE_CREATOR, keys.deployer, { from: keys.deployer });
+  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, keys.deployer, { from: keys.deployer });
+  await registry.registerContract([], governor.address, { from: keys.deployer });
+  await registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, keys.deployer, { from: keys.deployer });
 
   // TODO: make the governor the owner of the Registry, Finder, FinancialContractsAdmin, Store, Voting, and
   // VotingToken for prod deployments.

@@ -28,7 +28,7 @@ function usePositionList() {
     }
   });
 
-  const registeredContracts = useCacheCallPromise("Registry", "getRegisteredDerivatives", account);
+  const registeredContracts = useCacheCallPromise("Registry", "getRegisteredContracts", account);
 
   const finishedAddingContracts = drizzleReactHooks.useDrizzleStatePromise(
     (drizzleState, resolvePromise, registeredContractsResolved) => {

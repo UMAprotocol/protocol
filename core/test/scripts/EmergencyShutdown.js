@@ -19,7 +19,7 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
   let voting;
   let leverage;
   let priceFeed;
-  let derivativeContract;
+  let contract;
   let identifierBytes;
   const deployer = accounts[0];
   const sponsor = accounts[1];
@@ -50,7 +50,7 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
     // request created by emergency shutdown is in the past.
     await voting.setCurrentTime(latestTime + 700);
 
-    // Create derivative
+    // Create contract
     const params = {
       sponsor: sponsor,
       priceFeedAddress: priceFeed.address,
@@ -71,20 +71,20 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
     };
     await creator.createTokenizedDerivative(params, { from: sponsor });
 
-    // Retrieve the derivative we just created
-    const derivatives = await registry.getRegisteredDerivatives(sponsor);
-    const derivativeAddress = derivatives[derivatives.length - 1];
-    derivativeContract = await TokenizedDerivative.at(derivativeAddress);
+    // Retrieve the contract we just created
+    const contracts = await registry.getRegisteredContracts(sponsor);
+    const contractAddress = contracts[contracts.length - 1];
+    contract = await TokenizedDerivative.at(contractAddress);
   });
 
   it("Requests a price", async function() {
-    // Assert that the derivative is live
-    assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "0");
+    // Assert that the contract is live
+    assert.equal((await contract.derivativeStorage()).state.toString(), "0");
 
     // Call emergency shutdown
-    await EmergencyShutdown.run(deployer, derivativeContract.address);
+    await EmergencyShutdown.run(deployer, contract.address);
 
     // Derivative is in Emergency state
-    assert.equal((await derivativeContract.derivativeStorage()).state.toString(), "4");
+    assert.equal((await contract.derivativeStorage()).state.toString(), "4");
   });
 });
