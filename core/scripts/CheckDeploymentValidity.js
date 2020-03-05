@@ -17,7 +17,7 @@ const checkDeploymentValidity = async function(callback) {
     const registryImplementationAddress = await finder.getImplementationAddress(
       web3.utils.utf8ToHex(interfaceName.Registry)
     );
-    if (registryImplementationAddress != registry.address) {
+    if (registryImplementationAddress != Registry.address) {
       throw "Incorrect implementation address for Registry";
     }
 
