@@ -16,7 +16,6 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFeed => {
-    console.log("Checking for under collateralized positions at the price", priceFeed);
     Logger.info({
       at: "liquidator",
       message: "Checking for under collateralized positions"
