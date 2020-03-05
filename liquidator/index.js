@@ -1,7 +1,7 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["address"], integer: ["price"] });
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
-// helpers
+// Helpers
 const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/Logger");
 
@@ -44,11 +44,13 @@ async function run() {
       // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
       // Liquidate any undercollateralized positions!
       // Withdraw money from any liquidations that are expired or DisputeFailed.
-
-      console.log("Executing Liquidator");
       await liquidator.queryAndLiquidate(toWei(argv.price.toString()));
     } catch (error) {
-      console.log("Poll error:", error);
+      Logger.error({
+        at: "liquidator#index",
+        message: "liquidator polling error",
+        error: error
+      });
     }
     await delay(Number(10_000));
   }

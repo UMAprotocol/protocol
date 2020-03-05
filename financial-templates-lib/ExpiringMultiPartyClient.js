@@ -1,4 +1,5 @@
 const { delay } = require("./delay");
+const { Logger } = require("./Logger");
 
 // A thick client for getting information about an ExpiringMultiParty.
 class ExpiringMultiPartyClient {
@@ -49,7 +50,11 @@ class ExpiringMultiPartyClient {
       try {
         await this._update();
       } catch (error) {
-        console.log("Poll error:", error);
+        Logger.error({
+          at: "ExpiringMultiPartyClient",
+          message: "client polling error",
+          error: error
+        });
       }
       await delay(Number(10_000));
     }
@@ -127,6 +132,10 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
+    Logger.info({
+      at: "ExpiringMultiPartyClient",
+      message: "client updated"
+    });
   };
 }
 
