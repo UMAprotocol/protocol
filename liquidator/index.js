@@ -1,11 +1,13 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["address"], integer: ["price"] });
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
+// helpers
 const { delay } = require("../financial-templates-lib/delay");
+const { Logger } = require("../financial-templates-lib/Logger");
 
 // JS libs
-const { Liquidator } = require("./Liquidator.js");
-const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient.js");
+const { Liquidator } = require("./Liquidator");
+const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -19,8 +21,13 @@ async function run() {
     console.log("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
     return;
   }
-  console.log("Starting liquidator bot!\nRunning on expiring multi party contract @", argv.address);
-  
+  Logger.info({
+    at: "liquidator#index",
+    message: "liquidator started",
+    empAddress: argv.address,
+    currentPrice: argv.price
+  });
+
   // Setup web3 accounts an contract instance
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(argv.address);
