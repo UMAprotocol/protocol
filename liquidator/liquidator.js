@@ -14,10 +14,15 @@ class Liquidator {
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFeed => {
     console.log("Checking for under collateralized positions at the price", priceFeed);
+    
+    // Update the client to get the latest position information.
     await this.empClient._update();
+
+    // Get the latest undercollateralized positions from the client.
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
     console.log("Undercollateralized positions:", underCollateralizedPositions);
-
+    
+    let liquidationPromises = []; // store all promises to resolve in parallel later on.
     for (const position of underCollateralizedPositions) {
       console.log("Liquidating sponsor", position.sponsor);
       // Create the liquidation transaction
@@ -26,14 +31,29 @@ class Liquidator {
       // and the current price of the collateral. This will require knowing how much the collateral and the
       // synthetic are worth.
 
-      this.empContract.methods
-        .createLiquidation(position.sponsor, {
-          rawValue: position.amountCollateral
-        })
-        .send({ from: this.account, gas: 1500000 })
-        .then(transaction => {
-          console.log("Liquidation transaction hash", transaction);
-        });
+      console.log("Pushing");
+      liquidationPromises.push(
+        this.empContract.methods
+          .createLiquidation(position.sponsor, {
+            rawValue: position.amountCollateral
+          })
+          .send({ from: this.account, gas: 1500000 })
+      );
+    }
+    // Resolve all promises in parallel.
+    let promiseResponse = await Promise.all(liquidationPromises);
+    
+    for (const response of promiseResponse) {
+      const logResult = {
+        tx: response.transactionHash,
+        sponsor: response.events.LiquidationCreated.returnValues.sponsor,
+        liquidator: response.events.LiquidationCreated.returnValues.liquidator,
+        liquidationId: response.events.LiquidationCreated.returnValues.liquidationId,
+        tokensOutstanding: response.events.LiquidationCreated.returnValues.tokensOutstanding,
+        lockedCollateral: response.events.LiquidationCreated.returnValues.lockedCollateral,
+        liquidatedCollateral: response.events.LiquidationCreated.returnValues.liquidatedCollateral
+      };
+      console.log(logResult);
     }
   };
 }

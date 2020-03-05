@@ -73,6 +73,7 @@ contract("Liquidator.js", function(accounts) {
       isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
+      siphonDelay: "10000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
@@ -94,9 +95,9 @@ contract("Liquidator.js", function(accounts) {
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
 
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor3 });
+    await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor1 });
+    await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor2 });
+    await collateralToken.approve(emp.address, toWei("10000000"), { from: sponsor3 });
     await collateralToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
@@ -145,7 +146,7 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     // Sponsor2: 100 * 1.3 * 1.2 > 150 [undercollateralized]
     // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
-    
+
     await liquidator.queryAndLiquidate(toWei("1.3"));
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
