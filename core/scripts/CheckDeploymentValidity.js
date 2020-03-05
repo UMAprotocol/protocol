@@ -12,10 +12,6 @@ const checkDeploymentValidity = async function(callback) {
     const migrations = await Migrations.deployed();
     await migrations.last_completed_migration();
 
-    // Registry
-    const registry = await Registry.deployed();
-    await registry.getAllRegisteredContracts();
-
     // Finder
     const finder = await Finder.deployed();
     const registryImplementationAddress = await finder.getImplementationAddress(
