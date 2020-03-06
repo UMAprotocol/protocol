@@ -7,12 +7,12 @@ const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 
 // Helper Contracts
-const Finder = artifacts.require("Finder");
 const Token = artifacts.require("ExpandedERC20");
 const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 
 contract("ExpiringMultiParty", function(accounts) {
   let contractCreator = accounts[0];
@@ -21,6 +21,7 @@ contract("ExpiringMultiParty", function(accounts) {
   let collateralToken;
   let expiringMultiPartyCreator;
   let registry;
+  let collateralTokenWhitelist;
 
   // Re-used variables
   let constructorParams;
@@ -29,10 +30,13 @@ contract("ExpiringMultiParty", function(accounts) {
     collateralToken = await Token.new({ from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
-
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
       from: contractCreator
     });
+
+    // Whitelist collateral currency
+    collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     constructorParams = {
       expirationTimestamp: "1234567890",
@@ -58,7 +62,6 @@ contract("ExpiringMultiParty", function(accounts) {
     // Change only expiration timestamp.
     const latestExpirationAllowed = await expiringMultiPartyCreator.LATEST_EXPIRATION_TIMESTAMP();
     constructorParams.expirationTimestamp = latestExpirationAllowed.add(toBN("1")).toString();
-
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
@@ -71,7 +74,6 @@ contract("ExpiringMultiParty", function(accounts) {
   it("Cannot set dispute bond percentage below limit set by EMP creator", async function() {
     // Change only dispute bond %.
     constructorParams.disputeBondPct = { rawValue: toWei("0") };
-
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
@@ -84,7 +86,6 @@ contract("ExpiringMultiParty", function(accounts) {
   it("Cannot have empty synthetic token symbol", async function() {
     // Change only synthetic token symbol.
     constructorParams.syntheticSymbol = "";
-
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
@@ -97,7 +98,18 @@ contract("ExpiringMultiParty", function(accounts) {
   it("Cannot have empty synthetic token name", async function() {
     // Change only synthetic token name.
     constructorParams.syntheticName = "";
+    assert(
+      await didContractThrow(
+        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+          from: contractCreator
+        })
+      )
+    );
+  });
 
+  it("Collateral token must be whitelisted", async function() {
+    // Change only the collateral token address
+    constructorParams.collateralAddress = await Token.new({ from: contractCreator }).address;
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {

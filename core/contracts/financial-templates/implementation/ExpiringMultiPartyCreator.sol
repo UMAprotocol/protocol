@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
+import "../../common/implementation/AddressWhitelist.sol";
 import "./ExpiringMultiParty.sol";
 
 
@@ -31,6 +32,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     // @dev: These constraints can evolve over time and are initially constrained to conservative values
     // in this first iteration of an EMP creator:
+    // - Whitelist allowed collateral currencies.
+    AddressWhitelist public collateralTokenWhitelist;
     // - Last expiration date: 2021-06-30T0:00:00.000Z.
     uint public constant LATEST_EXPIRATION_TIMESTAMP = 1625011200;
     // - Time for pending withdrawal to be disputed: 60 minutes. Lower liveness increases sponsor usability. However, this parameter is a reflection of how long we expect it to take for
@@ -48,9 +51,15 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // wrongly disputing sponsors.
     uint public constant MIN_DISPUTE_BOND_PCT = 0;
 
-    constructor(bool _isTest, address _finderAddress) public ContractCreator(_finderAddress) Testable(_isTest) {}
-
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
+
+    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist)
+        public
+        ContractCreator(_finderAddress)
+        Testable(_isTest)
+    {
+        collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
+    }
 
     /**
      * @notice Creates an instance of expiring multi party and registers it within the registry.
@@ -81,12 +90,17 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.finderAddress = finderAddress;
 
         // Enforce configuration constrainments
+        // @dev: Technically there is nothing in the ExpiringMultiParty contract
+        // requiring these constraints. However, because "createExpiringMultiParty()"
+        // is intended to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
+        // we can enforce deployment configurations here.
         require(params.expirationTimestamp <= LATEST_EXPIRATION_TIMESTAMP);
         require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
         require(bytes(params.syntheticName).length != 0);
         require(bytes(params.syntheticSymbol).length != 0);
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
         constructorParams.liquidationLiveness = STRICT_LIQUIDATION_LIVENESS;
+        require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress));
 
         // Input from function call
         constructorParams.expirationTimestamp = params.expirationTimestamp;
