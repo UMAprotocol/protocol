@@ -39,7 +39,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned rawCollateral;
     }
 
-    // TODO: determine how we should adjust collateral when the user reads it out of the contract.
     // Maps sponsor addresses to their positions. Each sponsor can have only one position.
     mapping(address => PositionData) public positions;
 
@@ -154,7 +153,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param collateralAmount represents the total amount of tokens to be sent to the position for the sponsor.
      */
 
-    // TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
@@ -222,8 +220,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
-    // TODO: is onlyCollateralizedPosition(msg.sender) correct here? if a position withdraws all their collateral will this still work?
-    // TODO: this currently does not decrement the sponsors oustanding withdrawalRequestAmount. should it?
     // TODO: Decide whether to fold this functionality into withdraw() method above.
     function withdrawPassedRequest() external onlyPreExpiration() onlyCollateralizedPosition(msg.sender) fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -232,12 +228,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _removeCollateral(positionData.rawCollateral, positionData.withdrawalRequestAmount);
         _removeCollateral(rawTotalPositionCollateral, positionData.withdrawalRequestAmount);
 
-        positionData.requestPassTimestamp = 0;
-
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, positionData.withdrawalRequestAmount.rawValue);
+
+        // Reset withdrawal request
+        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
+        positionData.requestPassTimestamp = 0;
     }
 
     /**
@@ -249,7 +247,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
-        // Set withdrawal counters to zero
+        // Reset withdrawal request
         positionData.requestPassTimestamp = 0;
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
     }
@@ -328,8 +326,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
      * expiration. In addition, pay the final fee at this time. Once this has been resolved token holders can withdraw.
      */
-    // TODO: what are the implications of calling this multiple times? can this not drain the contract by paying
-    // the final fee over and over again?
     function expire() external onlyPostExpiration() onlyOpenState() fees() {
         contractState = ContractState.ExpiredPriceRequested;
 
@@ -422,7 +418,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
-    //TODO is this how we want this function to be implemented?
+    // TODO is this how we want this function to be implemented?
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function remargin() external override onlyPreExpiration() {

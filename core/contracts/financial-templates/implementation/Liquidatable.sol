@@ -178,12 +178,12 @@ contract Liquidatable is PricelessPositionManager {
         external
         fees()
         onlyPreExpiration()
+        onlyCollateralizedPosition(sponsor)
         returns (uint uuid)
     {
-        // Attempt to retrieve Position data for sponsor
+        // Retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
         FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionToLiquidate.rawCollateral);
-        require(positionCollateral.isGreaterThan(0));
 
         // Caller is required to include in order to prevent front-running attacks that modify the liquidatedCollateral amount
         // @dev amountToLiquidate is >= underlying collateral because the position is still liquidatable if the underlying collateral declines
