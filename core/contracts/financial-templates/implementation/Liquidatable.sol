@@ -178,7 +178,6 @@ contract Liquidatable is PricelessPositionManager {
         external
         fees()
         onlyPreExpiration()
-        onlyCollateralizedPosition(sponsor)
         returns (uint uuid)
     {
         // Retrieve Position data for sponsor

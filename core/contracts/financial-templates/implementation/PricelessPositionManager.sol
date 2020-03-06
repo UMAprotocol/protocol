@@ -136,7 +136,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev transfering positions can only occure if the recipiant does not already have a position.
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
-    function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
+    function transfer(address newSponsorAddress) public onlyPreExpiration() {
         require(_getCollateral(positions[newSponsorAddress].rawCollateral).isEqual(FixedPoint.fromUnscaledUint(0)));
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
@@ -171,12 +171,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * In that case, use `requestWithdrawawal`.
      * @param collateralAmount is the amount of collateral to withdraw
      */
-    function withdraw(FixedPoint.Unsigned memory collateralAmount)
-        public
-        onlyPreExpiration()
-        onlyCollateralizedPosition(msg.sender)
-        fees()
-    {
+    function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
@@ -197,11 +192,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      @param collateralAmount the amount of collateral requested to withdraw
      */
 
-    function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount)
-        public
-        onlyPreExpiration()
-        onlyCollateralizedPosition(msg.sender)
-    {
+    function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
@@ -221,7 +212,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
     // TODO: Decide whether to fold this functionality into withdraw() method above.
-    function withdrawPassedRequest() external onlyPreExpiration() onlyCollateralizedPosition(msg.sender) fees() {
+    function withdrawPassedRequest() external onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime());
 
@@ -286,12 +277,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
-    function redeem(FixedPoint.Unsigned memory numTokens)
-        public
-        onlyPreExpiration()
-        onlyCollateralizedPosition(msg.sender)
-        fees()
-    {
+    function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding));

@@ -569,6 +569,11 @@ contract("PricelessPositionManager", function(accounts) {
     // Can't deposit without first creating a pricelessPositionManager.
     assert(await didContractThrow(pricelessPositionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
 
+    // Can't request a withdrawal without first creating a pricelessPositionManager.
+    assert(
+      await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("0") }, { from: sponsor }))
+    );
+
     // Even if the "sponsor" acquires a token somehow, they can't redeem.
     await tokenCurrency.transfer(sponsor, toWei("1"), { from: other });
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
