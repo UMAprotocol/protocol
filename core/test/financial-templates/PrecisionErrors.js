@@ -114,13 +114,14 @@ contract("PricelessPositionManager", function(accounts) {
 //   });
 
   it("Precision loss due to deposits() and withdraws()", async function() {
-    // Create two positions, one with a very high collateral ratio so that we can withdraw from our test position.
-    const normalCollateralAmount = toWei("1")
-    const overCollateralAmount = toWei("100000")
+    // Create two positions, one with a very low collateral ratio so that we can withdraw from our test position.
+    const sponsorCollateralAmount = toWei("1")
+    const otherCollateralAmount = toWei("0.1")
     await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: sponsor });
     await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: other });
-    await pricelessPositionManager.create({ rawValue: normalCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
-    await pricelessPositionManager.create({ rawValue: overCollateralAmount }, { rawValue: toWei("100") }, { from: other });
+    // Note: must create less collateralized position first
+    await pricelessPositionManager.create({ rawValue: otherCollateralAmount }, { rawValue: toWei("100") }, { from: other });
+    await pricelessPositionManager.create({ rawValue: sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
 
     // In order to induce precision loss on deposits and withdraws, we want to indirectly set the "cumulativeFeeMultiplier"
     // to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
@@ -132,7 +133,7 @@ contract("PricelessPositionManager", function(accounts) {
     // - withdraw(collateral) similarly calls the internal method _removeCollateral(collateral)
     // - _removeCollateral(collateral) also scales up the collateral to remove: adjustedCollateral = collateral / cumulativeFeeMultiplier
     // - The resultant rawCollateral post-withdrawal could be more than expected
-    // - In other words, the withdraw() will have removed less collateral from the position than contract transferred to the caller
+    // - In other words, the withdraw() will have removed less collateral from the position than contract transfers to the caller
     // What's going to happen? It's anybody's guess!
 
     // First, let's set cumulativeMultiplier to 0.9 because 1/0.9 = 1.1111...repeating, which FixedPoint cannot represent.
@@ -155,21 +156,59 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(startingContractCollateral.toString(), toBN(startingAdjustedSponsorCollateral.rawValue).add(toBN(startingAdjustedOtherCollateralOther.rawValue)).toString())
 
     // Track drift over time. This can be negative or positive.
-    let drift = 0;
+    let drift = toBN(0);
+    let contractCollateral;
+    let adjustedSponsorCollateral;
+    let adjustedOtherCollateral;
 
-    // Deposit collateral, this should result in a difference
+    // Deposit collateral, which should credit user LESS collateral than they transfer
     await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
-    let contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-    let adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
-    let adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)
-    let delta = contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue)))
-    console.log(`Contract Collateral:`, contractCollateral.toString())
-    console.log(`Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
-    console.log(`Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
-    console.log(`DELTA: `, parseFloat(delta.toString())/1e18)
+    contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
+    adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
+    adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)
+    drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
+    console.group(`** Deposit: **`)
+    console.log(`- Contract Collateral:`, contractCollateral.toString())
+    console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
+    console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
+    console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
+    console.groupEnd()
 
-    // Withdraw collateral, which should also result in a difference
+    // Withdraw collateral, which should send LESS collateral than user expects.
+    await pricelessPositionManager.withdraw({ rawValue: toWei("0.1")}, { from: sponsor })
+    contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
+    adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
+    adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)
+    drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
+    console.group(`** Withdraw: **`)
+    console.log(`- Contract Collateral:`, contractCollateral.toString())
+    console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
+    console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
+    console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
+    console.groupEnd()
 
-    // See how long it takes to get meaningful drift
+    // The withdraw actually cancels out the deposit, assuming no more fees have accrued.
+    // Now, let's see how many deposits are needed to accrue certain amounts of drift.
+    let i = 0;
+    for(;;) {
+      if (drift.eq(toBN(1e9))) {
+        break;
+      } else {
+        i += 1;
+        await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
+        contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
+        adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
+        adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)    
+        drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
+      }
+    }
+    console.group(`** Final statistics: **`)
+    console.log(`- Contract Collateral:`, contractCollateral.toString())
+    console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
+    console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
+    console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
+    console.log(`- It took ${i} "deposits" to accrue 1e18 amount of drift`);
+    console.groupEnd()
+
   });
 });
