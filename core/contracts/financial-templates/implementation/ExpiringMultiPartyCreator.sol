@@ -9,7 +9,7 @@ import "./ExpiringMultiParty.sol";
 
 
 /**
-@title Expiring Multi Party Contract creator
+@title Expiring Multi Party Contract creator.
 @notice Factory contract to create and register new instances of expiring multiparty contracts. Responsible for
 constraining the parameters used to construct a new EMP.
 */
@@ -31,13 +31,13 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     }
 
     /**
-    * @notice DEPLOYMENT CONFIGURATION CONSTRAINTS
-    * @dev: These constraints can evolve over time and are initially constrained to conservative values
-    * in this first iteration of an EMP creator. Technically there is nothing in the ExpiringMultiParty contract
-    * requiring these constraints. However, because "createExpiringMultiParty()"
-    * is intended to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
-    * we can enforce deployment configurations here.
-    **/
+     * @notice DEPLOYMENT CONFIGURATION CONSTRAINTS.
+     * @dev: These constraints can evolve over time and are initially constrained to conservative values
+     * in this first iteration of an EMP creator. Technically there is nothing in the ExpiringMultiParty contract
+     * requiring these constraints. However, because "createExpiringMultiParty()"
+     * is intended to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
+     * we can enforce deployment configurations here.
+     **/
 
     // - Whitelist allowed collateral currencies.
     AddressWhitelist public collateralTokenWhitelist;
@@ -102,9 +102,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         return address(derivative);
     }
 
-    //  Returns if timestamp is valid.
+    //  Returns if expiration timestamp is on hardcoded list.
     function _isValidTimestamp(uint timestamp) private view returns (bool) {
-        // Determine size of whitelist first
         for (uint i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
             if (VALID_EXPIRATION_TIMESTAMPS[i] == timestamp) {
                 return true;
@@ -123,7 +122,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
 
-        // Enforce configuration constrainments
+        // Enforce configuration constrainments.
         require(_isValidTimestamp(params.expirationTimestamp));
         require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
         require(bytes(params.syntheticName).length != 0);
@@ -132,7 +131,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.liquidationLiveness = STRICT_LIQUIDATION_LIVENESS;
         require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress));
 
-        // Input from function call
+        // Input from function call.
         constructorParams.expirationTimestamp = params.expirationTimestamp;
         constructorParams.siphonDelay = params.siphonDelay;
         constructorParams.collateralAddress = params.collateralAddress;

@@ -58,12 +58,12 @@ contract("ExpiringMultiParty", function(accounts) {
     });
   });
 
-  it("Expiration timestamp must be one of the fifteen allowed month-start timestamps from April 2020 through June 2021", async function () {
+  it("Expiration timestamp must be one of the fifteen allowed month-start timestamps from April 2020 through June 2021", async function() {
     // Change only expiration timestamp.
     const validExpiration = await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(5);
     // Set to a valid expiry.
     constructorParams.expirationTimestamp = validExpiration.toString();
-    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator })
+    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
     // Set to an invalid expiry.
     constructorParams.expirationTimestamp = validExpiration.add(toBN("1")).toString();
     assert(
@@ -73,7 +73,7 @@ contract("ExpiringMultiParty", function(accounts) {
         })
       )
     );
-  })
+  });
 
   it("Cannot set dispute bond percentage below limit set by EMP creator", async function() {
     // Change only dispute bond %.
