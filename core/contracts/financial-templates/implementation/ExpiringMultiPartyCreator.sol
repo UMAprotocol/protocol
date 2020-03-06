@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
+import "../../common/implementation/AddressWhitelist.sol";
 import "./ExpiringMultiParty.sol";
 
 
@@ -28,9 +29,17 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         FixedPoint.Unsigned disputerDisputeRewardPct;
     }
 
-    constructor(bool _isTest, address _finderAddress) public ContractCreator(_finderAddress) Testable(_isTest) {}
+    AddressWhitelist public collateralTokenWhitelist;
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
+
+    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist)
+        public
+        ContractCreator(_finderAddress)
+        Testable(_isTest)
+    {
+        collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
+    }
 
     /**
      * @notice Creates an instance of expiring multi party and registers it within the registry.
@@ -59,6 +68,13 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         // Known from creator deployment.
         constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
+
+        // @dev: Technically there is nothing in the ExpiringMultiParty contract
+        // requiring the collateral token to be whitelisted. However, because "createExpiringMultiParty()"
+        // is supposed to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
+        // we can enforce whitelisting of collateral currencies here in practice.
+        require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress));
+        constructorParams.collateralAddress = params.collateralAddress;
 
         // Input from function call
         constructorParams.expirationTimestamp = params.expirationTimestamp;
