@@ -30,12 +30,35 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         FixedPoint.Unsigned disputerDisputeRewardPct;
     }
 
-    // @dev: These constraints can evolve over time and are initially constrained to conservative values
-    // in this first iteration of an EMP creator:
+    /**
+    * @notice DEPLOYMENT CONFIGURATION CONSTRAINTS
+    * @dev: These constraints can evolve over time and are initially constrained to conservative values
+    * in this first iteration of an EMP creator. Technically there is nothing in the ExpiringMultiParty contract
+    * requiring these constraints. However, because "createExpiringMultiParty()"
+    * is intended to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
+    * we can enforce deployment configurations here.
+    **/
+
     // - Whitelist allowed collateral currencies.
     AddressWhitelist public collateralTokenWhitelist;
-    // - Last expiration date: 2021-06-30T0:00:00.000Z.
-    uint public constant LATEST_EXPIRATION_TIMESTAMP = 1625011200;
+    // - Discretize expirations such that they must expire on the first of each month.
+    uint[15] public VALID_EXPIRATION_TIMESTAMPS = [
+        1585699200, // 2020-04-01T00:00:00.000Z
+        1588291200, // 2020-05-01T00:00:00.000Z
+        1590969600, // 2020-06-01T00:00:00.000Z
+        1593561600, // 2020-07-01T00:00:00.000Z
+        1596240000, // 2020-08-01T00:00:00.000Z
+        1598918400, // 2020-09-01T00:00:00.000Z
+        1601510400, // 2020-10-01T00:00:00.000Z
+        1604188800, // 2020-11-01T00:00:00.000Z
+        1606780800, // 2020-12-01T00:00:00.000Z
+        1609459200, // 2021-01-01T00:00:00.000Z
+        1612137600, // 2021-02-01T00:00:00.000Z
+        1614556800, // 2021-03-01T00:00:00.000Z
+        1617235200, // 2021-04-01T00:00:00.000Z
+        1619827200, // 2021-05-01T00:00:00.000Z
+        1622505600 // 2021-06-01T00:00:00.000Z
+    ];
     // - Time for pending withdrawal to be disputed: 60 minutes. Lower liveness increases sponsor usability. However, this parameter is a reflection of how long we expect it to take for
     // liquidators to identify that a sponsor is undercollateralized and acquire the tokens needed to liquidate them.
     // This is also a reflection of how long a malicious sponsor would need to maintain a lower-price manipulation to get their withdrawal
@@ -64,7 +87,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     /**
      * @notice Creates an instance of expiring multi party and registers it within the registry.
      * @dev caller is automatically registered as the first (and only) party member.
-     * @param params is a `ConstructorParams` object from ExpiringMultiParty
+     * @param params is a `ConstructorParams` object from ExpiringMultiParty.
      */
     function createExpiringMultiParty(Params memory params) public returns (address) {
         ExpiringMultiParty derivative = new ExpiringMultiParty(_convertParams(params));
@@ -79,6 +102,17 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         return address(derivative);
     }
 
+    //  Returns if timestamp is valid.
+    function _isValidTimestamp(uint timestamp) private view returns (bool) {
+        // Determine size of whitelist first
+        for (uint i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
+            if (VALID_EXPIRATION_TIMESTAMPS[i] == timestamp) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Converts createExpiringMultiParty params to ExpiringMultiParty constructor params.
     function _convertParams(Params memory params)
         private
@@ -90,11 +124,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.finderAddress = finderAddress;
 
         // Enforce configuration constrainments
-        // @dev: Technically there is nothing in the ExpiringMultiParty contract
-        // requiring these constraints. However, because "createExpiringMultiParty()"
-        // is intended to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
-        // we can enforce deployment configurations here.
-        require(params.expirationTimestamp <= LATEST_EXPIRATION_TIMESTAMP);
+        require(_isValidTimestamp(params.expirationTimestamp));
         require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
         require(bytes(params.syntheticName).length != 0);
         require(bytes(params.syntheticSymbol).length != 0);
