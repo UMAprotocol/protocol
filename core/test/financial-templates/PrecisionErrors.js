@@ -189,26 +189,26 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The withdraw actually cancels out the deposit, assuming no more fees have accrued.
     // Now, let's see how many deposits are needed to accrue certain amounts of drift.
-    let i = 0;
-    for(;;) {
-      if (drift.eq(toBN(1e9))) {
-        break;
-      } else {
-        i += 1;
-        await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
-        contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-        adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
-        adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)    
-        drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
-      }
-    }
-    console.group(`** Final statistics: **`)
-    console.log(`- Contract Collateral:`, contractCollateral.toString())
-    console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
-    console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
-    console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
-    console.log(`- It took ${i} "deposits" to accrue 1e18 amount of drift`);
-    console.groupEnd()
+    // let i = 0;
+    // for(;;) {
+    //   if (drift.eq(toBN(1e3))) {
+    //     break;
+    //   } else {
+    //     i += 1;
+    //     await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
+    //     contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
+    //     adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
+    //     adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)    
+    //     drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
+    //   }
+    // }
+    // console.group(`** Final statistics: **`)
+    // console.log(`- Contract Collateral:`, contractCollateral.toString())
+    // console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
+    // console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
+    // console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
+    // console.log(`- It took ${i} "deposits" to accrue 1e18 amount of drift`);
+    // console.groupEnd()
 
   });
 });
