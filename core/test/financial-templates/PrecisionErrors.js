@@ -163,6 +163,7 @@ contract("PricelessPositionManager", function(accounts) {
     // Snapshot collateral amounts post-fees
     let startingContractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
     let startingAdjustedContractCollateral = await pricelessPositionManager.totalPositionCollateral();
+    let startingStoreCollateral = await collateral.balanceOf(store.address)
 
     // To start, the adjusted collateral and actual collateral in contract should be equal
     assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString())
@@ -188,7 +189,7 @@ contract("PricelessPositionManager", function(accounts) {
     console.groupEnd()
 
     // More runs, check for compounded error.
-    let runs = 24;
+    let runs = 15;
     for (let i = 0; i < runs; i++) {
       await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
     }
@@ -200,5 +201,10 @@ contract("PricelessPositionManager", function(accounts) {
     console.log(`- Adjusted Collateral:`, adjustedCollateral.toString())
     console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
     console.groupEnd()  
+
+    // Make sure that store hasn't collected any fees during this test, so that we can be confident that deposits
+    // are the only source of drift.
+    let endingStoreCollateral = await collateral.balanceOf(store.address)
+    assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString())
   });
 });
