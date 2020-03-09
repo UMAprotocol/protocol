@@ -56,62 +56,73 @@ contract("PricelessPositionManager", function(accounts) {
       priceTrackingIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
   });
 
-// TODO:
-//   it("Precision loss due to basic fees", async function() {
-//     // Here, we choose a collateral amount that will produce rounding errors:
-//     // - Collateral = 3 wei (3e-18)
-//     // - 50% fees per second * 1 second * 3e-18 collateral = 1.5e-18 fees, however this gets floored by `Store.computeFee()` to 1 wei (1e-18) fees
-//     // - Fees paid as % of collateral = 1e-18 / 3e-18 = 0.33...33 repeating, which cannot be represented by FixedPoint
-//     // - This will get ceil'd up to 0.33...34
-//     // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower: (1-0.33..34) versus (1+0.33..33)
-//     // - Ultimately this adjusts the collateral available for redemption to be lower than anticipated
-//     const startCollateralAmount = 3;
-//     const startTokenAmount = 1;
+  it("Precision loss due to basic fees", async function() {
+    // Here, we choose a collateral amount that will produce rounding errors:
+    // - Collateral = 3000 wei.
+    // - 0.0005% fees per second * 1 second * 3000 wei collateral = 1.5 wei fees, however this gets floored by `Store.computeFee()` to 1 wei fees.
+    // - Fees paid as % of collateral = 1e-18 / 3000e-18 = 0.00033...33 repeating, which cannot be represented by FixedPoint.
+    // - This will get ceil'd up to 0.00033...34.
+    // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower: (1-0.33..34) versus (1-0.33..33)
+    // - Ultimately this decreases the available collateral returned by `FeePayer._getCollateral()`.
+    // - This produces drift between _getCollateral() and the actual collateral in the contract (`collateral.balanceOf(contract)`).
+    const startCollateralAmount = 3000;
+    const startTokenAmount = 1;
 
-//     // Create position.
-//     await collateral.approve(pricelessPositionManager.address, startCollateralAmount.toString(), { from: sponsor });
-//     await pricelessPositionManager.create({ rawValue: startCollateralAmount.toString() }, { rawValue: startTokenAmount.toString() }, { from: sponsor });
+    // Create position.
+    await collateral.approve(pricelessPositionManager.address, startCollateralAmount.toString(), { from: sponsor });
+    await pricelessPositionManager.create({ rawValue: startCollateralAmount.toString() }, { rawValue: startTokenAmount.toString() }, { from: sponsor });
 
-//     // Set fee rate per second.
-//     const feeRatePerSecond = 0.50;
-//     await store.setFixedOracleFeePerSecond({ rawValue: toWei(feeRatePerSecond.toString()) });
+    // Set fee rate per second.
+    const feeRatePerSecond = 0.0005;
+    await store.setFixedOracleFeePerSecond({ rawValue: toWei(feeRatePerSecond.toString()) });
 
-//     // Move time in the contract forward by 1 second to capture unit fee.
-//     const startTime = await pricelessPositionManager.getCurrentTime();
-//     await pricelessPositionManager.setCurrentTime(startTime.addn(1));
+    // Move time in the contract forward by 1 second to capture unit fee.
+    const startTime = await pricelessPositionManager.getCurrentTime();
+    await pricelessPositionManager.setCurrentTime(startTime.addn(1));
 
-//     // Calculate expected fees collected during this period.
-//     const expectedFeesCollectedThisPeriod = 1;
-//     const startingStoreBalance = await collateral.balanceOf(store.address)
-//     const expectedStoreBalance = (startingStoreBalance).add(toBN(expectedFeesCollectedThisPeriod.toString()));
+    // Calculate expected fees collected during this period.
+    let expectedFeesCollectedThisPeriod = 1;
+    const startingStoreBalance = await collateral.balanceOf(store.address)
 
-//     // Pay the fees, then check the collateral and the store balance.
-//     await pricelessPositionManager.payFees();
-//     const endingStoreBalance = await collateral.balanceOf(store.address)
-//     // Due to the precision error mentioned above, `getCollateral()` will return
-//     // slightly less than what we are expecting:
-//     // Without precision errors, we would expect there to be (3 wei collateral - 1 wei fee = 2 wei collateral) in the contract
-//     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-//     console.log(`Expected fees collected: `, expectedFeesCollectedThisPeriod.toString())
-//     console.log(`Actual fees collected:`, endingStoreBalance.sub(startingStoreBalance).toString())
-//     console.log(`Alleged contract collateral net of fees: `,collateralAmount.toString())
-//     console.log(`Actual contract collateral net of fees:`, (await collateral.balanceOf(pricelessPositionManager.address)).toString())
+    // Pay the fees, then check the collateral and the store balance.
+    await pricelessPositionManager.payFees();
+    let endingStoreBalance = await collateral.balanceOf(store.address)
+    // Due to the precision error mentioned above, `getCollateral()` will return
+    // slightly less than what we are expecting:
+    // Without precision errors, we would expect there to be (3 wei collateral - 1 wei fee = 2 wei collateral) in the contract
+    let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+    console.group(`** After 1 second: **`)
+    console.log(`- Expected fees collected: `, expectedFeesCollectedThisPeriod.toString())
+    console.log(`- Actual fees collected:`, endingStoreBalance.sub(startingStoreBalance).toString())
+    console.log(`- Sponsor's credited collateral returned by getCollateral(): `,collateralAmount.toString())
+    console.log(`- Collateral owned by contract:`, (await collateral.balanceOf(pricelessPositionManager.address)).toString())
+    console.groupEnd()
 
-//     // However, `getCollateral()` returns a value less than expected
-//     // assert(toBN(collateralAmount.rawValue).lt(toBN("2")));
-//     // // Store should still have received the correct fee
-//     // assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
-//     // // The contract itself has more collateral than `getCollateral()` returns (i.e. it has the expected amount of collateral absent any rounding errors)
-//     // assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "2");
+    // Run more iterations and check for compounded error.
+    let runs = 24;
+    for (let i = 1; i <= runs; i++) {
+      await pricelessPositionManager.setCurrentTime(startTime.addn(1+i));
+      await pricelessPositionManager.payFees();
+    }
 
-//     // // Set the store fees back to 0 to prevent it from affecting other tests.
-//     // await store.setFixedOracleFeePerSecond({ rawValue: "0" });
-//   });
+    // While contract has between 3000 and 2000 wei collateral, the expected fees collected per second should be floor'd to 1 wei.
+    expectedFeesCollectedThisPeriod += runs;
+    endingStoreBalance = await collateral.balanceOf(store.address);
+
+    // However, since we are no longer dividing by 3000 in an intermediate calculation, it is not obvious that more
+    // rounding errors will occur. Let's calculate the drift after 1000 runs
+    collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
+    console.group(`** After ${1+runs} seconds: **`)
+    console.log(`- Expected fees collected: `, expectedFeesCollectedThisPeriod.toString())
+    console.log(`- Actual fees collected:`, endingStoreBalance.sub(startingStoreBalance).toString())
+    console.log(`- Sponsor's credited collateral returned by getCollateral(): `,collateralAmount.toString())
+    console.log(`- Collateral owned by contract:`, (await collateral.balanceOf(pricelessPositionManager.address)).toString())
+    console.groupEnd()
+  });
 
   it("Precision loss due to deposits() and withdraws()", async function() {
     // Create two positions, one with a very low collateral ratio so that we can withdraw from our test position.
@@ -139,6 +150,7 @@ contract("PricelessPositionManager", function(accounts) {
     // First, let's set cumulativeMultiplier to 0.9 because 1/0.9 = 1.1111...repeating, which FixedPoint cannot represent.
     let feePerSecond = toWei("0.1");
     await store.setFixedOracleFeePerSecond({ rawValue: feePerSecond });
+
     // Move time in the contract forward by 1 second to capture unit fee.
     const startTime = await pricelessPositionManager.getCurrentTime();
     await pricelessPositionManager.setCurrentTime(startTime.addn(1));
@@ -148,67 +160,45 @@ contract("PricelessPositionManager", function(accounts) {
     let evilFeeMultiplier = await pricelessPositionManager.cumulativeFeeMultiplier()
     assert.equal(parseFloat(evilFeeMultiplier.toString())/1e18, 0.9)
 
+    // Snapshot collateral amounts post-fees
     let startingContractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-    let startingAdjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
-    let startingAdjustedOtherCollateralOther = await pricelessPositionManager.getCollateral(other)
+    let startingAdjustedContractCollateral = await pricelessPositionManager.totalPositionCollateral();
 
     // To start, the adjusted collateral and actual collateral in contract should be equal
-    assert.equal(startingContractCollateral.toString(), toBN(startingAdjustedSponsorCollateral.rawValue).add(toBN(startingAdjustedOtherCollateralOther.rawValue)).toString())
+    assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString())
+    console.group(`** Pre-Deposit: **`)
+    console.log(`- Contract Collateral:`, startingContractCollateral.toString())
+    console.log(`- Adjusted Collateral:`, startingAdjustedContractCollateral.toString())
+    console.groupEnd()
 
     // Track drift over time. This can be negative or positive.
     let drift = toBN(0);
     let contractCollateral;
-    let adjustedSponsorCollateral;
-    let adjustedOtherCollateral;
+    let adjustedCollateral;
 
     // Deposit collateral, which should credit user LESS collateral than they transfer
     await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
     contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-    adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
-    adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)
-    drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
-    console.group(`** Deposit: **`)
+    adjustedCollateral = await pricelessPositionManager.totalPositionCollateral()
+    drift = contractCollateral.sub(toBN(adjustedCollateral.rawValue))
+    console.group(`** After 1 Deposit: **`)
     console.log(`- Contract Collateral:`, contractCollateral.toString())
-    console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
-    console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
+    console.log(`- Adjusted Collateral:`, adjustedCollateral.toString())
     console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
     console.groupEnd()
 
-    // Withdraw collateral, which should send LESS collateral than user expects.
-    await pricelessPositionManager.withdraw({ rawValue: toWei("0.1")}, { from: sponsor })
+    // More runs, check for compounded error.
+    let runs = 24;
+    for (let i = 0; i < runs; i++) {
+      await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
+    }
     contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-    adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
-    adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)
-    drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
-    console.group(`** Withdraw: **`)
+    adjustedCollateral = await pricelessPositionManager.totalPositionCollateral()
+    drift = contractCollateral.sub(toBN(adjustedCollateral.rawValue))
+    console.group(`** After ${runs+1} Deposits: **`)
     console.log(`- Contract Collateral:`, contractCollateral.toString())
-    console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
-    console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
+    console.log(`- Adjusted Collateral:`, adjustedCollateral.toString())
     console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
-    console.groupEnd()
-
-    // The withdraw actually cancels out the deposit, assuming no more fees have accrued.
-    // Now, let's see how many deposits are needed to accrue certain amounts of drift.
-    // let i = 0;
-    // for(;;) {
-    //   if (drift.eq(toBN(1e3))) {
-    //     break;
-    //   } else {
-    //     i += 1;
-    //     await pricelessPositionManager.deposit({ rawValue: toWei("0.1")}, { from: sponsor })
-    //     contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-    //     adjustedSponsorCollateral = await pricelessPositionManager.getCollateral(sponsor)
-    //     adjustedOtherCollateral = await pricelessPositionManager.getCollateral(other)    
-    //     drift = drift.add(contractCollateral.sub(toBN(adjustedSponsorCollateral.rawValue).add(toBN(adjustedOtherCollateral.rawValue))))
-    //   }
-    // }
-    // console.group(`** Final statistics: **`)
-    // console.log(`- Contract Collateral:`, contractCollateral.toString())
-    // console.log(`- Adjusted Sponsor Collateral:`, adjustedSponsorCollateral.toString())
-    // console.log(`- Adjusted Other Collateral:`, adjustedOtherCollateral.toString())
-    // console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
-    // console.log(`- It took ${i} "deposits" to accrue 1e18 amount of drift`);
-    // console.groupEnd()
-
+    console.groupEnd()  
   });
 });
