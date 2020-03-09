@@ -186,6 +186,7 @@ contract Liquidatable is PricelessPositionManager {
             maxTokensToLiquidate,
             positionToLiquidate.tokensOutstanding
         );
+        // TODO: Limit liquidations from being too small or very close to 100% without being exactly 100%.
         FixedPoint.Unsigned memory ratio = tokensToLiquidate.div(positionToLiquidate.tokensOutstanding);
 
         // Starting values for the Position being liquidated.
