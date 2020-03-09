@@ -175,7 +175,6 @@ contract Liquidatable is PricelessPositionManager {
      * @param maxTokensToLiquidate max number of tokes to liquidate
      * @return uuid of the newly created liquidation
      */
-    // TODO: Perhaps pass this ID via an event rather than a return value
     function createLiquidation(
         address sponsor,
         FixedPoint.Unsigned calldata collateralPerToken,
@@ -200,11 +199,11 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
         // Check that there is some collateral in the contract.
-        require(startCollateral.isGreaterThan(FixedPoint.Unsigned(0)));
+        require(startCollateral.isGreaterThan(FixedPoint.Unsigned(0)), "hello");
         // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
         // what the liquidator was willing to liquidate at.
         // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-        require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
+        require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal), "bye");
 
         // The actual amount of collateral that gets moved to the liquidation.
         FixedPoint.Unsigned memory lockedCollateral = startCollateral.mul(ratio);

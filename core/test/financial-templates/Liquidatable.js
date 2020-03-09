@@ -1,7 +1,7 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { fromWei, toWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
@@ -180,7 +180,7 @@ contract("Liquidatable", function(accounts) {
     });
   });
 
-  describe("Creating a liquidation on a valid position", () => {
+  describe.only("Creating a liquidation on a valid position", () => {
     beforeEach(async () => {
       // Create position
       await liquidationContract.create(
@@ -215,7 +215,6 @@ contract("Liquidatable", function(accounts) {
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
-        // { rawValue: amountOfCollateralToLiquidate.toString() },
         { from: liquidator }
       );
       assert.equal(uuid.toString(), liquidationParams.uuid.toString());
@@ -281,6 +280,74 @@ contract("Liquidatable", function(accounts) {
         toBN(liquidationParams.uuid)
           .addn(1)
           .toString()
+      );
+    });
+    it.only("Partial liquidation", async () => {
+      // Request a withdrawal.
+      const withdrawalAmount = amountOfSynthetic.divn(5);
+      await liquidationContract.requestWithdrawal({ rawValue: withdrawalAmount.toString() }, { from: sponsor });
+
+      // Position starts out with `amountOfSynthetic` tokens.
+      const expectedLiquidatedTokens = amountOfSynthetic.divn(5);
+      const expectedRemainingTokens = amountOfSynthetic.sub(expectedLiquidatedTokens);
+
+      // Position starts out with `amountOfCollateral` collateral.
+      const expectedLockedCollateral = amountOfCollateral.divn(5);
+      const expectedRemainingCollateral = amountOfCollateral.sub(expectedLockedCollateral);
+      const expectedRemainingWithdrawalRequest = withdrawalAmount.sub(withdrawalAmount.divn(5));
+
+      // Create partial liquidation.
+      let uuid = await liquidationContract.createLiquidation.call(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        { from: liquidator }
+      );
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        { from: liquidator }
+      );
+      let position = await liquidationContract.positions(sponsor);
+      let liquidation = await liquidationContract.liquidations(sponsor, uuid);
+      assert.equal(expectedRemainingTokens.toString(), position.tokensOutstanding.toString());
+      assert.equal(expectedRemainingWithdrawalRequest.toString(), position.withdrawalRequestAmount.toString());
+      assert.equal(
+        expectedRemainingCollateral.toString(),
+        (await liquidationContract.getCollateral(sponsor)).toString()
+      );
+      assert.equal(expectedLiquidatedTokens.toString(), liquidation.tokensOutstanding.toString());
+      assert.equal(expectedLockedCollateral.toString(), liquidation.lockedCollateral.toString());
+
+      // A independent and identical liquidation can be created.
+      await liquidationContract.createLiquidation(
+        sponsor,
+        // Due to rounding problems, have to increase the pricePerToken.
+        { rawValue: pricePerToken.muln(2).toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        { from: liquidator }
+      );
+      uuid = await liquidationContract.createLiquidation.call(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        { from: liquidator }
+      );
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.divn(5).toString() },
+        { from: liquidator }
+      );
+      liquidation = await liquidationContract.liquidations(sponsor, uuid);
+      assert.equal(expectedLiquidatedTokens.toString(), liquidation.tokensOutstanding.toString());
+      // Due to rounding, compare that locked collateral is close to what expect.
+      assert.isTrue(
+        expectedLockedCollateral
+          .sub(toBN(liquidation.lockedCollateral.toString()))
+          .abs()
+          .lte(toBN(toWei("0.0001")))
       );
     });
   });
