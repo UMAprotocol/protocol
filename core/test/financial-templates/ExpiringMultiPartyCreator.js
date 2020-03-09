@@ -40,7 +40,6 @@ contract("ExpiringMultiParty", function(accounts) {
 
     constructorParams = {
       expirationTimestamp: "1234567890",
-      siphonDelay: "100000",
       collateralAddress: collateralToken.address,
       tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
