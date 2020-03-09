@@ -76,8 +76,8 @@ contract("scripts/Voting.js", function(accounts) {
     registry = await Registry.deployed();
 
     // Register "derivative" with Registry, so we can make price requests in this test.
-    await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, account1);
-    await registry.registerDerivative([], account1);
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
+    await registry.registerContract([], account1);
 
     // Give voter all of the tokens.
     const initialSupply = await votingToken.balanceOf(account1);

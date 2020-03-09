@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 
 /**
- * @title Interface that all derivative contracts expose to the admin.
+ * @title Interface that all financial contracts expose to the admin.
  */
 interface AdministrateeInterface {
     /**

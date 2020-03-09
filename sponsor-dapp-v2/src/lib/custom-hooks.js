@@ -41,7 +41,7 @@ export function useNumRegisteredContracts() {
     return drizzleState.accounts[0];
   });
 
-  const registeredContracts = useCacheCall("Registry", "getRegisteredDerivatives", account);
+  const registeredContracts = useCacheCall("Registry", "getRegisteredContracts", account);
 
   if (account && registeredContracts) {
     return registeredContracts.length;

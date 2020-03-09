@@ -6,7 +6,7 @@ import "../../common/implementation/FixedPoint.sol";
 
 
 /**
- * @title Interface that allows derivative contracts to pay oracle fees for their use of the system.
+ * @title Interface that allows financial contracts to pay oracle fees for their use of the system.
  */
 interface StoreInterface {
     /**

@@ -19,6 +19,6 @@ contract ContractCreator {
         FinderInterface finder = FinderInterface(finderAddress);
         bytes32 registryInterface = "Registry";
         Registry registry = Registry(finder.getImplementationAddress(registryInterface));
-        registry.registerDerivative(parties, contractToRegister);
+        registry.registerContract(parties, contractToRegister);
     }
 }

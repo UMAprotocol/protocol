@@ -12,7 +12,7 @@ const numPriceRequests = 2;
 const numVoters = 2;
 
 const getVoter = (accounts, id) => {
-  // Offset by 2, because owner == accounts[0] and registeredDerivative == accounts[1]
+  // Offset by 2, because owner == accounts[0] and registeredContract == accounts[1]
   return accounts[id + 2];
 };
 
@@ -25,13 +25,13 @@ async function run() {
 
   const accounts = await web3.eth.getAccounts();
   const owner = accounts[0];
-  const registeredDerivative = accounts[1];
+  const registeredContract = accounts[1];
 
   await voting.setInflationRate({ rawValue: web3.utils.toWei("0.01", "ether") });
-  await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, owner);
+  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
 
-  if (!(await registry.isDerivativeRegistered(registeredDerivative))) {
-    await registry.registerDerivative([], registeredDerivative, { from: owner });
+  if (!(await registry.isContractRegistered(registeredContract))) {
+    await registry.registerContract([], registeredContract, { from: owner });
   }
 
   const identifier = web3.utils.utf8ToHex("test-identifier");

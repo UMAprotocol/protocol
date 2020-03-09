@@ -60,7 +60,7 @@ const initializeSystem = async function(callback) {
     await marginCurrencyWhitelist.addToWhitelist(marginToken.address);
     console.log("Registered margin address:", marginToken.address);
 
-    await deployedRegistry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, tokenizedDerivativeCreator.address);
+    await deployedRegistry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, tokenizedDerivativeCreator.address);
 
     // NOTE: Pass arguments through the command line and assign them here
     // in order to customize the instantiated TokenizedDerivative.

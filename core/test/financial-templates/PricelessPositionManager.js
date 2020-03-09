@@ -12,7 +12,6 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
-const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("PricelessPositionManager", function(accounts) {
@@ -105,7 +104,6 @@ contract("PricelessPositionManager", function(accounts) {
       priceTrackingIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
-      TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -320,10 +318,14 @@ contract("PricelessPositionManager", function(accounts) {
       return ev.sponsor == sponsor && ev.collateralAmount == withdrawalAmount.toString();
     });
 
-    const sponsorFinalBalance = await collateral.balanceOf(sponsor);
+    // Check that withdrawal-request related parameters in pricelessPositionManager are reset
+    const positionData = await pricelessPositionManager.positions(sponsor);
+    assert.equal(positionData.requestPassTimestamp.toString(), 0);
+    assert.equal(positionData.withdrawalRequestAmount.toString(), 0);
 
     // Verify state of pricelessPositionManager post-withdrawal.
     await checkBalances(toBN(initialSponsorTokens), expectedSponsorCollateral);
+    const sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.toString(), expectedSponsorFinalBalance.toString());
 
     // Methods are now unlocked again.
@@ -568,6 +570,11 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Can't deposit without first creating a pricelessPositionManager.
     assert(await didContractThrow(pricelessPositionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
+
+    // Can't request a withdrawal without first creating a pricelessPositionManager.
+    assert(
+      await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("0") }, { from: sponsor }))
+    );
 
     // Even if the "sponsor" acquires a token somehow, they can't redeem.
     await tokenCurrency.transfer(sponsor, toWei("1"), { from: other });

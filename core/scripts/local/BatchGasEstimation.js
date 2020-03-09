@@ -26,14 +26,14 @@ async function run() {
 
   const accounts = await web3.eth.getAccounts();
   const owner = accounts[0];
-  const registeredDerivative = accounts[1];
+  const registeredContract = accounts[1];
   const voter = accounts[2];
 
   await voting.setInflationRate({ rawValue: web3.utils.toWei("0.01", "ether") });
-  await registry.addMember(RegistryRolesEnum.DERIVATIVE_CREATOR, owner);
+  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
 
-  if (!(await registry.isDerivativeRegistered(registeredDerivative))) {
-    await registry.registerDerivative([], registeredDerivative, { from: owner });
+  if (!(await registry.isContractRegistered(registeredContract))) {
+    await registry.registerContract([], registeredContract, { from: owner });
   }
 
   const identifier = web3.utils.utf8ToHex("test-identifier");
@@ -75,13 +75,13 @@ async function run() {
       try {
         switch (j) {
           case 0:
-            await cycleCommit(voting, identifier, time, requestNum, registeredDerivative, voter, results);
+            await cycleCommit(voting, identifier, time, requestNum, registeredContract, voter, results);
             break;
           case 1:
-            await cycleReveal(voting, identifier, time, requestNum, registeredDerivative, voter, results);
+            await cycleReveal(voting, identifier, time, requestNum, registeredContract, voter, results);
             break;
           case 2:
-            await cycleClaim(voting, identifier, time, requestNum, registeredDerivative, voter, results);
+            await cycleClaim(voting, identifier, time, requestNum, registeredContract, voter, results);
             break;
           default:
             break;
@@ -104,17 +104,17 @@ async function run() {
   console.table(results);
 }
 
-const generatePriceRequests = async (requestNum, voting, identifier, time, registeredDerivative) => {
+const generatePriceRequests = async (requestNum, voting, identifier, time, registeredContract) => {
   for (var i = 0; i < requestNum; i++) {
-    await voting.requestPrice(identifier, time + i, { from: registeredDerivative });
+    await voting.requestPrice(identifier, time + i, { from: registeredContract });
   }
 };
 
 // Test how many commits can be placed within one block. Initially request n number
 // of price feeds then batch commit on them.
-const cycleCommit = async (voting, identifier, time, requestNum, registeredDerivative, voter, results) => {
+const cycleCommit = async (voting, identifier, time, requestNum, registeredContract, voter, results) => {
   // Generate prices up front for the test
-  await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
+  await generatePriceRequests(requestNum, voting, identifier, time, registeredContract);
 
   // Advance to commit phase
   await moveToNextRound(voting);
@@ -147,8 +147,8 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredDeriv
 
 // Test how many reveals can be placed within one block. The process for requesting and committing
 // are done linearly (not batched) so that the test for revels is not impacted by this.
-const cycleReveal = async (voting, identifier, time, requestNum, registeredDerivative, voter, results) => {
-  await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
+const cycleReveal = async (voting, identifier, time, requestNum, registeredContract, voter, results) => {
+  await generatePriceRequests(requestNum, voting, identifier, time, registeredContract);
 
   await moveToNextRound(voting);
 
@@ -179,8 +179,8 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredDeriv
 
 // Test how many claims can be fit within one block. Generation of price requests, commits and
 // reveals are all done linearly.
-const cycleClaim = async (voting, identifier, time, requestNum, registeredDerivative, voter, results) => {
-  await generatePriceRequests(requestNum, voting, identifier, time, registeredDerivative);
+const cycleClaim = async (voting, identifier, time, requestNum, registeredContract, voter, results) => {
+  await generatePriceRequests(requestNum, voting, identifier, time, registeredContract);
 
   await moveToNextRound(voting);
 
