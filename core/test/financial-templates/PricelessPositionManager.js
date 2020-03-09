@@ -320,10 +320,14 @@ contract("PricelessPositionManager", function(accounts) {
       return ev.sponsor == sponsor && ev.collateralAmount == withdrawalAmount.toString();
     });
 
-    const sponsorFinalBalance = await collateral.balanceOf(sponsor);
+    // Check that withdrawal-request related parameters in pricelessPositionManager are reset
+    const positionData = await pricelessPositionManager.positions(sponsor);
+    assert.equal(positionData.requestPassTimestamp.toString(), 0);
+    assert.equal(positionData.withdrawalRequestAmount.toString(), 0);
 
     // Verify state of pricelessPositionManager post-withdrawal.
     await checkBalances(toBN(initialSponsorTokens), expectedSponsorCollateral);
+    const sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.toString(), expectedSponsorFinalBalance.toString());
 
     // Methods are now unlocked again.
