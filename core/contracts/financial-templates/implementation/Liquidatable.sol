@@ -182,13 +182,7 @@ contract Liquidatable is PricelessPositionManager {
     ) external fees() onlyPreExpiration() returns (uint uuid) {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
-        // tokensToLiquidate = minimum of maxTokensToLiquidate and how many tokens are outstanding.
-        FixedPoint.Unsigned memory tokensToLiquidate = FixedPoint.Unsigned(maxTokensToLiquidate.rawValue).isGreaterThan(
-            positionToLiquidate.tokensOutstanding
-        )
-            ? positionToLiquidate.tokensOutstanding
-            : FixedPoint.Unsigned(maxTokensToLiquidate.rawValue);
-        // The ratio of the Position is getting liquidated, will be used to scale everything else.
+        FixedPoint.Unsigned memory tokensToLiquidate = maxTokensToLiquidate.min(positionToLiquidate.tokensOutstanding);
         FixedPoint.Unsigned memory ratio = tokensToLiquidate.div(positionToLiquidate.tokensOutstanding);
 
         // Starting values for the Position being liquidated.

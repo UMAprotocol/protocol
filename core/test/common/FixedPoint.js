@@ -79,6 +79,13 @@ contract("FixedPoint", function(accounts) {
     assert.isTrue(await fixedPoint.wrapMixedIsLessThanOrEqualOpposite("1", web3.utils.toWei("2")));
   });
 
+  it("Minimum and Maximum", async function() {
+    const fixedPoint = await FixedPointTest.new();
+
+    assert.equal((await fixedPoint.wrapMin("5", "6")).toString(), "5");
+    assert.equal((await fixedPoint.wrapMax("5", "6")).toString(), "6");
+  });
+
   it("Addition", async function() {
     const fixedPoint = await FixedPointTest.new();
 

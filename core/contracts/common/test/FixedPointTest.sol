@@ -69,6 +69,14 @@ contract FixedPointTest {
         return a.isLessThanOrEqual(FixedPoint.Unsigned(b));
     }
 
+    function wrapMin(uint a, uint b) external pure returns (uint) {
+        return FixedPoint.Unsigned(a).min(FixedPoint.Unsigned(b)).rawValue;
+    }
+
+    function wrapMax(uint a, uint b) external pure returns (uint) {
+        return FixedPoint.Unsigned(a).max(FixedPoint.Unsigned(b)).rawValue;
+    }
+
     function wrapAdd(uint a, uint b) external pure returns (uint) {
         return FixedPoint.Unsigned(a).add(FixedPoint.Unsigned(b)).rawValue;
     }

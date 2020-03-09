@@ -92,6 +92,16 @@ library FixedPoint {
         return fromUnscaledUint(a).rawValue <= b.rawValue;
     }
 
+    /** @dev Returns the min of `a` and `b`. */
+    function min(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        return a.rawValue < b.rawValue ? a : b;
+    }
+
+    /** @dev Returns the max of `a` and `b`. */
+    function max(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        return a.rawValue > b.rawValue ? a : b;
+    }
+
     /** @dev Adds two `Unsigned`s, reverting on overflow. */
     function add(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return Unsigned(a.rawValue.add(b.rawValue));
