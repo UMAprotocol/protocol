@@ -111,12 +111,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         address _finderAddress,
         bytes32 _priceIdentifier,
         string memory _syntheticName,
-        string memory _syntheticSymbol,
-        address _tokenFactoryAddress
+        string memory _syntheticSymbol
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        TokenFactory tf = TokenFactory(_tokenFactoryAddress);
+        TokenFactory tf = _getTokenFactory();
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
 
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
@@ -461,6 +460,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _getOracle() internal view returns (OracleInterface) {
         bytes32 oracleInterface = "Oracle";
         return OracleInterface(finder.getImplementationAddress(oracleInterface));
+    }
+
+    function _getTokenFactory() internal view returns (TokenFactory) {
+        bytes32 tf = "TokenFactory";
+        return TokenFactory(finder.getImplementationAddress(tf));
     }
 
     function _getStoreAddress() internal view returns (address) {

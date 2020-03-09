@@ -8,7 +8,6 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
-const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -39,9 +38,8 @@ contract("ExpiringMultiParty", function(accounts) {
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     constructorParams = {
-      expirationTimestamp: "1234567890",
+      expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toString(),
       collateralAddress: collateralToken.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
@@ -57,10 +55,14 @@ contract("ExpiringMultiParty", function(accounts) {
     });
   });
 
-  it("Cannot set expiration timestamp above limit set by EMP creator", async function() {
+  it("Expiration timestamp must be one of the fifteen allowed month-start timestamps from April 2020 through June 2021", async function() {
     // Change only expiration timestamp.
-    const latestExpirationAllowed = await expiringMultiPartyCreator.LATEST_EXPIRATION_TIMESTAMP();
-    constructorParams.expirationTimestamp = latestExpirationAllowed.add(toBN("1")).toString();
+    const validExpiration = await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(5);
+    // Set to a valid expiry.
+    constructorParams.expirationTimestamp = validExpiration.toString();
+    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
+    // Set to an invalid expiry.
+    constructorParams.expirationTimestamp = validExpiration.add(toBN("1")).toString();
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
