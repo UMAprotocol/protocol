@@ -1,5 +1,7 @@
 const winston = require("winston");
 const Transport = require("winston-transport");
+const SlackHook = require("winston-slack-webhook-transport");
+require("dotenv").config();
 
 class StackTransport extends Transport {
   log(info, callback) {
@@ -33,11 +35,19 @@ const transports = [
   })
 ];
 
+if (process.env.SLACK_WEBHOOK) {
+  transports.push(
+    new SlackHook({
+      webhookUrl: process.env.SLACK_WEBHOOK
+    })
+  );
+}
+
 transports.push(
   new winston.transports.Console({
     level: "debug",
-    handleExceptions: true,
-    format: alignedWithColorsAndTime
+    handleExceptions: true
+    // format: alignedWithColorsAndTime
   })
 );
 
