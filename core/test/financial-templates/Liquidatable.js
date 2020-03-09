@@ -733,8 +733,8 @@ contract("Liquidatable", function(accounts) {
           truffleAssert.eventEmitted(withdrawalResult, "LiquidationWithdrawn", ev => {
             return (
               ev.caller == sponsor &&
-              ev.withdrawalAmount == expectedPayment &&
-              ev.liquidationStatus == STATES.DISPUTE_SUCCEEDED
+              ev.withdrawalAmount.toString() == expectedPayment.toString() &&
+              ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
             );
           });
         });
