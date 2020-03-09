@@ -198,12 +198,10 @@ contract Liquidatable is PricelessPositionManager {
         );
         FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
-        // Check that there is some collateral in the contract.
-        require(startCollateral.isGreaterThan(FixedPoint.Unsigned(0)), "hello");
         // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
         // what the liquidator was willing to liquidate at.
         // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-        require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal), "bye");
+        require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
 
         // The actual amount of collateral that gets moved to the liquidation.
         FixedPoint.Unsigned memory lockedCollateral = startCollateral.mul(ratio);
