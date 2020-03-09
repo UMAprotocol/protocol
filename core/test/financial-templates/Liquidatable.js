@@ -724,14 +724,18 @@ contract("Liquidatable", function(accounts) {
           const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
           assert.equal(deletedLiquidation.liquidator, zeroAddress);
         });
-        it("Event emmited", async () => {
+        it("Event emitted", async () => {
           const withdrawalResult = await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, {
             from: sponsor
           });
 
-          // TODO: flesh out this test with other params when they are added to the event in `Liquidatable.sol`
+          const expectedPayment = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
           truffleAssert.eventEmitted(withdrawalResult, "LiquidationWithdrawn", ev => {
-            return ev.caller == sponsor;
+            return (
+              ev.caller == sponsor &&
+              ev.withdrawalAmount == expectedPayment &&
+              ev.liquidationStatus == STATES.DISPUTE_SUCCEEDED
+            );
           });
         });
         it("Fees on liquidation", async () => {
