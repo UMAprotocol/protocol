@@ -1,7 +1,7 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
-const { fromWei, toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
@@ -180,7 +180,7 @@ contract("Liquidatable", function(accounts) {
     });
   });
 
-  describe.only("Creating a liquidation on a valid position", () => {
+  describe("Creating a liquidation on a valid position", () => {
     beforeEach(async () => {
       // Create position
       await liquidationContract.create(
@@ -282,7 +282,7 @@ contract("Liquidatable", function(accounts) {
           .toString()
       );
     });
-    it.only("Partial liquidation", async () => {
+    it("Partial liquidation", async () => {
       // Request a withdrawal.
       const withdrawalAmount = amountOfSynthetic.divn(5);
       await liquidationContract.requestWithdrawal({ rawValue: withdrawalAmount.toString() }, { from: sponsor });
