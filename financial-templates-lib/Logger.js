@@ -38,7 +38,26 @@ const transports = [
 if (process.env.SLACK_WEBHOOK) {
   transports.push(
     new SlackHook({
-      webhookUrl: process.env.SLACK_WEBHOOK
+      webhookUrl: process.env.SLACK_WEBHOOK,
+      formatter: info => {
+        return {
+          text: `${info.level}: ${info.message}`,
+          attachments: [
+            {
+              text: `${JSON.stringify(info)}`
+            }
+          ],
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "plain_text",
+                text: `${info.level}`
+              }
+            }
+          ]
+        };
+      }
     })
   );
 }
