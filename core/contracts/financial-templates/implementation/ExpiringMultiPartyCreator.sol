@@ -20,7 +20,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         uint expirationTimestamp;
         uint siphonDelay;
         address collateralAddress;
-        address tokenFactoryAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -106,7 +105,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.expirationTimestamp = params.expirationTimestamp;
         constructorParams.siphonDelay = params.siphonDelay;
         constructorParams.collateralAddress = params.collateralAddress;
-        constructorParams.tokenFactoryAddress = params.tokenFactoryAddress;
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.syntheticName = params.syntheticName;
         constructorParams.syntheticSymbol = params.syntheticSymbol;

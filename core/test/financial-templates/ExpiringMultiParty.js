@@ -6,7 +6,6 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 // Helper Contracts
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 
 contract("ExpiringMultiParty", function(accounts) {
@@ -20,7 +19,6 @@ contract("ExpiringMultiParty", function(accounts) {
       siphonDelay: "100000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",

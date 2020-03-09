@@ -14,7 +14,6 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("Liquidatable", function(accounts) {
@@ -24,7 +23,6 @@ contract("Liquidatable", function(accounts) {
   const liquidator = accounts[2];
   const disputer = accounts[3];
   const rando = accounts[4];
-  const mockGovernor = accounts[5];
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   // Amount of tokens to mint for test
@@ -121,7 +119,6 @@ contract("Liquidatable", function(accounts) {
       siphonDelay: siphonDelay,
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: priceTrackingIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
