@@ -11,7 +11,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
-import "./TokenFactory.sol";
+import "../../oracle/implementation/TokenFactory.sol";
 import "./FeePayer.sol";
 
 
