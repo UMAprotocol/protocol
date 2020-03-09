@@ -45,7 +45,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
-      siphonDelay: "100000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
