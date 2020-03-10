@@ -8,7 +8,6 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "./PricelessPositionManager.sol";
 
-
 /**
 @title Liquidatable
 @notice Adds logic to a position-managing contract that enables callers to
