@@ -42,7 +42,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
     // - Discretize expirations such that they must expire on the first of each month.
-    uint[15] public VALID_EXPIRATION_TIMESTAMPS = [
+    uint[17] public VALID_EXPIRATION_TIMESTAMPS = [
         1585699200, // 2020-04-01T00:00:00.000Z
         1588291200, // 2020-05-01T00:00:00.000Z
         1590969600, // 2020-06-01T00:00:00.000Z
@@ -57,7 +57,9 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         1614556800, // 2021-03-01T00:00:00.000Z
         1617235200, // 2021-04-01T00:00:00.000Z
         1619827200, // 2021-05-01T00:00:00.000Z
-        1622505600 // 2021-06-01T00:00:00.000Z
+        1622505600, // 2021-06-01T00:00:00.000Z
+        1625097600, // 2021-07-01T00:00:00.000Z
+        1597017600 // 2020-08-10T00:00:00.000Z (Note: This is a special expiration that marks the end of the Tokyo Olympics 2020)
     ];
     // - Time for pending withdrawal to be disputed: 60 minutes. Lower liveness increases sponsor usability. However, this parameter is a reflection of how long we expect it to take for
     // liquidators to identify that a sponsor is undercollateralized and acquire the tokens needed to liquidate them.

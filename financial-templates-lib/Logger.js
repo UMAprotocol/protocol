@@ -1,5 +1,7 @@
 const winston = require("winston");
 const Transport = require("winston-transport");
+const SlackHook = require("winston-slack-webhook-transport");
+require("dotenv").config();
 
 class StackTransport extends Transport {
   log(info, callback) {
@@ -33,11 +35,39 @@ const transports = [
   })
 ];
 
+if (process.env.SLACK_WEBHOOK) {
+  transports.push(
+    new SlackHook({
+      webhookUrl: process.env.SLACK_WEBHOOK,
+      formatter: info => {
+        return {
+          text: `${info.level}: ${info.message}`,
+          attachments: [
+            {
+              text: `${JSON.stringify(info)}`
+            }
+          ],
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "plain_text",
+                text: `${info.level}`
+              }
+            }
+          ]
+        };
+      }
+    })
+  );
+}
+
 transports.push(
   new winston.transports.Console({
     level: "debug",
-    handleExceptions: true,
-    format: alignedWithColorsAndTime
+    handleExceptions: true
+    // TODO improve the formatter as defined in issue #1041
+    // format: alignedWithColorsAndTime
   })
 );
 

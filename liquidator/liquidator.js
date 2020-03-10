@@ -18,7 +18,8 @@ class Liquidator {
   queryAndLiquidate = async priceFeed => {
     Logger.info({
       at: "liquidator",
-      message: "Checking for under collateralized positions"
+      message: "Checking for under collateralized positions",
+      inputPrice: priceFeed
     });
 
     // Update the client to get the latest position information.
