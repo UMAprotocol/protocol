@@ -414,6 +414,33 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return _getCollateral(rawTotalPositionCollateral);
     }
 
+    function _reduceSponsorPosition(
+        address sponsor,
+        FixedPoint.Unsigned memory tokensToRemove,
+        FixedPoint.Unsigned memory collateralToRemove,
+        FixedPoint.Unsigned memory withdrawalAmountToRemove
+    ) internal {
+        PositionData storage positionData = _getPositionData(sponsor);
+
+        // If the entire position is being removed, delete it instead.
+        if (
+            tokensToRemove.isEqual(positionData.tokensOutstanding) &&
+            _getCollateral(positionData.rawCollateral).isEqual(collateralToRemove)
+        ) {
+            _deleteSponsorPosition(sponsor);
+            return;
+        }
+
+        // Decrease the sponsor's collateral, tokens, and withdrawal request.
+        _removeCollateral(positionData.rawCollateral, collateralToRemove);
+        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
+        positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
+
+        // Decrease the contract's global counters of collateral and tokens.
+        _removeCollateral(rawTotalPositionCollateral, collateralToRemove);
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
+    }
+
     function _deleteSponsorPosition(address sponsor) internal {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
