@@ -1,6 +1,6 @@
 # Overview
 
-Synthetic tokens are collateral-backed tokens whose required backing collateral fluctuates depending on the tokens’ reference index. Synthetic tokens blend features of prediction markets, futures markets, and collateralized loans. 
+Synthetic tokens are collateral-backed tokens whose value fluctuates depending on the tokens’ reference index. Synthetic tokens blend features of prediction markets, futures markets, and collateralized loans. 
 
 Some examples of synthetic tokens include: 
 - synthetic real-world assets
