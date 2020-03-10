@@ -51,7 +51,7 @@ const emp = await ExpiringMultiParty.at(txResult.logs[0].args.expiringMultiParty
  
 ## How to conduct initial token creation
  
-1. Now that we’ve parameterized and deployed the synthetic token contract, we will create synthetic tokens from that contract. The first step is to create an instance of the Test token and mint 10,000 to the wallet. This is the token that will serve as collateral for the synthetic token. Give permission to the empCreator to spend the collateral tokens on our behalf. 
+1. Now that we’ve parameterized and deployed the synthetic token contract, we will create synthetic tokens from that contract. The first step is to create an instance of the Test token and mint 10,000 to the wallet. This is the token that will serve as collateral for the synthetic token. [Give permission](#how-to-conduct-initial-token-creation) to the empCreator to spend the collateral tokens on our behalf. 
  
 ```
 const collateralToken = await TestnetERC20.deployed()
