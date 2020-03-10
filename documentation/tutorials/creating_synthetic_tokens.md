@@ -1,3 +1,5 @@
+# Creating Synthetic Tokens from Truffle console
+
 This tutorial will show you how to create synthetic tokens from the command line using UMA’s synthetic token template. Before beginning this tutorial, please make sure your environment is set up correctly by following the instructions in the “Prerequisites” section. After completing this section, your environment will: 
 * Clone the UMA repo
 * Run Ganache on localhost port 9545
@@ -25,13 +27,12 @@ const empCreator = await ExpiringMultiPartyCreator.deployed()
 4. Define the parameters for the synthetic tokens you would like to create. For documentation surrounding the meanings of each parameter, please see this page. 
  
 ```
-const constructorParams = { expirationTimestamp: "123456789000", withdrawalLiveness: "1000", siphonDelay: "100000", collateralAddress: TestnetERC20.address, tokenFactoryAddress: TokenFactory.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", liquidationLiveness: "1000", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") } };
+const constructorParams = { expirationTimestamp: "123456789000", withdrawalLiveness: "1000", siphonDelay: "100000", collateralAddress: TestnetERC20.address, tokenFactoryAddress: TokenFactory.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", liquidationLiveness: "1000", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") } }
 ```
  
 5. Before the contract for the synthetic tokens can be created, the price identifier for the synthetic tokens must be registered with `IdentifierWhitelist`. This is important to ensure that the UMA DVM can resolve any disputes for these synthetic tokens. 
 ```
 const identifierWhitelist = await IdentifierWhitelist.deployed()
- 
 await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier)
 ```
  
@@ -45,7 +46,6 @@ await registry.addMember(1, empCreator.address)
 7. Now, we can create a new expiring multiparty synthetic token with the factory instance.
 ```
 const txResult = await empCreator.createExpiringMultiParty(constructorParams)
- 
 const emp = await ExpiringMultiParty.at(txResult.logs[0].args.expiringMultiPartyAddress)
 ```
  
