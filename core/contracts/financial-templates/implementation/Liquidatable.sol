@@ -124,7 +124,6 @@ contract Liquidatable is PricelessPositionManager {
         bool isTest;
         uint expirationTimestamp;
         uint withdrawalLiveness;
-        uint siphonDelay;
         address collateralAddress;
         address finderAddress;
         bytes32 priceFeedIdentifier;
@@ -144,7 +143,6 @@ contract Liquidatable is PricelessPositionManager {
             params.isTest,
             params.expirationTimestamp,
             params.withdrawalLiveness,
-            params.siphonDelay,
             params.collateralAddress,
             params.finderAddress,
             params.priceFeedIdentifier,

@@ -39,7 +39,6 @@ contract("ExpiringMultiParty", function(accounts) {
 
     constructorParams = {
       expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toString(),
-      siphonDelay: "100000",
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",

@@ -18,7 +18,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     struct Params {
         uint expirationTimestamp;
-        uint siphonDelay;
         address collateralAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
@@ -132,7 +131,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
         // Input from function call.
         constructorParams.expirationTimestamp = params.expirationTimestamp;
-        constructorParams.siphonDelay = params.siphonDelay;
         constructorParams.collateralAddress = params.collateralAddress;
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.syntheticName = params.syntheticName;

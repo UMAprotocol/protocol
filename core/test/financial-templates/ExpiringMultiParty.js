@@ -16,7 +16,6 @@ contract("ExpiringMultiParty", function(accounts) {
       isTest: true,
       expirationTimestamp: "1234567890",
       withdrawalLiveness: "1000",
-      siphonDelay: "100000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
