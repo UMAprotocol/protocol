@@ -8,6 +8,7 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
+const TokenFactory = artifacts.require("TokenFactory");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -53,6 +54,10 @@ contract("ExpiringMultiParty", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: contractCreator
     });
+  });
+
+  it("TokenFactory address should be set on construction", async function() {
+    assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), (await TokenFactory.deployed()).address);
   });
 
   it("Expiration timestamp must be one of the fifteen allowed month-start timestamps from April 2020 through June 2021", async function() {

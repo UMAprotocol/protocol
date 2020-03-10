@@ -39,6 +39,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     // - Whitelist allowed collateral currencies.
     AddressWhitelist public collateralTokenWhitelist;
+    // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
+    address public tokenFactoryAddress;
     // - Discretize expirations such that they must expire on the first of each month.
     uint[15] public VALID_EXPIRATION_TIMESTAMPS = [
         1585699200, // 2020-04-01T00:00:00.000Z
@@ -74,12 +76,13 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
-    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist)
+    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist, address _tokenFactoryAddress)
         public
         ContractCreator(_finderAddress)
         Testable(_isTest)
     {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
+        tokenFactoryAddress = _tokenFactoryAddress;
     }
 
     /**
@@ -119,6 +122,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         // Known from creator deployment.
         constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
+        constructorParams.tokenFactoryAddress = tokenFactoryAddress;
 
         // Enforce configuration constrainments.
         require(_isValidTimestamp(params.expirationTimestamp));
