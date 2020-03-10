@@ -29,7 +29,8 @@ This smart contract can be deployed using UMA’s synthetic token contract templ
 This tutorial will show you how to parameterize and deploy the smart contract for a new synthetic token from the command line.
 
 ## Creating Synthetic Tokens From an Existing Contract
-After the contract is deployed, anyone can interact with the contract to create synthetic tokens. These actors are called “token sponsors”, since they sponsor the creation of synthetic tokens. [Image]
+After the contract is deployed, anyone can interact with the contract to create synthetic tokens. These actors are called “token sponsors”, since they sponsor the creation of synthetic tokens. 
+![Diagram](./synthetic_token_creation.png)
 
 Token sponsors deposit collateral into the contract to collateralize synthetic tokens, which they can then withdraw and trade with others. The first token sponsor to create synthetic tokens is able to immediately withdraw synthetic tokens from the contract. Any following token sponsors who wish to create synthetic tokens can do so, but must collateralize their positions by at least as much as the system’s global collateralization ratio. This prevents token sponsor positions from being immediately liquidated. [“global collateralization ratio” is a link to a glossary of terms.]
 
