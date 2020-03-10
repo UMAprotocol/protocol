@@ -38,6 +38,7 @@ contract("IntergrationTest", function(accounts) {
 
   beforeEach(async () => {
     collateralToken = await Token.new({ from: contractCreator });
+    await collateralToken.addMember(1, contractCreator, { from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
@@ -85,7 +86,7 @@ contract("IntergrationTest", function(accounts) {
       await syntheticToken.increaseAllowance(expiringMultiPartyAddress, mintAndApprove, { from: account });
 
       // mint collateral for all accounts
-      await collateralToken.mint(account, mintAndApprove, { from: contractDeployer });
+      await collateralToken.mint(account, mintAndApprove, { from: contractCreator });
     }
   });
   it("Iterative sponsor, liquidation and withdrawal tests", async function() {
@@ -113,7 +114,7 @@ contract("IntergrationTest", function(accounts) {
 
     for (let i = 0; i < numIterations; i++) {
       let randomSponsor = sponsors[Math.floor(Math.random() * sponsors.length)];
-      await expiringMultiPartyCreator.create(
+      await expiringMultiParty.create(
         { rawValue: baseCollateralAmount },
         { rawValue: baseNumTokens },
         { from: randomSponsor }
