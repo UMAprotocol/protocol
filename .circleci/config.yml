@@ -61,10 +61,9 @@ jobs:
       - run:
           name: Untar Pandoc
           command: sudo tar xvzf pandoc-2.7.3-linux.tar.gz --strip-components 1 -C /usr/local
-      # TODO(#977) Solc 0.6 not supported, skipping this test
       - run:
           name: Generate Docs
-          command: ./ci/false_positive.sh
+          command: ./scripts/build_docs_site.sh
       - store_artifacts:
           path: build/site
   slither:

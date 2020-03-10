@@ -28,6 +28,5 @@ gsutil cp gs://staging-deployment-configuration/voter-app.yaml voter-dapp/app.ya
 ./scripts/deploy_dapp.sh voter-dapp voter-dapp/app.yaml -q
 
 # Deploy docs
-# TODO(#977) Solc 0.6 not supported, skipping this
-# ./scripts/deploy_docs.sh documentation/gae_app.yaml -q
+./scripts/deploy_docs.sh documentation/gae_app.yaml -q
 
