@@ -531,6 +531,14 @@ contract("Liquidatable", function(accounts) {
             ev.DisputeSucceeded
           );
         });
+
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+          return (
+            ev.caller == disputer &&
+            ev.withdrawalAmount.toString() == disputeBond.add(disputerDisputeReward).toString() &&
+            ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
+          );
+        });
       });
     });
 
