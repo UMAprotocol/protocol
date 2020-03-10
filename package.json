@@ -64,7 +64,7 @@
     "winston-transport": "^4.3.0"
   },
   "optionalDependencies": {
-    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork-no-inheritance"
+    "solidity-docgen": "github:UMAprotocol/solidity-docgen#fork-updated"
   },
   "bin": {
     "uma": "./core/scripts/cli/cli_entry.sh"
