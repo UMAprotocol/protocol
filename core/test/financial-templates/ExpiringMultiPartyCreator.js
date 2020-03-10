@@ -60,7 +60,7 @@ contract("ExpiringMultiParty", function(accounts) {
     assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), (await TokenFactory.deployed()).address);
   });
 
-  it("Expiration timestamp must be one of the allowed month-start timestamps", async function() {
+  it("Expiration timestamp must be one of the allowed timestamps", async function() {
     // Change only expiration timestamp.
     const validExpiration = await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(5);
     // Set to a valid expiry.
