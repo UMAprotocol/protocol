@@ -61,15 +61,15 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   it("Precision loss due to basic fees", async function() {
-    // Here, we choose a collateral amount that will produce rounding errors:
-    // - Collateral = 3000 wei.
-    // - 0.0005% fees per second * 1 second * 3000 wei collateral = 1.5 wei fees, however this gets floored by `Store.computeFee()` to 1 wei fees.
-    // - Fees paid as % of collateral = 1e-18 / 3000e-18 = 0.00033...33 repeating, which cannot be represented by FixedPoint.
-    // - This will get ceil'd up to 0.00033...34.
-    // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower: (1-0.33..34) versus (1-0.33..33)
+    // Here, we choose a collateral amount that will produce one rounding error immediately:
+    // - Collateral = 9,000,000 wei.
+    // - 0.0000004% fees per second * 1 second * 9,000,000 wei collateral = 3.5 wei fees, however this gets floored by `Store.computeFee()` to 3 wei fees.
+    // - Fees paid as % of collateral = 3e-18 / 9000000-18 = 0.0000003...33 repeating, which cannot be represented by FixedPoint.
+    // - The least significant digit will get ceil'd up from 3 to 4.
+    // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower.
     // - Ultimately this decreases the available collateral returned by `FeePayer._getCollateral()`.
     // - This produces drift between _getCollateral() and the actual collateral in the contract (`collateral.balanceOf(contract)`).
-    const startCollateralAmount = 3000;
+    const startCollateralAmount = 9000000;
     const startTokenAmount = 1;
 
     // Create position.
@@ -77,15 +77,15 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.create({ rawValue: startCollateralAmount.toString() }, { rawValue: startTokenAmount.toString() }, { from: sponsor });
 
     // Set fee rate per second.
-    const feeRatePerSecond = 0.0005;
-    await store.setFixedOracleFeePerSecond({ rawValue: toWei(feeRatePerSecond.toString()) });
+    const feeRatePerSecond = "0.0000004";
+    await store.setFixedOracleFeePerSecond({ rawValue: toWei(feeRatePerSecond) });
 
     // Move time in the contract forward by 1 second to capture unit fee.
     const startTime = await pricelessPositionManager.getCurrentTime();
     await pricelessPositionManager.setCurrentTime(startTime.addn(1));
 
     // Calculate expected fees collected during this period.
-    let expectedFeesCollectedThisPeriod = 1;
+    let expectedFeesCollectedThisPeriod = 3;
     const startingStoreBalance = await collateral.balanceOf(store.address)
 
     // Pay the fees, then check the collateral and the store balance.
@@ -93,7 +93,6 @@ contract("PricelessPositionManager", function(accounts) {
     let endingStoreBalance = await collateral.balanceOf(store.address)
     // Due to the precision error mentioned above, `getCollateral()` will return
     // slightly less than what we are expecting:
-    // Without precision errors, we would expect there to be (3 wei collateral - 1 wei fee = 2 wei collateral) in the contract
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     console.group(`** After 1 second: **`)
     console.log(`- Expected fees collected: `, expectedFeesCollectedThisPeriod.toString())
@@ -103,18 +102,19 @@ contract("PricelessPositionManager", function(accounts) {
     console.groupEnd()
 
     // Run more iterations and check for compounded error.
-    let runs = 24;
+    let runs = 25;
     for (let i = 1; i <= runs; i++) {
       await pricelessPositionManager.setCurrentTime(startTime.addn(1+i));
       await pricelessPositionManager.payFees();
     }
 
-    // While contract has between 3000 and 2000 wei collateral, the expected fees collected per second should be floor'd to 1 wei.
-    expectedFeesCollectedThisPeriod += runs;
+    // While getCollateral() returns >= 8,000,000 wei collateral, the expected fees collected per second should be floor'd to 4 wei.
+    // This will be the case for at least the next 1000 runs
+    expectedFeesCollectedThisPeriod += (runs * expectedFeesCollectedThisPeriod);
     endingStoreBalance = await collateral.balanceOf(store.address);
 
-    // However, since we are no longer dividing by 3000 in an intermediate calculation, it is not obvious that more
-    // rounding errors will occur. Let's calculate the drift after 1000 runs
+    // However, since we are no longer dividing by 9,000,000 in an intermediate calculation, it is not obvious that more
+    // rounding errors will occur. Let's see what the drift is after 1000 runs.
     collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     console.group(`** After ${1+runs} seconds: **`)
     console.log(`- Expected fees collected: `, expectedFeesCollectedThisPeriod.toString())
