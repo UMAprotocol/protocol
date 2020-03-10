@@ -39,7 +39,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned rawCollateral;
     }
 
-    // TODO: determine how we should adjust collateral when the user reads it out of the contract.
     // Maps sponsor addresses to their positions. Each sponsor can have only one position.
     mapping(address => PositionData) public positions;
 
@@ -60,10 +59,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     uint public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
-    // Time that has to elapse for the contract to be siphoned. This occurs if `siphonDelay`
-    // seconds have past after the expiration timestamp and there is remaining unclaimed
-    // collateral in the contract.
-    uint public siphonDelay;
 
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
@@ -92,7 +87,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     modifier onlyPostExpiration() {
         _onlyPostExpiration();
-        _onlyPreSiphon();
         _;
     }
 
@@ -112,7 +106,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         bool _isTest,
         uint _expirationTimestamp,
         uint _withdrawalLiveness,
-        uint _siphonDelay,
         address _collateralAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
@@ -122,7 +115,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
-        siphonDelay = _siphonDelay;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
 
@@ -137,7 +129,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev transfering positions can only occure if the recipiant does not already have a position.
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
-    function transfer(address newSponsorAddress) public onlyPreExpiration() onlyCollateralizedPosition(msg.sender) {
+    function transfer(address newSponsorAddress) public onlyPreExpiration() {
         require(_getCollateral(positions[newSponsorAddress].rawCollateral).isEqual(FixedPoint.fromUnscaledUint(0)));
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
@@ -154,7 +146,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param collateralAmount represents the total amount of tokens to be sent to the position for the sponsor.
      */
 
-    // TODO: should this check if the position is valid first?
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
@@ -173,12 +164,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * In that case, use `requestWithdrawawal`.
      * @param collateralAmount is the amount of collateral to withdraw
      */
-    function withdraw(FixedPoint.Unsigned memory collateralAmount)
-        public
-        onlyPreExpiration()
-        onlyCollateralizedPosition(msg.sender)
-        fees()
-    {
+    function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
@@ -199,11 +185,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      @param collateralAmount the amount of collateral requested to withdraw
      */
 
-    function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount)
-        public
-        onlyPreExpiration()
-        onlyCollateralizedPosition(msg.sender)
-    {
+    function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
@@ -222,22 +204,22 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
-    // TODO: is onlyCollateralizedPosition(msg.sender) correct here? if a position withdraws all their collateral will this still work?
-    // TODO: this currently does not decrement the sponsors oustanding withdrawalRequestAmount. should it?
     // TODO: Decide whether to fold this functionality into withdraw() method above.
-    function withdrawPassedRequest() external onlyPreExpiration() onlyCollateralizedPosition(msg.sender) fees() {
+    function withdrawPassedRequest() external onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp < getCurrentTime());
 
         _removeCollateral(positionData.rawCollateral, positionData.withdrawalRequestAmount);
         _removeCollateral(rawTotalPositionCollateral, positionData.withdrawalRequestAmount);
 
-        positionData.requestPassTimestamp = 0;
-
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, positionData.withdrawalRequestAmount.rawValue);
+
+        // Reset withdrawal request
+        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
+        positionData.requestPassTimestamp = 0;
     }
 
     /**
@@ -249,7 +231,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
-        // Set withdrawal counters to zero
+        // Reset withdrawal request
         positionData.requestPassTimestamp = 0;
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
     }
@@ -288,12 +270,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      */
-    function redeem(FixedPoint.Unsigned memory numTokens)
-        public
-        onlyPreExpiration()
-        onlyCollateralizedPosition(msg.sender)
-        fees()
-    {
+    function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
@@ -328,8 +305,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
      * expiration. In addition, pay the final fee at this time. Once this has been resolved token holders can withdraw.
      */
-    // TODO: what are the implications of calling this multiple times? can this not drain the contract by paying
-    // the final fee over and over again?
     function expire() external onlyPostExpiration() onlyOpenState() fees() {
         contractState = ContractState.ExpiredPriceRequested;
 
@@ -388,18 +363,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice If token holders or sponsors do not redeem their positions for underlying collateral within
-     * a pre-defined `siphonDelay`, all underlying collateral is sent to the Store. This delay
-     * should be set to be sufficiently long such that token holders have a reasonable
-     * period of time to withdrawal.
-     */
-    function siphonContractCollateral() external {
-        require(getCurrentTime() > expirationTimestamp.add(siphonDelay));
-        uint contractCollateralBalance = collateralCurrency.balanceOf(address(this));
-        collateralCurrency.safeTransfer(_getStoreAddress(), contractCollateralBalance);
-    }
-
-    /**
      * @notice Premature contract settlement under emergency circumstances.
      * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
@@ -422,7 +385,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
-    //TODO is this how we want this function to be implemented?
+    // TODO is this how we want this function to be implemented?
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function remargin() external override onlyPreExpiration() {
@@ -450,6 +413,33 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // prettier-ignore
     function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
+    }
+
+    function _reduceSponsorPosition(
+        address sponsor,
+        FixedPoint.Unsigned memory tokensToRemove,
+        FixedPoint.Unsigned memory collateralToRemove,
+        FixedPoint.Unsigned memory withdrawalAmountToRemove
+    ) internal {
+        PositionData storage positionData = _getPositionData(sponsor);
+
+        // If the entire position is being removed, delete it instead.
+        if (
+            tokensToRemove.isEqual(positionData.tokensOutstanding) &&
+            _getCollateral(positionData.rawCollateral).isEqual(collateralToRemove)
+        ) {
+            _deleteSponsorPosition(sponsor);
+            return;
+        }
+
+        // Decrease the sponsor's collateral, tokens, and withdrawal request.
+        _removeCollateral(positionData.rawCollateral, collateralToRemove);
+        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
+        positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
+
+        // Decrease the contract's global counters of collateral and tokens.
+        _removeCollateral(rawTotalPositionCollateral, collateralToRemove);
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
 
     function _deleteSponsorPosition(address sponsor) internal {
@@ -554,10 +544,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function _onlyPostExpiration() internal view {
         require(getCurrentTime() >= expirationTimestamp);
-    }
-
-    function _onlyPreSiphon() internal view {
-        require(getCurrentTime() < expirationTimestamp.add(siphonDelay));
     }
 
     function _onlyCollateralizedPosition(address sponsor) internal view {

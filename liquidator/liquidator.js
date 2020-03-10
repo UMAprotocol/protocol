@@ -1,5 +1,8 @@
 // When running this script it assumed that the account has enough tokens and allowance from the unlocked truffle
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
+
+const { Logger } = require("../financial-templates-lib/Logger");
+
 class Liquidator {
   constructor(expiringMultiPartyClient, account) {
     this.account = account;
@@ -13,25 +16,47 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFeed => {
-    console.log("Checking for under collateralized positions at the price", priceFeed);
-    
+    Logger.info({
+      at: "liquidator",
+      message: "Checking for under collateralized positions",
+      inputPrice: priceFeed
+    });
+
     // Update the client to get the latest position information.
     await this.empClient._update();
 
     // Get the latest undercollateralized positions from the client.
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
-    console.log("Undercollateralized positions:", underCollateralizedPositions);
-    
+
+    if (underCollateralizedPositions.length > 0) {
+      Logger.info({
+        at: "liquidator",
+        message: "undercollateralized positions detected!",
+        number: underCollateralizedPositions.length,
+        underCollateralizedPositions: underCollateralizedPositions
+      });
+    } else {
+      Logger.info({
+        at: "liquidator",
+        message: "No undercollateralized position"
+      });
+    }
+
     let liquidationPromises = []; // store all promises to resolve in parallel later on.
     for (const position of underCollateralizedPositions) {
-      console.log("Liquidating sponsor", position.sponsor);
+      // TODO: add additional information about this liquidation event to the log.
+      Logger.info({
+        at: "liquidator",
+        message: "liquidating sponsor",
+        address: position.sponsor
+      });
+
       // Create the liquidation transaction
 
       // TODO calculate the amountToLiquidate as a function of the total collateral within the position
       // and the current price of the collateral. This will require knowing how much the collateral and the
       // synthetic are worth.
 
-      console.log("Pushing");
       liquidationPromises.push(
         this.empContract.methods
           .createLiquidation(position.sponsor, {
@@ -42,7 +67,7 @@ class Liquidator {
     }
     // Resolve all promises in parallel.
     let promiseResponse = await Promise.all(liquidationPromises);
-    
+
     for (const response of promiseResponse) {
       const logResult = {
         tx: response.transactionHash,
@@ -53,7 +78,11 @@ class Liquidator {
         lockedCollateral: response.events.LiquidationCreated.returnValues.lockedCollateral,
         liquidatedCollateral: response.events.LiquidationCreated.returnValues.liquidatedCollateral
       };
-      console.log(logResult);
+      Logger.info({
+        at: "liquidator",
+        message: "liquidation tx result",
+        liquidationResult: logResult
+      });
     }
   };
 }

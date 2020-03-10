@@ -1,6 +1,7 @@
 const Finder = artifacts.require("Finder");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const TokenFactory = artifacts.require("TokenFactory");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
@@ -13,6 +14,7 @@ module.exports = async function(deployer, network, accounts) {
   });
 
   const finder = await Finder.deployed();
+  const tokenFactory = await TokenFactory.deployed();
 
   await deploy(
     deployer,
@@ -21,6 +23,7 @@ module.exports = async function(deployer, network, accounts) {
     controllableTiming,
     finder.address,
     collateralCurrencyWhitelist.address,
+    tokenFactory.address,
     { from: keys.deployer }
   );
 };

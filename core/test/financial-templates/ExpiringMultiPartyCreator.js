@@ -39,10 +39,8 @@ contract("ExpiringMultiParty", function(accounts) {
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     constructorParams = {
-      expirationTimestamp: "1234567890",
-      siphonDelay: "100000",
+      expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toString(),
       collateralAddress: collateralToken.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
@@ -58,10 +56,18 @@ contract("ExpiringMultiParty", function(accounts) {
     });
   });
 
-  it("Cannot set expiration timestamp above limit set by EMP creator", async function() {
+  it("TokenFactory address should be set on construction", async function() {
+    assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), (await TokenFactory.deployed()).address);
+  });
+
+  it("Expiration timestamp must be one of the allowed timestamps", async function() {
     // Change only expiration timestamp.
-    const latestExpirationAllowed = await expiringMultiPartyCreator.LATEST_EXPIRATION_TIMESTAMP();
-    constructorParams.expirationTimestamp = latestExpirationAllowed.add(toBN("1")).toString();
+    const validExpiration = await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(5);
+    // Set to a valid expiry.
+    constructorParams.expirationTimestamp = validExpiration.toString();
+    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
+    // Set to an invalid expiry.
+    constructorParams.expirationTimestamp = validExpiration.add(toBN("1")).toString();
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {

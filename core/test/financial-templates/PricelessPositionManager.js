@@ -38,7 +38,6 @@ contract("PricelessPositionManager", function(accounts) {
   const syntheticSymbol = "UMATEST";
   const withdrawalLiveness = 1000;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-  const siphonDelay = 100000;
   const priceTrackingIdentifier = web3.utils.utf8ToHex("UMATEST");
 
   // Contract state
@@ -99,7 +98,6 @@ contract("PricelessPositionManager", function(accounts) {
       true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
-      siphonDelay, // __siphonDelay
       collateral.address, // _collateralAddress
       Finder.address, // _finderAddress
       priceTrackingIdentifier, // _priceFeedIdentifier
@@ -320,10 +318,14 @@ contract("PricelessPositionManager", function(accounts) {
       return ev.sponsor == sponsor && ev.collateralAmount == withdrawalAmount.toString();
     });
 
-    const sponsorFinalBalance = await collateral.balanceOf(sponsor);
+    // Check that withdrawal-request related parameters in pricelessPositionManager are reset
+    const positionData = await pricelessPositionManager.positions(sponsor);
+    assert.equal(positionData.requestPassTimestamp.toString(), 0);
+    assert.equal(positionData.withdrawalRequestAmount.toString(), 0);
 
     // Verify state of pricelessPositionManager post-withdrawal.
     await checkBalances(toBN(initialSponsorTokens), expectedSponsorCollateral);
+    const sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.toString(), expectedSponsorFinalBalance.toString());
 
     // Methods are now unlocked again.
@@ -568,6 +570,11 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Can't deposit without first creating a pricelessPositionManager.
     assert(await didContractThrow(pricelessPositionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
+
+    // Can't request a withdrawal without first creating a pricelessPositionManager.
+    assert(
+      await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("0") }, { from: sponsor }))
+    );
 
     // Even if the "sponsor" acquires a token somehow, they can't redeem.
     await tokenCurrency.transfer(sponsor, toWei("1"), { from: other });
@@ -984,70 +991,6 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.settleExpired({ from: other });
     collateralPaid = (await collateral.balanceOf(other)).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
-  });
-
-  it("Post expiration siphon", async function() {
-    // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
-    // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
-    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
-    const numTokens = toWei("100");
-    const amountCollateral = toWei("150");
-    await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
-
-    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
-    const tokenHolderTokens = toWei("50");
-    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
-      from: sponsor
-    });
-
-    // Siphon should revert if before the siphon delay.
-    assert(await didContractThrow(pricelessPositionManager.siphonContractCollateral({ from: other })));
-
-    // Advance time until after expiration. Token holders and sponsors should now be able to to settle.
-    const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
-
-    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
-    await pricelessPositionManager.expire({ from: other });
-
-    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price.
-    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), toWei("1.2"));
-
-    // At this point, as it is post expiry,  token sponsor and token holder should be able to redeem their tokens.
-    // Let the token sponsor withdraw their expected collateral however the token holder never redeems their tokens.
-    await tokenCurrency.approve(pricelessPositionManager.address, amountCollateral, {
-      from: sponsor
-    });
-    await pricelessPositionManager.settleExpired({ from: sponsor });
-
-    // Siphon should revert if after the expired, but before the siphon delay.
-    assert(await didContractThrow(pricelessPositionManager.siphonContractCollateral({ from: other })));
-
-    // Advance time to after the siphon delay. Siphon should now work.
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + siphonDelay + 1);
-
-    // The pricelessPositionManager should have the original collateral (150) - the amount withdrawn by the sponsor.
-    // The net of this is that the pricelessPositionManager should have exactly the value unclaimed tokens from the token holder
-    // denominated in collateral. The tokenHolder has 50 unclaimed tokens, valued at 1.2 Dai per token should yield: 50 * 1.2 = 60
-    const ppmCollateralBefore = await collateral.balanceOf(pricelessPositionManager.address);
-    assert.equal(ppmCollateralBefore.toString(), toWei("60"));
-
-    // Grab the store balance from before. This is non-zero as fees have been accrued in previous tests.
-    const storeCollateralBefore = await collateral.balanceOf(store.address);
-
-    // Execute the siphon action. Anyone can call this
-    await pricelessPositionManager.siphonContractCollateral({ from: other });
-
-    // After the siphon is done the pricelessPositionManager should have 0 collateral left in it.
-    const ppmCollateralAfter = await collateral.balanceOf(pricelessPositionManager.address);
-    assert.equal(ppmCollateralAfter.toString(), 0);
-
-    // The store should gain all of the pricelessPositionManager's collateral that was present before the siphon
-    const storeCollateralAfter = await collateral.balanceOf(store.address);
-    assert.equal(storeCollateralAfter.sub(storeCollateralBefore).toString(), ppmCollateralBefore.toString());
-
-    // If the token holder tries to withdraw now they cant as it is post siphon.
-    assert(await didContractThrow(pricelessPositionManager.settleExpired({ from: tokenHolder })));
   });
 
   it("Emergency shutdown: lifecycle", async function() {

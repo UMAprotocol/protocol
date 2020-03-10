@@ -9,7 +9,7 @@ import "./ExpiringMultiParty.sol";
 
 
 /**
-@title Expiring Multi Party Contract creator
+@title Expiring Multi Party Contract creator.
 @notice Factory contract to create and register new instances of expiring multiparty contracts. Responsible for
 constraining the parameters used to construct a new EMP.
 */
@@ -18,9 +18,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     struct Params {
         uint expirationTimestamp;
-        uint siphonDelay;
         address collateralAddress;
-        address tokenFactoryAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -30,12 +28,39 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         FixedPoint.Unsigned disputerDisputeRewardPct;
     }
 
-    // @dev: These constraints can evolve over time and are initially constrained to conservative values
-    // in this first iteration of an EMP creator:
+    /**
+     * @notice DEPLOYMENT CONFIGURATION CONSTRAINTS.
+     * @dev: These constraints can evolve over time and are initially constrained to conservative values
+     * in this first iteration of an EMP creator. Technically there is nothing in the ExpiringMultiParty contract
+     * requiring these constraints. However, because "createExpiringMultiParty()"
+     * is intended to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
+     * we can enforce deployment configurations here.
+     **/
+
     // - Whitelist allowed collateral currencies.
     AddressWhitelist public collateralTokenWhitelist;
-    // - Last expiration date: 2021-06-30T0:00:00.000Z.
-    uint public constant LATEST_EXPIRATION_TIMESTAMP = 1625011200;
+    // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
+    address public tokenFactoryAddress;
+    // - Discretize expirations such that they must expire on the first of each month.
+    uint[17] public VALID_EXPIRATION_TIMESTAMPS = [
+        1585699200, // 2020-04-01T00:00:00.000Z
+        1588291200, // 2020-05-01T00:00:00.000Z
+        1590969600, // 2020-06-01T00:00:00.000Z
+        1593561600, // 2020-07-01T00:00:00.000Z
+        1596240000, // 2020-08-01T00:00:00.000Z
+        1598918400, // 2020-09-01T00:00:00.000Z
+        1601510400, // 2020-10-01T00:00:00.000Z
+        1604188800, // 2020-11-01T00:00:00.000Z
+        1606780800, // 2020-12-01T00:00:00.000Z
+        1609459200, // 2021-01-01T00:00:00.000Z
+        1612137600, // 2021-02-01T00:00:00.000Z
+        1614556800, // 2021-03-01T00:00:00.000Z
+        1617235200, // 2021-04-01T00:00:00.000Z
+        1619827200, // 2021-05-01T00:00:00.000Z
+        1622505600, // 2021-06-01T00:00:00.000Z
+        1625097600, // 2021-07-01T00:00:00.000Z
+        1597017600 // 2020-08-10T00:00:00.000Z (Note: This is a special expiration that marks the end of the Tokyo Olympics 2020)
+    ];
     // - Time for pending withdrawal to be disputed: 60 minutes. Lower liveness increases sponsor usability. However, this parameter is a reflection of how long we expect it to take for
     // liquidators to identify that a sponsor is undercollateralized and acquire the tokens needed to liquidate them.
     // This is also a reflection of how long a malicious sponsor would need to maintain a lower-price manipulation to get their withdrawal
@@ -53,18 +78,19 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
-    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist)
+    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist, address _tokenFactoryAddress)
         public
         ContractCreator(_finderAddress)
         Testable(_isTest)
     {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
+        tokenFactoryAddress = _tokenFactoryAddress;
     }
 
     /**
      * @notice Creates an instance of expiring multi party and registers it within the registry.
      * @dev caller is automatically registered as the first (and only) party member.
-     * @param params is a `ConstructorParams` object from ExpiringMultiParty
+     * @param params is a `ConstructorParams` object from ExpiringMultiParty.
      */
     function createExpiringMultiParty(Params memory params) public returns (address) {
         ExpiringMultiParty derivative = new ExpiringMultiParty(_convertParams(params));
@@ -79,6 +105,16 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         return address(derivative);
     }
 
+    //  Returns if expiration timestamp is on hardcoded list.
+    function _isValidTimestamp(uint timestamp) private view returns (bool) {
+        for (uint i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
+            if (VALID_EXPIRATION_TIMESTAMPS[i] == timestamp) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Converts createExpiringMultiParty params to ExpiringMultiParty constructor params.
     function _convertParams(Params memory params)
         private
@@ -88,13 +124,10 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         // Known from creator deployment.
         constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
+        constructorParams.tokenFactoryAddress = tokenFactoryAddress;
 
-        // Enforce configuration constrainments
-        // @dev: Technically there is nothing in the ExpiringMultiParty contract
-        // requiring these constraints. However, because "createExpiringMultiParty()"
-        // is intended to be the only way to create valid financial contracts that are **registered** with the DVM (via "_registerContract()"),
-        // we can enforce deployment configurations here.
-        require(params.expirationTimestamp <= LATEST_EXPIRATION_TIMESTAMP);
+        // Enforce configuration constrainments.
+        require(_isValidTimestamp(params.expirationTimestamp));
         require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
         require(bytes(params.syntheticName).length != 0);
         require(bytes(params.syntheticSymbol).length != 0);
@@ -102,11 +135,9 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.liquidationLiveness = STRICT_LIQUIDATION_LIVENESS;
         require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress));
 
-        // Input from function call
+        // Input from function call.
         constructorParams.expirationTimestamp = params.expirationTimestamp;
-        constructorParams.siphonDelay = params.siphonDelay;
         constructorParams.collateralAddress = params.collateralAddress;
-        constructorParams.tokenFactoryAddress = params.tokenFactoryAddress;
         constructorParams.priceFeedIdentifier = params.priceFeedIdentifier;
         constructorParams.syntheticName = params.syntheticName;
         constructorParams.syntheticSymbol = params.syntheticSymbol;
