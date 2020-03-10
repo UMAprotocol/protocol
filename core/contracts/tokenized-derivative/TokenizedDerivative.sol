@@ -4,11 +4,11 @@ pragma experimental ABIEncoderV2;
 
 import "../common/interfaces/ExpandedIERC20.sol";
 import "../common/implementation/FixedPoint.sol";
+import "../common/interfaces/FinderInterface.sol";
 import "../oracle/interfaces/AdministrateeInterface.sol";
 import "../oracle/interfaces/OracleInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../oracle/interfaces/FinderInterface.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 

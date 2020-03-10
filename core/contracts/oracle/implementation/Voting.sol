@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
-import "../interfaces/FinderInterface.sol";
+import "../../common/interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";

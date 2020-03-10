@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 
-import "../interfaces/FinderInterface.sol";
-import "./Registry.sol";
+import "../../common/interfaces/FinderInterface.sol";
+import "../interfaces/RegistryInterface.sol";
 
 
 // TODO(ptare): Make this (and all contracts) Withdrawable.
@@ -18,7 +18,7 @@ contract ContractCreator {
     function _registerContract(address[] memory parties, address contractToRegister) internal {
         FinderInterface finder = FinderInterface(finderAddress);
         bytes32 registryInterface = "Registry";
-        Registry registry = Registry(finder.getImplementationAddress(registryInterface));
+        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(registryInterface));
         registry.registerContract(parties, contractToRegister);
     }
 }

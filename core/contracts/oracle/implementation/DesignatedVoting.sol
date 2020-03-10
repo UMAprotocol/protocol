@@ -4,8 +4,8 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
+import "../../common/interfaces/FinderInterface.sol";
 import "../interfaces/VotingInterface.sol";
-import "../interfaces/FinderInterface.sol";
 
 
 /**
