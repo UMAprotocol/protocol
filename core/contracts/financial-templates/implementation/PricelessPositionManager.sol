@@ -255,7 +255,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
         _addCollateral(positionData.rawCollateral, collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
-        require(_checkCollateralizationRatio(positionData));
+        // require(_checkCollateralizationRatio(positionData));
+        require(_checkCollateralizationRatio2(collateralAmount, numTokens));
 
         _addCollateral(rawTotalPositionCollateral, collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
@@ -512,7 +513,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return !global.isGreaterThan(thisPos);
     }
 
-    function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned storage numTokens)
+    function _checkCollateralizationRatio2(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
+    private view returns (bool) {
+        FixedPoint.Unsigned memory global = _getCollateralizationRatio(
+            _getCollateral(rawTotalPositionCollateral),
+            totalTokensOutstanding
+        );
+        FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(
+            collateral, numTokens
+        );
+        return !global.isGreaterThan(thisChange);
+    }
+
+    function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
         private
         view
         returns (FixedPoint.Unsigned memory ratio)
