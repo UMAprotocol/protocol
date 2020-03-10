@@ -532,10 +532,11 @@ contract("Liquidatable", function(accounts) {
           );
         });
 
+        const expectedPayout = disputeBond.add(disputerDisputeReward)
         truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
           return (
             ev.caller == disputer &&
-            ev.withdrawalAmount.toString() == disputeBond.add(disputerDisputeReward).toString() &&
+            ev.withdrawalAmount.toString() == expectedPayout.toString() &&
             ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
           );
         });
