@@ -93,7 +93,11 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
      */
     // 1) Create position.
     await collateral.approve(pricelessPositionManager.address, startCollateralAmount.toString(), { from: sponsor });
-    await pricelessPositionManager.create({ rawValue: startCollateralAmount.toString() }, { rawValue: startTokenAmount.toString() }, { from: sponsor });
+    await pricelessPositionManager.create(
+      { rawValue: startCollateralAmount.toString() },
+      { rawValue: startTokenAmount.toString() },
+      { from: sponsor }
+    );
     // 2) Set fee rate per second.
     await store.setFixedOracleFeePerSecond({ rawValue: toWei(feeRatePerSecond) });
     // 3) Move time in the contract forward by 1 second to capture unit fee.
@@ -103,40 +107,40 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     /**
      * @notice TEST INVARIANTS
      */
-    const startingStoreBalance = await collateral.balanceOf(store.address)
+    const startingStoreBalance = await collateral.balanceOf(store.address);
     adjustedCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-    actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address)
+    actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address);
 
     // Test 1) The adjusted and actual collateral amount is the same to start, pre-fees.
-    assert.equal(adjustedCollateralAmount.toString(), actualCollateralAmount.toString())
-    console.group(`** Pre-Fees: **`)
-    console.log(`- Store Collateral:`, startingStoreBalance.toString())
-    console.log(`- Adjusted Collateral (returned by contract.getCollateral()):`, adjustedCollateralAmount.toString())
-    console.log(`- Actual Collateral (returned by token.balanceOf()):`, actualCollateralAmount.toString())
-    console.groupEnd()
+    assert.equal(adjustedCollateralAmount.toString(), actualCollateralAmount.toString());
+    console.group("** Pre-Fees: **");
+    console.log("- Store Collateral:", startingStoreBalance.toString());
+    console.log("- Adjusted Collateral (returned by contract.getCollateral()):", adjustedCollateralAmount.toString());
+    console.log("- Actual Collateral (returned by token.balanceOf()):", actualCollateralAmount.toString());
+    console.groupEnd();
 
     /**
      * @notice RUN THE TEST ONCE AND PRODUCE KNOWN DRIFT
      */
     await pricelessPositionManager.payFees();
-    endingStoreBalance = await collateral.balanceOf(store.address)
-    actualFeesCollected = endingStoreBalance.sub(startingStoreBalance).toString()
+    endingStoreBalance = await collateral.balanceOf(store.address);
+    actualFeesCollected = endingStoreBalance.sub(startingStoreBalance).toString();
     adjustedCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
-    actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address)
-    drift = actualCollateralAmount.sub(toBN(adjustedCollateralAmount.rawValue))
+    actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address);
+    drift = actualCollateralAmount.sub(toBN(adjustedCollateralAmount.rawValue));
 
     // Test 1) The correct fees are paid are regardless of precision loss.
-    assert.equal(expectedFeesCollectedPerPeriod.toString(), actualFeesCollected.toString())
+    assert.equal(expectedFeesCollectedPerPeriod.toString(), actualFeesCollected.toString());
 
     // Test 2) Due to the precision error mentioned above, `getCollateral()` should return
     // slightly less than what we are expecting.
     assert(drift.gt(toBN(0)));
-    console.group(`** After 1 second: **`)
-    console.log(`- Fees collected: `, actualFeesCollected.toString())
-    console.log(`- Sponsor's credited collateral returned by getCollateral(): `,adjustedCollateralAmount.toString())
-    console.log(`- Collateral owned by contract:`, actualCollateralAmount.toString())
-    console.log(`- Drift:`, parseFloat(drift.toString())/1e18)
-    console.groupEnd()
+    console.group("** After 1 second: **");
+    console.log("- Fees collected: ", actualFeesCollected.toString());
+    console.log("- Sponsor's credited collateral returned by getCollateral(): ", adjustedCollateralAmount.toString());
+    console.log("- Collateral owned by contract:", actualCollateralAmount.toString());
+    console.log("- Drift:", parseFloat(drift.toString()) / 1e18);
+    console.groupEnd();
 
     /**
      * @notice RUN THE REMAINDER OF THE TEST AND CHECK UNKNOWN DRIFT
@@ -144,26 +148,26 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
      * @dev Since we are no longer dividing by 9,000,000 in an intermediate calculation, it is not obvious that more
      * rounding errors will occur.
      */
-    for (let i = 1; i <= (runs-1); i++) {
-      await pricelessPositionManager.setCurrentTime(startTime.addn(1+i));
+    for (let i = 1; i <= runs - 1; i++) {
+      await pricelessPositionManager.setCurrentTime(startTime.addn(1 + i));
       await pricelessPositionManager.payFees();
     }
     endingStoreBalance = await collateral.balanceOf(store.address);
-    actualFeesCollected = endingStoreBalance.sub(startingStoreBalance).toString()
+    actualFeesCollected = endingStoreBalance.sub(startingStoreBalance).toString();
     adjustedCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address);
-    drift = actualCollateralAmount.sub(toBN(adjustedCollateralAmount.rawValue))
+    drift = actualCollateralAmount.sub(toBN(adjustedCollateralAmount.rawValue));
 
     // Test 1) The correct fees are paid are regardless of precision loss.
-    assert.equal((expectedFeesCollectedPerPeriod * runs).toString(), actualFeesCollected.toString())    
+    assert.equal((expectedFeesCollectedPerPeriod * runs).toString(), actualFeesCollected.toString());
 
     // Test 2) Let's check if there is more drift.
-    console.group(`** After ${runs} seconds: **`)
-    console.log(`- Fees collected: `, actualFeesCollected.toString())
-    console.log(`- Sponsor's credited collateral returned by getCollateral(): `,adjustedCollateralAmount.toString())
-    console.log(`- Collateral owned by contract:`, actualCollateralAmount.toString())
-    console.log(`- Drift:`, parseFloat(drift.toString())/1e18)
-    console.groupEnd()
+    console.group(`** After ${runs} seconds: **`);
+    console.log("- Fees collected: ", actualFeesCollected.toString());
+    console.log("- Sponsor's credited collateral returned by getCollateral(): ", adjustedCollateralAmount.toString());
+    console.log("- Collateral owned by contract:", actualCollateralAmount.toString());
+    console.log("- Drift:", parseFloat(drift.toString()) / 1e18);
+    console.groupEnd();
   });
 
   it("Precision loss due to deposits() and withdraws()", async function() {
@@ -179,8 +183,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     /**
      * @notice TEST PARAMETERS
      */
-    const sponsorCollateralAmount = toWei("1")
-    const otherCollateralAmount = toWei("0.1")
+    const sponsorCollateralAmount = toWei("1");
+    const otherCollateralAmount = toWei("0.1");
     const feePerSecond = toWei("0.1");
     const expectedFeeMultiplier = 0.9;
     const amountToDeposit = toWei("0.1");
@@ -205,8 +209,16 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // Note: must create less collateralized position first
     await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: sponsor });
     await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: other });
-    await pricelessPositionManager.create({ rawValue: otherCollateralAmount }, { rawValue: toWei("100") }, { from: other });
-    await pricelessPositionManager.create({ rawValue: sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
+    await pricelessPositionManager.create(
+      { rawValue: otherCollateralAmount },
+      { rawValue: toWei("100") },
+      { from: other }
+    );
+    await pricelessPositionManager.create(
+      { rawValue: sponsorCollateralAmount },
+      { rawValue: toWei("100") },
+      { from: sponsor }
+    );
     // 2) Set fee rate per second.
     await store.setFixedOracleFeePerSecond({ rawValue: feePerSecond });
     // 3) Move time in the contract forward by 1 second to capture unit fee.
@@ -218,62 +230,61 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     /**
      * @notice TEST INVARIANTS
      */
-    actualFeeMultiplier = await pricelessPositionManager.cumulativeFeeMultiplier()
-    startingContractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
+    actualFeeMultiplier = await pricelessPositionManager.cumulativeFeeMultiplier();
+    startingContractCollateral = await collateral.balanceOf(pricelessPositionManager.address);
     startingAdjustedContractCollateral = await pricelessPositionManager.totalPositionCollateral();
-    startingStoreCollateral = await collateral.balanceOf(store.address)
+    startingStoreCollateral = await collateral.balanceOf(store.address);
 
     // Test 1) Fee multiplier is set correctly.
-    assert.equal(parseFloat(actualFeeMultiplier.toString())/1e18, expectedFeeMultiplier)
+    assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, expectedFeeMultiplier);
 
     // Test 2) The adjusted collateral and actual collateral in contract should be equal
-    assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString())
-    console.group(`** Pre-Deposit: **`)
-    console.log(`- Contract Collateral:`, startingContractCollateral.toString())
-    console.log(`- Adjusted Collateral:`, startingAdjustedContractCollateral.toString())
-    console.groupEnd()
-    
+    assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
+    console.group("** Pre-Deposit: **");
+    console.log("- Contract Collateral:", startingContractCollateral.toString());
+    console.log("- Adjusted Collateral:", startingAdjustedContractCollateral.toString());
+    console.groupEnd();
 
     /**
      * @notice RUN THE TEST ONCE AND PRODUCE KNOWN DRIFT
      */
-    await pricelessPositionManager.deposit({ rawValue: amountToDeposit }, { from: sponsor })
-    contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-    adjustedCollateral = await pricelessPositionManager.totalPositionCollateral()
-    drift = contractCollateral.sub(toBN(adjustedCollateral.rawValue))
-    
+    await pricelessPositionManager.deposit({ rawValue: amountToDeposit }, { from: sponsor });
+    contractCollateral = await collateral.balanceOf(pricelessPositionManager.address);
+    adjustedCollateral = await pricelessPositionManager.totalPositionCollateral();
+    drift = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
+
     // Test 1) User should be credited with slightly less collateral than they actually deposited.
     assert(drift.gt(toBN(0)));
-    console.group(`** After 1 Deposit: **`)
-    console.log(`- Contract Collateral:`, contractCollateral.toString())
-    console.log(`- Adjusted Collateral:`, adjustedCollateral.toString())
-    console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
-    console.groupEnd()
+    console.group("** After 1 Deposit: **");
+    console.log("- Contract Collateral:", contractCollateral.toString());
+    console.log("- Adjusted Collateral:", adjustedCollateral.toString());
+    console.log("- Drift: ", parseFloat(drift.toString()) / 1e18);
+    console.groupEnd();
 
     /**
      * @notice RUN THE REMAINDER OF THE TEST AND CHECK UNKNOWN DRIFT
      */
-    for (let i = 0; i < (runs-1); i++) {
-      await pricelessPositionManager.deposit({ rawValue: amountToDeposit }, { from: sponsor })
+    for (let i = 0; i < runs - 1; i++) {
+      await pricelessPositionManager.deposit({ rawValue: amountToDeposit }, { from: sponsor });
     }
-    contractCollateral = await collateral.balanceOf(pricelessPositionManager.address)
-    adjustedCollateral = await pricelessPositionManager.totalPositionCollateral()
-    drift = contractCollateral.sub(toBN(adjustedCollateral.rawValue))
-    
+    contractCollateral = await collateral.balanceOf(pricelessPositionManager.address);
+    adjustedCollateral = await pricelessPositionManager.totalPositionCollateral();
+    drift = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
+
     // Test 1) Let's check dat drift.
-    console.group(`** After ${runs+1} Deposits: **`)
-    console.log(`- Contract Collateral:`, contractCollateral.toString())
-    console.log(`- Adjusted Collateral:`, adjustedCollateral.toString())
-    console.log(`- Drift: `, parseFloat(drift.toString())/1e18)
-    console.groupEnd()  
+    console.group(`** After ${runs + 1} Deposits: **`);
+    console.log("- Contract Collateral:", contractCollateral.toString());
+    console.log("- Adjusted Collateral:", adjustedCollateral.toString());
+    console.log("- Drift: ", parseFloat(drift.toString()) / 1e18);
+    console.groupEnd();
 
     /**
      * @notice POST-TEST INVARIANTS
      */
-    endingStoreCollateral = await collateral.balanceOf(store.address)
+    endingStoreCollateral = await collateral.balanceOf(store.address);
 
     // Test 1) Make sure that store hasn't collected any fees during this test, so that we can be confident that deposits
     // are the only source of drift.
-    assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString())
+    assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString());
   });
 });
