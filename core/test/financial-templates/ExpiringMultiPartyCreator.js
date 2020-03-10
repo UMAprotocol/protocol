@@ -41,7 +41,6 @@ contract("ExpiringMultiParty", function(accounts) {
     constructorParams = {
       expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toString(),
       collateralAddress: collateralToken.address,
-      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
@@ -55,6 +54,10 @@ contract("ExpiringMultiParty", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: contractCreator
     });
+  });
+
+  it("TokenFactory address should be set on construction", async function() {
+    assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), (await TokenFactory.deployed()).address);
   });
 
   it("Expiration timestamp must be one of the fifteen allowed month-start timestamps from April 2020 through June 2021", async function() {
