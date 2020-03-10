@@ -14,6 +14,7 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("Liquidatable", function(accounts) {
@@ -118,6 +119,7 @@ contract("Liquidatable", function(accounts) {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: priceTrackingIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",

@@ -12,6 +12,7 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
+const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("PricelessPositionManager", function(accounts) {
@@ -102,6 +103,7 @@ contract("PricelessPositionManager", function(accounts) {
       priceTrackingIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
