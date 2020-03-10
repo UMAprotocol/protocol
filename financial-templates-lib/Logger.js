@@ -66,6 +66,7 @@ transports.push(
   new winston.transports.Console({
     level: "debug",
     handleExceptions: true
+    // TODO improve the formatter as defined in issue #1041
     // format: alignedWithColorsAndTime
   })
 );
