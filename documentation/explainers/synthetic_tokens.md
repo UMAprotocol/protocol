@@ -15,7 +15,7 @@ Some of the most creative ideas for synthetic tokens fall in the last category. 
 ## Priceless Synthetic Tokens
 “Priceless” synthetic tokens are synthetic tokens that are securely collateralized without an on-chain price feed. These tokens are designed with mechanisms to incentivize token sponsors (those who create synthetic tokens) to properly collateralize their positions. These mechanisms include a liquidation and dispute process that allows token holders to be rewarded for identifying improperly collateralized token sponsor positions. The dispute process relies on an oracle, the UMA DVM, to settle disputes regarding liquidations. 
 
-For more details on how a “priceless” framework can be applied more generally to other types of financial contract templates on the blockchain, check out this blog post. 
+For more details on how a “priceless” framework can be applied more generally to other types of financial contract templates on the blockchain, check out this blog post. <!-- TODO: add link -->
 
 ## Launching a New Synthetic Token
 
@@ -65,21 +65,22 @@ To liquidate a token sponsor position, a token holder submits tokens to the cont
 
 Here are three ways in which a liquidation can be resolved: 
 1. No one disputes the liquidation during the liquidation liveness period. The token sponsor’s position is liquidated after the liquidation liveness period ends. All collateral deposited by the token sponsor is returned to the liquidator. 
-1. Someone disputes the liquidation during the liquidation liveness period. To do this, the disputer must post a bond. Once the dispute is raised, a request is made of the UMA DVM to resolve the dispute and indicate whether the token sponsor was undercollateralized at the time of the liquidation. [“DVM” is a link to a glossary of terms.] 
-- If the DVM decides that the token sponsor was undercollateralized at the time of the liquidation:
+1. Someone disputes the liquidation during the liquidation liveness period. To do this, the disputer must post a bond. Once the dispute is raised, a price request is made to the UMA DVM. This price request will return the value of the price identifier at the time of the liquidation, which will determine if the token sponsor was undercollateralized and resolve the "dispute". [“DVM” is a link to a glossary of terms.] 
+- If the price returned by the DVM indicates that the token sponsor was undercollateralized at the time of the liquidation:
     * The disputer will lose their bond. 
     * The liquidator will receive all of the token sponsor position’s collateral. 
     * The token sponsor will not receive any of the collateral they have previously deposited into the position. 
-- If the DVM decides that the token sponsor was not undercollateralized at the time of the liquidation: 
+- If the price returned by the DVM indicates that the token sponsor was not undercollateralized at the time of the liquidation: 
     * The disputer will receive back their dispute bond and a dispute reward.
-    * The liquidator will receive collateral equal to the price identifier at that time, less a dispute reward.
+    * The liquidator will receive collateral equalling: (i) the value of the token at the time of liquidation as determined by the DVM, less (ii) the dispute reward paid to the disputer, less (iii) the improper liquidation reward paid to the original token sponsor.
     * The token sponsor will receive any remaining collateral and a reward for the improper liquidation. 
 
 ## Redeeming Tokens
 
 Before the expiration date of the token, tokens may only be redeemed by token sponsors. A token sponsor redeems a token by submitting it to the contract to be burned and receiving collateral proportional to the total amount of collateral that the token sponsor has deposited to the contract. 
 
-Consider the following example. Assume a token sponsor deposits 100 DAI of collateral to create 5 synthetic tokens. When they redeem 3 synthetic tokens against their position, they will receive ⅗*100 = 60 DAI of collateral in return.
+Consider the following example. Assume a token sponsor has deposited 150 DAI of collateral to create 100 synthetic tokens, which they then sold to the market. Later, the token sponsor repurchases 30 tokens and decides to redeem them. These 30 tokens represent 30% of the token sponsors original position, so by redeeming them the token sponsor receives 30% of their initial collateral, or 45 DAI (since 30%*150 = 45).
+### Redeeming After Expiry
 
 After the expiration timestamp for the synthetic tokens, anyone may settle the contract. This calls on the UMA DVM to return the value of the token’s price identifier at the expiration timestamp. 
 
