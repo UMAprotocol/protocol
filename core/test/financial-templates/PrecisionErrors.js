@@ -77,7 +77,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
       startTokenAmount: 1,
       feeRatePerSecond: "0.0000004",
       expectedFeesCollectedPerPeriod: 3,
-      runs: 500
+      runs: 50
     };
 
     /**
@@ -225,10 +225,10 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     const testConfig = {
       sponsorCollateralAmount: toWei("1"),
       otherCollateralAmount: toWei("0.1"),
-      expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
-      feePerSecond: toWei("0.1"),
+      expectedFeeMultiplier: 0.89, // Division by this produces precision loss, tune this.
+      feePerSecond: toWei("0.11"),
       amountToDeposit: toWei("0.1"),
-      runs: 10
+      runs: 50
     };
 
     /**
@@ -265,7 +265,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
      * @notice SETUP THE TEST
      */
     // 1) Create position.
-    await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: sponsor });
+    await collateral.approve(pricelessPositionManager.address, testConfig.sponsorCollateralAmount, { from: sponsor });
     await pricelessPositionManager.create(
       { rawValue: testConfig.sponsorCollateralAmount },
       { rawValue: toWei("100") },
@@ -278,6 +278,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     await pricelessPositionManager.setCurrentTime(startTime.addn(1));
     // 4) Pay the fees.
     await pricelessPositionManager.payFees();
+    // 5) Approve contract to spend total amount of deposits.
+    await collateral.approve(pricelessPositionManager.address, toBN(testConfig.amountToDeposit).mul(toBN(testConfig.runs)).toString(), { from: sponsor });
 
     /**
      * @notice PRE-TEST INVARIANTS
@@ -387,10 +389,10 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     const testConfig = {
       sponsorCollateralAmount: toWei("100"),
       otherCollateralAmount: toWei("0.1"),
-      feePerSecond: toWei("0.1"),
-      expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
+      feePerSecond: toWei("0.11"),
+      expectedFeeMultiplier: 0.89, // Division by this produces precision loss, tune this.
       amountToWithdraw: toWei("0.001"), // Invariant: (runs * amountToWithdraw) >= (sponsorCollateralAmount - otherCollateralAmount), otherwise GCR check on withdraw() will fail
-      runs: 10
+      runs: 50
     };
 
     /**
@@ -428,8 +430,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
      */
     // 1) Create two positions, one with a very low collateral ratio so that we can withdraw from our test position.
     // Note: we must create less collateralized position first.
-    await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: sponsor });
-    await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: other });
+    await collateral.approve(pricelessPositionManager.address, testConfig.sponsorCollateralAmount, { from: sponsor });
+    await collateral.approve(pricelessPositionManager.address, testConfig.otherCollateralAmount, { from: other });
     await pricelessPositionManager.create(
       { rawValue: testConfig.otherCollateralAmount },
       { rawValue: toWei("100") },
