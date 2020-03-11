@@ -45,7 +45,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
-      siphonDelay: "100000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
@@ -135,8 +134,18 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // If a position is liquidated it should be removed from the clients state.
-    const id = await emp.createLiquidation.call(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
-    await emp.createLiquidation(accounts[1], { rawValue: toWei("100") }, { from: accounts[0] });
+    const id = await emp.createLiquidation.call(
+      accounts[1],
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      { from: accounts[0] }
+    );
+    await emp.createLiquidation(
+      accounts[1],
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      { from: accounts[0] }
+    );
 
     await updateAndVerify(
       client,
@@ -236,8 +245,18 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // Create a new liquidation for account[0]'s position.
-    const id = await emp.createLiquidation.call(accounts[0], { rawValue: toWei("150") }, { from: accounts[1] });
-    await emp.createLiquidation(accounts[0], { rawValue: toWei("150") }, { from: accounts[1] });
+    const id = await emp.createLiquidation.call(
+      accounts[0],
+      { rawValue: toWei("9999999") },
+      { rawValue: toWei("150") },
+      { from: accounts[1] }
+    );
+    await emp.createLiquidation(
+      accounts[0],
+      { rawValue: toWei("9999999") },
+      { rawValue: toWei("150") },
+      { from: accounts[1] }
+    );
     await client._update();
 
     const liquidations = client.getUndisputedLiquidations();
