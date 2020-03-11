@@ -77,7 +77,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
       startTokenAmount: 1,
       feeRatePerSecond: "0.0000004",
       expectedFeesCollectedPerPeriod: 3,
-      runs: 25
+      runs: 500
     };
 
     /**
@@ -86,9 +86,11 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     let drift = toBN(0); // Precision loss on collateral.
     let adjustedCollateralAmount; // Amount of collateral returned by `contract.getCollateral()`
     let actualCollateralAmount; // Actual collateral owned by contract (there is only one sponsor, so we can check this via `token.balanceOf()`).
+    let rawCollateralAmount; // Scaled up total contract collateral to account for fees.
     let endingStoreBalance; // Collateral owned by Store during the test, used to calculate fees collected.
     let actualFeesCollected; // Delta between starting store balance and ending store balance.
     let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
+    let actualFeeMultiplier; // Set to current fee multiplier.
 
     // Used to log collateral breakdown in a pretty fashion.
     function CollateralBreakdown(_sponsor) {
@@ -119,6 +121,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     const startingStoreBalance = await collateral.balanceOf(store.address);
     adjustedCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address);
+    rawCollateralAmount = await pricelessPositionManager.rawTotalPositionCollateral();
+    actualFeeMultiplier = await pricelessPositionManager.cumulativeFeeMultiplier();
 
     // Test 1) The adjusted and actual collateral amount is the same to start, pre-fees.
     assert.equal(adjustedCollateralAmount.toString(), actualCollateralAmount.toString());
@@ -126,9 +130,17 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // Test 2) The store has not collected any fees.
     assert.equal(startingStoreBalance.toString(), "0");
 
+    // Test 3) Fee multiplier is set to default.
+    assert.equal(parseFloat(actualFeeMultiplier.toString())/1e18, 1.0)
+
+    // Test 4) Raw collateral and actual collateral amount are the same to start.
+    assert.equal(rawCollateralAmount.toString(), actualCollateralAmount.toString())
+
     // Log results.
     breakdown.expected = new CollateralBreakdown(actualCollateralAmount);
     breakdown.credited = new CollateralBreakdown(adjustedCollateralAmount);
+    breakdown.raw = new CollateralBreakdown(rawCollateralAmount);
+    breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
     console.group("** Pre-Fees: **");
     console.table(breakdown);
     console.groupEnd();
@@ -141,6 +153,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     actualFeesCollected = endingStoreBalance.sub(startingStoreBalance).toString();
     adjustedCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address);
+    rawCollateralAmount = await pricelessPositionManager.rawTotalPositionCollateral();
+    actualFeeMultiplier = await pricelessPositionManager.cumulativeFeeMultiplier();
     drift = actualCollateralAmount.sub(toBN(adjustedCollateralAmount.rawValue));
 
     // Test 1) The correct fees are paid are regardless of precision loss.
@@ -153,6 +167,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // Log results.
     breakdown.expected = new CollateralBreakdown(actualCollateralAmount);
     breakdown.credited = new CollateralBreakdown(adjustedCollateralAmount);
+    breakdown.raw = new CollateralBreakdown(rawCollateralAmount);
+    breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
     breakdown.drift = new CollateralBreakdown(drift);
     console.group(`** After 1 second: ${actualFeesCollected.toString()} collateral collected in fees **`);
     console.table(breakdown);
@@ -172,6 +188,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     actualFeesCollected = endingStoreBalance.sub(startingStoreBalance).toString();
     adjustedCollateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     actualCollateralAmount = await collateral.balanceOf(pricelessPositionManager.address);
+    rawCollateralAmount = await pricelessPositionManager.rawTotalPositionCollateral();
+    actualFeeMultiplier = await pricelessPositionManager.cumulativeFeeMultiplier();
     drift = actualCollateralAmount.sub(toBN(adjustedCollateralAmount.rawValue));
 
     // Test 1) The correct fees are paid are regardless of precision loss.
@@ -184,6 +202,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // Log results.
     breakdown.expected = new CollateralBreakdown(actualCollateralAmount);
     breakdown.credited = new CollateralBreakdown(adjustedCollateralAmount);
+    breakdown.raw = new CollateralBreakdown(rawCollateralAmount);
+    breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
     breakdown.drift = new CollateralBreakdown(drift);
     console.group(`** After ${testConfig.runs} seconds: **`);
     console.table(breakdown);
@@ -205,8 +225,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     const testConfig = {
       sponsorCollateralAmount: toWei("1"),
       otherCollateralAmount: toWei("0.1"),
-      expectedFeeMultiplier: 0.961, // Division by this produces precision loss, tune this.
-      feePerSecond: toWei("0.039"),
+      expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
+      feePerSecond: toWei("0.1"),
       amountToDeposit: toWei("0.1"),
       runs: 10
     };
@@ -367,8 +387,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     const testConfig = {
       sponsorCollateralAmount: toWei("100"),
       otherCollateralAmount: toWei("0.1"),
-      feePerSecond: toWei("0.19"),
-      expectedFeeMultiplier: 0.81, // Division by this produces precision loss, tune this.
+      feePerSecond: toWei("0.1"),
+      expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
       amountToWithdraw: toWei("0.001"), // Invariant: (runs * amountToWithdraw) >= (sponsorCollateralAmount - otherCollateralAmount), otherwise GCR check on withdraw() will fail
       runs: 10
     };
