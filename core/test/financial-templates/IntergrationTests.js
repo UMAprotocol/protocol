@@ -92,8 +92,8 @@ contract("IntergrationTest", function(accounts) {
     for (const account of accounts) {
       // approve the tokens
       console.log(account);
-      await collateralToken.increaseAllowance(expiringMultiParty.address, mintAndApprove, { from: account });
-      await syntheticToken.increaseAllowance(expiringMultiParty.address, mintAndApprove, { from: account });
+      await collateralToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
+      await syntheticToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
 
       // mint collateral for all accounts
       await collateralToken.mint(account, mintAndApprove, {
@@ -147,7 +147,7 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 1: creating position
       await expiringMultiParty.create(
-        { rawValue: baseCollateralAmount.add(toBN((i * 1000000).toString())).toString() },
+        { rawValue: baseCollateralAmount.add(toBN(i.toString())).toString() },
         { rawValue: baseNumTokens.toString() },
         { from: sponsor }
       );
@@ -158,6 +158,10 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 3: advancing time
       await expiringMultiParty.setCurrentTime(startingTime.add(timeOffsetBetweenTests));
+
+      console.log("time");
+      console.log((await expiringMultiParty.getCurrentTime()).toString());
+      console.log((await expiringMultiParty.expirationTimestamp()).toString());
     }
 
     assert.equal(true, true);
