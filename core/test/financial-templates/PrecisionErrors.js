@@ -279,7 +279,13 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // 4) Pay the fees.
     await pricelessPositionManager.payFees();
     // 5) Approve contract to spend total amount of deposits.
-    await collateral.approve(pricelessPositionManager.address, toBN(testConfig.amountToDeposit).mul(toBN(testConfig.runs)).toString(), { from: sponsor });
+    await collateral.approve(
+      pricelessPositionManager.address,
+      toBN(testConfig.amountToDeposit)
+        .mul(toBN(testConfig.runs))
+        .toString(),
+      { from: sponsor }
+    );
 
     /**
      * @notice PRE-TEST INVARIANTS
