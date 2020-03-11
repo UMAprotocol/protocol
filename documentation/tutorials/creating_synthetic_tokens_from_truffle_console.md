@@ -7,8 +7,8 @@ This tutorial will show you how to create synthetic tokens from the command line
 
 Below, we’ll discuss how to create and manage a token sponsor position via the command line on a local testnet. UMA also has a command-line interface (CLI) tool that bundles and renames some of these steps. These tutorials discuss how to create and manage a token sponsor position using this CLI tool. <!-- (links to separate page) -->
 
-* Begin [here](#_parameterize-and-deploy-a-contract) if you are creating a new type of synthetic token on a local testnet.
-* Begin [here](#_create-new-tokens-from-an-existing-contract) if you are creating synthetic tokens from an existing contract on a local testnet.
+* Begin [here](#parameterize-and-deploy-a-contract) if you are creating a new type of synthetic token on a local testnet.
+* Begin [here](#create-new-tokens-from-an-existing-contract) if you are creating synthetic tokens from an existing contract on a local testnet.
 * Begin here if you are creating tokens on UMA-supported testnet and mainnet deployments. <!-- (links to separate page) -->
  
 ## Parameterize and deploy a contract
