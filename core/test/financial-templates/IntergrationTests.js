@@ -10,10 +10,12 @@ const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 const Token = artifacts.require("ExpandedERC20");
+const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const MockOracle = artifacts.require("MockOracle");
 
 contract("IntergrationTest", function(accounts) {
   let contractCreator = accounts[0];
@@ -28,12 +30,14 @@ contract("IntergrationTest", function(accounts) {
   let syntheticToken;
   let expiringMultiPartyCreator;
   let registry;
+  let mockOracle;
   let collateralTokenWhitelist;
   let expiringMultiParty;
 
   // Re-used variables
   let constructorParams;
   let startingTime;
+  let expirationTime;
 
   /**
    * @notice TUNABLE PARAMETERS
@@ -55,14 +59,22 @@ contract("IntergrationTest", function(accounts) {
     });
 
     collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, {
+      from: contractCreator
+    });
 
+    startingTime = await expiringMultiPartyCreator.getCurrentTime();
+    expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30));
     constructorParams = {
-      expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toString(),
+      isTest: true,
+      expirationTimestamp: expirationTime.toString(),
+      withdrawalLiveness: "3600",
       collateralAddress: collateralToken.address,
+      finderAddress: Finder.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
+      liquidationLiveness: "3600",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
@@ -74,41 +86,34 @@ contract("IntergrationTest", function(accounts) {
       from: contractCreator
     });
 
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
+    // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
+    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+      from: contractCreator
+    });
+    finder = await Finder.deployed();
+
+    await finder.changeImplementationAddress(web3.utils.utf8ToHex("Oracle"), mockOracle.address, {
       from: contractCreator
     });
 
-    // Catch the address of the new contract from the event. Ensure that the assigned party member is correct.
-    let expiringMultiPartyAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", ev => {
-      expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
-      return ev.expiringMultiPartyAddress != 0 && ev.partyMemberAddress == contractCreator;
-    });
-
-    expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
+    expiringMultiParty = await ExpiringMultiParty.new(constructorParams);
 
     syntheticToken = await Token.at(await expiringMultiParty.tokenCurrency());
 
     for (const account of accounts) {
       // approve the tokens
-      console.log(account);
-      await collateralToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
-      await syntheticToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
+      await collateralToken.approve(expiringMultiParty.address, mintAndApprove, {
+        from: account
+      });
+      await syntheticToken.approve(expiringMultiParty.address, mintAndApprove, {
+        from: account
+      });
 
       // mint collateral for all accounts
-      await collateralToken.mint(account, mintAndApprove, {
-        from: contractCreator
-      });
+      await collateralToken.mint(account, mintAndApprove, { from: contractCreator });
     }
   });
   it("Iterative sponsor, liquidation and withdrawal tests", async function() {
-    // Move  timestamp in emp to 1 month before expiration. This is the beginning of our testing period.
-    await expiringMultiParty.setCurrentTime(
-      ((await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toNumber() - 60 * 60 * 24 * 30).toString()
-    );
-
-    let startingTime = await expiringMultiParty.getCurrentTime();
-
     /**
      * @notice TEST 1
      */
@@ -127,7 +132,7 @@ contract("IntergrationTest", function(accounts) {
     // 7) ensure that all users can withdraw their funds
     // 8) check the contract has no funds left in it
 
-    let numIterations = 50;
+    let numIterations = 5;
 
     let sponsor;
     let tokenHolder;
@@ -147,21 +152,69 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 1: creating position
       await expiringMultiParty.create(
-        { rawValue: baseCollateralAmount.add(toBN(i.toString())).toString() },
-        { rawValue: baseNumTokens.toString() },
+        {
+          rawValue: baseCollateralAmount.add(toBN(i.toString())).toString()
+        },
+        {
+          rawValue: baseNumTokens.toString()
+        },
         { from: sponsor }
       );
-      console.log("Position created");
+      console.log(
+        "Position created for sponsor 👩‍💻",
+        sponsor,
+        "with collateral:",
+        baseCollateralAmount.add(toBN(i.toString())).toString()
+      );
 
       // STEP 2: transferring tokens
       await syntheticToken.transfer(tokenHolder, toWei("100"), { from: sponsor });
 
       // STEP 3: advancing time
       await expiringMultiParty.setCurrentTime(startingTime.add(timeOffsetBetweenTests));
+      await expiringMultiParty.setCurrentTime(startingTime.add(timeOffsetBetweenTests));
 
-      console.log("time");
-      console.log((await expiringMultiParty.getCurrentTime()).toString());
-      console.log((await expiringMultiParty.expirationTimestamp()).toString());
+      // STEP 4: chance to liquidate position. 1 in 3 will get liquidated
+      if (i % 3 == 1) {
+      }
+
+      console.log("***time***");
+      console.log("startingTime\t\t", startingTime.toString());
+      console.log("getCurrentTime\t\t", (await expiringMultiParty.getCurrentTime()).toString());
+      console.log("lastPaymentTime\t\t", (await expiringMultiParty.lastPaymentTime()).toString());
+      console.log("expirationTimestamp\t", (await expiringMultiParty.expirationTimestamp()).toString());
+    }
+
+    console.log("Position creation done! advancing time and withdrawing");
+    console.log("expiration", (await expiringMultiParty.expirationTimestamp()).toString());
+
+    // STEP 6: expire the contract and settle positions
+    await expiringMultiParty.setCurrentTime(expirationTime.toNumber() + 1);
+    await mockOracle.setCurrentTime(expirationTime.toNumber() + 1);
+
+    console.log("***time***");
+    console.log("startingTime\t\t", startingTime.toString());
+    console.log("getCurrentTime\t\t", (await expiringMultiParty.getCurrentTime()).toString());
+    console.log("lastPaymentTime\t\t", (await expiringMultiParty.lastPaymentTime()).toString());
+    console.log("expirationTimestamp\t", (await expiringMultiParty.expirationTimestamp()).toString());
+    console.log("mockOracleTime", (await mockOracle.getCurrentTime()).toString());
+
+    console.log("###State", (await expiringMultiParty.contractState()).toString());
+
+    await expiringMultiParty.expire();
+    const oraclePrice = await expiringMultiParty.getCurrentTime();
+    await mockOracle.pushPrice(constructorParams.priceFeedIdentifier, oraclePrice.subn(1).toString(), 1);
+
+    // Settle token holders
+    for (const tokenHolder of tokenHolders) {
+      console.log("settleExpired for tokenHolder", tokenHolder);
+      await expiringMultiParty.settleExpired({ from: tokenHolder });
+    }
+
+    // Settle token sponsors
+    for (const sponsor of sponsors) {
+      console.log("settleExpired for sponsor", sponsor);
+      await expiringMultiParty.settleExpired({ from: sponsor });
     }
 
     assert.equal(true, true);
