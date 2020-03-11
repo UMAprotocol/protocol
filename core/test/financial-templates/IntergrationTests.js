@@ -19,8 +19,9 @@ contract("IntergrationTest", function(accounts) {
   let contractCreator = accounts[0];
   let liquidator = accounts[1];
   let disputer = accounts[2];
-  let sponsors = accounts.slice(3, 6);
-  let tokenHolders = accounts.slice(7, 10);
+  let sponsors = accounts.slice(3, 6); // accounts 3 -> 5
+  console.log(sponsors);
+  let tokenHolders = accounts.slice(7, 10); // accounts 6 -> 9
 
   // Contract variables
   let collateralToken;
@@ -29,16 +30,24 @@ contract("IntergrationTest", function(accounts) {
   let registry;
   let collateralTokenWhitelist;
   let expiringMultiParty;
-  let constructorParams;
 
-  // tunable parameters
-  const mintAndApprove = toWei("10000000"); // number of tokens minted and approved by each account
-  const baseCollateralAmount = toWei("150");
-  const baseNumTokens = toWei("150");
+  // Re-used variables
+  let constructorParams;
+  let startingTime;
+
+  /**
+   * @notice TUNABLE PARAMETERS
+   */
+  const mintAndApprove = toBN(toWei("10000000")); // number of tokens minted and approved by each account
+  const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
+  const baseNumTokens = toBN(toWei("150")); // starting number of tokens created by sponsor
+  const timeOffsetBetweenTests = toBN("1000"); // timestep advance between loop iterations
 
   beforeEach(async () => {
     collateralToken = await Token.new({ from: contractCreator });
-    await collateralToken.addMember(1, contractCreator, { from: contractCreator });
+    await collateralToken.addMember(1, contractCreator, {
+      from: contractCreator
+    });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
@@ -82,11 +91,14 @@ contract("IntergrationTest", function(accounts) {
 
     for (const account of accounts) {
       // approve the tokens
-      await collateralToken.increaseAllowance(expiringMultiPartyAddress, mintAndApprove, { from: account });
-      await syntheticToken.increaseAllowance(expiringMultiPartyAddress, mintAndApprove, { from: account });
+      console.log(account);
+      await collateralToken.increaseAllowance(expiringMultiParty.address, mintAndApprove, { from: account });
+      await syntheticToken.increaseAllowance(expiringMultiParty.address, mintAndApprove, { from: account });
 
       // mint collateral for all accounts
-      await collateralToken.mint(account, mintAndApprove, { from: contractCreator });
+      await collateralToken.mint(account, mintAndApprove, {
+        from: contractCreator
+      });
     }
   });
   it("Iterative sponsor, liquidation and withdrawal tests", async function() {
@@ -95,6 +107,11 @@ contract("IntergrationTest", function(accounts) {
       ((await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toNumber() - 60 * 60 * 24 * 30).toString()
     );
 
+    let startingTime = await expiringMultiParty.getCurrentTime();
+
+    /**
+     * @notice TEST 1
+     */
     // Number of positions to create and liquidate. The following process is followed to initiate maximum interaction
     // with the fee paying function to try and compound floating errors to see if positions are locked at settlement:
     // 1) position created by random sponsor
@@ -112,15 +129,35 @@ contract("IntergrationTest", function(accounts) {
 
     let numIterations = 50;
 
+    let sponsor;
+    let tokenHolder;
     for (let i = 0; i < numIterations; i++) {
-      let randomSponsor = sponsors[Math.floor(Math.random() * sponsors.length)];
+      sponsor = sponsors[i % sponsors.length];
+      tokenHolder = tokenHolders[i % tokenHolders.length];
+      console.log(
+        "iteration number",
+        i,
+        "\ncreating position for sponsor",
+        sponsor,
+        "\nsending tokens to",
+        tokenHolder
+      );
+      console.log("collat", baseCollateralAmount.add(toBN(i.toString())).toString());
+      console.log("tokens", baseNumTokens.toString());
+
+      // STEP 1: creating position
       await expiringMultiParty.create(
-        { rawValue: baseCollateralAmount },
-        { rawValue: baseNumTokens },
-        { from: randomSponsor }
+        { rawValue: baseCollateralAmount.add(toBN((i * 1000000).toString())).toString() },
+        { rawValue: baseNumTokens.toString() },
+        { from: sponsor }
       );
       console.log("Position created");
-      break;
+
+      // STEP 2: transferring tokens
+      await syntheticToken.transfer(tokenHolder, toWei("100"), { from: sponsor });
+
+      // STEP 3: advancing time
+      await expiringMultiParty.setCurrentTime(startingTime.add(timeOffsetBetweenTests));
     }
 
     assert.equal(true, true);
