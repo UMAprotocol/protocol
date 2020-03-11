@@ -131,10 +131,10 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     assert.equal(startingStoreBalance.toString(), "0");
 
     // Test 3) Fee multiplier is set to default.
-    assert.equal(parseFloat(actualFeeMultiplier.toString())/1e18, 1.0)
+    assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, 1.0);
 
     // Test 4) Raw collateral and actual collateral amount are the same to start.
-    assert.equal(rawCollateralAmount.toString(), actualCollateralAmount.toString())
+    assert.equal(rawCollateralAmount.toString(), actualCollateralAmount.toString());
 
     // Log results.
     breakdown.expected = new CollateralBreakdown(actualCollateralAmount);
