@@ -2,12 +2,16 @@
 
 This tutorial will show you how to create synthetic tokens from the command line using UMA’s synthetic token template. Before beginning this tutorial, please make sure your environment is set up correctly by following the instructions in the “Prerequisites” section. After completing this section, your environment will: 
 * Clone the UMA repo
-* Run Ganache on localhost port 9545
+* Run a personal Ethereum blockchain locally on port 9545
 * Compile all contracts in the UMA repo
+
+Below, we’ll discuss how to create and manage a token sponsor position via the command line on a local testnet. UMA also has a command-line interface (CLI) tool that bundles and renames some of these steps. These tutorials discuss how to create and manage a token sponsor position using this CLI tool. <!-- (links to separate page) -->
+
+* Begin [here](#parameterize-and-deploy-a-contract) if you are creating a new type of synthetic token on a local testnet.
+* Begin [here](#create-new-tokens-from-an-existing-contract) if you are creating synthetic tokens from an existing contract on a local testnet.
+* Begin here if you are creating tokens on UMA-supported testnet and mainnet deployments. <!-- (links to separate page) -->
  
-Below, we’ll discuss how to create and manage a token sponsor position via the command line on a local testnet. Please look here for information on existing UMA-supported testnet and mainnet deployments. 
- 
-## Step 1: Deploy a contract and create tokens. 
+## Parameterize and deploy a contract
  
 1. Set up the truffle environment and migrate contracts. (This step is not necessary if working with an existing testnet or mainnet deployment.)
 ```
@@ -15,19 +19,18 @@ $(npm bin)/truffle migrate --network test
 ```
  
 2. Open the truffle console.
-```
+```bash
 $(npm bin)/truffle console --network test
 ```
  
 3. Create an instance of the expiring multiparty creator (the contract factory for synthetic tokens). This command should return “undefined”. 
-```
+```js
 const empCreator = await ExpiringMultiPartyCreator.deployed()
 ```
  
 4. Define the parameters for the synthetic tokens you would like to create. For documentation surrounding the meanings of each parameter, please see this page. 
- 
 ```
-const constructorParams = { expirationTimestamp: "123456789000", withdrawalLiveness: "1000", siphonDelay: "100000", collateralAddress: TestnetERC20.address, tokenFactoryAddress: TokenFactory.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", liquidationLiveness: "1000", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") } }
+const constructorParams = { expirationTimestamp: "1585699200", collateralAddress: TestnetERC20.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") } }
 ```
  
 5. Before the contract for the synthetic tokens can be created, the price identifier for the synthetic tokens must be registered with `IdentifierWhitelist`. This is important to ensure that the UMA DVM can resolve any disputes for these synthetic tokens. 
@@ -42,14 +45,13 @@ const registry = await Registry.deployed()
 await registry.addMember(1, empCreator.address)
 ```
  
- 
 7. Now, we can create a new expiring multiparty synthetic token with the factory instance.
 ```
 const txResult = await empCreator.createExpiringMultiParty(constructorParams)
 const emp = await ExpiringMultiParty.at(txResult.logs[0].args.expiringMultiPartyAddress)
 ```
  
-## How to conduct initial token creation
+## Create new tokens from an existing contract
  
 1. Now that we’ve parameterized and deployed the synthetic token contract, we will create synthetic tokens from that contract. The first step is to create an instance of the Test token and mint 10,000 to the wallet. This is the token that will serve as collateral for the synthetic token. [Give permission](#how-to-conduct-initial-token-creation) to the empCreator to spend the collateral tokens on our behalf. 
  
@@ -78,7 +80,7 @@ await emp.positions(accounts[0])
 // position information
 ```
  
-## Token Redemption
+## Redeem tokens against a contract
  
 1. Because we are a token sponsor for this synthetic token contract, we can redeem some of the tokens we minted even before the synthetic token expires. Let's redeem half.
  
