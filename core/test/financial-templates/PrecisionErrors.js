@@ -24,9 +24,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
   // Initial constant values
   const syntheticName = "UMA test Token";
   const syntheticSymbol = "UMATEST";
-  const withdrawalLiveness = 1000;
+  const withdrawalLiveness = 3600;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-  const siphonDelay = 100000;
   const priceTrackingIdentifier = utf8ToHex("UMATEST");
 
   beforeEach(async function() {
@@ -50,12 +49,12 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
       true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
-      siphonDelay, // __siphonDelay
       collateral.address, // _collateralAddress
       Finder.address, // _finderAddress
       priceTrackingIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address,
       { from: contractDeployer }
     );
   });
@@ -78,9 +77,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
       startTokenAmount: 1,
       feeRatePerSecond: "0.0000004",
       expectedFeesCollectedPerPeriod: 3,
-      runs: 1
+      runs: 25
     };
-    // console.log(`** Using test configuration: **\n`, testConfig)
 
     /**
      * @notice INSTANTIATE TEST VARIABLES
@@ -200,7 +198,6 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // - _addCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
     // - This division has the potential for precision loss, which could cause the resultant rawCollateral in the position to be lower than expected.
     // - In other words, the deposit() will have added less collateral to the position than the caller actually transferred.
-    // - We'll set cumulativeMultiplier to 0.9 because if we deposit 1 collateral token, then an intermediate calculation will be 1/0.9 = 1.1111...repeating, which FixedPoint cannot represent.
 
     /**
      * @notice TEST PARAMETERS
@@ -208,34 +205,36 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     const testConfig = {
       sponsorCollateralAmount: toWei("1"),
       otherCollateralAmount: toWei("0.1"),
+      expectedFeeMultiplier: 0.961, // Division by this produces precision loss, tune this.
       feePerSecond: toWei("0.039"),
-      expectedFeeMultiplier: 0.961,
       amountToDeposit: toWei("0.1"),
       runs: 10
     };
-    // console.log(`** Using test configuration: **\n`, testConfig)
 
     /**
      * @notice INSTANTIATE TEST VARIABLES
      */
-    let actualFeeMultiplier;
-    let startingContractCollateral; // Starting collateral that the contract actually owns.
-    let startingAdjustedContractCollateral; // Starting collateral that the contract thinks it owns.
-    let startingRawContractCollateral; // Scaled up collateral used to account for fees by contract.
-    let startingRawSponsorCollateral; // Scaled up sponsor collateral used to account for fees by contract.
-    let startingStoreCollateral; // Amount of fees collected by store.
-    let startingSponsorCollateral; // Amount of collateral credited to sponsor via deposits.
-    let driftTotal = toBN(0); // Precision loss on total collateral in position.
+    let actualFeeMultiplier; // Set to current fee multiplier.
+    let startingContractCollateral; // Starting total contract collateral.
+    let startingAdjustedContractCollateral; // Starting total contract collateral net of fees.
+    let startingRawContractCollateral; // Starting scaled up total contract collateral to account for fees.
+    let startingRawSponsorCollateral; // Starting scaled up sponsor collateral to account for fees.
+    let startingStoreCollateral; // Starting amount of fees collected by store.
+    let startingSponsorCollateral; // Starting amount of collateral credited to sponsor via deposits.
+    let adjustedCollateral; // Starting total contract collateral net of fees.
+    let contractCollateral; // Total contract collateral.
+    let rawContractCollateral; // Scaled up total contract collateral.
+    let sponsorCollateral; // Collateral credited to sponsor via deposits.
+    let rawSponsorCollateral; // Scaled up collateral credited to sponsor.
+    let expectedSponsorCollateral; // Amount of collateral that sponsor transfers to contract.
+    let endingStoreCollateral; // Amount of fees collected by store
+    let driftTotal = toBN(0); // Precision loss on total contract collateral.
     let driftSponsor = toBN(0); // Precision loss on just the sponsor's collateral.
-    let adjustedCollateral; // Collateral that the contract thinks it owns.
-    let contractCollateral; // Collateral that the contract actually owns.
-    let rawContractCollateral; // Raw total collateral locked by contract.
-    let sponsorCollateral; // Collateral that is credited to sponsor.
-    let rawSponsorCollateral; // Raw collateral credited to sponsor.
-    let expectedSponsorCollateral; // Collateral that sponsor actually deposited.
-    let endingStoreCollateral;
-    let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
 
+    /**
+     * @notice LOGGING
+     */
+    let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
     // Used to log collateral breakdown in a pretty fashion.
     function CollateralBreakdown(_total, _sponsor) {
       this.totalPosition = _total.toString();
@@ -245,15 +244,8 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     /**
      * @notice SETUP THE TEST
      */
-    // 1) Create two positions, one with a very low collateral ratio so that we can withdraw from our test position.
-    // Note: must create less collateralized position first.
+    // 1) Create position.
     await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: sponsor });
-    await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: other });
-    await pricelessPositionManager.create(
-      { rawValue: testConfig.otherCollateralAmount },
-      { rawValue: toWei("100") },
-      { from: other }
-    );
     await pricelessPositionManager.create(
       { rawValue: testConfig.sponsorCollateralAmount },
       { rawValue: toWei("100") },
@@ -283,7 +275,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // Test 1) Fee multiplier is set correctly.
     assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
 
-    // Test 2) The adjusted collateral and actual collateral in contract should be equal to start.
+    // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
     assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
 
     // Test 3) The sponsor has initial collateral minus fees
@@ -298,7 +290,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     console.groupEnd();
 
     /**
-     * @notice RUN THE TEST ONCE AND PRODUCE KNOWN DRIFT
+     * @notice RUN THE TEST ONCE
      */
     await pricelessPositionManager.deposit({ rawValue: testConfig.amountToDeposit }, { from: sponsor });
     contractCollateral = await collateral.balanceOf(pricelessPositionManager.address);
@@ -311,24 +303,17 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
     driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
 
-    // Test 1) User should be credited with slightly less collateral than they actually deposited.
-    // assert(driftSponsor.gt(toBN(0)));
-
-    // Test 2) Contract should be credited with less collateral than it has actually received.
-    // assert(driftTotal.gt(toBN(0)));
-
     // Log results in a table.
     breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
     breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
     breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
     breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
-
-    console.group(`** After 1 Deposit of ${parseFloat(testConfig.amountToDeposit) / 1e18}e18 collateral: **`);
+    console.group(`** After 1 Deposit of ${testConfig.amountToDeposit} collateral: **`);
     console.table(breakdown);
     console.groupEnd();
 
     /**
-     * @notice RUN THE REMAINDER OF THE TEST AND CHECK UNKNOWN DRIFT
+     * @notice RUN THE REMAINDER OF THE TEST
      */
     for (let i = 0; i < testConfig.runs - 1; i++) {
       await pricelessPositionManager.deposit({ rawValue: testConfig.amountToDeposit }, { from: sponsor });
@@ -344,13 +329,11 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
     driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
 
-    // Test 1) Let's check the drift.
     // Log results in a table.
     breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
     breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
     breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
     breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
-
     console.group(`** After All ${testConfig.runs} Deposits: **`);
     console.table(breakdown);
     console.groupEnd();
@@ -370,13 +353,13 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
 
   it("Precision loss due to withdraw()", async function() {
     // In order to induce precision loss on withdrawals, we will follow a similar strategy to deposit().
-    // To better understand this, we need to examine how the deposit() method is implemented:
+    // To better understand this, we need to examine how the withdraw() method is implemented:
     // - withdraw(collateral) calls the internal method _removeCollateral(collateral), which adjusts the position's collateral while taking fees into account.
     // - _removeCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
     // - This division has the potential for precision loss, which could cause the resultant rawCollateral in the position to be higher than expected.
     // - Note: here is the difference between deposit() and withdraw(): withdraw subtracts the floor'd quotient from rawCollateral so rawCollateral can be higher than expected
     // - In other words, the withdraw() will have subtracted less collateral from the position than the caller actually receives in the withdraw.
-    // - We'll set cumulativeMultiplier to 0.9 because if we deposit 1 collateral token, then an intermediate calculation will be 1/0.9 = 1.1111...repeating, which FixedPoint cannot represent.
+    // - We should expect to see negative "drift", because the adjusted collateral in contract will be higher than expected.
 
     /**
      * @notice TEST PARAMETERS
@@ -385,33 +368,35 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
       sponsorCollateralAmount: toWei("100"),
       otherCollateralAmount: toWei("0.1"),
       feePerSecond: toWei("0.19"),
-      expectedFeeMultiplier: 0.81,
-      amountToWithdraw: toWei("0.001"),
+      expectedFeeMultiplier: 0.81, // Division by this produces precision loss, tune this.
+      amountToWithdraw: toWei("0.001"), // Invariant: (runs * amountToWithdraw) >= (sponsorCollateralAmount - otherCollateralAmount), otherwise GCR check on withdraw() will fail
       runs: 10
     };
-    // console.log(`** Using test configuration: **\n`, testConfig)
 
     /**
      * @notice INSTANTIATE TEST VARIABLES
      */
-    let actualFeeMultiplier;
-    let startingContractCollateral; // Starting collateral that the contract actually owns.
-    let startingAdjustedContractCollateral; // Starting collateral that the contract thinks it owns.
-    let startingRawContractCollateral; // Scaled up collateral used to account for fees by contract.
-    let startingRawSponsorCollateral; // Scaled up sponsor collateral used to account for fees by contract.
-    let startingStoreCollateral; // Amount of fees collected by store.
-    let startingSponsorCollateral; // Amount of collateral credited to sponsor..
-    let driftTotal = toBN(0); // Precision loss on total collateral in position.
+    let actualFeeMultiplier; // Set to current fee multiplier.
+    let startingContractCollateral; // Starting total contract collateral.
+    let startingAdjustedContractCollateral; // Starting total contract collateral net of fees.
+    let startingRawContractCollateral; // Starting scaled up total contract collateral to account for fees.
+    let startingRawSponsorCollateral; // Starting scaled up sponsor collateral to account for fees.
+    let startingStoreCollateral; // Starting amount of fees collected by store.
+    let startingSponsorCollateral; // Starting amount of collateral credited to sponsor via deposits.
+    let adjustedCollateral; // Starting total contract collateral net of fees.
+    let contractCollateral; // Total contract collateral.
+    let rawContractCollateral; // Scaled up total contract collateral.
+    let sponsorCollateral; // Collateral credited to sponsor via deposits.
+    let rawSponsorCollateral; // Scaled up collateral credited to sponsor.
+    let expectedSponsorCollateral; // Amount of collateral that sponsor transfers to contract.
+    let endingStoreCollateral; // Amount of fees collected by store
+    let driftTotal = toBN(0); // Precision loss on total contract collateral.
     let driftSponsor = toBN(0); // Precision loss on just the sponsor's collateral.
-    let adjustedCollateral; // Collateral that the contract thinks it owns.
-    let contractCollateral; // Collateral that the contract actually owns.
-    let rawContractCollateral; // Raw total collateral locked by contract.
-    let sponsorCollateral; // Collateral that is credited to sponsor.
-    let rawSponsorCollateral; // Raw collateral credited to sponsor.
-    let expectedSponsorCollateral; // Collateral that sponsor actually transfers to contract.
-    let endingStoreCollateral;
-    let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
 
+    /**
+     * @notice LOGGING
+     */
+    let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
     // Used to log collateral breakdown in a pretty fashion.
     function CollateralBreakdown(_total, _sponsor) {
       this.totalPosition = _total.toString();
@@ -422,7 +407,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
      * @notice SETUP THE TEST
      */
     // 1) Create two positions, one with a very low collateral ratio so that we can withdraw from our test position.
-    // Note: must create less collateralized position first.
+    // Note: we must create less collateralized position first.
     await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: sponsor });
     await collateral.approve(pricelessPositionManager.address, toWei("999999999"), { from: other });
     await pricelessPositionManager.create(
@@ -459,7 +444,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     // Test 1) Fee multiplier is set correctly.
     assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
 
-    // Test 2) The adjusted collateral and actual collateral in contract should be equal to start.
+    // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
     assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
 
     // Test 3) The sponsor has initial collateral minus fees
@@ -474,7 +459,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     console.groupEnd();
 
     /**
-     * @notice RUN THE TEST ONCE AND PRODUCE KNOWN DRIFT
+     * @notice RUN THE TEST ONCE
      */
     await pricelessPositionManager.withdraw({ rawValue: testConfig.amountToWithdraw }, { from: sponsor });
     contractCollateral = await collateral.balanceOf(pricelessPositionManager.address);
@@ -487,24 +472,17 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
     driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
 
-    // Test 1) User should be credited with slightly more collateral than they actually withdrew.
-    // assert(driftSponsor.lt(toBN(0)));
-
-    // Test 2) Contract should be credited with more collateral than it actually transfers away.
-    // assert(driftTotal.lt(toBN(0)));
-
     // Log results in a table.
     breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
     breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
     breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
     breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
-
     console.group(`** After 1 Withdrawal of ${parseFloat(testConfig.amountToWithdraw) / 1e18}e18 collateral: **`);
     console.table(breakdown);
     console.groupEnd();
 
     /**
-     * @notice RUN THE REMAINDER OF THE TEST AND CHECK UNKNOWN DRIFT
+     * @notice RUN THE REMAINDER OF THE TEST
      */
     for (let i = 0; i < testConfig.runs - 1; i++) {
       await pricelessPositionManager.withdraw({ rawValue: testConfig.amountToWithdraw }, { from: sponsor });
@@ -520,13 +498,11 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
     driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
 
-    // Test 1) Let's check the drift.
     // Log results in a table.
     breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
     breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
     breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
     breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
-
     console.group(`** After All ${testConfig.runs} Withdrawals: **`);
     console.table(breakdown);
     console.groupEnd();
@@ -536,7 +512,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
      */
     endingStoreCollateral = await collateral.balanceOf(store.address);
 
-    // Test 1) Make sure that store hasn't collected any fees during this test, so that we can be confident that deposits
+    // Test 1) Make sure that store hasn't collected any fees during this test, so that we can be confident that withdraws
     // are the only source of drift.
     assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString());
 
