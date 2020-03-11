@@ -176,6 +176,7 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 4: chance to liquidate position. 1 in 3 will get liquidated
       if (i % 3 == 1) {
+        continue;
       }
 
       console.log("***time***");
