@@ -48,7 +48,7 @@ contract("IntergrationTest", function(accounts) {
   const timeOffsetBetweenTests = toBN("10000"); // timestep advance between loop iterations
   const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
   const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
-  const disputePrice = toWei("0.9"); // Price a dispute will resolve to
+  const disputePrice = toWei(toWei("1")); // Price a dispute will resolve to
 
   beforeEach(async () => {
     collateralToken = await Token.new({ from: contractCreator });
@@ -236,7 +236,7 @@ contract("IntergrationTest", function(accounts) {
             await expiringMultiParty.withdrawLiquidation(i, sponsor, { from: sponsor });
             console.log("###withdrawl for sponsor passed @", i, sponsor);
           } catch (error) {
-            console.log("withdrawl for sponsor failed @", i, sponsor);
+            console.log("withdrawl for sponsor invalid @", i, sponsor);
           }
           try {
             await expiringMultiParty.withdrawLiquidation(i, sponsor, {
@@ -244,7 +244,7 @@ contract("IntergrationTest", function(accounts) {
             });
             console.log("###withdrawl for disputer passed @", i, sponsor);
           } catch (error) {
-            console.log("withdrawl for disputer failed @", i, sponsor);
+            console.log("withdrawl for disputer invalid @", i, sponsor);
           }
           try {
             await expiringMultiParty.withdrawLiquidation(i, sponsor, {
@@ -252,7 +252,7 @@ contract("IntergrationTest", function(accounts) {
             });
             console.log("###withdrawl for liquidator passed @", i, sponsor);
           } catch (error) {
-            console.log("withdrawl for liquidator failed @", i, sponsor);
+            console.log("withdrawl for liquidator invalid @", i, sponsor);
           }
         }
       }
