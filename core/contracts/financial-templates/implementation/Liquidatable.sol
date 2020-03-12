@@ -196,10 +196,7 @@ contract Liquidatable is PricelessPositionManager {
         // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
         // what the liquidator was willing to liquidate at.
         // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-        require(
-            collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
-            "collat Ratio has diverged"
-        );
+        require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
 
         // The actual amount of collateral that gets moved to the liquidation.
         FixedPoint.Unsigned memory lockedCollateral = startCollateral.mul(ratio);
