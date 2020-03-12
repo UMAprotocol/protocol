@@ -176,7 +176,6 @@ contract("Liquidatable", function(accounts) {
       );
     });
   });
-
   describe("Creating a liquidation on a valid position", () => {
     beforeEach(async () => {
       // Create position
@@ -348,7 +347,6 @@ contract("Liquidatable", function(accounts) {
       );
     });
   });
-
   describe("Liquidation has been created", () => {
     beforeEach(async () => {
       // Create position
@@ -930,9 +928,6 @@ contract("Liquidatable", function(accounts) {
 
           const expectedPayment = amountOfCollateral.add(disputeBond);
           truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
-            console.log("EVENT");
-            console.log(ev.withdrawalAmount.toString());
-            console.log(ev.liquidationStatus.toString());
             return (
               ev.caller == liquidator &&
               ev.withdrawalAmount.toString() == expectedPayment.toString() &&
@@ -945,7 +940,6 @@ contract("Liquidatable", function(accounts) {
       });
     });
   });
-
   describe("Weird Edge cases", () => {
     it("Dispute rewards should not add to over 100% of TRV", async () => {
       // Deploy liquidation contract and set global params.
@@ -1051,4 +1045,59 @@ contract("Liquidatable", function(accounts) {
       );
     });
   });
+  describe("Underlying position expires during a pending liquidation", () => {
+    beforeEach(async () => {
+      // Fast forward time to right before expiry.
+      let positionExpiry = await liquidationContract.expirationTimestamp()
+      await liquidationContract.setCurrentTime(
+        toBN(positionExpiry).sub(toBN(1)).toString()
+      )
+      // Create a new position.
+      await liquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Transfer synthetic tokens to a liquidator
+      await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      // Create a Liquidation
+      liquidationTime = await liquidationContract.getCurrentTime();
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+      // Fast forward time to expiry.
+      await liquidationContract.setCurrentTime(
+        toBN(positionExpiry).toString()
+      )      
+    });
+    it("Can expire the underlying position", async () => {
+      const expireResult = await liquidationContract.expire({ from: rando });
+      truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
+        return ev.caller == rando;
+      });
+    })
+    it("Can dispute the liquidation", async () => {
+      await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+      const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
+      assert.equal(liquidation.state.toString(), STATES.PENDING_DISPUTE);
+      assert.equal(liquidation.disputer, disputer);
+      assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
+    });
+    it("Can withdraw liquidation rewards", async () => {
+      // Dispute fails, liquidator withdraws, liquidation is deleted
+      await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+      const disputePrice = toWei("1.3");
+      await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
+      await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+      // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
+      const expectedPayment = amountOfCollateral.add(disputeBond);
+      assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
+      assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
+      const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
+      assert.equal(deletedLiquidation.liquidator, zeroAddress);
+    });
+  })
 });

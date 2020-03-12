@@ -520,7 +520,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
         private
-        view
+        pure
         returns (FixedPoint.Unsigned memory ratio)
     {
         if (!numTokens.isGreaterThan(0)) {
