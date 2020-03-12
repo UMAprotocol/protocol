@@ -45,7 +45,7 @@ contract("IntergrationTest", function(accounts) {
   const mintAndApprove = toBN(toWei("10000000")); // number of tokens minted and approved by each account
   const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
   const baseNumTokens = toBN(toWei("150")); // starting number of tokens created by sponsor
-  const timeOffsetBetweenTests = toBN("1000"); // timestep advance between loop iterations
+  const timeOffsetBetweenTests = toBN("10000"); // timestep advance between loop iterations
   const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
   const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
   const disputePrice = toWei("0.9"); // Price a dispute will resolve to
@@ -138,9 +138,9 @@ contract("IntergrationTest", function(accounts) {
     // 10) check the contract has no funds left in it
 
     // Tunable parameters
-    let numIterations = 3;
+    let numIterations = 12;
     let runLiquidations = true;
-    let runDisputes = false;
+    let runDisputes = true;
 
     // STEP: 0: seed liquidator and disruptor
     await expiringMultiParty.create(
@@ -189,7 +189,7 @@ contract("IntergrationTest", function(accounts) {
       // STEP 4.a: chance to liquidate position. 1 in 3 will get liquidated
       if (i % 3 == 1 && runLiquidations) {
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
-        console.log("liquidating sponsor", sponsor);
+        console.log("--->liquidating sponsor", sponsor);
         await expiringMultiParty.createLiquidation(
           sponsor, // Price the contract resolves to
           { rawValue: liquidationPrice.toString() }, // Price a liquidator will liquidate at // liquidation at a price of 1.5 per token // Price a dispute will resolve to
@@ -199,14 +199,16 @@ contract("IntergrationTest", function(accounts) {
 
         // STEP 4.b) chance to dispute the liquidation. 1 in 2 liquidations will get disputed
         if (i % 2 == 1 && runDisputes) {
-          console.log("Disputing position");
+          console.log("--->Disputing position");
 
           // get the liquidation info from the emited event
           const liquidationEvents = await expiringMultiParty.getPastEvents("LiquidationCreated");
           const liquidationEvent = liquidationEvents[liquidationEvents.length - 1].args;
 
           // Create the dispute request for the liquidation
-          await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor);
+          await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor, {
+            from: disputer
+          });
 
           // Push a price into the oracle. This will enable resolution later on when the disputer
           // calls `withdrawLiquidation` to extract their winnings.
@@ -229,7 +231,7 @@ contract("IntergrationTest", function(accounts) {
     // liquidation events that occurred.
     if (runLiquidations) {
       for (const sponsor of sponsors) {
-        for (let i = 0; i < numIterations / 4; i++) {
+        for (let i = 0; i < numIterations / 3; i++) {
           try {
             await expiringMultiParty.withdrawLiquidation(i, sponsor, { from: sponsor });
             console.log("###withdrawl for sponsor passed @", i, sponsor);
