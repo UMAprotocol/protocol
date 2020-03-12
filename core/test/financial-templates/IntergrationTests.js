@@ -154,20 +154,10 @@ contract("IntergrationTest", function(accounts) {
     for (let i = 0; i < numIterations; i++) {
       sponsor = sponsors[i % sponsors.length];
       tokenHolder = tokenHolders[i % tokenHolders.length];
-      console.log(
-        "iteration number",
-        i,
-        "\ncreating position for sponsor",
-        sponsor,
-        "\nsending tokens to",
-        tokenHolder
-      );
-      console.log("collat", baseCollateralAmount.add(toBN(i.toString())).toString());
-      console.log("tokens", baseNumTokens.toString());
 
       // STEP 1: creating position
       await expiringMultiParty.create(
-        { rawValue: baseCollateralAmount.add(toBN(i.toString())).toString() },
+        { rawValue: baseCollateralAmount.toString() },
         { rawValue: baseNumTokens.toString() },
         { from: sponsor }
       );
