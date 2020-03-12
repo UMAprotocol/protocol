@@ -46,6 +46,9 @@ contract("IntergrationTest", function(accounts) {
   const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
   const baseNumTokens = toBN(toWei("150")); // starting number of tokens created by sponsor
   const timeOffsetBetweenTests = toBN("1000"); // timestep advance between loop iterations
+  const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
+  const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
+  const disputePrice = toWei("0.9"); // Price a dispute will resolve to
 
   beforeEach(async () => {
     collateralToken = await Token.new({ from: contractCreator });
@@ -118,21 +121,33 @@ contract("IntergrationTest", function(accounts) {
      * @notice TEST 1
      */
     // Number of positions to create and liquidate. The following process is followed to initiate maximum interaction
-    // with the fee paying function to try and compound floating errors to see if positions are locked at settlement:
-    // 1) position created by random sponsor
-    // 2) random amount of tokens sent to a random sponsor
+    // with the emp & fee paying function to try and compound floating errors to see if positions are locked at settlement:
+    // 0) create a large position by the liquidator to enable them to perform liquidations
+    // 1) position created by selected sponsor
+    // 2) random amount of tokens sent to a selected tokenholder
     // 3) time advanced by 1000 seconds
-    // 4) random chance to initiate liquidation.
+    // 4) 1/3 chance to initiate liquidation
     // 4.a) if liquidation initiated then time advanced
-    // 4.b) random chance to dispute
+    // 4.b) 1/2chance to dispute
     // 4.b.i) if disputed then resolve oracle price
-    // 4.c) all users withdraw after liveness
-    // 5) repeat 1 to 4 `numIterations` times
-    // 6) settle contract
-    // 7) ensure that all users can withdraw their funds
-    // 8) check the contract has no funds left in it
+    // 5) chance for token holder to deposit more collateral
+    // 6) chance for the sponsor to withdraw collateral
+    // 7) repeat 1 to 4 `numIterations` times
+    // 8) settle contract
+    // 9) ensure that all users can withdraw their funds
+    // 10) check the contract has no funds left in it
 
-    let numIterations = 5;
+    //Tunable parameters
+    let numIterations = 3;
+    let runLiquidations = true;
+    let runDisputes = false;
+
+    // STEP: 0: seed liquidator and disruptor
+    await expiringMultiParty.create(
+      { rawValue: baseCollateralAmount.mul(toBN("100")).toString() },
+      { rawValue: baseNumTokens.mul(toBN("100")).toString() },
+      { from: liquidator }
+    );
 
     let sponsor;
     let tokenHolder;
@@ -152,12 +167,8 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 1: creating position
       await expiringMultiParty.create(
-        {
-          rawValue: baseCollateralAmount.add(toBN(i.toString())).toString()
-        },
-        {
-          rawValue: baseNumTokens.toString()
-        },
+        { rawValue: baseCollateralAmount.add(toBN(i.toString())).toString() },
+        { rawValue: baseNumTokens.toString() },
         { from: sponsor }
       );
       console.log(
@@ -167,16 +178,42 @@ contract("IntergrationTest", function(accounts) {
         baseCollateralAmount.add(toBN(i.toString())).toString()
       );
 
-      // STEP 2: transferring tokens
+      // STEP 2: transferring tokens to the token holder
       await syntheticToken.transfer(tokenHolder, toWei("100"), { from: sponsor });
 
       // STEP 3: advancing time
-      await expiringMultiParty.setCurrentTime(startingTime.add(timeOffsetBetweenTests));
-      await expiringMultiParty.setCurrentTime(startingTime.add(timeOffsetBetweenTests));
+      const currentTime = await expiringMultiParty.getCurrentTime();
+      await expiringMultiParty.setCurrentTime(currentTime.add(timeOffsetBetweenTests));
+      await mockOracle.setCurrentTime(currentTime.add(timeOffsetBetweenTests));
 
-      // STEP 4: chance to liquidate position. 1 in 3 will get liquidated
-      if (i % 3 == 1) {
-        continue;
+      // STEP 4.a: chance to liquidate position. 1 in 3 will get liquidated
+      if (i % 3 == 1 && runLiquidations) {
+        const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
+        console.log("liquidating sponsor", sponsor);
+        await expiringMultiParty.createLiquidation(
+          sponsor, // Price the contract resolves to
+          { rawValue: liquidationPrice.toString() }, // Price a liquidator will liquidate at // liquidation at a price of 1.5 per token // Price a dispute will resolve to
+          { rawValue: positionTokensOutstanding.toString() },
+          { from: liquidator }
+        );
+
+        //STEP 4.b) chance to dispute the liquidation. 1 in 2 liquidations will get disputed
+        if (i % 2 == 1 && runDisputes) {
+          console.log("Disputing position");
+
+          // get the liquidation info from the emited event
+          const liquidationEvents = await expiringMultiParty.getPastEvents("LiquidationCreated");
+          const liquidationEvent = liquidationEvents[liquidationEvents.length - 1].args;
+
+          // Create the dispute request for the liquidation
+          await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor);
+
+          // Push a price into the oracle. This will enable resolution later on when the disputer
+          // calls `withdrawLiquidation` to extract their winnings.
+          const liquidationTime = await expiringMultiParty.getCurrentTime();
+          console.log("Liquidation time", liquidationTime.toString());
+          await mockOracle.pushPrice(constructorParams.priceFeedIdentifier, liquidationTime, disputePrice);
+        }
       }
 
       console.log("***time***");
@@ -184,10 +221,40 @@ contract("IntergrationTest", function(accounts) {
       console.log("getCurrentTime\t\t", (await expiringMultiParty.getCurrentTime()).toString());
       console.log("lastPaymentTime\t\t", (await expiringMultiParty.lastPaymentTime()).toString());
       console.log("expirationTimestamp\t", (await expiringMultiParty.expirationTimestamp()).toString());
-    }
+    } // exit iteration loop
 
     console.log("Position creation done! advancing time and withdrawing");
-    console.log("expiration", (await expiringMultiParty.expirationTimestamp()).toString());
+
+    // Before settling the contract the liquidator, disruptor and token sponsors need to withdraw from all
+    // liquidation events that occurred.
+    if (runLiquidations) {
+      for (const sponsor of sponsors) {
+        for (let i = 0; i < numIterations / 4; i++) {
+          try {
+            await expiringMultiParty.withdrawLiquidation(i, sponsor, { from: sponsor });
+            console.log("###withdrawl for sponsor passed @", i, sponsor);
+          } catch (error) {
+            console.log("withdrawl for sponsor failed @", i, sponsor);
+          }
+          try {
+            await expiringMultiParty.withdrawLiquidation(i, sponsor, {
+              from: disputer
+            });
+            console.log("###withdrawl for disputer passed @", i, sponsor);
+          } catch (error) {
+            console.log("withdrawl for disputer failed @", i, sponsor);
+          }
+          try {
+            await expiringMultiParty.withdrawLiquidation(i, sponsor, {
+              from: liquidator
+            });
+            console.log("###withdrawl for liquidator passed @", i, sponsor);
+          } catch (error) {
+            console.log("withdrawl for liquidator failed @", i, sponsor);
+          }
+        }
+      }
+    }
 
     // STEP 6: expire the contract and settle positions
     await expiringMultiParty.setCurrentTime(expirationTime.toNumber() + 1);
@@ -203,21 +270,34 @@ contract("IntergrationTest", function(accounts) {
     console.log("###State", (await expiringMultiParty.contractState()).toString());
 
     await expiringMultiParty.expire();
-    const oraclePrice = await expiringMultiParty.getCurrentTime();
-    await mockOracle.pushPrice(constructorParams.priceFeedIdentifier, oraclePrice.subn(1).toString(), 1);
+
+    // After expiration the oracle needs to settle the price. Push a price of 1 usd per collateral means that each
+    // token is redeemable for 1 unit of underlying.
+    const oracleTime = await expiringMultiParty.getCurrentTime();
+    await mockOracle.pushPrice(constructorParams.priceFeedIdentifier, oracleTime.subn(1).toString(), settlementPrice);
+
+    // Settle the liquidator
+    console.log("settleExpired for liquidator", liquidator);
+    await expiringMultiParty.settleExpired({ from: liquidator });
+
+    // Settle the disputer
+    console.log("settleExpired for disputer", disputer);
+    await expiringMultiParty.settleExpired({ from: disputer });
 
     // Settle token holders
     for (const tokenHolder of tokenHolders) {
       console.log("settleExpired for tokenHolder", tokenHolder);
       await expiringMultiParty.settleExpired({ from: tokenHolder });
+      assert.equal(await syntheticToken.balanceOf(tokenHolder), "0");
     }
 
     // Settle token sponsors
     for (const sponsor of sponsors) {
       console.log("settleExpired for sponsor", sponsor);
       await expiringMultiParty.settleExpired({ from: sponsor });
+      assert.equal(await syntheticToken.balanceOf(sponsor), "0");
     }
 
-    assert.equal(true, true);
+    assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
   });
 });

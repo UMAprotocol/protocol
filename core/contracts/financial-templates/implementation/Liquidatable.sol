@@ -86,7 +86,8 @@ contract Liquidatable is PricelessPositionManager {
         address indexed liquidator,
         address indexed disputer,
         uint disputeId,
-        uint disputeBondAmount
+        uint disputeBondAmount,
+        uint timeStamp
     );
     event DisputeSettled(
         address indexed caller,
@@ -196,7 +197,10 @@ contract Liquidatable is PricelessPositionManager {
         // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
         // what the liquidator was willing to liquidate at.
         // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-        require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
+        require(
+            collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
+            "collat Ratio has diverged"
+        );
 
         // The actual amount of collateral that gets moved to the liquidation.
         FixedPoint.Unsigned memory lockedCollateral = startCollateral.mul(ratio);
@@ -275,7 +279,14 @@ contract Liquidatable is PricelessPositionManager {
         // Pay a final fee
         _payFinalFees(msg.sender);
 
-        emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
+        emit LiquidationDisputed(
+            sponsor,
+            disputedLiquidation.liquidator,
+            msg.sender,
+            id,
+            disputeBondAmount.rawValue,
+            now
+        );
     }
 
     /**
