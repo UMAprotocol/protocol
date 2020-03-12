@@ -1047,7 +1047,7 @@ contract("Liquidatable", function(accounts) {
   });
   describe("Underlying position expires during a pending liquidation", () => {
     beforeEach(async () => {
-      // Fast forward time to right before expiry.
+      // Fast forward time to right before expiry so that you can still create a liquidation.
       let positionExpiry = await liquidationContract.expirationTimestamp();
       await liquidationContract.setCurrentTime(
         toBN(positionExpiry)
