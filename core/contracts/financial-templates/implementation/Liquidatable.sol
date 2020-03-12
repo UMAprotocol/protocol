@@ -86,8 +86,7 @@ contract Liquidatable is PricelessPositionManager {
         address indexed liquidator,
         address indexed disputer,
         uint disputeId,
-        uint disputeBondAmount,
-        uint timeStamp
+        uint disputeBondAmount
     );
     event DisputeSettled(
         address indexed caller,
@@ -279,14 +278,7 @@ contract Liquidatable is PricelessPositionManager {
         // Pay a final fee
         _payFinalFees(msg.sender);
 
-        emit LiquidationDisputed(
-            sponsor,
-            disputedLiquidation.liquidator,
-            msg.sender,
-            id,
-            disputeBondAmount.rawValue,
-            now
-        );
+        emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, id, disputeBondAmount.rawValue);
     }
 
     /**
