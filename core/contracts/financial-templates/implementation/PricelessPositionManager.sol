@@ -169,7 +169,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(positionData.requestPassTimestamp == 0);
 
         _removeCollateral(positionData.rawCollateral, collateralAmount);
-        require(_checkCollateralizationRatio(positionData));
+        require(_checkPositionCollateralization(positionData));
         _removeCollateral(rawTotalPositionCollateral, collateralAmount);
 
         // Move collateral currency from contract to sender.
@@ -248,6 +248,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         onlyPreExpiration()
         fees()
     {
+        require(_checkCollateralization(collateralAmount, numTokens));
+
         PositionData storage positionData = positions[msg.sender];
         require(positionData.requestPassTimestamp == 0);
         if (positionData.tokensOutstanding.isEqual(0)) {
@@ -255,7 +257,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
         _addCollateral(positionData.rawCollateral, collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
-        require(_checkCollateralizationRatio(positionData));
 
         _addCollateral(rawTotalPositionCollateral, collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
@@ -500,19 +501,24 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return FixedPoint.Unsigned(_safeUintCast(oraclePrice));
     }
 
-    function _checkCollateralizationRatio(PositionData storage positionData) private view returns (bool) {
+    function _checkPositionCollateralization(PositionData storage positionData) private view returns (bool) {
+        return _checkCollateralization(_getCollateral(positionData.rawCollateral), positionData.tokensOutstanding);
+    }
+
+    function _checkCollateralization(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
+        private
+        view
+        returns (bool)
+    {
         FixedPoint.Unsigned memory global = _getCollateralizationRatio(
             _getCollateral(rawTotalPositionCollateral),
             totalTokensOutstanding
         );
-        FixedPoint.Unsigned memory thisPos = _getCollateralizationRatio(
-            _getCollateral(positionData.rawCollateral),
-            positionData.tokensOutstanding
-        );
-        return !global.isGreaterThan(thisPos);
+        FixedPoint.Unsigned memory thisChange = _getCollateralizationRatio(collateral, numTokens);
+        return !global.isGreaterThan(thisChange);
     }
 
-    function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned storage numTokens)
+    function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
         private
         view
         returns (FixedPoint.Unsigned memory ratio)
