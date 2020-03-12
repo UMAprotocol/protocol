@@ -137,7 +137,7 @@ contract("IntergrationTest", function(accounts) {
     // 9) ensure that all users can withdraw their funds
     // 10) check the contract has no funds left in it
 
-    //Tunable parameters
+    // Tunable parameters
     let numIterations = 3;
     let runLiquidations = true;
     let runDisputes = false;
@@ -197,7 +197,7 @@ contract("IntergrationTest", function(accounts) {
           { from: liquidator }
         );
 
-        //STEP 4.b) chance to dispute the liquidation. 1 in 2 liquidations will get disputed
+        // STEP 4.b) chance to dispute the liquidation. 1 in 2 liquidations will get disputed
         if (i % 2 == 1 && runDisputes) {
           console.log("Disputing position");
 
