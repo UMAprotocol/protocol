@@ -1048,10 +1048,12 @@ contract("Liquidatable", function(accounts) {
   describe("Underlying position expires during a pending liquidation", () => {
     beforeEach(async () => {
       // Fast forward time to right before expiry.
-      let positionExpiry = await liquidationContract.expirationTimestamp()
+      let positionExpiry = await liquidationContract.expirationTimestamp();
       await liquidationContract.setCurrentTime(
-        toBN(positionExpiry).sub(toBN(1)).toString()
-      )
+        toBN(positionExpiry)
+          .sub(toBN(1))
+          .toString()
+      );
       // Create a new position.
       await liquidationContract.create(
         { rawValue: amountOfCollateral.toString() },
@@ -1069,16 +1071,14 @@ contract("Liquidatable", function(accounts) {
         { from: liquidator }
       );
       // Fast forward time to expiry.
-      await liquidationContract.setCurrentTime(
-        toBN(positionExpiry).toString()
-      )      
+      await liquidationContract.setCurrentTime(toBN(positionExpiry).toString());
     });
     it("Can expire the underlying position", async () => {
       const expireResult = await liquidationContract.expire({ from: rando });
       truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
         return ev.caller == rando;
       });
-    })
+    });
     it("Can dispute the liquidation", async () => {
       await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
@@ -1099,5 +1099,5 @@ contract("Liquidatable", function(accounts) {
       const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
       assert.equal(deletedLiquidation.liquidator, zeroAddress);
     });
-  })
+  });
 });
