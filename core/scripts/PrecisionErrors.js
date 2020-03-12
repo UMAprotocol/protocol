@@ -1,5 +1,17 @@
+/**
+ * @notice This is the main script that performs experiments on precision loss occuring throughout ExpiringMultiParty methods.
+ * Precision loss occurs when multiplying or dividing FixedPoint numbers because FixedPoint can only store a fixed
+ * amount of decimals. Therefore, calculations will get truncated and either floored or ceiled. Each test runs in isolation
+ * by creating a new test environment with a new EMP contract.
+ * @dev This script works assuming that the sender of all transactions is the deployer of the EMP contracts.
+ *
+ * Assumptions: You are currently in the `/core` directory.
+ * Requirements: Deploy contracts via `$(npm bin)/truffle migrate --reset --network <network>
+ * Run: $(npm bin)/truffle exec ./scripts/PrecisionErrors.js --network test
+ */
+
 // Helpers
-const assert = require('assert').strict;
+const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 const { toWei, toBN, utf8ToHex } = web3.utils;
 
@@ -30,8 +42,8 @@ const TokenFactory = artifacts.require("TokenFactory");
 async function createTestEnvironment() {
   // User roles.
   const contractDeployer = (await web3.eth.getAccounts())[0];
-  const sponsor = (await web3.eth.getAccounts())[1]
-  const other = (await web3.eth.getAccounts())[2]
+  const sponsor = (await web3.eth.getAccounts())[1];
+  const other = (await web3.eth.getAccounts())[2];
 
   // Contracts
   let collateral;
@@ -93,7 +105,7 @@ async function createTestEnvironment() {
     sponsor,
     contractDeployer,
     other
-  }
+  };
 }
 
 /**
@@ -107,15 +119,8 @@ function CollateralBreakdown(_total, _sponsor) {
 }
 
 /**
- * @notice This is the main script that performs experiments on precision loss occuring throughout ExpiringMultiParty methods.
- * Precision loss occurs when multiplying or dividing FixedPoint numbers because FixedPoint can only store a fixed
- * amount of decimals. Therefore, calculations will get truncated and either floored or ceiled.
- * @dev This script works assuming that the sender of all transactions is the deployer of the EMP contracts
- * 
- * Assumptions: You are currently in the `/core` directory.
- * Requirements: Deploy contracts via `$(npm bin)/truffle migrate --reset --network <network>
- * Run: $(npm bin)/truffle exec ./scripts/PrecisionErrors.js --network test
- */
+ * @notice Main script.
+ **/
 async function runExport() {
   // Empty-state contracts needed to run experiments.
   let collateral;
@@ -154,12 +159,12 @@ async function runExport() {
   let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
   let createLiquidationResult; // Store createLiquidation event.
 
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * START PAYFEES()
-   * 
+   *
    *****************************************************************************/
-  console.group("Precision loss due to payFees()")
+  console.group("Precision loss due to payFees()");
   // Here, we choose a collateral amount that will produce one rounding error on the first run:
   // - Collateral = 9,000,000 wei.
   // - 0.0000004% fees per second * 1 second * 9,000,000 wei collateral = 3.6 wei fees, however this gets floored by `Store.computeFee()` to 3 wei fees.
@@ -172,7 +177,7 @@ async function runExport() {
   /**
    * @notice CREATE NEW EXPERIMENT
    */
-  experimentEnv = await createTestEnvironment()
+  experimentEnv = await createTestEnvironment();
   collateral = experimentEnv.collateral;
   synthetic = experimentEnv.synthetic;
   emp = experimentEnv.emp;
@@ -229,10 +234,10 @@ async function runExport() {
   assert.equal(startingRawContractCollateral.toString(), startingContractCollateral.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral, 'N/A');
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, 'N/A');
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, 'N/A');
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, 'N/A');
+  breakdown.expected = new CollateralBreakdown(startingContractCollateral, "N/A");
+  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, "N/A");
+  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, "N/A");
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
   console.group("** Pre-Fees: **");
   console.table(breakdown);
   console.groupEnd();
@@ -257,11 +262,11 @@ async function runExport() {
   assert(driftTotal.gt(toBN(0)));
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, 'N/A');
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, 'N/A');
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, 'N/A');
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, 'N/A');
-  breakdown.drift = new CollateralBreakdown(driftTotal, 'N/A');
+  breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral, "N/A");
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral, "N/A");
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.drift = new CollateralBreakdown(driftTotal, "N/A");
   console.group(`** After 1 second: ${actualFeesCollected.toString()} collateral collected in fees **`);
   console.table(breakdown);
   console.groupEnd();
@@ -292,11 +297,11 @@ async function runExport() {
 
   // Test 2) Let's check if there is more drift.
   // Log results.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, 'N/A');
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, 'N/A');
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, 'N/A');
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, 'N/A');
-  breakdown.drift = new CollateralBreakdown(driftTotal, 'N/A');
+  breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral, "N/A");
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral, "N/A");
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.drift = new CollateralBreakdown(driftTotal, "N/A");
   console.group(`** After ${testConfig.runs} seconds: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -305,26 +310,26 @@ async function runExport() {
    * @notice POST-TEST CLEANUP
    */
 
-   // Reset store fees.
+  // Reset store fees.
   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * END PAYFEES()
-   * 
+   *
    *****************************************************************************/
 
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * START DEPOSIT()
-   * 
+   *
    *****************************************************************************/
 
   /**
    * @notice CREATE NEW EXPERIMENT
    */
-  experimentEnv = await createTestEnvironment()
+  experimentEnv = await createTestEnvironment();
   collateral = experimentEnv.collateral;
   synthetic = experimentEnv.synthetic;
   emp = experimentEnv.emp;
@@ -332,7 +337,7 @@ async function runExport() {
   sponsor = experimentEnv.sponsor;
   contractDeployer = experimentEnv.contractDeployer;
 
-  console.group("Precision loss due to deposit()")
+  console.group("Precision loss due to deposit()");
   // In order to induce precision loss on deposits, we want to indirectly set the "cumulativeFeeMultiplier"
   // to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
   // To better understand this, we need to examine how the deposit() method is implemented:
@@ -378,9 +383,9 @@ async function runExport() {
   /**
    * @notice PRE-TEST INVARIANTS
    */
-  breakdown = {}
-  driftTotal = toBN(0)
-  driftSponsor = toBN(0)
+  breakdown = {};
+  driftTotal = toBN(0);
+  driftSponsor = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
@@ -475,35 +480,34 @@ async function runExport() {
    * @notice POST-TEST CLEANUP
    */
 
-   // Reset store fees.
-   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  // Reset store fees.
+  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * END DEPOSIT()
-   * 
+   *
    *****************************************************************************/
 
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * START CREATE()
-   * 
+   *
    *****************************************************************************/
-  console.group("Precision loss due to createToken()")
+  console.group("Precision loss due to createToken()");
   // The precision loss mechanic is identical to deposit().
 
   /**
    * @notice CREATE NEW EXPERIMENT
    */
-  experimentEnv = await createTestEnvironment()
+  experimentEnv = await createTestEnvironment();
   collateral = experimentEnv.collateral;
   synthetic = experimentEnv.synthetic;
   emp = experimentEnv.emp;
   store = experimentEnv.store;
   sponsor = experimentEnv.sponsor;
   contractDeployer = experimentEnv.contractDeployer;
-
 
   /**
    * @notice TEST PARAMETERS
@@ -546,9 +550,9 @@ async function runExport() {
   /**
    * @notice PRE-TEST INVARIANTS
    */
-  breakdown = {}
-  driftTotal = toBN(0)
-  driftSponsor = toBN(0)
+  breakdown = {};
+  driftTotal = toBN(0);
+  driftSponsor = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
@@ -572,9 +576,8 @@ async function runExport() {
   breakdown.expected = new CollateralBreakdown(startingContractCollateral, expectedSponsorCollateral);
   breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
   breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
-  delete(breakdown.drift)
-  delete
-  console.group("** Pre-Create: Expected and Credited amounts should be equal **");
+  delete breakdown.drift;
+  delete console.group("** Pre-Create: Expected and Credited amounts should be equal **");
   console.table(breakdown);
   console.groupEnd();
 
@@ -655,23 +658,22 @@ async function runExport() {
    * @notice POST-TEST CLEANUP
    */
 
-   // Reset store fees.
-   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  // Reset store fees.
+  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * END CREATE()
-   * 
+   *
    *****************************************************************************/
 
-
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * START WITHDRAW()
-   * 
+   *
    *****************************************************************************/
-  console.group("Precision loss due to withdraw()")
+  console.group("Precision loss due to withdraw()");
   // In order to induce precision loss on withdrawals, we will follow a similar strategy to deposit().
   // To better understand this, we need to examine how the withdraw() method is implemented:
   // - withdraw(collateral) calls the internal method _removeCollateral(collateral), which adjusts the position's collateral while taking fees into account.
@@ -684,7 +686,7 @@ async function runExport() {
   /**
    * @notice CREATE NEW EXPERIMENT
    */
-  experimentEnv = await createTestEnvironment()
+  experimentEnv = await createTestEnvironment();
   collateral = experimentEnv.collateral;
   synthetic = experimentEnv.synthetic;
   emp = experimentEnv.emp;
@@ -725,9 +727,9 @@ async function runExport() {
   /**
    * @notice PRE-TEST INVARIANTS
    */
-  breakdown = {}
-  driftTotal = toBN(0)
-  driftSponsor = toBN(0)
+  breakdown = {};
+  driftTotal = toBN(0);
+  driftSponsor = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
@@ -821,22 +823,22 @@ async function runExport() {
   /**
    * @notice POST-TEST CLEANUP
    */
-   // Reset store fees.
-   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  // Reset store fees.
+  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * END WITHDRAW()
-   * 
+   *
    *****************************************************************************/
 
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * START REDEEM()
-   * 
+   *
    *****************************************************************************/
-  console.group("Precision loss due to redeem()")
+  console.group("Precision loss due to redeem()");
   // Redeem() is a bit more complex because the amount of collateral released from the contract
   // is determined by the proportion of (synthetic tokens redeemed / synthetic tokens outstanding).
   // This proportion can exhibit precision loss, the product of which is multiplied by
@@ -856,7 +858,7 @@ async function runExport() {
   /**
    * @notice CREATE NEW EXPERIMENT
    */
-  experimentEnv = await createTestEnvironment()
+  experimentEnv = await createTestEnvironment();
   collateral = experimentEnv.collateral;
   synthetic = experimentEnv.synthetic;
   emp = experimentEnv.emp;
@@ -907,9 +909,9 @@ async function runExport() {
   /**
    * @notice PRE-TEST INVARIANTS
    */
-  breakdown = {}
-  driftTotal = toBN(0)
-  driftSponsor = toBN(0)
+  breakdown = {};
+  driftTotal = toBN(0);
+  driftSponsor = toBN(0);
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
@@ -1017,22 +1019,22 @@ async function runExport() {
   /**
    * @notice POST-TEST CLEANUP
    */
-   // Reset store fees.
-   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  // Reset store fees.
+  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * END REDEEM()
-   * 
+   *
    *****************************************************************************/
 
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * START LIQUIDATE()
-   * 
+   *
    *****************************************************************************/
-  console.group("Precision loss due to partial liquidations via createLiquidation()")
+  console.group("Precision loss due to partial liquidations via createLiquidation()");
   // When you partially liquidate X tokens of a position with T tokens, we liquidate X/T of the collateral.
   // - That division does a floor operation in order to represent a FixedPoint.
   // - Let's start with 9 synthetic tokens and 9 collateral.
@@ -1049,7 +1051,7 @@ async function runExport() {
   /**
    * @notice CREATE NEW EXPERIMENT
    */
-  experimentEnv = await createTestEnvironment()
+  experimentEnv = await createTestEnvironment();
   collateral = experimentEnv.collateral;
   synthetic = experimentEnv.synthetic;
   emp = experimentEnv.emp;
@@ -1083,9 +1085,9 @@ async function runExport() {
   /**
    * @notice PRE-TEST INVARIANTS
    */
-  breakdown = {}
-  driftTotal = toBN(0)
-  driftSponsor = toBN(0)
+  breakdown = {};
+  driftTotal = toBN(0);
+  driftSponsor = toBN(0);
   startingContractCollateral = await emp.totalPositionCollateral();
   startingSponsorCollateral = await emp.getCollateral(sponsor);
 
@@ -1203,28 +1205,27 @@ async function runExport() {
   console.group(`** After 3 Partial Liquidations of ${testConfig.amountToLiquidate} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
-  
+
   /**
    * @notice POST-TEST CLEANUP
    */
 
-   // Reset store fees.
-   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  // Reset store fees.
+  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
-  /*****************************************************************************
-   * 
+  /** ***************************************************************************
+   *
    * END LIQUIDATE()
-   * 
+   *
    *****************************************************************************/
-
-};
+}
 
 run = async function(callback) {
   try {
     await runExport();
   } catch (err) {
-    console.error(err)
+    console.error(err);
   }
   callback();
 };
