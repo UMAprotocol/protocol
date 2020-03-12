@@ -176,6 +176,7 @@ contract("Liquidatable", function(accounts) {
       );
     });
   });
+
   describe("Creating a liquidation on a valid position", () => {
     beforeEach(async () => {
       // Create position
@@ -347,6 +348,7 @@ contract("Liquidatable", function(accounts) {
       );
     });
   });
+
   describe("Liquidation has been created", () => {
     beforeEach(async () => {
       // Create position
@@ -940,6 +942,7 @@ contract("Liquidatable", function(accounts) {
       });
     });
   });
+
   describe("Weird Edge cases", () => {
     it("Dispute rewards should not add to over 100% of TRV", async () => {
       // Deploy liquidation contract and set global params.
@@ -1014,6 +1017,7 @@ contract("Liquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
   });
+
   describe("Emergency shutdown", () => {
     it("Liquidations are disabled if emergency shutdown", async () => {
       // Create position.
@@ -1045,6 +1049,7 @@ contract("Liquidatable", function(accounts) {
       );
     });
   });
+
   describe("Underlying position expires during a pending liquidation", () => {
     beforeEach(async () => {
       // Fast forward time to right before expiry so that you can still create a liquidation.
