@@ -102,6 +102,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     let adjustedCollateralAmount; // Amount of collateral returned by `contract.getCollateral()`
     let actualCollateralAmount; // Actual collateral owned by contract (there is only one sponsor, so we can check this via `token.balanceOf()`).
     let rawCollateralAmount; // Scaled up total contract collateral to account for fees.
+    let startingStoreBalance; // Should be 0 fees collected to start.
     let endingStoreBalance; // Collateral owned by Store during the test, used to calculate fees collected.
     let actualFeesCollected; // Delta between starting store balance and ending store balance.
     let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
@@ -133,7 +134,7 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
     /**
      * @notice TEST INVARIANTS
      */
-    const startingStoreBalance = await collateral.balanceOf(store.address);
+    startingStoreBalance = await collateral.balanceOf(store.address);
     adjustedCollateralAmount = await emp.getCollateral(sponsor);
     actualCollateralAmount = await collateral.balanceOf(emp.address);
     rawCollateralAmount = await emp.rawTotalPositionCollateral();
@@ -731,9 +732,199 @@ contract("Measuring ExpiringMultiParty precision loss", function(accounts) {
   });
 
   it("Precision loss due to redeem()", async function() {
-    // TODO: This one is a bit more complex because the amount of collateral released from the contract
-    // is determined by the proportion of (synthetic tokens redeemed / synthetic tokens outstanding). This proportion
-    // itself can have precision loss.
+    // Redeem() is a bit more complex because the amount of collateral released from the contract
+    // is determined by the proportion of (synthetic tokens redeemed / synthetic tokens outstanding).
+    // This proportion can exhibit precision loss, the product of which is multiplied by
+    // the position collateral (inclusive of fees).
+    // The relatively larger danger with redeem() is that we are multiplying a number with potential precision loss,
+    // which magnifies the ultimate error.
+    // To better understand this, we need to examine how the redeem() method is implemented:
+    // - redeem(numTokens) first calculates the `fractionRedeemed` by dividing numTokens by tokens outstanding. This can have precision loss.
+    // - The actual amount of collateral to pass into _removeCollateral() is `fractionRedeemed` multiplied by `_getCollateral()`.
+    // - The analysis after this is similar to withdraw():
+    // - _removeCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
+    // - This division has the potential for precision loss, which could cause the resultant rawCollateral in the position to be higher than expected.
+    // - Note: here is the difference between deposit() and withdraw(): withdraw subtracts the floor'd quotient from rawCollateral so rawCollateral can be higher than expected
+    // - In other words, the redeem() will have subtracted less collateral from the position than the caller actually receives in the redemption.
+    // - We should expect to see negative "drift", because the adjusted collateral in contract will be higher than expected.
+
+    /**
+     * @notice TEST PARAMETERS
+     */
+    const testConfig = {
+      tokensOutstanding: toWei("10"),
+      sponsorCollateralAmount: toWei("1000"),
+      otherCollateralAmount: toWei("0.1"),
+      feePerSecond: toWei("0.11"),
+      expectedFeeMultiplier: 0.89, // Division by this produces precision loss, tune this.
+      amountToRedeem: toWei("0.001"), // Invariant: (runs * amountToWithdraw) >= (sponsorCollateralAmount - otherCollateralAmount), otherwise GCR check on withdraw() will fail
+      runs: 10
+    };
+
+    /**
+     * @notice INSTANTIATE TEST VARIABLES
+     */
+    let tokensOutstanding; // Current count of synthetic tokens outstanding. Need to remember this before calling redeem() in order to forecast post-redemption collateral.
+    let actualFeeMultiplier; // Set to current fee multiplier.
+    let startingContractCollateral; // Starting total contract collateral.
+    let startingAdjustedContractCollateral; // Starting total contract collateral net of fees.
+    let startingRawContractCollateral; // Starting scaled up total contract collateral to account for fees.
+    let startingRawSponsorCollateral; // Starting scaled up sponsor collateral to account for fees.
+    let startingStoreCollateral; // Starting amount of fees collected by store.
+    let startingSponsorCollateral; // Starting amount of collateral credited to sponsor via deposits.
+    let adjustedCollateral; // Starting total contract collateral net of fees.
+    let contractCollateral; // Total contract collateral.
+    let rawContractCollateral; // Scaled up total contract collateral.
+    let sponsorCollateral; // Collateral credited to sponsor via deposits.
+    let rawSponsorCollateral; // Scaled up collateral credited to sponsor.
+    let expectedSponsorCollateral; // Amount of collateral that sponsor transfers to contract.
+    let endingStoreCollateral; // Amount of fees collected by store
+    let driftTotal = toBN(0); // Precision loss on total contract collateral.
+    let driftSponsor = toBN(0); // Precision loss on just the sponsor's collateral.
+
+    /**
+     * @notice LOGGING
+     */
+    let breakdown = {}; // Fill with CollateralBreakdown() objects for pretty printing.
+    // Used to log collateral breakdown in a pretty fashion.
+    function CollateralBreakdown(_total, _sponsor) {
+      this.totalPosition = _total.toString();
+      this.sponsorPosition = _sponsor.toString();
+    }
+
+    /**
+     * @notice SETUP THE TEST
+     */
+    // 1) Create two positions, one with a very low collateral ratio so that we can withdraw from our test position.
+    // Note: we must create less collateralized position first.
+    await collateral.approve(emp.address, testConfig.sponsorCollateralAmount, { from: sponsor });
+    await collateral.approve(emp.address, testConfig.otherCollateralAmount, { from: other });
+    await emp.create(
+      { rawValue: testConfig.otherCollateralAmount },
+      { rawValue: testConfig.tokensOutstanding },
+      { from: other }
+    );
+    await emp.create(
+      { rawValue: testConfig.sponsorCollateralAmount },
+      { rawValue: testConfig.tokensOutstanding },
+      { from: sponsor }
+    );
+    // 2) Set fee rate per second.
+    await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond });
+    // 3) Move time in the contract forward by 1 second to capture unit fee.
+    const startTime = await emp.getCurrentTime();
+    await emp.setCurrentTime(startTime.addn(1));
+    // 4) Pay the fees.
+    await emp.payFees();
+    // 5) Increase approvals to cover all redemption.
+    await synthetic.approve(emp.address, testConfig.tokensOutstanding, { from: sponsor });
+
+    /**
+     * @notice PRE-TEST INVARIANTS
+     */
+    tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
+    actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
+    startingContractCollateral = await collateral.balanceOf(emp.address);
+    startingAdjustedContractCollateral = await emp.totalPositionCollateral();
+    startingStoreCollateral = await collateral.balanceOf(store.address);
+    startingSponsorCollateral = await emp.getCollateral(sponsor);
+    expectedSponsorCollateral =
+      testConfig.expectedFeeMultiplier * parseFloat(testConfig.sponsorCollateralAmount.toString());
+    startingRawContractCollateral = await emp.rawTotalPositionCollateral();
+    startingRawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
+
+    // Test 1) Fee multiplier is set correctly.
+    assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
+
+    // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
+    assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
+
+    // Test 3) The sponsor has initial collateral minus fees.
+    assert.equal(startingSponsorCollateral.toString(), expectedSponsorCollateral);
+
+    // Test 4) Tokens outstanding is same as tokens created.
+    assert.equal(tokensOutstanding.toString(), testConfig.tokensOutstanding.toString());
+
+    // Log results in a table.
+    breakdown.expected = new CollateralBreakdown(startingContractCollateral, expectedSponsorCollateral);
+    breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
+    breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
+    breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding, "N/A");
+    console.group("** Pre-Redemption: Expected and Credited amounts should be equal **");
+    console.table(breakdown);
+    console.groupEnd();
+
+    /**
+     * @notice RUN THE TEST ONCE
+     */
+    tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
+    await emp.redeem({ rawValue: testConfig.amountToRedeem }, { from: sponsor });
+    contractCollateral = await collateral.balanceOf(emp.address);
+    adjustedCollateral = await emp.totalPositionCollateral();
+    sponsorCollateral = await emp.getCollateral(sponsor);
+    expectedSponsorCollateral =
+      parseFloat(startingSponsorCollateral.toString()) -
+      (parseFloat(testConfig.amountToRedeem.toString()) / parseFloat(tokensOutstanding.toString())) *
+        parseFloat(startingSponsorCollateral.toString());
+    rawContractCollateral = await emp.rawTotalPositionCollateral();
+    rawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
+    driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
+    driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
+    tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
+
+    // Log results in a table.
+    breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
+    breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
+    breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
+    breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+    breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding, "N/A");
+    console.group(
+      `** After 1 Redemption of ${testConfig.amountToRedeem} collateral (fee-multiplier = ${testConfig.expectedFeeMultiplier}): **`
+    );
+    console.table(breakdown);
+    console.groupEnd();
+
+    /**
+     * @notice RUN THE REMAINDER OF THE TEST
+     */
+    for (let i = 0; i < testConfig.runs - 1; i++) {
+      tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
+      await emp.redeem({ rawValue: testConfig.amountToRedeem }, { from: sponsor });
+      expectedSponsorCollateral =
+        parseFloat(expectedSponsorCollateral.toString()) -
+        (parseFloat(testConfig.amountToRedeem.toString()) / parseFloat(tokensOutstanding.toString())) *
+          parseFloat(expectedSponsorCollateral.toString());
+    }
+    contractCollateral = await collateral.balanceOf(emp.address);
+    adjustedCollateral = await emp.totalPositionCollateral();
+    sponsorCollateral = await emp.getCollateral(sponsor);
+    rawContractCollateral = await emp.rawTotalPositionCollateral();
+    rawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
+    driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
+    driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
+    tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
+
+    // Log results in a table.
+    breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
+    breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
+    breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
+    breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+    breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding, "N/A");
+    console.group(`** After All ${testConfig.runs} Redemptions: **`);
+    console.table(breakdown);
+    console.groupEnd();
+
+    /**
+     * @notice POST-TEST INVARIANTS
+     */
+    endingStoreCollateral = await collateral.balanceOf(store.address);
+
+    // Test 1) Make sure that store hasn't collected any fees during this test, so that we can be confident that withdraws
+    // are the only source of drift.
+    assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString());
+
+    // Test 2) The fee multiplier has not changed.
+    assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
   });
 
   it("Precision loss due to partial liquidations via createLiquidation()", async function() {
