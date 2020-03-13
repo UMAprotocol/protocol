@@ -6,7 +6,7 @@ const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/Logger");
 
 // JS libs
-const { Liquidator } = require("./Liquidator");
+const { Liquidator } = require("./liquidator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 
 // Truffle contracts

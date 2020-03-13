@@ -1,7 +1,7 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
 // Script to test
-const { Liquidator } = require("../Liquidator.js");
+const { Liquidator } = require("../liquidator.js");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
