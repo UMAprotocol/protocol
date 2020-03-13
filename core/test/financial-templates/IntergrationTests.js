@@ -23,7 +23,6 @@ contract("IntergrationTest", function(accounts) {
   let liquidator = accounts[1];
   let disputer = accounts[2];
   let sponsors = accounts.slice(3, 6); // accounts 3 -> 5
-  console.log(sponsors);
   let tokenHolders = accounts.slice(7, 10); // accounts 6 -> 9
 
   // Contract variables
@@ -115,7 +114,7 @@ contract("IntergrationTest", function(accounts) {
   });
   it("Iterative sponsor, liquidation and withdrawal tests", async function() {
     /**
-     * @notice TEST 1
+     * @notice Iterative test with sponsors, liquidations and disputes.
      */
     // Number of positions to create and liquidate. The following process is followed to initiate maximum interaction
     // with the emp & fee paying function to try and compound floating errors to see if positions are locked at settlement:
@@ -134,17 +133,26 @@ contract("IntergrationTest", function(accounts) {
     // 9) ensure that all users can withdraw their funds
     // 10) check the contract has no funds left in it
 
+    // Test settings
+    const numIterations = 15; // number of times the simulation loop is run
+    const runLiquidations = true; // if liquidations should occur in the loop
+    const runDisputes = true; // if disputes should occur in the loop
+
     // Tunable parameters
-    const numIterations = 12;
-    const runLiquidations = true;
-    const runDisputes = true;
     const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
     const baseNumTokens = toBN(toWei("100")); // starting number of tokens created by sponsor
     const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
     const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
     const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
 
-    // STEP: 0: seed liquidator and disruptor
+    // Counter variables
+    let positionsCreated = 0;
+    let tokenTransfers = 0;
+    let liquidationsObject = [];
+
+    // STEP: 0: seed liquidator
+    console.log("STEP: 0 Seeding liquidator");
+
     await expiringMultiParty.create(
       { rawValue: baseCollateralAmount.mul(toBN("100")).toString() },
       { rawValue: baseNumTokens.mul(toBN("100")).toString() },
@@ -153,7 +161,10 @@ contract("IntergrationTest", function(accounts) {
 
     let sponsor;
     let tokenHolder;
+    console.log("STEP 1: Creating positions, liquidations and disputes iteratively\nIteration counter:");
     for (let i = 0; i < numIterations; i++) {
+      process.stdout.write(i.toString() + ", ");
+      // pick the sponsor and token holder from their arrays
       sponsor = sponsors[i % sponsors.length];
       tokenHolder = tokenHolders[i % tokenHolders.length];
 
@@ -163,15 +174,14 @@ contract("IntergrationTest", function(accounts) {
         { rawValue: baseNumTokens.toString() },
         { from: sponsor }
       );
-      console.log(
-        "Position created for sponsor 👩‍💻",
-        sponsor,
-        "with collateral:",
-        baseCollateralAmount.add(toBN(i.toString())).toString()
-      );
+      positionsCreated++;
 
       // STEP 2: transferring tokens to the token holder
-      await syntheticToken.transfer(tokenHolder, toWei("100"), { from: sponsor });
+
+      if (i % 2 == 1) {
+        await syntheticToken.transfer(tokenHolder, toWei("100"), { from: sponsor });
+        tokenTransfers++;
+      }
 
       // STEP 3: advancing time
       const currentTime = await expiringMultiParty.getCurrentTime();
@@ -181,95 +191,68 @@ contract("IntergrationTest", function(accounts) {
       // STEP 4.a: chance to liquidate position. 1 in 3 will get liquidated
       if (i % 3 == 1 && runLiquidations) {
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
-        console.log("--->liquidating sponsor", sponsor);
         await expiringMultiParty.createLiquidation(
-          sponsor, // Price the contract resolves to
-          { rawValue: liquidationPrice.toString() }, // Price a liquidator will liquidate at // liquidation at a price of 1.5 per token // Price a dispute will resolve to
+          sponsor,
+          { rawValue: liquidationPrice.toString() },
           { rawValue: positionTokensOutstanding.toString() },
           { from: liquidator }
         );
 
+        // get the liquidation info from the emited event
+        const liquidationEvents = await expiringMultiParty.getPastEvents("LiquidationCreated");
+        const liquidationEvent = liquidationEvents[liquidationEvents.length - 1].args;
+
+        liquidationsObject.push({
+          sponsor: liquidationEvent.sponsor,
+          id: liquidationEvent.liquidationId.toString(),
+          disputed: false
+        });
+
         // STEP 4.b) chance to dispute the liquidation. 1 in 2 liquidations will get disputed
         if (i % 2 == 1 && runDisputes) {
-          console.log("--->Disputing position");
-
-          // get the liquidation info from the emited event
-          const liquidationEvents = await expiringMultiParty.getPastEvents("LiquidationCreated");
-          const liquidationEvent = liquidationEvents[liquidationEvents.length - 1].args;
-
           // Create the dispute request for the liquidation
           await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor, {
             from: disputer
           });
 
-          let disputeObjectInfo = await expiringMultiParty.getLiquidations(liquidationEvent.sponsor);
-          console.log("DISPUTE INFO");
-          console.log(disputeObjectInfo);
-
           // Push a price into the oracle. This will enable resolution later on when the disputer
           // calls `withdrawLiquidation` to extract their winnings.
           const liquidationTime = await expiringMultiParty.getCurrentTime();
-          console.log("Liquidation time", liquidationTime.toString());
           await mockOracle.pushPrice(constructorParams.priceFeedIdentifier, liquidationTime, disputePrice);
+
+          liquidationsObject[liquidationsObject.length - 1].disputed = true;
         }
       }
-
-      console.log("***time***");
-      console.log("startingTime\t\t", startingTime.toString());
-      console.log("getCurrentTime\t\t", (await expiringMultiParty.getCurrentTime()).toString());
-      console.log("lastPaymentTime\t\t", (await expiringMultiParty.lastPaymentTime()).toString());
-      console.log("expirationTimestamp\t", (await expiringMultiParty.expirationTimestamp()).toString());
     } // exit iteration loop
 
-    console.log("Position creation done! advancing time and withdrawing");
-
+    console.log(
+      "Position creation done!\nAdvancing time and withdrawing winnings/losses for sponsor, disputer and liquidator from liquidations and disputes"
+    );
     // Before settling the contract the liquidator, disruptor and token sponsors need to withdraw from all
-    // liquidation events that occurred.
+    // liquidation events that occurred. To do this we iterate over all liquidations that occured and attempt to withdraw
+    // from the liquidation from all three users(sponsor, disputer and liquidator).
+    console.log("liquidation object");
+    console.log(liquidationsObject);
     if (runLiquidations) {
-      for (const sponsor of sponsors) {
-        for (let i = 0; i < numIterations / 3; i++) {
-          try {
-            await expiringMultiParty.withdrawLiquidation(i, sponsor, { from: sponsor });
-            console.log("###withdrawl for sponsor passed @", i, sponsor);
-          } catch (error) {
-            console.log("withdrawl for sponsor invalid @", i, sponsor);
-          }
-          try {
-            await expiringMultiParty.withdrawLiquidation(i, sponsor, {
-              from: disputer
-            });
-            console.log("###withdrawl for disputer passed @", i, sponsor);
-          } catch (error) {
-            console.log("withdrawl for disputer invalid @", i, sponsor);
-          }
-          try {
-            await expiringMultiParty.withdrawLiquidation(i, sponsor, {
-              from: liquidator
-            });
-            console.log("###withdrawl for liquidator passed @", i, sponsor);
-          } catch (error) {
-            console.log("withdrawl for liquidator invalid @", i, sponsor);
-          }
-        }
+      for (const liquidation of liquidationsObject) {
+        try {
+          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
+            from: liquidation.sponsor
+          });
+        } catch (error) {}
+        try {
+          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
+        } catch (error) {}
+        try {
+          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: liquidator });
+        } catch (error) {}
       }
     }
 
-    let disputeObjectInfo = await expiringMultiParty.getLiquidations("0x67c78B8d72855fCdDC3FCCF83aDBd93F03a04a9b");
-    console.log("DISPUTE INFO POST WITHDAWL");
-    console.log(disputeObjectInfo);
-
     // STEP 6: expire the contract and settle positions
+    console.log("Advancing time and settling contract");
     await expiringMultiParty.setCurrentTime(expirationTime.toNumber() + 1);
     await mockOracle.setCurrentTime(expirationTime.toNumber() + 1);
-
-    console.log("***time***");
-    console.log("startingTime\t\t", startingTime.toString());
-    console.log("getCurrentTime\t\t", (await expiringMultiParty.getCurrentTime()).toString());
-    console.log("lastPaymentTime\t\t", (await expiringMultiParty.lastPaymentTime()).toString());
-    console.log("expirationTimestamp\t", (await expiringMultiParty.expirationTimestamp()).toString());
-    console.log("mockOracleTime", (await mockOracle.getCurrentTime()).toString());
-
-    console.log("###State", (await expiringMultiParty.contractState()).toString());
 
     await expiringMultiParty.expire();
 
@@ -279,27 +262,34 @@ contract("IntergrationTest", function(accounts) {
     await mockOracle.pushPrice(constructorParams.priceFeedIdentifier, oracleTime.subn(1).toString(), settlementPrice);
 
     // Settle the liquidator
-    console.log("settleExpired for liquidator", liquidator);
     await expiringMultiParty.settleExpired({ from: liquidator });
 
     // Settle the disputer
-    console.log("settleExpired for disputer", disputer);
     await expiringMultiParty.settleExpired({ from: disputer });
 
     // Settle token holders
     for (const tokenHolder of tokenHolders) {
-      console.log("settleExpired for tokenHolder", tokenHolder);
       await expiringMultiParty.settleExpired({ from: tokenHolder });
       assert.equal(await syntheticToken.balanceOf(tokenHolder), "0");
     }
 
     // Settle token sponsors
     for (const sponsor of sponsors) {
-      console.log("settleExpired for sponsor", sponsor);
       await expiringMultiParty.settleExpired({ from: sponsor });
       assert.equal(await syntheticToken.balanceOf(sponsor), "0");
     }
 
+    // The main assertion we can check is that all users were able to call `settleExpired` without the contract
+    // locking up. Additionally, if all book keeping has gone correctly, there should be no collateral left in
+    // the expiring multi party as this has all be withdrawn by token holders.
     assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
+
+    console.table({
+      iterations: numIterations,
+      positionsCreated: positionsCreated,
+      tokensTransfered: tokenTransfers,
+      liquidations: liquidationsObject.length,
+      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length
+    });
   });
 });
