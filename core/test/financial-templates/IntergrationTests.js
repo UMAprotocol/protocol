@@ -259,7 +259,7 @@ contract("IntergrationTest", function(accounts) {
     if (runLiquidations) {
       for (const liquidation of liquidationsObject) {
         if (liquidation.disputed) {
-          //sponsor and disputer should only withdraw if the liquidation was disputed
+          // sponsor and disputer should only withdraw if the liquidation was disputed
           try {
             await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
               from: liquidation.sponsor
