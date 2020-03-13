@@ -53,17 +53,15 @@ class Liquidator {
       });
 
       // Create the liquidation transaction to liquidate the entire position:
-      // - Maximum (Collateral/Synthetic) ratio to liquidate.
-      let liquidateCollateralPerToken = (parseFloat(position.amountCollateral) / parseFloat(position.numTokens));
-      // - Maximum amount of Synthetic tokens to liquidate.
-      let liquidateTokens = position.numTokens;
-
+      // - Price to liquidate at (`collateralPerToken`): Since you are determining which positions are under collateralized positions based on the priceFeed, 
+      // you also should be liquidating using that priceFeed.
+      // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
       liquidationPromises.push(
         this.empContract.methods
           .createLiquidation(
             position.sponsor, 
-            { rawValue: toWei(liquidateCollateralPerToken.toString()) },
-            { rawValue: toWei(liquidateTokens) }
+            { rawValue: toWei(priceFeed) },
+            { rawValue: toWei(position.numTokens) }
           )
           .send({ from: this.account, gas: 1500000 })
       );

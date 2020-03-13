@@ -13,12 +13,17 @@ const { ExpiringMultiPartyClient } = require("../financial-templates-lib/Expirin
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 // TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
-// Currently, you can run it with `truffle exec ../liquidator/liquidator.js --address=<address>` *from the core
+// Currently, you can run it with `truffle exec ../liquidator/liquidator.js --address=<address> --price=<price>` *from the core
 // directory*.
 
 async function run() {
   if (!argv.address) {
     console.log("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
+    return;
+  }
+  // TODO: Remove this price flag once we have built the pricefeed module.
+  if (!argv.price) {
+    console.log("Bad input arg! Specify a `price` as the pricefeed.");
     return;
   }
   Logger.info({
