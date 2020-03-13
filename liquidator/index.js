@@ -1,5 +1,5 @@
 const argv = require("minimist")(process.argv.slice(), { string: ["address"], integer: ["price"] });
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/delay");
