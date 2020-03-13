@@ -105,7 +105,6 @@ class Liquidator {
     // - Withdraw rewards
     // - Check that amount of rewards was correct.
 
-
     // Get disputed liquidations from the client.
     const disputedLiquidations = this.empClient.getDisputedLiquidations();
     // TODO: 

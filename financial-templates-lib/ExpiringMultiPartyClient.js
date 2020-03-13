@@ -86,17 +86,17 @@ class ExpiringMultiPartyClient {
       );
   };
 
-  _isExpired = async (liquidation) => {
+  _isExpired = async liquidation => {
     const currentTime = await this.emp.methods.getCurrentTime().call();
-    return (Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime)
-  }
+    return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
+  };
 
-  _isLiquidationPreDispute = (liquidation) => {
-    // @dev: Liquidation's can't have state == 0 (Uninitialized), 
+  _isLiquidationPreDispute = liquidation => {
+    // @dev: Liquidation's can't have state == 0 (Uninitialized),
     // and disputed liquidations have state > 1
     const predisputeState = "1";
-    return (liquidation.state === predisputeState)
-  }
+    return liquidation.state === predisputeState;
+  };
 
   _update = async () => {
     this.collateralRequirement = this.web3.utils.toBN(
@@ -134,12 +134,12 @@ class ExpiringMultiPartyClient {
         if (this._isLiquidationPreDispute(liquidation)) {
           // Determine whether liquidation has expired.
           if (!(await this._isExpired(liquidation))) {
-            undisputedLiquidations.push(liquidationData);  
+            undisputedLiquidations.push(liquidationData);
           } else {
             expiredLiquidations.push(liquidationData);
           }
         } else {
-          disputedLiquidations.push(liquidationData)
+          disputedLiquidations.push(liquidationData);
         }
       }
     }
