@@ -7,7 +7,7 @@ class Disputer {
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
 
-    // Instance of the expiring multiparty to perform on-chain liquidations
+    // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
   }
 
@@ -41,7 +41,7 @@ class Disputer {
       at: "Disputer",
       message: "Disputable liquidation(s) detected!",
       number: disputeableLiquidations.length,
-      underCollateralizedPositions: disputeableLiquidations
+      disputeableLiquidations: disputeableLiquidations
     });
 
     for (const disputeableLiquidation of disputeableLiquidations) {
