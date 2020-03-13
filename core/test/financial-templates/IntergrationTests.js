@@ -154,7 +154,7 @@ contract("IntergrationTest", function(accounts) {
     let liquidationsObject = [];
 
     // STEP: 0: seed liquidator
-    console.log("STEP: 0 Seeding liquidator");
+    console.log("Seeding liquidator");
 
     await expiringMultiParty.create(
       { rawValue: baseCollateralAmount.mul(toBN("100")).toString() },
@@ -164,7 +164,7 @@ contract("IntergrationTest", function(accounts) {
 
     let sponsor;
     let tokenHolder;
-    console.log("STEP 1: Creating positions, liquidations and disputes iteratively\nIteration counter:");
+    console.log("Creating positions, liquidations and disputes iteratively\nIteration counter:");
     for (let i = 0; i < numIterations; i++) {
       process.stdout.write(i.toString() + ", ");
       // pick the sponsor and token holder from their arrays
@@ -199,7 +199,6 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 4.a: chance to liquidate position. 1 in 3 will get liquidated
       if (i % 3 == 1 && runLiquidations) {
-        console.log(await expiringMultiParty.positions(sponsor));
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
         await expiringMultiParty.createLiquidation(
           sponsor,
@@ -236,11 +235,9 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 5: chance for the token sponsor to deposit more collateral
       if (i % 2 == 0 && runExtraDeposits) {
-        console.log("depositing more value into position");
         // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
         try {
           await expiringMultiParty.deposit({ rawValue: depositAmount.toString() }, { from: sponsor });
-          console.log("-> deposit succeeded");
           depositsMade++;
         } catch (error) {
           continue;
@@ -249,13 +246,11 @@ contract("IntergrationTest", function(accounts) {
     } // exit iteration loop
 
     console.log(
-      "Position creation done!\nAdvancing time and withdrawing winnings/losses for sponsor, disputer and liquidator from liquidations and disputes"
+      "\nPosition creation done!\nAdvancing time and withdrawing winnings/losses for sponsor, disputer and liquidator from liquidations and disputes"
     );
     // Before settling the contract the liquidator, disruptor and token sponsors need to withdraw from all
     // liquidation events that occurred. To do this we iterate over all liquidations that occured and attempt to withdraw
     // from the liquidation from all three users(sponsor, disputer and liquidator).
-    console.log("liquidation object");
-    console.log(liquidationsObject);
     if (runLiquidations) {
       for (const liquidation of liquidationsObject) {
         if (liquidation.disputed) {
@@ -283,7 +278,7 @@ contract("IntergrationTest", function(accounts) {
     }
 
     // STEP 8: expire the contract and settle positions
-    console.log("STEP 8: Advancing time and settling contract");
+    console.log("Advancing time and settling contract");
     await expiringMultiParty.setCurrentTime(expirationTime.toNumber() + 1);
     await mockOracle.setCurrentTime(expirationTime.toNumber() + 1);
 
@@ -312,6 +307,7 @@ contract("IntergrationTest", function(accounts) {
       assert.equal(await syntheticToken.balanceOf(sponsor), "0");
     }
 
+    console.log("All accounts have been able to withdraw without revert!");
     console.table({
       iterations: numIterations,
       positionsCreated: positionsCreated,
