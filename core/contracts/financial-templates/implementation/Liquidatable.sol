@@ -357,19 +357,19 @@ contract Liquidatable is PricelessPositionManager {
                 liquidation.sponsor == address(0) &&
                 liquidation.liquidator == address(0)
             ) {
-                delete liquidations[sponsor][id];
+                // delete liquidations[sponsor][id];
             }
             // In the case of a failed dispute only the liquidator can withdraw.
         } else if (liquidation.state == Status.DisputeFailed && msg.sender == liquidation.liquidator) {
             // Pay LIQUIDATOR: collateral + dispute bond
             FixedPoint.Unsigned memory payToLiquidator = collateral.add(disputeBondAmount);
             withdrawalAmount = payToLiquidator;
-            delete liquidations[sponsor][id];
+            // delete liquidations[sponsor][id];
             // If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
         } else if (liquidation.state == Status.PreDispute && msg.sender == liquidation.liquidator) {
             // Pay LIQUIDATOR: collateral
             withdrawalAmount = collateral;
-            delete liquidations[sponsor][id];
+            // delete liquidations[sponsor][id];
         }
 
         require(withdrawalAmount.isGreaterThan(0));

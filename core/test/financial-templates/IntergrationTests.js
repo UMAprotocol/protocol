@@ -12,6 +12,7 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 const Token = artifacts.require("ExpandedERC20");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
+const TokenFactory = artifacts.require("TokenFactory");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
@@ -43,12 +44,7 @@ contract("IntergrationTest", function(accounts) {
    * @notice TUNABLE PARAMETERS
    */
   const mintAndApprove = toBN(toWei("10000000")); // number of tokens minted and approved by each account
-  const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
-  const baseNumTokens = toBN(toWei("150")); // starting number of tokens created by sponsor
   const timeOffsetBetweenTests = toBN("10000"); // timestep advance between loop iterations
-  const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
-  const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
-  const disputePrice = toWei(toWei("1")); // Price a dispute will resolve to
 
   beforeEach(async () => {
     collateralToken = await Token.new({ from: contractCreator });
@@ -74,11 +70,12 @@ contract("IntergrationTest", function(accounts) {
       withdrawalLiveness: "3600",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
       liquidationLiveness: "3600",
-      collateralRequirement: { rawValue: toWei("1.5") },
+      collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
@@ -138,9 +135,14 @@ contract("IntergrationTest", function(accounts) {
     // 10) check the contract has no funds left in it
 
     // Tunable parameters
-    let numIterations = 12;
-    let runLiquidations = true;
-    let runDisputes = true;
+    const numIterations = 12;
+    const runLiquidations = true;
+    const runDisputes = true;
+    const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
+    const baseNumTokens = toBN(toWei("100")); // starting number of tokens created by sponsor
+    const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
+    const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
+    const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
 
     // STEP: 0: seed liquidator and disruptor
     await expiringMultiParty.create(
@@ -200,6 +202,10 @@ contract("IntergrationTest", function(accounts) {
             from: disputer
           });
 
+          let disputeObjectInfo = await expiringMultiParty.getLiquidations(liquidationEvent.sponsor);
+          console.log("DISPUTE INFO");
+          console.log(disputeObjectInfo);
+
           // Push a price into the oracle. This will enable resolution later on when the disputer
           // calls `withdrawLiquidation` to extract their winnings.
           const liquidationTime = await expiringMultiParty.getCurrentTime();
@@ -247,6 +253,10 @@ contract("IntergrationTest", function(accounts) {
         }
       }
     }
+
+    let disputeObjectInfo = await expiringMultiParty.getLiquidations("0x67c78B8d72855fCdDC3FCCF83aDBd93F03a04a9b");
+    console.log("DISPUTE INFO POST WITHDAWL");
+    console.log(disputeObjectInfo);
 
     // STEP 6: expire the contract and settle positions
     await expiringMultiParty.setCurrentTime(expirationTime.toNumber() + 1);
