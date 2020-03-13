@@ -49,6 +49,7 @@ run_tests $PROTOCOL_DIR/core
 cd $PROTOCOL_DIR/core
 $(npm bin)/truffle test ../financial-templates-lib/test/*.js --network ci
 $(npm bin)/truffle test ../liquidator/test/*.js --network ci
+$(npm bin)/truffle test ../disputer/test/*.js --network ci
 
 # Check the Kovan deployment.
 check_deployment $PROTOCOL_DIR/core 4 rinkeby_mnemonic

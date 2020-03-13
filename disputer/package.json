@@ -1,0 +1,10 @@
+{
+  "name": "disputer",
+  "version": "0.1.0",
+  "description": "UMA Disputer",
+  "private": true,
+  "dependencies": {
+    "winston": "^3.2.1",
+    "winston-transport": "^4.3.0"
+  }
+}
