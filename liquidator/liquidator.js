@@ -2,7 +2,7 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 const { Logger } = require("../financial-templates-lib/Logger");
-const { toBN, toWei } = web3.utils;
+const { toWei } = web3.utils;
 
 class Liquidator {
   constructor(expiringMultiPartyClient, account) {
@@ -61,7 +61,7 @@ class Liquidator {
           .createLiquidation(
             position.sponsor, 
             { rawValue: toWei(priceFeed) },
-            { rawValue: toWei(position.numTokens) }
+            { rawValue: position.numTokens }
           )
           .send({ from: this.account, gas: 1500000 })
       );
