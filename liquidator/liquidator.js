@@ -98,37 +98,14 @@ class Liquidator {
     // Update the client to get the latest information.
     await this.empClient._update();
 
+    // TODO: Just showing an example of how I want to use the client:
     // Get expired liquidations from the client.
     const expiredLiquidations = this.empClient.getExpiredLiquidations();
-    if (expiredLiquidations.length > 0) {
-      Logger.info({
-        at: "liquidator",
-        message: "Expired liquidations detected!",
-        number: expiredLiquidations.length,
-        expiredLiquidations: expiredLiquidations
-      });
-    } else {
-      Logger.info({
-        at: "liquidator",
-        message: "No expired liquidations"
-      });
-    }
-
+    // TODO: Withdraw rewards
+    
     // Get disputed liquidations from the client.
     const disputedLiquidations = this.empClient.getDisputedLiquidations();
-    if (disputedLiquidations.length > 0) {
-      Logger.info({
-        at: "liquidator",
-        message: "Disputed liquidations detected!",
-        number: disputedLiquidations.length,
-        disputedLiquidations: disputedLiquidations
-      });
-    } else {
-      Logger.info({
-        at: "liquidator",
-        message: "No disputed liquidations"
-      });
-    }
+    // TODO: Withdraw rewards
   }
 }
 
