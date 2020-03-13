@@ -311,4 +311,50 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       expiredLiquidations
     );
   });
+
+  it("Returns disputed liquidations", async function () {
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
+    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: accounts[1] });
+
+    // Create a new liquidation for account[0]'s position.
+    const id = await emp.createLiquidation.call(
+      accounts[0],
+      { rawValue: toWei("9999999") },
+      { rawValue: toWei("150") },
+      { from: accounts[1] }
+    );
+    await emp.createLiquidation(
+      accounts[0],
+      { rawValue: toWei("9999999") },
+      { rawValue: toWei("150") },
+      { from: accounts[1] }
+    );
+    await client._update();
+    const liquidations = client.getUndisputedLiquidations();
+    const liquidationTime = liquidations[0].liquidationTime;
+
+    // There should be no disputed liquidations initially.
+    assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
+
+    // Dispute the liquidation and make sure it no longer shows up in the list.
+    // We need to advance the Oracle time forward to make `requestPrice` work.
+    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
+    await emp.dispute(id.toString(), accounts[0], { from: accounts[0] });
+    await client._update();
+
+    // The disputed liquidation should no longer show up as undisputed.
+    assert.deepStrictEqual(
+      [
+        {
+          sponsor: accounts[0],
+          id: "0",
+          liquidationTime: liquidationTime,
+          numTokens: toWei("100"),
+          amountCollateral: toWei("150")
+        }
+      ], 
+      client.getDisputedLiquidations().sort()
+    );
+    assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+  })
 });

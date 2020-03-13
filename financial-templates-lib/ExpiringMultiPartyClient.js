@@ -38,6 +38,10 @@ class ExpiringMultiPartyClient {
   // Liquidators can withdraw rewards from these expired liquidations.
   getExpiredLiquidations = () => this.expiredLiquidations;
 
+  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
+  // Liquidators can withdraw rewards from these disputed liquidations.
+  getDisputedLiquidations = () => this.disputedLiquidations;
+
   // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
   // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
   isDisputable = (liquidation, tokenRedemptionValue) => {
@@ -88,6 +92,8 @@ class ExpiringMultiPartyClient {
   }
 
   _isLiquidationPreDispute = (liquidation) => {
+    // @dev: Liquidation's can't have state == 0 (Uninitialized), 
+    // and disputed liquidations have state > 1
     const predisputeState = "1";
     return (liquidation.state === predisputeState)
   }
@@ -111,31 +117,35 @@ class ExpiringMultiPartyClient {
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
+    const disputedLiquidations = [];
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
+        // Construct Liquidation data to save.
+        const liquidationData = {
+          sponsor: liquidation.sponsor,
+          id: id.toString(),
+          numTokens: liquidation.tokensOutstanding.toString(),
+          amountCollateral: liquidation.liquidatedCollateral.toString(),
+          liquidationTime: liquidation.liquidationTime
+        };
+
         // Get all undisputed liquidations.
         if (this._isLiquidationPreDispute(liquidation)) {
-          // Construct Liquidation data to save.
-          const liquidationData = {
-            sponsor: liquidation.sponsor,
-            id: id.toString(),
-            numTokens: liquidation.tokensOutstanding.toString(),
-            amountCollateral: liquidation.liquidatedCollateral.toString(),
-            liquidationTime: liquidation.liquidationTime
-          };
-
           // Determine whether liquidation has expired.
           if (!(await this._isExpired(liquidation))) {
             undisputedLiquidations.push(liquidationData);  
           } else {
             expiredLiquidations.push(liquidationData);
           }
+        } else {
+          disputedLiquidations.push(liquidationData)
         }
       }
     }
     this.undisputedLiquidations = undisputedLiquidations;
-    this.expiredLiquidations = expiredLiquidations
+    this.expiredLiquidations = expiredLiquidations;
+    this.disputedLiquidations = disputedLiquidations;
 
     this.positions = this.sponsorAddresses.reduce(
       (acc, address, i) =>
