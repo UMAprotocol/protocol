@@ -1,15 +1,17 @@
 const inquirer = require("inquirer");
 const style = require("../textStyle");
+const showMarketDetails = require("./showMarketDetails");
 
 const listMarkets = async (web3, artifacts) => {
   style.spinnerReadingContracts.start();
   const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-  const Governor = artifacts.require("Governor");
   const Registry = artifacts.require("Registry");
 
-  const governorAddress = (await Governor.deployed()).address;
+  const SyntheticToken = artifacts.require("SyntheticToken");
+  const Governor = artifacts.require("Governor");
 
   const registry = await Registry.deployed();
+  const governorAddress = (await Governor.deployed()).address;
   const contractAddresses = await registry.getAllRegisteredContracts();
   style.spinnerReadingContracts.stop();
 
@@ -20,8 +22,37 @@ const listMarkets = async (web3, artifacts) => {
       emps.push(await ExpiringMultiParty.at(address));
     }
   }
-  // TODO: Show a better formatted and selectable table here.
-  console.log("LIST MARKETS:\n", emps);
+
+  // Format a useful display message for each market.
+  const backChoice = "Back";
+  const choices = [];
+  for (let i = 0; i < emps.length; i++) {
+    const emp = emps[i];
+
+    const tokenFactory = await emp.tokenCurrency();
+    const token = await SyntheticToken.at(tokenFactory);
+    const name = await token.name();
+
+    const collateralRequirement = await emp.collateralRequirement();
+    const asPercent = web3.utils.fromWei(collateralRequirement.muln(100).toString());
+
+    const etherscanLink = "https://etherscan.io/address/" + emp.address;
+    const display = name + " " + asPercent + " " + etherscanLink;
+
+    // Using the index as the value lets us easily find the right EMP.
+    choices.push({ name: display, value: i });
+  }
+  choices.push({ name: backChoice });
+  const prompt = {
+    type: "list",
+    name: "chosenEmpIdx",
+    message: "Pick a market",
+    choices: choices
+  };
+  const input = await inquirer.prompt(prompt);
+  if (input["chosenEmpIdx"] !== backChoice) {
+    await showMarketDetails(web3, artifacts, emps[input["chosenEmpIdx"]]);
+  }
 };
 
 module.exports = listMarkets;
