@@ -117,9 +117,24 @@ contract("Disputer.js", function(accounts) {
     // The liquidator creates a position to have synthetic tokens.
     await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
 
-    await emp.createLiquidation(sponsor1, { rawValue: toWei("1.75") }, { rawValue: toWei("100") }, { from: liquidator });
-    await emp.createLiquidation(sponsor2, { rawValue: toWei("1.75") }, { rawValue: toWei("100") }, { from: liquidator });
-    await emp.createLiquidation(sponsor3, { rawValue: toWei("1.75") }, { rawValue: toWei("100") }, { from: liquidator });
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
+    await emp.createLiquidation(
+      sponsor3,
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
 
     // Start with a mocked price of 1.75 usd per token.
     // This makes all sponsors undercollateralized, meaning no disputes are issued.
@@ -129,7 +144,6 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor3))[0].state, STATES.PRE_DISPUTE);
-
 
     // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
     await disputer.queryAndDispute(time => toWei("1.1"));

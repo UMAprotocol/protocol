@@ -1,4 +1,4 @@
-const argv = require("minimist")(process.argv.slice(), { string: ["address", "price"]});
+const argv = require("minimist")(process.argv.slice(), { string: ["address", "price"] });
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
 // Helpers

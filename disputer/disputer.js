@@ -23,7 +23,9 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = undisputedLiquidations.filter(liquidation => this.empClient.isDisputable(liquidation, priceFunction(liquidation.liquidationTime)));
+    const disputeableLiquidations = undisputedLiquidations.filter(liquidation =>
+      this.empClient.isDisputable(liquidation, priceFunction(liquidation.liquidationTime))
+    );
 
     if (disputeableLiquidations.length === 0) {
       Logger.debug({
@@ -34,7 +36,6 @@ class Disputer {
       // Nothing left to do, so return.
       return;
     }
-
 
     Logger.info({
       at: "Disputer",
@@ -56,7 +57,9 @@ class Disputer {
       // TODO: compute the amount of collateral required to dispute and ensure the bot has enough to perform it.
 
       // TODO: handle transaction failures.
-      const receipt = await this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor).send({ from: this.account, gas: 1500000 });
+      const receipt = await this.empContract.methods
+        .dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor)
+        .send({ from: this.account, gas: 1500000 });
 
       const disputeResult = {
         tx: receipt.transactionHash,
