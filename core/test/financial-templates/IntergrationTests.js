@@ -239,13 +239,19 @@ contract("IntergrationTest", function(accounts) {
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
             from: liquidation.sponsor
           });
-        } catch (error) {}
+        } catch (error) {
+          continue;
+        }
         try {
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
-        } catch (error) {}
+        } catch (error) {
+          continue;
+        }
         try {
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: liquidator });
-        } catch (error) {}
+        } catch (error) {
+          continue;
+        }
       }
     }
 
