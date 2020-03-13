@@ -126,7 +126,7 @@ contract("IntergrationTest", function(accounts) {
     // 4.a) if liquidation initiated then time advanced
     // 4.b) 1/2chance to dispute
     // 4.b.i) if disputed then resolve oracle price
-    // 5) chance for token holder to deposit more collateral
+    // 5) chance for token sponsor to deposit more collateral
     // 6) chance for the sponsor to withdraw collateral
     // 7) repeat 1 to 4 `numIterations` times
     // 8) settle contract
@@ -137,6 +137,7 @@ contract("IntergrationTest", function(accounts) {
     const numIterations = 15; // number of times the simulation loop is run
     const runLiquidations = true; // if liquidations should occur in the loop
     const runDisputes = true; // if disputes should occur in the loop
+    const runExtraDeposits = true; // if the sponsor should have a chance to add more
 
     // Tunable parameters
     const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
@@ -144,10 +145,12 @@ contract("IntergrationTest", function(accounts) {
     const settlementPrice = toBN(toWei("1")); // Price the contract resolves to
     const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
     const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
+    const depositAmount = toBN(toWei("10")); // Amount of additional collateral to add to a position
 
     // Counter variables
     let positionsCreated = 0;
     let tokenTransfers = 0;
+    let depositsMade = 0;
     let liquidationsObject = [];
 
     // STEP: 0: seed liquidator
@@ -169,15 +172,21 @@ contract("IntergrationTest", function(accounts) {
       tokenHolder = tokenHolders[i % tokenHolders.length];
 
       // STEP 1: creating position
+      const tokensOutstanding = await expiringMultiParty.totalTokensOutstanding();
+      const rawCollateral = await expiringMultiParty.rawTotalPositionCollateral();
+
+      const GCR = rawCollateral.mul(toBN(toWei("1"))).div(tokensOutstanding);
+
+      const collateralNeeded = baseNumTokens.mul(GCR).div(toBN(toWei("1")));
+
       await expiringMultiParty.create(
-        { rawValue: baseCollateralAmount.toString() },
+        { rawValue: collateralNeeded.toString() },
         { rawValue: baseNumTokens.toString() },
         { from: sponsor }
       );
       positionsCreated++;
 
       // STEP 2: transferring tokens to the token holder
-
       if (i % 2 == 1) {
         await syntheticToken.transfer(tokenHolder, toWei("100"), { from: sponsor });
         tokenTransfers++;
@@ -190,15 +199,16 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 4.a: chance to liquidate position. 1 in 3 will get liquidated
       if (i % 3 == 1 && runLiquidations) {
+        console.log(await expiringMultiParty.positions(sponsor));
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
         await expiringMultiParty.createLiquidation(
           sponsor,
-          { rawValue: liquidationPrice.toString() },
+          { rawValue: GCR.toString() },
           { rawValue: positionTokensOutstanding.toString() },
           { from: liquidator }
         );
 
-        // get the liquidation info from the emited event
+        // get the liquidation info from the event. Used later on to withdraw by accounts.
         const liquidationEvents = await expiringMultiParty.getPastEvents("LiquidationCreated");
         const liquidationEvent = liquidationEvents[liquidationEvents.length - 1].args;
 
@@ -208,7 +218,7 @@ contract("IntergrationTest", function(accounts) {
           disputed: false
         });
 
-        // STEP 4.b) chance to dispute the liquidation. 1 in 2 liquidations will get disputed
+        // STEP 4.b) Chance to dispute the liquidation. 1 in 2 liquidations will get disputed
         if (i % 2 == 1 && runDisputes) {
           // Create the dispute request for the liquidation
           await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor, {
@@ -223,6 +233,19 @@ contract("IntergrationTest", function(accounts) {
           liquidationsObject[liquidationsObject.length - 1].disputed = true;
         }
       }
+
+      // STEP 5: chance for the token sponsor to deposit more collateral
+      if (i % 2 == 0 && runExtraDeposits) {
+        console.log("depositing more value into position");
+        // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
+        try {
+          await expiringMultiParty.deposit({ rawValue: depositAmount.toString() }, { from: sponsor });
+          console.log("-> deposit succeeded");
+          depositsMade++;
+        } catch (error) {
+          continue;
+        }
+      }
     } // exit iteration loop
 
     console.log(
@@ -235,19 +258,23 @@ contract("IntergrationTest", function(accounts) {
     console.log(liquidationsObject);
     if (runLiquidations) {
       for (const liquidation of liquidationsObject) {
-        try {
-          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
-            from: liquidation.sponsor
-          });
-        } catch (error) {
-          continue;
+        if (liquidation.disputed) {
+          //sponsor and disputer should only withdraw if the liquidation was disputed
+          try {
+            await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
+              from: liquidation.sponsor
+            });
+          } catch (error) {
+            continue;
+          }
+          try {
+            await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
+          } catch (error) {
+            continue;
+          }
         }
         try {
-          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
-        } catch (error) {
-          continue;
-        }
-        try {
+          // the liquidator should always try withdraw, even if disputed
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: liquidator });
         } catch (error) {
           continue;
@@ -255,8 +282,8 @@ contract("IntergrationTest", function(accounts) {
       }
     }
 
-    // STEP 6: expire the contract and settle positions
-    console.log("Advancing time and settling contract");
+    // STEP 8: expire the contract and settle positions
+    console.log("STEP 8: Advancing time and settling contract");
     await expiringMultiParty.setCurrentTime(expirationTime.toNumber() + 1);
     await mockOracle.setCurrentTime(expirationTime.toNumber() + 1);
 
@@ -285,17 +312,18 @@ contract("IntergrationTest", function(accounts) {
       assert.equal(await syntheticToken.balanceOf(sponsor), "0");
     }
 
+    console.table({
+      iterations: numIterations,
+      positionsCreated: positionsCreated,
+      tokensTransferred: tokenTransfers,
+      additionalDepositsMade: depositsMade,
+      liquidations: liquidationsObject.length,
+      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length
+    });
+
     // The main assertion we can check is that all users were able to call `settleExpired` without the contract
     // locking up. Additionally, if all book keeping has gone correctly, there should be no collateral left in
     // the expiring multi party as this has all be withdrawn by token holders.
     assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
-
-    console.table({
-      iterations: numIterations,
-      positionsCreated: positionsCreated,
-      tokensTransfered: tokenTransfers,
-      liquidations: liquidationsObject.length,
-      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length
-    });
   });
 });
