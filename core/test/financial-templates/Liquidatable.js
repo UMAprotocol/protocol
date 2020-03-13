@@ -1095,7 +1095,7 @@ contract("Liquidatable", function(accounts) {
       // Dispute fails, liquidator withdraws, liquidation is deleted
       await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       const disputePrice = toWei("1.3");
-      await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
+      await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
       await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
       // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
       const expectedPayment = amountOfCollateral.add(disputeBond);
