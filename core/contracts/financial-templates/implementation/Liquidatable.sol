@@ -96,8 +96,7 @@ contract Liquidatable is PricelessPositionManager {
         uint disputeId,
         bool DisputeSucceeded
     );
-    // TODO: add more fields to this event after refactoring the withdrawn function
-    event LiquidationWithdrawn(address caller);
+    event LiquidationWithdrawn(address caller, uint256 withdrawalAmount, Status liquidationStatus);
 
     // Callable if the liquidation is in a state where it can be disputed.
     modifier disputable(uint id, address sponsor) {
@@ -126,6 +125,7 @@ contract Liquidatable is PricelessPositionManager {
         uint withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
+        address tokenFactoryAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -147,7 +147,8 @@ contract Liquidatable is PricelessPositionManager {
             params.finderAddress,
             params.priceFeedIdentifier,
             params.syntheticName,
-            params.syntheticSymbol
+            params.syntheticSymbol,
+            params.tokenFactoryAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
@@ -375,8 +376,7 @@ contract Liquidatable is PricelessPositionManager {
         _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
         collateralCurrency.safeTransfer(msg.sender, withdrawalAmount.rawValue);
 
-        // TODO: add this amount to the event in the issue #875.
-        emit LiquidationWithdrawn(msg.sender);
+        emit LiquidationWithdrawn(msg.sender, withdrawalAmount.rawValue, liquidation.state);
     }
 
     /**

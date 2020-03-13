@@ -14,6 +14,7 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("Liquidatable", function(accounts) {
@@ -118,6 +119,7 @@ contract("Liquidatable", function(accounts) {
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
       priceFeedIdentifier: priceTrackingIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
@@ -596,6 +598,15 @@ contract("Liquidatable", function(accounts) {
             ev.DisputeSucceeded
           );
         });
+
+        const expectedPayout = disputeBond.add(disputerDisputeReward);
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+          return (
+            ev.caller == disputer &&
+            ev.withdrawalAmount.toString() == expectedPayout.toString() &&
+            ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
+          );
+        });
       });
     });
 
@@ -791,14 +802,18 @@ contract("Liquidatable", function(accounts) {
           const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
           assert.equal(deletedLiquidation.liquidator, zeroAddress);
         });
-        it("Event emmited", async () => {
+        it("Event emitted", async () => {
           const withdrawalResult = await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, {
             from: sponsor
           });
 
-          // TODO: flesh out this test with other params when they are added to the event in `Liquidatable.sol`
+          const expectedPayment = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
           truffleAssert.eventEmitted(withdrawalResult, "LiquidationWithdrawn", ev => {
-            return ev.caller == sponsor;
+            return (
+              ev.caller == sponsor &&
+              ev.withdrawalAmount.toString() == expectedPayment.toString() &&
+              ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
+            );
           });
         });
         it("Fees on liquidation", async () => {
@@ -905,6 +920,27 @@ contract("Liquidatable", function(accounts) {
               .toString()
           );
           await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+        });
+        it("Event is correctly emitted", async () => {
+          const withdrawLiquidationResult = await liquidationContract.withdrawLiquidation(
+            liquidationParams.uuid,
+            sponsor,
+            { from: liquidator }
+          );
+
+          const expectedPayment = amountOfCollateral.add(disputeBond);
+          truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+            console.log("EVENT");
+            console.log(ev.withdrawalAmount.toString());
+            console.log(ev.liquidationStatus.toString());
+            return (
+              ev.caller == liquidator &&
+              ev.withdrawalAmount.toString() == expectedPayment.toString() &&
+              // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
+              // Once a dispute fails and the liquidator withdraws the struct is removed from state.
+              ev.liquidationStatus.toString() == STATES.UNINITIALIZED
+            );
+          });
         });
       });
     });

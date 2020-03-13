@@ -12,6 +12,7 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
+const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 
 contract("PricelessPositionManager", function(accounts) {
@@ -102,6 +103,7 @@ contract("PricelessPositionManager", function(accounts) {
       priceTrackingIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -372,11 +374,27 @@ contract("PricelessPositionManager", function(accounts) {
     // Can't withdraw below global ratio.
     assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
 
-    // For the "other" pricelessPositionManager:
+    // The "other" position has excess collateral, but that collateral can NOT be used to mint new tokens.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.create({ rawValue: toWei("0.0001") }, { rawValue: toWei("1") }, { from: other })
+      )
+    );
+
+    // For the "other" Position:
     // global collateralization ratio = (150 + 15 + 25) / (100 + 10 + 10) = 1.58333
     // To maintain 10 tokens, need at least 15.833 collateral => can withdraw from 25 down to 16 but not to 15.
     assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("10") }, { from: other })));
     await pricelessPositionManager.withdraw({ rawValue: toWei("9") }, { from: other });
+
+    // GCR = (15 + 16) / (10 + 10) = 1.55.
+    // `sponsor` has a CR of 1.5.
+    // `other` has a CR of 1.6.
+    // `sponsor` can create new tokens that are individually above 1.55, without needing to bring their whole
+    // position up to 1.55. `other` can create new tokens below their current CR as long as the new tokens are above
+    // GCR.
+    await pricelessPositionManager.create({ rawValue: toWei("1.55") }, { rawValue: toWei("1") }, { from: sponsor });
+    await pricelessPositionManager.create({ rawValue: toWei("1.55") }, { rawValue: toWei("1") }, { from: other });
   });
 
   it("Transfer", async function() {

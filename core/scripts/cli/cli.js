@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 
+const sponsor = require("./sponsor");
 const style = require("./textStyle");
 const vote = require("./vote");
 const wallet = require("./wallet");
@@ -8,6 +9,7 @@ const admin = require("./admin.js");
 const ACTIONS = {
   wallet: "Wallet",
   vote: "Vote",
+  sponsor: "Sponsor",
   admin: "Admin",
   help: "Help",
   exit: "Exit"
@@ -42,6 +44,9 @@ async function run() {
         break;
       case ACTIONS.vote:
         await vote(web3, artifacts);
+        break;
+      case ACTIONS.sponsor:
+        await sponsor(web3, artifacts);
         break;
       case ACTIONS.admin:
         await admin(artifacts, web3);
