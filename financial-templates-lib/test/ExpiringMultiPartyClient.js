@@ -222,19 +222,19 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
   it("Returns undisputed liquidations", async function () {
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
-    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: accounts[1] });
+    await syntheticToken.transfer(accounts[1], toWei("100"), { from: accounts[0] })
 
     // Create a new liquidation for account[0]'s position.
     const id = await emp.createLiquidation.call(
       accounts[0],
       { rawValue: toWei("9999999") },
-      { rawValue: toWei("150") },
+      { rawValue: toWei("100") },
       { from: accounts[1] }
     );
     await emp.createLiquidation(
       accounts[0],
       { rawValue: toWei("9999999") },
-      { rawValue: toWei("150") },
+      { rawValue: toWei("100") },
       { from: accounts[1] }
     );
     await client._update();
@@ -257,19 +257,19 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
   it("Returns expired liquidations", async function () {
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
-    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: accounts[1] });
+    await syntheticToken.transfer(accounts[1], toWei("100"), { from: accounts[0] });
 
     // Create a new liquidation for account[0]'s position.
     await emp.createLiquidation.call(
       accounts[0],
       { rawValue: toWei("9999999") },
-      { rawValue: toWei("150") },
+      { rawValue: toWei("100") },
       { from: accounts[1] }
     );
     await emp.createLiquidation(
       accounts[0],
       { rawValue: toWei("9999999") },
-      { rawValue: toWei("150") },
+      { rawValue: toWei("100") },
       { from: accounts[1] }
     );
     await client._update();
@@ -314,19 +314,19 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
   it("Returns disputed liquidations", async function () {
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
-    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: accounts[1] });
+    await syntheticToken.transfer(accounts[1], toWei("100"), { from: accounts[0] });
 
     // Create a new liquidation for account[0]'s position.
     const id = await emp.createLiquidation.call(
       accounts[0],
       { rawValue: toWei("9999999") },
-      { rawValue: toWei("150") },
+      { rawValue: toWei("100") },
       { from: accounts[1] }
     );
     await emp.createLiquidation(
       accounts[0],
       { rawValue: toWei("9999999") },
-      { rawValue: toWei("150") },
+      { rawValue: toWei("100") },
       { from: accounts[1] }
     );
     await client._update();
