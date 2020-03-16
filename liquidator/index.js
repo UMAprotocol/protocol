@@ -7,6 +7,7 @@ const { Logger } = require("../financial-templates-lib/Logger");
 
 // JS libs
 const { Liquidator } = require("./Liquidator");
+const { GasEstimator } = require("../financial-templates-lib/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 
 // Truffle contracts
@@ -34,7 +35,8 @@ async function run() {
 
   // Client and liquidator bot
   let empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-  let liquidator = new Liquidator(empClient, accounts[0]);
+  let gasEstimator = new GasEstimator();
+  let liquidator = new Liquidator(empClient, gasEstimator, accounts[0]);
 
   while (true) {
     try {
