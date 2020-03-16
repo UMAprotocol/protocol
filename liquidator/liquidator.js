@@ -99,6 +99,31 @@ class Liquidator {
       });
     }
   };
+
+  // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
+  queryAndWithdrawRewards = async () => {
+    Logger.info({
+      at: "liquidator",
+      message: "Checking for liquidations",
+      inputPrice: priceFeed
+    });
+
+    // Update the client to get the latest information.
+    await this.empClient._update();
+
+    // TODO: Just showing an example of how I want to use the client:
+    // Get expired liquidations from the client.
+    const expiredLiquidations = this.empClient.getExpiredLiquidations();
+    // TODO: 
+    // - Withdraw rewards
+    // - Check that amount of rewards was correct.
+
+    // Get disputed liquidations from the client.
+    const disputedLiquidations = this.empClient.getDisputedLiquidations();
+    // TODO: 
+    // - Withdraw rewards
+    // - Check whether it was a successful or failed dispute and double check that the reward amount was correct
+  }
 }
 
 module.exports = {
