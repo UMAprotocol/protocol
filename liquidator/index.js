@@ -50,6 +50,7 @@ async function run() {
       // Liquidate any undercollateralized positions!
       // Withdraw money from any liquidations that are expired or DisputeFailed.
       await liquidator.queryAndLiquidate(toWei(argv.price.toString()));
+      await liquidator.queryAndWithdrawRewards();
     } catch (error) {
       Logger.error({
         at: "liquidator#index",

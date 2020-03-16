@@ -2,7 +2,7 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 const { Logger } = require("../financial-templates-lib/Logger");
-const { toWei } = web3.utils;
+const { toWei, toBN } = web3.utils;
 
 class Liquidator {
   constructor(expiringMultiPartyClient, account) {
@@ -91,25 +91,98 @@ class Liquidator {
   queryAndWithdrawRewards = async () => {
     Logger.info({
       at: "liquidator",
-      message: "Checking for liquidations",
-      inputPrice: priceFeed
+      message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
 
     // Update the client to get the latest information.
     await this.empClient._update();
 
-    // TODO: Just showing an example of how I want to use the client:
-    // Get expired liquidations from the client.
-    const expiredLiquidations = this.empClient.getExpiredLiquidations();
-    // TODO: 
-    // - Withdraw rewards
-    // - Check that amount of rewards was correct.
+    let withdrawPromises = []; // store all promises to resolve in parallel later on.
 
-    // Get disputed liquidations from the client.
+    // Get all expired liquidations from the client.
+    const expiredLiquidations = this.empClient.getExpiredLiquidations();
+    if (expiredLiquidations.length > 0) {
+      Logger.info({
+        at: "liquidator",
+        message: "expired liquidations detected!",
+        number: expiredLiquidations.length,
+        expiredLiquidations: expiredLiquidations
+      });
+    } else {
+      Logger.info({
+        at: "liquidator",
+        message: "No expired liquidations"
+      });
+    }
+    for (const liquidation of expiredLiquidations) {
+      Logger.info({
+        at: "liquidator",
+        message: "withdrawing rewards from expired liquidation",
+        address: liquidation.sponsor,
+        id: liquidation.id
+      });
+
+      // Confirm that liquidation has eligible rewards to be withdrawn.
+      let withdrawPromise = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
+      let withdrawAmount = await withdrawPromise.call({ from: this.account })
+      if (toBN(withdrawAmount.rawValue).gt('0')) {
+        // TODO(#1062): Determine this gas price dynamically.
+        withdrawPromises.push(
+          withdrawPromise.send({ from: this.account, gas: 1500000 })
+        )
+      }
+    }
+
+    // Get all disputed liquidations from the client.
     const disputedLiquidations = this.empClient.getDisputedLiquidations();
-    // TODO: 
-    // - Withdraw rewards
-    // - Check whether it was a successful or failed dispute and double check that the reward amount was correct
+    if (disputedLiquidations.length > 0) {
+      Logger.info({
+        at: "liquidator",
+        message: "disputed liquidations detected!",
+        number: disputedLiquidations.length,
+        disputedLiquidations: disputedLiquidations
+      });
+    } else {
+      Logger.info({
+        at: "liquidator",
+        message: "No disputed liquidations"
+      });
+    }
+    for (const liquidation of disputedLiquidations) {
+      Logger.info({
+        at: "liquidator",
+        message: "withdrawing rewards from disputed liquidation",
+        address: liquidation.sponsor,
+        id: liquidation.id
+      });
+
+      // Confirm that liquidation has eligible rewards to be withdrawn.
+      let withdrawPromise = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
+      let withdrawAmount = await withdrawPromise.call({ from: this.account })
+      if (toBN(withdrawAmount.rawValue).gt('0')) {
+        // TODO(#1062): Determine this gas price dynamically.
+        withdrawPromises.push(
+          withdrawPromise.send({ from: this.account, gas: 1500000 })
+        )
+      }
+    }
+
+    // Resolve all promises in parallel.
+    let promiseResponse = await Promise.all(withdrawPromises);
+
+    for (const response of promiseResponse) {
+      const logResult = {
+        tx: response.transactionHash,
+        caller: response.events.LiquidationWithdrawn.returnValues.caller,
+        withdrawalAmount: response.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
+      };
+      Logger.info({
+        at: "liquidator",
+        message: "withdraw tx result",
+        liquidationResult: logResult
+      });
+    }
   }
 }
 
