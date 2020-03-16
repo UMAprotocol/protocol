@@ -2,6 +2,7 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 const { Logger } = require("../financial-templates-lib/Logger");
+const { toWei } = web3.utils;
 
 class Liquidator {
   constructor(expiringMultiPartyClient, account) {
@@ -51,17 +52,17 @@ class Liquidator {
         address: position.sponsor
       });
 
-      // Create the liquidation transaction
-
-      // TODO calculate the amountToLiquidate as a function of the total collateral within the position
-      // and the current price of the collateral. This will require knowing how much the collateral and the
-      // synthetic are worth.
-
+      // Create the liquidation transaction to liquidate the entire position:
+      // - Price to liquidate at (`collateralPerToken`): Since you are determining which positions are under collateralized positions based on the priceFeed, 
+      // you also should be liquidating using that priceFeed.
+      // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
       liquidationPromises.push(
         this.empContract.methods
-          .createLiquidation(position.sponsor, {
-            rawValue: position.amountCollateral
-          })
+          .createLiquidation(
+            position.sponsor, 
+            { rawValue: toWei(priceFeed) },
+            { rawValue: position.numTokens }
+          )
           .send({ from: this.account, gas: 1500000 })
       );
     }
@@ -85,6 +86,31 @@ class Liquidator {
       });
     }
   };
+
+  // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
+  queryAndWithdrawRewards = async () => {
+    Logger.info({
+      at: "liquidator",
+      message: "Checking for liquidations",
+      inputPrice: priceFeed
+    });
+
+    // Update the client to get the latest information.
+    await this.empClient._update();
+
+    // TODO: Just showing an example of how I want to use the client:
+    // Get expired liquidations from the client.
+    const expiredLiquidations = this.empClient.getExpiredLiquidations();
+    // TODO: 
+    // - Withdraw rewards
+    // - Check that amount of rewards was correct.
+
+    // Get disputed liquidations from the client.
+    const disputedLiquidations = this.empClient.getDisputedLiquidations();
+    // TODO: 
+    // - Withdraw rewards
+    // - Check whether it was a successful or failed dispute and double check that the reward amount was correct
+  }
 }
 
 module.exports = {
