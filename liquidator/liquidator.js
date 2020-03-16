@@ -2,7 +2,6 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 const { Logger } = require("../financial-templates-lib/Logger");
-const { toWei } = web3.utils;
 
 class Liquidator {
   constructor(expiringMultiPartyClient, gasEstimator, account) {
@@ -10,6 +9,7 @@ class Liquidator {
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
+    this.web3 = this.empClient.web3;
 
     // Gas Estimator to calculate the current Fast gas rate
     this.gasEstimator = gasEstimator;
@@ -32,9 +32,6 @@ class Liquidator {
     // Update the gasEstimator to get the latest gas price data.
     // If the client has a data point in the last 60 seconds returns immediately.
     await this.gasEstimator._update();
-
-    console.log("Got latest gas price");
-    console.log(this.gasEstimator.getCurrentFastPrice());
 
     // Get the latest undercollateralized positions from the client.
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
@@ -60,19 +57,25 @@ class Liquidator {
         at: "liquidator",
         message: "liquidating sponsor",
         address: position.sponsor,
-        gas: this.gasEstimator.getCurrentFastPrice()
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
       });
 
       // Create the liquidation transaction to liquidate the entire position:
-      // - Price to liquidate at (`collateralPerToken`): Since you are determining which positions are under collateralized positions based on the priceFeed, 
+      // - Price to liquidate at (`collateralPerToken`): Since you are determining which positions are under collateralized positions based on the priceFeed,
       // you also should be liquidating using that priceFeed.
       // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
       liquidationPromises.push(
         this.empContract.methods
-          .createLiquidation(position.sponsor, {
-            rawValue: position.amountCollateral
+          .createLiquidation(
+            position.sponsor,
+            { rawValue: this.web3.utils.toWei(priceFeed) },
+            { rawValue: position.numTokens }
+          )
+          .send({
+            from: this.account,
+            gas: 1500000,
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
           })
-          .send({ from: this.account, gas: this.gasEstimator.getCurrentFastPrice() })
       );
     }
     // Resolve all promises in parallel.

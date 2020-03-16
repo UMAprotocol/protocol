@@ -1,11 +1,14 @@
 const { Logger } = require("../financial-templates-lib/Logger");
 
 class Disputer {
-  constructor(expiringMultiPartyClient, account) {
+  constructor(expiringMultiPartyClient, gasEstimator, account) {
     this.account = account;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
+
+    // Gas Estimator to calculate the current Fast gas rate
+    this.gasEstimator = gasEstimator;
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
@@ -20,6 +23,10 @@ class Disputer {
 
     // Update the client to get the latest liquidation information.
     await this.empClient._update();
+
+    // Update the gasEstimator to get the latest gas price data.
+    // If the client has a data point in the last 60 seconds returns immediately.
+    await this.gasEstimator._update();
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
@@ -59,7 +66,7 @@ class Disputer {
       // TODO: handle transaction failures.
       const receipt = await this.empContract.methods
         .dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor)
-        .send({ from: this.account, gas: 1500000 });
+        .send({ from: this.account, gas: 1500000, gasPrice: this.gasEstimator.getCurrentFastPrice() });
 
       const disputeResult = {
         tx: receipt.transactionHash,
