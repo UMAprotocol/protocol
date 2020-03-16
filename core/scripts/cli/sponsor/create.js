@@ -1,5 +1,41 @@
+const inquirer = require("inquirer");
+const getDefaultAccount = require("../wallet/getDefaultAccount");
+
 const create = async (web3, artifacts, emp) => {
-  console.log("In create flow for", emp.address);
+  const ExpandedERC20 = artifacts.require("ExpandedERC20");
+  const { toWei, fromWei, toBN } = web3.utils;
+
+  const sponsorAddress = await getDefaultAccount(web3);
+
+  const scalingFactor = toBN(toWei("1"));
+  const totalPositionCollateral = toBN((await emp.totalPositionCollateral()).rawValue.toString());
+  const totalTokensOutstanding = toBN((await emp.totalTokensOutstanding()).toString());
+  if (totalTokensOutstanding.isZero()) {
+    console.log("Error: can't create initial position with this tool");
+  }
+  const gcr = totalPositionCollateral.mul(scalingFactor).divRound(totalTokensOutstanding);
+
+  const input = await inquirer.prompt({
+    message: "How many tokens to create?",
+    name: "tokensCreated"
+  });
+  const tokens = toWei(input["tokensCreated"]);
+  const collateralNeeded = toBN(tokens)
+    .mul(gcr)
+    .divRound(scalingFactor);
+  console.log("You'll need", fromWei(collateralNeeded), "ETH to borrow tokens");
+  const confirmation = await inquirer.prompt({
+    type: "confirm",
+    message: "Continue?",
+    name: "confirm"
+  });
+
+  if (confirmation["confirm"]) {
+    // TODO: Deal with ETH/WETH conversions here. For now, assumes sponsor has ERC20 WETH in their wallet.
+    const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+    await collateralCurrency.approve(emp.address, collateralNeeded);
+    await emp.create({ rawValue: collateralNeeded.toString() }, { rawValue: tokens.toString() });
+  }
 };
 
 module.exports = create;

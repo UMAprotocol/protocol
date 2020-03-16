@@ -3,7 +3,7 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 const create = require("./create");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
-  console.log("show market details on ", emp.address);
+  const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = await emp.getCollateral(sponsorAddress);
 
@@ -21,7 +21,23 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       await create(web3, artifacts, emp);
     }
   } else {
-    console.log("TODO: Existing position");
+    const position = await emp.positions(sponsorAddress);
+    console.log(
+      "Your position has Tokens:",
+      fromWei(position.tokensOutstanding.toString()),
+      "Collateral:",
+      fromWei(collateral.toString())
+    );
+    const prompt = {
+      type: "list",
+      name: "choice",
+      message: "What would you like to do?",
+      choices: [{ name: "Borrow more tokens" }, { name: backAction }]
+    };
+    const input = await inquirer.prompt(prompt);
+    if (input["choice"] !== backAction) {
+      await create(web3, artifacts, emp);
+    }
   }
 };
 

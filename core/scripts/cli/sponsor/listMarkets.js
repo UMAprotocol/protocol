@@ -37,7 +37,7 @@ const listMarkets = async (web3, artifacts) => {
     const asPercent = web3.utils.fromWei(collateralRequirement.muln(100).toString());
 
     const etherscanLink = "https://etherscan.io/address/" + emp.address;
-    const display = name + " " + asPercent + " " + etherscanLink;
+    const display = name + ". " + asPercent + "% collateral required. " + etherscanLink;
 
     // Using the index as the value lets us easily find the right EMP.
     choices.push({ name: display, value: i });
