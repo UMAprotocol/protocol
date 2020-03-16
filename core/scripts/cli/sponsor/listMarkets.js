@@ -29,8 +29,8 @@ const listMarkets = async (web3, artifacts) => {
   for (let i = 0; i < emps.length; i++) {
     const emp = emps[i];
 
-    const tokenFactory = await emp.tokenCurrency();
-    const token = await SyntheticToken.at(tokenFactory);
+    const tokenAddress = await emp.tokenCurrency();
+    const token = await SyntheticToken.at(tokenAddress);
     const name = await token.name();
 
     const collateralRequirement = await emp.collateralRequirement();

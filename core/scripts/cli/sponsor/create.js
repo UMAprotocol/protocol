@@ -18,7 +18,8 @@ const create = async (web3, artifacts, emp) => {
 
   const input = await inquirer.prompt({
     message: "How many tokens to create?",
-    name: "tokensCreated"
+    name: "tokensCreated",
+    validate: value => value > 0 || "Number of tokens must be positive"
   });
   const tokens = toWei(input["tokensCreated"]);
   const collateralNeeded = toBN(tokens)
