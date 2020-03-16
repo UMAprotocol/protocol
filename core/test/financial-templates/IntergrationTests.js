@@ -147,7 +147,7 @@ contract("IntergrationTest", function(accounts) {
     const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
     const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
     const depositAmount = toBN(toWei("10")); // Amount of additional collateral to add to a position
-    const redeemAmount = toBN(toWei("1")) // The number of synthetic tokens to redeem for collateral
+    const redeemAmount = toBN(toWei("1")); // The number of synthetic tokens to redeem for collateral
 
     // Counter variables
     let positionsCreated = 0;
