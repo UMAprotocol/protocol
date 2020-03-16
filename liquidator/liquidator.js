@@ -123,12 +123,12 @@ class Liquidator {
       });
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawPromise = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
-      let withdrawAmount = await withdrawPromise.call({ from: this.account })
+      let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
+      let withdrawAmount = await withdraw.call({ from: this.account })
       if (toBN(withdrawAmount.rawValue).gt('0')) {
         // TODO(#1062): Determine this gas price dynamically.
         withdrawPromises.push(
-          withdrawPromise.send({ from: this.account, gas: 1500000 })
+          withdraw.send({ from: this.account, gas: 1500000 })
         )
       }
     }
@@ -157,12 +157,12 @@ class Liquidator {
       });
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawPromise = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
-      let withdrawAmount = await withdrawPromise.call({ from: this.account })
+      let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
+      let withdrawAmount = await withdraw.call({ from: this.account })
       if (toBN(withdrawAmount.rawValue).gt('0')) {
         // TODO(#1062): Determine this gas price dynamically.
         withdrawPromises.push(
-          withdrawPromise.send({ from: this.account, gas: 1500000 })
+          withdraw.send({ from: this.account, gas: 1500000 })
         )
       }
     }
