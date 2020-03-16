@@ -47,6 +47,8 @@ mkdir -p $START_DIR/modules/explainers/assets/images
 mkdir -p $START_DIR/modules/contracts/pages
 
 cp $START_DIR/documentation/explainers/*.jpeg $START_DIR/modules/explainers/assets/images/
+cp $START_DIR/documentation/explainers/*.jpg $START_DIR/modules/explainers/assets/images/
+cp $START_DIR/documentation/explainers/*.png $START_DIR/modules/explainers/assets/images/
 
 $START_DIR/ci/docgen.sh
 find $START_DIR/docs -name "*.adoc" -exec cp '{}' $START_DIR/modules/contracts/pages/ \;
