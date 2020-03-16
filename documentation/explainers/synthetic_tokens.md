@@ -1,4 +1,5 @@
 # Overview
+
 Synthetic tokens are collateral-backed tokens whose value fluctuates depending on the tokens’ reference index. Synthetic tokens blend features of prediction markets, futures markets, and collateralized loans. 
 
 Some examples of synthetic tokens include: 
@@ -17,7 +18,6 @@ Some of the most creative ideas for synthetic tokens fall in the last category. 
 For more details on how a “priceless” framework can be applied more generally to other types of financial contract templates on the blockchain, check out this blog post. <!-- TODO: add link to blog post -->
 
 ## Launching a New Synthetic Token
-
 To launch a new type of synthetic token for which an existing market does not yet exist, that synthetic token’s smart contract must first be parameterized and deployed. Anyone can parameterize and deploy this contract. 
 
 This smart contract can be deployed using UMA’s synthetic token contract template and defining key parameters. Some parameters to highlight are:
