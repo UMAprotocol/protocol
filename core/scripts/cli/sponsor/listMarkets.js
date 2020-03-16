@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const style = require("../textStyle");
 const showMarketDetails = require("./showMarketDetails");
+const PublicNetworks = require("../../../../common/PublicNetworks");
 
 const listMarkets = async (web3, artifacts) => {
   style.spinnerReadingContracts.start();
@@ -25,6 +26,9 @@ const listMarkets = async (web3, artifacts) => {
   // Format a useful display message for each market.
   const backChoice = "Back";
   const choices = [];
+  const etherscanBaseUrl = PublicNetworks[web3.networkId]
+    ? PublicNetworks[web3.networkId].etherscan
+    : "https://fake-etherscan.com";
   for (let i = 0; i < emps.length; i++) {
     const emp = emps[i];
 
@@ -35,7 +39,7 @@ const listMarkets = async (web3, artifacts) => {
     const collateralRequirement = await emp.collateralRequirement();
     const asPercent = web3.utils.fromWei(collateralRequirement.muln(100).toString());
 
-    const etherscanLink = "https://etherscan.io/address/" + emp.address;
+    const etherscanLink = etherscanBaseUrl + "/contracts/" + emp.address;
     const display = name + ". " + asPercent + "% collateral required. " + etherscanLink;
 
     // Using the index as the value lets us easily find the right EMP.
