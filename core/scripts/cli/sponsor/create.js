@@ -8,6 +8,7 @@ const create = async (web3, artifacts, emp) => {
   const sponsorAddress = await getDefaultAccount(web3);
 
   const scalingFactor = toBN(toWei("1"));
+  // TODO: Understand why we need a .rawValue in one case but not the other.
   const totalPositionCollateral = toBN((await emp.totalPositionCollateral()).rawValue.toString());
   const totalTokensOutstanding = toBN((await emp.totalTokensOutstanding()).toString());
   if (totalTokensOutstanding.isZero()) {
