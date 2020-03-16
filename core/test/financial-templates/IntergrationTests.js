@@ -138,6 +138,7 @@ contract("IntergrationTest", function(accounts) {
     const runLiquidations = true; // if liquidations should occur in the loop
     const runDisputes = true; // if disputes should occur in the loop
     const runExtraDeposits = true; // if the sponsor should have a chance to add more
+    const runRedeemTokens = true; // if the sponsor should have a chance to redeem some of their tokens
 
     // Tunable parameters
     const baseCollateralAmount = toBN(toWei("150")); // starting amount of collateral deposited by sponsor
@@ -146,11 +147,13 @@ contract("IntergrationTest", function(accounts) {
     const liquidationPrice = toBN(toWei("1.5")); // Price a liquidator will liquidate at
     const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
     const depositAmount = toBN(toWei("10")); // Amount of additional collateral to add to a position
+    const redeemAmount = toBN(toWei("1")) // The number of synthetic tokens to redeem for collateral
 
     // Counter variables
     let positionsCreated = 0;
     let tokenTransfers = 0;
     let depositsMade = 0;
+    let redemptionsMade = 0;
     let liquidationsObject = [];
 
     // STEP: 0: seed liquidator
@@ -188,7 +191,9 @@ contract("IntergrationTest", function(accounts) {
 
       // STEP 2: transferring tokens to the token holder
       if (i % 2 == 1) {
-        await syntheticToken.transfer(tokenHolder, toWei("100"), { from: sponsor });
+        await syntheticToken.transfer(tokenHolder, toWei("100"), {
+          from: sponsor
+        });
         tokenTransfers++;
       }
 
@@ -233,12 +238,22 @@ contract("IntergrationTest", function(accounts) {
         }
       }
 
-      // STEP 5: chance for the token sponsor to deposit more collateral
+      // STEP 5.a): chance for the token sponsor to deposit more collateral
       if (i % 2 == 0 && runExtraDeposits) {
         // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
         try {
           await expiringMultiParty.deposit({ rawValue: depositAmount.toString() }, { from: sponsor });
           depositsMade++;
+        } catch (error) {
+          continue;
+        }
+      }
+      // STEP 5.a): chance for the token sponsor to redeem some collateral
+      if (i % 2 == 1 && runRedeemTokens) {
+        // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
+        try {
+          await expiringMultiParty.redeem({ rawValue: redeemAmount.toString() }, { from: sponsor });
+          redemptionsMade++;
         } catch (error) {
           continue;
         }
@@ -313,6 +328,7 @@ contract("IntergrationTest", function(accounts) {
       positionsCreated: positionsCreated,
       tokensTransferred: tokenTransfers,
       additionalDepositsMade: depositsMade,
+      redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
       disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length
     });
