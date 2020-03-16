@@ -12,6 +12,8 @@ const create = async (web3, artifacts, emp) => {
   const totalPositionCollateral = toBN((await emp.totalPositionCollateral()).rawValue.toString());
   const totalTokensOutstanding = toBN((await emp.totalTokensOutstanding()).toString());
   if (totalTokensOutstanding.isZero()) {
+    // When creating the globally first position, we wouldn't have a GCR. Therefore, creating that position is a
+    // different flow that isn't currently part of this tool.
     console.log("Error: can't create initial position with this tool");
   }
   const gcr = totalPositionCollateral.mul(scalingFactor).divRound(totalTokensOutstanding);
