@@ -6,6 +6,7 @@
   "dependencies": {
     "node-fetch": "^2.6.0",
     "winston": "^3.2.1",
+    "winston-slack-webhook-transport": "^1.2.1",
     "winston-transport": "^4.3.0"
   }
 }

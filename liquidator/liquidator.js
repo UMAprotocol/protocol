@@ -2,6 +2,7 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 const { Logger } = require("../financial-templates-lib/Logger");
+const { toWei } = web3.utils;
 
 class Liquidator {
   constructor(expiringMultiPartyClient, gasEstimator, account) {
@@ -62,12 +63,10 @@ class Liquidator {
         gas: this.gasEstimator.getCurrentFastPrice()
       });
 
-      // Create the liquidation transaction
-
-      // TODO calculate the amountToLiquidate as a function of the total collateral within the position
-      // and the current price of the collateral. This will require knowing how much the collateral and the
-      // synthetic are worth.
-
+      // Create the liquidation transaction to liquidate the entire position:
+      // - Price to liquidate at (`collateralPerToken`): Since you are determining which positions are under collateralized positions based on the priceFeed, 
+      // you also should be liquidating using that priceFeed.
+      // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
       liquidationPromises.push(
         this.empContract.methods
           .createLiquidation(position.sponsor, {
