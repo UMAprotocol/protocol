@@ -11,14 +11,13 @@ const listMarkets = async (web3, artifacts) => {
   const Governor = artifacts.require("Governor");
 
   const registry = await Registry.deployed();
-  const governorAddress = (await Governor.deployed()).address;
   const contractAddresses = await registry.getAllRegisteredContracts();
   style.spinnerReadingContracts.stop();
 
   const emps = [];
   for (const address of contractAddresses) {
     // The governor is always registered as a contract, but it isn't an ExpiringMultiParty.
-    if (address !== governorAddress) {
+    if (address !== Governor.address) {
       emps.push(await ExpiringMultiParty.at(address));
     }
   }
