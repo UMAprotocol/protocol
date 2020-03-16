@@ -132,7 +132,7 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    Logger.info({
+    Logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "client updated"
     });

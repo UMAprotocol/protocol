@@ -20,7 +20,7 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFeed => {
-    Logger.info({
+    Logger.debug({
       at: "liquidator",
       message: "Checking for under collateralized positions",
       inputPrice: priceFeed
@@ -37,14 +37,15 @@ class Liquidator {
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
 
     if (underCollateralizedPositions.length > 0) {
-      Logger.info({
-        at: "liquidator",
-        message: "undercollateralized positions detected!",
-        number: underCollateralizedPositions.length,
-        underCollateralizedPositions: underCollateralizedPositions
-      });
+      for (const underCollateralizedPosition of underCollateralizedPositions) {
+        Logger.info({
+          at: "liquidator",
+          message: "undercollateralized positions detected 🚨",
+          underCollateralizedPosition: underCollateralizedPosition
+        });
+      }
     } else {
-      Logger.info({
+      Logger.debug({
         at: "liquidator",
         message: "No undercollateralized position"
       });
@@ -55,7 +56,7 @@ class Liquidator {
       // TODO: add additional information about this liquidation event to the log.
       Logger.info({
         at: "liquidator",
-        message: "liquidating sponsor",
+        message: "liquidating sponsor 🔥",
         address: position.sponsor,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       });
@@ -93,7 +94,7 @@ class Liquidator {
       };
       Logger.info({
         at: "liquidator",
-        message: "liquidation tx result",
+        message: "liquidation tx result 🤕",
         liquidationResult: logResult
       });
     }
