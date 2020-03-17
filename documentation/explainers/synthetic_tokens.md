@@ -30,7 +30,7 @@ This [tutorial](../tutorials/creating_synthetic_tokens_from_truffle_console.md) 
 ## Creating Synthetic Tokens From an Existing Contract
 After the contract is deployed, anyone can interact with the contract to create synthetic tokens. These actors are called “token sponsors”, since they sponsor the creation of synthetic tokens. 
 
-![Diagram](./st_create_contract.png) 
+![Diagram](./st_create_contract.png =400x) 
 
 Token sponsors deposit collateral into the contract to collateralize synthetic tokens, which they can then withdraw and trade with others. The first token sponsor to create synthetic tokens is able to immediately withdraw synthetic tokens from the contract. Any following token sponsors who wish to create synthetic tokens can do so, but must collateralize their positions by at least as much as the system’s global collateralization ratio. This prevents token sponsor positions from being immediately liquidated. <!-- TODO: add link to glossary for “global collateralization ratio” --> 
 
@@ -41,7 +41,7 @@ During the lifetime of the synthetic token, token sponsors may want to deposit a
 
 Token sponsors can deposit additional collateral at any time.
 
-![Diagram](./st_add_collateral.png) 
+![Diagram](./st_add_collateral.png =400x) 
 
 Token sponsors can withdraw excess collateral in one of two ways: a “fast” withdrawal or “slow” withdrawal.
 
