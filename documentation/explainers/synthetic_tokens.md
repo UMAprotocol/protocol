@@ -30,7 +30,7 @@ This [tutorial](../tutorials/creating_synthetic_tokens_from_truffle_console.md) 
 ## Creating Synthetic Tokens From an Existing Contract
 After the contract is deployed, anyone can interact with the contract to create synthetic tokens. These actors are called “token sponsors”, since they sponsor the creation of synthetic tokens. 
 
-<img src="st_create_contract.png" width="550">
+<img src="st_create_contract.png" align="center" width="500">
 
 Token sponsors deposit collateral into the contract to collateralize synthetic tokens, which they can then withdraw and trade with others. The first token sponsor to create synthetic tokens is able to immediately withdraw synthetic tokens from the contract. Any following token sponsors who wish to create synthetic tokens can do so, but must collateralize their positions by at least as much as the system’s global collateralization ratio. This prevents token sponsor positions from being immediately liquidated. <!-- TODO: add link to glossary for “global collateralization ratio” --> 
 
@@ -41,14 +41,14 @@ During the lifetime of the synthetic token, token sponsors may want to deposit a
 
 Token sponsors can deposit additional collateral at any time.
 
-<img src="st_add_collateral.png" width="550">
+<img src="st_add_collateral.png" align="center" width="500">
 
 Token sponsors can withdraw excess collateral in one of two ways: a “fast” withdrawal or “slow” withdrawal.
 
 ### “Fast” withdrawal:
 A “fast” withdrawal allows a token sponsor to withdraw excess collateral from his position immediately, so long as the resulting position is collateralized by at least as much as the average token sponsor collateralization ratio for the contract (“global collateralization ratio”). <!-- TODO: add link to glossary for “global collateralization ratio” --> 
 
-<img src="st_withdraw_collateral.png" width="550">
+<img src="st_withdraw_collateral.png" align="center" width="500">
  
 ### “Slow” withdrawal: 
 If the token sponsor wishes to withdraw collateral from his position that would bring his collateralization below the global collateralization ratio, he can do so via a “slow” withdrawal. Because withdrawing this amount of collateral could potentially jeopardize the solvency of the fungible synthetic tokens, this “slow”, 2-part, withdrawal process allows other token holders to flag if a withdrawal would render the token sponsor insolvent. 
@@ -67,7 +67,7 @@ To liquidate a token sponsor position, a token holder submits tokens to the cont
 Here are three ways in which a liquidation can be resolved: 
 1. No one disputes the liquidation during the liquidation liveness period. After the liquidation liveness period ends, collateral deposited by the token sponsor is returned to the liquidator, proportional to the number of synthetic tokens the liquidator has submitted in liquidation. As a numerical example, assume a token sponsor has deposited 150 DAI of collateral to create 100 synthetic tokens, which they then sold to the market. Later, a liquidator submits 30 synthetic tokens to liquidate the token sponsor. If no one disputes the liquidation, the liquidator will receive 30% of the token sponsor’s collateral, or 45 DAI. 
 
-<img src="st_liquidation_1.png" width="550">
+<img src="st_liquidation_1.png" align="center" width="500">
 
 2. Someone disputes the liquidation during the liquidation liveness period. To do this, the disputer must post a bond. Once the dispute is raised, a price request is made to the UMA DVM. This price request will return the value of the price identifier at the time of the liquidation, which will determine if the token sponsor was undercollateralized and resolve the "dispute". <!-- TODO: add link to glossary for “DVM” --> 
 - If the price returned by the DVM indicates that the token sponsor was undercollateralized at the time of the liquidation:
@@ -75,20 +75,20 @@ Here are three ways in which a liquidation can be resolved:
     * The liquidator will receive all of the token sponsor position’s collateral. 
     * The token sponsor will not receive any of the collateral they have previously deposited into the position. 
      
-    <img src="st_liquidation_2.png" width="550">
+    <img src="st_liquidation_2.png" align="center" width="500">
     
 - If the price returned by the DVM indicates that the token sponsor was not undercollateralized at the time of the liquidation: 
     * The disputer will receive back their dispute bond and a dispute reward.
     * The liquidator will receive collateral equalling: (i) the value of the token at the time of liquidation as determined by the DVM, less (ii) the dispute reward paid to the disputer, less (iii) the improper liquidation reward paid to the original token sponsor.
     * The token sponsor will receive any remaining collateral and a reward for the improper liquidation. 
     
-    <img src="st_liquidation_3.png" width="550">
+    <img src="st_liquidation_3.png" align="center" width="500">
 
 
 ## Redeeming Tokens
 Before the expiration date of the token, tokens may only be redeemed by token sponsors. A token sponsor redeems a token by submitting it to the contract to be burned and receiving collateral proportional to the total amount of collateral that the token sponsor has deposited to the contract. 
  
-<img src="st_redeem_token.png" width="550">
+<img src="st_redeem_token.png" align="center" width="500">
 
 Consider the following example. Assume a token sponsor has deposited 150 DAI of collateral to create 100 synthetic tokens, which they then sold to the market. Later, the token sponsor repurchases 30 tokens and decides to redeem them. These 30 tokens represent 30% of the token sponsors original position, so by redeeming them the token sponsor receives 30% of their initial collateral, or 45 DAI (since 30% * 150 = 45).
 
@@ -97,5 +97,5 @@ After the expiration timestamp for the synthetic tokens, anyone may settle the c
 
 After this value is returned to the contract and the contract is settled, any token holder can redeem the tokens against the contract. Redemption of the tokens returns the token holder collateral equal to the price identifier value returned by the UMA DVM.  <!-- TODO: add link to glossary for “price identifier” --> 
 
-<img src="st_expiration.png" width="550">
+<img src="st_expiration.png" align="center" width="500">
 
