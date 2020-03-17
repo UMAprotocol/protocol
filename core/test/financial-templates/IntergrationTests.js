@@ -330,7 +330,8 @@ contract("IntergrationTest", function(accounts) {
       additionalDepositsMade: depositsMade,
       redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
-      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length
+      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length,
+      finalBallanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toNumber()
     });
 
     // STEP 11): ensure all funds were taken from the contract.
@@ -340,29 +341,10 @@ contract("IntergrationTest", function(accounts) {
     assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
   });
   it.only("Iterative full life cycle test with unfriendly numbers", async function() {
-    /**
-     * @notice Iterative test with sponsors, liquidations and disputes.
-     */
-    // Number of positions to create and liquidate. The following process is followed to initiate maximum interaction
-    // with the emp & fee paying function to try and compound floating errors to see if positions are locked at settlement:
-    // 0) create a large position by the liquidator to enable them to perform liquidations
-    // 1) position created by selected sponsor
-    // 2) random amount of tokens sent to a selected tokenholder
-    // 3) time advanced by 1000 seconds
-    // 4) 1/3 chance to initiate liquidation
-    // 4.a) if liquidation initiated then time advanced
-    // 4.b) 1/2chance to dispute
-    // 4.b.i) if disputed then resolve oracle price
-    // 5) chance for token sponsor to deposit more collateral
-    // 6) chance for the sponsor to redeem collateral
-    // 7) repeat 1 to 6 `numIterations` times
-    // 8) withdraw successful (or failed) liquidation returns from sponsors, liquidators and disputers
-    // 9) settle contract
-    // 10) ensure that all users can withdraw their funds
-    // 11) check the contract has no funds left in it
+    // This test follows the exact same pattern as before except the input parames are less friendly
 
     // Test settings
-    const numIterations = 15; // number of times the simulation loop is run
+    const numIterations = 200; // number of times the simulation loop is run
     const runLiquidations = true; // if liquidations should occur in the loop
     const runDisputes = true; // if disputes should occur in the loop
     const runExtraDeposits = true; // if the sponsor should have a chance to add more
@@ -568,9 +550,6 @@ contract("IntergrationTest", function(accounts) {
     });
 
     // STEP 11): ensure all funds were taken from the contract.
-    // The main assertion we can check is that all users were able to call `settleExpired` without the contract
-    // locking up. Additionally, if all book keeping has gone correctly, there should be no collateral left in
-    // the expiring multi party as this has all be withdrawn by token holders.
-    // assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
+    // However due to drift from the unfriendly numbers we cant assert this! print the error in the output table.
   });
 });
