@@ -23,20 +23,20 @@ const advanceTime = async callback => {
   try {
     registry = await Registry.deployed();
     const contractAddresses = await registry.getAllRegisteredContracts();
-    
+
     // Query all registered EMP's.
     for (const address of contractAddresses) {
       // The governor is always registered as a contract, but it isn't an ExpiringMultiParty.
       if (address !== Governor.address) {
-        emp = await ExpiringMultiParty.at(address)
+        emp = await ExpiringMultiParty.at(address);
 
         // Advance time
-        let leapForward = (argv.time ? argv.time : 3600 )
-        let currentTime = await emp.getCurrentTime()
-        let newTime = toBN(currentTime.toString()).add(toBN(leapForward.toString()))
-        await emp.setCurrentTime(newTime.toString())
-        currentTime = await emp.getCurrentTime()
-        let currentTimeReadable = new Date(Number(currentTime.toString())*1000)
+        let leapForward = argv.time ? argv.time : 3600;
+        let currentTime = await emp.getCurrentTime();
+        let newTime = toBN(currentTime.toString()).add(toBN(leapForward.toString()));
+        await emp.setCurrentTime(newTime.toString());
+        currentTime = await emp.getCurrentTime();
+        let currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
         console.log(`Set time to ${currentTimeReadable} for the EMP @ ${emp.address}`);
       }
     }

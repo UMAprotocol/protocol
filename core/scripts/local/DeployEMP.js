@@ -84,10 +84,10 @@ const deployEMP = async callback => {
     syntheticToken = await Token.at(await emp.tokenCurrency());
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: deployer });
 
-    // Create one small position so that you can create new positions from the CLI 
+    // Create one small position so that you can create new positions from the CLI
     // (currently, it does not support creating the first position for the EMP).
     // Collateralize this at the minimum CR allowed.
-    await emp.create({ rawValue: toWei('1.5') }, { rawValue: toWei('1') });
+    await emp.create({ rawValue: toWei("1.5") }, { rawValue: toWei("1") });
 
     // Done!
     console.log("Created a new EMP with the configuration:", constructorParams);
