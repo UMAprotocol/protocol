@@ -5,6 +5,7 @@ const { Disputer } = require("../disputer.js");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
+const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -97,11 +98,12 @@ contract("Disputer.js", function(accounts) {
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidator });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: disputeBot });
 
-    // Create a new instance of the ExpiringMultiPartyClient to construct the disputer
+    // Create a new instance of the ExpiringMultiPartyClient & GasEstimator to construct the disputer
     empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+    gasEstimator = new GasEstimator();
 
     // Create a new instance of the disputer to test
-    disputer = new Disputer(empClient, accounts[0]);
+    disputer = new Disputer(empClient, gasEstimator, accounts[0]);
   });
 
   it("Detect disputable positions and send dipsutes", async function() {
