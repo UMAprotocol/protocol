@@ -52,8 +52,12 @@ class GasEstimator {
       const response = await fetch(url);
       const json = await response.json();
       // The number returned by EthGasStation is a Gwei amount, scaled by 10.
-      let price = json.fast / 10;
-      return price;
+      if (json.fast) {
+        let price = json.fast / 10;
+        return price;
+      } else {
+        throw "bad json response";
+      }
     } catch (error) {
       Logger.error({
         at: "GasEstimator",
