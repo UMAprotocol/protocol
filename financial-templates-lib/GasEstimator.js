@@ -12,8 +12,9 @@ class GasEstimator {
     this.lastUpdateTimestamp;
     this.lastFastPriceGwei;
 
-    // If the script fails or the API resonce fails default to this value
+    // If the script fails or the API response fails default to this value
     this.defaultFastPriceGwei = defaultFastPriceGwei;
+    this.lastFastPriceGwei = this.defaultFastPriceGwei;
   }
 
   _update = async () => {
