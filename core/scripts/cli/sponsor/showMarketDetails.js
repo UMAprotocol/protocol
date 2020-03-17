@@ -8,7 +8,6 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = await emp.getCollateral(sponsorAddress);
 
-  const backAction = "Back";
   let actions;
   if (collateral.toString() === "0") {
     // Sponsor doesn't have a position.
