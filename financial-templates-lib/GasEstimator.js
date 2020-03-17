@@ -35,7 +35,7 @@ class GasEstimator {
       Logger.debug({
         at: "GasEstimator",
         message: "Gas Estimator updated",
-        gasPrice: returnedPrice,
+        currentFastPrice: returnedPrice,
         lastUpdateTimestamp: this.lastUpdateTimestamp
       });
     }
