@@ -34,9 +34,11 @@ After the contract is deployed, anyone can interact with the contract to create 
   <img src="st_create_contract.png" width="500">
 </p>
 
-Token sponsors deposit collateral into the contract to collateralize synthetic tokens, which they can then withdraw and trade with others. The first token sponsor to create synthetic tokens is able to immediately withdraw synthetic tokens from the contract. Any following token sponsors who wish to create synthetic tokens can do so, but must collateralize their positions by at least as much as the system’s global collateralization ratio. This prevents token sponsor positions from being immediately liquidated. <!-- TODO: add link to glossary for “global collateralization ratio” --> 
+Token sponsors deposit collateral into the contract to collateralize synthetic tokens, which they can then withdraw and trade with others. The first token sponsor to create synthetic tokens is able to immediately withdraw synthetic tokens from the contract. Any following token sponsors who wish to create synthetic tokens can do so, but must collateralize their positions by at least as much as the system’s global collateralization ratio. This ensures that all newly created tokens sponsor positions are correctly collateralized upon initialization. <!-- TODO: add link to glossary for “global collateralization ratio” --> 
 
-This tutorial will show you how to mint tokens from the command line after having parameterized and deployed the synthetic token’s smart contract. <!-- TODO: add link -->
+The global collateralization ratio (GCR) is the average collateralization ratio among all token sponsor positions that have not yet been liquidated nor have any outstanding withdrawal requests. Requiring new token sponsors to collateralize their positions by as much as the GCR provides some assurances that so long as those token sponsors collateralized below the GCR have not yet been liquidated, those above the GCR need not be at risk of liquidation.
+
+This [tutorial](../tutorials/creating_synthetic_tokens_from_truffle_console.md#create-new-tokens-from-an-existing-contract) will show you how to mint tokens from the command line after having parameterized and deployed the synthetic token’s smart contract. <!-- TODO: add link -->
 
 ## Managing Token Sponsor Positions
 During the lifetime of the synthetic token, token sponsors may want to deposit additional collateral to their positions so as to avoid liquidation. Sponsors may also want to withdraw excess collateral if the position has moved in their favor. 
@@ -50,7 +52,7 @@ Token sponsors can deposit additional collateral at any time.
 Token sponsors can withdraw excess collateral in one of two ways: a “fast” withdrawal or “slow” withdrawal.
 
 ### “Fast” withdrawal:
-A “fast” withdrawal allows a token sponsor to withdraw excess collateral from his position immediately, so long as the resulting position is collateralized by at least as much as the average token sponsor collateralization ratio for the contract (“global collateralization ratio”). <!-- TODO: add link to glossary for “global collateralization ratio” --> 
+A “fast” withdrawal allows a token sponsor to withdraw excess collateral from his position immediately, so long as the resulting position is collateralized by at least as much as the global collateralization ratio (GCR). Requiring withdrawals to result in collateralization at least as high as the GCR provides some assurances that so long as the other token sponsors collateralized below the GCR have not yet been liquidated, this token sponsor should not be liquidated after making this withdrawal. <!-- TODO: add link to glossary for “global collateralization ratio” --> 
 
 <p align="center">
   <img src="st_withdraw_collateral.png" align="center" width="500">
