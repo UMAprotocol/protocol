@@ -113,16 +113,16 @@ class Liquidator {
     // TODO: Just showing an example of how I want to use the client:
     // Get expired liquidations from the client.
     const expiredLiquidations = this.empClient.getExpiredLiquidations();
-    // TODO: 
+    // TODO:
     // - Withdraw rewards
     // - Check that amount of rewards was correct.
 
     // Get disputed liquidations from the client.
     const disputedLiquidations = this.empClient.getDisputedLiquidations();
-    // TODO: 
+    // TODO:
     // - Withdraw rewards
     // - Check whether it was a successful or failed dispute and double check that the reward amount was correct
-  }
+  };
 }
 
 module.exports = {
