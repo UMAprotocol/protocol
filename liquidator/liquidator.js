@@ -97,92 +97,75 @@ class Liquidator {
     // Update the client to get the latest information.
     await this.empClient._update();
 
-    let withdrawPromises = []; // store all promises to resolve in parallel later on.
-
-    // Get all expired liquidations from the client.
+    // All of the liquidations that we could withdraw rewards from are drawn from the pool of
+    // expired and disputed liquidations.
     const expiredLiquidations = this.empClient.getExpiredLiquidations();
-    if (expiredLiquidations.length > 0) {
-      Logger.info({
-        at: "liquidator",
-        message: "expired liquidations detected!",
-        number: expiredLiquidations.length,
-        expiredLiquidations: expiredLiquidations
-      });
-    } else {
-      Logger.info({
-        at: "liquidator",
-        message: "No expired liquidations"
-      });
-    }
-    for (const liquidation of expiredLiquidations) {
-      Logger.info({
-        at: "liquidator",
-        message: "withdrawing rewards from expired liquidation",
-        address: liquidation.sponsor,
-        id: liquidation.id
-      });
-
-      // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
-      let withdrawAmount = await withdraw.call({ from: this.account })
-      if (toBN(withdrawAmount.rawValue).gt('0')) {
-        // TODO(#1062): Determine this gas price dynamically.
-        withdrawPromises.push(
-          withdraw.send({ from: this.account, gas: 1500000 })
-        )
-      }
-    }
-
-    // Get all disputed liquidations from the client.
     const disputedLiquidations = this.empClient.getDisputedLiquidations();
-    if (disputedLiquidations.length > 0) {
+    const potentialWithdrawableLiquidations = expiredLiquidations.concat(disputedLiquidations);
+
+    if (potentialWithdrawableLiquidations.length > 0) {
       Logger.info({
         at: "liquidator",
-        message: "disputed liquidations detected!",
-        number: disputedLiquidations.length,
-        disputedLiquidations: disputedLiquidations
+        message: "potential withdrawable liquidations detected!",
+        number: potentialWithdrawableLiquidations.length,
+        potentialWithdrawableLiquidations: potentialWithdrawableLiquidations
       });
+
+      // Save all withdraw promises to resolve in parallel later on.
+      const withdrawPromises = []; 
+      for (const liquidation of potentialWithdrawableLiquidations) {
+        Logger.info({
+          at: "liquidator",
+          message: "attempting to withdraw rewards from liquidations",
+          address: liquidation.sponsor,
+          id: liquidation.id
+        });
+
+        // Confirm that liquidation has eligible rewards to be withdrawn.
+        try {
+          let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
+          let withdrawAmount = await withdraw.call({ from: this.account })
+          if (toBN(withdrawAmount.rawValue).gt('0')) {
+            // TODO(#1062): Determine this gas price dynamically.
+            withdrawPromises.push(
+              withdraw.send({ from: this.account, gas: 1500000 })
+            )
+          }  
+        } catch (err) {
+          Logger.error({
+            at: "liquidator",
+            message: "failed to withdraw rewards from liquidation",
+            address: liquidation.sponsor,
+            id: liquidation.id
+          });
+          continue;
+        }
+      }
+
+      // Resolve all promises in parallel.
+      let promiseResponse = await Promise.all(withdrawPromises);
+
+      for (const response of promiseResponse) {
+        const logResult = {
+          tx: response.transactionHash,
+          caller: response.events.LiquidationWithdrawn.returnValues.caller,
+          withdrawalAmount: response.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+          liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
+        };
+        Logger.info({
+          at: "liquidator",
+          message: "withdraw tx result",
+          liquidationResult: logResult
+        });
+      }
+
     } else {
       Logger.info({
         at: "liquidator",
-        message: "No disputed liquidations"
+        message: "No withdrawable liquidations"
       });
     }
-    for (const liquidation of disputedLiquidations) {
-      Logger.info({
-        at: "liquidator",
-        message: "withdrawing rewards from disputed liquidation",
-        address: liquidation.sponsor,
-        id: liquidation.id
-      });
 
-      // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
-      let withdrawAmount = await withdraw.call({ from: this.account })
-      if (toBN(withdrawAmount.rawValue).gt('0')) {
-        // TODO(#1062): Determine this gas price dynamically.
-        withdrawPromises.push(
-          withdraw.send({ from: this.account, gas: 1500000 })
-        )
-      }
-    }
-
-    // Resolve all promises in parallel.
-    let promiseResponse = await Promise.all(withdrawPromises);
-
-    for (const response of promiseResponse) {
-      const logResult = {
-        tx: response.transactionHash,
-        caller: response.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: response.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
-      };
-      Logger.info({
-        at: "liquidator",
-        message: "withdraw tx result",
-        liquidationResult: logResult
-      });
-    }
   }
 }
 
