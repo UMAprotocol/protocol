@@ -53,12 +53,8 @@ contract("Liquidator.js", function(accounts) {
     await collateralToken.mint(liquidatorBot, toWei("100000"), { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new({
-      from: contractCreator
-    });
-    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"), {
-      from: contractCreator
-    });
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address, {
@@ -86,11 +82,6 @@ contract("Liquidator.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
-
-    identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: accounts[0]
-    });
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
