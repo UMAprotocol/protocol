@@ -7,6 +7,7 @@ const { Logger } = require("../financial-templates-lib/Logger");
 
 // JS libs
 const { Disputer } = require("./Liquidator");
+const { GasEstimator } = require("../financial-templates-lib/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 
 // Truffle contracts
@@ -29,7 +30,8 @@ async function run() {
 
   // Client and dispute bot
   const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-  const disputer = new Disputer(empClient, accounts[0]);
+  const gasEstimator = new GasEstimator();
+  const disputer = new Disputer(empClient, gasEstimator, accounts[0]);
 
   while (true) {
     try {

@@ -5,6 +5,7 @@ const { Liquidator } = require("../liquidator.js");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
+const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -105,11 +106,12 @@ contract("Liquidator.js", function(accounts) {
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
 
-    // Create a new instance of the ExpiringMultiPartyClient to construct the liquidator
+    // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
     empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+    gasEstimator = new GasEstimator();
 
     // Create a new instance of the liquidator to test
-    liquidator = new Liquidator(empClient, liquidatorBot);
+    liquidator = new Liquidator(empClient, gasEstimator, accounts[0]);
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {
