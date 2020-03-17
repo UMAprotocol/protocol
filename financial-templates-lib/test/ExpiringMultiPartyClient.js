@@ -310,6 +310,11 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       ],
       expiredLiquidations
     );
+
+    // Withdraw from the expired liquidation and check that the liquidation is deleted.
+    await emp.withdrawLiquidation("0", accounts[0], { from: accounts[1] })
+    await client._update();
+    assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
   });
 
   it("Returns disputed liquidations", async function () {
@@ -356,5 +361,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       client.getDisputedLiquidations().sort()
     );
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+
+    // Force a price such that the dispute fails, and then
+    // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
+    const disputePrice = toWei("1.6");
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+    await emp.withdrawLiquidation("0", accounts[0], { from: accounts[1] })
+    await client._update();
+    assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
   })
 });

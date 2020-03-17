@@ -197,9 +197,6 @@ contract("Liquidator.js", function(accounts) {
 
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].sponsor, "0x0000000000000000000000000000000000000000");
-
-    // Attempt to withdraw should now exit gracefully since there are no expired liquidations remaining.
-    await liquidator.queryAndWithdrawRewards();
   });
 
   it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function () {
@@ -222,7 +219,6 @@ contract("Liquidator.js", function(accounts) {
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
 
     // Simulate a failed dispute by pushing a price to the oracle, at the time of the liquidation request, such that
     // the position was truly undercollateralized. In other words, the liquidator was liquidating at the correct price.
@@ -242,9 +238,6 @@ contract("Liquidator.js", function(accounts) {
 
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].sponsor, "0x0000000000000000000000000000000000000000");
-
-    // Attempt to withdraw should now exit gracefully since there are no disputed liquidations remaining.
-    await liquidator.queryAndWithdrawRewards();
   })
   it("Can withdraw rewards from liquidations that were disputed successfully", async function () {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
@@ -266,7 +259,6 @@ contract("Liquidator.js", function(accounts) {
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
     
     // Simulate a successful dispute by pushing a price to the oracle, at the time of the liquidation request, such that
     // the position was not undercollateralized. In other words, the liquidator was liquidating at the incorrect price.
@@ -283,13 +275,6 @@ contract("Liquidator.js", function(accounts) {
     // 100 - 2 * (10% of 100) = 80 units of collateral.
     const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot)
     assert.equal(toBN(collateralPreWithdraw).add(toBN(toWei("80"))).toString(), collateralPostWithdraw.toString())
-
-    // Liquidation should still exist but the "liquidator" property should have been deleted.
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].liquidator, "0x0000000000000000000000000000000000000000");
-
-    // Attempt to withdraw should now exit gracefully since the liquidator can no longer withdraw from the disputed liquidation.
-    await liquidator.queryAndWithdrawRewards();
   })
 
 });
