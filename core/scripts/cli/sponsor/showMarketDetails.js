@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const create = require("./create");
+const redeem = require("./redeem");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const { fromWei } = web3.utils;
@@ -28,15 +29,30 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       "Collateral:",
       fromWei(collateral.toString())
     );
+
+    const actions = {
+      back: "Back",
+      create: "Borrow more tokens",
+      redeem: "Repay tokens"
+    };
     const prompt = {
       type: "list",
       name: "choice",
       message: "What would you like to do?",
-      choices: [{ name: "Borrow more tokens" }, { name: backAction }]
+      choices: Object.values(actions)
     };
-    const input = await inquirer.prompt(prompt);
-    if (input["choice"] !== backAction) {
-      await create(web3, artifacts, emp);
+    const input = (await inquirer.prompt(prompt))["choice"];
+    switch (input) {
+      case actions.create:
+        await create(web3, artifacts, emp);
+        break;
+      case actions.redeem:
+        await redeem(web3, artifacts, emp);
+        break;
+      case actions.back:
+        return;
+      default:
+        console.log("unimplemented state");
     }
   }
 };
