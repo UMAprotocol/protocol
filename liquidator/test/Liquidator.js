@@ -172,16 +172,4 @@ contract("Liquidator.js", function(accounts) {
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
     assert.equal((await emp.getCollateral(sponsor3)).rawValue, toWei("175"));
   });
-  it.only("set up positions", async function() {
-    console.log("seeding emp @", emp.address);
-    for (let i = 1; i < 6; i++) {
-      console.log("Creating position for account", accounts[i]);
-      await collateralToken.mint(accounts[i], toWei("100000"), { from: contractCreator });
-      await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[i] });
-      await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[i] });
-    }
-
-    // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-    await emp.create({ rawValue: toWei("100000") }, { rawValue: toWei("50000") }, { from: liquidatorBot });
-  });
 });
