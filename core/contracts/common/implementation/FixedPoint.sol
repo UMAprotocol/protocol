@@ -11,15 +11,25 @@ library FixedPoint {
 
     // Supports 18 decimals. E.g., 1e18 represents "1", 5e17 represents "0.5".
     // Can represent a value up to (2^256 - 1)/10^18 = ~10^59. 10^59 will be stored internally as uint 10^77.
-    uint private constant FP_SCALING_FACTOR = 10**18;
+    uint private constant INTERNAL_SCALE_EXPONENT = 18;
+    uint private constant FP_SCALING_FACTOR = 10 ** INTERNAL_SCALE_EXPONENT;
 
     struct Unsigned {
         uint rawValue;
     }
 
-    /** @dev Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`. */
+    /** @dev Constructs an `Unsigned` from an unscaled uint, e.g., `a=5` gets stored internally as `5**18`. */
     function fromUnscaledUint(uint a) internal pure returns (Unsigned memory) {
         return Unsigned(a.mul(FP_SCALING_FACTOR));
+    }
+
+    /** @dev Constructs an `Unsigned` from an scaled uint and an exponent, e.g., `a=5e6` (a usdc denominated token) for the raw value and `uintScale=6` for the exponent by which the a is scaled. The function converts this to a normal denominated `1e18` token. In the example `a` would be stored as `5e18` */
+    function fromScaledUint(uint a, uint uintScale) internal pure returns (Unsigned memory) {
+        if(uintScale == 18){
+            return from fromUnscaledUint(a);
+        }
+        Unsigned scaler = INTERNAL_SCALE_EXPONENT - uintScale;
+        return Unsigned(a.mul(scaler).mul(FP_SCALING_FACTOR));
     }
 
     /** @dev Whether `a` is equal to `b`. */
