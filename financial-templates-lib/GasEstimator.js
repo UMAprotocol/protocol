@@ -7,13 +7,13 @@ const { Logger } = require("./Logger");
 
 // If no updateThreshold is specified then default to updating every 60 seconds.
 class GasEstimator {
-  constructor(updateThreshold = 60) {
+  constructor(updateThreshold = 60, defaultFastPriceGwei = 40) {
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
     this.lastFastPriceGwei;
 
     // If the script fails or the API resonce fails default to this value
-    this.defaultFastPriceGwei = 40;
+    this.defaultFastPriceGwei = defaultFastPriceGwei;
   }
 
   _update = async () => {
