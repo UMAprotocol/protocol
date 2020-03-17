@@ -3,7 +3,7 @@
  * This involves creating and minting collateral tokens, whitelisting price identifiers,
  * and configuring the contracts to use the mock oracle which is more useful for testing.
  *
- * This script is intende to make testing the Sponsor CLI easier.
+ * This script is intended to make testing the Sponsor CLI easier.
  */
 const { toWei } = web3.utils;
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
@@ -83,6 +83,11 @@ const deployEMP = async callback => {
     // To redeem tokens, must approve EMP to spend synthetic tokens.
     syntheticToken = await Token.at(await emp.tokenCurrency());
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: deployer });
+
+    // Create one small position so that you can create new positions from the CLI 
+    // (currently, it does not support creating the first position for the EMP).
+    // Collateralize this at the minimum CR allowed.
+    await emp.create({ rawValue: toWei('1.5') }, { rawValue: toWei('1') });
 
     // Done!
     console.log("Created a new EMP with the configuration:", constructorParams);

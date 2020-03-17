@@ -30,7 +30,7 @@ const redeem = async (web3, artifacts, emp) => {
     name: "numTokens",
     message: "How many tokens to repay, at " + fromWei(collateralPerToken) + " ETH each?",
     validate: value =>
-      (value > 0 && toWei(value) <= walletTokens) || "Number of tokens must be positive and up to your current balance"
+      (value > 0 && toBN(toWei(value)).lte(toBN(walletTokens))) || "Number of tokens must be positive and up to your current balance"
   });
 
   const tokensToRedeem = toBN(toWei(input["numTokens"]));

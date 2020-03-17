@@ -2,13 +2,13 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const create = require("./create");
 const redeem = require("./redeem");
+const withdraw = require("./withdraw");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = await emp.getCollateral(sponsorAddress);
 
-  const backAction = "Back";
   let actions;
   if (collateral.toString() === "0") {
     // Sponsor doesn't have a position.
@@ -29,7 +29,8 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     actions = {
       back: "Back",
       create: "Borrow more tokens",
-      redeem: "Repay tokens"
+      redeem: "Repay tokens",
+      withdraw: "Withdraw collateral"
     };
   }
   const prompt = {
@@ -45,6 +46,9 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       break;
     case actions.redeem:
       await redeem(web3, artifacts, emp);
+      break;
+    case actions.withdraw:
+      await withdraw(web3, artifacts, emp);
       break;
     case actions.back:
       return;
