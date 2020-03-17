@@ -23,7 +23,9 @@ library FixedPoint {
         return Unsigned(a.mul(FP_SCALING_FACTOR));
     }
 
-    /** @dev Constructs an `Unsigned` from an scaled uint and an exponent, e.g., `a=5e6` (a usdc denominated token) for the raw value and `uintScale=6` for the exponent by which the a is scaled. The function converts this to a normal denominated `1e18` token. In the example `a` would be stored as `5e18` */
+    /** @dev Constructs an `Unsigned` from an scaled uint and an exponent, e.g., `a=5e6` (a usdc denominated
+     * token) for the raw value and `uintScale=6` for the exponent by which the a is scaled. The function
+     * converts this to a normal denominated `1e18` token. In the example `a` would be stored as `5e18` */
     function fromScaledUint(uint a, uint uintScale) internal pure returns (Unsigned memory) {
         if(uintScale == 18){
             return from fromUnscaledUint(a);
