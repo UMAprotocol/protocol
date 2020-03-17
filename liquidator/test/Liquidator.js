@@ -198,7 +198,7 @@ contract("Liquidator.js", function(accounts) {
     assert.equal(toBN(collateralPreWithdraw).add(toBN(toWei("125"))).toString(), collateralPostWithdraw.toString())
 
     // Liquidation data should have been deleted.
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].sponsor, "0x0000000000000000000000000000000000000000");
+    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, "0");
   });
 
   it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function () {
@@ -239,7 +239,7 @@ contract("Liquidator.js", function(accounts) {
     assert.equal(toBN(collateralPreWithdraw).add(toBN(toWei("137.5"))).toString(), collateralPostWithdraw.toString())
 
     // Liquidation data should have been deleted.
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].sponsor, "0x0000000000000000000000000000000000000000");
+    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, "0");
   })
   it("Can withdraw rewards from liquidations that were disputed successfully", async function () {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
