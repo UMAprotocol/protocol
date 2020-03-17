@@ -17,7 +17,7 @@ library FixedPoint {
         uint rawValue;
     }
 
-    /** @dev Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`. */
+    /** @dev Constructs an `Unsigned` from an unscaled uint, e.g., `a=5` gets stored internally as `5**18`. */
     function fromUnscaledUint(uint a) internal pure returns (Unsigned memory) {
         return Unsigned(a.mul(FP_SCALING_FACTOR));
     }
