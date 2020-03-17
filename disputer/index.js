@@ -30,7 +30,7 @@ async function run() {
 
   // Client and dispute bot
   const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-  let gasEstimator = new GasEstimator();
+  const gasEstimator = new GasEstimator();
   const disputer = new Disputer(empClient, gasEstimator, accounts[0]);
 
   while (true) {

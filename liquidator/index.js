@@ -39,9 +39,9 @@ async function run() {
   const emp = await ExpiringMultiParty.at(argv.address);
 
   // Client and liquidator bot
-  let empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-  let gasEstimator = new GasEstimator();
-  let liquidator = new Liquidator(empClient, gasEstimator, accounts[0]);
+  const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+  const gasEstimator = new GasEstimator();
+  const liquidator = new Liquidator(empClient, gasEstimator, accounts[0]);
 
   while (true) {
     try {

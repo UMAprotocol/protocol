@@ -56,7 +56,11 @@ class Liquidator {
       // TODO: add additional information about this liquidation event to the log.
       Logger.info({
         at: "liquidator",
+<<<<<<< HEAD
         message: "liquidating sponsor 🔥",
+=======
+        message: "liquidating sponsor",
+>>>>>>> master
         address: position.sponsor,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       });
