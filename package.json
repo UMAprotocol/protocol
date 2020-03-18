@@ -32,7 +32,7 @@
     "@awaitjs/express": "^0.3.0",
     "@google-cloud/kms": "^0.3.0",
     "@google-cloud/storage": "^2.4.2",
-    "@openzeppelin/contracts": "^3.0.0-beta.0",
+    "@openzeppelin/contracts": "3.0.0-beta.0",
     "@sendgrid/mail": "^6.4.0",
     "@truffle/contract": "^4.1.0",
     "@truffle/hdwallet-provider": "^1.0.25",
