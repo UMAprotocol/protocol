@@ -61,7 +61,7 @@ class Disputer {
       });
 
       // Create the liquidation transaction
-      const dispute = await this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
+      const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
