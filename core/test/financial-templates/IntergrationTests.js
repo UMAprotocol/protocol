@@ -3,9 +3,7 @@
 // where fees get taken out (positions, liquidations, partial liquidations)
 // are tested and to see if there is any leftover wei or whether contracts get locked.
 
-const { toWei, hexToUtf8, toBN } = web3.utils;
-const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const truffleAssert = require("truffle-assertions");
+const { toWei, toBN } = web3.utils;
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -132,7 +130,7 @@ contract("IntergrationTest", function(accounts) {
     // 11) check the contract has no funds left in it
 
     // Test settings
-    const numIterations = 15; // number of times the simulation loop is run
+    const numIterations = 20; // number of times the simulation loop is run
     const runLiquidations = true; // if liquidations should occur in the loop
     const runDisputes = true; // if disputes should occur in the loop
     const runExtraDeposits = true; // if the sponsor should have a chance to add more
@@ -331,7 +329,7 @@ contract("IntergrationTest", function(accounts) {
       redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
       disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length,
-      finalBallanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toNumber()
+      finalBalanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toNumber()
     });
 
     // STEP 11): ensure all funds were taken from the contract.
@@ -340,11 +338,11 @@ contract("IntergrationTest", function(accounts) {
     // the expiring multi party as this has all be withdrawn by token holders.
     assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
   });
-  it.only("Iterative full life cycle test with unfriendly numbers", async function() {
+  it("Iterative full life cycle test with unfriendly numbers", async function() {
     // This test follows the exact same pattern as before except the input parames are less friendly
 
     // Test settings
-    const numIterations = 200; // number of times the simulation loop is run
+    const numIterations = 20; // number of times the simulation loop is run
     const runLiquidations = true; // if liquidations should occur in the loop
     const runDisputes = true; // if disputes should occur in the loop
     const runExtraDeposits = true; // if the sponsor should have a chance to add more
@@ -546,7 +544,7 @@ contract("IntergrationTest", function(accounts) {
       redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
       disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length,
-      finalBallanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toNumber()
+      finalBalanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toNumber()
     });
 
     // STEP 11): ensure all funds were taken from the contract.
