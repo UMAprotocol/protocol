@@ -67,7 +67,7 @@ class Disputer {
       try {
         await dispute.call({ from: this.account });
       } catch (error) {
-        Logger.warn({
+        Logger.error({
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           id: disputeableLiquidation.id,
