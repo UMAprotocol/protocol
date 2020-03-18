@@ -9,9 +9,9 @@
 //   to distinguish).These can trigger every iteration, but only if it's because the bot
 //   encounters a persistent issue that requires human intervention to solve.Trigger a DM
 //   to oncall, text / call to oncall, and publish to a slack channel that nobody has muted
-// (or just use @channel to force a notif).
+//   (or just use @channel to force a notif).
 
-// debug/info/error logging requires an specificity formatted json object as a param for the logger.
+// calling debug/info/error logging requires an specificity formatted json object as a param for the logger.
 // All objects must have an `at`, `message` as a minimum to describe where the error was logged from
 // and what has occurred. Any addition key value pairing can be attached, including json objects which
 // will be spread. A transaction should be within an object that contains a `tx` key containing the mined
@@ -25,7 +25,7 @@
 // });
 
 // Note that this also requires the configuration of a slack webhook. Add this to your .env
-// see https://slack.com/intl/en-za/help/articles/115005265063-Incoming-Webhooks-for-Slack for help.
+// see https://slack.com/intl/en-za/help/articles/115005265063-Incoming-Webhooks-for-Slack
 
 //TODO: implement phone calls from slack bot.
 
