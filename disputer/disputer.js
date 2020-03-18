@@ -60,8 +60,7 @@ class Disputer {
       });
 
       // Create the liquidation transaction
-      const dispute = await this.empContract.methods
-        .dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
+      const dispute = await this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
@@ -77,8 +76,11 @@ class Disputer {
       }
 
       // TODO: handle transaction failures.
-      const receipt = await dispute
-        .send({ from: this.account, gas: 1500000, gasPrice: this.gasEstimator.getCurrentFastPrice() });
+      const receipt = await dispute.send({
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      });
 
       const disputeResult = {
         tx: receipt.transactionHash,
