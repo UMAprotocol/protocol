@@ -12,15 +12,7 @@ const redeem = async (web3, artifacts, emp) => {
   const token = await SyntheticToken.at(tokenAddress);
   const walletTokens = await token.balanceOf(sponsorAddress);
 
-  console.log("You have:");
-  console.log(
-    "Position: " +
-      fromWei(collateral) +
-      " WETH backing " +
-      fromWei(position.tokensOutstanding.toString()) +
-      " synthetic tokens"
-  );
-  console.log("Wallet: " + fromWei(walletTokens) + " synthetic tokens");
+  console.log("Your wallet has: " + fromWei(walletTokens) + " synthetic tokens");
 
   const scalingFactor = toBN(toWei("1"));
   const collateralPerToken = toBN(collateral)
@@ -30,7 +22,8 @@ const redeem = async (web3, artifacts, emp) => {
     name: "numTokens",
     message: "How many tokens to repay, at " + fromWei(collateralPerToken) + " ETH each?",
     validate: value =>
-      (value > 0 && toWei(value) <= walletTokens) || "Number of tokens must be positive and up to your current balance"
+      (value > 0 && toBN(toWei(value)).lte(toBN(walletTokens))) ||
+      "Number of tokens must be positive and up to your current balance"
   });
 
   const tokensToRedeem = toBN(toWei(input["numTokens"]));

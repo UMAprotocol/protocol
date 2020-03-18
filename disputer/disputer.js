@@ -12,6 +12,7 @@ class Disputer {
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
+    this.web3 = this.empClient.web3;
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
@@ -94,8 +95,90 @@ class Disputer {
         message: "Dispute tx result",
         disputeResult: disputeResult
       });
+    }
+  };
 
-      // TODO: query any resolved disputes that this address participated in and attempt to withdraw.
+  // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
+  queryAndWithdrawRewards = async () => {
+    Logger.info({
+      at: "Disputer",
+      message: "Checking for disputed liquidations that may have resolved"
+    });
+
+    // Update the client to get the latest information.
+    await this.empClient._update();
+
+    // Update the gasEstimator to get the latest gas price data.
+    // If the client has a data point in the last 60 seconds returns immediately.
+    await this.gasEstimator._update();
+
+    // Can only derive rewards from disputed liquidations that this account disputed.
+    const disputedLiquidations = this.empClient
+      .getDisputedLiquidations()
+      .filter(liquidation => liquidation.disputer === this.account);
+
+    if (disputedLiquidations.length === 0) {
+      Logger.info({
+        at: "Disputer",
+        message: "No withdrawable liquidations"
+      });
+      return;
+    }
+
+    for (const liquidation of disputedLiquidations) {
+      Logger.info({
+        at: "Disputer",
+        message: "Attempting to withdraw from previous dispute.",
+        address: liquidation.sponsor,
+        id: liquidation.id
+      });
+
+      const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
+
+      // Attempt to compute the withdraw amount. If the dispute has not been resolved (DVM has not returned a price), this should fail.
+      // In that case, just continue because there is nothing left to do.
+      let withdrawAmount;
+      try {
+        withdrawAmount = await withdraw.call({ from: this.account });
+      } catch (error) {
+        Logger.info({
+          at: "Disputer",
+          message: "Withdraw not ready.",
+          address: liquidation.sponsor,
+          id: liquidation.id
+        });
+        continue;
+      }
+
+      // If there is nothing to withdraw, the dispute failed and there's nothing to do.
+      if (this.web3.utils.toBN(withdrawAmount.rawValue).isZero()) {
+        Logger.info({
+          at: "Disputer",
+          message: "Dispute failed.",
+          address: liquidation.sponsor,
+          id: liquidation.id
+        });
+        continue;
+      }
+
+      // TODO: handle transaction failure.
+      const receipt = await withdraw.send({
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      });
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+      };
+      Logger.info({
+        at: "Disputer",
+        message: "Withdraw tx result",
+        liquidationResult: logResult
+      });
     }
   };
 }

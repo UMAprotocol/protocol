@@ -2,7 +2,7 @@ const inquirer = require("inquirer");
 const listMarkets = require("./sponsor/listMarkets");
 
 const ACTIONS = {
-  listMarkets: "ListMarkets",
+  listMarkets: "Show all Markets",
   back: "Back"
 };
 
