@@ -131,7 +131,8 @@ class ExpiringMultiPartyClient {
           id: id.toString(),
           numTokens: liquidation.tokensOutstanding.toString(),
           amountCollateral: liquidation.liquidatedCollateral.toString(),
-          liquidationTime: liquidation.liquidationTime
+          liquidationTime: liquidation.liquidationTime,
+          disputer: liquidation.disputer
         };
 
         // Get all undisputed liquidations.
