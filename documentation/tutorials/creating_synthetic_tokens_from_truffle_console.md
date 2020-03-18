@@ -33,7 +33,9 @@ This command should return “undefined”.
 const empCreator = await ExpiringMultiPartyCreator.deployed()
 ```
  
-4. Define the parameters for the synthetic tokens you would like to create. Note that in this example, priceFeedIdentifier, syntheticName, and syntheticSymbol are set to "UMATEST", "Test UMA Token", and "UMATEST", respectively, but you can set these parameters to any names you prefer.
+4. Define the parameters for the synthetic tokens you would like to create. 
+
+Note that in this example, `priceFeedIdentifier`, `syntheticName`, and `syntheticSymbol` are set to "UMATEST", "Test UMA Token", and "UMATEST", respectively, but you can set these parameters to any names you prefer in the local environment. <!-- TODO: add link to process for adding identifiers to mainnet when that doc is ready -->
 ```js
 const constructorParams = { expirationTimestamp: "1585699200", collateralAddress: TestnetERC20.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") } }
 ```
