@@ -1,11 +1,8 @@
 const inquirer = require("inquirer");
-const getDefaultAccount = require("../wallet/getDefaultAccount");
 
 const create = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { toWei, fromWei, toBN } = web3.utils;
-
-  const sponsorAddress = await getDefaultAccount(web3);
 
   const scalingFactor = toBN(toWei("1"));
   // TODO: Understand why we need a .rawValue in one case but not the other.
@@ -14,7 +11,8 @@ const create = async (web3, artifacts, emp) => {
   if (totalTokensOutstanding.isZero()) {
     // When creating the globally first position, we wouldn't have a GCR. Therefore, creating that position is a
     // different flow that isn't currently part of this tool.
-    console.log("Error: can't create initial position with this tool");
+    console.log("Error: This tool does not currently support creating the chosen market's first position");
+    return;
   }
   const gcr = totalPositionCollateral.mul(scalingFactor).divRound(totalTokensOutstanding);
 

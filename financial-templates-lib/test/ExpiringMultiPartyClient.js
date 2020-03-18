@@ -20,6 +20,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   let client;
   let syntheticToken;
   let mockOracle;
+  let identifierWhitelist;
 
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
     await client._update();
@@ -34,11 +35,10 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await collateralToken.mint(sponsor1, toWei("100000"), { from: sponsor1 });
     await collateralToken.mint(sponsor2, toWei("100000"), { from: sponsor1 });
 
-    // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new();
+    identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
-    // Create a mockOracle and finder. Register the mockMoracle with the finder.
+    // Create a mockOracle and finder. Register the mockOracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address);
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
@@ -62,11 +62,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
-
-    identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: sponsor1
-    });
 
     emp = await ExpiringMultiParty.new(constructorParams);
     client = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);

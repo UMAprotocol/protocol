@@ -2,6 +2,7 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const create = require("./create");
 const redeem = require("./redeem");
+const withdraw = require("./withdraw");
 const deposit = require("./deposit");
 const transfer = require("./transfer");
 
@@ -33,6 +34,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       back: "Back",
       create: "Borrow more tokens",
       redeem: "Repay tokens",
+      withdraw: "Withdraw collateral",
       deposit: "Deposit collateral",
       transfer: "Transfer position to new owner"
     };
@@ -50,6 +52,9 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       break;
     case actions.redeem:
       await redeem(web3, artifacts, emp);
+      break;
+    case actions.withdraw:
+      await withdraw(web3, artifacts, emp);
       break;
     case actions.deposit:
       await deposit(web3, artifacts, emp);
