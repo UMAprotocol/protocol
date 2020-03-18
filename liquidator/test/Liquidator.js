@@ -1,5 +1,5 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
-const { LiquidationStatesEnum } = require('../../common/Enums')
+const { LiquidationStatesEnum } = require("../../common/Enums");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
@@ -242,8 +242,8 @@ contract("Liquidator.js", function(accounts) {
 
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
-  })
-  it("Can withdraw rewards from liquidations that were disputed successfully", async function () {
+  });
+  it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
