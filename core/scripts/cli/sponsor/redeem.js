@@ -12,15 +12,7 @@ const redeem = async (web3, artifacts, emp) => {
   const token = await SyntheticToken.at(tokenAddress);
   const walletTokens = await token.balanceOf(sponsorAddress);
 
-  console.log("You have:");
-  console.log(
-    "Position: " +
-      fromWei(collateral) +
-      " WETH backing " +
-      fromWei(position.tokensOutstanding.toString()) +
-      " synthetic tokens"
-  );
-  console.log("Wallet: " + fromWei(walletTokens) + " synthetic tokens");
+  console.log("Your wallet has: " + fromWei(walletTokens) + " synthetic tokens");
 
   const scalingFactor = toBN(toWei("1"));
   const collateralPerToken = toBN(collateral)
