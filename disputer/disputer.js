@@ -60,12 +60,24 @@ class Disputer {
       });
 
       // Create the liquidation transaction
+      const dispute = await this.empContract.methods
+        .dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
-      // TODO: compute the amount of collateral required to dispute and ensure the bot has enough to perform it.
+      // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
+      try {
+        await dispute.call({ from: this.account });
+      } catch (error) {
+        Logger.error({
+          at: "Disputer",
+          message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
+          id: disputeableLiquidation.id,
+          sponsor: disputeableLiquidation.sponsor
+        });
+        continue;
+      }
 
       // TODO: handle transaction failures.
-      const receipt = await this.empContract.methods
-        .dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor)
+      const receipt = await dispute
         .send({ from: this.account, gas: 1500000, gasPrice: this.gasEstimator.getCurrentFastPrice() });
 
       const disputeResult = {

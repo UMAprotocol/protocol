@@ -1,4 +1,4 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
 
 // Script to test
 const { Disputer } = require("../disputer.js");
@@ -22,6 +22,7 @@ contract("Disputer.js", function(accounts) {
   const sponsor3 = accounts[3];
   const liquidator = accounts[4];
   const contractCreator = accounts[5];
+  const rando = accounts[6];
 
   let collateralToken;
   let emp;
@@ -158,5 +159,47 @@ contract("Disputer.js", function(accounts) {
     // The disputeBot should be the disputer in sponsor2 and sponsor3's liquidations.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, disputeBot);
     assert.equal((await emp.getLiquidations(sponsor3))[0].disputer, disputeBot);
+  });
+
+  it.only("Too little collateral", async function() {
+    // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // sponsor2 creates a position with 1.75 units of collateral, creating 1 synthetic tokens.
+    await emp.create({ rawValue: toWei("1.75") }, { rawValue: toWei("1") }, { from: sponsor2 });
+
+    // The liquidator creates a position to have synthetic tokens.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("1") },
+      { from: liquidator }
+    );
+
+    // Send most of the user's balance elsewhere leaving only enough to dispute sponsor1's position.
+    const transferAmount = (await collateralToken.balanceOf(disputeBot)).sub(toBN(toWei("1")));
+    await collateralToken.transfer(rando, transferAmount, { from: disputeBot });
+
+    // Both positions should be disputed with a presumed price of 1.1, but will only have enough collateral for the smaller one.
+    await disputer.queryAndDispute(time => toWei("1.1"));
+
+    // Only sponsor2 should be disputed.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PENDING_DISPUTE);
+
+    // Transfer balance back, and the dispute should go through.
+    await collateralToken.transfer(disputeBot, transferAmount, { from: rando });
+    await disputer.queryAndDispute(time => toWei("1.1"));
+
+    // sponsor1 should now be disputed.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PENDING_DISPUTE);
   });
 });
