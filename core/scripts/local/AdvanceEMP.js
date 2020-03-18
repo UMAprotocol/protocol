@@ -31,10 +31,10 @@ const advanceTime = async callback => {
 
         // Advance time in the EMP.
         let currentTime = await emp.getCurrentTime();
-        let newTime = toBN(currentTime.toString()).add(toBN(leapForward.toString()));
-        await emp.setCurrentTime(newTime.toString());
+        let newTime = toBN(currentTime).add(toBN(leapForward));
+        await emp.setCurrentTime(newTime);
         currentTime = await emp.getCurrentTime();
-        let currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
+        let currentTimeReadable = new Date(Number(currentTime) * 1000);
         console.log(`Set time to ${currentTimeReadable} for the EMP @ ${emp.address}`);
       }
     }
@@ -45,13 +45,13 @@ const advanceTime = async callback => {
       await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     );
     let currentTime = await deployedVoting.getCurrentTime();
-    let newTime = toBN(currentTime.toString()).add(toBN(leapForward.toString()));
-    await deployedVoting.setCurrentTime(newTime.toString());
+    let newTime = toBN(currentTime).add(toBN(leapForward));
+    await deployedVoting.setCurrentTime(newTime);
     currentTime = await deployedVoting.getCurrentTime();
-    let currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
+    let currentTimeReadable = new Date(Number(currentTime) * 1000);
     console.log(`Set time to ${currentTimeReadable} for the DVM @ ${deployedVoting.address}`);
   } catch (err) {
-    console.error(err);
+    callback(err);
   }
   callback();
 };
