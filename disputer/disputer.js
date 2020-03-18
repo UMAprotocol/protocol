@@ -73,6 +73,14 @@ class Disputer {
           id: disputeableLiquidation.id,
           sponsor: disputeableLiquidation.sponsor
         });
+
+        Logger.debug({
+          at: "Disputer",
+          message: "Dispute call error message",
+          id: disputeableLiquidation.id,
+          sponsor: disputeableLiquidation.sponsor,
+          error: error
+        });
         continue;
       }
 
