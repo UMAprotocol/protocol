@@ -90,7 +90,8 @@ const deployEMP = async callback => {
     await emp.create({ rawValue: toWei("1.5") }, { rawValue: toWei("1") });
 
     // Done!
-    console.log("Created a new EMP with the configuration:", constructorParams);
+    console.log(`Created a new EMP @${emp.address} with the configuration:`);
+    console.table(constructorParams);
   } catch (err) {
     console.error(err);
   }
