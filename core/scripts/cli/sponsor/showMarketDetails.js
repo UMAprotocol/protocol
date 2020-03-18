@@ -2,14 +2,16 @@ const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const create = require("./create");
 const redeem = require("./redeem");
+const deposit = require("./deposit");
+const transfer = require("./transfer");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
-  const collateral = await emp.getCollateral(sponsorAddress);
+  const collateral = (await emp.getCollateral(sponsorAddress)).toString();
 
   let actions;
-  if (collateral.toString() === "0") {
+  if (collateral === "0") {
     // Sponsor doesn't have a position.
     console.log("You are not currently a sponsor");
     actions = {
@@ -18,17 +20,21 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     };
   } else {
     const position = await emp.positions(sponsorAddress);
+    console.log("You have:");
     console.log(
-      "Your position has Tokens:",
-      fromWei(position.tokensOutstanding.toString()),
-      "Collateral:",
-      fromWei(collateral.toString())
+      "Position: " +
+        fromWei(collateral) +
+        " WETH backing " +
+        fromWei(position.tokensOutstanding.toString()) +
+        " synthetic tokens"
     );
 
     actions = {
       back: "Back",
       create: "Borrow more tokens",
-      redeem: "Repay tokens"
+      redeem: "Repay tokens",
+      deposit: "Deposit collateral",
+      transfer: "Transfer position to new owner"
     };
   }
   const prompt = {
@@ -44,6 +50,12 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       break;
     case actions.redeem:
       await redeem(web3, artifacts, emp);
+      break;
+    case actions.deposit:
+      await deposit(web3, artifacts, emp);
+      break;
+    case actions.transfer:
+      await transfer(web3, artifacts, emp);
       break;
     case actions.back:
       return;
