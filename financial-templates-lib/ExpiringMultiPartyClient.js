@@ -121,6 +121,12 @@ class ExpiringMultiPartyClient {
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
+        // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties set to default values.
+        // We can skip them.
+        if (liquidation.state === "0") {
+          continue;
+        }
+
         // Construct Liquidation data to save.
         const liquidationData = {
           sponsor: liquidation.sponsor,

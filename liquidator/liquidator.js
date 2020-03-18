@@ -103,25 +103,88 @@ class Liquidator {
   queryAndWithdrawRewards = async () => {
     Logger.info({
       at: "liquidator",
-      message: "Checking for liquidations",
-      inputPrice: priceFeed
+      message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
 
     // Update the client to get the latest information.
     await this.empClient._update();
 
-    // TODO: Just showing an example of how I want to use the client:
-    // Get expired liquidations from the client.
-    const expiredLiquidations = this.empClient.getExpiredLiquidations();
-    // TODO: 
-    // - Withdraw rewards
-    // - Check that amount of rewards was correct.
+    // Update the gasEstimator to get the latest gas price data.
+    // If the client has a data point in the last 60 seconds returns immediately.
+    await this.gasEstimator._update();
 
-    // Get disputed liquidations from the client.
+    // All of the liquidations that we could withdraw rewards from are drawn from the pool of
+    // expired and disputed liquidations.
+    const expiredLiquidations = this.empClient.getExpiredLiquidations();
     const disputedLiquidations = this.empClient.getDisputedLiquidations();
-    // TODO: 
-    // - Withdraw rewards
-    // - Check whether it was a successful or failed dispute and double check that the reward amount was correct
+    const potentialWithdrawableLiquidations = expiredLiquidations.concat(disputedLiquidations);
+
+    if (potentialWithdrawableLiquidations.length > 0) {
+      Logger.info({
+        at: "liquidator",
+        message: "potential withdrawable liquidations detected!",
+        number: potentialWithdrawableLiquidations.length,
+        potentialWithdrawableLiquidations: potentialWithdrawableLiquidations
+      });
+
+      // Save all withdraw promises to resolve in parallel later on.
+      const withdrawPromises = []; 
+      for (const liquidation of potentialWithdrawableLiquidations) {
+        Logger.info({
+          at: "liquidator",
+          message: "attempting to withdraw rewards from liquidations",
+          address: liquidation.sponsor,
+          id: liquidation.id
+        });
+
+        // Confirm that liquidation has eligible rewards to be withdrawn.
+        try {
+          let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
+          let withdrawAmount = await withdraw.call({ from: this.account })
+          if (this.web3.utils.toBN(withdrawAmount.rawValue).gt('0')) {
+            withdrawPromises.push(
+              withdraw.send({ 
+                from: this.account, 
+                gas: 1500000,
+                gasPrice: this.gasEstimator.getCurrentFastPrice()
+              })
+            )
+          }  
+        } catch (err) {
+          Logger.error({
+            at: "liquidator",
+            message: "failed to withdraw rewards from liquidation",
+            address: liquidation.sponsor,
+            id: liquidation.id
+          });
+          continue;
+        }
+      }
+
+      // Resolve all promises in parallel.
+      let promiseResponse = await Promise.all(withdrawPromises);
+
+      for (const response of promiseResponse) {
+        const logResult = {
+          tx: response.transactionHash,
+          caller: response.events.LiquidationWithdrawn.returnValues.caller,
+          withdrawalAmount: response.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+          liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
+        };
+        Logger.info({
+          at: "liquidator",
+          message: "withdraw tx result",
+          liquidationResult: logResult
+        });
+      }
+
+    } else {
+      Logger.info({
+        at: "liquidator",
+        message: "No withdrawable liquidations"
+      });
+    }
+
   }
 }
 
