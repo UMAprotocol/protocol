@@ -101,7 +101,7 @@ class Liquidator {
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
   queryAndWithdrawRewards = async () => {
-    Logger.info({
+    Logger.debug({
       at: "liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
@@ -132,7 +132,7 @@ class Liquidator {
       for (const liquidation of potentialWithdrawableLiquidations) {
         Logger.info({
           at: "liquidator",
-          message: "attempting to withdraw rewards from liquidations",
+          message: "attempting to withdraw rewards from liquidations💪",
           address: liquidation.sponsor,
           id: liquidation.id
         });
@@ -153,7 +153,7 @@ class Liquidator {
         } catch (err) {
           Logger.error({
             at: "liquidator",
-            message: "failed to withdraw rewards from liquidation",
+            message: "failed to withdraw rewards from liquidation🤷‍♂️",
             address: liquidation.sponsor,
             id: liquidation.id
           });
@@ -173,12 +173,12 @@ class Liquidator {
         };
         Logger.info({
           at: "liquidator",
-          message: "withdraw tx result",
+          message: "withdraw tx result📄",
           liquidationResult: logResult
         });
       }
     } else {
-      Logger.info({
+      Logger.debug({
         at: "liquidator",
         message: "No withdrawable liquidations"
       });
