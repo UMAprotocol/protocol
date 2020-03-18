@@ -43,9 +43,11 @@ to specify for the `--network` argument.
 Public networks include the Ethereum mainnet and any public testnets, like Rinkeby, Kovan, or Ropsten. If you are using
 these networks, you'll generally need to know:
 
-1. Which public network you intend to use.
+1. Which public network you intend to use. 
+A list of UMA supported networks is available [here](https://github.com/UMAprotocol/protocol/blob/master/common/PublicNetworks.js). 
 
-2. What private key you want to use and how your private keys are stored.
+2. What private key you want to use and how your private keys are stored. 
+Below is information regarding the two types of keys that are supported, mnemonics/seed phrases and hardware wallets.
 
 The `--network` parameter that's passed to all truffle commands depends on both of these factors. Here's an example:
 
@@ -54,9 +56,7 @@ $(npm bin)/truffle console --network rinkeby_mnemonic
 ```
 
 That command will tell truffle that the user wants to use the Rinkeby testnet and their private key is a mnemonic, or
-seed phrase. Generally, the network argument is structured as `--network [NETWORK_NAME]_[KEY_TYPE]`. The only exception
-is if you don't provide a key type, it will fall back to a Google Cloud keystore that the UMA team uses internally.
-That type of key will not be documented here.
+seed phrase. Generally, the network argument is structured as `--network [NETWORK_NAME]_[KEY_TYPE]`. 
 
 ### Mnemonic, or seed phrase (less secure)
 
