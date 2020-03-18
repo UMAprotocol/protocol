@@ -1,6 +1,7 @@
 // Libraries and helpers
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
+const { PositionStatesEnum } = require("../../../common/Enums");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
@@ -40,13 +41,6 @@ contract("PricelessPositionManager", function(accounts) {
   const withdrawalLiveness = 1000;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
   const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
-
-  // Contract state
-  const STATES = {
-    OPEN: "0",
-    EXPIRED_PRICE_REQUESTED: "1",
-    EXPIRED_PRICE_RECEIVED: "2"
-  };
 
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
@@ -1041,7 +1035,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(eventResult[0].args.shutdownTimestamp.toString(), shutdownTimestamp.toString());
 
     // Check contract state change correctly to requested oracle price and the contract expiration has updated.
-    assert.equal(await pricelessPositionManager.contractState(), STATES.EXPIRED_PRICE_REQUESTED);
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED);
     assert.equal((await pricelessPositionManager.expirationTimestamp()).toString(), shutdownTimestamp.toString());
 
     // Emergency shutdown should not be able to be called a second time.
