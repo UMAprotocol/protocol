@@ -172,7 +172,7 @@ contract("Liquidator.js", function(accounts) {
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
     assert.equal((await emp.getCollateral(sponsor3)).rawValue, toWei("175"));
   });
-  it("Can withdraw rewards from expired liquidations", async function () {
+  it("Can withdraw rewards from expired liquidations", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
@@ -183,25 +183,30 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     await liquidator.queryAndLiquidate(toWei("1.3"));
-    
+
     // Advance the timer to the liquidation expiry.
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     const liquidationLiveness = 1000;
     await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
-    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot)
+    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
 
     // Liquidator should have their collateral increased by Sponsor1's collateral.
-    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot)
-    assert.equal(toBN(collateralPreWithdraw).add(toBN(toWei("125"))).toString(), collateralPostWithdraw.toString())
+    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    assert.equal(
+      toBN(collateralPreWithdraw)
+        .add(toBN(toWei("125")))
+        .toString(),
+      collateralPostWithdraw.toString()
+    );
 
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, "0");
   });
 
-  it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function () {
+  it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
@@ -211,12 +216,12 @@ contract("Liquidator.js", function(accounts) {
     // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
-    const liquidationPrice = toWei("1.3")
+    const liquidationPrice = toWei("1.3");
     await liquidator.queryAndLiquidate(liquidationPrice);
 
     // Update the EMP client to detect new liquidations, and then
     // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update()
+    await empClient._update();
     await emp.dispute("0", sponsor1, { from: sponsor3 });
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
@@ -227,21 +232,26 @@ contract("Liquidator.js", function(accounts) {
     const disputePrice = toWei("1.3");
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
-    
+
     // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
     // for the liquidation time.
-    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot)
+    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
 
     // Liquidator should have their collateral increased by Sponsor1's collateral + the disputer's dispute bond:
     // 125 + (10% of 125) = 137.5 units of collateral.
-    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot)
-    assert.equal(toBN(collateralPreWithdraw).add(toBN(toWei("137.5"))).toString(), collateralPostWithdraw.toString())
+    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    assert.equal(
+      toBN(collateralPreWithdraw)
+        .add(toBN(toWei("137.5")))
+        .toString(),
+      collateralPostWithdraw.toString()
+    );
 
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, "0");
-  })
-  it("Can withdraw rewards from liquidations that were disputed successfully", async function () {
+  });
+  it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
@@ -251,32 +261,36 @@ contract("Liquidator.js", function(accounts) {
     // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
-    const liquidationPrice = toWei("1.3")
+    const liquidationPrice = toWei("1.3");
     await liquidator.queryAndLiquidate(liquidationPrice);
 
     // Update the EMP client to detect new liquidations, and then
     // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update()
+    await empClient._update();
     await emp.dispute("0", sponsor1, { from: sponsor3 });
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
-    
+
     // Simulate a successful dispute by pushing a price to the oracle, at the time of the liquidation request, such that
     // the position was not undercollateralized. In other words, the liquidator was liquidating at the incorrect price.
     const disputePrice = toWei("1");
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
-    
+
     // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
     // for the liquidation time.
-    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot)
+    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
 
     // Liquidator should have their collateral increased by TRV - (disputer and sponsor rewards):
     // 100 - 2 * (10% of 100) = 80 units of collateral.
-    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot)
-    assert.equal(toBN(collateralPreWithdraw).add(toBN(toWei("80"))).toString(), collateralPostWithdraw.toString())
-  })
-
+    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    assert.equal(
+      toBN(collateralPreWithdraw)
+        .add(toBN(toWei("80")))
+        .toString(),
+      collateralPostWithdraw.toString()
+    );
+  });
 });

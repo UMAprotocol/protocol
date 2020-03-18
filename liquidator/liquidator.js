@@ -128,7 +128,7 @@ class Liquidator {
       });
 
       // Save all withdraw promises to resolve in parallel later on.
-      const withdrawPromises = []; 
+      const withdrawPromises = [];
       for (const liquidation of potentialWithdrawableLiquidations) {
         Logger.info({
           at: "liquidator",
@@ -139,17 +139,17 @@ class Liquidator {
 
         // Confirm that liquidation has eligible rewards to be withdrawn.
         try {
-          let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor)
-          let withdrawAmount = await withdraw.call({ from: this.account })
-          if (this.web3.utils.toBN(withdrawAmount.rawValue).gt('0')) {
+          let withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
+          let withdrawAmount = await withdraw.call({ from: this.account });
+          if (this.web3.utils.toBN(withdrawAmount.rawValue).gt("0")) {
             withdrawPromises.push(
-              withdraw.send({ 
-                from: this.account, 
+              withdraw.send({
+                from: this.account,
                 gas: 1500000,
                 gasPrice: this.gasEstimator.getCurrentFastPrice()
               })
-            )
-          }  
+            );
+          }
         } catch (err) {
           Logger.error({
             at: "liquidator",
@@ -177,15 +177,13 @@ class Liquidator {
           liquidationResult: logResult
         });
       }
-
     } else {
       Logger.info({
         at: "liquidator",
         message: "No withdrawable liquidations"
       });
     }
-
-  }
+  };
 }
 
 module.exports = {
