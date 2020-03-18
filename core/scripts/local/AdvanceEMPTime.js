@@ -1,5 +1,5 @@
 /**
- * This script advances time in the EMP forward by some specified amount of seconds (or one hour by default).
+ * This script advances time in the EMP forward by some specified amount of seconds (or one hour and one second by default).
  *
  * `truffle exec ./scripts/local/AdvanceEMPTime --time 10000`
  * Advances time by 10 seconds
@@ -31,7 +31,7 @@ const advanceTime = async callback => {
         emp = await ExpiringMultiParty.at(address);
 
         // Advance time
-        let leapForward = argv.time ? argv.time : 3600;
+        let leapForward = argv.time ? argv.time : 3601;
         let currentTime = await emp.getCurrentTime();
         let newTime = toBN(currentTime.toString()).add(toBN(leapForward.toString()));
         await emp.setCurrentTime(newTime.toString());

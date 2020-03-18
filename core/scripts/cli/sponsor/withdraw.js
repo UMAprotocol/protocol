@@ -3,14 +3,36 @@ const getDefaultAccount = require("../wallet/getDefaultAccount");
 
 const withdraw = async (web3, artifacts, emp) => {
   const { fromWei, toWei, toBN } = web3.utils;
-  const SyntheticToken = artifacts.require("SyntheticToken");
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const position = await emp.positions(sponsorAddress);
-  const tokenAddress = await emp.tokenCurrency();
-  const token = await SyntheticToken.at(tokenAddress);
 
   const scalingFactor = toBN(toWei("1"));
+
+  // Cancel pending withdrawal.
+  const cancelWithdrawal = async () => {
+    const confirmation = await inquirer.prompt({
+      type: "confirm",
+      message: "Continue?",
+      default: false,
+      name: "confirm"
+    });
+    if (confirmation["confirm"]) {
+      await emp.cancelWithdrawal();
+    }
+  };
+
+  // Execute pending withdrawal.
+  const executeWithdrawal = async () => {
+    const confirmation = await inquirer.prompt({
+      type: "confirm",
+      message: "Would you like to excecute this withdrawal?",
+      name: "confirm"
+    });
+    if (confirmation["confirm"]) {
+      await emp.withdrawPassedRequest();
+    }
+  };
 
   // First check if user has a withdrawal request pending.
   const withdrawalRequestPassedTimestamp = position.requestPassTimestamp;
@@ -24,10 +46,13 @@ const withdraw = async (web3, artifacts, emp) => {
       .mul(scalingFactor)
       .div(toBN(position.tokensOutstanding.toString()));
 
-    // Withdraw request is still pending. User can cancel withdraw.
+    // Get current contract time and withdrawal request expiration time.
     const currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
-    const expirationTimeReadable = new Date(Number(withdrawalRequestPassedTimestamp.toString()) * 1000);
-    if (toBN(withdrawalRequestPassedTimestamp.toString()).gt(toBN(currentTime.toString()))) {
+    // Withdrawal request expires AFTER the withdraw request time, so add one second to the expiration time displayed.
+    const expirationTimeReadable = new Date(Number(withdrawalRequestPassedTimestamp.toString()) * 1000 + 1);
+
+    // Withdraw request is still pending. User can cancel withdraw.
+    if (toBN(withdrawalRequestPassedTimestamp.toString()).gte(toBN(currentTime.toString()))) {
       console.log(
         `You have a withdrawal request for ${fromWei(
           withdrawRequestAmount
@@ -38,17 +63,24 @@ const withdraw = async (web3, artifacts, emp) => {
         "Hypothetical collateralization ratio if the withdrawal request were to go through: " +
           fromWei(collateralPerToken)
       );
-      const confirmation = await inquirer.prompt({
-        type: "confirm",
-        message: "Would you like to cancel this withdrawal?",
-        default: false,
-        name: "confirm"
-      });
-      if (confirmation["confirm"]) {
-        await emp.cancelWithdrawal();
+      const prompt = {
+        type: "list",
+        name: "choice",
+        message: "What would you like to do?",
+        choices: ["Back", "Cancel Pending Withdrawal"]
+      };
+      const input = (await inquirer.prompt(prompt))["choice"];
+      switch (input) {
+        case "Cancel Pending Withdrawal":
+          await cancelWithdrawal();
+          break;
+        case "Back":
+          return;
+        default:
+          console.log("unimplemented state");
       }
     }
-    // Withdraw request has passed, user can withdraw.
+    // Withdraw request has passed, user can withdraw or cancel.
     else {
       console.log(
         `Your withdrawal request for ${fromWei(
@@ -59,13 +91,24 @@ const withdraw = async (web3, artifacts, emp) => {
       console.log(
         "Hypothetical collateralization ratio once the withdrawal request executes: " + fromWei(collateralPerToken)
       );
-      const confirmation = await inquirer.prompt({
-        type: "confirm",
-        message: "Would you like to excecute this withdrawal?",
-        name: "confirm"
-      });
-      if (confirmation["confirm"]) {
-        await emp.withdrawPassedRequest();
+      const prompt = {
+        type: "list",
+        name: "choice",
+        message: "What would you like to do?",
+        choices: ["Back", "Cancel Pending Withdrawal", "Execute Pending Withdrawal"]
+      };
+      const input = (await inquirer.prompt(prompt))["choice"];
+      switch (input) {
+        case "Execute Pending Withdrawal":
+          await executeWithdrawal();
+          break;
+        case "Cancel Pending Withdrawal":
+          await cancelWithdrawal();
+          break;
+        case "Back":
+          return;
+        default:
+          console.log("unimplemented state");
       }
     }
   } else {
