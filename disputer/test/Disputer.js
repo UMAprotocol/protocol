@@ -37,6 +37,8 @@ contract("Disputer.js", function(accounts) {
     DISPUTE_FAILED: "4"
   };
 
+  const zeroAddress = "0x0000000000000000000000000000000000000000";
+
   before(async function() {
     collateralToken = await Token.new({ from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
@@ -158,5 +160,46 @@ contract("Disputer.js", function(accounts) {
     // The disputeBot should be the disputer in sponsor2 and sponsor3's liquidations.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, disputeBot);
     assert.equal((await emp.getLiquidations(sponsor3))[0].disputer, disputeBot);
+  });
+
+  it.only("Withdraw from successful disputes", async function() {
+    // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // sponsor2 creates a position with 175 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("175") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+    // The liquidator creates a position to have synthetic tokens.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
+
+    // With a price of 1.1, the sponsors should be correctly collateralized, so disputes should be issued against sponsor1 and sponsor2's liquidations.
+    await disputer.queryAndDispute(time => toWei("1.1"));
+
+    // Push a price of 1.3, which should cause sponsor1's dispute to fail and sponsor2's dispute to succeed.
+    const liquidationTime = await emp.getCurrentTime();
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, toWei("1.3"));
+
+    await disputer.queryAndWithdrawRewards();
+
+    // sponsor1's dipsute was unsuccessful, so the disputeBot should not have called the withdraw method.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PENDING_DISPUTE);
+
+    // sponsor2's dispute was successful, so the disputeBot should've called the withdraw method.
+    assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, zeroAddress);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.DISPUTE_SUCCEEDED);
   });
 });
