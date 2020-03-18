@@ -162,7 +162,7 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor3))[0].disputer, disputeBot);
   });
 
-  it.only("Withdraw from successful disputes", async function() {
+  it("Withdraw from successful disputes", async function() {
     // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
