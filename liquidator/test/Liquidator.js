@@ -1,4 +1,5 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
+const { LiquidationStatesEnum } = require("../../common/Enums");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
@@ -28,15 +29,6 @@ contract("Liquidator.js", function(accounts) {
   let liquidator;
   let syntheticToken;
   let mockOracle;
-
-  // States for Liquidation to be in
-  const STATES = {
-    UNINITIALIZED: "0",
-    PRE_DISPUTE: "1",
-    PENDING_DISPUTE: "2",
-    DISPUTE_SUCCEEDED: "3",
-    DISPUTE_FAILED: "4"
-  };
 
   before(async function() {
     collateralToken = await Token.new({ from: contractCreator });
@@ -153,7 +145,7 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
     assert.equal((await emp.getLiquidations(sponsor1))[0].liquidator, liquidatorBot);
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor1))[0].liquidatedCollateral, toWei("125"));
 
     // Sponsor1 should have zero collateral left in their position from the liquidation.
@@ -162,7 +154,7 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor2 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor2))[0].sponsor, sponsor2);
     assert.equal((await emp.getLiquidations(sponsor2))[0].liquidator, liquidatorBot);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor2))[0].liquidatedCollateral, toWei("150"));
 
     // Sponsor2 should have zero collateral left in their position from the liquidation.
@@ -203,7 +195,7 @@ contract("Liquidator.js", function(accounts) {
     );
 
     // Liquidation data should have been deleted.
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, "0");
+    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
   });
 
   it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function() {
@@ -249,7 +241,7 @@ contract("Liquidator.js", function(accounts) {
     );
 
     // Liquidation data should have been deleted.
-    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, "0");
+    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
   });
   it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
