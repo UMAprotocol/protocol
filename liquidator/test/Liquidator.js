@@ -1,4 +1,5 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
+const { LiquidationStatesEnum } = require("../../common/Enums");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
@@ -29,15 +30,6 @@ contract("Liquidator.js", function(accounts) {
   let syntheticToken;
   let mockOracle;
 
-  // States for Liquidation to be in
-  const STATES = {
-    UNINITIALIZED: "0",
-    PRE_DISPUTE: "1",
-    PENDING_DISPUTE: "2",
-    DISPUTE_SUCCEEDED: "3",
-    DISPUTE_FAILED: "4"
-  };
-
   before(async function() {
     collateralToken = await Token.new({ from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
@@ -53,12 +45,8 @@ contract("Liquidator.js", function(accounts) {
     await collateralToken.mint(liquidatorBot, toWei("100000"), { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new({
-      from: contractCreator
-    });
-    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"), {
-      from: contractCreator
-    });
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address, {
@@ -86,11 +74,6 @@ contract("Liquidator.js", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
-
-    identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: accounts[0]
-    });
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
@@ -153,7 +136,7 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
     assert.equal((await emp.getLiquidations(sponsor1))[0].liquidator, liquidatorBot);
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor1))[0].liquidatedCollateral, toWei("125"));
 
     // Sponsor1 should have zero collateral left in their position from the liquidation.
@@ -162,14 +145,135 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor2 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor2))[0].sponsor, sponsor2);
     assert.equal((await emp.getLiquidations(sponsor2))[0].liquidator, liquidatorBot);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor2))[0].liquidatedCollateral, toWei("150"));
 
     // Sponsor2 should have zero collateral left in their position from the liquidation.
     assert.equal((await emp.getCollateral(sponsor2)).rawValue, 0);
 
-    //Sponsor3 should have all their collateral left and no liquidations.
+    // Sponsor3 should have all their collateral left and no liquidations.
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
     assert.equal((await emp.getCollateral(sponsor3)).rawValue, toWei("175"));
+  });
+  it("Can withdraw rewards from expired liquidations", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+    // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
+    // and liquidates the position.
+    // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+    await liquidator.queryAndLiquidate(toWei("1.3"));
+
+    // Advance the timer to the liquidation expiry.
+    const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
+    const liquidationLiveness = 1000;
+    await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+
+    // Now that the liquidation has expired, the liquidator can withdraw rewards.
+    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    await liquidator.queryAndWithdrawRewards();
+
+    // Liquidator should have their collateral increased by Sponsor1's collateral.
+    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    assert.equal(
+      toBN(collateralPreWithdraw)
+        .add(toBN(toWei("125")))
+        .toString(),
+      collateralPostWithdraw.toString()
+    );
+
+    // Liquidation data should have been deleted.
+    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
+  });
+
+  it("Can withdraw rewards from liquidations that were disputed unsuccessfully", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+    // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
+    // and liquidates the position.
+    // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+    const liquidationPrice = toWei("1.3");
+    await liquidator.queryAndLiquidate(liquidationPrice);
+
+    // Update the EMP client to detect new liquidations, and then
+    // dispute the liquidation, which requires staking a dispute bond.
+    await empClient._update();
+    await emp.dispute("0", sponsor1, { from: sponsor3 });
+
+    // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
+    await liquidator.queryAndWithdrawRewards();
+
+    // Simulate a failed dispute by pushing a price to the oracle, at the time of the liquidation request, such that
+    // the position was truly undercollateralized. In other words, the liquidator was liquidating at the correct price.
+    const disputePrice = toWei("1.3");
+    const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+
+    // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
+    // for the liquidation time.
+    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    await liquidator.queryAndWithdrawRewards();
+
+    // Liquidator should have their collateral increased by Sponsor1's collateral + the disputer's dispute bond:
+    // 125 + (10% of 125) = 137.5 units of collateral.
+    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    assert.equal(
+      toBN(collateralPreWithdraw)
+        .add(toBN(toWei("137.5")))
+        .toString(),
+      collateralPostWithdraw.toString()
+    );
+
+    // Liquidation data should have been deleted.
+    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
+  });
+  it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+    // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
+    // and liquidates the position.
+    // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+    const liquidationPrice = toWei("1.3");
+    await liquidator.queryAndLiquidate(liquidationPrice);
+
+    // Update the EMP client to detect new liquidations, and then
+    // dispute the liquidation, which requires staking a dispute bond.
+    await empClient._update();
+    await emp.dispute("0", sponsor1, { from: sponsor3 });
+
+    // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
+    await liquidator.queryAndWithdrawRewards();
+
+    // Simulate a successful dispute by pushing a price to the oracle, at the time of the liquidation request, such that
+    // the position was not undercollateralized. In other words, the liquidator was liquidating at the incorrect price.
+    const disputePrice = toWei("1");
+    const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+
+    // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
+    // for the liquidation time.
+    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    await liquidator.queryAndWithdrawRewards();
+
+    // Liquidator should have their collateral increased by TRV - (disputer and sponsor rewards):
+    // 100 - 2 * (10% of 100) = 80 units of collateral.
+    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    assert.equal(
+      toBN(collateralPreWithdraw)
+        .add(toBN(toWei("80")))
+        .toString(),
+      collateralPostWithdraw.toString()
+    );
   });
 });

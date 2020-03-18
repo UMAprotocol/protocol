@@ -36,6 +36,7 @@ async function run() {
   while (true) {
     try {
       await disputer.queryAndDispute(toWei(argv.price));
+      await disputer.queryAndWithdrawRewards();
     } catch (error) {
       Logger.error({
         at: "Disputer#index",

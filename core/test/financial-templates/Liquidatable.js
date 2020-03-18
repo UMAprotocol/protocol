@@ -1,5 +1,6 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { LiquidationStatesEnum } = require("../../../common/Enums");
 const truffleAssert = require("truffle-assertions");
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
@@ -80,15 +81,6 @@ contract("Liquidatable", function(accounts) {
     tokensOutstanding: amountOfSynthetic,
     lockedCollateral: amountOfCollateral,
     liquidatedCollateral: amountOfCollateralToLiquidate
-  };
-
-  // States for Liquidation to be in
-  const STATES = {
-    UNINITIALIZED: "0",
-    PRE_DISPUTE: "1",
-    PENDING_DISPUTE: "2",
-    DISPUTE_SUCCEEDED: "3",
-    DISPUTE_FAILED: "4"
   };
 
   beforeEach(async () => {
@@ -382,7 +374,7 @@ contract("Liquidatable", function(accounts) {
       });
       it("Liquidation exists and params are set properly", async () => {
         const newLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
-        assert.equal(newLiquidation.state.toString(), STATES.PRE_DISPUTE);
+        assert.equal(newLiquidation.state.toString(), LiquidationStatesEnum.PRE_DISPUTE);
         assert.equal(newLiquidation.tokensOutstanding.toString(), liquidationParams.tokensOutstanding.toString());
         assert.equal(newLiquidation.lockedCollateral.toString(), liquidationParams.lockedCollateral.toString());
         assert.equal(newLiquidation.liquidatedCollateral.toString(), liquidationParams.liquidatedCollateral.toString());
@@ -425,7 +417,7 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         assert.equal((await collateralToken.balanceOf(disputer)).toString(), "0");
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
-        assert.equal(liquidation.state.toString(), STATES.PENDING_DISPUTE);
+        assert.equal(liquidation.state.toString(), LiquidationStatesEnum.PENDING_DISPUTE);
         assert.equal(liquidation.disputer, disputer);
         assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
       });
@@ -551,7 +543,7 @@ contract("Liquidatable", function(accounts) {
         });
 
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
-        assert.equal(liquidation.state.toString(), STATES.DISPUTE_SUCCEEDED);
+        assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
@@ -604,7 +596,7 @@ contract("Liquidatable", function(accounts) {
           return (
             ev.caller == disputer &&
             ev.withdrawalAmount.toString() == expectedPayout.toString() &&
-            ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
+            ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED
           );
         });
       });
@@ -812,7 +804,7 @@ contract("Liquidatable", function(accounts) {
             return (
               ev.caller == sponsor &&
               ev.withdrawalAmount.toString() == expectedPayment.toString() &&
-              ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED
             );
           });
         });
@@ -935,7 +927,7 @@ contract("Liquidatable", function(accounts) {
               ev.withdrawalAmount.toString() == expectedPayment.toString() &&
               // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
               // Once a dispute fails and the liquidator withdraws the struct is removed from state.
-              ev.liquidationStatus.toString() == STATES.UNINITIALIZED
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
             );
           });
         });
@@ -1087,7 +1079,7 @@ contract("Liquidatable", function(accounts) {
     it("Can dispute the liquidation", async () => {
       await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
-      assert.equal(liquidation.state.toString(), STATES.PENDING_DISPUTE);
+      assert.equal(liquidation.state.toString(), LiquidationStatesEnum.PENDING_DISPUTE);
       assert.equal(liquidation.disputer, disputer);
       assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
     });

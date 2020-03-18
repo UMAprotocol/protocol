@@ -1,5 +1,6 @@
 const { delay } = require("./delay");
 const { Logger } = require("./Logger");
+const { LiquidationStatesEnum } = require("../common/Enums");
 
 // A thick client for getting information about an ExpiringMultiParty.
 class ExpiringMultiPartyClient {
@@ -92,10 +93,7 @@ class ExpiringMultiPartyClient {
   };
 
   _isLiquidationPreDispute = liquidation => {
-    // @dev: Liquidation's can't have state == 0 (Uninitialized),
-    // and disputed liquidations have state > 1
-    const predisputeState = "1";
-    return liquidation.state === predisputeState;
+    return liquidation.state === LiquidationStatesEnum.PRE_DISPUTE;
   };
 
   _update = async () => {
@@ -121,13 +119,20 @@ class ExpiringMultiPartyClient {
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
+        // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties set to default values.
+        // We can skip them.
+        if (liquidation.state === LiquidationStatesEnum.UNINITIALIZED) {
+          continue;
+        }
+
         // Construct Liquidation data to save.
         const liquidationData = {
           sponsor: liquidation.sponsor,
           id: id.toString(),
           numTokens: liquidation.tokensOutstanding.toString(),
           amountCollateral: liquidation.liquidatedCollateral.toString(),
-          liquidationTime: liquidation.liquidationTime
+          liquidationTime: liquidation.liquidationTime,
+          disputer: liquidation.disputer
         };
 
         // Get all undisputed liquidations.
