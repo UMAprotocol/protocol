@@ -86,7 +86,7 @@ class Disputer {
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   queryAndWithdrawRewards = async () => {
-    Logger.info({
+    Logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
     });
@@ -104,7 +104,7 @@ class Disputer {
       .filter(liquidation => liquidation.disputer === this.account);
 
     if (disputedLiquidations.length === 0) {
-      Logger.info({
+      Logger.debug({
         at: "Disputer",
         message: "No withdrawable liquidations"
       });
@@ -127,7 +127,7 @@ class Disputer {
       try {
         withdrawAmount = await withdraw.call({ from: this.account });
       } catch (error) {
-        Logger.info({
+        Logger.debug({
           at: "Disputer",
           message: "Withdraw not ready.",
           address: liquidation.sponsor,
