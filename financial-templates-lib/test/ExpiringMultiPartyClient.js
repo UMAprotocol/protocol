@@ -10,6 +10,11 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
+  const sponsor1 = accounts[0]
+  const sponsor2 = accounts[1]
+
+  const zeroAddress = "0x0000000000000000000000000000000000000000";
+
   let collateralToken;
   let emp;
   let client;
@@ -24,10 +29,10 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   };
 
   before(async function() {
-    collateralToken = await Token.new({ from: accounts[0] });
-    await collateralToken.addMember(1, accounts[0], { from: accounts[0] });
-    await collateralToken.mint(accounts[0], toWei("100000"), { from: accounts[0] });
-    await collateralToken.mint(accounts[1], toWei("100000"), { from: accounts[0] });
+    collateralToken = await Token.new({ from: sponsor1 });
+    await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
+    await collateralToken.mint(sponsor1, toWei("100000"), { from: sponsor1 });
+    await collateralToken.mint(sponsor2, toWei("100000"), { from: sponsor1 });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -60,28 +65,28 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: accounts[0]
+      from: sponsor1
     });
 
     emp = await ExpiringMultiParty.new(constructorParams);
     client = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[0] });
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[1] });
+    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
+    await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
-    await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[0] });
-    await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[1] });
+    await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
+    await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
   });
 
   it("Returns all positions", async function() {
     // Create a position and check that it is detected correctly from the client.
-    await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: accounts[0] });
+    await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
     await updateAndVerify(
       client,
-      [accounts[0]], //expected sponsor
+      [sponsor1], //expected sponsor
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           numTokens: toWei("50"),
           amountCollateral: toWei("10"),
           hasPendingWithdrawal: false,
@@ -92,13 +97,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // Calling create again from the same sponsor should add additional collateral & debt.
-    await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: accounts[0] });
+    await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
     await updateAndVerify(
       client,
-      [accounts[0]],
+      [sponsor1],
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: false,
@@ -109,13 +114,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // Calling create from a new address will create a new position and this should be added the the client.
-    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: accounts[1] });
+    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
     await updateAndVerify(
       client,
-      [accounts[0], accounts[1]],
+      [sponsor1, sponsor2],
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: false,
@@ -123,7 +128,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           withdrawalRequestAmount: "0"
         },
         {
-          sponsor: accounts[1],
+          sponsor: sponsor2,
           numTokens: toWei("45"),
           amountCollateral: toWei("100"),
           hasPendingWithdrawal: false,
@@ -135,24 +140,24 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // If a position is liquidated it should be removed from the list of positions and added to the undisputed liquidations.
     const id = await emp.createLiquidation.call(
-      accounts[1],
+      sponsor2,
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
-      { from: accounts[0] }
+      { from: sponsor1 }
     );
     await emp.createLiquidation(
-      accounts[1],
+      sponsor2,
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
-      { from: accounts[0] }
+      { from: sponsor1 }
     );
 
     await updateAndVerify(
       client,
-      [accounts[0], accounts[1]],
+      [sponsor1, sponsor2],
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: false,
@@ -163,25 +168,26 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
     const expectedLiquidations = [
       {
-        sponsor: accounts[1],
+        sponsor: sponsor2,
         id: id.toString(),
         numTokens: toWei("45"),
         amountCollateral: toWei("100"),
-        liquidationTime: (await emp.getCurrentTime()).toString()
+        liquidationTime: (await emp.getCurrentTime()).toString(),
+        disputer: zeroAddress
       }
     ];
     assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
 
     // Pending withdrawals state should be correctly identified.
-    await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: accounts[0] });
+    await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor1 });
     await client._update();
 
     await updateAndVerify(
       client,
-      [accounts[0], accounts[1]],
+      [sponsor1, sponsor2],
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: true,
@@ -192,14 +198,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // Remove the pending withdrawal and ensure it is removed from the client.
-    await emp.cancelWithdrawal({ from: accounts[0] });
+    await emp.cancelWithdrawal({ from: sponsor1 });
     await client._update();
     // assert.deepStrictEqual([], client.getPendingWithdrawals());
   });
 
   it("Returns undercollateralized positions", async function() {
-    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
-    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: accounts[1] });
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: sponsor2 });
 
     await client._update();
     // At 150% collateralization requirement, the position is just collateralized enough at a token price of 1.
@@ -208,7 +214,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     assert.deepStrictEqual(
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           numTokens: toWei("100"),
           amountCollateral: toWei("150"),
           hasPendingWithdrawal: false,
@@ -221,21 +227,23 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   });
 
   it("Returns undisputed liquidations", async function () {
-    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
-    await syntheticToken.transfer(accounts[1], toWei("100"), { from: accounts[0] })
+    const liquidator = sponsor2;
+
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 })
 
     // Create a new liquidation for account[0]'s position.
     const id = await emp.createLiquidation.call(
-      accounts[0],
+      sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
-      { from: accounts[1] }
+      { from: liquidator }
     );
     await emp.createLiquidation(
-      accounts[0],
+      sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
-      { from: accounts[1] }
+      { from: liquidator }
     );
     await client._update();
 
@@ -248,7 +256,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
-    await emp.dispute(id.toString(), accounts[0], { from: accounts[0] });
+    await emp.dispute(id.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
     // The disputed liquidation should no longer show up as undisputed.
@@ -256,21 +264,23 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   });
 
   it("Returns expired liquidations", async function () {
-    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
-    await syntheticToken.transfer(accounts[1], toWei("100"), { from: accounts[0] });
+    const liquidator = sponsor2;
+
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
 
     // Create a new liquidation for account[0]'s position.
     await emp.createLiquidation.call(
-      accounts[0],
+      sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
-      { from: accounts[1] }
+      { from: liquidator }
     );
     await emp.createLiquidation(
-      accounts[0],
+      sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
-      { from: accounts[1] }
+      { from: liquidator }
     );
     await client._update();
 
@@ -279,11 +289,12 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     assert.deepStrictEqual(
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150")
+          amountCollateral: toWei("150"),
+          disputer: zeroAddress
         }
       ],
       liquidations
@@ -301,33 +312,41 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     assert.deepStrictEqual(
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150")
+          amountCollateral: toWei("150"),
+          disputer: zeroAddress
         }
       ],
       expiredLiquidations
     );
+
+    // Withdraw from the expired liquidation and check that the liquidation is deleted.
+    await emp.withdrawLiquidation("0", sponsor1, { from: liquidator })
+    await client._update();
+    assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
   });
 
   it("Returns disputed liquidations", async function () {
-    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[0] });
-    await syntheticToken.transfer(accounts[1], toWei("100"), { from: accounts[0] });
+    const liquidator = sponsor2; 
+
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
 
     // Create a new liquidation for account[0]'s position.
     const id = await emp.createLiquidation.call(
-      accounts[0],
+      sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
-      { from: accounts[1] }
+      { from: liquidator }
     );
     await emp.createLiquidation(
-      accounts[0],
+      sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
-      { from: accounts[1] }
+      { from: liquidator }
     );
     await client._update();
     const liquidations = client.getUndisputedLiquidations();
@@ -339,22 +358,31 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
-    await emp.dispute(id.toString(), accounts[0], { from: accounts[0] });
+    await emp.dispute(id.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
     // The disputed liquidation should no longer show up as undisputed.
     assert.deepStrictEqual(
       [
         {
-          sponsor: accounts[0],
+          sponsor: sponsor1,
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150")
+          amountCollateral: toWei("150"),
+          disputer: sponsor1
         }
       ], 
       client.getDisputedLiquidations().sort()
     );
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
+
+    // Force a price such that the dispute fails, and then
+    // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
+    const disputePrice = toWei("1.6");
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+    await emp.withdrawLiquidation("0", sponsor1, { from: liquidator })
+    await client._update();
+    assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
   })
 });

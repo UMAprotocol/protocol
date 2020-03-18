@@ -10,7 +10,7 @@
     "eslint_vanilla": "eslint 'core/**/*.js'",
     "prettier": "npm run prettier_vanilla -- --write",
     "prettier_check": "npm run prettier_vanilla -- --check",
-    "prettier_vanilla": "prettier --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol' 'financial-templates-lib/*.js' 'disputer/**/*.js'"
+    "prettier_vanilla": "prettier --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol' 'financial-templates-lib/*.js' 'liquidator/**/*.js' 'disputer/**/*.js'"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
