@@ -47,7 +47,7 @@ class Disputer {
 
     Logger.info({
       at: "Disputer",
-      message: "Disputable liquidation(s) detected!",
+      message: "Disputable liquidation(s) detected!🚨",
       number: disputeableLiquidations.length,
       disputeableLiquidations: disputeableLiquidations
     });
@@ -55,7 +55,7 @@ class Disputer {
     for (const disputeableLiquidation of disputeableLiquidations) {
       Logger.info({
         at: "Disputer",
-        message: "Disputing liquidation",
+        message: "Disputing liquidation🔥",
         address: disputeableLiquidation.sponsor,
         inputPrice: priceFunction(disputeableLiquidation.liquidationTime)
       });
@@ -78,7 +78,7 @@ class Disputer {
       };
       Logger.info({
         at: "Disputer",
-        message: "Dispute tx result",
+        message: "Dispute tx result📄",
         disputeResult: disputeResult
       });
     }
@@ -114,7 +114,7 @@ class Disputer {
     for (const liquidation of disputedLiquidations) {
       Logger.info({
         at: "Disputer",
-        message: "Attempting to withdraw from previous dispute.",
+        message: "Attempting to withdraw from previous dispute.💪",
         address: liquidation.sponsor,
         id: liquidation.id
       });
@@ -140,7 +140,7 @@ class Disputer {
       if (this.web3.utils.toBN(withdrawAmount.rawValue).isZero()) {
         Logger.info({
           at: "Disputer",
-          message: "Dispute failed.",
+          message: "Dispute failed.🤕",
           address: liquidation.sponsor,
           id: liquidation.id
         });

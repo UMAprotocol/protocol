@@ -94,7 +94,7 @@ class Liquidator {
       };
       Logger.info({
         at: "liquidator",
-        message: "liquidation tx result 🤕",
+        message: "liquidation tx result 📄",
         liquidationResult: logResult
       });
     }
@@ -123,7 +123,7 @@ class Liquidator {
     if (potentialWithdrawableLiquidations.length > 0) {
       Logger.info({
         at: "liquidator",
-        message: "potential withdrawable liquidations detected!",
+        message: "potential withdrawable liquidations detected!💰",
         number: potentialWithdrawableLiquidations.length,
         potentialWithdrawableLiquidations: potentialWithdrawableLiquidations
       });
@@ -154,7 +154,7 @@ class Liquidator {
         } catch (err) {
           Logger.error({
             at: "liquidator",
-            message: "failed to withdraw rewards from liquidation🤷‍♂️",
+            message: "failed to withdraw rewards from liquidation🤕",
             address: liquidation.sponsor,
             id: liquidation.id
           });
