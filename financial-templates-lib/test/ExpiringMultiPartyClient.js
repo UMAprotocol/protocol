@@ -13,6 +13,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor1 = accounts[0]
   const sponsor2 = accounts[1]
 
+  const zeroAddress = "0x0000000000000000000000000000000000000000";
+
   let collateralToken;
   let emp;
   let client;
@@ -170,7 +172,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         id: id.toString(),
         numTokens: toWei("45"),
         amountCollateral: toWei("100"),
-        liquidationTime: (await emp.getCurrentTime()).toString()
+        liquidationTime: (await emp.getCurrentTime()).toString(),
+        disputer: zeroAddress
       }
     ];
     assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
@@ -290,7 +293,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150")
+          amountCollateral: toWei("150"),
+          disputer: zeroAddress
         }
       ],
       liquidations
@@ -312,7 +316,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150")
+          amountCollateral: toWei("150"),
+          disputer: zeroAddress
         }
       ],
       expiredLiquidations
@@ -364,7 +369,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           id: "0",
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
-          amountCollateral: toWei("150")
+          amountCollateral: toWei("150"),
+          disputer: sponsor1
         }
       ], 
       client.getDisputedLiquidations().sort()
