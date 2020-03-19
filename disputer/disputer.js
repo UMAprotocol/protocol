@@ -65,7 +65,7 @@ class Disputer {
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
-        await dispute.call({ from: this.account, gasPrice: this.gasEstimator.getCurrentFastPrice()});
+        await dispute.call({ from: this.account, gasPrice: this.gasEstimator.getCurrentFastPrice() });
       } catch (error) {
         Logger.error({
           at: "Disputer",

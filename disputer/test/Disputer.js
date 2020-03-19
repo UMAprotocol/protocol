@@ -6,6 +6,7 @@ const { Disputer } = require("../disputer.js");
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
 const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
+const { LiquidationStatesEnum } = require("../../common/Enums");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -146,17 +147,17 @@ contract("Disputer.js", function(accounts) {
     await disputer.queryAndDispute(time => toWei("1.75"));
 
     // There should be no liquidations created from any sponsor account
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PRE_DISPUTE);
-    assert.equal((await emp.getLiquidations(sponsor3))[0].state, STATES.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor3))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
 
     // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
     await disputer.queryAndDispute(time => toWei("1.1"));
 
     // Sponsor2 and sponsor3 should be disputed.
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PENDING_DISPUTE);
-    assert.equal((await emp.getLiquidations(sponsor3))[0].state, STATES.PENDING_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor3))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
 
     // The disputeBot should be the disputer in sponsor2 and sponsor3's liquidations.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, disputeBot);
@@ -198,11 +199,11 @@ contract("Disputer.js", function(accounts) {
 
     // sponsor1's dipsute was unsuccessful, so the disputeBot should not have called the withdraw method.
     assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PENDING_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
 
     // sponsor2's dispute was successful, so the disputeBot should've called the withdraw method.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, zeroAddress);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.DISPUTE_SUCCEEDED);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
   });
 
   it("Too little collateral", async function() {
@@ -232,14 +233,14 @@ contract("Disputer.js", function(accounts) {
     await disputer.queryAndDispute(time => toWei("1.1"));
 
     // Only sponsor2 should be disputed.
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PRE_DISPUTE);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].state, STATES.PENDING_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
 
     // Transfer balance back, and the dispute should go through.
     await collateralToken.transfer(disputeBot, transferAmount, { from: rando });
     await disputer.queryAndDispute(time => toWei("1.1"));
 
     // sponsor1 should now be disputed.
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, STATES.PENDING_DISPUTE);
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
   });
 });
