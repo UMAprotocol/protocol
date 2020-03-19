@@ -29,7 +29,7 @@ async function run() {
   }
   Logger.info({
     at: "liquidator#index",
-    message: "liquidator started",
+    message: "liquidator started 🕵️‍♂️",
     empAddress: argv.address,
     currentPrice: argv.price
   });

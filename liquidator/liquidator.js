@@ -20,7 +20,7 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFeed => {
-    Logger.info({
+    Logger.debug({
       at: "liquidator",
       message: "Checking for under collateralized positions",
       inputPrice: priceFeed
@@ -37,14 +37,15 @@ class Liquidator {
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
 
     if (underCollateralizedPositions.length > 0) {
-      Logger.info({
-        at: "liquidator",
-        message: "undercollateralized positions detected!",
-        number: underCollateralizedPositions.length,
-        underCollateralizedPositions: underCollateralizedPositions
-      });
+      for (const underCollateralizedPosition of underCollateralizedPositions) {
+        Logger.info({
+          at: "liquidator",
+          message: "undercollateralized positions detected 🚨",
+          underCollateralizedPosition: underCollateralizedPosition
+        });
+      }
     } else {
-      Logger.info({
+      Logger.debug({
         at: "liquidator",
         message: "No undercollateralized position"
       });
@@ -55,7 +56,7 @@ class Liquidator {
       // TODO: add additional information about this liquidation event to the log.
       Logger.info({
         at: "liquidator",
-        message: "liquidating sponsor",
+        message: "liquidating sponsor 🔥",
         address: position.sponsor,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       });
@@ -93,7 +94,7 @@ class Liquidator {
       };
       Logger.info({
         at: "liquidator",
-        message: "liquidation tx result",
+        message: "liquidation tx result 📄",
         liquidationResult: logResult
       });
     }
@@ -101,7 +102,7 @@ class Liquidator {
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
   queryAndWithdrawRewards = async () => {
-    Logger.info({
+    Logger.debug({
       at: "liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
@@ -122,7 +123,7 @@ class Liquidator {
     if (potentialWithdrawableLiquidations.length > 0) {
       Logger.info({
         at: "liquidator",
-        message: "potential withdrawable liquidations detected!",
+        message: "potential withdrawable liquidations detected!💰",
         number: potentialWithdrawableLiquidations.length,
         potentialWithdrawableLiquidations: potentialWithdrawableLiquidations
       });
@@ -132,7 +133,7 @@ class Liquidator {
       for (const liquidation of potentialWithdrawableLiquidations) {
         Logger.info({
           at: "liquidator",
-          message: "attempting to withdraw rewards from liquidations",
+          message: "attempting to withdraw rewards from liquidations💪",
           address: liquidation.sponsor,
           id: liquidation.id
         });
@@ -153,7 +154,7 @@ class Liquidator {
         } catch (err) {
           Logger.error({
             at: "liquidator",
-            message: "failed to withdraw rewards from liquidation",
+            message: "failed to withdraw rewards from liquidation🤕",
             address: liquidation.sponsor,
             id: liquidation.id
           });
@@ -173,12 +174,12 @@ class Liquidator {
         };
         Logger.info({
           at: "liquidator",
-          message: "withdraw tx result",
+          message: "withdraw tx result📄",
           liquidationResult: logResult
         });
       }
     } else {
-      Logger.info({
+      Logger.debug({
         at: "liquidator",
         message: "No withdrawable liquidations"
       });
