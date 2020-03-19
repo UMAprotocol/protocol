@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
+const { wrapToWeth } = require("./currencyUtils.js");
 
 const deposit = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
@@ -16,8 +17,10 @@ const deposit = async (web3, artifacts, emp) => {
     name: "confirm"
   });
   if (confirmation["confirm"]) {
-    // TODO: Deal with ETH/WETH conversions here. For now, assumes sponsor has ERC20 WETH in their wallet.
     const collateral = toWei(input["depositCollateral"]);
+
+    await wrapToWeth(web3, artifacts, emp, collateral);
+
     const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
     await collateralCurrency.approve(emp.address, collateral);
     await emp.deposit({ rawValue: collateral.toString() });
