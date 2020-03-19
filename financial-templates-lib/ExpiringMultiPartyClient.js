@@ -132,6 +132,7 @@ class ExpiringMultiPartyClient {
           numTokens: liquidation.tokensOutstanding.toString(),
           amountCollateral: liquidation.liquidatedCollateral.toString(),
           liquidationTime: liquidation.liquidationTime,
+          liquidator: liquidation.liquidator,
           disputer: liquidation.disputer
         };
 
