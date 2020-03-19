@@ -165,14 +165,40 @@ async function runExport() {
    *
    *****************************************************************************/
   console.group("Precision loss due to payFees()");
-  // Here, we choose a collateral amount that will produce one rounding error on the first run:
+  // Precision error in the `payFees()` method can occur when the cumulative fee multiplier specifically loses precision.
+  // Remember how we calculate the cumulative fee multiplier: ((1 - fee %) * cumulativeFeeMultiplier)
+  // There are two intermediate calculations here which can produce error: 
+  // 1) The calculation of "fee %" which is equal to: (fees paid) / (PfC), and this division potentially "ceil"'s the quotient.
+  // 2) The multiplication of (1 - fee %) and cumulativeFeeMultiplier which could "floor" the product.
+  // In both situations, the resultant feeMultiplier is less than it should be, therefore
+  // the contract believes it to have less collateral than it actually owns (`getCollateral()` returns less than `collateral.balanceOf()`).
+  
+  // Situation 1: The percentage of fees paid (as a % of PfC) gets "ceil"'d.
+  // -------------------------------------------------------------------------------------------------------------------------------
+  // Example:
   // - Collateral = 9,000,000 wei.
   // - 0.0000004% fees per second * 1 second * 9,000,000 wei collateral = 3.6 wei fees, however this gets floored by `Store.computeFee()` to 3 wei fees.
   // - Fees paid as % of collateral = 3e-18 / 9000000-18 = 0.0000003...33 repeating, which cannot be represented by FixedPoint.
   // - The least significant digit will get ceil'd up from 3 to 4.
   // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower.
   // - Ultimately this decreases the available collateral returned by `FeePayer._getCollateral()`.
-  // - This produces drift between _getCollateral() and the actual collateral in the contract (`collateral.balanceOf(contract)`).
+  // -------------------------------------------------------------------------------------------------------------------------------
+
+  // Situation 2: The cumulative fee multiplier gets "floor"'d.
+  // -------------------------------------------------------------------------------------------------------------------------------
+  // Example:
+  // - Assess fees such that the fee multiplier is 1e-17
+  // - Change fee rate to 0.01 and charge one time unit's worth of fees.
+  // - Fee multiplier is calculated as ((1 - fee %) * cumulativeFeeMultiplier)
+  // - In this case: ((1-0.01) * 1e-17 = 9.9e-18)
+  // - The multiplication is floored, causing the fee multiplier to get set to 9e-18
+  // -------------------------------------------------------------------------------------------------------------------------------
+  
+  // Conclusion: 
+  // -------------------------------------------------------------------------------------------------------------------------------
+  // Precision loss in the fee multiplier compounds over time, as the fee multiplier is applied to all future fees charged. 
+  // This precision loss affects a percentage, not a flat value, So as the value in the contract scales up, 
+  // the precision loss, in real dollar terms, scales up too.
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -188,26 +214,32 @@ async function runExport() {
   /**
    * @notice TEST PARAMETERS
    */
-  testConfig = {
+  testConfig1 = {
     startCollateralAmount: 9000000,
     startTokenAmount: 1,
-    feeRatePerSecond: "0.0000004",
-    expectedFeesCollectedPerPeriod: 3,
-    runs: 10
+    feeRatePerSecond: "0.0000004", // Used to set initial fee multiplier
+    expectedFeesCollectedPerPeriod: 3
+  };
+  testConfig2 = {
+    startCollateralAmount: 1e18,
+    startTokenAmount: 1,
+    feeRatePerSecond: "0."+"9".repeat(17), // Used to set initial fee multiplier
+    modifiedFeeRatePerSecond: "0.01", // Used to charge additional fees
+    expectedFeesCollected: "9".repeat(17)+"0" // Amount of fees collected total
   };
 
   /**
    * @notice SETUP THE TEST
    */
   // 1) Create position.
-  await collateral.approve(emp.address, testConfig.startCollateralAmount.toString(), { from: sponsor });
+  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create(
-    { rawValue: testConfig.startCollateralAmount.toString() },
-    { rawValue: testConfig.startTokenAmount.toString() },
+    { rawValue: testConfig2.startCollateralAmount.toString() },
+    { rawValue: testConfig2.startTokenAmount.toString() },
     { from: sponsor }
   );
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei(testConfig.feeRatePerSecond) }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecond({ rawValue: toWei(testConfig2.feeRatePerSecond) }, { from: contractDeployer });
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1), { from: contractDeployer });
@@ -243,7 +275,7 @@ async function runExport() {
   console.groupEnd();
 
   /**
-   * @notice RUN THE TEST ONCE AND PRODUCE KNOWN DRIFT
+   * @notice RUN THE TEST ONCE AND SET THE INITIAL FEE MULTIPLIER
    */
   await emp.payFees({ from: sponsor });
   endingStoreCollateral = await collateral.balanceOf(store.address);
@@ -254,12 +286,8 @@ async function runExport() {
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
-  // Test 1) The correct fees are paid are regardless of precision loss.
-  assert.equal(testConfig.expectedFeesCollectedPerPeriod.toString(), actualFeesCollected.toString());
-
-  // Test 2) Due to the precision error mentioned above, `getCollateral()` should return
-  // slightly less than what we are expecting.
-  assert(driftTotal.gt(toBN(0)));
+  // Test 1) The correct fees are paid.
+  assert.equal(testConfig2.expectedFeesCollected, actualFeesCollected.toString());
 
   // Log results.
   breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
@@ -272,39 +300,77 @@ async function runExport() {
   console.groupEnd();
 
   /**
-   * @notice RUN THE REMAINDER OF THE TEST AND CHECK UNKNOWN DRIFT
-   * @dev For all of these runs, the expected fees collected per second should still be floor'd to 4 wei.
-   * @dev Since we are no longer dividing by 9,000,000 in an intermediate calculation, it is not obvious that more
-   * rounding errors will occur.
+   * @notice SET ANOTHER FEE RATE AND PRODUCE PRECISION LOSS IN TH FEE MULTIPLIER
    */
-  for (let i = 1; i <= testConfig.runs - 1; i++) {
-    await emp.setCurrentTime(startTime.addn(1 + i), { from: contractDeployer });
-    await emp.payFees({ from: sponsor });
-  }
+  // 0) Deposit more collateral into the contract so that there is enough collateral to charge fees correctly 
+  // without precision loss
+  await emp.deposit({ rawValue: testConfig2.expectedFeesCollected }, { from: sponsor })
+  // 1) Set fee rate per second.
+  await store.setFixedOracleFeePerSecond({ rawValue: toWei(testConfig2.modifiedFeeRatePerSecond) }, { from: contractDeployer });
+  // 2) Move time in the contract forward by 1 second to capture unit fee.
+  startTime = await emp.getCurrentTime();
+  await emp.setCurrentTime(startTime.addn(1), { from: contractDeployer });
+  await emp.payFees({ from: sponsor });
   endingStoreCollateral = await collateral.balanceOf(store.address);
   actualFeesCollected = endingStoreCollateral.sub(startingStoreCollateral).toString();
-  adjustedCollateral = await emp.getCollateral(sponsor);
+  adjustedCollateral = await emp.totalPositionCollateral();
   contractCollateral = await collateral.balanceOf(emp.address);
   rawContractCollateral = await emp.rawTotalPositionCollateral();
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
-  // Test 1) The correct fees are paid are regardless of precision loss.
-  assert.equal(
-    (testConfig.expectedFeesCollectedPerPeriod * testConfig.runs).toString(),
-    actualFeesCollected.toString()
-  );
+  // // Test 1) The correct fees are paid.
+  // assert.equal(testConfig2.expectedFeesCollected, actualFeesCollected.toString());
 
-  // Test 2) Let's check if there is more drift.
   // Log results.
   breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
   breakdown.credited = new CollateralBreakdown(adjustedCollateral, "N/A");
   breakdown.raw = new CollateralBreakdown(rawContractCollateral, "N/A");
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
   breakdown.drift = new CollateralBreakdown(driftTotal, "N/A");
-  console.group(`** After ${testConfig.runs} seconds: **`);
+  console.group(`** After 2 seconds: ${actualFeesCollected.toString()} collateral collected in fees **`);
   console.table(breakdown);
   console.groupEnd();
+
+
+   /**
+    * @notice QUANTIFY LOSS BETWEEN FEES CHARGED AND FEES IMPLIED BY THE FEE MULTIPLIER
+    */
+
+  // /**
+  //  * @notice RUN THE REMAINDER OF THE TEST AND CHECK UNKNOWN DRIFT
+  //  * @dev For all of these runs, the expected fees collected per second should still be floor'd to 4 wei.
+  //  * @dev Since we are no longer dividing by 9,000,000 in an intermediate calculation, it is not obvious that more
+  //  * rounding errors will occur.
+  //  */
+  // for (let i = 1; i <= testConfig.runs - 1; i++) {
+  //   await emp.setCurrentTime(startTime.addn(1 + i), { from: contractDeployer });
+  //   await emp.payFees({ from: sponsor });
+  // }
+  // endingStoreCollateral = await collateral.balanceOf(store.address);
+  // actualFeesCollected = endingStoreCollateral.sub(startingStoreCollateral).toString();
+  // adjustedCollateral = await emp.getCollateral(sponsor);
+  // contractCollateral = await collateral.balanceOf(emp.address);
+  // rawContractCollateral = await emp.rawTotalPositionCollateral();
+  // actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
+  // driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
+
+  // // Test 1) The correct fees are paid are regardless of precision loss.
+  // assert.equal(
+  //   (testConfig.expectedFeesCollectedPerPeriod * testConfig.runs).toString(),
+  //   actualFeesCollected.toString()
+  // );
+
+  // // Test 2) Let's check if there is more drift.
+  // // Log results.
+  // breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
+  // breakdown.credited = new CollateralBreakdown(adjustedCollateral, "N/A");
+  // breakdown.raw = new CollateralBreakdown(rawContractCollateral, "N/A");
+  // breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  // breakdown.drift = new CollateralBreakdown(driftTotal, "N/A");
+  // console.group(`** After ${testConfig.runs} seconds: **`);
+  // console.table(breakdown);
+  // console.groupEnd();
 
   /**
    * @notice POST-TEST CLEANUP
