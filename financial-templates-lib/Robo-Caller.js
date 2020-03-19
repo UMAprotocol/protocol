@@ -53,8 +53,7 @@ class RoboCaller {
           to: number,
           from: process.env.TWILIO_FROM_NUMBER
         });
-        console.log("async responce");
-        console.log(callResponse);
+        
         Logger.debug({
           at: "RoboCaller",
           message: "call placed",
