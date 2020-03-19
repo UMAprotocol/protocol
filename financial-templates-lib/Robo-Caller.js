@@ -13,22 +13,22 @@ class RoboCaller {
         at: "RoboCaller",
         message: "Missing config variable. RoboCaller Disabled"
       });
-    } else {
-      this.client = require("twilio")(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
-
-      this.numbersToCall = [];
-      for (const envVariable in process.env) {
-        if (envVariable.startsWith("DRI_NUMBER")) {
-          this.numbersToCall.push(process.env[envVariable]);
-        }
-      }
-      Logger.debug({
-        at: "RoboCaller",
-        message: "Client configured",
-        numbersToCall: this.numbersToCall,
-        fromNumber: process.env.TWILIO_FROM_NUMBER
-      });
+      return;
     }
+    this.client = require("twilio")(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
+
+    this.numbersToCall = [];
+    for (const envVariable in process.env) {
+      if (envVariable.startsWith("DRI_NUMBER")) {
+        this.numbersToCall.push(process.env[envVariable]);
+      }
+    }
+    Logger.debug({
+      at: "RoboCaller",
+      message: "Client configured",
+      numbersToCall: this.numbersToCall,
+      fromNumber: process.env.TWILIO_FROM_NUMBER
+    });
   }
   canPlaceCall = () => {
     return this.client != undefined;
@@ -53,7 +53,6 @@ class RoboCaller {
           to: number,
           from: process.env.TWILIO_FROM_NUMBER
         });
-        
         Logger.debug({
           at: "RoboCaller",
           message: "call placed",
