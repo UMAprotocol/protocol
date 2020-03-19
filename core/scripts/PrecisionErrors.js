@@ -166,12 +166,12 @@ async function runExport() {
    *****************************************************************************/
   // Precision error in the `payFees()` method can occur when the cumulative fee multiplier specifically loses precision.
   // Remember how we calculate the cumulative fee multiplier: ((1 - fee %) * cumulativeFeeMultiplier)
-  // There are two intermediate calculations here which can produce error: 
+  // There are two intermediate calculations here which can produce error:
   // 1) The calculation of "fee %" which is equal to: (fees paid) / (PfC), and this division potentially "ceil"'s the quotient.
   // 2) The multiplication of (1 - fee %) and cumulativeFeeMultiplier which could "floor" the product.
   // In both situations, the resultant feeMultiplier is less than it should be, therefore
   // the contract believes it to have less collateral than it actually owns (`getCollateral()` returns less than `collateral.balanceOf()`).
-  
+
   // Situation 1: The percentage of fees paid (as a % of PfC) gets "ceil"'d.
   // -------------------------------------------------------------------------------------------------------------------------------
   // Example:
@@ -192,11 +192,11 @@ async function runExport() {
   // - In this case: ((1-0.01) * 1e-17 = 9.9e-18)
   // - The multiplication is floored, causing the fee multiplier to get set to 9e-18
   // -------------------------------------------------------------------------------------------------------------------------------
-  
-  // Conclusion: 
+
+  // Conclusion:
   // -------------------------------------------------------------------------------------------------------------------------------
-  // Precision loss in the fee multiplier compounds over time, as the fee multiplier is applied to all future fees charged. 
-  // This precision loss affects a percentage, not a flat value, So as the value in the contract scales up, 
+  // Precision loss in the fee multiplier compounds over time, as the fee multiplier is applied to all future fees charged.
+  // This precision loss affects a percentage, not a flat value, So as the value in the contract scales up,
   // the precision loss, in real dollar terms, scales up too.
 
   console.group("Cumulative Fee Multiplier gets Floor'd");
@@ -217,9 +217,9 @@ async function runExport() {
   testConfig = {
     startCollateralAmount: 1e18,
     startTokenAmount: 1,
-    feeRatePerSecond: "0."+"9".repeat(17), // Used to set initial fee multiplier
+    feeRatePerSecond: "0." + "9".repeat(17), // Used to set initial fee multiplier
     modifiedFeeRatePerSecond: "0.01", // Used to charge additional fees
-    expectedFeesCollected: "9".repeat(17)+"0" // Amount of fees collected total
+    expectedFeesCollected: "9".repeat(17) + "0" // Amount of fees collected total
   };
 
   /**
@@ -296,11 +296,14 @@ async function runExport() {
   /**
    * @notice SET ANOTHER FEE RATE AND PRODUCE PRECISION LOSS IN THE FEE MULTIPLIER
    */
-  // 0) Deposit more collateral into the contract so that there is enough collateral to charge fees correctly 
+  // 0) Deposit more collateral into the contract so that there is enough collateral to charge fees correctly
   // without precision loss
-  await emp.deposit({ rawValue: testConfig.expectedFeesCollected }, { from: sponsor })
+  await emp.deposit({ rawValue: testConfig.expectedFeesCollected }, { from: sponsor });
   // 1) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei(testConfig.modifiedFeeRatePerSecond) }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecond(
+    { rawValue: toWei(testConfig.modifiedFeeRatePerSecond) },
+    { from: contractDeployer }
+  );
   // 2) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1), { from: contractDeployer });
@@ -314,7 +317,9 @@ async function runExport() {
   driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
   // Test 1) The correct fees are paid.
-  testConfig.expectedFeesCollected = toBN(testConfig.expectedFeesCollected).add(toBN(toWei("0.01"))).toString()
+  testConfig.expectedFeesCollected = toBN(testConfig.expectedFeesCollected)
+    .add(toBN(toWei("0.01")))
+    .toString();
   assert.equal(testConfig.expectedFeesCollected, actualFeesCollected.toString());
 
   // Log results.
@@ -327,10 +332,9 @@ async function runExport() {
   console.table(breakdown);
   console.groupEnd();
 
-
   /**
-  * @notice QUANTIFY LOSS BETWEEN FEES CHARGED AND FEES IMPLIED BY THE FEE MULTIPLIER
-  */
+   * @notice QUANTIFY LOSS BETWEEN FEES CHARGED AND FEES IMPLIED BY THE FEE MULTIPLIER
+   */
 
   /**
    * @notice POST-TEST CLEANUP
@@ -435,8 +439,8 @@ async function runExport() {
   console.groupEnd();
 
   /**
-  * @notice QUANTIFY LOSS BETWEEN FEES CHARGED AND FEES IMPLIED BY THE FEE MULTIPLIER
-  */
+   * @notice QUANTIFY LOSS BETWEEN FEES CHARGED AND FEES IMPLIED BY THE FEE MULTIPLIER
+   */
 
   /**
    * @notice POST-TEST CLEANUP
