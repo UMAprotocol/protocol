@@ -81,17 +81,11 @@ class Liquidator {
       // you also should be liquidating using that priceFeed.
       // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
       liquidationPromises.push(
-        this.empContract.methods
-          .createLiquidation(
-            position.sponsor,
-            { rawValue: this.web3.utils.toWei(priceFeed) },
-            { rawValue: position.numTokens }
-          )
-          .send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
+        liquidation.send({
+          from: this.account,
+          gas: 1500000,
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
       );
     }
     // Resolve all promises in parallel.
