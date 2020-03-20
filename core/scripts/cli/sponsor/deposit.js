@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { wrapToWeth } = require("./currencyUtils.js");
+const { submitTransaction } = require("./transactionUtils");
 
 const deposit = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
@@ -22,8 +23,16 @@ const deposit = async (web3, artifacts, emp) => {
     await wrapToWeth(web3, artifacts, emp, collateral);
 
     const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
-    await collateralCurrency.approve(emp.address, collateral);
-    await emp.deposit({ rawValue: collateral.toString() });
+    await submitTransaction(
+      web3,
+      async () => await collateralCurrency.approve(emp.address, collateral),
+      "Approving WETH transfer"
+    );
+    await submitTransaction(
+      web3,
+      async () => await emp.deposit({ rawValue: collateral.toString() }),
+      "Depositing collateral"
+    );
   }
 };
 
