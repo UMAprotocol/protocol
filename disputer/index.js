@@ -6,7 +6,7 @@ const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/Logger");
 
 // JS libs
-const { Disputer } = require("./Liquidator");
+const { Disputer } = require("./Disputer");
 const { GasEstimator } = require("../financial-templates-lib/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 
@@ -18,8 +18,8 @@ async function run() {
     throw "Must provide --address and --price arguments";
   }
   Logger.info({
-    at: "liquidator#index",
-    message: "liquidator started",
+    at: "Disputer#index",
+    message: "Disputer started",
     empAddress: argv.address,
     currentPrice: argv.price
   });
@@ -35,7 +35,7 @@ async function run() {
 
   while (true) {
     try {
-      await disputer.queryAndDispute(toWei(argv.price));
+      await disputer.queryAndDispute(() => toWei(argv.price));
       await disputer.queryAndWithdrawRewards();
     } catch (error) {
       Logger.error({
