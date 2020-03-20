@@ -109,19 +109,14 @@ async function createTestEnvironment() {
 
 /**
  * @notice Used to log experiment asset breakdown in a pretty fashion.
- * @param _sponsor Assets belonging to sponsor.
+ * @param _total Assets belonging to contract.
  * @return {*Object} compatible with console.table()
  */
-function CollateralBreakdown(_total, _sponsor) {
+function CollateralBreakdown(_total) {
   try {
     this.totalPosition = fromWei(_total.toString());
   } catch (err) {
     this.totalPosition = _total.toString();
-  }
-  try {
-    this.sponsorPosition = fromWei(_sponsor.toString());
-  } catch (err) {
-    this.sponsorPosition = _sponsor.toString();
   }
 }
 
@@ -129,10 +124,6 @@ function CollateralBreakdown(_total, _sponsor) {
  * @notice Main script.
  **/
 async function runExport() {
-  // Ultimately what matters is the difference between the expected and actual amount of collateral credited to the contract. 
-  // We attempt to quantify this per single run per type of transaction.
-  let precisionLossPercentage; 
-
   // Empty-state contracts needed to run experiments.
   let collateral;
   let synthetic;
@@ -150,22 +141,16 @@ async function runExport() {
   // Test variables:
   let startTime; // Contract time at start of experiment.
   let driftTotal = toBN(0); // Precision loss on total contract collateral.
-  let driftSponsor = toBN(0); // Precision loss on just the sponsor's collateral.
   let tokensOutstanding; // Current count of synthetic tokens outstanding. Need to remember this before calling redeem() in order to forecast post-redemption collateral.
   // Collateral actually owned by contract (i.e. queryable via `collateral.balanceOf(contract)`).
   let startingContractCollateral;
   let contractCollateral;
-  // Credited collateral net of fees (i.e. queryable via `contract.totalPositionCollateral()|.getCollateral(sponsor)`).
+  // Credited collateral net of fees (i.e. queryable via `contract.totalPositionCollateral()`).
   let startingAdjustedContractCollateral;
   let adjustedCollateral;
-  let startingSponsorCollateral;
-  let sponsorCollateral;
-  let expectedSponsorCollateral;
-  // Scaled up collateral used by contract to track fees (i.e. queryable via `contract.rawTotalPositionCollateral()|contract.positions(sponsor).rawCollateral`).
+  // Scaled up collateral used by contract to track fees (i.e. queryable via `contract.rawTotalPositionCollateral()`).
   let startingRawContractCollateral;
-  let startingRawSponsorCollateral;
   let rawContractCollateral;
-  let rawSponsorCollateral;
   // Used to track Store collateral to calculate fees collected.
   let startingStoreCollateral;
   let endingStoreCollateral;
@@ -284,10 +269,10 @@ async function runExport() {
   assert.equal(startingRawContractCollateral.toString(), startingContractCollateral.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral, "N/A");
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, "N/A");
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, "N/A");
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
+  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
+  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group("** Collateral Before Charging any Fees **");
   console.table(breakdown);
   console.groupEnd();
@@ -308,11 +293,11 @@ async function runExport() {
   assert.equal(testConfig.expectedFeesCollected, actualFeesCollected.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, "N/A");
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, "N/A");
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
-  breakdown.drift = new CollateralBreakdown(driftTotal, "N/A");
+  breakdown.expected = new CollateralBreakdown(contractCollateral);
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(actualFeesCollected.toString())} total fees collected) **`);
   console.table(breakdown);
   console.groupEnd();
@@ -348,11 +333,11 @@ async function runExport() {
   assert.equal(testConfig.expectedFeesCollected, actualFeesCollected.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, "N/A");
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, "N/A");
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
-  breakdown.drift = new CollateralBreakdown(driftTotal, "N/A");
+  breakdown.expected = new CollateralBreakdown(contractCollateral);
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** Collateral After Charging ${testConfig.modifiedFeeRatePerSecond} in Fees (${fromWei(actualFeesCollected.toString())} total fees collected) **`);
   console.table(breakdown);
   console.groupEnd();
@@ -434,10 +419,10 @@ async function runExport() {
   assert.equal(startingRawContractCollateral.toString(), startingContractCollateral.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral, "N/A");
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, "N/A");
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, "N/A");
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
+  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
+  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group("** Collateral Before Charging any Fees **");
   console.table(breakdown);
   console.groupEnd();
@@ -458,11 +443,11 @@ async function runExport() {
   assert.equal(testConfig.expectedFeesCollectedPerPeriod, actualFeesCollected.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, "N/A");
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, "N/A");
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, "N/A");
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
-  breakdown.drift = new CollateralBreakdown(driftTotal, "N/A");
+  breakdown.expected = new CollateralBreakdown(contractCollateral);
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(actualFeesCollected.toString())} total fees collected) **`);
   console.table(breakdown);
   console.groupEnd();
@@ -520,8 +505,8 @@ async function runExport() {
    */
   testConfig = {
     sponsorCollateralAmount: toWei("0.1"),
-    expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
-    feePerSecond: toWei("0.1"),
+    expectedFeeMultiplier: 0.3, // Division by this produces precision loss, tune this.
+    feePerSecond: toWei("0.7"),
     amountToDeposit: toWei("0.1")
   };
 
@@ -544,16 +529,11 @@ async function runExport() {
    */
   breakdown = {};
   driftTotal = toBN(0);
-  driftSponsor = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
   startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingSponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    testConfig.expectedFeeMultiplier * parseFloat(testConfig.sponsorCollateralAmount.toString());
   startingRawContractCollateral = await emp.rawTotalPositionCollateral();
-  startingRawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
 
   // Test 1) Fee multiplier is set correctly.
   assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
@@ -561,13 +541,11 @@ async function runExport() {
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
   assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
 
-  // Test 3) The sponsor has initial collateral minus fees
-  assert.equal(startingSponsorCollateral.toString(), expectedSponsorCollateral.toString());
-
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
+  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
+  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
+  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
   console.group("** Pre-Deposit: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
@@ -576,23 +554,20 @@ async function runExport() {
    * @notice RUN THE TEST ONCE
    */
   await emp.deposit({ rawValue: testConfig.amountToDeposit }, { from: sponsor });
+  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
-  sponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    parseFloat(startingSponsorCollateral.toString()) + parseFloat(testConfig.amountToDeposit.toString());
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  rawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
   driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
-  driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+  breakdown.expected = new CollateralBreakdown(contractCollateral);
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(
-    `** After 1 Deposit of ${fromWei(testConfig.amountToDeposit)} collateral (fee-multiplier = ${testConfig.expectedFeeMultiplier}): **`
+    `** After 1 Deposit of ${fromWei(testConfig.amountToDeposit)} collateral: **`
   );
   console.table(breakdown);
   console.groupEnd();
@@ -654,8 +629,8 @@ async function runExport() {
    */
   testConfig = {
     sponsorCollateralAmount: toWei("0.1"),
-    expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
-    feePerSecond: toWei("0.1"),
+    expectedFeeMultiplier: 0.3, // Division by this produces precision loss, tune this.
+    feePerSecond: toWei("0.7"),
     amountToDeposit: toWei("0.1"),
     amountToCreate: toWei("1") // Amount of synthetic tokens to create does not matter.
   };
@@ -683,16 +658,11 @@ async function runExport() {
    */
   breakdown = {};
   driftTotal = toBN(0);
-  driftSponsor = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
   startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingSponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    testConfig.expectedFeeMultiplier * parseFloat(testConfig.sponsorCollateralAmount.toString());
   startingRawContractCollateral = await emp.rawTotalPositionCollateral();
-  startingRawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
 
   // Test 1) Fee multiplier is set correctly.
   assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
@@ -700,44 +670,37 @@ async function runExport() {
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
   assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
 
-  // Test 3) The sponsor has initial collateral minus fees
-  assert.equal(startingSponsorCollateral.toString(), expectedSponsorCollateral.toString());
-
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
-  delete breakdown.drift;
-  delete console.group("** Pre-Create: Actual and Credited Collateral should be equal **");
+  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
+  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
+  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  console.group("** Pre-Create: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
 
   /**
    * @notice RUN THE TEST ONCE
    */
-  await collateral.approve(emp.address, testConfig.sponsorCollateralAmount, { from: sponsor });
   await emp.create(
     { rawValue: testConfig.sponsorCollateralAmount },
     { rawValue: testConfig.amountToCreate },
     { from: sponsor }
   );
+  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
-  sponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    parseFloat(startingSponsorCollateral.toString()) + parseFloat(testConfig.amountToDeposit.toString());
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  rawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
   driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
-  driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+  breakdown.expected = new CollateralBreakdown(contractCollateral);
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(
-    `** After 1 Create with ${fromWei(testConfig.amountToDeposit)} collateral (fee-multiplier = ${testConfig.expectedFeeMultiplier}): **`
+    `** After 1 Create with ${fromWei(testConfig.amountToDeposit)} collateral: **`
   );
   console.table(breakdown);
   console.groupEnd();
@@ -807,9 +770,9 @@ async function runExport() {
    */
   testConfig = {
     sponsorCollateralAmount: toWei("0.1"),
-    feePerSecond: toWei("0.1"),
-    expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
-    amountToWithdraw: toWei("0.01")
+    feePerSecond: toWei("0.7"),
+    expectedFeeMultiplier: 0.3, // Division by this produces precision loss, tune this.
+    amountToWithdraw: "1"
   };
   /**
    * @notice SETUP THE TEST
@@ -830,15 +793,11 @@ async function runExport() {
    */
   breakdown = {};
   driftTotal = toBN(0);
-  driftSponsor = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
   startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingSponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral = testConfig.expectedFeeMultiplier * parseFloat(testConfig.sponsorCollateralAmount.toString());
   startingRawContractCollateral = await emp.rawTotalPositionCollateral();
-  startingRawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
 
   // Test 1) Fee multiplier is set correctly.
   assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
@@ -846,14 +805,11 @@ async function runExport() {
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
   assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
 
-  // Test 3) The sponsor has initial collateral minus fees
-  assert.equal(startingSponsorCollateral.toString(), expectedSponsorCollateral.toString());
-
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
+  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
+  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group("** Pre-Withdrawal: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
@@ -875,22 +831,17 @@ async function runExport() {
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
-  sponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    parseFloat(startingSponsorCollateral.toString()) - parseFloat(testConfig.amountToWithdraw.toString());
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  rawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
   driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
-  driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.expected = new CollateralBreakdown(contractCollateral);
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(
-    `** After 1 Withdrawal of ${fromWei(testConfig.amountToWithdraw)} collateral (fee-multiplier = ${testConfig.expectedFeeMultiplier}): **`
+    `** After 1 Withdrawal of ${fromWei(testConfig.amountToWithdraw)} collateral: **`
   );
   console.table(breakdown);
   console.groupEnd();
@@ -983,17 +934,12 @@ async function runExport() {
    */
   breakdown = {};
   driftTotal = toBN(0);
-  driftSponsor = toBN(0);
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
   startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingSponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    testConfig.expectedFeeMultiplier * parseFloat(testConfig.sponsorCollateralAmount.toString());
   startingRawContractCollateral = await emp.rawTotalPositionCollateral();
-  startingRawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
 
   // Test 1) Fee multiplier is set correctly.
   assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
@@ -1001,18 +947,15 @@ async function runExport() {
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
   assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
 
-  // Test 3) The sponsor has initial collateral minus fees.
-  assert.equal(startingSponsorCollateral.toString(), expectedSponsorCollateral.toString());
-
   // Test 4) Tokens outstanding is same as tokens created.
   assert.equal(tokensOutstanding.toString(), testConfig.tokensOutstanding.toString());
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
-  breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding, "N/A");
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
+  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
+  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
+  breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group("** Pre-Redemption: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
@@ -1025,26 +968,19 @@ async function runExport() {
   await emp.redeem({ rawValue: testConfig.amountToRedeem }, { from: sponsor });
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
-  sponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    parseFloat(startingSponsorCollateral.toString()) -
-    (parseFloat(testConfig.amountToRedeem.toString()) / parseFloat(tokensOutstanding.toString())) *
-      parseFloat(startingSponsorCollateral.toString());
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  rawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
   driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
-  driftSponsor = toBN(expectedSponsorCollateral).sub(toBN(sponsorCollateral.rawValue));
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral, expectedSponsorCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
-  breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding, "N/A");
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown.expected = new CollateralBreakdown(contractCollateral);
+  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
+  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
+  breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(
-    `** After 1 Redemption of ${fromWei(testConfig.amountToRedeem)} collateral (fee-multiplier = ${testConfig.expectedFeeMultiplier}): **`
+    `** After 1 Redemption of ${fromWei(testConfig.amountToRedeem)} collateral: **`
   );
   console.table(breakdown);
   console.groupEnd();
@@ -1132,16 +1068,13 @@ async function runExport() {
    */
   breakdown = {};
   driftTotal = toBN(0);
-  driftSponsor = toBN(0);
   startingContractCollateral = await emp.totalPositionCollateral();
-  startingSponsorCollateral = await emp.getCollateral(sponsor);
 
   // Test 1) The collateral is correct.
   assert.equal(startingContractCollateral.toString(), testConfig.sponsorCollateralAmount.toString());
-  assert.equal(startingSponsorCollateral.toString(), testConfig.sponsorCollateralAmount.toString());
 
   // Log results in a table.
-  breakdown.credited = new CollateralBreakdown(startingContractCollateral, startingSponsorCollateral);
+  breakdown.credited = new CollateralBreakdown(startingContractCollateral);
   console.group("** Pre-Liquidation: **");
   console.table(breakdown);
   console.groupEnd();
@@ -1157,9 +1090,7 @@ async function runExport() {
   );
   expectedRemainingCollateral = toBN(await collateral.balanceOf(emp.address)).sub(toBN(testConfig.amountToLiquidate));
   contractCollateral = await emp.totalPositionCollateral();
-  sponsorCollateral = await emp.getCollateral(sponsor);
   driftTotal = toBN(expectedRemainingCollateral).sub(toBN(contractCollateral.rawValue.toString()));
-  driftSponsor = toBN(expectedRemainingCollateral).sub(toBN(sponsorCollateral.rawValue.toString()));
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
   truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
@@ -1174,9 +1105,9 @@ async function runExport() {
   });
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral, expectedRemainingCollateral);
-  breakdown.credited = new CollateralBreakdown(contractCollateral, sponsorCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
+  breakdown.credited = new CollateralBreakdown(contractCollateral);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** After 1 Partial Liquidation of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -1192,9 +1123,7 @@ async function runExport() {
   );
   expectedRemainingCollateral = expectedRemainingCollateral.sub(toBN(testConfig.amountToLiquidate));
   contractCollateral = await emp.totalPositionCollateral();
-  sponsorCollateral = await emp.getCollateral(sponsor);
   driftTotal = toBN(expectedRemainingCollateral).sub(toBN(contractCollateral.rawValue.toString()));
-  driftSponsor = toBN(expectedRemainingCollateral).sub(toBN(sponsorCollateral.rawValue.toString()));
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
   truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
@@ -1209,9 +1138,9 @@ async function runExport() {
   });
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral, expectedRemainingCollateral);
-  breakdown.credited = new CollateralBreakdown(contractCollateral, sponsorCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
+  breakdown.credited = new CollateralBreakdown(contractCollateral);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** After 2 Partial Liquidations of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -1227,9 +1156,7 @@ async function runExport() {
   );
   expectedRemainingCollateral = expectedRemainingCollateral.sub(toBN(testConfig.amountToLiquidate));
   contractCollateral = await emp.totalPositionCollateral();
-  sponsorCollateral = await emp.getCollateral(sponsor);
   driftTotal = toBN(expectedRemainingCollateral).sub(toBN(contractCollateral.rawValue.toString()));
-  driftSponsor = toBN(expectedRemainingCollateral).sub(toBN(sponsorCollateral.rawValue.toString()));
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
   truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
@@ -1244,9 +1171,9 @@ async function runExport() {
   });
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral, expectedRemainingCollateral);
-  breakdown.credited = new CollateralBreakdown(contractCollateral, sponsorCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
+  breakdown.credited = new CollateralBreakdown(contractCollateral);
+  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** After 3 Partial Liquidations of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
