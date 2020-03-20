@@ -1,5 +1,6 @@
 const { delay } = require("./delay");
 const { Logger } = require("./Logger");
+const { LiquidationStatesEnum } = require("../common/Enums");
 
 // A thick client for getting information about an ExpiringMultiParty.
 class ExpiringMultiPartyClient {
@@ -8,6 +9,8 @@ class ExpiringMultiPartyClient {
     this.sponsorAddresses = [];
     this.positions = [];
     this.undisputedLiquidations = [];
+    this.expiredLiquidations = [];
+    this.disputedLiquidations = [];
     this.emp = new web3.eth.Contract(abi, empAddress);
     this.empAddress = empAddress;
 
@@ -32,7 +35,15 @@ class ExpiringMultiPartyClient {
   // `liquidationTime`.
   getUndisputedLiquidations = () => this.undisputedLiquidations;
 
-  // Whether the given `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
+  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
+  // Liquidators can withdraw rewards from these expired liquidations.
+  getExpiredLiquidations = () => this.expiredLiquidations;
+
+  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
+  // Liquidators can withdraw rewards from these disputed liquidations.
+  getDisputedLiquidations = () => this.disputedLiquidations;
+
+  // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
   // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
   isDisputable = (liquidation, tokenRedemptionValue) => {
     return !this._isUnderCollateralized(liquidation.numTokens, liquidation.amountCollateral, tokenRedemptionValue);
@@ -76,6 +87,15 @@ class ExpiringMultiPartyClient {
       );
   };
 
+  _isExpired = async liquidation => {
+    const currentTime = await this.emp.methods.getCurrentTime().call();
+    return Number(liquidation.liquidationTime) + this.liquidationLiveness <= currentTime;
+  };
+
+  _isLiquidationPreDispute = liquidation => {
+    return liquidation.state === LiquidationStatesEnum.PRE_DISPUTE;
+  };
+
   _update = async () => {
     this.collateralRequirement = this.web3.utils.toBN(
       (await this.emp.methods.collateralRequirement().call()).toString()
@@ -93,27 +113,44 @@ class ExpiringMultiPartyClient {
       this.sponsorAddresses.map(address => this.emp.methods.getCollateral(address).call())
     );
 
-    const nextUndisputedLiquidations = [];
-    const predisputeState = "1";
-    const currentTime = Date.now() / 1000;
+    const undisputedLiquidations = [];
+    const expiredLiquidations = [];
+    const disputedLiquidations = [];
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
-        if (
-          liquidation.state == predisputeState &&
-          Number(liquidation.liquidationTime) + this.liquidationLiveness > currentTime
-        ) {
-          nextUndisputedLiquidations.push({
-            sponsor: liquidation.sponsor,
-            id: id.toString(),
-            numTokens: liquidation.tokensOutstanding.toString(),
-            amountCollateral: liquidation.liquidatedCollateral.toString(),
-            liquidationTime: liquidation.liquidationTime
-          });
+        // Liquidations that have had all of their rewards withdrawn will still show up here but have their properties set to default values.
+        // We can skip them.
+        if (liquidation.state === LiquidationStatesEnum.UNINITIALIZED) {
+          continue;
+        }
+
+        // Construct Liquidation data to save.
+        const liquidationData = {
+          sponsor: liquidation.sponsor,
+          id: id.toString(),
+          numTokens: liquidation.tokensOutstanding.toString(),
+          amountCollateral: liquidation.liquidatedCollateral.toString(),
+          liquidationTime: liquidation.liquidationTime,
+          disputer: liquidation.disputer
+        };
+
+        // Get all undisputed liquidations.
+        if (this._isLiquidationPreDispute(liquidation)) {
+          // Determine whether liquidation has expired.
+          if (!(await this._isExpired(liquidation))) {
+            undisputedLiquidations.push(liquidationData);
+          } else {
+            expiredLiquidations.push(liquidationData);
+          }
+        } else {
+          disputedLiquidations.push(liquidationData);
         }
       }
     }
-    this.undisputedLiquidations = nextUndisputedLiquidations;
+    this.undisputedLiquidations = undisputedLiquidations;
+    this.expiredLiquidations = expiredLiquidations;
+    this.disputedLiquidations = disputedLiquidations;
 
     this.positions = this.sponsorAddresses.reduce(
       (acc, address, i) =>
@@ -132,7 +169,7 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    Logger.info({
+    Logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "client updated"
     });

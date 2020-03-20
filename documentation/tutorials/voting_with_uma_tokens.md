@@ -1,4 +1,4 @@
-# Voting Command Line Interface (CLI)
+# Voting With UMA Tokens
 
 We provide a user-friendly command line interface for voting on price requests and retrieving rewards.
 

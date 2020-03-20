@@ -1,5 +1,6 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const { LiquidationStatesEnum } = require("../../../common/Enums");
 const truffleAssert = require("truffle-assertions");
 const { toWei, hexToUtf8, toBN } = web3.utils;
 
@@ -66,7 +67,7 @@ contract("Liquidatable", function(accounts) {
   let collateralToken;
   let syntheticToken;
   let identifierWhitelist;
-  let priceTrackingIdentifier;
+  let priceFeedIdentifier;
   let mockOracle;
   let finder;
   let liquidatableParameters;
@@ -82,23 +83,14 @@ contract("Liquidatable", function(accounts) {
     liquidatedCollateral: amountOfCollateralToLiquidate
   };
 
-  // States for Liquidation to be in
-  const STATES = {
-    UNINITIALIZED: "0",
-    PRE_DISPUTE: "1",
-    PENDING_DISPUTE: "2",
-    DISPUTE_SUCCEEDED: "3",
-    DISPUTE_FAILED: "4"
-  };
-
   beforeEach(async () => {
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new({ from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    priceTrackingIdentifier = web3.utils.utf8ToHex("ETHUSD");
-    await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
+    priceFeedIdentifier = web3.utils.utf8ToHex("ETHUSD");
+    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
 
@@ -120,7 +112,7 @@ contract("Liquidatable", function(accounts) {
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
-      priceFeedIdentifier: priceTrackingIdentifier,
+      priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMAETH",
       liquidationLiveness: liquidationLiveness.toString(),
@@ -382,7 +374,7 @@ contract("Liquidatable", function(accounts) {
       });
       it("Liquidation exists and params are set properly", async () => {
         const newLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
-        assert.equal(newLiquidation.state.toString(), STATES.PRE_DISPUTE);
+        assert.equal(newLiquidation.state.toString(), LiquidationStatesEnum.PRE_DISPUTE);
         assert.equal(newLiquidation.tokensOutstanding.toString(), liquidationParams.tokensOutstanding.toString());
         assert.equal(newLiquidation.lockedCollateral.toString(), liquidationParams.lockedCollateral.toString());
         assert.equal(newLiquidation.liquidatedCollateral.toString(), liquidationParams.liquidatedCollateral.toString());
@@ -425,7 +417,7 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         assert.equal((await collateralToken.balanceOf(disputer)).toString(), "0");
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
-        assert.equal(liquidation.state.toString(), STATES.PENDING_DISPUTE);
+        assert.equal(liquidation.state.toString(), LiquidationStatesEnum.PENDING_DISPUTE);
         assert.equal(liquidation.disputer, disputer);
         assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
       });
@@ -446,7 +438,7 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
         // Oracle should have an enqueued price after calling dispute
         const pendingRequests = await mockOracle.getPendingQueries();
-        assert.equal(hexToUtf8(pendingRequests[0]["identifier"]), hexToUtf8(priceTrackingIdentifier));
+        assert.equal(hexToUtf8(pendingRequests[0]["identifier"]), hexToUtf8(priceFeedIdentifier));
         assert.equal(pendingRequests[0].time, liquidationTime);
       });
       it("Dispute pays a final fee", async () => {
@@ -490,7 +482,7 @@ contract("Liquidatable", function(accounts) {
 
         // Push to oracle.
         const liquidationTime = await liquidationContract.getCurrentTime();
-        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, settlementPrice.toString());
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, settlementPrice.toString());
 
         // Mint enough tokens to disputer for another dispute bond
         await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
@@ -504,7 +496,7 @@ contract("Liquidatable", function(accounts) {
 
         // Push to oracle.
         const liquidationTime = await liquidationContract.getCurrentTime();
-        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, settlementPrice.toString());
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, settlementPrice.toString());
 
         // Mint enough tokens to disputer for another dispute bond
         await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
@@ -531,7 +523,7 @@ contract("Liquidatable", function(accounts) {
         // timestamp for the contract price identifer. Check that the value is set correctly for the dispute object.
         const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1");
-        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, {
           from: liquidator
         });
@@ -545,13 +537,13 @@ contract("Liquidatable", function(accounts) {
 
         const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1");
-        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, {
           from: liquidator
         });
 
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
-        assert.equal(liquidation.state.toString(), STATES.DISPUTE_SUCCEEDED);
+        assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
@@ -559,7 +551,7 @@ contract("Liquidatable", function(accounts) {
 
         const liquidationTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1.3");
-        await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         const withdrawLiquidationResult = await liquidationContract.withdrawLiquidation(
           liquidationParams.uuid,
           sponsor,
@@ -578,7 +570,7 @@ contract("Liquidatable", function(accounts) {
 
         const disputeTime = await liquidationContract.getCurrentTime();
         const disputePrice = toWei("1");
-        await mockOracle.pushPrice(priceTrackingIdentifier, disputeTime, disputePrice);
+        await mockOracle.pushPrice(priceFeedIdentifier, disputeTime, disputePrice);
 
         const withdrawLiquidationResult = await liquidationContract.withdrawLiquidation(
           liquidationParams.uuid,
@@ -604,7 +596,7 @@ contract("Liquidatable", function(accounts) {
           return (
             ev.caller == disputer &&
             ev.withdrawalAmount.toString() == expectedPayout.toString() &&
-            ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
+            ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED
           );
         });
       });
@@ -737,7 +729,7 @@ contract("Liquidatable", function(accounts) {
           // Settle the dispute as SUCCESSFUL. for this the liquidation needs to be unsuccessful.
           const liquidationTime = await liquidationContract.getCurrentTime();
           const disputePrice = toWei("1");
-          await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
+          await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         });
         it("Sponsor calls", async () => {
           await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: sponsor });
@@ -812,7 +804,7 @@ contract("Liquidatable", function(accounts) {
             return (
               ev.caller == sponsor &&
               ev.withdrawalAmount.toString() == expectedPayment.toString() &&
-              ev.liquidationStatus.toString() == STATES.DISPUTE_SUCCEEDED
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED
             );
           });
         });
@@ -880,7 +872,7 @@ contract("Liquidatable", function(accounts) {
           // Settle the dispute as FAILED. To achieve this the liquidation must be correct.
           const liquidationTime = await liquidationContract.getCurrentTime();
           const disputePrice = toWei("1.3");
-          await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, disputePrice);
+          await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         });
         it("Sponsor calls", async () => {
           assert(
@@ -930,15 +922,12 @@ contract("Liquidatable", function(accounts) {
 
           const expectedPayment = amountOfCollateral.add(disputeBond);
           truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
-            console.log("EVENT");
-            console.log(ev.withdrawalAmount.toString());
-            console.log(ev.liquidationStatus.toString());
             return (
               ev.caller == liquidator &&
               ev.withdrawalAmount.toString() == expectedPayment.toString() &&
               // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
               // Once a dispute fails and the liquidator withdraws the struct is removed from state.
-              ev.liquidationStatus.toString() == STATES.UNINITIALIZED
+              ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
             );
           });
         });
@@ -1005,7 +994,7 @@ contract("Liquidatable", function(accounts) {
       await edgeLiquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
       // Settle the dispute as SUCCESSFUL
       const liquidationTime = await liquidationContract.getCurrentTime();
-      await mockOracle.pushPrice(priceTrackingIdentifier, liquidationTime, settlementPrice.toString());
+      await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, settlementPrice.toString());
       await edgeLiquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: disputer });
       // Expected Disputer payment => disputer reward + dispute bond
       const expectedPaymentDisputer = disputerDisputeReward.add(edgeDisputeBond);
@@ -1020,6 +1009,7 @@ contract("Liquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
   });
+
   describe("Emergency shutdown", () => {
     it("Liquidations are disabled if emergency shutdown", async () => {
       // Create position.
@@ -1049,6 +1039,62 @@ contract("Liquidatable", function(accounts) {
           )
         )
       );
+    });
+  });
+
+  describe("Underlying position expires during a pending liquidation", () => {
+    beforeEach(async () => {
+      // Fast forward time to right before expiry so that you can still create a liquidation.
+      let positionExpiry = await liquidationContract.expirationTimestamp();
+      await liquidationContract.setCurrentTime(
+        toBN(positionExpiry)
+          .sub(toBN(1))
+          .toString()
+      );
+      // Create a new position.
+      await liquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Transfer synthetic tokens to a liquidator
+      await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      // Create a Liquidation
+      liquidationTime = await liquidationContract.getCurrentTime();
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+      // Fast forward time to expiry.
+      await liquidationContract.setCurrentTime(toBN(positionExpiry).toString());
+    });
+    it("Can expire the underlying position", async () => {
+      const expireResult = await liquidationContract.expire({ from: rando });
+      truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
+        return ev.caller == rando;
+      });
+    });
+    it("Can dispute the liquidation", async () => {
+      await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+      const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
+      assert.equal(liquidation.state.toString(), LiquidationStatesEnum.PENDING_DISPUTE);
+      assert.equal(liquidation.disputer, disputer);
+      assert.equal(liquidation.liquidationTime.toString(), liquidationTime.toString());
+    });
+    it("Can withdraw liquidation rewards", async () => {
+      // Dispute fails, liquidator withdraws, liquidation is deleted
+      await liquidationContract.dispute(liquidationParams.uuid, sponsor, { from: disputer });
+      const disputePrice = toWei("1.3");
+      await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
+      await liquidationContract.withdrawLiquidation(liquidationParams.uuid, sponsor, { from: liquidator });
+      // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
+      const expectedPayment = amountOfCollateral.add(disputeBond);
+      assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
+      assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
+      const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.uuid);
+      assert.equal(deletedLiquidation.liquidator, zeroAddress);
     });
   });
 });

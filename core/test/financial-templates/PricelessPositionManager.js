@@ -1,6 +1,7 @@
 // Libraries and helpers
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
+const { PositionStatesEnum } = require("../../../common/Enums");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
@@ -38,14 +39,7 @@ contract("PricelessPositionManager", function(accounts) {
   const syntheticSymbol = "UMATEST";
   const withdrawalLiveness = 1000;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
-  const priceTrackingIdentifier = web3.utils.utf8ToHex("UMATEST");
-
-  // Contract state
-  const STATES = {
-    OPEN: "0",
-    EXPIRED_PRICE_REQUESTED: "1",
-    EXPIRED_PRICE_RECEIVED: "2"
-  };
+  const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
 
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
@@ -78,7 +72,7 @@ contract("PricelessPositionManager", function(accounts) {
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, {
+    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
 
@@ -100,7 +94,7 @@ contract("PricelessPositionManager", function(accounts) {
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
       Finder.address, // _finderAddress
-      priceTrackingIdentifier, // _priceFeedIdentifier
+      priceFeedIdentifier, // _priceFeedIdentifier
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
       TokenFactory.address, // _tokenFactoryAddress
@@ -115,7 +109,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await pricelessPositionManager.withdrawalLiveness(), withdrawalLiveness);
     assert.equal(await pricelessPositionManager.collateralCurrency(), collateral.address);
     assert.equal(await pricelessPositionManager.finder(), finder.address);
-    assert.equal(hexToUtf8(await pricelessPositionManager.priceIdentifer()), hexToUtf8(priceTrackingIdentifier));
+    assert.equal(hexToUtf8(await pricelessPositionManager.priceIdentifer()), hexToUtf8(priceFeedIdentifier));
 
     // Synthetic token
     assert.equal(await tokenCurrency.name(), syntheticName);
@@ -374,11 +368,27 @@ contract("PricelessPositionManager", function(accounts) {
     // Can't withdraw below global ratio.
     assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
 
-    // For the "other" pricelessPositionManager:
+    // The "other" position has excess collateral, but that collateral can NOT be used to mint new tokens.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.create({ rawValue: toWei("0.0001") }, { rawValue: toWei("1") }, { from: other })
+      )
+    );
+
+    // For the "other" Position:
     // global collateralization ratio = (150 + 15 + 25) / (100 + 10 + 10) = 1.58333
     // To maintain 10 tokens, need at least 15.833 collateral => can withdraw from 25 down to 16 but not to 15.
     assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("10") }, { from: other })));
     await pricelessPositionManager.withdraw({ rawValue: toWei("9") }, { from: other });
+
+    // GCR = (15 + 16) / (10 + 10) = 1.55.
+    // `sponsor` has a CR of 1.5.
+    // `other` has a CR of 1.6.
+    // `sponsor` can create new tokens that are individually above 1.55, without needing to bring their whole
+    // position up to 1.55. `other` can create new tokens below their current CR as long as the new tokens are above
+    // GCR.
+    await pricelessPositionManager.create({ rawValue: toWei("1.55") }, { rawValue: toWei("1") }, { from: sponsor });
+    await pricelessPositionManager.create({ rawValue: toWei("1.55") }, { rawValue: toWei("1") }, { from: other });
   });
 
   it("Transfer", async function() {
@@ -482,7 +492,7 @@ contract("PricelessPositionManager", function(accounts) {
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
     const redemptionPrice = 1.2;
     const redemptionPriceWei = toWei(redemptionPrice.toString());
-    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), redemptionPriceWei);
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPriceWei);
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
@@ -715,7 +725,7 @@ contract("PricelessPositionManager", function(accounts) {
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
     const redemptionPrice = 1.2;
     const redemptionPriceWei = toWei(redemptionPrice.toString());
-    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), redemptionPriceWei);
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPriceWei);
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 25 tokens settled at a price of 1.2 should yield 30 units of underling (or 60 USD as underlying is Dai).
@@ -837,7 +847,7 @@ contract("PricelessPositionManager", function(accounts) {
     // feed. With 20 units of outstanding tokens this results in a token redemption value of: TRV = 20 * 1.2 = 24 USD.
     const redemptionPrice = 1.2;
     const redemptionPriceWei = toWei(redemptionPrice.toString());
-    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime.toNumber(), redemptionPriceWei);
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPriceWei);
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 10 tokens settled at a price of 1.2 should yield 12 units of collateral.
@@ -959,7 +969,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 200 units of outstanding tokens this results in a token redemption value of: TRV = 200 * 1.2 = 240 USD.
-    await mockOracle.pushPrice(priceTrackingIdentifier, expirationTime, toWei("1.2"));
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime, toWei("1.2"));
 
     // Token holder should receive 120 collateral tokens for their 100 synthetic tokens.
     let initialCollateral = await collateral.balanceOf(tokenHolder);
@@ -983,8 +993,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("60"));
 
     // Push a different price to the new oracle to ensure the contract still uses the old price.
-    await newMockOracle.requestPrice(priceTrackingIdentifier, expirationTime);
-    await newMockOracle.pushPrice(priceTrackingIdentifier, expirationTime, toWei("0.8"));
+    await newMockOracle.requestPrice(priceFeedIdentifier, expirationTime);
+    await newMockOracle.pushPrice(priceFeedIdentifier, expirationTime, toWei("0.8"));
 
     // Second token holder should receive the same payout as the first despite the oracle price being changed.
     initialCollateral = await collateral.balanceOf(other);
@@ -1024,7 +1034,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(eventResult[0].args.shutdownTimestamp.toString(), shutdownTimestamp.toString());
 
     // Check contract state change correctly to requested oracle price and the contract expiration has updated.
-    assert.equal(await pricelessPositionManager.contractState(), STATES.EXPIRED_PRICE_REQUESTED);
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED);
     assert.equal((await pricelessPositionManager.expirationTimestamp()).toString(), shutdownTimestamp.toString());
 
     // Emergency shutdown should not be able to be called a second time.
@@ -1038,7 +1048,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
     // Say they resolve to a price of 1.1 USD per synthetic token.
-    await mockOracle.pushPrice(priceTrackingIdentifier, shutdownTimestamp, toWei("1.1"));
+    await mockOracle.pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"));
 
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
     // From the token holder's perspective, they are entitled to the value of their tokens, notated in the underlying.
