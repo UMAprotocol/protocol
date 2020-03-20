@@ -54,7 +54,7 @@ async function createTestEnvironment() {
   // Initial constant values
   const syntheticName = "UMA test Token";
   const syntheticSymbol = "UMATEST";
-  const withdrawalLiveness = 3600;
+  const withdrawalLiveness = 0;
   const liquidationLiveness = 3600;
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
   const priceTrackingIdentifier = utf8ToHex("UMATEST");
@@ -322,6 +322,7 @@ async function runExport() {
    */
   // 0) Deposit more collateral into the contract so that there is enough collateral to charge fees correctly
   // without precision loss
+  console.log(`** Depositing another ${fromWei(testConfig.expectedFeesCollected)} **`)
   await emp.deposit({ rawValue: testConfig.expectedFeesCollected }, { from: sponsor });
   // 1) Set fee rate per second.
   await store.setFixedOracleFeePerSecond(
@@ -528,7 +529,7 @@ async function runExport() {
    * @notice SETUP THE TEST
    */
   // 1) Create position.
-  await collateral.approve(emp.address, testConfig.sponsorCollateralAmount, { from: sponsor });
+  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create({ rawValue: testConfig.sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
   // 2) Set fee rate per second.
   await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
@@ -537,8 +538,6 @@ async function runExport() {
   await emp.setCurrentTime(startTime.addn(1));
   // 4) Pay the fees.
   await emp.payFees({ from: sponsor });
-  // 5) Approve contract to spend total amount of deposits.
-  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
 
   /**
    * @notice PRE-TEST INVARIANTS
@@ -665,7 +664,7 @@ async function runExport() {
    * @notice SETUP THE TEST
    */
   // 1) Create position.
-  await collateral.approve(emp.address, testConfig.sponsorCollateralAmount, { from: sponsor });
+  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create(
     { rawValue: testConfig.sponsorCollateralAmount },
     { rawValue: testConfig.amountToCreate },
@@ -678,8 +677,6 @@ async function runExport() {
   await emp.setCurrentTime(startTime.addn(1));
   // 4) Pay the fees.
   await emp.payFees();
-  // 5) Approve contract to spend total amount of deposits.
-  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
 
   /**
    * @notice PRE-TEST INVARIANTS
@@ -814,16 +811,14 @@ async function runExport() {
     expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
     amountToWithdraw: toWei("0.01")
   };
-
-
   /**
    * @notice SETUP THE TEST
    */
   // 1) Create the position.
-  await collateral.approve(emp.address, testConfig.sponsorCollateralAmount, { from: sponsor });
+  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create({ rawValue: testConfig.sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });  
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
@@ -841,8 +836,7 @@ async function runExport() {
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
   startingStoreCollateral = await collateral.balanceOf(store.address);
   startingSponsorCollateral = await emp.getCollateral(sponsor);
-  expectedSponsorCollateral =
-    testConfig.expectedFeeMultiplier * parseFloat(testConfig.sponsorCollateralAmount.toString());
+  expectedSponsorCollateral = testConfig.expectedFeeMultiplier * parseFloat(testConfig.sponsorCollateralAmount.toString());
   startingRawContractCollateral = await emp.rawTotalPositionCollateral();
   startingRawSponsorCollateral = (await emp.positions(sponsor)).rawCollateral;
 
@@ -859,6 +853,7 @@ async function runExport() {
   breakdown.expected = new CollateralBreakdown(startingContractCollateral, expectedSponsorCollateral);
   breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
   breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
   console.group("** Pre-Withdrawal: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
@@ -869,9 +864,15 @@ async function runExport() {
   // Note: Must call `requestWithdrawal()` instead of `withdraw()` because we are the only position. I didn't create another
   // less-collateralized position because it would modify the total collateral and therefore the fee multiplier.
   await emp.requestWithdrawal({ rawValue: testConfig.amountToWithdraw }, { from: sponsor });
-  // Move time forward.
+  // Move time forward. Need to set fees to 0 so as not to change the fee multiplier.
   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
-  await emp.setCurrentTime(startTime.addn(3601));
+  startTime = await emp.getCurrentTime();
+  // Advance time to 1 second past the withdrawal liveness.
+  await emp.setCurrentTime(startTime.addn(1));
+  // Execute withdrawal request.
+  await emp.withdrawPassedRequest({ from: sponsor });
+
+  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
   sponsorCollateral = await emp.getCollateral(sponsor);
@@ -887,6 +888,7 @@ async function runExport() {
   breakdown.credited = new CollateralBreakdown(adjustedCollateral, sponsorCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
   breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
   console.group(
     `** After 1 Withdrawal of ${fromWei(testConfig.amountToWithdraw)} collateral (fee-multiplier = ${testConfig.expectedFeeMultiplier}): **`
   );
@@ -950,25 +952,17 @@ async function runExport() {
    */
   testConfig = {
     tokensOutstanding: toWei("9"),
-    sponsorCollateralAmount: toWei("1000"),
-    otherCollateralAmount: toWei("0.1"),
+    sponsorCollateralAmount: toWei("1100"),
     feePerSecond: toWei("0.1"),
     expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
-    amountToRedeem: toWei("0.01") // Invariant: (runs * amountToWithdraw) >= (sponsorCollateralAmount - otherCollateralAmount), otherwise GCR check on withdraw() will fail
+    amountToRedeem: toWei("0.01") 
   };
 
   /**
    * @notice SETUP THE TEST
    */
-  // 1) Create two positions, one with a very low collateral ratio so that we can withdraw from our test position.
-  // Note: we must create less collateralized position first.
-  await collateral.approve(emp.address, testConfig.sponsorCollateralAmount, { from: sponsor });
-  await collateral.approve(emp.address, testConfig.otherCollateralAmount, { from: other });
-  await emp.create(
-    { rawValue: testConfig.otherCollateralAmount },
-    { rawValue: testConfig.tokensOutstanding },
-    { from: other }
-  );
+  // 1) Create position.
+  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create(
     { rawValue: testConfig.sponsorCollateralAmount },
     { rawValue: testConfig.tokensOutstanding },
@@ -982,7 +976,7 @@ async function runExport() {
   // 4) Pay the fees.
   await emp.payFees();
   // 5) Increase approvals to cover all redemption.
-  await synthetic.approve(emp.address, testConfig.tokensOutstanding, { from: sponsor });
+  await synthetic.approve(emp.address, toWei("999999999"), { from: sponsor });
 
   /**
    * @notice PRE-TEST INVARIANTS
@@ -1018,6 +1012,7 @@ async function runExport() {
   breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral, startingSponsorCollateral);
   breakdown.raw = new CollateralBreakdown(startingRawContractCollateral, startingRawSponsorCollateral);
   breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding, "N/A");
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
   console.group("** Pre-Redemption: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
@@ -1025,6 +1020,7 @@ async function runExport() {
   /**
    * @notice RUN THE TEST ONCE
    */
+  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
   await emp.redeem({ rawValue: testConfig.amountToRedeem }, { from: sponsor });
   contractCollateral = await collateral.balanceOf(emp.address);
@@ -1046,6 +1042,7 @@ async function runExport() {
   breakdown.raw = new CollateralBreakdown(rawContractCollateral, rawSponsorCollateral);
   breakdown.drift = new CollateralBreakdown(driftTotal, driftSponsor);
   breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding, "N/A");
+  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
   console.group(
     `** After 1 Redemption of ${fromWei(testConfig.amountToRedeem)} collateral (fee-multiplier = ${testConfig.expectedFeeMultiplier}): **`
   );
@@ -1121,14 +1118,14 @@ async function runExport() {
    * @notice SETUP THE TEST
    */
   // 1) Create position.
-  await collateral.approve(emp.address, testConfig.sponsorCollateralAmount, { from: sponsor });
+  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create(
     { rawValue: testConfig.sponsorCollateralAmount },
     { rawValue: testConfig.sponsorSyntheticAmount },
     { from: sponsor }
   );
   // 2) Approve contract to transfer full synthetic token balance.
-  await synthetic.approve(emp.address, testConfig.sponsorSyntheticAmount, { from: sponsor });
+  await synthetic.approve(emp.address, toWei("999999999"), { from: sponsor });
 
   /**
    * @notice PRE-TEST INVARIANTS
