@@ -168,6 +168,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         numTokens: toWei("45"),
         amountCollateral: toWei("100"),
         liquidationTime: (await emp.getCurrentTime()).toString(),
+        liquidator: sponsor1,
         disputer: zeroAddress
       }
     ];
@@ -289,6 +290,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
           amountCollateral: toWei("150"),
+          liquidator: liquidator,
           disputer: zeroAddress
         }
       ],
@@ -312,6 +314,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
           amountCollateral: toWei("150"),
+          liquidator: liquidator,
           disputer: zeroAddress
         }
       ],
@@ -365,6 +368,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           liquidationTime: liquidationTime,
           numTokens: toWei("100"),
           amountCollateral: toWei("150"),
+          liquidator: liquidator,
           disputer: sponsor1
         }
       ], 
