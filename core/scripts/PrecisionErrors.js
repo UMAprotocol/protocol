@@ -939,18 +939,18 @@ async function runExport() {
   // - Then, we call _removeCollateral(collateral) while simulataneously burning numTokens from the user.
   // - Therefore, there is a possibility that collateral is 1e-18 less than (numTokens / tokensOutstanding) without precision loss.
   // Example: We redeem 1 synthetic from the contract for a redeem.
-  // - cumulativeFeeMultiplier = 0.3
-  // - rawCollateral = 0.3
-  // - tokensOutstanding = 0.3
-  // - amountToRedeem = 0.1
-  // - fractionToRedeem = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
-  // - collateralToRedeem = fractionToRedeem * (rawCollateral * cumulativeFeeMultiplier) = (0.3...33 * 0.3) = 0.9...99
-  // - _removeCollateral adjusts rawCollateral incorrectly: (rawCollateral = rawCollateral - (collateralToRedeem / cumulativeFeeMultiplier))
-  // - with_precision_loss(rawCollateral - (0.9...99 / 0.3)) != no_precision_loss(rawCollateral - (0.9...99 / 0.3))
-  // - Moreover, (fractionToRedeem) != (numTokens / tokensOutstanding), therefore the following precision loss occurs:
-  // - numTokens amount of synthetic are burned from user, burning (1/3) of the token supply, which is 0.1
-  // - collateralToRedeem amount of collateral is transferred to user, returning (0.3...33 * 0.3 = 0.9...99) of the collateral
-  // - 0.9...99 != 0.1
+  // - cumulativeFeeMultiplier = 0
+  // - rawCollateral = 1
+  // - tokensOutstanding = 10
+  // - amountToRedeem = 1e-18
+  // - fractionToRedeem = (1e-18 / 10 = 1e-19 repeating), which gets floored to 0
+  // - collateralToRedeem = fractionToRedeem * (rawCollateral * cumulativeFeeMultiplier) = 0 * 1 * 1 = 0
+  // - _removeCollateral adjusts rawCollateral correctly: (rawCollateral = rawCollateral - (collateralToRedeem / cumulativeFeeMultiplier))
+  // - with_precision_loss(rawCollateral - (0 / 1)) == no_precision_loss(rawCollateral - (0 / 1))
+  // - However, (fractionToRedeem) != (numTokens / tokensOutstanding), therefore the following precision loss occurs:
+  // - numTokens amount of synthetic are burned from user, burning 1e-18 of the token supply
+  // - collateralToRedeem amount of collateral is transferred to user, returning 0 of the collateral
+  // - 0 != 1e-18
 
   console.group("Precision loss due to redeem()");
 
@@ -969,11 +969,11 @@ async function runExport() {
    * @notice TEST PARAMETERS
    */
   testConfig = {
-    tokensOutstanding: toWei("0.3"),
+    tokensOutstanding: toWei("10"),
     sponsorCollateralAmount: toWei("1"),
-    feePerSecond: toWei("0.7"),
-    expectedFeeMultiplier: toWei("0.3"), // Division by this produces precision loss, tune this.
-    amountToRedeem: toWei("0.1")
+    feePerSecond: toWei("0"),
+    expectedFeeMultiplier: toWei("1"), // Division by this produces precision loss, tune this.
+    amountToRedeem: "1"
   };
 
   /**
@@ -1050,24 +1050,9 @@ async function runExport() {
   /**
    * @notice QUANTIFY ERROR
    */
-  // Error 1: rawCollateral is greater than the expected 0.6...66 repeating
-  assert.equal(
-    toWei("0.66666666666666666").toString(),
-    toBN(rawContractCollateral.toString())
-      .sub(toBN(toWei("0." + "0".repeat(16) + "1")))
-      .toString()
-  );
-  // Error 2: numTokens/tokensOutstanding is greater than collateralRedeemed/positionCollateral
-  // (1/3) > (0.9...9/3)
-  // Note: There is 0.3 collateral at the time of redemption, after charging 70% fees.
-  assert.equal(
-    toBN(testConfig.amountToRedeem.toString())
-      .sub(toBN(toWei("0." + "0".repeat(17) + "1")))
-      .toString(),
-    toBN(toWei("0.3"))
-      .sub(toBN(contractCollateral.toString()))
-      .toString()
-  );
+  // Error 1: 1e-18 numTokens were returned to user but 0 tokens removed from collateral in contract
+  assert.equal(tokensOutstanding.toString(), toWei("9.999999999999999999").toString());
+  assert.equal(contractCollateral.toString(), toWei("1").toString());
   /**
    * @notice POST-TEST INVARIANTS
    */
