@@ -136,7 +136,7 @@ class Liquidator {
     for (const liquidation of potentialWithdrawableLiquidations) {
       Logger.debug({
         at: "liquidator",
-        message: "attempting to withdraw rewards from liquidations",
+        message: "attempting to withdraw reward from liquidation",
         address: liquidation.sponsor,
         id: liquidation.id
       });
@@ -159,7 +159,7 @@ class Liquidator {
 
       Logger.info({
         at: "liquidator",
-        message: `Will attempt to withdraw🤑`,
+        message: "Will withdraw liquidation🤑",
         address: liquidation.sponsor,
         id: liquidation.id,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue)
