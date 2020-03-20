@@ -202,7 +202,7 @@ async function runExport() {
   // Precision loss in the fee multiplier compounds over time, as the fee multiplier is applied to all future fees charged.
   // This precision loss affects a percentage, not a flat value, So as the value in the contract scales up,
   // the precision loss, in real dollar terms, scales up too.
-  // 
+  //
   // Specifically, for a single transaction, the cumulative fee multiplier can have a maximum precision loss of 1e-18.
   // However, the precision loss as a percentage of the previous fee multiplier increases over time, since
   // the fee multiplier can only decrease over time.
@@ -298,7 +298,11 @@ async function runExport() {
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   breakdown.drift = new CollateralBreakdown(driftTotal);
-  console.group(`** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(actualFeesCollected.toString())} total fees collected) **`);
+  console.group(
+    `** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(
+      actualFeesCollected.toString()
+    )} total fees collected) **`
+  );
   console.table(breakdown);
   console.groupEnd();
 
@@ -307,7 +311,7 @@ async function runExport() {
    */
   // 0) Deposit more collateral into the contract so that there is enough collateral to charge fees correctly
   // without precision loss
-  console.log(`** Depositing another ${fromWei(testConfig.expectedFeesCollected)} **`)
+  console.log(`** Depositing another ${fromWei(testConfig.expectedFeesCollected)} **`);
   await emp.deposit({ rawValue: testConfig.expectedFeesCollected }, { from: sponsor });
   // 1) Set fee rate per second.
   await store.setFixedOracleFeePerSecond(
@@ -338,7 +342,11 @@ async function runExport() {
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   breakdown.drift = new CollateralBreakdown(driftTotal);
-  console.group(`** Collateral After Charging ${testConfig.modifiedFeeRatePerSecond} in Fees (${fromWei(actualFeesCollected.toString())} total fees collected) **`);
+  console.group(
+    `** Collateral After Charging ${testConfig.modifiedFeeRatePerSecond} in Fees (${fromWei(
+      actualFeesCollected.toString()
+    )} total fees collected) **`
+  );
   console.table(breakdown);
   console.groupEnd();
 
@@ -347,7 +355,7 @@ async function runExport() {
    */
   // Without precision loss, the cumulative fee multiplier should be 9.9e-18 but it gets floored to 9e-18.
   // Therefore, the credited collateral is (0.9e-18 / 9.9e-18) ~= 9% less than it should be.
-  assert.equal(fromWei(driftTotal), "0.09")
+  assert.equal(fromWei(driftTotal), "0.09");
 
   /**
    * @notice POST-TEST CLEANUP
@@ -448,7 +456,11 @@ async function runExport() {
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   breakdown.drift = new CollateralBreakdown(driftTotal);
-  console.group(`** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(actualFeesCollected.toString())} total fees collected) **`);
+  console.group(
+    `** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(
+      actualFeesCollected.toString()
+    )} total fees collected) **`
+  );
   console.table(breakdown);
   console.groupEnd();
 
@@ -457,7 +469,7 @@ async function runExport() {
    */
   // Without precision loss, the cumulative fee multiplier should be 0.6...66 repeating but it gets floored to 0.6...66.
   // Therefore, the credited collateral is (1e-18 / 6e-18) ~= 16.7% less than it should be.
-  assert.equal(fromWei(driftTotal), '0.000000000000000001')
+  assert.equal(fromWei(driftTotal), "0.000000000000000001");
 
   /**
    * @notice POST-TEST CLEANUP
@@ -566,9 +578,7 @@ async function runExport() {
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group(
-    `** After 1 Deposit of ${fromWei(testConfig.amountToDeposit)} collateral: **`
-  );
+  console.group(`** After 1 Deposit of ${fromWei(testConfig.amountToDeposit)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
@@ -587,9 +597,9 @@ async function runExport() {
   /**
    * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
    */
-  // Without precision loss, `_addCollateral()` should add (0.1 / 0.9 = 0.1...11 repeating) raw collateral to the contract 
+  // Without precision loss, `_addCollateral()` should add (0.1 / 0.9 = 0.1...11 repeating) raw collateral to the contract
   // but this gets floored. Therefore, the credited collateral is (1e-18 / [0.09+0.1]) ~= 5.3e-18% less than it should be.
-  assert.equal(fromWei(driftTotal), "0.000000000000000001")
+  assert.equal(fromWei(driftTotal), "0.000000000000000001");
 
   /**
    * @notice POST-TEST CLEANUP
@@ -699,18 +709,16 @@ async function runExport() {
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group(
-    `** After 1 Create with ${fromWei(testConfig.amountToDeposit)} collateral: **`
-  );
+  console.group(`** After 1 Create with ${fromWei(testConfig.amountToDeposit)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
   /**
    * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
    */
-  // Without precision loss, `_addCollateral()` should add (0.1 / 0.9 = 0.1...11 repeating) raw collateral to the contract 
+  // Without precision loss, `_addCollateral()` should add (0.1 / 0.9 = 0.1...11 repeating) raw collateral to the contract
   // but this gets floored. Therefore, the credited collateral is (1e-18 / [0.09+0.1]) ~= 5.3e-18% less than it should be.
-  assert.equal(fromWei(driftTotal), "0.000000000000000001")
+  assert.equal(fromWei(driftTotal), "0.000000000000000001");
 
   /**
    * @notice POST-TEST INVARIANTS
@@ -781,7 +789,7 @@ async function runExport() {
   await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create({ rawValue: testConfig.sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });  
+  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
@@ -840,9 +848,7 @@ async function runExport() {
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group(
-    `** After 1 Withdrawal of ${fromWei(testConfig.amountToWithdraw)} collateral: **`
-  );
+  console.group(`** After 1 Withdrawal of ${fromWei(testConfig.amountToWithdraw)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
@@ -906,7 +912,7 @@ async function runExport() {
     sponsorCollateralAmount: toWei("1100"),
     feePerSecond: toWei("0.1"),
     expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
-    amountToRedeem: toWei("0.01") 
+    amountToRedeem: toWei("0.01")
   };
 
   /**
@@ -979,9 +985,7 @@ async function runExport() {
   breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group(
-    `** After 1 Redemption of ${fromWei(testConfig.amountToRedeem)} collateral: **`
-  );
+  console.group(`** After 1 Redemption of ${fromWei(testConfig.amountToRedeem)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
