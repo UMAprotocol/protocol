@@ -490,6 +490,28 @@ async function runExport() {
    * START DEPOSIT()
    *
    *****************************************************************************/
+  // Overview:
+  // - Deposits can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
+  // - Deposits transfer user collateral to the contract and simultaneously call the internal method _addCollateral, which can cause the "raw"
+  //   collateral amount (which accounts for fees) to reflect less collateral added to the contract than the user transferred.
+  // End result: 
+  // - "raw" collateral could be 1 wei lower than it should be.
+  // - Adjusted collateral (`getCollateral()`, `totalPositionCollateral()`) has 1e-18 of precision loss.
+  // Explanation:
+  // - In order to induce precision loss on deposits, we want to indirectly set the "cumulativeFeeMultiplier"
+  //   to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
+  // - deposit(collateral) calls the internal method _addCollateral(collateral).
+  // - _addCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
+  // - adjustedCollateral is added to rawCollateral.
+  // - The division has the potential for precision loss, makes adjustedCollateral lose 1e-18 of precision.
+  // - rawCollateral is lower by 1e-18
+  // - Adjusted collateral (rawCollateral * cumulativeFeeMultiplier) is 1e-18 lower because the multiplication also "floors" rawCollateral's "lost" error.
+  // Example: We send 0.1 collateral to the contract for a deposit.
+  // - cumulativeFeeMultiplier = 0.3
+  // - amountToDeposit = 0.1
+  // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
+  // - rawCollateral += adjustedCollateral
+  // - collateral = (rawCollateral * cumulativeFeeMultiplier)
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -503,14 +525,6 @@ async function runExport() {
   contractDeployer = experimentEnv.contractDeployer;
 
   console.group("Precision loss due to deposit()");
-  // In order to induce precision loss on deposits, we want to indirectly set the "cumulativeFeeMultiplier"
-  // to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
-  // To better understand this, we need to examine how the deposit() method is implemented:
-  // - deposit(collateral) calls the internal method _addCollateral(collateral), which adjusts the position's collateral while taking fees into account.
-  // - _addCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
-  // - adjustedCollateral is added to rawCollateral.
-  // - Therefore, this division has the potential for precision loss, which could cause the resultant rawCollateral in the position to be lower than expected.
-  // - In other words, the deposit() will have added less collateral to the position than the caller actually transferred.
 
   /**
    * @notice TEST PARAMETERS
@@ -751,15 +765,30 @@ async function runExport() {
    * START WITHDRAW()
    *
    *****************************************************************************/
-  console.group("Precision loss due to withdraw()");
-  // In order to induce precision loss on withdrawals, we will follow a similar strategy to deposit().
-  // To better understand this, we need to examine how the withdraw() method is implemented:
-  // - withdraw(collateral) calls the internal method _removeCollateral(collateral), which adjusts the position's collateral while taking fees into account.
+  // Overview:
+  // - Withdraws can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
+  // - Withdraws transfer collateral from the contract to the user and simultaneously call the internal method _removeCollateral, which can cause the "raw"
+  //   collateral amount (which accounts for fees) to reflect less collateral withdrawn from the contract than transferred to the user.
+  // End result: 
+  // - "raw" collateral could be 1 wei higher than it should be.
+  // - Adjusted collateral (`getCollateral()`, `totalPositionCollateral()`) has no precision loss.
+  // Explanation:
+  // - In order to induce precision loss on withdraws, we want to indirectly set the "cumulativeFeeMultiplier"
+  //   to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
+  // - withdraw(collateral) calls the internal method _removeCollateral(collateral).
   // - _removeCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
-  // - This division has the potential for precision loss, which could cause the resultant rawCollateral in the position to be higher than expected.
-  // - Note: here is the difference between deposit() and withdraw(): withdraw subtracts the floor'd quotient from rawCollateral so rawCollateral can be higher than expected
-  // - In other words, the withdraw() will have subtracted less collateral from the position than the caller actually receives in the withdraw.
-  // - We should expect to see negative "drift", because the adjusted collateral in contract will be higher than expected.
+  // - adjustedCollateral is removed from rawCollateral.
+  // - The division has the potential for precision loss, makes adjustedCollateral lose 1e-18 of precision.
+  // - rawCollateral is higher by 1e-18.
+  // - Adjusted collateral (rawCollateral * cumulativeFeeMultiplier) is correct because the multiplication "floors away" rawCollateral's "gained" error.
+  // Example: We withdraw 0.1 collateral from the contract for a withdraw.
+  // - cumulativeFeeMultiplier = 0.3
+  // - amountToWithdraw = 0.1
+  // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
+  // - rawCollateral -= adjustedCollateral
+  // - collateral = (rawCollateral * cumulativeFeeMultiplier)
+
+  console.group("Precision loss due to withdraw()");
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -777,10 +806,10 @@ async function runExport() {
    * @notice TEST PARAMETERS
    */
   testConfig = {
-    sponsorCollateralAmount: toWei("0.1"),
+    sponsorCollateralAmount: toWei("1"),
     feePerSecond: toWei("0.7"),
     expectedFeeMultiplier: 0.3, // Division by this produces precision loss, tune this.
-    amountToWithdraw: "1"
+    amountToWithdraw: toWei("0.1")
   };
   /**
    * @notice SETUP THE TEST
@@ -853,6 +882,11 @@ async function runExport() {
   console.groupEnd();
 
   /**
+   * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
+   */
+  assert.equal(fromWei(driftTotal), "0");
+
+  /**
    * @notice POST-TEST INVARIANTS
    */
   endingStoreCollateral = await collateral.balanceOf(store.address);
@@ -876,6 +910,29 @@ async function runExport() {
    * START REDEEM()
    *
    *****************************************************************************/
+  // Overview:
+  // - Withdraws can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
+  // - Withdraws transfer collateral from the contract to the user and simultaneously call the internal method _removeCollateral, which can cause the "raw"
+  //   collateral amount (which accounts for fees) to reflect less collateral withdrawn from the contract than transferred to the user.
+  // End result: 
+  // - "raw" collateral could be 1 wei higher than it should be.
+  // - Adjusted collateral (`getCollateral()`, `totalPositionCollateral()`) has no precision loss.
+  // Explanation:
+  // - In order to induce precision loss on withdraws, we want to indirectly set the "cumulativeFeeMultiplier"
+  //   to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
+  // - withdraw(collateral) calls the internal method _removeCollateral(collateral).
+  // - _removeCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
+  // - adjustedCollateral is removed from rawCollateral.
+  // - The division has the potential for precision loss, makes adjustedCollateral lose 1e-18 of precision.
+  // - rawCollateral is higher by 1e-18.
+  // - Adjusted collateral (rawCollateral * cumulativeFeeMultiplier) is correct because the multiplication "floors away" rawCollateral's "gained" error.
+  // Example: We withdraw 0.1 collateral from the contract for a withdraw.
+  // - cumulativeFeeMultiplier = 0.3
+  // - amountToWithdraw = 0.1
+  // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
+  // - rawCollateral -= adjustedCollateral
+  // - collateral = (rawCollateral * cumulativeFeeMultiplier)
+
   console.group("Precision loss due to redeem()");
   // Redeem() is a bit more complex because the amount of collateral released from the contract
   // is determined by the proportion of (synthetic tokens redeemed / synthetic tokens outstanding).
