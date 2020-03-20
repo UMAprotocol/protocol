@@ -162,7 +162,7 @@ const Logger = winston.createLogger({
   level: "debug",
   format: winston.format.combine(winston.format(info => info)(), winston.format.json()),
   transports,
-  exitOnError: false
+    exitOnError: false
 });
 
 module.exports = {
