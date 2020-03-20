@@ -168,6 +168,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
         numTokens: toWei("45"),
         amountCollateral: toWei("100"),
         liquidationTime: (await emp.getCurrentTime()).toString(),
+        liquidator: sponsor1,
         disputer: zeroAddress
       }
     ];

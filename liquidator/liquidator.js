@@ -52,7 +52,7 @@ class Liquidator {
         message: "liquidating sponsor🔥",
         address: position.sponsor,
         gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        underCollateralizedPosition: underCollateralizedPosition
+        position: position
       });
 
       // Create the liquidation transaction to liquidate the entire position:
@@ -114,7 +114,7 @@ class Liquidator {
     const disputedLiquidations = this.empClient.getDisputedLiquidations();
     const potentialWithdrawableLiquidations = expiredLiquidations
       .concat(disputedLiquidations)
-      .filter(liquidation => liquidation.liquidation === this.account);
+      .filter(liquidation => liquidation.liquidator === this.account);
 
     if (potentialWithdrawableLiquidations.length === 0) {
       Logger.debug({
