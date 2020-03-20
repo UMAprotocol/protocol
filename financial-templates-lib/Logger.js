@@ -32,6 +32,7 @@
 const winston = require("winston");
 const Transport = require("winston-transport");
 const SlackHook = require("winston-slack-webhook-transport");
+const TwilioTransport = require("./TwilioTransport");
 require("dotenv").config();
 
 class StackTransport extends Transport {
@@ -146,6 +147,7 @@ const transports = [
   })
 ];
 
+// If there is a slack web hook, add the transport
 if (process.env.SLACK_WEBHOOK) {
   transports.push(
     new SlackHook({
@@ -156,6 +158,13 @@ if (process.env.SLACK_WEBHOOK) {
       }
     })
   );
+}
+
+// If all the required environment variables for twilio are added, add the transport
+if (process.env.TWILIO_SID && process.env.TWILIO_AUTH && process.env.DRI_NUMBER1 && process.env.TWILIO_FROM_NUMBER) {
+  console.log("REQ")
+  // note that twilio will only report on error. levels
+  transports.push(new TwilioTransport({ level: "error" }));
 }
 
 const Logger = winston.createLogger({
