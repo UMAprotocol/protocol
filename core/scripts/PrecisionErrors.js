@@ -140,7 +140,6 @@ async function runExport() {
 
   // Test variables:
   let startTime; // Contract time at start of experiment.
-  let driftTotal = toBN(0); // Precision loss on total contract collateral.
   let tokensOutstanding; // Current count of synthetic tokens outstanding. Need to remember this before calling redeem() in order to forecast post-redemption collateral.
   // Collateral actually owned by contract (i.e. queryable via `collateral.balanceOf(contract)`).
   let startingContractCollateral;
@@ -287,7 +286,6 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   rawContractCollateral = await emp.rawTotalPositionCollateral();
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
   // Test 1) The correct fees are paid.
   assert.equal(testConfig.expectedFeesCollected, actualFeesCollected.toString());
@@ -297,7 +295,6 @@ async function runExport() {
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(
     `** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(
       actualFeesCollected.toString()
@@ -328,7 +325,6 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   rawContractCollateral = await emp.rawTotalPositionCollateral();
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
   // Test 1) The correct fees are paid.
   testConfig.expectedFeesCollected = toBN(testConfig.expectedFeesCollected)
@@ -341,7 +337,6 @@ async function runExport() {
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(
     `** Collateral After Charging ${testConfig.modifiedFeeRatePerSecond} in Fees (${fromWei(
       actualFeesCollected.toString()
@@ -351,11 +346,14 @@ async function runExport() {
   console.groupEnd();
 
   /**
-   * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
+   * @notice QUANTIFY ERROR
    */
-  // Without precision loss, the cumulative fee multiplier should be 9.9e-18 but it gets floored to 9e-18.
-  // Therefore, the credited collateral is (0.9e-18 / 9.9e-18) ~= 9% less than it should be.
-  assert.equal(fromWei(driftTotal), "0.09");
+  // Error 1: fee multiplier should be 9.9e-18, but 0.9e-18 is lost to precision, so
+  // the reported collateral is 10% less (0.09 out of 0.9) than expected
+  assert.equal(
+    toBN(contractCollateral.toString()).toString(),
+    toBN(adjustedCollateral.toString()).add(toBN(toWei("0.09"))).toString()
+  )
 
   /**
    * @notice POST-TEST CLEANUP
@@ -445,7 +443,6 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   rawContractCollateral = await emp.rawTotalPositionCollateral();
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
   // Test 1) The correct fees are paid.
   assert.equal(testConfig.expectedFeesCollectedPerPeriod, actualFeesCollected.toString());
@@ -455,7 +452,6 @@ async function runExport() {
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(
     `** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(
       actualFeesCollected.toString()
@@ -465,11 +461,15 @@ async function runExport() {
   console.groupEnd();
 
   /**
-   * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
+   * @notice QUANTIFY ERROR
    */
-  // Without precision loss, the cumulative fee multiplier should be 0.6...66 repeating but it gets floored to 0.6...66.
-  // Therefore, the credited collateral is (1e-18 / 6e-18) ~= 16.7% less than it should be.
-  assert.equal(fromWei(driftTotal), "0.000000000000000001");
+  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the 
+  // (expected - credited) collateral is less than expected
+  assert.equal(
+    toBN(contractCollateral.toString()).toString(),
+    toBN(adjustedCollateral.toString()).add(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
+  )
+
 
   /**
    * @notice POST-TEST CLEANUP
@@ -495,8 +495,7 @@ async function runExport() {
   // - Deposits transfer user collateral to the contract and simultaneously call the internal method _addCollateral, which can cause the "raw"
   //   collateral amount (which accounts for fees) to reflect less collateral added to the contract than the user transferred.
   // End result: 
-  // - "raw" collateral could be 1 wei lower than it should be.
-  // - Adjusted collateral (`getCollateral()`, `totalPositionCollateral()`) has 1e-18 of precision loss.
+  // - "raw" collateral could be 1 wei lower than it should be. The "raw" precision loss adds over time.
   // Explanation:
   // - In order to induce precision loss on deposits, we want to indirectly set the "cumulativeFeeMultiplier"
   //   to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
@@ -510,8 +509,8 @@ async function runExport() {
   // - cumulativeFeeMultiplier = 0.3
   // - amountToDeposit = 0.1
   // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
-  // - rawCollateral += adjustedCollateral
-  // - collateral = (rawCollateral * cumulativeFeeMultiplier)
+  // - _addCollateral adjusts rawCollateral incorrectly: (rawCollateral = rawCollateral + (collateral / cumulativeFeeMultiplier))
+  // - with_precision_loss(rawCollateral + (0.1 / 0.3)) != no_precision_loss(rawCollateral + (0.1 / 0.3))
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -554,7 +553,6 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  driftTotal = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
@@ -584,17 +582,25 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
   // Log results in a table.
   breakdown.expected = new CollateralBreakdown(contractCollateral);
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(`** After 1 Deposit of ${fromWei(testConfig.amountToDeposit)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
+
+  /**
+   * @notice QUANTIFY ERROR
+   */
+  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the 
+  // (expected - credited) collateral is less than expected
+  assert.equal(
+    toBN(contractCollateral.toString()).toString(),
+    toBN(adjustedCollateral.toString()).add(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
+  )
 
   /**
    * @notice POST-TEST INVARIANTS
@@ -607,13 +613,6 @@ async function runExport() {
 
   // Test 2) The fee multiplier has not changed.
   assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
-
-  /**
-   * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
-   */
-  // Without precision loss, `_addCollateral()` should add (0.1 / 0.9 = 0.1...11 repeating) raw collateral to the contract
-  // but this gets floored. Therefore, the credited collateral is (1e-18 / [0.09+0.1]) ~= 5.3e-18% less than it should be.
-  assert.equal(fromWei(driftTotal), "0.000000000000000001");
 
   /**
    * @notice POST-TEST CLEANUP
@@ -681,7 +680,6 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  driftTotal = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
@@ -715,24 +713,25 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
   // Log results in a table.
   breakdown.expected = new CollateralBreakdown(contractCollateral);
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(`** After 1 Create with ${fromWei(testConfig.amountToDeposit)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
   /**
-   * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
+   * @notice QUANTIFY ERROR
    */
-  // Without precision loss, `_addCollateral()` should add (0.1 / 0.9 = 0.1...11 repeating) raw collateral to the contract
-  // but this gets floored. Therefore, the credited collateral is (1e-18 / [0.09+0.1]) ~= 5.3e-18% less than it should be.
-  assert.equal(fromWei(driftTotal), "0.000000000000000001");
+  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the 
+  // (expected - credited) collateral is less than expected
+  assert.equal(
+    toBN(contractCollateral.toString()).toString(),
+    toBN(adjustedCollateral.toString()).add(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
+  )
 
   /**
    * @notice POST-TEST INVARIANTS
@@ -770,8 +769,7 @@ async function runExport() {
   // - Withdraws transfer collateral from the contract to the user and simultaneously call the internal method _removeCollateral, which can cause the "raw"
   //   collateral amount (which accounts for fees) to reflect less collateral withdrawn from the contract than transferred to the user.
   // End result: 
-  // - "raw" collateral could be 1 wei higher than it should be.
-  // - Adjusted collateral (`getCollateral()`, `totalPositionCollateral()`) has no precision loss.
+  // - "raw" collateral could be 1 wei higher than it should be. The "raw" precision loss adds over time.
   // Explanation:
   // - In order to induce precision loss on withdraws, we want to indirectly set the "cumulativeFeeMultiplier"
   //   to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
@@ -785,8 +783,8 @@ async function runExport() {
   // - cumulativeFeeMultiplier = 0.3
   // - amountToWithdraw = 0.1
   // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
-  // - rawCollateral -= adjustedCollateral
-  // - collateral = (rawCollateral * cumulativeFeeMultiplier)
+  // - _removeCollateral adjusts rawCollateral incorrectly: (rawCollateral = rawCollateral - (collateral / cumulativeFeeMultiplier))
+  // - with_precision_loss(rawCollateral - (0.1 / 0.3)) != no_precision_loss(rawCollateral - (0.1 / 0.3))
 
   console.group("Precision loss due to withdraw()");
 
@@ -808,9 +806,10 @@ async function runExport() {
   testConfig = {
     sponsorCollateralAmount: toWei("1"),
     feePerSecond: toWei("0.7"),
-    expectedFeeMultiplier: 0.3, // Division by this produces precision loss, tune this.
+    expectedFeeMultiplier: toWei("0.3"), // Division by this produces precision loss, tune this.
     amountToWithdraw: toWei("0.1")
   };
+
   /**
    * @notice SETUP THE TEST
    */
@@ -829,7 +828,6 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  driftTotal = toBN(0);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
   startingAdjustedContractCollateral = await emp.totalPositionCollateral();
@@ -837,7 +835,7 @@ async function runExport() {
   startingRawContractCollateral = await emp.rawTotalPositionCollateral();
 
   // Test 1) Fee multiplier is set correctly.
-  assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
+  assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
 
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
   assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
@@ -869,22 +867,24 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
 
   // Log results in a table.
   breakdown.expected = new CollateralBreakdown(contractCollateral);
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(`** After 1 Withdrawal of ${fromWei(testConfig.amountToWithdraw)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
   /**
-   * @notice ASSERT PRECISION LOSS IN FEE MULTIPLIER
+   * @notice QUANTIFY ERROR
    */
-  assert.equal(fromWei(driftTotal), "0");
+  // Error 1: rawCollateral is greater than the expected 0.6...66 repeating
+  assert.equal(
+    toWei("0.666666666666666666").toString(),
+    toBN(rawContractCollateral.toString()).sub(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
+  )
 
   /**
    * @notice POST-TEST INVARIANTS
@@ -896,7 +896,7 @@ async function runExport() {
   assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString());
 
   // Test 2) The fee multiplier has not changed.
-  assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
+  assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
 
   console.groupEnd();
   /** ***************************************************************************
@@ -911,44 +911,39 @@ async function runExport() {
    *
    *****************************************************************************/
   // Overview:
-  // - Withdraws can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
-  // - Withdraws transfer collateral from the contract to the user and simultaneously call the internal method _removeCollateral, which can cause the "raw"
+  // - Redeems have two types of precision loss: (1) similar to Withdraw, the rawCollateral can be higher by 1e-18, and (2) the proportional mount of collateral
+  //   transferred to the user can differ from the amount of synthetic token that the user sent to the contract.
+  // - Redeems can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
+  // - Redeems transfer collateral from the contract to the user and simultaneously call the internal method _removeCollateral, which can cause the "raw"
   //   collateral amount (which accounts for fees) to reflect less collateral withdrawn from the contract than transferred to the user.
   // End result: 
-  // - "raw" collateral could be 1 wei higher than it should be.
-  // - Adjusted collateral (`getCollateral()`, `totalPositionCollateral()`) has no precision loss.
+  // - "raw" collateral could be 1 wei higher than it should be. The "raw" precision loss adds over time.
+  // - The ratio of (synthetic tokens / collateral tokens) could be higher, as the denominator could be higher by 1e-18.
   // Explanation:
-  // - In order to induce precision loss on withdraws, we want to indirectly set the "cumulativeFeeMultiplier"
-  //   to a value that when divided by some amount cannot be represented fully by the Fixed Point structure.
-  // - withdraw(collateral) calls the internal method _removeCollateral(collateral).
-  // - _removeCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
-  // - adjustedCollateral is removed from rawCollateral.
-  // - The division has the potential for precision loss, makes adjustedCollateral lose 1e-18 of precision.
-  // - rawCollateral is higher by 1e-18.
-  // - Adjusted collateral (rawCollateral * cumulativeFeeMultiplier) is correct because the multiplication "floors away" rawCollateral's "gained" error.
-  // Example: We withdraw 0.1 collateral from the contract for a withdraw.
+  // - The analysis includes all of the Withdraw analysis in calculating the precision loss arising from the amount of rawCollateral
+  //   removed by _removeCollateral().
+  // - Given "collateral" to remove, recall that we modify as follows: rawCollateral = rawCollateral - (collateral / cumulativeFeeMultiplier).
+  // - Precision loss occurs because the division floors the quotient, causing rawCollateral to be higher than expected.
+  // - However, the user does not pass "collateral" into Redeem, instead they pass "numTokens", representing the number of synthetic tokens they want to redeem.
+  // - We then calculate the proportion of "collateral" that we need to withdraw from the contract, which itself has the potential for precision loss.
+  // - (collateral = numToken / tokensOutstanding)
+  // - Then, we call _removeCollateral(collateral) while simulataneously burning numTokens from the user.
+  // - Therefore, there is a possibility that collateral is 1e-18 less than (numTokens / tokensOutstanding) without precision loss.
+  // Example: We redeem 1 synthetic from the contract for a redeem.
   // - cumulativeFeeMultiplier = 0.3
-  // - amountToWithdraw = 0.1
-  // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
-  // - rawCollateral -= adjustedCollateral
-  // - collateral = (rawCollateral * cumulativeFeeMultiplier)
+  // - rawCollateral = 0.3
+  // - tokensOutstanding = 0.3
+  // - amountToRedeem = 0.1
+  // - fractionToRedeem = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
+  // - collateralToRedeem = fractionToRedeem * (rawCollateral * cumulativeFeeMultiplier) = (0.3...33 * 0.3) = 0.9...99
+  // - _removeCollateral adjusts rawCollateral incorrectly: (rawCollateral = rawCollateral - (collateralToRedeem / cumulativeFeeMultiplier))
+  // - with_precision_loss(rawCollateral - (0.9...99 / 0.3)) != no_precision_loss(rawCollateral - (0.9...99 / 0.3))
+  // - Moreover, (fractionToRedeem) != (numTokens / tokensOutstanding), therefore the following precision loss occurs:
+  // - numTokens amount of synthetic are burned from user, burning (1/3) of the token supply, which is 0.1
+  // - collateralToRedeem amount of collateral is transferred to user, returning (0.3...33 * 0.3 = 0.9...99) of the collateral
+  // - 0.9...99 != 0.1
 
   console.group("Precision loss due to redeem()");
-  // Redeem() is a bit more complex because the amount of collateral released from the contract
-  // is determined by the proportion of (synthetic tokens redeemed / synthetic tokens outstanding).
-  // This proportion can exhibit precision loss, the product of which is multiplied by
-  // the position collateral (inclusive of fees).
-  // The relatively larger danger with redeem() is that we are multiplying a number with potential precision loss,
-  // which magnifies the ultimate error.
-  // To better understand this, we need to examine how the redeem() method is implemented:
-  // - redeem(numTokens) first calculates the `fractionRedeemed` by dividing numTokens by tokens outstanding. This can have precision loss.
-  // - The actual amount of collateral to pass into _removeCollateral() is `fractionRedeemed` multiplied by `_getCollateral()`.
-  // - The analysis after this is similar to withdraw():
-  // - _removeCollateral(collateral) scales up the collateral to add: adjustedCollateral = collateral / cumulativeFeeMultiplier.
-  // - This division has the potential for precision loss, which could cause the resultant rawCollateral in the position to be higher than expected.
-  // - Note: here is the difference between deposit() and withdraw(): withdraw subtracts the floor'd quotient from rawCollateral so rawCollateral can be higher than expected
-  // - In other words, the redeem() will have subtracted less collateral from the position than the caller actually receives in the redemption.
-  // - We should expect to see negative "drift", because the adjusted collateral in contract will be higher than expected.
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -965,11 +960,11 @@ async function runExport() {
    * @notice TEST PARAMETERS
    */
   testConfig = {
-    tokensOutstanding: toWei("9"),
-    sponsorCollateralAmount: toWei("1100"),
-    feePerSecond: toWei("0.1"),
-    expectedFeeMultiplier: 0.9, // Division by this produces precision loss, tune this.
-    amountToRedeem: toWei("0.01")
+    tokensOutstanding: toWei("0.3"),
+    sponsorCollateralAmount: toWei("1"),
+    feePerSecond: toWei("0.7"),
+    expectedFeeMultiplier: toWei("0.3"), // Division by this produces precision loss, tune this.
+    amountToRedeem: toWei("0.1")
   };
 
   /**
@@ -996,7 +991,6 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  driftTotal = toBN(0);
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   startingContractCollateral = await collateral.balanceOf(emp.address);
@@ -1005,7 +999,7 @@ async function runExport() {
   startingRawContractCollateral = await emp.rawTotalPositionCollateral();
 
   // Test 1) Fee multiplier is set correctly.
-  assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
+  assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
 
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
   assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
@@ -1032,20 +1026,33 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
   rawContractCollateral = await emp.rawTotalPositionCollateral();
-  driftTotal = contractCollateral.sub(toBN(adjustedCollateral.rawValue));
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
 
   // Log results in a table.
   breakdown.expected = new CollateralBreakdown(contractCollateral);
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
   console.group(`** After 1 Redemption of ${fromWei(testConfig.amountToRedeem)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
+  /**
+   * @notice QUANTIFY ERROR
+   */
+  // Error 1: rawCollateral is greater than the expected 0.6...66 repeating
+  assert.equal(
+    toWei("0.66666666666666666").toString(),
+    toBN(rawContractCollateral.toString()).sub(toBN(toWei("0."+"0".repeat(16)+"1"))).toString()
+  )
+  // Error 2: numTokens/tokensOutstanding is greater than collateralRedeemed/positionCollateral
+  // (1/3) > (0.9...9/3)
+  // Note: There is 0.3 collateral at the time of redemption, after charging 70% fees.
+  assert.equal(
+    toBN(testConfig.amountToRedeem.toString()).sub(toBN(toWei("0."+"0".repeat(17)+"1"))).toString(),
+    toBN(toWei("0.3")).sub(toBN(contractCollateral.toString())).toString()
+  )
   /**
    * @notice POST-TEST INVARIANTS
    */
@@ -1056,7 +1063,7 @@ async function runExport() {
   assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString());
 
   // Test 2) The fee multiplier has not changed.
-  assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
+  assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
 
   /**
    * @notice POST-TEST CLEANUP
@@ -1083,7 +1090,7 @@ async function runExport() {
   // - If we liquidate 3 synthetic tokens, then the "(FixedPoint) ratio" of the position that we are liquidating is 3/9 = 0.33..repeating,
   // which gets floored after 18 decimals.
   // - The amount of collateral that gets "liquidated" is equal to 9 * "ratio" which should equal 3 but it ends up being slightly less,
-  // because the "ratio" is floored, and equals 2.999...97 (try multiplying 9 * 0.33 to see this).
+  //   because the "ratio" is floored, and equals 2.999...97 (try multiplying 9 * 0.33 to see this).
   // - Therefore, the collateral remaining in contract according to `getCollateral` is now 9 - 2.999..97 = 6.000..3.
   // - If we liquidate 3 synthetic tokens again, then the ratio we are liquidating is 3/6 = 0.50.
   // - This means that the amount of collateral we are liquidating is 6.000...3 * 0.5 = 3.000...15 (this gets floored to 3.000...1).
@@ -1128,7 +1135,6 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  driftTotal = toBN(0);
   startingContractCollateral = await emp.totalPositionCollateral();
 
   // Test 1) The collateral is correct.
@@ -1151,7 +1157,6 @@ async function runExport() {
   );
   expectedRemainingCollateral = toBN(await collateral.balanceOf(emp.address)).sub(toBN(testConfig.amountToLiquidate));
   contractCollateral = await emp.totalPositionCollateral();
-  driftTotal = toBN(expectedRemainingCollateral).sub(toBN(contractCollateral.rawValue.toString()));
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
   truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
@@ -1168,7 +1173,6 @@ async function runExport() {
   // Log results in a table.
   breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
   breakdown.credited = new CollateralBreakdown(contractCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** After 1 Partial Liquidation of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -1184,7 +1188,6 @@ async function runExport() {
   );
   expectedRemainingCollateral = expectedRemainingCollateral.sub(toBN(testConfig.amountToLiquidate));
   contractCollateral = await emp.totalPositionCollateral();
-  driftTotal = toBN(expectedRemainingCollateral).sub(toBN(contractCollateral.rawValue.toString()));
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
   truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
@@ -1201,7 +1204,6 @@ async function runExport() {
   // Log results in a table.
   breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
   breakdown.credited = new CollateralBreakdown(contractCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** After 2 Partial Liquidations of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -1217,7 +1219,6 @@ async function runExport() {
   );
   expectedRemainingCollateral = expectedRemainingCollateral.sub(toBN(testConfig.amountToLiquidate));
   contractCollateral = await emp.totalPositionCollateral();
-  driftTotal = toBN(expectedRemainingCollateral).sub(toBN(contractCollateral.rawValue.toString()));
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
   truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
@@ -1234,7 +1235,6 @@ async function runExport() {
   // Log results in a table.
   breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
   breakdown.credited = new CollateralBreakdown(contractCollateral);
-  breakdown.drift = new CollateralBreakdown(driftTotal);
   console.group(`** After 3 Partial Liquidations of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
