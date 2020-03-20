@@ -49,7 +49,7 @@ class Liquidator {
       // TODO: add additional information about this liquidation event to the log.
       Logger.info({
         at: "liquidator",
-        message: "liquidating sponsor 🔥",
+        message: "liquidating sponsor🔥",
         address: position.sponsor,
         gasPrice: this.gasEstimator.getCurrentFastPrice(),
         underCollateralizedPosition: underCollateralizedPosition
@@ -126,7 +126,7 @@ class Liquidator {
 
     Logger.debug({
       at: "liquidator",
-      message: "potential withdrawable liquidations detected!💰",
+      message: "potential withdrawable liquidations detected",
       number: potentialWithdrawableLiquidations.length,
       potentialWithdrawableLiquidations: potentialWithdrawableLiquidations
     });
@@ -136,7 +136,7 @@ class Liquidator {
     for (const liquidation of potentialWithdrawableLiquidations) {
       Logger.debug({
         at: "liquidator",
-        message: "attempting to withdraw rewards from liquidations💪",
+        message: "attempting to withdraw rewards from liquidations",
         address: liquidation.sponsor,
         id: liquidation.id
       });
@@ -159,7 +159,7 @@ class Liquidator {
 
       Logger.info({
         at: "liquidator",
-        message: `Will attempt to withdraw.`,
+        message: `Will attempt to withdraw🤑`,
         address: liquidation.sponsor,
         id: liquidation.id,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue)
