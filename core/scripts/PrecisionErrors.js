@@ -352,8 +352,10 @@ async function runExport() {
   // the reported collateral is 10% less (0.09 out of 0.9) than expected
   assert.equal(
     toBN(contractCollateral.toString()).toString(),
-    toBN(adjustedCollateral.toString()).add(toBN(toWei("0.09"))).toString()
-  )
+    toBN(adjustedCollateral.toString())
+      .add(toBN(toWei("0.09")))
+      .toString()
+  );
 
   /**
    * @notice POST-TEST CLEANUP
@@ -463,13 +465,14 @@ async function runExport() {
   /**
    * @notice QUANTIFY ERROR
    */
-  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the 
+  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the
   // (expected - credited) collateral is less than expected
   assert.equal(
     toBN(contractCollateral.toString()).toString(),
-    toBN(adjustedCollateral.toString()).add(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
-  )
-
+    toBN(adjustedCollateral.toString())
+      .add(toBN(toWei("0." + "0".repeat(17) + "1")))
+      .toString()
+  );
 
   /**
    * @notice POST-TEST CLEANUP
@@ -494,7 +497,7 @@ async function runExport() {
   // - Deposits can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
   // - Deposits transfer user collateral to the contract and simultaneously call the internal method _addCollateral, which can cause the "raw"
   //   collateral amount (which accounts for fees) to reflect less collateral added to the contract than the user transferred.
-  // End result: 
+  // End result:
   // - "raw" collateral could be 1 wei lower than it should be. The "raw" precision loss adds over time.
   // Explanation:
   // - In order to induce precision loss on deposits, we want to indirectly set the "cumulativeFeeMultiplier"
@@ -595,12 +598,14 @@ async function runExport() {
   /**
    * @notice QUANTIFY ERROR
    */
-  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the 
+  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the
   // (expected - credited) collateral is less than expected
   assert.equal(
     toBN(contractCollateral.toString()).toString(),
-    toBN(adjustedCollateral.toString()).add(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
-  )
+    toBN(adjustedCollateral.toString())
+      .add(toBN(toWei("0." + "0".repeat(17) + "1")))
+      .toString()
+  );
 
   /**
    * @notice POST-TEST INVARIANTS
@@ -726,12 +731,14 @@ async function runExport() {
   /**
    * @notice QUANTIFY ERROR
    */
-  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the 
+  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the
   // (expected - credited) collateral is less than expected
   assert.equal(
     toBN(contractCollateral.toString()).toString(),
-    toBN(adjustedCollateral.toString()).add(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
-  )
+    toBN(adjustedCollateral.toString())
+      .add(toBN(toWei("0." + "0".repeat(17) + "1")))
+      .toString()
+  );
 
   /**
    * @notice POST-TEST INVARIANTS
@@ -768,7 +775,7 @@ async function runExport() {
   // - Withdraws can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
   // - Withdraws transfer collateral from the contract to the user and simultaneously call the internal method _removeCollateral, which can cause the "raw"
   //   collateral amount (which accounts for fees) to reflect less collateral withdrawn from the contract than transferred to the user.
-  // End result: 
+  // End result:
   // - "raw" collateral could be 1 wei higher than it should be. The "raw" precision loss adds over time.
   // Explanation:
   // - In order to induce precision loss on withdraws, we want to indirectly set the "cumulativeFeeMultiplier"
@@ -883,8 +890,10 @@ async function runExport() {
   // Error 1: rawCollateral is greater than the expected 0.6...66 repeating
   assert.equal(
     toWei("0.666666666666666666").toString(),
-    toBN(rawContractCollateral.toString()).sub(toBN(toWei("0."+"0".repeat(17)+"1"))).toString()
-  )
+    toBN(rawContractCollateral.toString())
+      .sub(toBN(toWei("0." + "0".repeat(17) + "1")))
+      .toString()
+  );
 
   /**
    * @notice POST-TEST INVARIANTS
@@ -916,7 +925,7 @@ async function runExport() {
   // - Redeems can cause precision loss in the "raw" collateral amount, independent of any precision loss in the cumulative fee multiplier.
   // - Redeems transfer collateral from the contract to the user and simultaneously call the internal method _removeCollateral, which can cause the "raw"
   //   collateral amount (which accounts for fees) to reflect less collateral withdrawn from the contract than transferred to the user.
-  // End result: 
+  // End result:
   // - "raw" collateral could be 1 wei higher than it should be. The "raw" precision loss adds over time.
   // - The ratio of (synthetic tokens / collateral tokens) could be higher, as the denominator could be higher by 1e-18.
   // Explanation:
@@ -1044,15 +1053,21 @@ async function runExport() {
   // Error 1: rawCollateral is greater than the expected 0.6...66 repeating
   assert.equal(
     toWei("0.66666666666666666").toString(),
-    toBN(rawContractCollateral.toString()).sub(toBN(toWei("0."+"0".repeat(16)+"1"))).toString()
-  )
+    toBN(rawContractCollateral.toString())
+      .sub(toBN(toWei("0." + "0".repeat(16) + "1")))
+      .toString()
+  );
   // Error 2: numTokens/tokensOutstanding is greater than collateralRedeemed/positionCollateral
   // (1/3) > (0.9...9/3)
   // Note: There is 0.3 collateral at the time of redemption, after charging 70% fees.
   assert.equal(
-    toBN(testConfig.amountToRedeem.toString()).sub(toBN(toWei("0."+"0".repeat(17)+"1"))).toString(),
-    toBN(toWei("0.3")).sub(toBN(contractCollateral.toString())).toString()
-  )
+    toBN(testConfig.amountToRedeem.toString())
+      .sub(toBN(toWei("0." + "0".repeat(17) + "1")))
+      .toString(),
+    toBN(toWei("0.3"))
+      .sub(toBN(contractCollateral.toString()))
+      .toString()
+  );
   /**
    * @notice POST-TEST INVARIANTS
    */
