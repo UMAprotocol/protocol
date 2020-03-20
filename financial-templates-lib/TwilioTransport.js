@@ -7,9 +7,9 @@ module.exports = class TwilioTransport extends Transport {
     this.RoboCaller = new RoboCaller();
   }
 
-  log(info, callback) {
+  async log(info, callback) {
     // place the call with the given message.
-    this.RoboCaller.placeCall(`Error reported from ${info.at} with message ${info.message}`);
+    await this.RoboCaller.placeCall(`Error reported from ${info.at} with message ${info.message}`);
     callback();
   }
 };
