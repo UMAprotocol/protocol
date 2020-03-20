@@ -3,10 +3,10 @@ require("dotenv").config();
 class RoboCaller {
   constructor() {
     if (
-      (process.env.TWILIO_SID, // require the account SID
-      process.env.TWILIO_AUTH, // require the account authentication key
-      process.env.DRI_NUMBER1, // require at least 1 number to call
-      process.env.TWILIO_FROM_NUMBER) // require the number to originate the call from
+      !process.env.TWILIO_SID || // require the account SID
+      !process.env.TWILIO_AUTH || // require the account authentication key
+      !process.env.DRI_NUMBER1 || // require at least 1 number to call
+      !process.env.TWILIO_FROM_NUMBER // require the number to originate the call from
     ) {
       console.error("Missing config variable. RoboCaller Disabled");
       return;
