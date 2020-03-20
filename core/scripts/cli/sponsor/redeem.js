@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { unwrapToEth } = require("./currencyUtils.js");
+const { submitTransaction } = require("./transactionUtils");
 
 const redeem = async (web3, artifacts, emp) => {
   const { fromWei, toWei, toBN } = web3.utils;
@@ -36,8 +37,16 @@ const redeem = async (web3, artifacts, emp) => {
     name: "confirm"
   });
   if (confirmation["confirm"]) {
-    await token.approve(emp.address, tokensToRedeem);
-    await emp.redeem({ rawValue: tokensToRedeem.toString() });
+    await submitTransaction(
+      web3,
+      async () => await token.approve(emp.address, tokensToRedeem),
+      "Approving synthetic token transfer"
+    );
+    await submitTransaction(
+      web3,
+      async () => await emp.redeem({ rawValue: tokensToRedeem.toString() }),
+      "Repaying tokens"
+    );
     await unwrapToEth(web3, artifacts, emp, expectedCollateral);
   }
 };

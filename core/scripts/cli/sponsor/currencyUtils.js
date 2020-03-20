@@ -11,7 +11,7 @@ const unwrapToEth = async (web3, artifacts, emp, amount) => {
   const WETH9 = artifacts.require("WETH9");
   const weth = await WETH9.deployed();
 
-  await weth.withdraw(amount.toString());
+  await submitTransaction(web3, async () => await weth.withdraw(amount.toString()), "Unwrapping WETH to ETH");
 };
 
 module.exports = {

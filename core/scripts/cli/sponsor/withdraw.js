@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const { unwrapToEth } = require("./currencyUtils.js");
+const { submitTransaction } = require("./transactionUtils");
 
 const withdraw = async (web3, artifacts, emp) => {
   const { fromWei, toWei, toBN } = web3.utils;
@@ -19,7 +20,7 @@ const withdraw = async (web3, artifacts, emp) => {
       name: "confirm"
     });
     if (confirmation["confirm"]) {
-      await emp.cancelWithdrawal();
+      await submitTransaction(web3, async () => await emp.cancelWithdrawal(), "Cancelling pending withdrawal");
     }
   };
 
@@ -31,7 +32,7 @@ const withdraw = async (web3, artifacts, emp) => {
       name: "confirm"
     });
     if (confirmation["confirm"]) {
-      await emp.withdrawPassedRequest();
+      await submitTransaction(web3, async () => await emp.withdrawPassedRequest(), "Withdrawing WETH");
       await unwrapToEth(web3, artifacts, emp, withdrawRequestAmount);
     }
   };
@@ -162,7 +163,11 @@ const withdraw = async (web3, artifacts, emp) => {
         name: "confirm"
       });
       if (confirmation["confirm"]) {
-        await emp.withdraw({ rawValue: tokensToWithdraw.toString() });
+        await submitTransaction(
+          web3,
+          async () => await emp.withdraw({ rawValue: tokensToWithdraw.toString() }),
+          "Withdrawing WETH"
+        );
         await unwrapToEth(web3, artifacts, emp, tokensToWithdraw.toString());
       }
     }
@@ -185,7 +190,11 @@ const withdraw = async (web3, artifacts, emp) => {
         name: "confirm"
       });
       if (confirmation["confirm"]) {
-        await emp.requestWithdrawal({ rawValue: tokensToWithdraw.toString() });
+        await submitTransaction(
+          web3,
+          async () => await emp.requestWithdrawal({ rawValue: tokensToWithdraw.toString() }),
+          "Requesting withdrawal"
+        );
       }
     }
   }
