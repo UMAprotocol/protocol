@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
+const { unwrapToEth } = require("./currencyUtils.js");
 
 const withdraw = async (web3, artifacts, emp) => {
   const { fromWei, toWei, toBN } = web3.utils;
@@ -23,7 +24,7 @@ const withdraw = async (web3, artifacts, emp) => {
   };
 
   // Execute pending withdrawal.
-  const executeWithdrawal = async () => {
+  const executeWithdrawal = async withdrawRequestAmount => {
     const confirmation = await inquirer.prompt({
       type: "confirm",
       message: "Would you like to excecute this withdrawal?",
@@ -31,6 +32,7 @@ const withdraw = async (web3, artifacts, emp) => {
     });
     if (confirmation["confirm"]) {
       await emp.withdrawPassedRequest();
+      await unwrapToEth(web3, artifacts, emp, withdrawRequestAmount);
     }
   };
 
@@ -100,7 +102,7 @@ const withdraw = async (web3, artifacts, emp) => {
       const input = (await inquirer.prompt(prompt))["choice"];
       switch (input) {
         case "Execute Pending Withdrawal":
-          await executeWithdrawal();
+          await executeWithdrawal(withdrawRequestAmount);
           break;
         case "Cancel Pending Withdrawal":
           await cancelWithdrawal();
@@ -161,6 +163,7 @@ const withdraw = async (web3, artifacts, emp) => {
       });
       if (confirmation["confirm"]) {
         await emp.withdraw({ rawValue: tokensToWithdraw.toString() });
+        await unwrapToEth(web3, artifacts, emp, tokensToWithdraw.toString());
       }
     }
     // Requested withdrawal amount cannot be processed instantly, call `requestWithdrawal()`

@@ -1,5 +1,6 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
+const { unwrapToEth } = require("./currencyUtils.js");
 
 const redeem = async (web3, artifacts, emp) => {
   const { fromWei, toWei, toBN } = web3.utils;
@@ -27,7 +28,8 @@ const redeem = async (web3, artifacts, emp) => {
   });
 
   const tokensToRedeem = toBN(toWei(input["numTokens"]));
-  console.log("You'll receive", fromWei(collateralPerToken.mul(toBN(tokensToRedeem)).div(scalingFactor)), "ETH");
+  const expectedCollateral = collateralPerToken.mul(toBN(tokensToRedeem)).div(scalingFactor);
+  console.log("You'll receive", fromWei(expectedCollateral), "ETH");
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
@@ -36,6 +38,7 @@ const redeem = async (web3, artifacts, emp) => {
   if (confirmation["confirm"]) {
     await token.approve(emp.address, tokensToRedeem);
     await emp.redeem({ rawValue: tokensToRedeem.toString() });
+    await unwrapToEth(web3, artifacts, emp, expectedCollateral);
   }
 };
 

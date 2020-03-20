@@ -17,6 +17,7 @@ const MockOracle = artifacts.require("MockOracle");
 const Token = artifacts.require("ExpandedERC20");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Registry = artifacts.require("Registry");
+const WETH9 = artifacts.require("WETH9");
 
 // Contracts we need to interact with.
 let collateralToken;
@@ -36,14 +37,8 @@ const deployEMP = async callback => {
     const deployer = (await web3.eth.getAccounts())[0];
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
-    // Deploy collateral token and grant deployer minting privilege.
-    collateralToken = await Token.new({ from: deployer });
-    await collateralToken.addMember(1, deployer, { from: deployer });
-    await collateralToken.mint(deployer, toWei("100000"), { from: deployer });
-
-    // Whitelist collateral currency
-    collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: deployer });
+    // Use WETH as the collateral token.
+    collateralToken = await WETH9.deployed();
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -87,6 +82,8 @@ const deployEMP = async callback => {
     // Create one small position so that you can create new positions from the CLI
     // (currently, it does not support creating the first position for the EMP).
     // Collateralize this at the minimum CR allowed.
+    // Acquire 1000 of the collateralToken by depositing 1000 ETH.
+    await collateralToken.deposit({ value: toWei("1000") });
     await emp.create({ rawValue: toWei("1.5") }, { rawValue: toWei("1") });
 
     // Done!
