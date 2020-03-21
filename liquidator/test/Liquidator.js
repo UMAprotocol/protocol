@@ -269,7 +269,7 @@ contract("Liquidator.js", function(accounts) {
     // Liquidator should have their collateral increased by TRV - (disputer and sponsor rewards):
     // 100 - 2 * (10% of 100) = 80 units of collateral.
     const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
-    assert.equal(
+    assert.equal (
       toBN(collateralPreWithdraw)
         .add(toBN(toWei("80")))
         .toString(),
