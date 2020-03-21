@@ -184,7 +184,6 @@ async function runExport() {
   // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower:
   // - 0.6...66 instead of 0.6...67.
   // - Ultimately this decreases the available collateral returned by `FeePayer._getCollateral()`.
-  // -------------------------------------------------------------------------------------------------------------------------------
 
   // Situation 2: The cumulative fee multiplier gets "floor"'d.
   // -------------------------------------------------------------------------------------------------------------------------------
@@ -194,7 +193,6 @@ async function runExport() {
   // - Fee multiplier is calculated as ((1 - fee %) * cumulativeFeeMultiplier)
   // - In this case: ((1-0.01) * 1e-17 = 9.9e-18)
   // - The multiplication is floored, causing the fee multiplier to get set to 9e-18
-  // -------------------------------------------------------------------------------------------------------------------------------
 
   // Conclusion:
   // -------------------------------------------------------------------------------------------------------------------------------
@@ -205,6 +203,11 @@ async function runExport() {
   // Specifically, for a single transaction, the cumulative fee multiplier can have a maximum precision loss of 1e-18.
   // However, the precision loss as a percentage of the previous fee multiplier increases over time, since
   // the fee multiplier can only decrease over time.
+
+  // Quantifying Errors ((actual - expected) / expected):
+  // -------------------------------------------------------------------------------------------------------------------------------
+  // - error in fee paid: (+1e-18)
+  // - error in cumulativeFeeMultiplier: (-1e-17)
 
   console.group("Cumulative Fee Multiplier gets Floor'd");
   /**
@@ -514,6 +517,8 @@ async function runExport() {
   // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
   // - _addCollateral adjusts rawCollateral incorrectly: (rawCollateral = rawCollateral + (collateral / cumulativeFeeMultiplier))
   // - with_precision_loss(rawCollateral + (0.1 / 0.3)) != no_precision_loss(rawCollateral + (0.1 / 0.3))
+  // Quantifying Errors ((actual - expected) / expected):
+  // - error in rawCollateral: (-1e-18)
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -792,6 +797,8 @@ async function runExport() {
   // - adjustedCollateral = (0.1 / 0.3 = 0.3...33 repeating), which gets floored to 0.3...33
   // - _removeCollateral adjusts rawCollateral incorrectly: (rawCollateral = rawCollateral - (collateral / cumulativeFeeMultiplier))
   // - with_precision_loss(rawCollateral - (0.1 / 0.3)) != no_precision_loss(rawCollateral - (0.1 / 0.3))
+  // Quantifying Errors ((actual - expected) / expected):
+  // - error in rawCollateral: (+1e-18)
 
   console.group("Precision loss due to withdraw()");
 
@@ -951,6 +958,10 @@ async function runExport() {
   // - numTokens amount of synthetic are burned from user, burning 1e-18 of the token supply
   // - collateralToRedeem amount of collateral is transferred to user, returning 0 of the collateral
   // - 0 != 1e-18
+  // Quantifying Errors ((actual - expected) / expected):
+  // - error in rawCollateral: (+1e-18)
+  // - error in fraction of collateral redeemed: (-1e-18)
+  // - error in collateral returned to redeemer: (-1e-17)
 
   console.group("Precision loss due to redeem()");
 
@@ -1084,7 +1095,8 @@ async function runExport() {
    *
    *****************************************************************************/
   console.group("Precision loss due to partial liquidations via createLiquidation()");
-  // When you partially liquidate X tokens of a position with T tokens, we liquidate X/T of the collateral.
+  // Overview:
+  // - When you partially liquidate X tokens of a position with T tokens, we liquidate X/T of the collateral.
   // - That division does a floor operation in order to represent a FixedPoint.
   // - Let's start with 9 synthetic tokens and 9 collateral.
   // - If we liquidate 3 synthetic tokens, then the "(FixedPoint) ratio" of the position that we are liquidating is 3/9 = 0.33..repeating,
@@ -1096,6 +1108,9 @@ async function runExport() {
   // - This means that the amount of collateral we are liquidating is 6.000...3 * 0.5 = 3.000...15 (this gets floored to 3.000...1).
   // - Therefore, the collateral remaining in the contract according to `getCollateral` is now 6.000..3 - 3.000..1 = 3.00...2.
   // - The third liquidation of 3 synthetic tokens should result in a "ratio" of 1.0, meaning that all of the remaining 3.000...2 collateral is liquidated.
+  // Quantifying Errors ((actual - expected) / expected):
+  // - error in liquidated ratio: (-1e-18)
+  // - error in amount of liquidated collateral: (-1e-17)
 
   /**
    * @notice CREATE NEW EXPERIMENT
