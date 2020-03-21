@@ -155,6 +155,7 @@ contract("Liquidator.js", function(accounts) {
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
     assert.equal((await emp.getCollateral(sponsor3)).rawValue, toWei("175"));
   });
+
   it("Can withdraw rewards from expired liquidations", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -234,6 +235,7 @@ contract("Liquidator.js", function(accounts) {
     // Liquidation data should have been deleted.
     assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
   });
+
   it("Can withdraw rewards from liquidations that were disputed successfully", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -275,5 +277,30 @@ contract("Liquidator.js", function(accounts) {
         .toString(),
       collateralPostWithdraw.toString()
     );
+  });
+
+  it("Detect if the liquidator cannot liquidate due to capital constraints", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
+    // and liquidates the position.
+    // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+    const liquidationPrice = toWei("1.3");
+
+    // No transaction should be sent, so this should not throw.
+    await liquidator.queryAndLiquidate(liquidationPrice);
+
+    // No liquidations should have gone through.
+    assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
+
+    // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+    // No transaction should be sent, so this should not throw.
+    await liquidator.queryAndLiquidate(liquidationPrice);
+
+    // The liquidation should have gone through.
+    assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
   });
 });
