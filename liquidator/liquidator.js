@@ -46,6 +46,27 @@ class Liquidator {
 
     let liquidationPromises = []; // store all promises to resolve in parallel later on.
     for (const position of underCollateralizedPositions) {
+      // Make sure that the bot has enough inventory/approval to do the liquidation.
+      const liquidation = this.empContract.methods.createLiquidation(
+        position.sponsor,
+        { rawValue: this.web3.utils.toWei(priceFeed) },
+        { rawValue: position.numTokens }
+      );
+
+      try {
+        await liquidation.call({ from: this.account });
+      } catch (error) {
+        Logger.error({
+          at: "liquidator",
+          message:
+            "Error: liquidation simulation reverted. Likely not enough collateral/approval to perform the liquidation.",
+          address: position.sponsor,
+          position: position,
+          error: error
+        });
+        continue;
+      }
+
       // TODO: add additional information about this liquidation event to the log.
       Logger.info({
         at: "liquidator",
@@ -60,17 +81,11 @@ class Liquidator {
       // you also should be liquidating using that priceFeed.
       // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
       liquidationPromises.push(
-        this.empContract.methods
-          .createLiquidation(
-            position.sponsor,
-            { rawValue: this.web3.utils.toWei(priceFeed) },
-            { rawValue: position.numTokens }
-          )
-          .send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
+        liquidation.send({
+          from: this.account,
+          gas: 1500000,
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
       );
     }
     // Resolve all promises in parallel.
