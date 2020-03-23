@@ -75,7 +75,9 @@ async function run(testConfig) {
     await delay(Number(10_000));
 
     // If this is a test, exit after one iteration
-    if (testConfig) { break; }
+    if (testConfig) {
+      break;
+    }
   }
 }
 
@@ -92,4 +94,3 @@ const Poll = async function(callback) {
 // in order to allow the script to be executed through both truffle and a test runner.
 Poll.run = run;
 module.exports = Poll;
-

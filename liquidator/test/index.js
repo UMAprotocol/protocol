@@ -1,7 +1,7 @@
 const { toWei, utf8ToHex } = web3.utils;
 
 // Script to test
-const Poll = require('../index.js');
+const Poll = require("../index.js");
 const { Liquidator } = require("../liquidator.js");
 
 // Helper client script
@@ -74,18 +74,18 @@ contract("Liquidator.js", function(accounts) {
     liquidator = new Liquidator(empClient, gasEstimator, liquidatorBot);
   });
 
-  it("Completes one iteration without throwing an error", async function () {
+  it("Completes one iteration without throwing an error", async function() {
     const testConfig = {
-        address: emp.address,
-        price: "1"
-    }
+      address: emp.address,
+      price: "1"
+    };
     let errorThrown;
     try {
-        await Poll.run(testConfig);
-        errorThrown = false
+      await Poll.run(testConfig);
+      errorThrown = false;
     } catch (err) {
-        errorThrown = true;
+      errorThrown = true;
     }
-    assert.isFalse(errorThrown)
-  })
+    assert.isFalse(errorThrown);
+  });
 });
