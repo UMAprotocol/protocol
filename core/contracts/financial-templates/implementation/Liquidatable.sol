@@ -276,7 +276,13 @@ contract Liquidatable is PricelessPositionManager {
         // Pay a final fee
         _payFinalFees(msg.sender);
 
-        emit LiquidationDisputed(sponsor, disputedLiquidation.liquidator, msg.sender, liquidationId, disputeBondAmount.rawValue);
+        emit LiquidationDisputed(
+            sponsor,
+            disputedLiquidation.liquidator,
+            msg.sender,
+            liquidationId,
+            disputeBondAmount.rawValue
+        );
     }
 
     /**
@@ -422,7 +428,14 @@ contract Liquidatable is PricelessPositionManager {
         bool disputeSucceeded = liquidation.liquidatedCollateral.isGreaterThanOrEqual(requiredCollateral);
         liquidation.state = disputeSucceeded ? Status.DisputeSucceeded : Status.DisputeFailed;
 
-        emit DisputeSettled(msg.sender, sponsor, liquidation.liquidator, liquidation.disputer, liquidationId, disputeSucceeded);
+        emit DisputeSettled(
+            msg.sender,
+            sponsor,
+            liquidation.liquidator,
+            liquidation.disputer,
+            liquidationId,
+            disputeSucceeded
+        );
     }
 
     function _getLiquidationData(address sponsor, uint liquidationId)
@@ -434,7 +447,9 @@ contract Liquidatable is PricelessPositionManager {
 
         // Revert if the caller is attempting to access an invalid liquidation (one that has never been created or one
         // has never been initialized).
-        require(liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized);
+        require(
+            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized
+        );
         return liquidationArray[liquidationId];
     }
 
