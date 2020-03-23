@@ -11,8 +11,7 @@ library FixedPoint {
 
     // Supports 18 decimals. E.g., 1e18 represents "1", 5e17 represents "0.5".
     // Can represent a value up to (2^256 - 1)/10^18 = ~10^59. 10^59 will be stored internally as uint 10^77.
-    uint private constant INTERNAL_SCALE_EXPONENT = 18;
-    uint private constant FP_SCALING_FACTOR = 10**INTERNAL_SCALE_EXPONENT;
+    uint private constant FP_SCALING_FACTOR = 10**18;
 
     struct Unsigned {
         uint rawValue;
