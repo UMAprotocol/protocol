@@ -1193,7 +1193,7 @@ contract("PricelessPositionManager", function(accounts) {
     expectedContractCollateral = expectedContractCollateral.add(toBN(depositCollateral));
     await USDCToken.approve(customPricelessPositionManager.address, depositCollateral, { from: sponsor });
     await customPricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
-    
+
     // The balances should reflect the additional collateral added.
     assert.equal(
       (await USDCToken.balanceOf(customPricelessPositionManager.address)).toString(),
