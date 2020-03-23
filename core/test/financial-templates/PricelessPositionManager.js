@@ -1164,7 +1164,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Create the initial pricelessPositionManager position
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
-    //however the collateral is now delimited by a different number of decimals. 150 * 1e6
+    // however the collateral is now delimited by a different number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
       .muln(1e6)
       .toString();
