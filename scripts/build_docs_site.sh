@@ -8,6 +8,9 @@ md_to_adoc() {
     # Output filename
     local outfile=$2
 
+    # Depth of file in tree.
+    local depth=$3
+
     # Create temporary file for intermediate step.
     local tmpfile=$(mktemp)
 
@@ -22,6 +25,13 @@ md_to_adoc() {
     # Changes markdown file interlink extensions to .html so they continue to work when the site is rendered.
     sed -i.bak 's/\.md)/.html)/' $tmpfile
 
+    # For each level of depth below the module level, we need to remove one "../" from file references. This is because
+    # subdirectories effectively get flattened into the modules general file list.
+    for ((n=0;n<$depth;n++))
+    do
+        sed -i.bak 's/(\.\.\//(/' $tmpfile
+    done
+
     # Use pandoc to do the remainder of the conversion and output to the destination.
     pandoc --atx-headers --verbose --wrap=none --toc --reference-links -f gfm -s -o $outfile -t asciidoc $tmpfile
 }
@@ -31,6 +41,59 @@ START_DIR=$(pwd)
 rm -rf $START_DIR/build/site
 rm -rf $START_DIR/modules
 rm -rf $START_DIR/documentation/ui
+rm -rf $START_DIR/antora.yml
+
+# Move the script into the documentation directory so the relative paths produced by find only include dirs below documentation/.
+cd $START_DIR/documentation
+for FNAME in $(find . -name '*.md');
+do
+    MODULE_DIR=$(echo "$FNAME" | cut -d "/" -f2)
+    mkdir -p $START_DIR/modules/$MODULE_DIR/pages
+    BNAME=$(basename "$FNAME" .md)
+    # Determine the depth.
+    SLASH_COUNT=$(echo $FNAME | grep -o '/' | wc -l)
+    DEPTH="$(($SLASH_COUNT-2))"
+    md_to_adoc $FNAME $START_DIR/modules/$MODULE_DIR/pages/$BNAME.adoc $DEPTH
+done
+
+# Find images and put them into the appropriate image folder.
+for FNAME in $(find . \( -name '*.png' -or -name '*.jpeg' -or -name '*.jpg' \));
+do
+    MODULE_DIR=$(echo "$FNAME" | cut -d "/" -f2)
+    mkdir -p $START_DIR/modules/$MODULE_DIR/assets/images
+    cp $FNAME $START_DIR/modules/$MODULE_DIR/assets/images/
+done
+
+cd $START_DIR
+
+# Generate contract documentation.
+mkdir -p $START_DIR/modules/contracts/pages
+$START_DIR/ci/docgen.sh
+find $START_DIR/docs -name "*.adoc" -exec cp '{}' $START_DIR/modules/contracts/pages/ \;
+
+# Initialize antora.yml
+cat > $START_DIR/antora.yml << EOF
+name: uma
+title: UMA
+version: master
+nav:
+EOF
+
+# This unintuitive command just grabs only the lines that look like:
+# * some_dirname
+# and turn them into lines that look like:
+#   - modules/some_dirname/nav.adoc
+grep "^* " $START_DIR/documentation/map.txt | cut -c3- | sed 's/\(.*\)/  - modules\/\1\/nav.adoc/' >> $START_DIR/antora.yml
+
+cd $START_DIR/modules
+# We have to exclude ROOT because it's treated differently.
+for DIRNAME in $(find . -type d \( -name 'pages' -and ! -path '*/ROOT/*' \));
+do
+    CONTAINING_DIR=$(dirname "$DIRNAME")
+    node $START_DIR/scripts/gen-nav.js $START_DIR/documentation/map.txt $DIRNAME > $START_DIR/modules/$CONTAINING_DIR/nav.adoc
+done
+
+touch $START_DIR/modules/ROOT/nav.adoc
 
 git clone https://github.com/UMAprotocol/docs_ui.git $START_DIR/documentation/ui
 cd $START_DIR/documentation/ui
@@ -40,37 +103,5 @@ npm install
 npm run bundle
 
 cd $START_DIR
-mkdir -p $START_DIR/modules/ROOT/pages
-mkdir -p $START_DIR/modules/tutorials/pages
-mkdir -p $START_DIR/modules/explainers/pages
-mkdir -p $START_DIR/modules/explainers/assets/images
-mkdir -p $START_DIR/modules/contracts/pages
-
-cp $START_DIR/documentation/explainers/*.jpeg $START_DIR/modules/explainers/assets/images/ || echo "No .jpegs found"
-cp $START_DIR/documentation/explainers/*.jpg $START_DIR/modules/explainers/assets/images/ || echo "No .jpgs found"
-cp $START_DIR/documentation/explainers/*.png $START_DIR/modules/explainers/assets/images/ || echo "No .pngs found"
-
-$START_DIR/ci/docgen.sh
-find $START_DIR/docs -name "*.adoc" -exec cp '{}' $START_DIR/modules/contracts/pages/ \;
-node $START_DIR/scripts/gen-nav.js $START_DIR/modules/contracts/pages Contracts > $START_DIR/modules/contracts/nav.adoc
-
-shopt -s nullglob
-for FNAME in $START_DIR/documentation/tutorials/*.md
-do
-    BNAME=$(basename "$FNAME" .md)
-    md_to_adoc $FNAME $START_DIR/modules/tutorials/pages/$BNAME.adoc
-done
-
-for FNAME in $START_DIR/documentation/explainers/*.md
-do
-    BNAME=$(basename "$FNAME" .md)
-    md_to_adoc $FNAME $START_DIR/modules/explainers/pages/$BNAME.adoc
-done
-
-touch $START_DIR/modules/ROOT/nav.adoc
-node $START_DIR/scripts/gen-nav.js $START_DIR/modules/tutorials/pages Tutorials > $START_DIR/modules/tutorials/nav.adoc
-node $START_DIR/scripts/gen-nav.js $START_DIR/modules/explainers/pages Explainers > $START_DIR/modules/explainers/nav.adoc
-
-md_to_adoc $START_DIR/documentation/index.md $START_DIR/modules/ROOT/pages/index.adoc
 $(npm bin)/antora playbook.yml
 
