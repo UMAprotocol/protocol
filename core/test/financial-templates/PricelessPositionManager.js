@@ -11,6 +11,7 @@ const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
+const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
@@ -1140,5 +1141,110 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Emergency shutdown should revert as post expiration.
     assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));
+  });
+
+  it.only("Non-standard ERC20 delimitation", async function() {
+    // Create a test net token with NON-standard delimitation like USDC (6 decimals)
+    const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
+    console.log(USDCToken.address);
+
+    let customPricelessPositionManager = await PricelessPositionManager.new(
+      true, // _isTest
+      expirationTimestamp, // _expirationTimestamp
+      withdrawalLiveness, // _withdrawalLiveness
+      USDCToken.address, // _collateralAddress
+      Finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      syntheticName, // _syntheticName
+      syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
+      { from: contractDeployer }
+    );
+    tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+
+    // Create the initial pricelessPositionManager position
+    const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
+    //however the collateral is now delimited by a different number of decimals. 150 * 1e6
+    const createCollateral = toBN("150")
+      .muln(1e6)
+      .toString();
+    let expectedSponsorTokens = toBN(createTokens);
+    let expectedSponsorCollateral = toBN(createCollateral);
+
+    await collateral.approve(pricelessPositionManager.address, createCollateral, { from: sponsor });
+    await pricelessPositionManager.create(
+      { rawValue: createCollateral },
+      { rawValue: createTokens },
+      { from: sponsor }
+    );
+
+    console.log("collateral token", (await collateral.balanceOf(pricelessPositionManager.address)).toString());
+    console.log("synthetic token", (await tokenCurrency.balanceOf(sponsor)).toString());
+    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+
+    // // Deposit.
+    // const depositCollateral = "50";
+    // expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(depositCollateral));
+    // // Fails without approving collateral.
+    // assert(
+    //   await didContractThrow(pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor }))
+    // );
+    // await collateral.approve(pricelessPositionManager.address, depositCollateral, { from: sponsor });
+    // await pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
+    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+
+    // // Withdraw.
+    // const withdrawCollateral = toWei("20");
+    // expectedSponsorCollateral = expectedSponsorCollateral.sub(toBN(withdrawCollateral));
+    // let sponsorInitialBalance = await collateral.balanceOf(sponsor);
+    // await pricelessPositionManager.withdraw({ rawValue: withdrawCollateral }, { from: sponsor });
+    // let sponsorFinalBalance = await collateral.balanceOf(sponsor);
+    // assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), withdrawCollateral);
+    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+
+    // // Redeem 50% of the tokens for 50% of the collateral.
+    // const redeemTokens = toWei("50");
+    // expectedSponsorTokens = expectedSponsorTokens.sub(toBN(redeemTokens));
+    // expectedSponsorCollateral = expectedSponsorCollateral.divn(2);
+    // // Fails without approving token.
+    // assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor })));
+    // await tokenCurrency.approve(pricelessPositionManager.address, redeemTokens, { from: sponsor });
+    // sponsorInitialBalance = await collateral.balanceOf(sponsor);
+    // const redemptionResult = await pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor });
+    // truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
+    //   return (
+    //     ev.sponsor == sponsor &&
+    //     ev.collateralAmount == expectedSponsorCollateral.toString() &&
+    //     ev.tokenAmount == redeemTokens.toString()
+    //   );
+    // });
+
+    // sponsorFinalBalance = await collateral.balanceOf(sponsor);
+    // assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
+    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+
+    // // Create additional.
+    // const createAdditionalTokens = toWei("10");
+    // const createAdditionalCollateral = toWei("110");
+    // expectedSponsorTokens = expectedSponsorTokens.add(toBN(createAdditionalTokens));
+    // expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(createAdditionalCollateral));
+    // await collateral.approve(pricelessPositionManager.address, createAdditionalCollateral, { from: sponsor });
+    // await pricelessPositionManager.create(
+    //   { rawValue: createAdditionalCollateral },
+    //   { rawValue: createAdditionalTokens },
+    //   { from: sponsor }
+    // );
+    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+
+    // // Redeem full.
+    // const redeemRemainingTokens = toWei("60");
+    // await tokenCurrency.approve(pricelessPositionManager.address, redeemRemainingTokens, { from: sponsor });
+    // sponsorInitialBalance = await collateral.balanceOf(sponsor);
+    // await pricelessPositionManager.redeem({ rawValue: redeemRemainingTokens }, { from: sponsor });
+    // sponsorFinalBalance = await collateral.balanceOf(sponsor);
+    // assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
+    // await checkBalances(toBN("0"), toBN("0"));
+
+    // // TODO: Add a test to check that normal redemption does not work after maturity.
   });
 });

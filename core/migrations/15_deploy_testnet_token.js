@@ -21,7 +21,7 @@ module.exports = async function(deployer, network, accounts) {
     // Deploy if the network isn't public or if there was no listed DAI address.
     ({
       contract: { address: testnetERC20Address }
-    } = await deploy(deployer, network, TestnetERC20, { from: keys.deployer }));
+    } = await deploy(deployer, network, TestnetERC20, "Dai Stable Coin", "DAI", 18, { from: keys.deployer }));
   }
 
   // Add testnetERC20 to the margin currency whitelist.
