@@ -1,9 +1,11 @@
-* explainers
+* synthetic_tokens
+** explainer.md
+** tutorials
+*** prerequisites.md
+*** creating_from_truffle.md
+* UMA_oracle
 ** architecture.md
 ** dvm_interfaces.md
-** synthetic_tokens.md
-* tutorials
-** prerequisites.md
-** creating_synthetic_tokens_from_truffle_console.md
-** voting_with_uma_tokens.md
+** tutorials
+*** voting_with_uma_tokens.md
 * contracts
