@@ -1144,8 +1144,10 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   it.only("Non-standard ERC20 delimitation", async function() {
-    // Create a test net token with NON-standard delimitation like USDC (6 decimals)
+    // Create a test net token with non-standard delimitation like USDC (6 decimals) and mint tokens.
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
+    await USDCToken.allocateTo(sponsor, toWei("100"));
+
     console.log(USDCToken.address);
 
     let customPricelessPositionManager = await PricelessPositionManager.new(
@@ -1160,91 +1162,62 @@ contract("PricelessPositionManager", function(accounts) {
       TokenFactory.address, // _tokenFactoryAddress
       { from: contractDeployer }
     );
-    tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
-
-    // Create the initial pricelessPositionManager position
+    tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
+    // Create the initial customPricelessPositionManager position
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
     // however the collateral is now delimited by a different number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
       .muln(1e6)
       .toString();
     let expectedSponsorTokens = toBN(createTokens);
-    let expectedSponsorCollateral = toBN(createCollateral);
+    let expectedContractCollateral = toBN(createCollateral);
 
-    await collateral.approve(pricelessPositionManager.address, createCollateral, { from: sponsor });
-    await pricelessPositionManager.create(
+    await USDCToken.approve(customPricelessPositionManager.address, createCollateral, { from: sponsor });
+    await customPricelessPositionManager.create(
       { rawValue: createCollateral },
       { rawValue: createTokens },
       { from: sponsor }
     );
 
-    console.log("collateral token", (await collateral.balanceOf(pricelessPositionManager.address)).toString());
-    console.log("synthetic token", (await tokenCurrency.balanceOf(sponsor)).toString());
-    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+    // The balances minted should equal that expected from the create function.
+    assert.equal(
+      (await USDCToken.balanceOf(customPricelessPositionManager.address)).toString(),
+      expectedContractCollateral.toString()
+    );
+    assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
 
-    // // Deposit.
-    // const depositCollateral = "50";
-    // expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(depositCollateral));
-    // // Fails without approving collateral.
-    // assert(
-    //   await didContractThrow(pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor }))
-    // );
-    // await collateral.approve(pricelessPositionManager.address, depositCollateral, { from: sponsor });
-    // await pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
-    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
+    // Deposit. All balances should update accordingly.
+    const depositCollateral = toBN("50")
+      .muln(1e6)
+      .toString();
+    expectedContractCollateral = expectedContractCollateral.add(toBN(depositCollateral));
+    await USDCToken.approve(customPricelessPositionManager.address, depositCollateral, { from: sponsor });
+    await customPricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
+    
+    // The balances should reflect the additional collateral added.
+    assert.equal(
+      (await USDCToken.balanceOf(customPricelessPositionManager.address)).toString(),
+      expectedContractCollateral.toString()
+    );
+    assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
+    assert.equal(
+      (await customPricelessPositionManager.getCollateral(sponsor)).toString(),
+      expectedContractCollateral.toString()
+    );
+    assert.equal(
+      (await customPricelessPositionManager.positions(sponsor)).tokensOutstanding.toString(),
+      expectedSponsorTokens.toString()
+    );
+    assert.equal(
+      (await customPricelessPositionManager.totalPositionCollateral()).toString(),
+      expectedContractCollateral.toString()
+    );
+    assert.equal(
+      (await customPricelessPositionManager.totalTokensOutstanding()).toString(),
+      expectedSponsorTokens.toString()
+    );
 
-    // // Withdraw.
-    // const withdrawCollateral = toWei("20");
-    // expectedSponsorCollateral = expectedSponsorCollateral.sub(toBN(withdrawCollateral));
-    // let sponsorInitialBalance = await collateral.balanceOf(sponsor);
-    // await pricelessPositionManager.withdraw({ rawValue: withdrawCollateral }, { from: sponsor });
-    // let sponsorFinalBalance = await collateral.balanceOf(sponsor);
-    // assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), withdrawCollateral);
-    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
-
-    // // Redeem 50% of the tokens for 50% of the collateral.
-    // const redeemTokens = toWei("50");
-    // expectedSponsorTokens = expectedSponsorTokens.sub(toBN(redeemTokens));
-    // expectedSponsorCollateral = expectedSponsorCollateral.divn(2);
-    // // Fails without approving token.
-    // assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor })));
-    // await tokenCurrency.approve(pricelessPositionManager.address, redeemTokens, { from: sponsor });
-    // sponsorInitialBalance = await collateral.balanceOf(sponsor);
-    // const redemptionResult = await pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor });
-    // truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
-    //   return (
-    //     ev.sponsor == sponsor &&
-    //     ev.collateralAmount == expectedSponsorCollateral.toString() &&
-    //     ev.tokenAmount == redeemTokens.toString()
-    //   );
-    // });
-
-    // sponsorFinalBalance = await collateral.balanceOf(sponsor);
-    // assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
-    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
-
-    // // Create additional.
-    // const createAdditionalTokens = toWei("10");
-    // const createAdditionalCollateral = toWei("110");
-    // expectedSponsorTokens = expectedSponsorTokens.add(toBN(createAdditionalTokens));
-    // expectedSponsorCollateral = expectedSponsorCollateral.add(toBN(createAdditionalCollateral));
-    // await collateral.approve(pricelessPositionManager.address, createAdditionalCollateral, { from: sponsor });
-    // await pricelessPositionManager.create(
-    //   { rawValue: createAdditionalCollateral },
-    //   { rawValue: createAdditionalTokens },
-    //   { from: sponsor }
-    // );
-    // await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
-
-    // // Redeem full.
-    // const redeemRemainingTokens = toWei("60");
-    // await tokenCurrency.approve(pricelessPositionManager.address, redeemRemainingTokens, { from: sponsor });
-    // sponsorInitialBalance = await collateral.balanceOf(sponsor);
-    // await pricelessPositionManager.redeem({ rawValue: redeemRemainingTokens }, { from: sponsor });
-    // sponsorFinalBalance = await collateral.balanceOf(sponsor);
-    // assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
-    // await checkBalances(toBN("0"), toBN("0"));
-
-    // // TODO: Add a test to check that normal redemption does not work after maturity.
+    // The key with non-standard ERC20 delimitation is how the oracle responds to requests.
+    // The two cases that need to be tested are responding to dispute requests and settlement.
   });
 });
