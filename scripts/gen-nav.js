@@ -2,19 +2,61 @@
 
 const path = require('path');
 const proc = require('child_process');
+const fs = require('fs');
 const startCase = require('lodash.startcase');
 
-const baseDir = process.argv[2];
-const sectionName = process.argv[3];
+const mapFile = process.argv[2];
+const baseDir = process.argv[3];
 
-const files = proc.execFileSync(
-  'find', [baseDir, '-type', 'f'], { encoding: 'utf8' }
-).split('\n').filter(s => s !== '');
+// Path should look like:
+// modules/.../section_name/pages
+const pathArr = baseDir.split('/');
+const moduleName = pathArr[pathArr.length - 2];
 
-console.log("." + sectionName);
+console.log("." + startCase(moduleName));
 
-for (const file of files) {
-  const doc = file.replace(baseDir, '');
-  const title = path.parse(file).name;
-  console.log(`* xref:${doc}[${startCase(title)}]`);
+// Special case for contracts.
+if (moduleName === "contracts") {
+    const files = proc.execFileSync(
+      'find', [baseDir, '-type', 'f'], { encoding: 'utf8' }
+    ).split('\n').filter(s => s !== '');
+
+    for (const file of files) {
+      const doc = file.replace(baseDir, '');
+      const title = path.parse(file).name;
+      console.log(`* xref:${doc}[${startCase(title)}]`);
+    }
+
+    return;
+}
+
+// Read the map file in
+const lines = require('fs').readFileSync(mapFile, 'utf-8')
+    .split('\n')
+    .filter(Boolean);
+
+const moduleIndex = lines.findIndex(line => line.startsWith(`* ${moduleName}`));
+
+if (moduleIndex === -1) {
+    throw "Could not find module in mapFile (argument 1)";
+}
+
+for (let i = moduleIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    const depth = (line.match(/\*/g) || []).length;
+
+    // Reached another top level.
+    if (depth === 1) {
+        break;
+    }
+
+    const prefix = `${"*".repeat(depth - 1)} `;
+    const name = line.split(" ")[1];
+
+    if (name.includes(".")) {
+        const baseName = name.split(".")[0];
+        console.log(`${prefix} xref:${baseName}.adoc[${startCase(baseName)}]`);
+    } else {
+        console.log(`${prefix} ${startCase(name)}`);
+    }
 }
