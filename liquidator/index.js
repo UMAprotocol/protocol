@@ -14,10 +14,22 @@ const { ExpiringMultiPartyClient } = require("../financial-templates-lib/Expirin
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 // TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
-// Currently, you can run it with `truffle exec ../liquidator/liquidator.js --address=<address> --price=<price>` *from the core
+// Currently, you can run it with `truffle exec ../liquidator/index.js --address=<address> --price=<price>` *from the core
 // directory*.
 
-async function run() {
+/**
+ * @notice Runs the main liquidator indefinitely, unless the caller passes a test configuration object,
+ * in which case the script will exit after one iteration and return true if no errors were thrown.
+ * @param testConfig { address, price } Substitutes for command line flags that would be passed in normally.
+ * @return None or throws an Error.
+ */
+async function run(testConfig) {
+  // If this is a test, manually insert expected argv properties.
+  if (testConfig) {
+    argv.address = testConfig.address;
+    argv.price = testConfig.price;
+  }
+
   if (!argv.address) {
     console.log("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
     return;
@@ -61,15 +73,23 @@ async function run() {
       });
     }
     await delay(Number(10_000));
+
+    // If this is a test, exit after one iteration
+    if (testConfig) { break; }
   }
 }
 
-module.exports = async function(callback) {
+const Poll = async function(callback) {
   try {
     await run();
   } catch (err) {
-    console.error(err);
     callback(err);
   }
   callback();
 };
+
+// Attach this function to the exported function
+// in order to allow the script to be executed through both truffle and a test runner.
+Poll.run = run;
+module.exports = Poll;
+
