@@ -66,17 +66,15 @@ async function run(price, address, shouldPoll) {
 }
 
 const Poll = async function(callback) {
-  if (!argv.address) {
-    console.log("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
-    return;
-  }
-  // TODO: Remove this price flag once we have built the pricefeed module.
-  if (!argv.price) {
-    console.log("Bad input arg! Specify a `price` as the pricefeed.");
-    return;
-  }
-
   try {
+    if (!argv.address) {
+      throw new Error("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
+    }
+    // TODO: Remove this price flag once we have built the pricefeed module.
+    if (!argv.price) {
+      throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
+    }
+
     await run(argv.address, argv.price, true);
   } catch (err) {
     callback(err);
