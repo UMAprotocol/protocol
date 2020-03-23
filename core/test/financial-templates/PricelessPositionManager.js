@@ -1148,8 +1148,6 @@ contract("PricelessPositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
-    console.log(USDCToken.address);
-
     let customPricelessPositionManager = await PricelessPositionManager.new(
       true, // _isTest
       expirationTimestamp, // _expirationTimestamp
@@ -1163,7 +1161,7 @@ contract("PricelessPositionManager", function(accounts) {
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
-    // Create the initial customPricelessPositionManager position
+    // Create the initial customPricelessPositionManager position. 100 synthetics backed by 150 collat
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
     // however the collateral is now delimited by a different number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
@@ -1186,7 +1184,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
 
-    // Deposit. All balances should update accordingly.
+    // Deposit an additional 50 USDC to the position. Sponsor now has 200 USDC as collateral.
     const depositCollateral = toBN("50")
       .muln(1e6)
       .toString();
@@ -1219,5 +1217,101 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The key with non-standard ERC20 delimitation is how the oracle responds to requests.
     // The two cases that need to be tested are responding to dispute requests and settlement.
+    // Dispute and liquidation is tested in `Liquidatable.js`. Here we test settlement.
+
+    // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
+    // Sponsor now has 50 synthetics and 200 collateral.
+    const tokenHolderTokens = toWei("50");
+    await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
+      from: sponsor
+    });
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to settle.
+    const expirationTime = await customPricelessPositionManager.expirationTimestamp();
+    await customPricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+
+    // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
+    await customPricelessPositionManager.expire({ from: other });
+
+    // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
+    // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
+    // Note that due to scaling the price is scaled by 1e6 to accommodate the value of the stock denominated in USDC
+    const redemptionPrice = toBN(1200000); // 1.2*1e6. a price of 1.2 denominated in USD scaling.
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPrice.toString());
+
+    // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
+    // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
+    const tokenHolderInitialCollateral = await USDCToken.balanceOf(tokenHolder);
+    const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+    assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
+
+    // Approve the tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(customPricelessPositionManager.address, tokenHolderInitialSynthetic, {
+      from: tokenHolder
+    });
+    let settleExpiredResult = await customPricelessPositionManager.settleExpired({ from: tokenHolder });
+    const tokenHolderFinalCollateral = await USDCToken.balanceOf(tokenHolder);
+    const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
+
+    // The token holder should gain the value of their synthetic tokens in underlying.
+    // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
+    // When redeeming 50 tokens at a price of 1.2 we expect to receive 60 collateral tokens (50 * 1.2)
+    const expectedTokenHolderFinalCollateral = toBN("60").muln(1e6);
+    assert.equal(
+      tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString(),
+      expectedTokenHolderFinalCollateral.toString()
+    );
+
+    // The token holder should have no synthetic positions left after settlement.
+    assert.equal(tokenHolderFinalSynthetic, 0);
+
+    // Check the event returned the correct values
+    truffleAssert.eventEmitted(settleExpiredResult, "SettleExpiredPosition", ev => {
+      return (
+        ev.caller == tokenHolder &&
+        ev.collateralReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
+        ev.tokensBurned == tokenHolderInitialSynthetic.toString()
+      );
+    });
+
+    // For the sponsor, they are entitled to the underlying value of their remaining synthetic tokens + the excess collateral
+    // in their position at time of settlement. The sponsor had 200 units of collateral in their position and the final TRV
+    // of their synthetics they drew is 120 (100*1.2). Their redeemed amount for this excess collateral is the difference between the two.
+    // The sponsor also has 50 synthetic tokens that they did not sell valued at 1.2 per token.
+    //This makes their expected redemption = 200 (collat) - 100 * 1.2 (debt) + 50 * 1.2 (synth returned) = 140
+    const sponsorInitialCollateral = await USDCToken.balanceOf(sponsor);
+    const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // Approve tokens to be moved by the contract and execute the settlement.
+    await tokenCurrency.approve(customPricelessPositionManager.address, sponsorInitialSynthetic, {
+      from: sponsor
+    });
+    await customPricelessPositionManager.settleExpired({ from: sponsor });
+    const sponsorFinalCollateral = await USDCToken.balanceOf(sponsor);
+    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
+
+    // The token Sponsor should gain the value of their synthetics in underlying
+    // + their excess collateral from the over collateralization in their position
+    // Excess collateral = 200 - 100 * 1.2 = 80
+    const expectedSponsorCollateralUnderlying = toBN("80").muln(1e6);
+    // Value of remaining synthetic tokens = 50 * 1.2 = 60
+    const expectedSponsorCollateralSynthetic = toBN("60").muln(1e6);
+    const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
+      expectedSponsorCollateralSynthetic
+    );
+    assert.equal(
+      sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
+      expectedTotalSponsorCollateralReturned.toString()
+    );
+
+    // The token Sponsor should have no synthetic positions left after settlement.
+    assert.equal(sponsorFinalSynthetic, 0);
+
+    // Last check is that after redemption the position in the positions mapping has been removed.
+    const sponsorsPosition = await customPricelessPositionManager.positions(sponsor);
+    assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
+    assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
+    assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
   });
 });
