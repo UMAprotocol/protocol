@@ -5,18 +5,64 @@ const redeem = require("./redeem");
 const withdraw = require("./withdraw");
 const deposit = require("./deposit");
 const transfer = require("./transfer");
+const viewLiquidationDetails = require("./viewLiquidationDetails");
+const { LiquidationStatesEnum } = require("../../../../common/Enums.js");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
   const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();
+  const liquidations = await emp.getLiquidations(sponsorAddress);
+  const liquidationStateToDisplay = state => {
+    switch (state) {
+      case LiquidationStatesEnum.DISPUTE_SUCCEEDED:
+        return "LIQUIDATION FAILED (ACTION REQUIRED)";
+      case LiquidationStatesEnum.DISPUTE_FAILED:
+        return "LIQUIDATED";
+      default:
+        return "PENDING";
+    }
+  };
+  const viewLiquidations = async () => {
+    const backChoice = "Back";
+    const choices = [{ name: backChoice }];
+    for (let i = 0; i < liquidations.length; i++) {
+      const liquidation = liquidations[i];
+      const display =
+        "Borrowed: " +
+        fromWei(liquidation.tokensOutstanding) +
+        " Collateral: " +
+        fromWei(liquidation.lockedCollateral) +
+        " Status: " +
+        liquidationStateToDisplay(liquidation.state);
+      choices.push({ name: display, value: i });
+    }
+    const input = await inquirer.prompt({
+      type: "list",
+      name: "choice",
+      message: "Pick a liquidation",
+      choices
+    });
+    if (input["choice"] === backChoice) {
+      return;
+    }
+    await viewLiquidationDetails(web3, artifacts, emp, liquidations[input["choice"]], input["choice"]);
+  };
 
-  let actions;
+  let actions = {
+    back: "Back"
+  };
+  if (liquidations.length > 0) {
+    actions = {
+      ...actions,
+      viewLiquidations: "View your liquidations"
+    };
+  }
   if (collateral === "0") {
     // Sponsor doesn't have a position.
     console.log("You are not currently a sponsor");
     actions = {
-      back: "Back",
+      ...actions,
       create: "Sponsor new position"
     };
   } else {
@@ -31,7 +77,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     );
 
     actions = {
-      back: "Back",
+      ...actions,
       create: "Borrow more tokens",
       redeem: "Repay tokens",
       withdraw: "Withdraw collateral",
@@ -47,6 +93,9 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   };
   const input = (await inquirer.prompt(prompt))["choice"];
   switch (input) {
+    case actions.viewLiquidations:
+      await viewLiquidations(web3, artifacts, emp);
+      break;
     case actions.create:
       await create(web3, artifacts, emp);
       break;
