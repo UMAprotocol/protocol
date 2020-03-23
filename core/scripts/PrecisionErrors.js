@@ -168,31 +168,27 @@ async function runExport() {
    *****************************************************************************/
   // Precision error in the `payFees()` method can occur when the cumulative fee multiplier specifically loses precision.
   // Remember how we calculate the cumulative fee multiplier: ((1 - fee %) * cumulativeFeeMultiplier)
-  // There are two intermediate calculations here which can produce error:
-  // 1) The calculation of "fee %" which is equal to: (fees paid) / (PfC), and this division potentially "ceil"'s the quotient.
-  // 2) The multiplication of (1 - fee %) and cumulativeFeeMultiplier which could "floor" the product.
-  // In both situations, the resultant feeMultiplier is less than it should be, therefore
-  // the contract believes it to have less collateral than it actually owns (`getCollateral()` returns less than `collateral.balanceOf()`).
+  // Let's look closer at the intermediate calculations here which can produce 1e-17 of total error:
+  // 1) The calculation of "fee %" which is equal to: (fees paid) / (PfC), and this division potentially "ceil"'s the quotient. This produce +1e-18 of error.
+  // 2) The inverse of the quotient (1 - fee %) is taken, turning the +1e-18 of error into -1e-18.
+  // 3) The inverse quotient is then multiplied by the existing cumulativeFeeMultiplier, bringing total error to -1e-17.
+  // In consequence, cumulativeFeeMultiplier can be -1e-17 less than it should be.
 
-  // Situation 1: The percentage of fees paid (as a % of PfC) gets "ceil"'d.
-  // -------------------------------------------------------------------------------------------------------------------------------
-  // Example:
+  // Example 1:
   // - Collateral = 9 wei.
   // - 40% fees per second * 1 second * 9 wei collateral = 3.6 wei fees, however this gets floored by `Store.computeFee()` to 3 wei fees.
   // - Fees paid as % of collateral = 3e-18 / 9e-18 = 0.3...33 repeating, which cannot be represented by FixedPoint.
   // - The least significant digit will get ceil'd up from 3 to 4.
   // - This causes the adjustment multiplier applied to the collateral (1 - fee %) to be slightly lower:
-  // - 0.6...66 instead of 0.6...67.
-  // - Ultimately this decreases the available collateral returned by `FeePayer._getCollateral()`.
+  // - 0.6...66 instead of 0.6...67., 1e-18 of error.
+  // - Calling `getCollateral()` exposes this error, which returns (feeMultiplier * rawCollateral): (0.6..66 * 9e-18 versus 0.6..66-repeating * 9e-18).
 
-  // Situation 2: The cumulative fee multiplier gets "floor"'d.
-  // -------------------------------------------------------------------------------------------------------------------------------
-  // Example:
+  // Example 2:
   // - Assess fees such that the fee multiplier is 1e-17
   // - Change fee rate to 0.01 and charge one time unit's worth of fees.
   // - Fee multiplier is calculated as ((1 - fee %) * cumulativeFeeMultiplier)
   // - In this case: ((1-0.01) * 1e-17 = 9.9e-18)
-  // - The multiplication is floored, causing the fee multiplier to get set to 9e-18
+  // - The multiplication is floored, causing the fee multiplier to get set to 9e-18, 0.9e-18 of error.
 
   // Conclusion:
   // -------------------------------------------------------------------------------------------------------------------------------
@@ -200,8 +196,7 @@ async function runExport() {
   // This precision loss affects a percentage, not a flat value, So as the value in the contract scales up,
   // the precision loss, in real dollar terms, scales up too.
   //
-  // Specifically, for a single transaction, the cumulative fee multiplier can have a maximum precision loss of 1e-18.
-  // However, the precision loss as a percentage of the previous fee multiplier increases over time, since
+  // The precision loss as a percentage of the previous fee multiplier increases over time, since
   // the fee multiplier can only decrease over time.
 
   // Quantifying Errors ((actual - expected) / expected):
@@ -209,7 +204,7 @@ async function runExport() {
   // - error in fee paid: (+1e-18)
   // - error in cumulativeFeeMultiplier: (-1e-17)
 
-  console.group("Cumulative Fee Multiplier gets Floor'd");
+  console.group("Example 1) Precision loss in cumulativeFeeMultiplier via payFees()");
   /**
    * @notice CREATE NEW EXPERIMENT
    */
@@ -369,7 +364,7 @@ async function runExport() {
 
   console.groupEnd();
 
-  console.group("Fees paid as % of PfC gets Ceil'd");
+  console.group("Example 2) Precision Loss in cumulativeFeeMultiplier via payFees()");
   /**
    * @notice CREATE NEW EXPERIMENT
    */
@@ -468,8 +463,8 @@ async function runExport() {
   /**
    * @notice QUANTIFY ERROR
    */
-  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the
-  // (expected - credited) collateral is less than expected
+  // Error 1: Because cumulativeFeeMultiplier has -1e-18 of loss, getCollateral()
+  // returns a slightly smaller figure.
   assert.equal(
     toBN(contractCollateral.toString()).toString(),
     toBN(adjustedCollateral.toString())
@@ -531,7 +526,7 @@ async function runExport() {
   sponsor = experimentEnv.sponsor;
   contractDeployer = experimentEnv.contractDeployer;
 
-  console.group("Precision loss due to deposit()");
+  console.group("Precision loss in rawCollateralAmount via deposit()");
 
   /**
    * @notice TEST PARAMETERS
@@ -643,7 +638,7 @@ async function runExport() {
    * START CREATE()
    *
    *****************************************************************************/
-  console.group("Precision loss due to createToken()");
+  console.group("Precision loss in rawCollateralAmount via createToken()");
   // The precision loss mechanic is identical to deposit().
 
   /**
@@ -800,7 +795,7 @@ async function runExport() {
   // Quantifying Errors ((actual - expected) / expected):
   // - error in rawCollateral: (+1e-18)
 
-  console.group("Precision loss due to withdraw()");
+  console.group("Precision loss in rawCollateralAmount via withdraw()");
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -942,9 +937,9 @@ async function runExport() {
   // - Precision loss occurs because the division floors the quotient, causing rawCollateral to be higher than expected.
   // - However, the user does not pass "collateral" into Redeem, instead they pass "numTokens", representing the number of synthetic tokens they want to redeem.
   // - We then calculate the proportion of "collateral" that we need to withdraw from the contract, which itself has the potential for precision loss.
-  // - (collateral = numToken / tokensOutstanding)
-  // - Then, we call _removeCollateral(collateral) while simulataneously burning numTokens from the user.
-  // - Therefore, there is a possibility that collateral is 1e-18 less than (numTokens / tokensOutstanding) without precision loss.
+  // - (collateral = numToken / tokensOutstanding), produces -1e-18 of error.
+  // - Then, we call _removeCollateral(collateral) while simulataneously burning numTokens from the user, multiplying the -1e-18 of error by 10.
+  // - Therefore, there is a possibility that collateral is -1e-17 less than (numTokens / tokensOutstanding) without precision loss.
   // Example: We redeem 1 synthetic from the contract for a redeem.
   // - cumulativeFeeMultiplier = 0
   // - rawCollateral = 1
@@ -963,7 +958,7 @@ async function runExport() {
   // - error in fraction of collateral redeemed: (-1e-18)
   // - error in collateral returned to redeemer: (-1e-17)
 
-  console.group("Precision loss due to redeem()");
+  console.group("Precision loss in collateralRedeemed via redeem()");
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -1094,10 +1089,11 @@ async function runExport() {
    * START LIQUIDATE()
    *
    *****************************************************************************/
-  console.group("Precision loss due to partial liquidations via createLiquidation()");
+  console.group("Precision in rawCollateralAmount via createLiquidation()");
   // Overview:
   // - When you partially liquidate X tokens of a position with T tokens, we liquidate X/T of the collateral.
-  // - That division does a floor operation in order to represent a FixedPoint.
+  // - That division does a floor operation in order to represent a FixedPoint, producing -1e-18 of error.
+  // - The quotient is multiplied by the collateral in the contract before removing it from the contract, multiplying the error by 10 to -1e-17.
   // - Let's start with 9 synthetic tokens and 9 collateral.
   // - If we liquidate 3 synthetic tokens, then the "(FixedPoint) ratio" of the position that we are liquidating is 3/9 = 0.33..repeating,
   // which gets floored after 18 decimals.
@@ -1157,7 +1153,7 @@ async function runExport() {
 
   // Log results in a table.
   breakdown.credited = new CollateralBreakdown(startingContractCollateral);
-  console.group("** Pre-Liquidation: **");
+  console.group("** Collateral Amounts Pre-Liquidation: **");
   console.table(breakdown);
   console.groupEnd();
 
