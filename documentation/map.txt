@@ -3,7 +3,7 @@
 ** tutorials
 *** prerequisites.md
 *** creating_from_truffle.md
-* UMA_oracle
+* oracle
 ** architecture.md
 ** dvm_interfaces.md
 ** tutorials
