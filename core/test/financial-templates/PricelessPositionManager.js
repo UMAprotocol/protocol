@@ -1278,7 +1278,7 @@ contract("PricelessPositionManager", function(accounts) {
     // in their position at time of settlement. The sponsor had 200 units of collateral in their position and the final TRV
     // of their synthetics they drew is 120 (100*1.2). Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell valued at 1.2 per token.
-    //This makes their expected redemption = 200 (collat) - 100 * 1.2 (debt) + 50 * 1.2 (synth returned) = 140
+    // This makes their expected redemption = 200 (collat) - 100 * 1.2 (debt) + 50 * 1.2 (synth returned) = 140
     const sponsorInitialCollateral = await USDCToken.balanceOf(sponsor);
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
 
