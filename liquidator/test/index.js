@@ -75,15 +75,14 @@ contract("Liquidator.js", function(accounts) {
   });
 
   it("Completes one iteration without throwing an error", async function() {
-    const testConfig = {
-      address: emp.address,
-      price: "1"
-    };
+    const address = emp.address;
+    const price = "1";
     let errorThrown;
     try {
-      await Poll.run(testConfig);
+      await Poll.run(price, address, false);
       errorThrown = false;
     } catch (err) {
+      console.error(err);
       errorThrown = true;
     }
     assert.isFalse(errorThrown);

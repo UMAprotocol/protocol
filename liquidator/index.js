@@ -18,37 +18,22 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 // directory*.
 
 /**
- * @notice Runs the main liquidator indefinitely, unless the caller passes a test configuration object,
- * in which case the script will exit after one iteration and return true if no errors were thrown.
- * @param testConfig { address, price } Substitutes for command line flags that would be passed in normally.
+ * @notice Continuously attempts to liquidate positions in the EMP contract.å
+ * @param {Number} price Price used to determine undercollateralized positions to liquidate.
+ * @param {String} address Contract address of the EMP.
  * @return None or throws an Error.
  */
-async function run(testConfig) {
-  // If this is a test, manually insert expected argv properties.
-  if (testConfig) {
-    argv.address = testConfig.address;
-    argv.price = testConfig.price;
-  }
-
-  if (!argv.address) {
-    console.log("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
-    return;
-  }
-  // TODO: Remove this price flag once we have built the pricefeed module.
-  if (!argv.price) {
-    console.log("Bad input arg! Specify a `price` as the pricefeed.");
-    return;
-  }
+async function run(price, address, shouldPoll) {
   Logger.info({
     at: "liquidator#index",
     message: "liquidator started 🕵️‍♂️",
-    empAddress: argv.address,
-    currentPrice: argv.price
+    empAddress: address,
+    currentPrice: price
   });
 
   // Setup web3 accounts an contract instance
   const accounts = await web3.eth.getAccounts();
-  const emp = await ExpiringMultiParty.at(argv.address);
+  const emp = await ExpiringMultiParty.at(address);
 
   // Client and liquidator bot
   const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
@@ -63,7 +48,7 @@ async function run(testConfig) {
       // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
       // Liquidate any undercollateralized positions!
       // Withdraw money from any liquidations that are expired or DisputeFailed.
-      await liquidator.queryAndLiquidate(toWei(argv.price.toString()));
+      await liquidator.queryAndLiquidate(toWei(price.toString()));
       await liquidator.queryAndWithdrawRewards();
     } catch (error) {
       Logger.error({
@@ -74,16 +59,25 @@ async function run(testConfig) {
     }
     await delay(Number(10_000));
 
-    // If this is a test, exit after one iteration
-    if (testConfig) {
+    if (!shouldPoll) {
       break;
     }
   }
 }
 
 const Poll = async function(callback) {
+  if (!argv.address) {
+    console.log("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
+    return;
+  }
+  // TODO: Remove this price flag once we have built the pricefeed module.
+  if (!argv.price) {
+    console.log("Bad input arg! Specify a `price` as the pricefeed.");
+    return;
+  }
+
   try {
-    await run();
+    await run(argv.address, argv.price, true);
   } catch (err) {
     callback(err);
   }
