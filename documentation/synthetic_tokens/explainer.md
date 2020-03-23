@@ -25,7 +25,7 @@ This smart contract can be deployed using UMA’s synthetic token contract templ
 - token expiration timestamp
 - token collateralization ratio (e.g. a synthetic token must have collateral worth at least 120% of the price indentifier’s current value) 
 
-This [tutorial](../tutorials/creating_from_truffle.md) will show you how to parameterize and deploy the smart contract for a new synthetic token from the command line.
+This [tutorial](tutorials/creating_from_truffle.md) will show you how to parameterize and deploy the smart contract for a new synthetic token from the command line.
 
 ## Creating Synthetic Tokens From an Existing Contract
 After the contract is deployed, anyone can interact with the contract to create synthetic tokens. These actors are called “token sponsors”, since they sponsor the creation of synthetic tokens. 
@@ -38,7 +38,7 @@ Token sponsors deposit collateral into the contract to collateralize synthetic t
 
 The global collateralization ratio (GCR) is the average collateralization ratio among all token sponsor positions that have not yet been liquidated nor have any outstanding withdrawal requests. Requiring new token sponsors to collateralize their positions by as much as the GCR provides some assurances that so long as those token sponsors collateralized below the GCR have not yet been liquidated, those above the GCR need not be at risk of liquidation.
 
-This [tutorial](/tutorials/creating_from_truffle.md#create-new-tokens-from-an-existing-contract) will show you how to mint tokens from the command line after having parameterized and deployed the synthetic token’s smart contract. <!-- TODO: add link -->
+This [tutorial](tutorials/creating_from_truffle.md#create-new-tokens-from-an-existing-contract) will show you how to mint tokens from the command line after having parameterized and deployed the synthetic token’s smart contract. <!-- TODO: add link -->
 
 ## Managing Token Sponsor Positions
 During the lifetime of the synthetic token, token sponsors may want to deposit additional collateral to their positions so as to avoid liquidation. Sponsors may also want to withdraw excess collateral if the position has moved in their favor. 
