@@ -638,128 +638,7 @@ async function runExport() {
    * START CREATE()
    *
    *****************************************************************************/
-  console.group("Precision loss in rawCollateralAmount via createToken()");
   // The precision loss mechanic is identical to deposit().
-
-  /**
-   * @notice CREATE NEW EXPERIMENT
-   */
-  experimentEnv = await createTestEnvironment();
-  collateral = experimentEnv.collateral;
-  synthetic = experimentEnv.synthetic;
-  emp = experimentEnv.emp;
-  store = experimentEnv.store;
-  sponsor = experimentEnv.sponsor;
-  contractDeployer = experimentEnv.contractDeployer;
-
-  /**
-   * @notice TEST PARAMETERS
-   */
-  testConfig = {
-    sponsorCollateralAmount: toWei("0.1"),
-    expectedFeeMultiplier: 0.3, // Division by this produces precision loss, tune this.
-    feePerSecond: toWei("0.7"),
-    amountToDeposit: toWei("0.1"),
-    amountToCreate: toWei("1") // Amount of synthetic tokens to create does not matter.
-  };
-
-  /**
-   * @notice SETUP THE TEST
-   */
-  // 1) Create position.
-  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
-  await emp.create(
-    { rawValue: testConfig.sponsorCollateralAmount },
-    { rawValue: testConfig.amountToCreate },
-    { from: sponsor }
-  );
-  // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
-  // 3) Move time in the contract forward by 1 second to capture unit fee.
-  startTime = await emp.getCurrentTime();
-  await emp.setCurrentTime(startTime.addn(1));
-  // 4) Pay the fees.
-  await emp.payFees();
-
-  /**
-   * @notice PRE-TEST INVARIANTS
-   */
-  breakdown = {};
-  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  startingContractCollateral = await collateral.balanceOf(emp.address);
-  startingAdjustedContractCollateral = await emp.totalPositionCollateral();
-  startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingRawContractCollateral = await emp.rawTotalPositionCollateral();
-
-  // Test 1) Fee multiplier is set correctly.
-  assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
-
-  // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
-  assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
-
-  // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group("** Pre-Create: Actual and Credited Collateral should be equal **");
-  console.table(breakdown);
-  console.groupEnd();
-
-  /**
-   * @notice RUN THE TEST ONCE
-   */
-  await emp.create(
-    { rawValue: testConfig.sponsorCollateralAmount },
-    { rawValue: testConfig.amountToCreate },
-    { from: sponsor }
-  );
-  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  contractCollateral = await collateral.balanceOf(emp.address);
-  adjustedCollateral = await emp.totalPositionCollateral();
-  rawContractCollateral = await emp.rawTotalPositionCollateral();
-
-  // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group(`** After 1 Create with ${fromWei(testConfig.amountToDeposit)} collateral: **`);
-  console.table(breakdown);
-  console.groupEnd();
-
-  /**
-   * @notice QUANTIFY ERROR
-   */
-  // Error 1: rawCollateral was increased by 0.3...33 (less than expected 0.3...33 repeating), therefore the
-  // (expected - credited) collateral is less than expected
-  assert.equal(
-    toBN(contractCollateral.toString()).toString(),
-    toBN(adjustedCollateral.toString())
-      .add(toBN(toWei("0." + "0".repeat(17) + "1")))
-      .toString()
-  );
-
-  /**
-   * @notice POST-TEST INVARIANTS
-   */
-  endingStoreCollateral = await collateral.balanceOf(store.address);
-
-  // Test 1) Make sure that store hasn't collected any fees during this test, so that we can be confident that deposits
-  // are the only source of drift.
-  assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString());
-
-  // Test 2) The fee multiplier has not changed.
-  assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, testConfig.expectedFeeMultiplier);
-
-  /**
-   * @notice POST-TEST CLEANUP
-   */
-
-  // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
-
-  console.groupEnd();
   /** ***************************************************************************
    *
    * END CREATE()
@@ -944,15 +823,15 @@ async function runExport() {
   // - cumulativeFeeMultiplier = 0
   // - rawCollateral = 1
   // - tokensOutstanding = 10
-  // - amountToRedeem = 1e-18
-  // - fractionToRedeem = (1e-18 / 10 = 1e-19 repeating), which gets floored to 0
+  // - amountToRedeem = 9e-18
+  // - fractionToRedeem = (9e-18 / 10 = 9e-19 repeating), which gets floored to 0
   // - collateralToRedeem = fractionToRedeem * (rawCollateral * cumulativeFeeMultiplier) = 0 * 1 * 1 = 0
   // - _removeCollateral adjusts rawCollateral correctly: (rawCollateral = rawCollateral - (collateralToRedeem / cumulativeFeeMultiplier))
   // - with_precision_loss(rawCollateral - (0 / 1)) == no_precision_loss(rawCollateral - (0 / 1))
   // - However, (fractionToRedeem) != (numTokens / tokensOutstanding), therefore the following precision loss occurs:
-  // - numTokens amount of synthetic are burned from user, burning 1e-18 of the token supply
+  // - numTokens amount of synthetic are burned from user, burning 9e-18 of the token supply
   // - collateralToRedeem amount of collateral is transferred to user, returning 0 of the collateral
-  // - 0 != 1e-18
+  // - 0 != 9e-18
   // Quantifying Errors ((actual - expected) / expected):
   // - error in rawCollateral: (+1e-18)
   // - error in fraction of collateral redeemed: (-1e-18)
@@ -979,7 +858,7 @@ async function runExport() {
     sponsorCollateralAmount: toWei("1"),
     feePerSecond: toWei("0"),
     expectedFeeMultiplier: toWei("1"), // Division by this produces precision loss, tune this.
-    amountToRedeem: "1"
+    amountToRedeem: "9"
   };
 
   /**
@@ -1056,8 +935,8 @@ async function runExport() {
   /**
    * @notice QUANTIFY ERROR
    */
-  // Error 1: 1e-18 numTokens were returned to user but 0 tokens removed from collateral in contract
-  assert.equal(tokensOutstanding.toString(), toWei("9.999999999999999999").toString());
+  // Error 1: 9e-18 numTokens were burned by the user but 0 tokens removed from collateral in contract
+  assert.equal(tokensOutstanding.toString(), toWei("9.999999999999999991").toString());
   assert.equal(contractCollateral.toString(), toWei("1").toString());
   /**
    * @notice POST-TEST INVARIANTS
