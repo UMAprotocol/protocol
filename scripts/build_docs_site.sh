@@ -23,7 +23,7 @@ md_to_adoc() {
     sed -i.bak 's/^##/#/' $tmpfile
 
     # Changes markdown file interlink extensions to .html so they continue to work when the site is rendered.
-    sed -i.bak 's/\.md[)#]/.html[)#]/g' $tmpfile
+    sed -i.bak 's/\.md\([)#]\)/.html\1/g' $tmpfile
 
     # Changes all dashes to underscores inside the anchors.
     sed -i.bak -e ':loop' -e 's/\(\]([^)]*#[^)]*\)-\([^)]*)\)/\1_\2/g' -e 't loop' $tmpfile
