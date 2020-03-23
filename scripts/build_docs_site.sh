@@ -23,7 +23,16 @@ md_to_adoc() {
     sed -i.bak 's/^##/#/' $tmpfile
 
     # Changes markdown file interlink extensions to .html so they continue to work when the site is rendered.
-    sed -i.bak 's/\.md)/.html)/' $tmpfile
+    sed -i.bak 's/\.md[)#]/.html[)#]/g' $tmpfile
+
+    # Changes all dashes to underscores inside the anchors.
+    sed -i.bak -e ':loop' -e 's/\(\]([^)]*#[^)]*\)-\([^)]*)\)/\1_\2/g' -e 't loop' $tmpfile
+
+    # Adds a leading underscore to same-file anchors.
+    sed -i.bak 's/\](#/\](#_/g' $tmpfile
+
+    # Adds a leading underscore to outside-file anchors.
+    sed -i.bak 's/\.html#/.html#_/g' $tmpfile
 
     # For each level of depth below the module level, we need to remove one "../" from file references. This is because
     # subdirectories effectively get flattened into the modules general file list.
