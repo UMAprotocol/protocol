@@ -38,7 +38,7 @@ const lines = require('fs').readFileSync(mapFile, 'utf-8')
 const moduleIndex = lines.findIndex(line => line.startsWith(`* ${moduleName}`));
 
 if (moduleIndex === -1) {
-    throw "Could not find module in mapFile (argument 1)";
+    throw `Could not find ${moduleName} module in mapFile`;
 }
 
 for (let i = moduleIndex + 1; i < lines.length; i++) {
