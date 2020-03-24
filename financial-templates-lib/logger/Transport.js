@@ -3,7 +3,6 @@
 // from the logger itself. All Winston transport objects and their associated formatting
 // are created within this module.
 
-const winston = require("winston");
 const TwilioTransport = require("./TwilioTransport");
 const SlackTransport = require("./SlackTransport");
 const ConsoleTransport = require("./ConsoleTransport");
