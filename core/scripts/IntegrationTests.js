@@ -1,16 +1,4 @@
 /**
- * @notice This is the main script that performs intergration tests which on precision loss occurring throughout ExpiringMultiParty methods.
- * Precision loss occurs when multiplying or dividing FixedPoint numbers because FixedPoint can only store a fixed
- * amount of decimals. Therefore, calculations will get truncated and either floored or ceiled. Each test runs in isolation
- * by creating a new test environment with a new EMP contract.
- * @dev This script works assuming that the sender of all transactions is the deployer of the EMP contracts.
- *
- * Assumptions: You are currently in the `/core` directory.
- * Requirements: Deploy contracts via `$(npm bin)/truffle migrate --reset --network <network>
- * Run: $(npm bin)/truffle exec ./scripts/PrecisionErrors.js --network test
- */
-
-/**
  * @notice This test script runs a number of integration tests between all layers of the
  * smart contracts to stress test logic to ensure contract state never locks.
  * For example all branches where fees get taken out (positions, liquidations, partial liquidations)
