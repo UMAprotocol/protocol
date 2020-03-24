@@ -171,10 +171,10 @@ async function runExport() {
   // - `M`: cumulative fee multiplier
   // - `P`: `RC * M`, also the "profit from the corruption"
   // - Precision error in the `payFees()` method can occur when the cumulative fee multiplier specifically loses precision.
-  //   After paying `F` collateral to the store, the contract sets the new cumulative fee multiplier `M_1` as: 
-  //   `M_1 = M * (1 - F / P)`. 
-  // - `F / P` is ceil'd which means that `1 - F / P` is floor'd and potentially loses 1e-18 precision. 
-  //   This could cause `M_1 < M * (1 - F / P)`. This is especially problematic because `M` is used whenever another method requires calculating `P`, 
+  //   After paying `F` collateral to the store, the contract sets the new cumulative fee multiplier `M_1` as:
+  //   `M_1 = M * (1 - F / P)`.
+  // - `F / P` is ceil'd which means that `1 - F / P` is floor'd and potentially loses 1e-18 precision.
+  //   This could cause `M_1 < M * (1 - F / P)`. This is especially problematic because `M` is used whenever another method requires calculating `P`,
   //   the collateral credited to sponsors.
   // Example:
   // - P = 1
@@ -622,11 +622,11 @@ async function runExport() {
   // - `RC` = raw collateral
   // - `M` = fee multiplier
   // - `C` = Collateral credited to sponsors `(RC * M)`
-  // - Redeems have two sources of precision loss: 
+  // - Redeems have two sources of precision loss:
   //   (1) The user burns S synthetic tokens and should receive `(S / T) * C = c` collateral tokens.
   //       It is possible that `(S / T)` gets floored, loses 1e-18 of precision, and is then multiplied by C,
   //       therefore the proportion of collateral returned is less than the synthetic burned: `(C - c)/C < (T-S)/T`.
-  //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user, 
+  //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user,
   //       while `(c / M)` raw collateral is removed from `RC`. `(c / M)` is floored and therefore
   //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`.
   // Error Amount:
@@ -772,17 +772,17 @@ async function runExport() {
   // - `RC` = raw collateral
   // - `M` = fee multiplier
   // - `C` = Collateral credited to sponsors `(RC * M)`
-  // - Partial liquidations have the same source of precision loss as redemptions: 
+  // - Partial liquidations have the same source of precision loss as redemptions:
   //   (1) The user liquidates S synthetic tokens and should receive `(S / T) * C = c` collateral tokens.
   //       It is possible that `(S / T)` gets floored, loses 1e-18 of precision, and is then multiplied by C,
   //       therefore the proportion of collateral returned is less than the synthetic burned: `(C - c)/C < (T-S)/T`.
-  //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user, 
+  //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user,
   //       while `(c / M)` raw collateral is removed from `RC`. `(c / M)` is floored and therefore
   //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`.
   // Error Amount:
   // -1e-17 in `c` if `(S / T)` has -1e-18 error and is then multiplied by C's least significant decimal
   // +1e-18 in `RC` for the same reason as in a withdraw.
-  // Example: 
+  // Example:
   // - T = 9
   // - RC = 9
   // - M = 1
