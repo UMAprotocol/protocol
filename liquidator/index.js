@@ -75,7 +75,7 @@ const Poll = async function(callback) {
       throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
     }
 
-    await run(argv.address, argv.price, true);
+    await run(argv.price, argv.address, true);
   } catch (err) {
     callback(err);
   }
