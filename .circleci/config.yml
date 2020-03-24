@@ -74,8 +74,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v5-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v5-sec-toolbox-deps-
+            - v6-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v6-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -92,13 +92,12 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v5-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v6-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
-      # TODO(#976) Solc 0.6 not supported, skipping this test
       - run:
           name: Slither
-          command: ./ci/false_positive.sh
+          command: ./ci/run_slither.sh
   test:
     docker:
       - image: circleci/node:lts
