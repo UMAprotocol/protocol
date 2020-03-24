@@ -1,12 +1,38 @@
-// This test script runs a number of integration tests between all layers of the smart contracts
-// to stress test logic to ensure contract state never locks. For example all branches
-// where fees get taken out (positions, liquidations, partial liquidations)
-// are tested and to see if there is any leftover wei or whether contracts get locked.
+/**
+ * @notice This is the main script that performs intergration tests which on precision loss occurring throughout ExpiringMultiParty methods.
+ * Precision loss occurs when multiplying or dividing FixedPoint numbers because FixedPoint can only store a fixed
+ * amount of decimals. Therefore, calculations will get truncated and either floored or ceiled. Each test runs in isolation
+ * by creating a new test environment with a new EMP contract.
+ * @dev This script works assuming that the sender of all transactions is the deployer of the EMP contracts.
+ *
+ * Assumptions: You are currently in the `/core` directory.
+ * Requirements: Deploy contracts via `$(npm bin)/truffle migrate --reset --network <network>
+ * Run: $(npm bin)/truffle exec ./scripts/PrecisionErrors.js --network test
+ */
 
+/**
+  * @notice This test script runs a number of integration tests between all layers of the 
+  * smart contracts to stress test logic to ensure contract state never locks. 
+  * For example all branches where fees get taken out (positions, liquidations, partial liquidations)
+  * are tested to see if there is any leftover wei or whether contracts get locked. These tests do not
+  * aim to quantify the rounding error (for this see PrecisionErrors.js) but rather aim test the holistic
+  * impact of rounding on contract operation.
+  * @dev this script uses all 10 default ganache accounts in testing to mock a number of liquidators,
+  * disputors, sponsors and token holders.
+  * 
+  * Assumptions: You are currently in the `/core` directory.
+  * Run: $(npm bin)/truffle test ./scripts/IntegrationTests.js --network test
+  * 
+  */
+
+// Helpers
 const { toWei, toBN } = web3.utils;
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
+// Contract to test
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
+
+// Other UMA related contracts and mocks
 const Token = artifacts.require("ExpandedERC20");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
@@ -57,7 +83,7 @@ contract("IntergrationTest", function(accounts) {
     });
 
     startingTime = await expiringMultiPartyCreator.getCurrentTime();
-    expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30));
+    expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30)); // One month in the future
     constructorParams = {
       isTest: true,
       expirationTimestamp: expirationTime.toString(),
@@ -75,6 +101,7 @@ contract("IntergrationTest", function(accounts) {
       disputerDisputeRewardPct: { rawValue: toWei("0.1") }
     };
 
+    // register the price identifer within the identifer whitelist
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
       from: contractCreator
@@ -108,26 +135,27 @@ contract("IntergrationTest", function(accounts) {
     }
   });
   it("Iterative full life cycle test with friendly numbers", async function() {
-    /**
-     * @notice Iterative test with sponsors, liquidations and disputes.
-     */
-    // Number of positions to create and liquidate. The following process is followed to initiate maximum interaction
-    // with the emp & fee paying function to try and compound floating errors to see if positions are locked at settlement:
-    // 0) create a large position by the liquidator to enable them to perform liquidations
-    // 1) position created by selected sponsor
-    // 2) random amount of tokens sent to a selected tokenholder
-    // 3) time advanced by 1000 seconds
-    // 4) 1/3 chance to initiate liquidation
-    // 4.a) if liquidation initiated then time advanced
-    // 4.b) 1/2chance to dispute
-    // 4.b.i) if disputed then resolve oracle price
-    // 5) chance for token sponsor to deposit more collateral
-    // 6) chance for the sponsor to redeem collateral
-    // 7) repeat 1 to 6 `numIterations` times
-    // 8) withdraw successful (or failed) liquidation returns from sponsors, liquidators and disputers
-    // 9) settle contract
-    // 10) ensure that all users can withdraw their funds
-    // 11) check the contract has no funds left in it
+   /**
+    * @notice Iterative test with sponsors, liquidations and disputes.
+    * Number of positions to create and liquidate. The following process is followed to 
+    * initiate maximum interaction with the emp & fee paying function to try and compound
+    *  floating errors to see if positions are locked at settlement:
+    * 0) create a large position by the liquidator to enable them to perform liquidations
+    * 1) position created by selected sponsor
+    * 2) random amount of tokens sent to a selected tokenholder
+    * 3) time advanced by 1000 seconds
+    * 4) 1/3 chance to initiate liquidation
+    * 4.a) if liquidation initiated then time advanced
+    * 4.b) 1/2chance to dispute
+    * 4.b.i) if disputed then resolve oracle price
+    * 5) chance for token sponsor to deposit more collateral
+    * 6) chance for the sponsor to redeem collateral
+    * 7) repeat 1 to 6 `numIterations` times
+    * 8) withdraw successful (or failed) liquidation returns from sponsors, liquidators and disputers
+    * 9) settle contract
+    * 10) ensure that all users can withdraw their funds
+    * 11) check the contract has no funds left in it
+    */
 
     // Test settings
     const numIterations = 20; // number of times the simulation loop is run
@@ -172,9 +200,7 @@ contract("IntergrationTest", function(accounts) {
       // STEP 1: creating position
       const tokensOutstanding = await expiringMultiParty.totalTokensOutstanding();
       const rawCollateral = await expiringMultiParty.rawTotalPositionCollateral();
-
       const GCR = rawCollateral.mul(toBN(toWei("1"))).div(tokensOutstanding);
-
       const collateralNeeded = baseNumTokens.mul(GCR).div(toBN(toWei("1")));
 
       await expiringMultiParty.create(
