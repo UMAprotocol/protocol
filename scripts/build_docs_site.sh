@@ -46,7 +46,9 @@ mkdir -p $START_DIR/modules/explainers/pages
 mkdir -p $START_DIR/modules/explainers/assets/images
 mkdir -p $START_DIR/modules/contracts/pages
 
-cp $START_DIR/documentation/explainers/*.jpeg $START_DIR/modules/explainers/assets/images/
+cp $START_DIR/documentation/explainers/*.jpeg $START_DIR/modules/explainers/assets/images/ || echo "No .jpegs found"
+cp $START_DIR/documentation/explainers/*.jpg $START_DIR/modules/explainers/assets/images/ || echo "No .jpgs found"
+cp $START_DIR/documentation/explainers/*.png $START_DIR/modules/explainers/assets/images/ || echo "No .pngs found"
 
 $START_DIR/ci/docgen.sh
 find $START_DIR/docs -name "*.adoc" -exec cp '{}' $START_DIR/modules/contracts/pages/ \;

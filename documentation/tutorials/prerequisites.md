@@ -31,15 +31,3 @@ $(npm bin)/truffle test --network test
 ```
 
 These tests will take a while to finish, but if set up correctly, all tests should pass.
-
-## UMA token builder
-
-First, we'll set up the dependencies for the UMA token builder.
-1. Run `cd sponsor-dapp-v2`.
-1. Run `npm install`.
-
-Next, we'll set up the MetaMask Chrome extension and connect it to our locally running instance of Ganache.
-
-1. Install [Metamask](https://metamask.io/) in Chrome.
-1. Set MetaMask to connect to Custom RPC network "http://localhost:9545".
-1. In MetaMask, click "Import using account seed phrase" and use the seed phrase from Ganache.
