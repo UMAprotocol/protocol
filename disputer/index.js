@@ -6,7 +6,7 @@ const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/Logger");
 
 // JS libs
-const { Disputer } = require("./Disputer");
+const { Disputer } = require("./disputer");
 const { GasEstimator } = require("../financial-templates-lib/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 
