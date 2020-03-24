@@ -49,6 +49,12 @@ md_to_adoc() {
     # This sed takes links that look like "(./)deeper_dir/file.html" and transforms them to "file.html".
     sed -i.bak 's/\]([.]\{0,1\}[^.][^).]*\/\([[:alnum:]_-]*.html\)/](\1/g' $tmpfile
 
+    # If the file is in the ROOT directory, then we need to remove all of the leading "../" from links.
+    if [[ $infile = *ROOT* ]]
+    then
+        sed -i.bak 's/\](\.\.\//](/g' $tmpfile
+    fi
+
     # Use pandoc to do the remainder of the conversion and output to the destination.
     pandoc --atx-headers --verbose --wrap=none --toc --reference-links -f gfm -s -o $outfile -t asciidoc $tmpfile
 }
