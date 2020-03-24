@@ -8,4 +8,9 @@
 ** dvm_interfaces.md
 ** tutorials
 *** voting_with_uma_tokens.md
+* community
+** previous_and_upcoming_events.md
+** interviews_and_press.md
+** blog_posts.md
+** connecting_with_UMA.md
 * contracts
