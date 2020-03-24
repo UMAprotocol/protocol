@@ -11,7 +11,7 @@ explanation of the philosophy behind the self-enforcing financial contract templ
 ## Tutorials
 
 If you'd like to start working with the UMA platform, we have a variety of tutorials that should help you get familiar
-with the technology. A good place to start is the [prerequisites](./tutorials/prerequisites.md), which will be required
+with the technology. A good place to start is the [prerequisites](../synthetic_tokens/tutorials/prerequisites.md), which will be required
 before working through any of the other tutorials.
 
 
@@ -19,7 +19,7 @@ before working through any of the other tutorials.
 
 To learn more about how the platform works, there are a few high-level explainers to help you conceptually understand
 how parts of the system interact with one another. For a high-level introduction to how the decentralized oracle (DVM)
-works, please see the [architecture overview](./explainers/architecture.md).
+works, please see the [architecture overview](../oracle/architecture.md).
 
 ## Contracts
 
