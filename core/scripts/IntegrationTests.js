@@ -11,19 +11,19 @@
  */
 
 /**
-  * @notice This test script runs a number of integration tests between all layers of the 
-  * smart contracts to stress test logic to ensure contract state never locks. 
-  * For example all branches where fees get taken out (positions, liquidations, partial liquidations)
-  * are tested to see if there is any leftover wei or whether contracts get locked. These tests do not
-  * aim to quantify the rounding error (for this see PrecisionErrors.js) but rather aim test the holistic
-  * impact of rounding on contract operation.
-  * @dev this script uses all 10 default ganache accounts in testing to mock a number of liquidators,
-  * disputors, sponsors and token holders.
-  * 
-  * Assumptions: You are currently in the `/core` directory.
-  * Run: $(npm bin)/truffle test ./scripts/IntegrationTests.js --network test
-  * 
-  */
+ * @notice This test script runs a number of integration tests between all layers of the
+ * smart contracts to stress test logic to ensure contract state never locks.
+ * For example all branches where fees get taken out (positions, liquidations, partial liquidations)
+ * are tested to see if there is any leftover wei or whether contracts get locked. These tests do not
+ * aim to quantify the rounding error (for this see PrecisionErrors.js) but rather aim test the holistic
+ * impact of rounding on contract operation.
+ * @dev this script uses all 10 default ganache accounts in testing to mock a number of liquidators,
+ * disputors, sponsors and token holders.
+ *
+ * Assumptions: You are currently in the `/core` directory.
+ * Run: $(npm bin)/truffle test ./scripts/IntegrationTests.js --network test
+ *
+ */
 
 // Helpers
 const { toWei, toBN } = web3.utils;
@@ -135,27 +135,27 @@ contract("IntergrationTest", function(accounts) {
     }
   });
   it("Iterative full life cycle test with friendly numbers", async function() {
-   /**
-    * @notice Iterative test with sponsors, liquidations and disputes.
-    * Number of positions to create and liquidate. The following process is followed to 
-    * initiate maximum interaction with the emp & fee paying function to try and compound
-    *  floating errors to see if positions are locked at settlement:
-    * 0) create a large position by the liquidator to enable them to perform liquidations
-    * 1) position created by selected sponsor
-    * 2) random amount of tokens sent to a selected tokenholder
-    * 3) time advanced by 1000 seconds
-    * 4) 1/3 chance to initiate liquidation
-    * 4.a) if liquidation initiated then time advanced
-    * 4.b) 1/2chance to dispute
-    * 4.b.i) if disputed then resolve oracle price
-    * 5) chance for token sponsor to deposit more collateral
-    * 6) chance for the sponsor to redeem collateral
-    * 7) repeat 1 to 6 `numIterations` times
-    * 8) withdraw successful (or failed) liquidation returns from sponsors, liquidators and disputers
-    * 9) settle contract
-    * 10) ensure that all users can withdraw their funds
-    * 11) check the contract has no funds left in it
-    */
+    /**
+     * @notice Iterative test with sponsors, liquidations and disputes.
+     * Number of positions to create and liquidate. The following process is followed to
+     * initiate maximum interaction with the emp & fee paying function to try and compound
+     *  floating errors to see if positions are locked at settlement:
+     * 0) create a large position by the liquidator to enable them to perform liquidations
+     * 1) position created by selected sponsor
+     * 2) random amount of tokens sent to a selected tokenholder
+     * 3) time advanced by 1000 seconds
+     * 4) 1/3 chance to initiate liquidation
+     * 4.a) if liquidation initiated then time advanced
+     * 4.b) 1/2chance to dispute
+     * 4.b.i) if disputed then resolve oracle price
+     * 5) chance for token sponsor to deposit more collateral
+     * 6) chance for the sponsor to redeem collateral
+     * 7) repeat 1 to 6 `numIterations` times
+     * 8) withdraw successful (or failed) liquidation returns from sponsors, liquidators and disputers
+     * 9) settle contract
+     * 10) ensure that all users can withdraw their funds
+     * 11) check the contract has no funds left in it
+     */
 
     // Test settings
     const numIterations = 20; // number of times the simulation loop is run
