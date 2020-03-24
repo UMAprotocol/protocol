@@ -2,11 +2,6 @@ const { toWei, utf8ToHex } = web3.utils;
 
 // Script to test
 const Poll = require("../index.js");
-const { Disputer } = require("../disputer.js");
-
-// Helper client script
-const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
-const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -15,8 +10,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("ExpandedERC20");
 const TokenFactory = artifacts.require("TokenFactory");
 
-contract("Disputer.js", function(accounts) {
-  const disputeBot = accounts[0];
+contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let emp;
@@ -52,13 +46,6 @@ contract("Disputer.js", function(accounts) {
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
-
-    // Create a new instance of the ExpiringMultiPartyClient & GasEstimator to construct the disputer
-    empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-    gasEstimator = new GasEstimator();
-
-    // Create a new instance of the disputer to test
-    disputer = new Disputer(empClient, gasEstimator, disputeBot);
   });
 
   it("Completes one iteration without throwing an error", async function() {

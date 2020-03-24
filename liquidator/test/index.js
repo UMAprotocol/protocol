@@ -2,11 +2,6 @@ const { toWei, utf8ToHex } = web3.utils;
 
 // Script to test
 const Poll = require("../index.js");
-const { Liquidator } = require("../liquidator.js");
-
-// Helper client script
-const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
-const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -15,14 +10,11 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 
-contract("Liquidator.js", function(accounts) {
-  // implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0]
-  const liquidatorBot = accounts[0];
+contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
   let emp;
-  let liquidator;
 
   before(async function() {
     collateralToken = await Token.new({ from: contractCreator });
@@ -52,13 +44,6 @@ contract("Liquidator.js", function(accounts) {
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
-
-    // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
-    empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-    gasEstimator = new GasEstimator();
-
-    // Create a new instance of the liquidator to test
-    liquidator = new Liquidator(empClient, gasEstimator, liquidatorBot);
   });
 
   it("Completes one iteration without throwing an error", async function() {
