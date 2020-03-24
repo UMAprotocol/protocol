@@ -6,7 +6,7 @@ We provide a user-friendly command line interface for voting on price requests a
 
 We will walk you through setting up the CLI by first cloning the repo and then symlink-ing the CLI command to your global directory.
 
-We assume that you have followed the [Prerequisites](./prerequisites.md) (cloned the monorepo and installed dependencies for the root directory via `npm install`) and are in the root directory (i.e. `protocol`).
+We assume that you have followed the [Prerequisites](../../synthetic_tokens/tutorials/prerequisites.md) (cloned the monorepo and installed dependencies for the root directory via `npm install`) and are in the root directory (i.e. `protocol`).
 
 1. Symlink the CLI to your global directory. This will allow you to run the voting CLI by simply typing: `uma ...`. The specific command that is run is listed in the `bin` property of the root `package.json`. A simple alternative to this step is to run `npm install -g ./` which installs the UMA monorepo to your global directory and implicitly symlinks the `uma` command globally.
 
