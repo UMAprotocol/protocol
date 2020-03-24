@@ -1,4 +1,4 @@
-const { Logger } = require("../financial-templates-lib/Logger");
+const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 class Disputer {
   constructor(expiringMultiPartyClient, gasEstimator, account) {

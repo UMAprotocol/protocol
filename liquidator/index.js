@@ -3,7 +3,7 @@ const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/delay");
-const { Logger } = require("../financial-templates-lib/Logger");
+const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Liquidator } = require("./Liquidator");
@@ -27,6 +27,12 @@ async function run() {
     console.log("Bad input arg! Specify a `price` as the pricefeed.");
     return;
   }
+
+  Logger.error({
+    at: "liquidator#index",
+    message: "liquidator polling has started"
+  });
+
   Logger.info({
     at: "liquidator#index",
     message: "liquidator started 🕵️‍♂️",
