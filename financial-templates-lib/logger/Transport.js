@@ -3,9 +3,11 @@
 // from the logger itself. All Winston transport objects and their associated formatting
 // are created within this module.
 
-const TwilioTransport = require("./TwilioTransport");
-const SlackTransport = require("./SlackTransport");
+// Transport objects
 const ConsoleTransport = require("./ConsoleTransport");
+const SlackTransport = require("./SlackTransport");
+const TwilioTransport = require("./TwilioTransport");
+
 require("dotenv").config();
 
 // transports array to store all winston transports
