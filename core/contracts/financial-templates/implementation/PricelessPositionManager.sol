@@ -17,8 +17,8 @@ import "./FeePayer.sol";
 
 /**
  * @title Financial contract with priceless position management.
- * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without
- * relying on a price feed. On construction, deploys a synthetic ERC20 managed by this contract.
+ * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying
+ * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
 contract PricelessPositionManager is FeePayer, AdministrateeInterface {
