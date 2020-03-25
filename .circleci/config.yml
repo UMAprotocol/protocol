@@ -74,8 +74,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v6-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v6-sec-toolbox-deps-
+            - v66666-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v66666-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -87,12 +87,12 @@ jobs:
           command: sudo chown -R $(whoami) ~/.npm ~/.config
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev python-dev
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v6-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v66666-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
