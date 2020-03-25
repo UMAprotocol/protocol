@@ -37,7 +37,7 @@ class Disputer {
 
     if (disputeableLiquidations.length === 0) {
       Logger.debug({
-        at: "liquidator",
+        at: "Disputer",
         message: "No disputable liquidations"
       });
 
@@ -52,6 +52,8 @@ class Disputer {
       disputeableLiquidations: disputeableLiquidations
     });
 
+    // Save all promises to resolve in parallel later on.
+    const disputePromises = [];
     for (const disputeableLiquidation of disputeableLiquidations) {
       Logger.info({
         at: "Disputer",
@@ -71,39 +73,49 @@ class Disputer {
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           id: disputeableLiquidation.id,
-          sponsor: disputeableLiquidation.sponsor
-        });
-
-        Logger.debug({
-          at: "Disputer",
-          message: "Dispute call error message",
-          id: disputeableLiquidation.id,
           sponsor: disputeableLiquidation.sponsor,
           error: error
         });
         continue;
       }
 
-      // TODO: handle transaction failures.
-      const receipt = await dispute.send({
-        from: this.account,
-        gas: 1500000,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      });
+      try {
+        disputePromises.push(
+          dispute.send({
+            from: this.account,
+            gas: 1500000,
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          }) 
+        )
+      } catch (error) {
+        Logger.error({
+          at: "Disputer",
+          message: "Dispute reverted",
+          from: this.account,
+          gas: 1500000,
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          error: error
+        });
+      }
+    }
 
-      const disputeResult = {
-        tx: receipt.transactionHash,
-        sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
-        liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-        id: receipt.events.LiquidationDisputed.returnValues.disputeId,
-        disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
+    // Resolve all promises in parallel.
+    let promiseResponse = await Promise.all(disputePromises);
+
+    for (const response of promiseResponse) {
+      const logResult = {
+        tx: response.transactionHash,
+        sponsor: response.events.LiquidationDisputed.returnValues.sponsor,
+        liquidator: response.events.LiquidationDisputed.returnValues.liquidator,
+        id: response.events.LiquidationDisputed.returnValues.disputeId,
+        disputeBondPaid: response.events.LiquidationDisputed.returnValues.disputeBondAmount
       };
       Logger.info({
         at: "Disputer",
         message: "Dispute tx result📄",
-        disputeResult: disputeResult
+        disputeResult: logResult
       });
-    }
+    }    
   };
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
@@ -133,6 +145,8 @@ class Disputer {
       return;
     }
 
+    // Save all promises to resolve in parallel later on.
+    const withdrawPromises = [];
     for (const liquidation of disputedLiquidations) {
       Logger.info({
         at: "Disputer",
@@ -143,7 +157,7 @@ class Disputer {
 
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
-      // Attempt to compute the withdraw amount. If the dispute has not been resolved (DVM has not returned a price), this should fail.
+      // Attempt to compute the withdraw amount. If the dispute has failed or has not been resolved (DVM has not returned a price), this should fail.
       // In that case, just continue because there is nothing left to do.
       let withdrawAmount;
       try {
@@ -151,43 +165,49 @@ class Disputer {
       } catch (error) {
         Logger.debug({
           at: "Disputer",
-          message: "Withdraw not ready.",
+          message: "No rewards to withdraw.",
           address: liquidation.sponsor,
           id: liquidation.id
         });
         continue;
       }
 
-      // If there is nothing to withdraw, the dispute failed and there's nothing to do.
-      if (this.web3.utils.toBN(withdrawAmount.rawValue).isZero()) {
-        Logger.info({
+      try {
+        withdrawPromises.push(
+          withdraw.send({
+            from: this.account,
+            gas: 1500000,
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          })
+        )  
+      } catch (error) {
+        Logger.error({
           at: "Disputer",
-          message: "Dispute failed.🤕",
-          address: liquidation.sponsor,
-          id: liquidation.id
+          message: "Withdraw liquidation reverted",
+          from: this.account,
+          gas: 1500000,
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          error: error
         });
-        continue;
       }
+    }
 
-      // TODO: handle transaction failure.
-      const receipt = await withdraw.send({
-        from: this.account,
-        gas: 1500000,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      });
+    // Resolve all promises in parallel.
+    let promiseResponse = await Promise.all(withdrawPromises);
 
+    for (const response of promiseResponse) {
       const logResult = {
-        tx: receipt.transactionHash,
-        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+        tx: response.transactionHash,
+        caller: response.events.LiquidationWithdrawn.returnValues.caller,
+        withdrawalAmount: response.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
       };
       Logger.info({
-        at: "Disputer",
-        message: "Withdraw tx result",
+        at: "Liquidator",
+        message: "Withdraw tx result📄",
         liquidationResult: logResult
       });
-    }
+    }    
   };
 }
 
