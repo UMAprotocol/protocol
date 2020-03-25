@@ -1,15 +1,14 @@
 // The logger has a number of different levels based on the severity of the incident:
 //-> Debugs: self explanatory. Normal status-based logging. These can trigger
-//   every iteration. Unlimited volume.
+//   every iteration. Unlimited volume. Prints to console.
 //-> Info: when something happens that is notable, but not necessarily actionable.
 //   These should not trigger every iteration. Any on-chain event that executed correctly.
-//   these trigger a slack message that everyone has access to.
+//   Print to console & trigger a slack message.
 //-> Error: anything that requires human intervention. If the bot is low on funds or a
 //   transaction fails(some txn failures are sporadic and normal, but it may be difficult
 //   to distinguish).These can trigger every iteration, but only if it's because the bot
-//   encounters a persistent issue that requires human intervention to solve.Trigger a DM
-//   to oncall, text / call to oncall, and publish to a slack channel that nobody has muted
-//   (or just use @channel to force a notif).
+//   encounters a persistent issue that requires human intervention to solve.
+//   Print to console, trigger a slack message and place a phone call to DRI.
 
 // calling debug/info/error logging requires an specificity formatted json object as a param for the logger.
 // All objects must have an `at`, `message` as a minimum to describe where the error was logged from
