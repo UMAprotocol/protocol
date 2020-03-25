@@ -173,7 +173,7 @@ contract("IntegrationTest", function(accounts) {
     let redemptionsMade = 0;
     let liquidationsObject = [];
 
-    //STEP: 0.a) set the oracle fee
+    // STEP: 0.a) set the oracle fee
     await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
 
     // STEP: 0.b: seed liquidator
