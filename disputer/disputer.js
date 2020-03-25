@@ -80,21 +80,22 @@ class Disputer {
       }
 
       disputePromises.push(
-        dispute.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
-        .catch(error => {
-          Logger.error({
-            at: "Disputer",
-            message: `Failed to dispute liquidation: ${error.message}`,
+        dispute
+          .send({
             from: this.account,
             gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            error
-          });    
-        })
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          })
+          .catch(error => {
+            Logger.error({
+              at: "Disputer",
+              message: `Failed to dispute liquidation: ${error.message}`,
+              from: this.account,
+              gas: 1500000,
+              gasPrice: this.gasEstimator.getCurrentFastPrice(),
+              error
+            });
+          })
       );
     }
 
@@ -103,7 +104,9 @@ class Disputer {
 
     for (const response of promiseResponse) {
       // response is undefined if an error is caught.
-      if (!response) { continue; }
+      if (!response) {
+        continue;
+      }
 
       const logResult = {
         tx: response.transactionHash,
@@ -175,21 +178,22 @@ class Disputer {
       }
 
       withdrawPromises.push(
-        withdraw.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
-        .catch(error => {
-          Logger.error({
-            at: "Disputer",
-            message: `Failed to withdraw liquidation rewards: ${error.message}`,
+        withdraw
+          .send({
             from: this.account,
             gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            error
-          });    
-        })
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          })
+          .catch(error => {
+            Logger.error({
+              at: "Disputer",
+              message: `Failed to withdraw liquidation rewards: ${error.message}`,
+              from: this.account,
+              gas: 1500000,
+              gasPrice: this.gasEstimator.getCurrentFastPrice(),
+              error
+            });
+          })
       );
     }
 
@@ -198,7 +202,9 @@ class Disputer {
 
     for (const response of promiseResponse) {
       // response is undefined if an error is caught.
-      if (!response) { continue; }
+      if (!response) {
+        continue;
+      }
 
       const logResult = {
         tx: response.transactionHash,

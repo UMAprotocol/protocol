@@ -81,29 +81,32 @@ class Liquidator {
       // you also should be liquidating using that priceFeed.
       // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
       liquidationPromises.push(
-        liquidation.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
-        .catch(error => {
-          Logger.error({
-            at: "Liquidator",
-            message: `Failed to liquidate position: ${error.message}`,
+        liquidation
+          .send({
             from: this.account,
             gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            error
-          });    
-        })
-      )
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          })
+          .catch(error => {
+            Logger.error({
+              at: "Liquidator",
+              message: `Failed to liquidate position: ${error.message}`,
+              from: this.account,
+              gas: 1500000,
+              gasPrice: this.gasEstimator.getCurrentFastPrice(),
+              error
+            });
+          })
+      );
     }
     // Resolve all promises in parallel.
     let promiseResponse = await Promise.all(liquidationPromises);
 
     for (const response of promiseResponse) {
       // response is undefined if an error is caught.
-      if (!response) { continue; }
+      if (!response) {
+        continue;
+      }
 
       const logResult = {
         tx: response.transactionHash,
@@ -196,21 +199,22 @@ class Liquidator {
 
       // Attach error handler to promise so that Promise.all does not throw an error.
       withdrawPromises.push(
-        withdraw.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
-        .catch(error => {
-          Logger.error({
-            at: "Liquidator",
-            message: `Failed to withdraw liquidation rewards: ${error.message}`,
+        withdraw
+          .send({
             from: this.account,
             gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            error
-          });    
-        })
+            gasPrice: this.gasEstimator.getCurrentFastPrice()
+          })
+          .catch(error => {
+            Logger.error({
+              at: "Liquidator",
+              message: `Failed to withdraw liquidation rewards: ${error.message}`,
+              from: this.account,
+              gas: 1500000,
+              gasPrice: this.gasEstimator.getCurrentFastPrice(),
+              error
+            });
+          })
       );
     }
 
@@ -219,7 +223,9 @@ class Liquidator {
 
     for (const response of promiseResponse) {
       // response is undefined if an error is caught.
-      if (!response) { continue; }
+      if (!response) {
+        continue;
+      }
 
       const logResult = {
         tx: response.transactionHash,
