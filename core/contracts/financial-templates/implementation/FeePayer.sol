@@ -12,8 +12,7 @@ import "../../oracle/interfaces/FinderInterface.sol";
 /**
  * @title FeePayer contract.
  * @notice Provides fee payment functionality for all expiring multi-party contracts.
- * contract is abstract as each derived contract that implements `FeePayer` must implement some
- * logic around the `pfc` value.
+ * contract is abstract as each derived contract that inherits `FeePayer` must implement `pfc()`.
  */
 
 abstract contract FeePayer is Testable {
