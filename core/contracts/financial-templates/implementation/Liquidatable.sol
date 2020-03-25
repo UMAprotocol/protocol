@@ -34,12 +34,12 @@ contract Liquidatable is PricelessPositionManager {
     enum Status { Uninitialized, PreDispute, PendingDispute, DisputeSucceeded, DisputeFailed }
 
     struct LiquidationData {
-        /** Following variables set upon creation of liquidation */
+        // -> Following variables set upon creation of liquidation
         address sponsor; // Address of the liquidated position's sponsor
         address liquidator; // Address who created this liquidation
         Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
         uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
-        /** Following variables determined by the position that is being liquidated */
+        // -> Following variables determined by the position that is being liquidated
         FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned lockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
         // Amount of collateral being liquidated, which could be different from
@@ -47,9 +47,9 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned liquidatedCollateral;
         // Unit value (starts at 1) that is used to track the fees per unit of collateral over the course of the liquidation.
         FixedPoint.Unsigned rawUnitCollateral;
-        /** Following variable set upon initiation of a dispute */
+        // -> Following variable set upon initiation of a dispute
         address disputer; // Person who is disputing a liquidation
-        /** Following variable set upon a resolution of a dispute */
+        // -> Following variable set upon a resolution of a dispute
         FixedPoint.Unsigned settlementPrice; // Final price as determined by an Oracle following a dispute
     }
 
@@ -422,6 +422,8 @@ contract Liquidatable is PricelessPositionManager {
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
+    // This settles a liquidation if it is in the PendingDispute state. If not, it will immediately return.
+    // If the liquidation is in the PendingDispute state, but a price is not available, this will revert.
     function _settle(uint liquidationId, address sponsor) internal {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
 
