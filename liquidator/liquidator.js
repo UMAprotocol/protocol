@@ -80,29 +80,31 @@ class Liquidator {
       // - Price to liquidate at (`collateralPerToken`): Since you are determining which positions are under collateralized positions based on the priceFeed,
       // you also should be liquidating using that priceFeed.
       // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
-      try {
-        liquidationPromises.push(
-          liquidation.send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-        );
-      } catch (error) {
-        Logger.error({
-          at: "Liquidator",
-          message: "Liquidation reverted",
+      liquidationPromises.push(
+        liquidation.send({
           from: this.account,
           gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          error: error
-        });
-      }
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
+        .catch(error => {
+          Logger.error({
+            at: "Liquidator",
+            message: `Failed to liquidate position: ${error.message}`,
+            from: this.account,
+            gas: 1500000,
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            error
+          });    
+        })
+      )
     }
     // Resolve all promises in parallel.
     let promiseResponse = await Promise.all(liquidationPromises);
 
     for (const response of promiseResponse) {
+      // response is undefined if an error is caught.
+      if (!response) { continue; }
+
       const logResult = {
         tx: response.transactionHash,
         sponsor: response.events.LiquidationCreated.returnValues.sponsor,
@@ -157,8 +159,9 @@ class Liquidator {
       potentialWithdrawableLiquidations: potentialWithdrawableLiquidations
     });
 
-    // Save all withdraw promises to resolve in parallel later on.
+    // Save all promises to resolve in parallel later on.
     const withdrawPromises = [];
+
     for (const liquidation of potentialWithdrawableLiquidations) {
       Logger.debug({
         at: "Liquidator",
@@ -191,30 +194,33 @@ class Liquidator {
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue)
       });
 
-      try {
-        withdrawPromises.push(
-          withdraw.send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-        );
-      } catch (error) {
-        Logger.error({
-          at: "Liquidator",
-          message: "Withdraw liquidation reverted",
+      // Attach error handler to promise so that Promise.all does not throw an error.
+      withdrawPromises.push(
+        withdraw.send({
           from: this.account,
           gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          error: error
-        });
-      }
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
+        .catch(error => {
+          Logger.error({
+            at: "Liquidator",
+            message: `Failed to withdraw liquidation rewards: ${error.message}`,
+            from: this.account,
+            gas: 1500000,
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            error
+          });    
+        })
+      );
     }
 
     // Resolve all promises in parallel.
     let promiseResponse = await Promise.all(withdrawPromises);
 
     for (const response of promiseResponse) {
+      // response is undefined if an error is caught.
+      if (!response) { continue; }
+
       const logResult = {
         tx: response.transactionHash,
         caller: response.events.LiquidationWithdrawn.returnValues.caller,

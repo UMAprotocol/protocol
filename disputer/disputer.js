@@ -79,30 +79,32 @@ class Disputer {
         continue;
       }
 
-      try {
-        disputePromises.push(
-          dispute.send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-        );
-      } catch (error) {
-        Logger.error({
-          at: "Disputer",
-          message: "Dispute reverted",
+      disputePromises.push(
+        dispute.send({
           from: this.account,
           gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          error: error
-        });
-      }
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
+        .catch(error => {
+          Logger.error({
+            at: "Disputer",
+            message: `Failed to dispute liquidation: ${error.message}`,
+            from: this.account,
+            gas: 1500000,
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            error
+          });    
+        })
+      );
     }
 
     // Resolve all promises in parallel.
     let promiseResponse = await Promise.all(disputePromises);
 
     for (const response of promiseResponse) {
+      // response is undefined if an error is caught.
+      if (!response) { continue; }
+
       const logResult = {
         tx: response.transactionHash,
         sponsor: response.events.LiquidationDisputed.returnValues.sponsor,
@@ -172,30 +174,32 @@ class Disputer {
         continue;
       }
 
-      try {
-        withdrawPromises.push(
-          withdraw.send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-        );
-      } catch (error) {
-        Logger.error({
-          at: "Disputer",
-          message: "Withdraw liquidation reverted",
+      withdrawPromises.push(
+        withdraw.send({
           from: this.account,
           gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          error: error
-        });
-      }
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
+        .catch(error => {
+          Logger.error({
+            at: "Disputer",
+            message: `Failed to withdraw liquidation rewards: ${error.message}`,
+            from: this.account,
+            gas: 1500000,
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            error
+          });    
+        })
+      );
     }
 
     // Resolve all promises in parallel.
     let promiseResponse = await Promise.all(withdrawPromises);
 
     for (const response of promiseResponse) {
+      // response is undefined if an error is caught.
+      if (!response) { continue; }
+
       const logResult = {
         tx: response.transactionHash,
         caller: response.events.LiquidationWithdrawn.returnValues.caller,
