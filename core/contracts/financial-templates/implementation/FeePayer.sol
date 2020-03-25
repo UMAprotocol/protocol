@@ -11,7 +11,7 @@ import "../../oracle/interfaces/FinderInterface.sol";
 
 /**
  * @title FeePayer contract.
- * @notice Provides fee payment functionality for all expiring multi-party contracts.
+ * @notice Provides fee payment functionality for the ExpiringMultiParty contract.
  * contract is abstract as each derived contract that inherits `FeePayer` must implement `pfc()`.
  */
 
@@ -53,9 +53,9 @@ abstract contract FeePayer is Testable {
     }
 
     /**
-     * @notice constructs the FeePayer contract. Called by parent contracts.
+     * @notice Constructs the FeePayer contract. Called by child contracts.
      * @param collateralAddress ERC20 token that is used as the underlying collateral for the synthetic.
-     * @param finderAddress UMA protocol finder used to discover other protocol contracts.
+     * @param finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param isTest whether this contract is being constructed for the purpose of running tests.
      */
     constructor(address collateralAddress, address finderAddress, bool isTest) public Testable(isTest) {
@@ -141,7 +141,7 @@ abstract contract FeePayer is Testable {
     /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
      * @dev Derived contracts are expected to implement this function so the payFees()
-     * method can correctly compute the owed fees.
+     * method can correctly compute the owed regular fees.
      */
     function pfc() public virtual view returns (FixedPoint.Unsigned memory);
 
