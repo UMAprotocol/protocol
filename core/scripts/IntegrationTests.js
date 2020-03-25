@@ -6,7 +6,7 @@
  * aim to quantify the rounding error (for this see PrecisionErrors.js) but rather aim test the holistic
  * impact of rounding on contract operation.
  * @dev this script uses all 10 default ganache accounts in testing to mock a number of liquidators,
- * disputors, sponsors and token holders.
+ * disputers, sponsors and token holders.
  *
  * Assumptions: You are currently in the `/core` directory.
  * Run: $(npm bin)/truffle test ./scripts/IntegrationTests.js --network test
@@ -29,8 +29,9 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const MockOracle = artifacts.require("MockOracle");
+const Store = artifacts.require("Store");
 
-contract("IntergrationTest", function(accounts) {
+contract("IntegrationTest", function(accounts) {
   let contractCreator = accounts[0];
   let liquidator = accounts[1];
   let disputer = accounts[2];
@@ -101,6 +102,8 @@ contract("IntergrationTest", function(accounts) {
     });
     finder = await Finder.deployed();
 
+    store = await Store.deployed();
+
     await finder.changeImplementationAddress(web3.utils.utf8ToHex("Oracle"), mockOracle.address, {
       from: contractCreator
     });
@@ -128,7 +131,8 @@ contract("IntergrationTest", function(accounts) {
      * Number of positions to create and liquidate. The following process is followed to
      * initiate maximum interaction with the emp & fee paying function to try and compound
      *  floating errors to see if positions are locked at settlement:
-     * 0) create a large position by the liquidator to enable them to perform liquidations
+     * 0.a) set the oracle fee
+     * 0.b) create a large position by the liquidator to enable them to perform liquidations
      * 1) position created by selected sponsor
      * 2) random amount of tokens sent to a selected tokenholder
      * 3) time advanced by 1000 seconds
@@ -160,6 +164,7 @@ contract("IntergrationTest", function(accounts) {
     const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
     const depositAmount = toBN(toWei("10")); // Amount of additional collateral to add to a position
     const redeemAmount = toBN(toWei("1")); // The number of synthetic tokens to redeem for collateral
+    const dvmRegularFee = toBN("0"); // Fee multiplier
 
     // Counter variables
     let positionsCreated = 0;
@@ -168,7 +173,10 @@ contract("IntergrationTest", function(accounts) {
     let redemptionsMade = 0;
     let liquidationsObject = [];
 
-    // STEP: 0: seed liquidator
+    //STEP: 0.a) set the oracle fee
+    await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
+
+    // STEP: 0.b: seed liquidator
     console.log("Seeding liquidator");
     await expiringMultiParty.create(
       { rawValue: baseCollateralAmount.mul(toBN("100")).toString() },
@@ -216,8 +224,8 @@ contract("IntergrationTest", function(accounts) {
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
         await expiringMultiParty.createLiquidation(
           sponsor,
-          { rawValue: GCR.toString() },
-          { rawValue: positionTokensOutstanding.toString() },
+          { rawValue: GCR.toString() }, // the liquidation is submitted at the GCR price
+          { rawValue: positionTokensOutstanding.toString() }, // all tokens in the position are liquidated
           { from: liquidator }
         );
 
@@ -272,31 +280,16 @@ contract("IntergrationTest", function(accounts) {
       for (const liquidation of liquidationsObject) {
         if (liquidation.disputed) {
           // sponsor and disputer should only withdraw if the liquidation was disputed
-          try {
-            await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
-              from: liquidation.sponsor
-            });
-          } catch (error) {
-            console.log("error detected from try catch withdrawLiquidation sponsor");
-            continue;
-          }
-          try {
-            await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
-          } catch (error) {
-            console.log("error detected from try catch withdrawLiquidation disputor");
-            continue;
-          }
+          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
+            from: liquidation.sponsor
+          });
+
+          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
         }
-        try {
-          // the liquidator should always try withdraw, even if disputed
-          await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: liquidator });
-        } catch (error) {
-          console.log("error detected from try catch withdrawLiquidation liquidator");
-          continue;
-        }
+        // the liquidator should always try withdraw, even if disputed
+        await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: liquidator });
       }
     }
-
     // STEP 9): expire the contract and settle positions
     console.log("Advancing time and settling contract");
     await expiringMultiParty.setCurrentTime(expirationTime.toNumber() + 1);
@@ -339,7 +332,7 @@ contract("IntergrationTest", function(accounts) {
       redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
       disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length,
-      finalBalanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toNumber()
+      finalBalanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toString()
     });
 
     // STEP 11): ensure all funds were taken from the contract.
