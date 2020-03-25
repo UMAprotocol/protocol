@@ -151,7 +151,7 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * @notice Constructs the liquidatable contract.
      * @param params struct to define input parameters for construction of Liquidatable. Some params
-     * are fead directly into the `PricelessPositionManager's constructor within the inheretance tree.
+     * are fed directly into the `PricelessPositionManager's constructor within the inheritance tree.
      */
     constructor(ConstructorParams memory params)
         public
@@ -313,7 +313,7 @@ contract Liquidatable is PricelessPositionManager {
      * Once all collateral is withdrawn, delete the liquidation data.
      * @param liquidationId uniquely identifies the sponsor's liquidation.
      * @param sponsor address of the sponsor associated with the liquidation.
-     * @return withdrawalAmount which equals the total amount of underlying returned from the liquidation.
+     * @return withdrawalAmount the total amount of underlying returned from the liquidation.
      */
     function withdrawLiquidation(uint liquidationId, address sponsor)
         public
