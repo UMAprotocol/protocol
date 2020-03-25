@@ -382,8 +382,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      ****************************************/
 
     /**
-     * @notice After expiration of the contract the DVM is asked what the prevailing price at the
-     * time of expiration. Final fees are paid. Once price is resolved token holders can withdraw.
+     * @notice Locks contract state in expired and requests oracle price.
+     * @dev this function can only be called once the contract is expired and cant be re-called
+     * due to the state modifiers applied on it.
      */
     function expire() external onlyPostExpiration() onlyOpenState() fees() {
         contractState = ContractState.ExpiredPriceRequested;
