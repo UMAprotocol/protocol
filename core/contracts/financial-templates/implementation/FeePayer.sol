@@ -34,7 +34,6 @@ abstract contract FeePayer is Testable {
     // Tracks the last block time when the fees were paid.
     uint public lastPaymentTime;
 
-    
     // Tracks the cumulative fees that have been paid by the contract for use by derived contracts.
     // The multiplier starts at 1, and is updated by computing cumulativeFeeMultiplier * (1 - effectiveFee).
     // Put another way, the cumulativeFeeMultiplier is (1 - effectiveFee1) * (1 - effectiveFee2) ...
@@ -58,7 +57,7 @@ abstract contract FeePayer is Testable {
      * @notice constructs the FeePayer contract. Called by parent contracts.
      * @param collateralAddress ERC20 token that is used as the underlying collateral for the synthetic.
      * @param finderAddress UMA protocol finder used to discover other protocol contracts.
-    * @param isTest whether this contract is being constructed for the purpose of running tests.
+     * @param isTest whether this contract is being constructed for the purpose of running tests.
      */
     constructor(address collateralAddress, address finderAddress, bool isTest) public Testable(isTest) {
         collateralCurrency = IERC20(collateralAddress);
@@ -72,7 +71,7 @@ abstract contract FeePayer is Testable {
      ****************************************/
 
     /**
-     * @notice Pays UMA DVM regular fees to the Store contract. 
+     * @notice Pays UMA DVM regular fees to the Store contract.
      * @dev These must be paid periodically for the life of the contract.
      * @return totalPaid The amount of collateral that the contract paid (sum of the amount paid to the store and the caller).
      */
@@ -142,7 +141,7 @@ abstract contract FeePayer is Testable {
 
     /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
-     * @dev Derived contracts are expected to implement this function so the payFees() 
+     * @dev Derived contracts are expected to implement this function so the payFees()
      * method can correctly compute the owed fees.
      */
     function pfc() public virtual view returns (FixedPoint.Unsigned memory);
