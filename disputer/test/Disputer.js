@@ -30,15 +30,6 @@ contract("Disputer.js", function(accounts) {
   let syntheticToken;
   let mockOracle;
 
-  // States for Liquidation to be in
-  const STATES = {
-    UNINITIALIZED: "0",
-    PRE_DISPUTE: "1",
-    PENDING_DISPUTE: "2",
-    DISPUTE_SUCCEEDED: "3",
-    DISPUTE_FAILED: "4"
-  };
-
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   before(async function() {
