@@ -15,7 +15,7 @@
 
 // Helpers
 const { toWei, toBN } = web3.utils;
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { RegistryRolesEnum } = require("../../common/Enums.js");
 
 // Contract to test
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -245,26 +245,18 @@ contract("IntergrationTest", function(accounts) {
 
           liquidationsObject[liquidationsObject.length - 1].disputed = true;
         }
-      }
-
-      // STEP 5): chance for the token sponsor to deposit more collateral
-      if (i % 2 == 0 && runExtraDeposits) {
-        // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
-        try {
+      } else {
+        // STEP 5): chance for the token sponsor to deposit more collateral
+        if (i % 2 == 0 && runExtraDeposits) {
+          // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
           await expiringMultiParty.deposit({ rawValue: depositAmount.toString() }, { from: sponsor });
           depositsMade++;
-        } catch (error) {
-          continue;
         }
-      }
-      // STEP 6): chance for the token sponsor to redeem some collateral
-      if (i % 2 == 1 && runRedeemTokens) {
-        // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
-        try {
+        // STEP 6): chance for the token sponsor to redeem some collateral
+        if (i % 2 == 1 && runRedeemTokens) {
+          // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting redeem
           await expiringMultiParty.redeem({ rawValue: redeemAmount.toString() }, { from: sponsor });
           redemptionsMade++;
-        } catch (error) {
-          continue;
         }
       }
     } // exit iteration loop
@@ -284,11 +276,13 @@ contract("IntergrationTest", function(accounts) {
               from: liquidation.sponsor
             });
           } catch (error) {
+            console.log("error detected from try catch withdrawLiquidation sponsor");
             continue;
           }
           try {
             await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
           } catch (error) {
+            console.log("error detected from try catch withdrawLiquidation disputor");
             continue;
           }
         }
@@ -296,6 +290,7 @@ contract("IntergrationTest", function(accounts) {
           // the liquidator should always try withdraw, even if disputed
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: liquidator });
         } catch (error) {
+          console.log("error detected from try catch withdrawLiquidation liquidator");
           continue;
         }
       }
