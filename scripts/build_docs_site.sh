@@ -23,7 +23,16 @@ md_to_adoc() {
     sed -i.bak 's/^##/#/' $tmpfile
 
     # Changes markdown file interlink extensions to .html so they continue to work when the site is rendered.
-    sed -i.bak 's/\.md)/.html)/' $tmpfile
+    sed -i.bak 's/\.md\([)#]\)/.html\1/g' $tmpfile
+
+    # Changes all dashes to underscores inside the anchors.
+    sed -i.bak -e ':loop' -e 's/\(\]([^)]*#[^)]*\)-\([^)]*)\)/\1_\2/g' -e 't loop' $tmpfile
+
+    # Adds a leading underscore to same-file anchors.
+    sed -i.bak 's/\](#/\](#_/g' $tmpfile
+
+    # Adds a leading underscore to outside-file anchors.
+    sed -i.bak 's/\.html#/.html#_/g' $tmpfile
 
     # For each level of depth below the module level, we need to remove one "../" from file references. This is because
     # subdirectories effectively get flattened into the modules general file list.
@@ -31,6 +40,20 @@ md_to_adoc() {
     do
         sed -i.bak 's/(\.\.\//(/' $tmpfile
     done
+
+    # Because the antora directory structure is flattened, we need to strip directories deeper than the module level.
+    # This sed takes links that look like "../module/deeper_dir/file.html" and transforms them to "../module/file.html".
+    sed -i.bak 's/\(\](\.\.\/[[:alnum:]_-]*\/\)[^.)]*\/\([[:alnum:]_-]*.html\)/\1\2/g' $tmpfile
+
+    # Similar to the last sed except that it handles links that don't start with "../".
+    # This sed takes links that look like "(./)deeper_dir/file.html" and transforms them to "file.html".
+    sed -i.bak 's/\]([.]\{0,1\}[^.][^).]*\/\([[:alnum:]_-]*.html\)/](\1/g' $tmpfile
+
+    # If the file is in the ROOT directory, then we need to remove all of the leading "../" from links.
+    if [[ $infile = *ROOT* ]]
+    then
+        sed -i.bak 's/\](\.\.\//](/g' $tmpfile
+    fi
 
     # Use pandoc to do the remainder of the conversion and output to the destination.
     pandoc --atx-headers --verbose --wrap=none --toc --reference-links -f gfm -s -o $outfile -t asciidoc $tmpfile
