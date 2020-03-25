@@ -11,7 +11,7 @@
     "eslint_vanilla": "eslint 'core/**/*.js'",
     "prettier": "COMMAND=prettier npm run prettier_vanilla -- --write",
     "prettier_check": "COMMAND=prettier npm run prettier_vanilla -- --check",
-    "prettier_check_quick": "COMMAND=pretty-quick npm run prettier_vanilla -- --check --branch",
+    "prettier_check_quick": "COMMAND=pretty-quick npm run prettier_vanilla -- --check",
     "prettier_vanilla": "$COMMAND --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol' 'financial-templates-lib/*.js' 'liquidator/**/*.js' 'disputer/**/*.js'"
   },
   "author": "UMA Team",
