@@ -1,10 +1,12 @@
+// This transport enables winston logging to a twilio caller bot.
+
 const Transport = require("winston-transport");
-const { RoboCaller } = require("./Robo-Caller");
+const { RoboCaller } = require("./RoboCaller");
 
 module.exports = class TwilioTransport extends Transport {
-  constructor(opts) {
-    super(opts);
-    this.roboCaller = new RoboCaller();
+  constructor(winstonOpts, roboCallerOpts) {
+    super(winstonOpts);
+    this.roboCaller = new RoboCaller(roboCallerOpts);
   }
 
   async log(info, callback) {

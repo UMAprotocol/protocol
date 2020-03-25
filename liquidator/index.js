@@ -3,7 +3,7 @@ const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/delay");
-const { Logger } = require("../financial-templates-lib/Logger");
+const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Liquidator } = require("./liquidator");

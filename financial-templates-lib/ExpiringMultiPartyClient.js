@@ -1,5 +1,5 @@
 const { delay } = require("./delay");
-const { Logger } = require("./Logger");
+const { Logger } = require("./logger/Logger");
 const { LiquidationStatesEnum } = require("../common/Enums");
 
 // A thick client for getting information about an ExpiringMultiParty.
