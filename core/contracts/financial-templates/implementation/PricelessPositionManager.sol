@@ -120,10 +120,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param _expirationTimestamp unix timestamp of when the contrct will expire.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawls.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
-     * @param _finderAddress UMA protocol finder used to discover other protocol contracts.
+     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _syntheticName for the newly deployed synthetic token.
-     * @param _syntheticSymbol sy for the newly deployed synthetic token.
+     * @param _syntheticName name for the token contract that will be deployed.
+     * @param _syntheticSymbol symbol for the token contract that will be deployed.
      * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
      */
     constructor(
@@ -169,7 +169,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the sponsor's position.
-     * @dev Also used to increase the collateralization level of a position after creation.
+     * @dev Increases the collateralization level of a position after creation.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
@@ -296,7 +296,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      * @dev Can only be called by a token sponsor.
-     * @param numTokens is the number of tokens to be burnt for a comencerate amount of collateral.
+     * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -429,7 +429,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice Accessor method for a sponsor's collateral.
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
-     * @param sponsor address who's collateral amount is retreived for.
+     * @param sponsor address whose collateral amount is retrieved.
      */
     function getCollateral(address sponsor) external view returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
@@ -437,7 +437,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Accessor method for the total collateral stored within the PricelessPositionmanager.
+     * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
      */
     function totalPositionCollateral() external view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
