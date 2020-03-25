@@ -31,6 +31,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
 
+    // Enum to store the state of the PricelessPositionManager. Set on expiration or emergency shutdown.
+    enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
+    ContractState public contractState;
+
     // Represents a single sponsor's position. All collateral is held by this contract.
     // This struct acts is bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
@@ -42,10 +46,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // To add or remove collateral, use _addCollateral() and _removeCollateral().
         FixedPoint.Unsigned rawCollateral;
     }
-
-    // Enum to store the state of the PricelessPositionManager. Set on expiration or emergency shutdown.
-    enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
-    ContractState public contractState;
 
     // Maps sponsor addresses to their positions. Each sponsor can have only one position.
     mapping(address => PositionData) public positions;
