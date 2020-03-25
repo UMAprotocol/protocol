@@ -245,7 +245,8 @@ contract("IntergrationTest", function(accounts) {
 
           liquidationsObject[liquidationsObject.length - 1].disputed = true;
         }
-      } else { // only if a liquidation did not occur do we consider running a deposit or redeem.
+        // only if a liquidation did not occur do we consider running a deposit or redeem.
+      } else {
         // STEP 5): chance for the token sponsor to deposit more collateral
         if (i % 2 == 0 && runExtraDeposits) {
           // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
