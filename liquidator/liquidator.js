@@ -58,7 +58,8 @@ class Liquidator {
       } catch (error) {
         Logger.error({
           at: "Liquidator",
-          message: "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation.",
+          message:
+            "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation.",
           address: position.sponsor,
           position: position,
           error: error
@@ -86,7 +87,7 @@ class Liquidator {
             gas: 1500000,
             gasPrice: this.gasEstimator.getCurrentFastPrice()
           })
-        );  
+        );
       } catch (error) {
         Logger.error({
           at: "Liquidator",
@@ -197,7 +198,7 @@ class Liquidator {
             gas: 1500000,
             gasPrice: this.gasEstimator.getCurrentFastPrice()
           })
-        );  
+        );
       } catch (error) {
         Logger.error({
           at: "Liquidator",

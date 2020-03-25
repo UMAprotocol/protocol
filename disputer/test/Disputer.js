@@ -196,7 +196,7 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, zeroAddress);
     assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
   });
-  
+
   it("Too little collateral", async function() {
     // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });

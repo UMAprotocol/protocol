@@ -85,8 +85,8 @@ class Disputer {
             from: this.account,
             gas: 1500000,
             gasPrice: this.gasEstimator.getCurrentFastPrice()
-          }) 
-        )
+          })
+        );
       } catch (error) {
         Logger.error({
           at: "Disputer",
@@ -115,7 +115,7 @@ class Disputer {
         message: "Dispute tx result📄",
         disputeResult: logResult
       });
-    }    
+    }
   };
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
@@ -179,7 +179,7 @@ class Disputer {
             gas: 1500000,
             gasPrice: this.gasEstimator.getCurrentFastPrice()
           })
-        )  
+        );
       } catch (error) {
         Logger.error({
           at: "Disputer",
@@ -207,7 +207,7 @@ class Disputer {
         message: "Withdraw tx result📄",
         liquidationResult: logResult
       });
-    }    
+    }
   };
 }
 
