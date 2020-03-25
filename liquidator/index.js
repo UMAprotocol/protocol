@@ -3,7 +3,7 @@ const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/delay");
-const { Logger } = require("../financial-templates-lib/Logger");
+const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Liquidator } = require("./liquidator");
@@ -75,7 +75,7 @@ const Poll = async function(callback) {
       throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
     }
 
-    await run(argv.address, argv.price, true);
+    await run(argv.price, argv.address, true);
   } catch (err) {
     callback(err);
   }
