@@ -7,14 +7,14 @@ const Poll = require("../index.js");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const TokenFactory = artifacts.require("TokenFactory");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
-  let collateralToken;
   let emp;
+  let collateralToken;
 
   before(async function() {
     collateralToken = await Token.new({ from: contractCreator });
@@ -25,6 +25,8 @@ contract("index.js", function(accounts) {
   });
 
   beforeEach(async function() {
+    collateralToken = await Token.new({ from: contractCreator });
+
     const constructorParams = {
       isTest: true,
       expirationTimestamp: "12345678900",
