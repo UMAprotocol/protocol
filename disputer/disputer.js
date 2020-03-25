@@ -213,7 +213,7 @@ class Disputer {
         liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
       };
       Logger.info({
-        at: "Liquidator",
+        at: "Disputer",
         message: "Withdraw tx result📄",
         liquidationResult: logResult
       });
