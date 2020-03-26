@@ -71,13 +71,6 @@ class Disputer {
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           id: disputeableLiquidation.id,
-          sponsor: disputeableLiquidation.sponsor
-        });
-
-        Logger.debug({
-          at: "Disputer",
-          message: "Dispute call error message",
-          id: disputeableLiquidation.id,
           sponsor: disputeableLiquidation.sponsor,
           error: error
         });
@@ -153,7 +146,8 @@ class Disputer {
           at: "Disputer",
           message: "Withdraw not ready.",
           address: liquidation.sponsor,
-          id: liquidation.id
+          id: liquidation.id,
+          error: error
         });
         continue;
       }
