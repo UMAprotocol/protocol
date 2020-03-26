@@ -145,14 +145,14 @@ abstract contract FeePayer is Testable {
      */
     function pfc() public virtual view returns (FixedPoint.Unsigned memory);
 
-    function _getStore() internal view returns (StoreInterface) {
-        bytes32 storeInterface = "Store";
-        return StoreInterface(finder.getImplementationAddress(storeInterface));
-    }
-
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/
+
+     function _getStore() internal view returns (StoreInterface) {
+        bytes32 storeInterface = "Store";
+        return StoreInterface(finder.getImplementationAddress(storeInterface));
+    }
 
     // Returns the user's collateral minus any fees that have been subtracted since it was originally
     // deposited into the contract. Note: if the contract has paid fees since it was deployed, the raw
