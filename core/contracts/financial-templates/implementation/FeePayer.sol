@@ -71,7 +71,8 @@ abstract contract FeePayer is Testable {
 
     /**
      * @notice Pays UMA DVM regular fees to the Store contract.
-     * @dev These must be paid periodically for the life of the contract.
+     * @dev These must be paid periodically for the life of the contract. If the contract has not paid its
+     * regular fee in a week or mre then a late penalty is applied which is sent to the caller.
      * @return totalPaid The amount of collateral that the contract paid (sum of the amount paid to the Store and the caller).
      */
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
