@@ -64,43 +64,45 @@ class Disputer {
         continue;
       }
 
+      const txnConfig = {
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      }
       Logger.info({
         at: "Disputer",
         message: "Disputing liquidation🔥",
         sponsor: disputeableLiquidation.sponsor,
         id: disputeableLiquidation.id,
         inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
-        from: this.account,
-        gas: 1500000,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+        txnConfig
       });
 
       // Send the transaction or report failure.
+      let receipt;
       try {
-        const receipt = await dispute.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        });
-        const logResult = {
-          tx: receipt.transactionHash,
-          sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
-          liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-          id: receipt.events.LiquidationDisputed.returnValues.disputeId,
-          disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
-        };
-        Logger.info({
-          at: "Disputer",
-          message: "Dispute tx result📄",
-          disputeResult: logResult
-        });
+        receipt = await dispute.send(txnConfig);
       } catch (error) {
         Logger.error({
           at: "Disputer",
           message: `Failed to dispute liquidation`,
           error: error
         });
+        continue;
       }
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
+        id: receipt.events.LiquidationDisputed.returnValues.disputeId,
+        disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
+      };
+      Logger.info({
+        at: "Disputer",
+        message: "Dispute tx result📄",
+        disputeResult: logResult
+      });
     }
   };
 
@@ -151,42 +153,44 @@ class Disputer {
         continue;
       }
 
+      const txnConfig = {
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      }
       Logger.info({
         at: "Liquidator",
         message: "Withdrawing dispute🤑",
         address: liquidation.sponsor,
         id: liquidation.id,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
-        from: this.account,
-        gas: 1500000,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+        txnConfig
       });
 
       // Send the transaction or report failure.
+      let receipt;
       try {
-        const receipt = await withdraw.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        });
-        const logResult = {
-          tx: receipt.transactionHash,
-          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-          withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-          liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-        };
-        Logger.info({
-          at: "Disputer",
-          message: "Withdraw tx result📄",
-          liquidationResult: logResult
-        });
+        receipt = await withdraw.send(txnConfig);
       } catch (error) {
         Logger.error({
           at: "Disputer",
           message: `Failed to withdraw dispute rewards`,
           error: error
         });
+        continue;
       }
+      
+      const logResult = {
+        tx: receipt.transactionHash,
+        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+      };
+      Logger.info({
+        at: "Disputer",
+        message: "Withdraw tx result📄",
+        liquidationResult: logResult
+      });
     }
   };
 }

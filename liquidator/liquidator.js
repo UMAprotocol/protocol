@@ -67,45 +67,47 @@ class Liquidator {
         continue;
       }
 
+      const txnConfig = {
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      }
       Logger.info({
         at: "Liquidator",
         message: "Liquidating position🔥",
         sponsor: position.sponsor,
         position: position,
         inputPrice: this.web3.utils.toWei(priceFeed),
-        from: this.account,
-        gas: 1500000,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+        txnConfig
       });
 
       // Send the transaction or report failure.
+      let receipt;
       try {
-        const receipt = await liquidation.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        });
-        const logResult = {
-          tx: receipt.transactionHash,
-          sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
-          liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
-          liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
-          tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
-          lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
-          liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
-        };
-        Logger.info({
-          at: "Liquidator",
-          message: "Liquidation tx result 📄",
-          liquidationResult: logResult
-        });
+        receipt = await liquidation.send(txnConfig);
       } catch (error) {
         Logger.error({
           at: "Liquidator",
           message: `Failed to liquidate position`,
           error: error
         });
+        continue;
       }
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
+        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
+        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
+        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
+        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
+      };
+      Logger.info({
+        at: "Liquidator",
+        message: "Liquidation tx result 📄",
+        liquidationResult: logResult
+      });
     }
   };
 
@@ -158,42 +160,44 @@ class Liquidator {
         continue;
       }
 
+      const txnConfig = {
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      }
       Logger.info({
         at: "Liquidator",
         message: "Withdrawing liquidation🤑",
         address: liquidation.sponsor,
         id: liquidation.id,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
-        from: this.account,
-        gas: 1500000,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+        txnConfig
       });
 
       // Send the transaction or report failure.
+      let receipt;
       try {
-        const receipt = await withdraw.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        });
-        const logResult = {
-          tx: receipt.transactionHash,
-          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-          withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-          liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-        };
-        Logger.info({
-          at: "Liquidator",
-          message: "Withdraw tx result📄",
-          liquidationResult: logResult
-        });
+        receipt = await withdraw.send(txnConfig);
       } catch (error) {
         Logger.error({
           at: "Liquidator",
           message: `Failed to withdraw liquidation rewards`,
           error: error
         });
+        continue;
       }
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+      };
+      Logger.info({
+        at: "Liquidator",
+        message: "Withdraw tx result📄",
+        liquidationResult: logResult
+      });
     }
   };
 }
