@@ -58,7 +58,7 @@ class Disputer {
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           sponsor: disputeableLiquidation.sponsor,
-          id: disputeableLiquidation.id,
+          liquidation: disputeableLiquidation,
           error: error
         });
         continue;
@@ -72,8 +72,7 @@ class Disputer {
       Logger.info({
         at: "Disputer",
         message: "Disputing liquidation🔥",
-        sponsor: disputeableLiquidation.sponsor,
-        id: disputeableLiquidation.id,
+        liquidation: disputeableLiquidation,
         inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
         txnConfig
       });
@@ -137,8 +136,7 @@ class Disputer {
       // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
-      // Attempt to compute the withdraw amount. If the dispute has failed or has not been resolved (DVM has not returned a price), this should fail.
-      // In that case, just continue because there is nothing left to do.
+      // Confirm that dispute has eligible rewards to be withdrawn.
       let withdrawAmount;
       try {
         withdrawAmount = await withdraw.call({ from: this.account });
@@ -146,8 +144,7 @@ class Disputer {
         Logger.debug({
           at: "Disputer",
           message: "No rewards to withdraw.",
-          address: liquidation.sponsor,
-          id: liquidation.id,
+          liquidation: liquidation,
           error: error
         });
         continue;
@@ -161,8 +158,7 @@ class Disputer {
       Logger.info({
         at: "Liquidator",
         message: "Withdrawing dispute🤑",
-        address: liquidation.sponsor,
-        id: liquidation.id,
+        liquidation: liquidation,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
         txnConfig
       });
