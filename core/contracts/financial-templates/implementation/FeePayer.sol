@@ -72,7 +72,7 @@ abstract contract FeePayer is Testable {
     /**
      * @notice Pays UMA DVM regular fees to the Store contract.
      * @dev These must be paid periodically for the life of the contract.
-     * @return totalPaid The amount of collateral that the contract paid (sum of the amount paid to the store and the caller).
+     * @return totalPaid The amount of collateral that the contract paid (sum of the amount paid to the Store and the caller).
      */
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
