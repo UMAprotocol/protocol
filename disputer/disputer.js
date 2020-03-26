@@ -58,12 +58,8 @@ class Disputer {
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           sponsor: disputeableLiquidation.sponsor,
-          id: disputeableLiquidation.id
-        });
-        Logger.debug({
-          at: "Disputer",
-          message: `Dispute call error message: ${error.message}`,
-          error
+          id: disputeableLiquidation.id,
+          error: error
         });
         continue;
       }
@@ -101,8 +97,8 @@ class Disputer {
       } catch (error) {
         Logger.error({
           at: "Disputer",
-          message: `Failed to dispute liquidation: ${error.message}`,
-          error
+          message: `Failed to dispute liquidation`,
+          error: error
         });
       }
     }
@@ -149,12 +145,8 @@ class Disputer {
           at: "Disputer",
           message: "No rewards to withdraw.",
           address: liquidation.sponsor,
-          id: liquidation.id
-        });
-        Logger.debug({
-          at: "Disputer",
-          message: `Withdraw dispute error message: ${error.message}`,
-          error
+          id: liquidation.id,
+          error: error
         });
         continue;
       }
@@ -191,8 +183,8 @@ class Disputer {
       } catch (error) {
         Logger.error({
           at: "Disputer",
-          message: `Failed to withdraw dispute rewards: ${error.message}`,
-          error
+          message: `Failed to withdraw dispute rewards`,
+          error: error
         });
       }
     }

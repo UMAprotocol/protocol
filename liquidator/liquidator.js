@@ -61,12 +61,8 @@ class Liquidator {
           message:
             "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation.",
           sponsor: position.sponsor,
-          position: position
-        });
-        Logger.debug({
-          at: "Liquidator",
-          message: `Liquidate call error message: ${error.message}`,
-          error
+          position: position,
+          error: error
         });
         continue;
       }
@@ -106,8 +102,8 @@ class Liquidator {
       } catch (error) {
         Logger.error({
           at: "Liquidator",
-          message: `Failed to liquidate position: ${error.message}`,
-          error
+          message: `Failed to liquidate position`,
+          error: error
         });
       }
     }
@@ -156,12 +152,8 @@ class Liquidator {
           at: "Liquidator",
           message: "No rewards to withdraw.",
           address: liquidation.sponsor,
-          id: liquidation.id
-        });
-        Logger.debug({
-          at: "Liquidator",
-          message: `Withdraw liquidation error message: ${error.message}`,
-          error
+          id: liquidation.id,
+          error: error
         });
         continue;
       }
@@ -198,8 +190,8 @@ class Liquidator {
       } catch (error) {
         Logger.error({
           at: "Liquidator",
-          message: `Failed to withdraw liquidation rewards: ${error.message}`,
-          error
+          message: `Failed to withdraw liquidation rewards`,
+          error: error
         });
       }
     }
