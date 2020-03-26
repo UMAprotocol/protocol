@@ -75,7 +75,6 @@ class Liquidator {
       Logger.info({
         at: "Liquidator",
         message: "Liquidating position🔥",
-        sponsor: position.sponsor,
         position: position,
         inputPrice: this.web3.utils.toWei(priceFeed),
         txnConfig
@@ -153,8 +152,7 @@ class Liquidator {
         Logger.debug({
           at: "Liquidator",
           message: "No rewards to withdraw.",
-          address: liquidation.sponsor,
-          id: liquidation.id,
+          liquidation: liquidation,
           error: error
         });
         continue;
@@ -168,8 +166,7 @@ class Liquidator {
       Logger.info({
         at: "Liquidator",
         message: "Withdrawing liquidation🤑",
-        address: liquidation.sponsor,
-        id: liquidation.id,
+        liquidation: liquidation,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
         txnConfig
       });
