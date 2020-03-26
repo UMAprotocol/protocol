@@ -85,7 +85,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     /**
      * @notice Constructs the ExpiringMultiPartyCreator contract.
      * @param _isTest whether this contract is being constructed for the purpose of running tests.
-     * @param finderAddress UMA protocol Finder used to discover other protocol contracts.
+     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _collateralTokenWhitelist UMA protocol contract to track whitelisted collateral.
      * @param _tokenFactoryAddress ERC20 token factory used to deploy synthetic token instances.
      */
