@@ -166,7 +166,8 @@ class Liquidator {
           at: "liquidator",
           message: "Liquidation failed or not ready for withdrawal",
           address: liquidation.sponsor,
-          id: liquidation.id
+          id: liquidation.id,
+          error: error
         });
 
         continue;
