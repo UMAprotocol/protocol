@@ -11,6 +11,9 @@ run_slither() {
     cp -r ../node_modules/@openzeppelin ./node_modules/@openzeppelin
 
     cd $PROTOCOL_DIR
+
+    # print out slither version for debugging
+    slither --version
     slither --exclude=naming-convention,pragma,solc-version,external-function,reentrancy-benign,reentrancy-no-eth,arbitrary-send,incorrect-equality,reentrancy-events,assembly --filter-paths=@openzeppelin $1
 }
 
