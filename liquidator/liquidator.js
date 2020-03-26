@@ -61,7 +61,7 @@ class Liquidator {
           message:
             "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation.",
           sponsor: position.sponsor,
-          position: position,
+          position: position
         });
         Logger.debug({
           at: "Liquidator",
@@ -88,7 +88,7 @@ class Liquidator {
           from: this.account,
           gas: 1500000,
           gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
+        });
         const logResult = {
           tx: receipt.transactionHash,
           sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
@@ -102,7 +102,7 @@ class Liquidator {
           at: "Liquidator",
           message: "Liquidation tx result 📄",
           liquidationResult: logResult
-        });  
+        });
       } catch (error) {
         Logger.error({
           at: "Liquidator",
@@ -146,7 +146,7 @@ class Liquidator {
     for (const liquidation of potentialWithdrawableLiquidations) {
       // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
-      
+
       // Confirm that liquidation has eligible rewards to be withdrawn.
       let withdrawAmount;
       try {
@@ -183,7 +183,7 @@ class Liquidator {
           from: this.account,
           gas: 1500000,
           gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
+        });
         const logResult = {
           tx: receipt.transactionHash,
           caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
@@ -194,7 +194,7 @@ class Liquidator {
           at: "Liquidator",
           message: "Withdraw tx result📄",
           liquidationResult: logResult
-        });  
+        });
       } catch (error) {
         Logger.error({
           at: "Liquidator",

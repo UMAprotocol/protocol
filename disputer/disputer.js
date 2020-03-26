@@ -48,10 +48,7 @@ class Disputer {
 
     for (const disputeableLiquidation of disputeableLiquidations) {
       // Create the transaction.
-      const dispute = this.empContract.methods.dispute(
-        disputeableLiquidation.id, 
-        disputeableLiquidation.sponsor
-      );
+      const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
@@ -61,7 +58,7 @@ class Disputer {
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           sponsor: disputeableLiquidation.sponsor,
-          id: disputeableLiquidation.id,
+          id: disputeableLiquidation.id
         });
         Logger.debug({
           at: "Disputer",
@@ -88,19 +85,19 @@ class Disputer {
           from: this.account,
           gas: 1500000,
           gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
+        });
         const logResult = {
           tx: receipt.transactionHash,
           sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
           liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
           id: receipt.events.LiquidationDisputed.returnValues.disputeId,
           disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
-        };  
+        };
         Logger.info({
           at: "Disputer",
           message: "Dispute tx result📄",
           disputeResult: logResult
-        });  
+        });
       } catch (error) {
         Logger.error({
           at: "Disputer",
@@ -179,7 +176,7 @@ class Disputer {
           from: this.account,
           gas: 1500000,
           gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
+        });
         const logResult = {
           tx: receipt.transactionHash,
           caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
@@ -190,7 +187,7 @@ class Disputer {
           at: "Disputer",
           message: "Withdraw tx result📄",
           liquidationResult: logResult
-        });  
+        });
       } catch (error) {
         Logger.error({
           at: "Disputer",
