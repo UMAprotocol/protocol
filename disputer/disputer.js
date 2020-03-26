@@ -1,3 +1,6 @@
+// When running this script it assumed that the account has enough tokens and allowance from the unlocked truffle
+// wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
+
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 class Disputer {
@@ -40,28 +43,15 @@ class Disputer {
         at: "Disputer",
         message: "No disputable liquidations"
       });
-
-      // Nothing left to do, so return.
       return;
     }
 
-    Logger.info({
-      at: "Disputer",
-      message: "Disputable liquidation(s) detected!🚨",
-      number: disputeableLiquidations.length,
-      disputeableLiquidations: disputeableLiquidations
-    });
-
     for (const disputeableLiquidation of disputeableLiquidations) {
-      Logger.info({
-        at: "Disputer",
-        message: "Disputing liquidation🔥",
-        address: disputeableLiquidation.sponsor,
-        inputPrice: priceFunction(disputeableLiquidation.liquidationTime)
-      });
-
-      // Create the liquidation transaction.
-      const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
+      // Create the transaction.
+      const dispute = this.empContract.methods.dispute(
+        disputeableLiquidation.id, 
+        disputeableLiquidation.sponsor
+      );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
@@ -70,8 +60,8 @@ class Disputer {
         Logger.error({
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
-          id: disputeableLiquidation.id,
           sponsor: disputeableLiquidation.sponsor,
+          id: disputeableLiquidation.id,
         });
         Logger.debug({
           at: "Disputer",
@@ -80,6 +70,17 @@ class Disputer {
         });
         continue;
       }
+
+      Logger.info({
+        at: "Disputer",
+        message: "Disputing liquidation🔥",
+        sponsor: disputeableLiquidation.sponsor,
+        id: disputeableLiquidation.id,
+        inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      });
 
       // Send the transaction or report failure.
       try {
@@ -132,19 +133,13 @@ class Disputer {
     if (disputedLiquidations.length === 0) {
       Logger.debug({
         at: "Disputer",
-        message: "No withdrawable liquidations"
+        message: "No withdrawable disputes"
       });
       return;
     }
 
     for (const liquidation of disputedLiquidations) {
-      Logger.info({
-        at: "Disputer",
-        message: "Attempting to withdraw from previous dispute.💪",
-        address: liquidation.sponsor,
-        id: liquidation.id
-      });
-
+      // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Attempt to compute the withdraw amount. If the dispute has failed or has not been resolved (DVM has not returned a price), this should fail.
@@ -167,6 +162,17 @@ class Disputer {
         continue;
       }
 
+      Logger.info({
+        at: "Liquidator",
+        message: "Withdrawing dispute🤑",
+        address: liquidation.sponsor,
+        id: liquidation.id,
+        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      });
+
       // Send the transaction or report failure.
       try {
         const receipt = await withdraw.send({
@@ -188,7 +194,7 @@ class Disputer {
       } catch (error) {
         Logger.error({
           at: "Disputer",
-          message: `Failed to withdraw liquidation rewards: ${error.message}`,
+          message: `Failed to withdraw dispute rewards: ${error.message}`,
           error
         });
       }
