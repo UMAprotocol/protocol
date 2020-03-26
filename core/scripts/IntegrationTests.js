@@ -52,8 +52,8 @@ contract("IntegrationTest", function(accounts) {
   let startingTime;
   let expirationTime;
 
-  const mintAndApprove = toBN(toWei("10000000")); // number of tokens minted and approved by each account
-  const timeOffsetBetweenTests = toBN("10000"); // timestep advance between loop iterations
+  const mintAndApprove = toBN(toWei("100000000000000")); // number of tokens minted and approved by each account
+  const timeOffsetBetweenTests = toBN(60 * 60); // timestep advance between loop iterations (1 hour)
 
   beforeEach(async () => {
     collateralToken = await Token.new({ from: contractCreator });
@@ -72,7 +72,7 @@ contract("IntegrationTest", function(accounts) {
     });
 
     startingTime = await expiringMultiPartyCreator.getCurrentTime();
-    expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30)); // One month in the future
+    expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30 * 3)); // Three month in the future
     constructorParams = {
       isTest: true,
       expirationTimestamp: expirationTime.toString(),
@@ -346,7 +346,7 @@ contract("IntegrationTest", function(accounts) {
     // This test follows the exact same pattern as before except the input parames are less friendly
 
     // Test settings
-    const numIterations = 100; // number of times the simulation loop is run
+    const numIterations = 10; // number of times the simulation loop is run
     const runLiquidations = true; // if liquidations should occur in the loop
     const runDisputes = true; // if disputes should occur in the loop
     const runExtraDeposits = true; // if the sponsor should have a chance to add more
@@ -375,8 +375,8 @@ contract("IntegrationTest", function(accounts) {
     // STEP: 0.b): seed liquidator
     console.log("Seeding liquidator");
     await expiringMultiParty.create(
-      { rawValue: baseCollateralAmount.mul(toBN("100")).toString() },
-      { rawValue: baseNumTokens.mul(toBN("100")).toString() },
+      { rawValue: baseCollateralAmount.mul(toBN("100000")).toString() },
+      { rawValue: baseNumTokens.mul(toBN("100000")).toString() },
       { from: liquidator }
     );
 
@@ -425,7 +425,7 @@ contract("IntegrationTest", function(accounts) {
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
         await expiringMultiParty.createLiquidation(
           sponsor,
-          { rawValue: GCR.add(toBN("100000")).toString() },
+          { rawValue: GCR.toString() },
           { rawValue: positionTokensOutstanding.toString() },
           { from: liquidator }
         );
