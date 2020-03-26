@@ -27,6 +27,16 @@ const create = async (web3, artifacts, emp) => {
   const collateralNeeded = toBN(tokens)
     .mul(gcr)
     .divRound(scalingFactor);
+  // TODO: In some cases, collateralNeeded/tokens can be < gcr, which causes the `create` to fail.
+  // Why!?
+  console.log("gcr= ", gcr.toString());
+  console.log(
+    "this=",
+    collateralNeeded
+      .mul(scalingFactor)
+      .div(toBN(tokens))
+      .toString()
+  );
   console.log("You'll need", fromWei(collateralNeeded), "ETH to borrow tokens");
   const confirmation = await inquirer.prompt({
     type: "confirm",

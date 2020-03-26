@@ -195,6 +195,7 @@ const withdraw = async (web3, artifacts, emp) => {
           async () => await emp.requestWithdrawal({ rawValue: tokensToWithdraw.toString() }),
           "Requesting withdrawal"
         );
+        console.log("Withdrawal requested. Please check back later to perform the withdrawal");
       }
     }
   }
