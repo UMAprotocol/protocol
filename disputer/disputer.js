@@ -187,7 +187,7 @@ class Disputer {
           .catch(error => {
             Logger.error({
               at: "Disputer",
-              message: `Failed to withdraw liquidation rewards: ${error.message}`,
+              message: `Failed to withdraw dispute rewards: ${error.message}`,
               from: this.account,
               gas: 1500000,
               gasPrice: this.gasEstimator.getCurrentFastPrice(),
