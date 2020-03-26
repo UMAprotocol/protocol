@@ -52,8 +52,6 @@ class Disputer {
       disputeableLiquidations: disputeableLiquidations
     });
 
-    // Save all promises to resolve in parallel later on.
-    const disputePromises = [];
     for (const disputeableLiquidation of disputeableLiquidations) {
       Logger.info({
         at: "Disputer",
@@ -62,7 +60,7 @@ class Disputer {
         inputPrice: priceFunction(disputeableLiquidation.liquidationTime)
       });
 
-      // Create the liquidation transaction
+      // Create the liquidation transaction.
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
@@ -74,52 +72,41 @@ class Disputer {
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           id: disputeableLiquidation.id,
           sponsor: disputeableLiquidation.sponsor,
-          error: error
+        });
+        Logger.debug({
+          at: "Disputer",
+          message: `Dispute call error message: ${error.message}`,
+          error
         });
         continue;
       }
 
-      disputePromises.push(
-        dispute
-          .send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-          .catch(error => {
-            Logger.error({
-              at: "Disputer",
-              message: `Failed to dispute liquidation: ${error.message}`,
-              from: this.account,
-              gas: 1500000,
-              gasPrice: this.gasEstimator.getCurrentFastPrice(),
-              error
-            });
-          })
-      );
-    }
-
-    // Resolve all promises in parallel.
-    let promiseResponse = await Promise.all(disputePromises);
-
-    for (const response of promiseResponse) {
-      // response is undefined if an error is caught.
-      if (!response) {
-        continue;
+      // Send the transaction or report failure.
+      try {
+        const receipt = await dispute.send({
+          from: this.account,
+          gas: 1500000,
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
+        const logResult = {
+          tx: receipt.transactionHash,
+          sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
+          liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
+          id: receipt.events.LiquidationDisputed.returnValues.disputeId,
+          disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
+        };  
+        Logger.info({
+          at: "Disputer",
+          message: "Dispute tx result📄",
+          disputeResult: logResult
+        });  
+      } catch (error) {
+        Logger.error({
+          at: "Disputer",
+          message: `Failed to dispute liquidation: ${error.message}`,
+          error
+        });
       }
-
-      const logResult = {
-        tx: response.transactionHash,
-        sponsor: response.events.LiquidationDisputed.returnValues.sponsor,
-        liquidator: response.events.LiquidationDisputed.returnValues.liquidator,
-        id: response.events.LiquidationDisputed.returnValues.disputeId,
-        disputeBondPaid: response.events.LiquidationDisputed.returnValues.disputeBondAmount
-      };
-      Logger.info({
-        at: "Disputer",
-        message: "Dispute tx result📄",
-        disputeResult: logResult
-      });
     }
   };
 
@@ -150,8 +137,6 @@ class Disputer {
       return;
     }
 
-    // Save all promises to resolve in parallel later on.
-    const withdrawPromises = [];
     for (const liquidation of disputedLiquidations) {
       Logger.info({
         at: "Disputer",
@@ -174,49 +159,39 @@ class Disputer {
           address: liquidation.sponsor,
           id: liquidation.id
         });
+        Logger.debug({
+          at: "Disputer",
+          message: `Withdraw dispute error message: ${error.message}`,
+          error
+        });
         continue;
       }
 
-      withdrawPromises.push(
-        withdraw
-          .send({
-            from: this.account,
-            gas: 1500000,
-            gasPrice: this.gasEstimator.getCurrentFastPrice()
-          })
-          .catch(error => {
-            Logger.error({
-              at: "Disputer",
-              message: `Failed to withdraw liquidation rewards: ${error.message}`,
-              from: this.account,
-              gas: 1500000,
-              gasPrice: this.gasEstimator.getCurrentFastPrice(),
-              error
-            });
-          })
-      );
-    }
-
-    // Resolve all promises in parallel.
-    let promiseResponse = await Promise.all(withdrawPromises);
-
-    for (const response of promiseResponse) {
-      // response is undefined if an error is caught.
-      if (!response) {
-        continue;
+      // Send the transaction or report failure.
+      try {
+        const receipt = await withdraw.send({
+          from: this.account,
+          gas: 1500000,
+          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        })
+        const logResult = {
+          tx: receipt.transactionHash,
+          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+          withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+          liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+        };
+        Logger.info({
+          at: "Disputer",
+          message: "Withdraw tx result📄",
+          liquidationResult: logResult
+        });  
+      } catch (error) {
+        Logger.error({
+          at: "Disputer",
+          message: `Failed to withdraw liquidation rewards: ${error.message}`,
+          error
+        });
       }
-
-      const logResult = {
-        tx: response.transactionHash,
-        caller: response.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: response.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
-      };
-      Logger.info({
-        at: "Disputer",
-        message: "Withdraw tx result📄",
-        liquidationResult: logResult
-      });
     }
   };
 }
