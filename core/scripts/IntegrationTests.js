@@ -342,7 +342,7 @@ contract("IntegrationTest", function(accounts) {
     assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
   });
 
-  it.only("Iterative full life cycle test with unfriendly numbers", async function() {
+  it("Iterative full life cycle test with unfriendly numbers", async function() {
     // This test follows the exact same pattern as before except the input parames are less friendly
 
     // Test settings
