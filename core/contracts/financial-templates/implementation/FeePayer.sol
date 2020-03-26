@@ -150,7 +150,7 @@ abstract contract FeePayer is Testable {
      *         INTERNAL FUNCTIONS           *
      ****************************************/
 
-     function _getStore() internal view returns (StoreInterface) {
+    function _getStore() internal view returns (StoreInterface) {
         bytes32 storeInterface = "Store";
         return StoreInterface(finder.getImplementationAddress(storeInterface));
     }
