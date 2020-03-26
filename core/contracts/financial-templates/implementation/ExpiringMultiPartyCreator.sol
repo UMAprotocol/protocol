@@ -67,9 +67,9 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // However, this parameter is a reflection of how long we expect it to take for liquidators to identify
     // that a sponsor is undercollateralized and acquire the tokens needed to liquidate them. This is also a
     // reflection of how long a malicious sponsor would need to maintain a lower-price manipulation to get
-    // their withdrawal processed maliciously (if we set it too low, it’s quite easy for malicious sponsors
-    // to request a withdrawal and spend gas to prevent other transactions from processing until the withdrawal
-    //  gets approved). Ultimately, we think liveness is a friction to be minimized, but not critical to the system functioning.
+    // their withdrawal processed maliciously (if set too low, it’s quite easy for malicious sponsors to
+    // request a withdrawal and spend gas to prevent other transactions from processing until the withdrawal
+    //  gets approved). Ultimately, liveness is a friction to be minimized, but not critical to system function.
     uint public constant STRICT_WITHDRAWAL_LIVENESS = 3600;
     // - Time for liquidation to be disputed: 60 minutes. Similar reasoning to withdrawal liveness.
     // Lower liveness is more usable for liquidators. However, the parameter is a reflection of how
