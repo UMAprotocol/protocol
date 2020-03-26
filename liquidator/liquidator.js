@@ -71,7 +71,7 @@ class Liquidator {
         from: this.account,
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
-      }
+      };
       Logger.info({
         at: "Liquidator",
         message: "Liquidating position🔥",
@@ -164,7 +164,7 @@ class Liquidator {
         from: this.account,
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
-      }
+      };
       Logger.info({
         at: "Liquidator",
         message: "Withdrawing liquidation🤑",

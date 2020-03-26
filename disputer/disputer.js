@@ -68,7 +68,7 @@ class Disputer {
         from: this.account,
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
-      }
+      };
       Logger.info({
         at: "Disputer",
         message: "Disputing liquidation🔥",
@@ -157,7 +157,7 @@ class Disputer {
         from: this.account,
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
-      }
+      };
       Logger.info({
         at: "Liquidator",
         message: "Withdrawing dispute🤑",
@@ -179,7 +179,7 @@ class Disputer {
         });
         continue;
       }
-      
+
       const logResult = {
         tx: receipt.transactionHash,
         caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
