@@ -164,7 +164,7 @@ contract("IntegrationTest", function(accounts) {
     const disputePrice = toBN(toWei("1")); // Price a dispute will resolve to
     const depositAmount = toBN(toWei("10")); // Amount of additional collateral to add to a position
     const redeemAmount = toBN(toWei("1")); // The number of synthetic tokens to redeem for collateral
-    const dvmRegularFee = toBN("0"); // Fee multiplier
+    const dvmRegularFee = toBN("0"); // DVM fee
 
     // Counter variables
     let positionsCreated = 0;
