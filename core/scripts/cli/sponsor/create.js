@@ -5,7 +5,7 @@ const { submitTransaction } = require("./transactionUtils");
 
 const create = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
-  const { toWei, fromWei, toBN } = web3.utils;
+  const { toWei, fromWei } = web3.utils;
 
   // TODO: Understand why we need a .rawValue in one case but not the other.
   const totalPositionCollateral = BigNumber((await emp.totalPositionCollateral()).rawValue.toString());
