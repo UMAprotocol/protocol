@@ -98,22 +98,12 @@ contract Liquidatable is PricelessPositionManager {
     );
     event LiquidationWithdrawn(address caller, uint256 withdrawalAmount, Status liquidationStatus);
 
-    // Callable if the liquidation is in a state where it can be disputed.
     modifier disputable(uint liquidationId, address sponsor) {
-        LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
-        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
+        _disputable(liquidationId, sponsor);
         _;
     }
-    // Callable if the liquidation is in a state where someone can withdraw.
     modifier withdrawable(uint liquidationId, address sponsor) {
-        LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
-        Status state = liquidation.state;
-
-        // Must be disputed or the liquidation has passed expiry.
-        require(
-            (state > Status.PreDispute) ||
-                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
-        );
+        _withdrawable(liquidationId, sponsor);
         _;
     }
 
@@ -455,5 +445,26 @@ contract Liquidatable is PricelessPositionManager {
 
     function _getLiquidationExpiry(LiquidationData storage liquidation) internal view returns (uint) {
         return liquidation.liquidationTime.add(liquidationLiveness);
+    }
+
+    /**
+     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
+     * unnecessarily increase contract bytecode size.
+     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
+     */
+    function _disputable(uint liquidationId, address sponsor) internal view {
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
+        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
+    }
+
+    function _withdrawable(uint liquidationId, address sponsor) internal view {
+        LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
+        Status state = liquidation.state;
+
+        // Must be disputed or the liquidation has passed expiry.
+        require(
+            (state > Status.PreDispute) ||
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
+        );
     }
 }
