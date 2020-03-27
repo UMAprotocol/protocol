@@ -3,7 +3,7 @@
 
 const fetch = require("node-fetch");
 const url = "https://ethgasstation.info/json/ethgasAPI.json";
-const { Logger } = require("./Logger");
+const { Logger } = require("./logger/Logger");
 
 // If no updateThreshold is specified then default to updating every 60 seconds.
 class GasEstimator {

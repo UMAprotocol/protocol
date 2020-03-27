@@ -1,4 +1,7 @@
-const { Logger } = require("../financial-templates-lib/Logger");
+// When running this script it assumed that the account has enough tokens and allowance from the unlocked truffle
+// wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
+
+const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 class Disputer {
   constructor(expiringMultiPartyClient, gasEstimator, account) {
@@ -37,30 +40,14 @@ class Disputer {
 
     if (disputeableLiquidations.length === 0) {
       Logger.debug({
-        at: "liquidator",
+        at: "Disputer",
         message: "No disputable liquidations"
       });
-
-      // Nothing left to do, so return.
       return;
     }
 
-    Logger.info({
-      at: "Disputer",
-      message: "Disputable liquidation(s) detected!🚨",
-      number: disputeableLiquidations.length,
-      disputeableLiquidations: disputeableLiquidations
-    });
-
     for (const disputeableLiquidation of disputeableLiquidations) {
-      Logger.info({
-        at: "Disputer",
-        message: "Disputing liquidation🔥",
-        address: disputeableLiquidation.sponsor,
-        inputPrice: priceFunction(disputeableLiquidation.liquidationTime)
-      });
-
-      // Create the liquidation transaction
+      // Create the transaction.
       const dispute = this.empContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
@@ -70,28 +57,40 @@ class Disputer {
         Logger.error({
           at: "Disputer",
           message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
-          id: disputeableLiquidation.id,
-          sponsor: disputeableLiquidation.sponsor
-        });
-
-        Logger.debug({
-          at: "Disputer",
-          message: "Dispute call error message",
-          id: disputeableLiquidation.id,
           sponsor: disputeableLiquidation.sponsor,
+          liquidation: disputeableLiquidation,
           error: error
         });
         continue;
       }
 
-      // TODO: handle transaction failures.
-      const receipt = await dispute.send({
+      const txnConfig = {
         from: this.account,
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
+      };
+      Logger.info({
+        at: "Disputer",
+        message: "Disputing liquidation🔥",
+        liquidation: disputeableLiquidation,
+        inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
+        txnConfig
       });
 
-      const disputeResult = {
+      // Send the transaction or report failure.
+      let receipt;
+      try {
+        receipt = await dispute.send(txnConfig);
+      } catch (error) {
+        Logger.error({
+          at: "Disputer",
+          message: `Failed to dispute liquidation`,
+          error: error
+        });
+        continue;
+      }
+
+      const logResult = {
         tx: receipt.transactionHash,
         sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
         liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
@@ -101,7 +100,7 @@ class Disputer {
       Logger.info({
         at: "Disputer",
         message: "Dispute tx result📄",
-        disputeResult: disputeResult
+        disputeResult: logResult
       });
     }
   };
@@ -128,53 +127,54 @@ class Disputer {
     if (disputedLiquidations.length === 0) {
       Logger.debug({
         at: "Disputer",
-        message: "No withdrawable liquidations"
+        message: "No withdrawable disputes"
       });
       return;
     }
 
     for (const liquidation of disputedLiquidations) {
-      Logger.info({
-        at: "Disputer",
-        message: "Attempting to withdraw from previous dispute.💪",
-        address: liquidation.sponsor,
-        id: liquidation.id
-      });
-
+      // Construct transaction.
       const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
-      // Attempt to compute the withdraw amount. If the dispute has not been resolved (DVM has not returned a price), this should fail.
-      // In that case, just continue because there is nothing left to do.
+      // Confirm that dispute has eligible rewards to be withdrawn.
       let withdrawAmount;
       try {
         withdrawAmount = await withdraw.call({ from: this.account });
       } catch (error) {
         Logger.debug({
           at: "Disputer",
-          message: "Withdraw not ready.",
-          address: liquidation.sponsor,
-          id: liquidation.id
+          message: "No rewards to withdraw.",
+          liquidation: liquidation,
+          error: error
         });
         continue;
       }
 
-      // If there is nothing to withdraw, the dispute failed and there's nothing to do.
-      if (this.web3.utils.toBN(withdrawAmount.rawValue).isZero()) {
-        Logger.info({
-          at: "Disputer",
-          message: "Dispute failed.🤕",
-          address: liquidation.sponsor,
-          id: liquidation.id
-        });
-        continue;
-      }
-
-      // TODO: handle transaction failure.
-      const receipt = await withdraw.send({
+      const txnConfig = {
         from: this.account,
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
+      };
+      Logger.info({
+        at: "Liquidator",
+        message: "Withdrawing dispute🤑",
+        liquidation: liquidation,
+        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        txnConfig
       });
+
+      // Send the transaction or report failure.
+      let receipt;
+      try {
+        receipt = await withdraw.send(txnConfig);
+      } catch (error) {
+        Logger.error({
+          at: "Disputer",
+          message: `Failed to withdraw dispute rewards`,
+          error: error
+        });
+        continue;
+      }
 
       const logResult = {
         tx: receipt.transactionHash,
@@ -184,7 +184,7 @@ class Disputer {
       };
       Logger.info({
         at: "Disputer",
-        message: "Withdraw tx result",
+        message: "Withdraw tx result📄",
         liquidationResult: logResult
       });
     }

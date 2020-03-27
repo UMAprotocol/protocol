@@ -17,8 +17,8 @@ import "./FeePayer.sol";
 
 /**
  * @title Financial contract with priceless position management.
- * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying on a price feed.
- * On construction, deploys a new ERC20 that this contract manages that is the synthetic token.
+ * @notice Handles positions for multiple sponsors in an optimistic (i.e., priceless) way without relying
+ * on a price feed. On construction, deploys a new ERC20, managed by this contract, that is the synthetic token.
  */
 
 contract PricelessPositionManager is FeePayer, AdministrateeInterface {
@@ -27,8 +27,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
 
-    // Represents a single sponsor's position. All collateral is actually held by the Position contract as a whole,
-    // and this struct is bookkeeping for how much of that collateral is allocated to this sponsor.
+    /****************************************
+     *  PRICELESS POSITION DATA STRUCTURES  *
+     ****************************************/
+
+    // Enum to store the state of the PricelessPositionManager. Set on expiration or emergency shutdown.
+    enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
+    ContractState public contractState;
+
+    // Represents a single sponsor's position. All collateral is held by this contract.
+    // This struct acts is bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
         FixedPoint.Unsigned tokensOutstanding;
         // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
@@ -42,12 +50,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // Maps sponsor addresses to their positions. Each sponsor can have only one position.
     mapping(address => PositionData) public positions;
 
-    // Keep track of the total collateral and tokens across all positions to enable calculating the global
-    // collateralization ratio without iterating over all positions.
+    // Keep track of the total collateral and tokens across all positions to enable calculating the
+    // global collateralization ratio without iterating over all positions.
     FixedPoint.Unsigned public totalTokensOutstanding;
 
-    // Note: similar to the rawCollateral in PositionData, this value should not be used directly -- _getCollateral(),
-    // _addCollateral() and _removeCollateral() should be used to access and adjust.
+    // Similar to the rawCollateral in PositionData, this value should not be used directly.
+    // _getCollateral(), _addCollateral() and _removeCollateral() must be used to access and adjust.
     FixedPoint.Unsigned public rawTotalPositionCollateral;
 
     // Synthetic token created by this contract.
@@ -63,9 +71,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
 
-    // Enum to store the state of the PricelessPositionManager. Is set on expiration or emergency shutdown.
-    enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
-    ContractState public contractState;
+    /****************************************
+     *                EVENTS                *
+     ****************************************/
 
     event Transfer(address indexed oldSponsor, address indexed newSponsor);
     event Deposit(address indexed sponsor, uint indexed collateralAmount);
@@ -79,6 +87,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     event ContractExpired(address indexed caller);
     event SettleExpiredPosition(address indexed caller, uint indexed collateralReturned, uint indexed tokensBurned);
     event EmergencyShutdown(address indexed caller, uint originalExpirationTimestamp, uint shutdownTimestamp);
+
+    /****************************************
+     *               MODIFIERS              *
+     ****************************************/
 
     modifier onlyPreExpiration() {
         _onlyPreExpiration();
@@ -102,6 +114,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _;
     }
 
+    /**
+     * @notice Construct the PricelessPositionManager
+     * @param _isTest whether this contract is being constructed for the purpose of running tests.
+     * @param _expirationTimestamp unix timestamp of when the contrct will expire.
+     * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawls.
+     * @param _collateralAddress ERC20 token used as collateral for all positions.
+     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
+     * @param _priceIdentifier registered in the DVM for the synthetic.
+     * @param _syntheticName name for the token contract that will be deployed.
+     * @param _syntheticSymbol symbol for the token contract that will be deployed.
+     * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
+     */
     constructor(
         bool _isTest,
         uint _expirationTimestamp,
@@ -123,9 +147,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         priceIdentifer = _priceIdentifier;
     }
 
+    /****************************************
+     *          POSITION FUNCTIONS          *
+     ****************************************/
+
     /**
-     * @notice Transfers ownership of the caller's current position to `newSponsorAddress`. The address
-     * `newSponsorAddress` isn't allowed to have a position of their own before the transfer.
+     * @notice Transfers ownership of the caller's current position to `newSponsorAddress`.
      * @dev transfering positions can only occure if the recipiant does not already have a position.
      * @param newSponsorAddress is the address to which the position will be transfered.
      */
@@ -141,11 +168,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Transfers `collateralAmount` of `collateralCurrency` into the calling sponsor's position. Used to
-     * increase the collateralization level of a position.
-     * @param collateralAmount represents the total amount of tokens to be sent to the position for the sponsor.
+     * @notice Transfers `collateralAmount` of `collateralCurrency` into the sponsor's position.
+     * @dev Increases the collateralization level of a position after creation.
+     * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
-
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
@@ -159,9 +185,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Transfers `collateralAmount` of `collateralCurrency` from the calling sponsor's position to the caller.
-     * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization ratio.
-     * In that case, use `requestWithdrawawal`.
+     * @notice Transfers `collateralAmount` of `collateralCurrency` from the sponsor's position to the sponsor.
+     * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global
+     * collateralization ratio. In that case, use `requestWithdrawawal`.
      * @param collateralAmount is the amount of collateral to withdraw
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
@@ -179,12 +205,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw `collateralAmount` from their
-     * position. 
-     @dev The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
-     @param collateralAmount the amount of collateral requested to withdraw
+     * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw
+     * `collateralAmount` from their position.
+     * @dev The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
+     * @param collateralAmount the amount of collateral requested to withdraw
      */
-
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
@@ -270,6 +295,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
+     * @dev Can only be called by a token sponsor.
+     * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      */
     function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -303,23 +330,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice After expiration of the contract the DVM is asked what for the prevailing price at the time of
-     * expiration. In addition, pay the final fee at this time. Once this has been resolved token holders can withdraw.
-     */
-    function expire() external onlyPostExpiration() onlyOpenState() fees() {
-        contractState = ContractState.ExpiredPriceRequested;
-
-        // The final fee for this request is paid out of the contract rather than by the caller.
-        _payFinalFees(address(this));
-        _requestOraclePrice(expirationTimestamp);
-
-        emit ContractExpired(msg.sender);
-    }
-
-    /**
-     * @notice After a contract has passed maturity all token holders can redeem their tokens for underlying at
-     * the prevailing price defined by the DVM from the `expire` function.
-     * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
+     * @notice After a contract has passed expirary all token holders can redeem their tokens for
+     * underlying at the prevailing price defined by the DVM from the `expire` function.
+     * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional
+     * amount of `collateralCurrency`.
      */
     function settleExpired() external onlyPostExpiration() fees() {
         // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
@@ -363,11 +377,30 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit SettleExpiredPosition(msg.sender, totalRedeemableCollateral.rawValue, tokensToRedeem.rawValue);
     }
 
+    /****************************************
+     *        GLOBAL STATE FUNCTIONS        *
+     ****************************************/
+
+    /**
+     * @notice Locks contract state in expired and requests oracle price.
+     * @dev this function can only be called once the contract is expired and cant be re-called
+     * due to the state modifiers applied on it.
+     */
+    function expire() external onlyPostExpiration() onlyOpenState() fees() {
+        contractState = ContractState.ExpiredPriceRequested;
+
+        // The final fee for this request is paid out of the contract rather than by the caller.
+        _payFinalFees(address(this));
+        _requestOraclePrice(expirationTimestamp);
+
+        emit ContractExpired(msg.sender);
+    }
+
     /**
      * @notice Premature contract settlement under emergency circumstances.
      * @dev Only the governor can call this function as they are permissioned within the `FinancialContractAdmin`.
      * Upon emergency shutdown, the contract settlement time is set to the shutdown time. This enables withdrawal
-     * to occur via the standard settleExpired function call. Contract state is set to `ExpiredPriceRequested`
+     * to occur via the standard `settleExpired` function. Contract state is set to `ExpiredPriceRequested`
      * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
@@ -395,14 +428,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Accessor method for a sponsor's collateral.
-     * @dev This is necessary because the struct returned by the positions() method shows rawCollateral, which isn't a
-     * user-readable value.
+     * @dev This is necessary because the struct returned by the positions() method shows
+     * rawCollateral, which isn't a user-readable value.
+     * @param sponsor address whose collateral amount is retrieved.
      */
     function getCollateral(address sponsor) external view returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
         return _getCollateral(positions[sponsor].rawCollateral);
     }
 
+    /**
+     * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
+     */
     function totalPositionCollateral() external view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
     }
@@ -415,6 +452,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
     }
+
+    /****************************************
+     *          INTERNAL FUNCTIONS         *
+     ****************************************/
 
     function _reduceSponsorPosition(
         address sponsor,
