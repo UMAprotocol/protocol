@@ -8,10 +8,10 @@ import "./ExpiringMultiParty.sol";
 
 
 /**
-* @title Expiring Multi Party Contract creator.
-* @notice Factory contract to create and register new instances of expiring multiparty contracts.
-* Responsible for constraining the parameters used to construct a new EMP.
-*/
+ * @title Expiring Multi Party Contract creator.
+ * @notice Factory contract to create and register new instances of expiring multiparty contracts.
+ * Responsible for constraining the parameters used to construct a new EMP.
+ */
 contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     using FixedPoint for FixedPoint.Unsigned;
 
