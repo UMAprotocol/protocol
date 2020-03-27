@@ -110,7 +110,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await pricelessPositionManager.collateralCurrency(), collateral.address);
     assert.equal(await pricelessPositionManager.finder(), finder.address);
     assert.equal(hexToUtf8(await pricelessPositionManager.priceIdentifer()), hexToUtf8(priceFeedIdentifier));
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
 
     // Synthetic token
     assert.equal(await tokenCurrency.name(), syntheticName);
@@ -237,7 +237,7 @@ contract("PricelessPositionManager", function(accounts) {
     await checkBalances(toBN("0"), toBN("0"));
 
     // Contract state should not have changed.
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
   });
 
   it("Withdrawal request", async function() {
@@ -341,7 +341,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.cancelWithdrawal({ from: sponsor })));
 
     // Contract state should not have changed.
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
   });
 
   it("Global collateralization ratio checks", async function() {
@@ -423,7 +423,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.transfer(other, { from: sponsor })));
 
     // Contract state should not have changed.
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
   });
 
   it("Frozen when post expiry", async function() {
@@ -489,7 +489,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     const expireResult = await pricelessPositionManager.expire({ from: other });
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED);
     truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
       return ev.caller == other;
     });
@@ -514,7 +514,7 @@ contract("PricelessPositionManager", function(accounts) {
       from: tokenHolder
     });
     let settleExpiredResult = await pricelessPositionManager.settleExpired({ from: tokenHolder });
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED);
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
 
@@ -1034,7 +1034,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // FinancialContractAdmin can initiate emergency shutdown.
     await financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address);
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED);
 
     // Because the emergency shutdown is called by the `financialContractsAdmin`, listening for events can not
     // happen in the standard way as done in other tests. However, we can directly query the `pricelessPositionManager`
@@ -1073,7 +1073,7 @@ contract("PricelessPositionManager", function(accounts) {
       from: tokenHolder
     });
     await pricelessPositionManager.settleExpired({ from: tokenHolder });
-    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED)
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED);
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     const expectedTokenHolderFinalCollateral = toWei("55");
