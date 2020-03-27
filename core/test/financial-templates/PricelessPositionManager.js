@@ -110,6 +110,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await pricelessPositionManager.collateralCurrency(), collateral.address);
     assert.equal(await pricelessPositionManager.finder(), finder.address);
     assert.equal(hexToUtf8(await pricelessPositionManager.priceIdentifer()), hexToUtf8(priceFeedIdentifier));
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
 
     // Synthetic token
     assert.equal(await tokenCurrency.name(), syntheticName);
@@ -235,7 +236,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
 
-    // TODO: Add a test to check that normal redemption does not work after maturity.
+    // Contract state should not have changed.
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
   });
 
   it("Withdrawal request", async function() {
@@ -337,6 +339,9 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Can't cancel if no withdrawals pending.
     assert(await didContractThrow(pricelessPositionManager.cancelWithdrawal({ from: sponsor })));
+
+    // Contract state should not have changed.
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
   });
 
   it("Global collateralization ratio checks", async function() {
@@ -416,9 +421,12 @@ contract("PricelessPositionManager", function(accounts) {
     // Can't transfer if the target already has a pricelessPositionManager.
     await pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor });
     assert(await didContractThrow(pricelessPositionManager.transfer(other, { from: sponsor })));
+
+    // Contract state should not have changed.
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN)
   });
 
-  it("Frozen when pre expiry and undercollateralized", async function() {
+  it("Frozen when post expiry", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
     await pricelessPositionManager.create(
@@ -435,7 +443,7 @@ contract("PricelessPositionManager", function(accounts) {
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
     await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() - 1);
 
-    // Even though the contract isn't expired yet, can't issue a withdrawal request past the expiration time.
+    // Even though the contract isn't expired yet, can't issue a withdrawal request that would expire beyond the position expiry time.
     assert(
       await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor }))
     );
@@ -457,7 +465,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.transfer(accounts[3], { from: sponsor })));
   });
 
-  it("Redemption post expiry", async function() {
+  it("Settlement post expiry", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
     // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
@@ -481,6 +489,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     const expireResult = await pricelessPositionManager.expire({ from: other });
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED)
     truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
       return ev.caller == other;
     });
@@ -505,6 +514,7 @@ contract("PricelessPositionManager", function(accounts) {
       from: tokenHolder
     });
     let settleExpiredResult = await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED)
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
 
@@ -1024,6 +1034,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // FinancialContractAdmin can initiate emergency shutdown.
     await financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address);
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_REQUESTED)
 
     // Because the emergency shutdown is called by the `financialContractsAdmin`, listening for events can not
     // happen in the standard way as done in other tests. However, we can directly query the `pricelessPositionManager`
@@ -1062,6 +1073,7 @@ contract("PricelessPositionManager", function(accounts) {
       from: tokenHolder
     });
     await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.EXPIRED_PRICE_RECEIVED)
     const tokenHolderFinalCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     const expectedTokenHolderFinalCollateral = toWei("55");
