@@ -15,7 +15,7 @@ class UniswapPriceFeed {
     // TODO: optimize this call. This may be very slow or break if there are many transactions.
     const events = await this.uniswap.getPastEvents("Sync", { fromBlock: 0 });
 
-    // If there are no prices, return null and allow
+    // If there are no prices, return null to allow the user to handle the absense of data.
     if (events.length === 0) {
       this.currentPrice = null;
       return;
