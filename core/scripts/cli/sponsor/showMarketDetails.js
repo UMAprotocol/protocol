@@ -67,14 +67,12 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     };
   } else {
     const position = await emp.positions(sponsorAddress);
-    console.log("You have:");
-    console.log(
-      "Position: " +
-        fromWei(collateral) +
-        " WETH backing " +
-        fromWei(position.tokensOutstanding.toString()) +
-        " synthetic tokens"
-    );
+
+    console.table({
+      "Tokens you've borrowed": fromWei(position.tokensOutstanding.toString()),
+      "Deposited collateral": fromWei(collateral) + " WETH",
+      "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString())
+    });
 
     actions = {
       ...actions,

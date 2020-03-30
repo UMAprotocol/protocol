@@ -47,7 +47,9 @@ const withdraw = async (web3, artifacts, emp) => {
     const collateralPerToken = toBN(collateral)
       .sub(toBN(withdrawRequestAmount))
       .mul(scalingFactor)
-      .div(toBN(position.tokensOutstanding.toString()));
+      .div(toBN(position.tokensOutstanding.toString()))
+      // Express as a percent.
+      .muln(100);
 
     // Get current contract time and withdrawal request expiration time.
     const currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
@@ -64,7 +66,8 @@ const withdraw = async (web3, artifacts, emp) => {
       console.log(`The current contract time is ${currentTimeReadable}.`);
       console.log(
         "Hypothetical collateralization ratio if the withdrawal request were to go through: " +
-          fromWei(collateralPerToken)
+          fromWei(collateralPerToken) +
+          "%"
       );
       const prompt = {
         type: "list",
@@ -92,7 +95,9 @@ const withdraw = async (web3, artifacts, emp) => {
       );
       console.log(`The current contract time is ${currentTimeReadable}.`);
       console.log(
-        "Hypothetical collateralization ratio once the withdrawal request executes: " + fromWei(collateralPerToken)
+        "Hypothetical collateralization ratio once the withdrawal request executes: " +
+          fromWei(collateralPerToken) +
+          "%"
       );
       const prompt = {
         type: "list",
@@ -127,8 +132,9 @@ const withdraw = async (web3, artifacts, emp) => {
     // Calculate current collateralization ratio.
     const collateralPerToken = toBN(collateral)
       .mul(scalingFactor)
-      .div(toBN(position.tokensOutstanding.toString()));
-    console.log("Current collateralization ratio: " + fromWei(collateralPerToken));
+      .div(toBN(position.tokensOutstanding.toString()))
+      .muln(100);
+    console.log("Current collateralization ratio: " + fromWei(collateralPerToken) + "%");
 
     // Calculate GCR.
     const totalPositionCollateral = toBN((await emp.totalPositionCollateral()).rawValue.toString());
@@ -195,6 +201,7 @@ const withdraw = async (web3, artifacts, emp) => {
           async () => await emp.requestWithdrawal({ rawValue: tokensToWithdraw.toString() }),
           "Requesting withdrawal"
         );
+        console.log("Withdrawal requested. Please check back later to perform the withdrawal");
       }
     }
   }
