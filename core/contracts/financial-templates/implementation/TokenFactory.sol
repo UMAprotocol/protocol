@@ -13,7 +13,7 @@ contract TokenFactory {
      * @dev The caller will become the only minter and burner and the new owner capable of adding new roles.
      * @param tokenName used to describe the new token.
      * @param tokenSymbol short ticker abbreviation of the name. Ideally < 5 chars.
-     * @param tokenDecimals used to delimitate the new token.
+     * @param tokenDecimals used to define the precision used in the tokens numerical representation.
      * @return newToken an instance of the newly created token interface.
      */
     function createToken(string calldata tokenName, string calldata tokenSymbol, uint8 tokenDecimals)
