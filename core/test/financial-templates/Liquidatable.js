@@ -558,6 +558,8 @@ contract("Liquidatable", function(accounts) {
 
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
         assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+
+        // We test that the event is emitted correctly for a successful dispute in a subsequent test.
       });
       it("Dispute Failed", async () => {
         // For a failed dispute the price needs to result in the position being incorrectly collateralized (the liquidation is valid).
@@ -574,9 +576,22 @@ contract("Liquidatable", function(accounts) {
           }
         );
 
-        // Event should show that the dispute failed.
+        // Events should show that the dispute failed.
         truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
           return !ev.DisputeSucceeded;
+        });
+        const expectedPayout = disputeBond.add(liquidationParams.liquidatedCollateral);
+        // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
+        // if the liquidator calls `withdrawLiquidation()` on a failed dispute, it will first `_settle` the contract
+        // and set its status to "DISPUTE_FAILED", but they will also withdraw all of the
+        // locked collateral in the contract (plus dispute bond), which will "delete" the liquidation and subsequently set
+        // its status to "UNINITIALIZED".
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+          return (
+            ev.caller == liquidator &&
+            ev.withdrawalAmount.toString() == expectedPayout.toString() &&
+            ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
+          );
         });
       });
       it("Event correctly emitted", async () => {
@@ -668,6 +683,10 @@ contract("Liquidatable", function(accounts) {
         await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
         assert.equal((await collateralToken.balanceOf(liquidator)).toString(), amountOfCollateral.toString());
 
+        // Liquidation should still technically exist, but its status should get reset.
+        const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+        assert.equal(liquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
+
         // Liquidator should not be able to call multiple times. Only one withdrawal
         assert(
           await didContractThrow(
@@ -757,6 +776,11 @@ contract("Liquidatable", function(accounts) {
               liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: sponsor })
             )
           );
+
+          // Liquidation should still exist and its status should reflect the dispute result.
+          const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+          assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+          assert.equal(liquidation.sponsor, zeroAddress);
         });
         it("Liquidator calls", async () => {
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
@@ -770,6 +794,11 @@ contract("Liquidatable", function(accounts) {
               liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator })
             )
           );
+
+          // Liquidation should still exist and its status should reflect the dispute result.
+          const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+          assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+          assert.equal(liquidation.liquidator, zeroAddress);
         });
         it("Disputer calls", async () => {
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
@@ -783,6 +812,11 @@ contract("Liquidatable", function(accounts) {
               liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer })
             )
           );
+
+          // Liquidation should still exist and its status should reflect the dispute result.
+          const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+          assert.equal(liquidation.state.toString(), LiquidationStatesEnum.DISPUTE_SUCCEEDED);
+          assert.equal(liquidation.disputer, zeroAddress);
         });
         it("Rando calls", async () => {
           assert(
@@ -807,6 +841,9 @@ contract("Liquidatable", function(accounts) {
           assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
           const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
           assert.equal(deletedLiquidation.liquidator, zeroAddress);
+          assert.equal(deletedLiquidation.sponsor, zeroAddress);
+          assert.equal(deletedLiquidation.disputer, zeroAddress);
+          assert.equal(deletedLiquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
         });
         it("Event emitted", async () => {
           const withdrawalResult = await liquidationContract.withdrawLiquidation(
@@ -913,6 +950,7 @@ contract("Liquidatable", function(accounts) {
           assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
           const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
           assert.equal(deletedLiquidation.liquidator, zeroAddress);
+          assert.equal(deletedLiquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
         });
         it("Disputer calls", async () => {
           assert(
