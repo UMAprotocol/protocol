@@ -128,12 +128,12 @@ contract Liquidatable is PricelessPositionManager {
     /****************************************
      *              MODIFIERS               *
      ****************************************/
-
-    // Callable if the liquidation is in a state where it can be disputed.
+     
     modifier disputable(uint liquidationId, address sponsor) {
         _disputable(liquidationId, sponsor);
         _;
     }
+    
     modifier withdrawable(uint liquidationId, address sponsor) {
         _withdrawable(liquidationId, sponsor);
         _;
