@@ -11,7 +11,7 @@ import "../../common/implementation/ExpandedERC20.sol";
 
 contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
-     * @notice Constructs the SyntheticToken
+     * @notice Constructs the SyntheticToken.
      * @param tokenName used to describe the new token.
      * @param tokenSymbol short ticker abbreviation of the name. Ideally < 5 chars.
      * @param tokenDecimals used to define the precision used in the tokens numerical representation.
@@ -40,7 +40,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     }
 
     /**
-     * @notice Add Burner role to account
+     * @notice Add Burner role to account.
      * @dev the caller must have the Owner role.
      * @param account to be added as a Burner role.
      */
@@ -58,7 +58,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     }
 
     /**
-     * @notice Reset Owner role to account
+     * @notice Reset Owner role to account.
      * @dev the caller must have the Owner role.
      * @param account have it's roles reset.
      */
