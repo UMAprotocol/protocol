@@ -684,21 +684,20 @@ contract("IntegrationTest", function(accounts) {
 
           liquidationsObject[liquidationsObject.length - 1].disputed = true;
         }
-      }
-      else {
-      // STEP 5): chance for the token sponsor to deposit more collateral
-      if (i % 2 == 0 && runExtraDeposits) {
-        // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
+      } else {
+        // STEP 5): chance for the token sponsor to deposit more collateral
+        if (i % 2 == 0 && runExtraDeposits) {
+          // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
 
-        await expiringMultiParty.deposit({ rawValue: depositAmount.toString() }, { from: sponsor });
-        depositsMade++;
-      }
-      // STEP 6): chance for the token sponsor to redeem some collateral
-      if (i % 2 == 1 && runRedeemTokens) {
-        // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
+          await expiringMultiParty.deposit({ rawValue: depositAmount.toString() }, { from: sponsor });
+          depositsMade++;
+        }
+        // STEP 6): chance for the token sponsor to redeem some collateral
+        if (i % 2 == 1 && runRedeemTokens) {
+          // Wrap the deposit attempt in a try/catch to deal with a liquidated position reverting deposit
 
-        await expiringMultiParty.redeem({ rawValue: redeemAmount.toString() }, { from: sponsor });
-        redemptionsMade++;
+          await expiringMultiParty.redeem({ rawValue: redeemAmount.toString() }, { from: sponsor });
+          redemptionsMade++;
         }
       }
     } // exit iteration loop
