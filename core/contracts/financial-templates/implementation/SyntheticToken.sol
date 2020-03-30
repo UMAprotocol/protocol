@@ -12,9 +12,9 @@ import "../../common/implementation/ExpandedERC20.sol";
 contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Constructs the SyntheticToken.
-     * @param tokenName used to describe the new token.
-     * @param tokenSymbol short ticker abbreviation of the name. Ideally < 5 chars.
-     * @param tokenDecimals used to define the precision used in the tokens numerical representation.
+     * @param tokenName The name which describes the new token.
+     * @param tokenSymbol The ticker abbreviation of the name. Ideally < 5 chars.
+     * @param tokenDecimals The number of decimals to define token precision.
      */
     constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
         public
@@ -24,7 +24,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Add Minter role to account.
      * @dev the caller must have the Owner role.
-     * @param account to be added to the Minter role.
+     * @param account The address to which the Minter role is added.
      */
     function addMinter(address account) external {
         addMember(uint(Roles.Minter), account);
@@ -33,7 +33,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Remove Minter role from account.
      * @dev the caller must have the Owner role.
-     * @param account to be removed from the miner role.
+     * @param account The address from which the Minter role is removed.
      */
     function removeMinter(address account) external {
         removeMember(uint(Roles.Minter), account);
@@ -42,7 +42,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Add Burner role to account.
      * @dev the caller must have the Owner role.
-     * @param account to be added as a Burner role.
+     * @param account The address to which the Burner role is added.
      */
     function addBurner(address account) external {
         addMember(uint(Roles.Burner), account);
@@ -51,7 +51,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Removes Burner role from account.
      * @dev the caller must have the Owner role.
-     * @param account to be removed from the Burner role.
+     * @param account The address from which the Burner roll is removed.
      */
     function removeBurner(address account) external {
         removeMember(uint(Roles.Burner), account);
@@ -60,16 +60,26 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Reset Owner role to account.
      * @dev the caller must have the Owner role.
-     * @param account have it's roles reset.
+     * @param account The new holder of the Owner role.
      */
     function resetOwner(address account) external {
         resetMember(uint(Roles.Owner), account);
     }
 
+    /**
+     * @notice Checks if a given account holds the Minter role.
+     * @param account The address which is checked for the Minter role.
+     * @return bool True of False if the provided account is a Minter.
+     */
     function isMinter(address account) public view returns (bool) {
         return holdsRole(uint(Roles.Minter), account);
     }
 
+    /**
+     * @notice Checks if a given account holds the Burner role.
+     * @param account The address which is checked for the Burner role.
+     * @return bool True of False if the provided account is a Burner.
+     */
     function isBurner(address account) public view returns (bool) {
         return holdsRole(uint(Roles.Burner), account);
     }
