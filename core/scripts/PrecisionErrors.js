@@ -25,6 +25,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MarginToken = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
+const MockOracle = artifacts.require("MockOracle");
 
 /**
  * @notice Deploys a brand new ExpiringMultiParty contract so that each experiment can run in isolation.
@@ -50,6 +51,8 @@ async function createTestEnvironment() {
   let emp;
   let store;
   let identifierWhitelist;
+  let mockOracle;
+  let finder;
 
   // Initial constant values
   const syntheticName = "UMA test Token";
@@ -74,6 +77,14 @@ async function createTestEnvironment() {
   // Create identifier whitelist and register the price tracking ticker with it.
   identifierWhitelist = await IdentifierWhitelist.deployed();
   await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, { from: contractDeployer });
+
+  // Change oracle to the mock oracle for two reasons:
+  // (1) we can manually set settlement prices
+  // (2) we don't need to register the contract with the Registry to request prices
+  mockOracle = await MockOracle.new(identifierWhitelist.address);
+  finder = await Finder.deployed();
+  const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+  await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);  
 
   // Create the instance of the emp to test against.
   // The contract expires 10k seconds in the future -> will not expire during this test case.
@@ -101,6 +112,7 @@ async function createTestEnvironment() {
     synthetic,
     emp,
     store,
+    mockOracle,
     sponsor,
     contractDeployer,
     other
@@ -140,15 +152,15 @@ async function runExport() {
 
   // Test variables:
   let startTime; // Contract time at start of experiment.
-  let tokensOutstanding; // Current count of synthetic tokens outstanding. Need to remember this before calling redeem() in order to forecast post-redemption collateral.
+  // Synthetic token balances
+  let tokensOutstanding; 
+  let sponsorTokens;
+  let userTokens;
   // Collateral actually owned by contract (i.e. queryable via `collateral.balanceOf(contract)`).
-  let startingContractCollateral;
   let contractCollateral;
   // Credited collateral net of fees (i.e. queryable via `contract.totalPositionCollateral()`).
-  let startingAdjustedContractCollateral;
   let adjustedCollateral;
   // Scaled up collateral used by contract to track fees (i.e. queryable via `contract.rawTotalPositionCollateral()`).
-  let startingRawContractCollateral;
   let rawContractCollateral;
   // Used to track Store collateral to calculate fees collected.
   let startingStoreCollateral;
@@ -228,13 +240,13 @@ async function runExport() {
    * @notice TEST INVARIANTS
    */
   startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingAdjustedContractCollateral = await emp.getCollateral(sponsor);
-  startingContractCollateral = await collateral.balanceOf(emp.address);
-  startingRawContractCollateral = await emp.rawTotalPositionCollateral();
+  adjustedCollateral = await emp.getCollateral(sponsor);
+  contractCollateral = await collateral.balanceOf(emp.address);
+  rawContractCollateral = await emp.rawTotalPositionCollateral();
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
 
   // Test 1) The adjusted and actual collateral amount is the same to start, pre-fees.
-  assert.equal(startingAdjustedContractCollateral.toString(), startingContractCollateral.toString());
+  assert.equal(adjustedCollateral.toString(), contractCollateral.toString());
 
   // Test 2) The store has not collected any fees.
   assert.equal(startingStoreCollateral.toString(), "0");
@@ -243,13 +255,13 @@ async function runExport() {
   assert.equal(parseFloat(actualFeeMultiplier.toString()) / 1e18, 1.0);
 
   // Test 4) Raw collateral and actual collateral amount are the same to start.
-  assert.equal(startingRawContractCollateral.toString(), startingContractCollateral.toString());
+  assert.equal(rawContractCollateral.toString(), contractCollateral.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Collateral credited to Sponsors'] = new CollateralBreakdown(adjustedCollateral);
+  breakdown['Contract raw collateral'] = new CollateralBreakdown(rawContractCollateral);
+  breakdown['Cumulative Fee Multiplier'] = new CollateralBreakdown(actualFeeMultiplier);
   console.group("** Collateral Before Charging any Fees **");
   console.table(breakdown);
   console.groupEnd();
@@ -269,10 +281,10 @@ async function runExport() {
   assert.equal(testConfig.expectedFeesCollected, actualFeesCollected.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(contractCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Collateral credited to Sponsors'] = new CollateralBreakdown(adjustedCollateral);
+  breakdown['Contract raw collateral'] = new CollateralBreakdown(rawContractCollateral);
+  breakdown['Cumulative Fee Multiplier'] = new CollateralBreakdown(actualFeeMultiplier);
   console.group(
     `** Collateral After Charging ${testConfig.feeRatePerSecond} in Fees (${fromWei(
       actualFeesCollected.toString()
@@ -311,10 +323,10 @@ async function runExport() {
   assert.equal(testConfig.expectedFeesCollected, actualFeesCollected.toString());
 
   // Log results.
-  breakdown.expected = new CollateralBreakdown(contractCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Collateral credited to Sponsors'] = new CollateralBreakdown(adjustedCollateral);
+  breakdown['Contract raw collateral'] = new CollateralBreakdown(rawContractCollateral);
+  breakdown['Cumulative Fee Multiplier'] = new CollateralBreakdown(actualFeeMultiplier);
   console.group(
     `** Collateral After Charging ${testConfig.modifiedFeeRatePerSecond} in Fees (${fromWei(
       actualFeesCollected.toString()
@@ -405,23 +417,23 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  startingContractCollateral = await collateral.balanceOf(emp.address);
-  startingAdjustedContractCollateral = await emp.totalPositionCollateral();
   startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingRawContractCollateral = await emp.rawTotalPositionCollateral();
+  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
+  contractCollateral = await collateral.balanceOf(emp.address);
+  adjustedCollateral = await emp.totalPositionCollateral();
+  rawContractCollateral = await emp.rawTotalPositionCollateral();
 
   // Test 1) Fee multiplier is set correctly.
   assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
 
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
-  assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
+  assert.equal(contractCollateral.toString(), adjustedCollateral.toString());
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier, "N/A");
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Collateral credited to Sponsors'] = new CollateralBreakdown(adjustedCollateral);
+  breakdown['Contract raw collateral'] = new CollateralBreakdown(rawContractCollateral);
+  breakdown['Cumulative Fee Multiplier'] = new CollateralBreakdown(actualFeeMultiplier);
   console.group("** Pre-Deposit: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
@@ -436,10 +448,10 @@ async function runExport() {
   rawContractCollateral = await emp.rawTotalPositionCollateral();
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Collateral credited to Sponsors'] = new CollateralBreakdown(adjustedCollateral);
+  breakdown['Contract raw collateral'] = new CollateralBreakdown(rawContractCollateral);
+  breakdown['Cumulative Fee Multiplier'] = new CollateralBreakdown(actualFeeMultiplier);
   console.group(`** After 1 Deposit of ${fromWei(testConfig.amountToDeposit)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -548,23 +560,23 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  startingContractCollateral = await collateral.balanceOf(emp.address);
-  startingAdjustedContractCollateral = await emp.totalPositionCollateral();
   startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingRawContractCollateral = await emp.rawTotalPositionCollateral();
+  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
+  contractCollateral = await collateral.balanceOf(emp.address);
+  adjustedCollateral = await emp.totalPositionCollateral();
+  rawContractCollateral = await emp.rawTotalPositionCollateral();
 
   // Test 1) Fee multiplier is set correctly.
   assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
 
   // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
-  assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
+  assert.equal(contractCollateral.toString(), adjustedCollateral.toString());
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Collateral credited to Sponsors'] = new CollateralBreakdown(adjustedCollateral);
+  breakdown['Contract raw collateral'] = new CollateralBreakdown(rawContractCollateral);
+  breakdown['Cumulative Fee Multiplier'] = new CollateralBreakdown(actualFeeMultiplier);
   console.group("** Pre-Withdrawal: Actual and Credited Collateral should be equal **");
   console.table(breakdown);
   console.groupEnd();
@@ -585,17 +597,16 @@ async function runExport() {
     // Execute withdrawal request.
     await emp.withdrawPassedRequest({ from: sponsor });
   }
-
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
   adjustedCollateral = await emp.totalPositionCollateral();
   rawContractCollateral = await emp.rawTotalPositionCollateral();
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Collateral credited to Sponsors'] = new CollateralBreakdown(adjustedCollateral);
+  breakdown['Contract raw collateral'] = new CollateralBreakdown(rawContractCollateral);
+  breakdown['Cumulative Fee Multiplier'] = new CollateralBreakdown(actualFeeMultiplier);
   console.group(`** After 10 Withdrawals of ${fromWei(testConfig.amountToWithdraw)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -648,7 +659,7 @@ async function runExport() {
   // - (S / T) * (RC * M) = 7.999...92, instead of 8
   // - So, the user burns 8 synthetic but receives 7.999...92 collateral, representing 8e-18 less than they were expecting.
 
-  console.group("Precision loss in collateralRedeemed via redeem()");
+  console.group("Precision loss in proportion of collateral redeemed via redeem()");
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -667,8 +678,6 @@ async function runExport() {
   testConfig = {
     tokensOutstanding: toWei("9"),
     sponsorCollateralAmount: toWei("9"),
-    feePerSecond: toWei("0"),
-    expectedFeeMultiplier: toWei("1"), // Division by this produces precision loss, tune this.
     amountToRedeem: toWei("8")
   };
 
@@ -682,14 +691,7 @@ async function runExport() {
     { rawValue: testConfig.tokensOutstanding },
     { from: sponsor }
   );
-  // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
-  // 3) Move time in the contract forward by 1 second to capture unit fee.
-  startTime = await emp.getCurrentTime();
-  await emp.setCurrentTime(startTime.addn(1));
-  // 4) Pay the fees.
-  await emp.payFees();
-  // 5) Increase approvals to cover all redemption.
+  // 2) Increase approvals to cover all redemption.
   await synthetic.approve(emp.address, toWei("999999999"), { from: sponsor });
 
   /**
@@ -697,74 +699,180 @@ async function runExport() {
    */
   breakdown = {};
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
-  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  startingContractCollateral = await collateral.balanceOf(emp.address);
-  startingAdjustedContractCollateral = await emp.totalPositionCollateral();
-  startingStoreCollateral = await collateral.balanceOf(store.address);
-  startingRawContractCollateral = await emp.rawTotalPositionCollateral();
-
-  // Test 1) Fee multiplier is set correctly.
-  assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
-
-  // Test 2) The collateral net-of-fees and collateral in contract should be equal to start.
-  assert.equal(startingContractCollateral.toString(), startingAdjustedContractCollateral.toString());
-
-  // Test 4) Tokens outstanding is same as tokens created.
-  assert.equal(tokensOutstanding.toString(), testConfig.tokensOutstanding.toString());
+  contractCollateral = await collateral.balanceOf(emp.address);
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(startingContractCollateral);
-  breakdown.credited = new CollateralBreakdown(startingAdjustedContractCollateral);
-  breakdown.raw = new CollateralBreakdown(startingRawContractCollateral);
-  breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group("** Pre-Redemption: Actual and Credited Collateral should be equal **");
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Sponsor tokens outstanding'] = new CollateralBreakdown(tokensOutstanding);
+  console.group("** Pre-Redemption: Starting Collateral and Synthetic amounts **");
   console.table(breakdown);
   console.groupEnd();
 
   /**
    * @notice RUN THE TEST ONCE
    */
-  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
-  tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
   await emp.redeem({ rawValue: testConfig.amountToRedeem }, { from: sponsor });
-  contractCollateral = await collateral.balanceOf(emp.address);
-  adjustedCollateral = await emp.totalPositionCollateral();
-  rawContractCollateral = await emp.rawTotalPositionCollateral();
   tokensOutstanding = (await emp.positions(sponsor)).tokensOutstanding;
+  contractCollateral = await collateral.balanceOf(emp.address);
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(contractCollateral);
-  breakdown.credited = new CollateralBreakdown(adjustedCollateral);
-  breakdown.raw = new CollateralBreakdown(rawContractCollateral);
-  breakdown.tokensOutstanding = new CollateralBreakdown(tokensOutstanding);
-  breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Sponsor tokens outstanding'] = new CollateralBreakdown(tokensOutstanding);
   console.group(`** After 1 Redemption of ${fromWei(testConfig.amountToRedeem)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
   /**
-   * @notice POST-TEST INVARIANTS
-   */
-  endingStoreCollateral = await collateral.balanceOf(store.address);
-
-  // Test 1) Make sure that store hasn't collected any fees during this test, so that we can be confident that withdraws
-  // are the only source of drift.
-  assert.equal(startingStoreCollateral.toString(), endingStoreCollateral.toString());
-
-  // Test 2) The fee multiplier has not changed.
-  assert.equal(actualFeeMultiplier.toString(), testConfig.expectedFeeMultiplier);
-
-  /**
    * @notice POST-TEST CLEANUP
    */
-  // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
   /** ***************************************************************************
    *
    * END REDEEM()
+   *
+   *****************************************************************************/
+  
+   /** ***************************************************************************
+   *
+   * START SETTLE_EXPIRED()
+   *
+   *****************************************************************************/
+  // Overview:
+  // - `T` = Contract's synthetic tokens outstanding
+  // - `RC` = raw collateral
+  // - `M` = fee multiplier
+  // - `C` = Collateral credited to sponsors `(RC * M)`
+  // - `E` = Settlement price (amount of collateral that each synthetic can be redeemed for)
+  // - Settlements at Expiry have two sources of precision loss:
+  //   (1) The user burns S synthetic tokens and should receive `S * E = c` collateral tokens.
+  //       It is possible that `S * E` gets floored and loses 1e-18 of precision,
+  //       therefore the proportion of collateral returned is less than the synthetic burned: `(C - c)/C < (T-S)/T`.
+  //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user,
+  //       while `(c / M)` raw collateral is removed from `RC`. `(c / M)` is floored and therefore
+  //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`.
+  // Error Amount:
+  // -1e-18 in `c` if `(S * E)` has -1e-18 error
+  // +1e-18 in `RC` for the same reason as in a withdraw.
+  // Here's an example of (1):
+  // - M = cumulativeFeeMultiplier = 1
+  // - RC = rawCollateral = 1e-18
+  // - T = tokensOutstanding = 1e-18
+  // - S = synthetic balance to settle = 1e-18
+  // - E = settlement price (collateral per synthetic) = 0.5 
+  // - (S * E) = 0.5e-18, which gets floored to 0
+  // - So, the user burns 1e-18 synthetic but receives 0 collateral, representing 0.5e-18 less than they were expecting.
+
+  console.group("Precision loss in proportion of collateral redeemed via settleExpired()");
+
+  /**
+   * @notice CREATE NEW EXPERIMENT
+   */
+  experimentEnv = await createTestEnvironment();
+  collateral = experimentEnv.collateral;
+  synthetic = experimentEnv.synthetic;
+  emp = experimentEnv.emp;
+  store = experimentEnv.store;
+  sponsor = experimentEnv.sponsor;
+  other = experimentEnv.other;
+  contractDeployer = experimentEnv.contractDeployer;
+  mockOracle = experimentEnv.mockOracle;
+
+  /**
+   * @notice TEST PARAMETERS
+   */
+  testConfig = {
+    tokensOutstanding: "1",
+    amountToSettle: "1",
+    sponsorCollateralAmount: "1",
+    settlementPrice: toWei("0.5") // Collateral per Synthetic
+  };
+
+  /**
+   * @notice SETUP THE TEST
+   */
+  // 1) Create position.
+  await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
+  await emp.create(
+    { rawValue: testConfig.sponsorCollateralAmount },
+    { rawValue: testConfig.tokensOutstanding },
+    { from: sponsor }
+  );
+  // 2) Increase approvals to cover all redemption.
+  await synthetic.approve(emp.address, toWei("999999999"), { from: sponsor });
+  await synthetic.approve(emp.address, toWei("999999999"), { from: other });
+  // 3) Send tokens to another user to settle at expiry.
+  await synthetic.transfer(other, testConfig.amountToSettle, { from: sponsor })
+
+  /**
+   * @notice PRE-TEST INVARIANTS
+   */
+  breakdown = {};
+  tokensOutstanding = await emp.totalTokensOutstanding();
+  userTokens = await synthetic.balanceOf(other);
+  sponsorTokens = await synthetic.balanceOf(sponsor);
+  contractCollateral = await collateral.balanceOf(emp.address);
+  // Advance time to expiry
+  const expirationTime = (await emp.expirationTimestamp()).toString()
+  await emp.setCurrentTime(expirationTime);
+  // Expire the contract and pay any final fees
+  await emp.expire();
+  // Push a price
+  await mockOracle.pushPrice(utf8ToHex("UMATEST"), expirationTime, testConfig.settlementPrice.toString());
+
+  // Log results in a table.
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Total position tokens outstanding'] = new CollateralBreakdown(tokensOutstanding);
+  breakdown['Non-Sponsor token balance'] = new CollateralBreakdown(userTokens);
+  breakdown['Sponsor token balance'] = new CollateralBreakdown(sponsorTokens);
+  console.group(`** Position expires, settlement price is ${fromWei(testConfig.settlementPrice)}: Actual and Credited Collateral should be equal **`);
+  console.table(breakdown);
+  console.groupEnd();
+
+  /**
+   * @notice NON-SPONSOR SETTLES
+   */
+  await emp.settleExpired({ from: other });
+  contractCollateral = await collateral.balanceOf(emp.address);
+  tokensOutstanding = await emp.totalTokensOutstanding();
+  userTokens = await synthetic.balanceOf(other);
+  sponsorTokens = await synthetic.balanceOf(sponsor);
+
+  // Log results in a table.
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Total position tokens outstanding'] = new CollateralBreakdown(tokensOutstanding);
+  breakdown['Non-Sponsor token balance'] = new CollateralBreakdown(userTokens);
+  breakdown['Sponsor token balance'] = new CollateralBreakdown(sponsorTokens);
+  console.group(`** After a Non-Sponsor settles their full synthetic balance: **`);
+  console.table(breakdown);
+  console.groupEnd();
+
+  /**
+   * @notice SPONSOR SETTLES
+   */
+  await emp.settleExpired({ from: sponsor });
+  contractCollateral = await collateral.balanceOf(emp.address);
+  tokensOutstanding = await emp.totalTokensOutstanding();
+  userTokens = await synthetic.balanceOf(other);
+  sponsorTokens = await synthetic.balanceOf(sponsor);
+
+  // Log results in a table.
+  breakdown['Collateral owned by Contract'] = new CollateralBreakdown(contractCollateral);
+  breakdown['Total position tokens outstanding'] = new CollateralBreakdown(tokensOutstanding);
+  breakdown['Non-Sponsor token balance'] = new CollateralBreakdown(userTokens);
+  breakdown['Sponsor token balance'] = new CollateralBreakdown(sponsorTokens);
+  console.group(`** After the Sponsor settles their full synthetic balance: **`);
+  console.table(breakdown);
+  console.groupEnd();
+
+  /**
+   * @notice POST-TEST CLEANUP
+   */
+
+  console.groupEnd();
+  /** ***************************************************************************
+   *
+   * END SETTLE_EXPIRED()
    *
    *****************************************************************************/
 
@@ -840,13 +948,13 @@ async function runExport() {
    * @notice PRE-TEST INVARIANTS
    */
   breakdown = {};
-  startingContractCollateral = await emp.totalPositionCollateral();
+  contractCollateral = await emp.totalPositionCollateral();
 
   // Test 1) The collateral is correct.
-  assert.equal(startingContractCollateral.toString(), testConfig.sponsorCollateralAmount.toString());
+  assert.equal(contractCollateral.toString(), testConfig.sponsorCollateralAmount.toString());
 
   // Log results in a table.
-  breakdown.credited = new CollateralBreakdown(startingContractCollateral);
+  breakdown['Actual collateral'] = new CollateralBreakdown(contractCollateral);
   console.group("** Collateral Amounts Pre-Liquidation: **");
   console.table(breakdown);
   console.groupEnd();
@@ -876,8 +984,8 @@ async function runExport() {
   });
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
-  breakdown.credited = new CollateralBreakdown(contractCollateral);
+  breakdown['Expected collateral'] = new CollateralBreakdown(expectedRemainingCollateral);
+  breakdown['Actual collateral'] = new CollateralBreakdown(contractCollateral);
   console.group(`** After 1 Partial Liquidation of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -907,8 +1015,8 @@ async function runExport() {
   });
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
-  breakdown.credited = new CollateralBreakdown(contractCollateral);
+  breakdown['Expected collateral'] = new CollateralBreakdown(expectedRemainingCollateral);
+  breakdown['Actual collateral'] = new CollateralBreakdown(contractCollateral);
   console.group(`** After 2 Partial Liquidations of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
@@ -938,8 +1046,8 @@ async function runExport() {
   });
 
   // Log results in a table.
-  breakdown.expected = new CollateralBreakdown(expectedRemainingCollateral);
-  breakdown.credited = new CollateralBreakdown(contractCollateral);
+  breakdown['Expected collateral'] = new CollateralBreakdown(expectedRemainingCollateral);
+  breakdown['Actual collateral'] = new CollateralBreakdown(contractCollateral);
   console.group(`** After 3 Partial Liquidations of ${fromWei(testConfig.amountToLiquidate)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
