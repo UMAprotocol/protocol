@@ -57,7 +57,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
         removeMember(uint(Roles.Burner), account);
     }
 
-        /**
+    /**
      * @notice Reset Owner role to account
      * @dev the caller must have the Owner role.
      * @param account have it's rolls reset.
