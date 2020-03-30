@@ -51,7 +51,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Removes Burner role from account.
      * @dev The caller must have the Owner role.
-     * @param account The address from which the Burner roll is removed.
+     * @param account The address from which the Burner role is removed.
      */
     function removeBurner(address account) external {
         removeMember(uint(Roles.Burner), account);
@@ -69,7 +69,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Checks if a given account holds the Minter role.
      * @param account The address which is checked for the Minter role.
-     * @return bool True of False if the provided account is a Minter.
+     * @return bool True if the provided account is a Minter.
      */
     function isMinter(address account) public view returns (bool) {
         return holdsRole(uint(Roles.Minter), account);
@@ -78,7 +78,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
     /**
      * @notice Checks if a given account holds the Burner role.
      * @param account The address which is checked for the Burner role.
-     * @return bool True of False if the provided account is a Burner.
+     * @return bool True if the provided account is a Burner.
      */
     function isBurner(address account) public view returns (bool) {
         return holdsRole(uint(Roles.Burner), account);
