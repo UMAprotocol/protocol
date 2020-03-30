@@ -40,7 +40,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
         return holdsRole(uint(Roles.Minter), account);
     }
 
-    /**
+    /**\
      * @dev Add burner role to account
      *
      * Requirements:

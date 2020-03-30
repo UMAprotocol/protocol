@@ -561,7 +561,7 @@ contract("IntegrationTest", function(accounts) {
     // without one massive sponsor soaking up all the errors.
 
     // Test settings
-    const numIterations = 100; // number of times the simulation loop is run
+    const numIterations = 10; // number of times the simulation loop is run
     const runLiquidations = true; // if liquidations should occur in the loop
     const runDisputes = true; // if disputes should occur in the loop
     const runExtraDeposits = true; // if the sponsor should have a chance to add more
