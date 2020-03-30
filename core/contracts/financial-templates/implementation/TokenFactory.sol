@@ -4,7 +4,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 
 
 /**
- * @notice A factory for creating new mintable and burnable tokens.
+ * @title Factory for creating new mintable and burnable tokens.
  */
 
 contract TokenFactory {
