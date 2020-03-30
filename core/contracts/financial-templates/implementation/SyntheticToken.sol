@@ -23,7 +23,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
 
     /**
      * @notice Add Minter role to account.
-     * @dev the caller must have the Owner role.
+     * @dev The caller must have the Owner role.
      * @param account The address to which the Minter role is added.
      */
     function addMinter(address account) external {
@@ -32,7 +32,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
 
     /**
      * @notice Remove Minter role from account.
-     * @dev the caller must have the Owner role.
+     * @dev The caller must have the Owner role.
      * @param account The address from which the Minter role is removed.
      */
     function removeMinter(address account) external {
@@ -41,7 +41,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
 
     /**
      * @notice Add Burner role to account.
-     * @dev the caller must have the Owner role.
+     * @dev The caller must have the Owner role.
      * @param account The address to which the Burner role is added.
      */
     function addBurner(address account) external {
@@ -50,7 +50,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
 
     /**
      * @notice Removes Burner role from account.
-     * @dev the caller must have the Owner role.
+     * @dev The caller must have the Owner role.
      * @param account The address from which the Burner roll is removed.
      */
     function removeBurner(address account) external {
@@ -59,7 +59,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
 
     /**
      * @notice Reset Owner role to account.
-     * @dev the caller must have the Owner role.
+     * @dev The caller must have the Owner role.
      * @param account The new holder of the Owner role.
      */
     function resetOwner(address account) external {
