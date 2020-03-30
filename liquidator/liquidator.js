@@ -21,7 +21,7 @@ class Liquidator {
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFeed => {
     Logger.debug({
-      at: "liquidator",
+      at: "Liquidator",
       message: "Checking for under collateralized positions",
       inputPrice: priceFeed
     });
@@ -38,72 +38,73 @@ class Liquidator {
 
     if (underCollateralizedPositions.length === 0) {
       Logger.debug({
-        at: "liquidator",
+        at: "Liquidator",
         message: "No undercollateralized position"
       });
       return;
     }
 
-    let liquidationPromises = []; // store all promises to resolve in parallel later on.
     for (const position of underCollateralizedPositions) {
-      // Make sure that the bot has enough inventory/approval to do the liquidation.
+      // Create the transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: this.web3.utils.toWei(priceFeed) },
         { rawValue: position.numTokens }
       );
 
+      // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
         await liquidation.call({ from: this.account });
       } catch (error) {
         Logger.error({
-          at: "liquidator",
+          at: "Liquidator",
           message:
-            "Error: liquidation simulation reverted. Likely not enough collateral/approval to perform the liquidation.",
-          address: position.sponsor,
+            "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation.",
+          sponsor: position.sponsor,
           position: position,
           error: error
         });
         continue;
       }
 
-      // TODO: add additional information about this liquidation event to the log.
-      Logger.info({
-        at: "liquidator",
-        message: "liquidating sponsor🔥",
-        address: position.sponsor,
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        position: position
-      });
-
-      // Create the liquidation transaction to liquidate the entire position:
-      // - Price to liquidate at (`collateralPerToken`): Since you are determining which positions are under collateralized positions based on the priceFeed,
-      // you also should be liquidating using that priceFeed.
-      // - Maximum amount of Synthetic tokens to liquidate: Liquidate the entire position.
-      liquidationPromises.push(
-        liquidation.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
-      );
-    }
-    // Resolve all promises in parallel.
-    let promiseResponse = await Promise.all(liquidationPromises);
-
-    for (const response of promiseResponse) {
-      const logResult = {
-        tx: response.transactionHash,
-        sponsor: response.events.LiquidationCreated.returnValues.sponsor,
-        liquidator: response.events.LiquidationCreated.returnValues.liquidator,
-        liquidationId: response.events.LiquidationCreated.returnValues.liquidationId,
-        tokensOutstanding: response.events.LiquidationCreated.returnValues.tokensOutstanding,
-        lockedCollateral: response.events.LiquidationCreated.returnValues.lockedCollateral,
-        liquidatedCollateral: response.events.LiquidationCreated.returnValues.liquidatedCollateral
+      const txnConfig = {
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       Logger.info({
-        at: "liquidator",
-        message: "liquidation tx result 📄",
+        at: "Liquidator",
+        message: "Liquidating position🔥",
+        position: position,
+        inputPrice: this.web3.utils.toWei(priceFeed),
+        txnConfig
+      });
+
+      // Send the transaction or report failure.
+      let receipt;
+      try {
+        receipt = await liquidation.send(txnConfig);
+      } catch (error) {
+        Logger.error({
+          at: "Liquidator",
+          message: `Failed to liquidate position`,
+          error: error
+        });
+        continue;
+      }
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
+        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
+        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
+        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
+        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
+      };
+      Logger.info({
+        at: "Liquidator",
+        message: "Liquidation tx result 📄",
         liquidationResult: logResult
       });
     }
@@ -112,7 +113,7 @@ class Liquidator {
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
   queryAndWithdrawRewards = async () => {
     Logger.debug({
-      at: "liquidator",
+      at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
 
@@ -133,75 +134,65 @@ class Liquidator {
 
     if (potentialWithdrawableLiquidations.length === 0) {
       Logger.debug({
-        at: "liquidator",
+        at: "Liquidator",
         message: "No withdrawable liquidations"
       });
       return;
     }
 
-    Logger.debug({
-      at: "liquidator",
-      message: "potential withdrawable liquidations detected",
-      number: potentialWithdrawableLiquidations.length,
-      potentialWithdrawableLiquidations: potentialWithdrawableLiquidations
-    });
-
-    // Save all withdraw promises to resolve in parallel later on.
-    const withdrawPromises = [];
     for (const liquidation of potentialWithdrawableLiquidations) {
-      Logger.debug({
-        at: "liquidator",
-        message: "attempting to withdraw reward from liquidation",
-        address: liquidation.sponsor,
-        id: liquidation.id
-      });
+      // Construct transaction.
+      const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      const withdraw = this.empContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
       let withdrawAmount;
       try {
         withdrawAmount = await withdraw.call({ from: this.account });
       } catch (error) {
         Logger.debug({
-          at: "liquidator",
-          message: "Liquidation failed or not ready for withdrawal",
-          address: liquidation.sponsor,
-          id: liquidation.id
+          at: "Liquidator",
+          message: "No rewards to withdraw.",
+          liquidation: liquidation,
+          error: error
         });
-
         continue;
       }
 
-      Logger.info({
-        at: "liquidator",
-        message: "Will withdraw liquidation🤑",
-        address: liquidation.sponsor,
-        id: liquidation.id,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue)
-      });
-
-      withdrawPromises.push(
-        withdraw.send({
-          from: this.account,
-          gas: 1500000,
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        })
-      );
-    }
-
-    // Resolve all promises in parallel.
-    let promiseResponse = await Promise.all(withdrawPromises);
-
-    for (const response of promiseResponse) {
-      const logResult = {
-        tx: response.transactionHash,
-        caller: response.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: response.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus: response.events.LiquidationWithdrawn.returnValues.liquidationStatus
+      const txnConfig = {
+        from: this.account,
+        gas: 1500000,
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       Logger.info({
-        at: "liquidator",
-        message: "withdraw tx result📄",
+        at: "Liquidator",
+        message: "Withdrawing liquidation🤑",
+        liquidation: liquidation,
+        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        txnConfig
+      });
+
+      // Send the transaction or report failure.
+      let receipt;
+      try {
+        receipt = await withdraw.send(txnConfig);
+      } catch (error) {
+        Logger.error({
+          at: "Liquidator",
+          message: `Failed to withdraw liquidation rewards`,
+          error: error
+        });
+        continue;
+      }
+
+      const logResult = {
+        tx: receipt.transactionHash,
+        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
+        liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+      };
+      Logger.info({
+        at: "Liquidator",
+        message: "Withdraw tx result📄",
         liquidationResult: logResult
       });
     }
