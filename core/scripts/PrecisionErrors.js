@@ -498,7 +498,11 @@ async function runExport() {
   // - So, the sponsor receives 1e-18 collateral from the contract, and the contract debits 3e-18 rawCollateral from the sponsor
   // - Recall that (rawCollateral * feeMultiplier) should be equal to collateral, but (3e-18 * 0.3 < 1e-18)
   //   and we can't represent 3.33e-18 repeating in FixedPoint (3.33e-18 repeating * 0.3 == 1e-18)
-  // - So rawCollateral is decreased by 3e-18, but ideally it should have been decresed by 3.33e-18 repeating
+  // - So rawCollateral is decreased by 3e-18, but ideally it should have been decreased by 3.33e-18 repeating
+  // - i.e. rawCollateral becomes 0.999999999999999997 but should be 0.9999999999999999967,
+  // - For this specific test, we will process several withdrawals in a row. The reason we do this is because
+  //   the precision loss after the first withdrawal is actually hidden by `getCollateral()` because `rawCollateral * feeMultiplier` is floored,
+  //   which cancels out the +1e-18 error. We can see the error after >= +1e-17 has accrued.
   // Quantifying Errors ((actual - expected) / expected):
   // - error in rawCollateral: (+1e-18)
 
@@ -566,18 +570,21 @@ async function runExport() {
   console.groupEnd();
 
   /**
-   * @notice RUN THE TEST ONCE
+   * @notice RUN THE TEST TEN TIMES
    */
-  // Note: Must call `requestWithdrawal()` instead of `withdraw()` because we are the only position. I didn't create another
-  // less-collateralized position because it would modify the total collateral and therefore the fee multiplier.
-  await emp.requestWithdrawal({ rawValue: testConfig.amountToWithdraw }, { from: sponsor });
-  // Move time forward. Need to set fees to 0 so as not to change the fee multiplier.
+  // Need to set fees to 0 so as not to change the fee multiplier.
   await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
-  startTime = await emp.getCurrentTime();
-  // Advance time to 1 second past the withdrawal liveness.
-  await emp.setCurrentTime(startTime.addn(1));
-  // Execute withdrawal request.
-  await emp.withdrawPassedRequest({ from: sponsor });
+  for (let i = 0; i < 10; i++) {
+    // Note: Must call `requestWithdrawal()` instead of `withdraw()` because we are the only position. I didn't create another
+    // less-collateralized position because it would modify the total collateral and therefore the fee multiplier.
+    await emp.requestWithdrawal({ rawValue: testConfig.amountToWithdraw }, { from: sponsor });
+    // Move time forward. 
+    startTime = await emp.getCurrentTime();
+    // Advance time to 1 second past the withdrawal liveness.
+    await emp.setCurrentTime(startTime.addn(1));
+    // Execute withdrawal request.
+    await emp.withdrawPassedRequest({ from: sponsor });
+  }
 
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
@@ -589,7 +596,7 @@ async function runExport() {
   breakdown.credited = new CollateralBreakdown(adjustedCollateral);
   breakdown.raw = new CollateralBreakdown(rawContractCollateral);
   breakdown.feeMultiplier = new CollateralBreakdown(actualFeeMultiplier);
-  console.group(`** After 1 Withdrawal of ${fromWei(testConfig.amountToWithdraw)} collateral: **`);
+  console.group(`** After 10 Withdrawals of ${fromWei(testConfig.amountToWithdraw)} collateral: **`);
   console.table(breakdown);
   console.groupEnd();
 
