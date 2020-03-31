@@ -81,7 +81,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       );
       actions = {
         ...actions,
-        withdraw: "Withdraw collateral"
+        withdraw: "Manage your withdrawals"
       };
     } else {
       actions = {
