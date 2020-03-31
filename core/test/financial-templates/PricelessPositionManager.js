@@ -264,7 +264,9 @@ contract("PricelessPositionManager", function(accounts) {
     );
 
     // Cannot withdraw full collateral because the GCR check will always fail.
-    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: createCollateral }, { from: sponsor })));
+    assert(
+      await didContractThrow(pricelessPositionManager.withdraw({ rawValue: createCollateral }, { from: sponsor }))
+    );
   });
 
   it("Withdrawal request", async function() {

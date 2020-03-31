@@ -1079,9 +1079,9 @@ contract("Liquidatable", function(accounts) {
       );
       // Request withdrawal amount > collateral
       await liquidationContract.requestWithdrawal(
-        { rawValue: amountOfCollateral.add(toBN("1")).toString()}, 
+        { rawValue: amountOfCollateral.add(toBN("1")).toString() },
         { from: sponsor }
-      )
+      );
       // Transfer synthetic tokens to a liquidator
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
       // Liquidator believes the price of collateral per synthetic to be 1.5 and is liquidating the full token outstanding amount.
@@ -1124,8 +1124,8 @@ contract("Liquidatable", function(accounts) {
           // Once a dispute fails and the liquidator withdraws the struct is removed from state.
           ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
         );
-      });      
-    })
+      });
+    });
   });
 
   describe("Emergency shutdown", () => {

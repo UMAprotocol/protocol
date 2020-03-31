@@ -202,9 +202,7 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory startCollateral = _getCollateral(positionToLiquidate.rawCollateral);
         FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = FixedPoint.fromUnscaledUint(0);
         if (positionToLiquidate.withdrawalRequestAmount.isLessThanOrEqual(startCollateral)) {
-            startCollateralNetOfWithdrawal = startCollateral.sub(
-                positionToLiquidate.withdrawalRequestAmount
-            );
+            startCollateralNetOfWithdrawal = startCollateral.sub(positionToLiquidate.withdrawalRequestAmount);
         }
 
         FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
