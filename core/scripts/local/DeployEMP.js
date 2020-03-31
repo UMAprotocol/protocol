@@ -51,7 +51,7 @@ const deployEMP = async callback => {
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
-    // Grant EMP deployer the right to register new financial templates.
+    // Grant EMP the right to register new financial templates.
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
       from: deployer
