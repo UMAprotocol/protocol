@@ -118,7 +118,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice Construct the PricelessPositionManager
      * @param _isTest whether this contract is being constructed for the purpose of running tests.
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
-     * @param _withdrawalLiveness liveness delay, in seconds, for pending withdraws.
+     * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
