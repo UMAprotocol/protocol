@@ -379,7 +379,7 @@ contract("PricelessPositionManager", function(accounts) {
       { from: sponsor }
     );
     await pricelessPositionManager.setCurrentTime(
-      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness + 1
+      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
     );
     resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
     truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
