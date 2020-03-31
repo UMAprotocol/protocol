@@ -74,14 +74,25 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString())
     });
 
-    actions = {
-      ...actions,
-      create: "Borrow more tokens",
-      redeem: "Repay tokens",
-      withdraw: "Withdraw collateral",
-      deposit: "Deposit collateral",
-      transfer: "Transfer position to new owner"
-    };
+    const hasPendingWithdrawal = position.requestPassTimestamp.toString() !== "0";
+    if (hasPendingWithdrawal) {
+      console.log(
+        "Because you have a pending withdrawal, other contract functions are blocked. Either execute or cancel your withdrawal."
+      );
+      actions = {
+        ...actions,
+        withdraw: "Withdraw collateral"
+      };
+    } else {
+      actions = {
+        ...actions,
+        create: "Borrow more tokens",
+        redeem: "Repay tokens",
+        withdraw: "Withdraw collateral",
+        deposit: "Deposit collateral",
+        transfer: "Transfer position to new owner"
+      };
+    }
   }
   const prompt = {
     type: "list",
