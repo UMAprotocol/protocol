@@ -198,10 +198,13 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned memory ratio = tokensToLiquidate.div(positionToLiquidate.tokensOutstanding);
 
         // Starting values for the Position being liquidated.
+        // If withdrawal request amount is > position's collateral, then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
         FixedPoint.Unsigned memory startCollateral = _getCollateral(positionToLiquidate.rawCollateral);
-        FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = startCollateral.sub(
-            positionToLiquidate.withdrawalRequestAmount
-        );
+        FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = FixedPoint.fromUnscaledUint(0);
+        if (positionToLiquidate.withdrawalRequestAmount.isLessThanOrEqual(startCollateral)) {
+            startCollateralNetOfWithdrawal = startCollateral.sub(positionToLiquidate.withdrawalRequestAmount);
+        }
+
         FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
         // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond

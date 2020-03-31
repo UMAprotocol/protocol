@@ -1071,6 +1071,62 @@ contract("Liquidatable", function(accounts) {
       const expectedPaymentSponsor = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
+    it("Requested withdrawal amount is greater than total position collateral, liquidated collateral should be 0", async () => {
+      // Create position.
+      await liquidationContract.create(
+        { rawValue: amountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Request withdrawal amount > collateral
+      await liquidationContract.requestWithdrawal(
+        { rawValue: amountOfCollateral.add(toBN("1")).toString() },
+        { from: sponsor }
+      );
+      // Transfer synthetic tokens to a liquidator
+      await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+      // Liquidator believes the price of collateral per synthetic to be 1.5 and is liquidating the full token outstanding amount.
+      // Therefore, they are intending to liquidate all 150 collateral,
+      // however due to the pending withdrawal amount, the liquidated collateral gets reduced to 0.
+      const createLiquidationResult = await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+      truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
+        return (
+          ev.sponsor == sponsor,
+          ev.liquidator == liquidator,
+          ev.liquidationId == 0,
+          ev.tokensOutstanding == amountOfSynthetic.toString(),
+          ev.lockedCollateral == amountOfCollateral.toString(),
+          ev.liquidatedCollateral == "0"
+        );
+      });
+      // Since the liquidated collateral:synthetic ratio is 0, even the lowest price (amount of collateral each synthetic is worth)
+      // above 0 should result in a failed dispute because the liquidator was correct: there is not enough collateral backing the tokens.
+      await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
+      const liquidationTime = await liquidationContract.getCurrentTime();
+      const disputePrice = "1";
+      await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
+      const withdrawLiquidationResult = await liquidationContract.withdrawLiquidation(
+        liquidationParams.liquidationId,
+        sponsor,
+        { from: liquidator }
+      );
+      // Liquidator should get the full locked collateral.
+      const expectedPayment = amountOfCollateral.add(disputeBond);
+      truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+        return (
+          ev.caller == liquidator &&
+          ev.withdrawalAmount.toString() == expectedPayment.toString() &&
+          // State should be uninitialized as the struct has been deleted as a result of the withdrawal.
+          // Once a dispute fails and the liquidator withdraws the struct is removed from state.
+          ev.liquidationStatus.toString() == LiquidationStatesEnum.UNINITIALIZED
+        );
+      });
+    });
   });
 
   describe("Emergency shutdown", () => {
