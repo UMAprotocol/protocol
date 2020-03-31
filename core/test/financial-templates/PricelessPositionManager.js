@@ -41,6 +41,9 @@ contract("PricelessPositionManager", function(accounts) {
   const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
   const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
 
+  // Conveniently asserts expected collateral and token balances, assuming that
+  // there is only one synthetic token holder, the sponsor. Also assumes no
+  // precision loss from `getCollateral()` coming from the fee multiplier.
   const checkBalances = async (expectedSponsorTokens, expectedSponsorCollateral) => {
     const expectedTotalTokens = expectedSponsorTokens.add(initialPositionTokens);
     const expectedTotalCollateral = expectedSponsorCollateral.add(initialPositionCollateral);
@@ -48,6 +51,7 @@ contract("PricelessPositionManager", function(accounts) {
     const positionData = await pricelessPositionManager.positions(sponsor);
     const sponsorCollateral = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(sponsorCollateral.toString(), expectedSponsorCollateral.toString());
+    // The below assertion only holds if the sponsor holds all of the tokens outstanding.
     assert.equal(positionData.tokensOutstanding.toString(), expectedSponsorTokens.toString());
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
 
@@ -240,6 +244,29 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
   });
 
+  it("Cannot instantly withdraw all of the collateral in the position", async function() {
+    // Create an initial large and lowly collateralized pricelessPositionManager so that we can call `withdraw()`.
+    await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
+    await pricelessPositionManager.create(
+      { rawValue: initialPositionCollateral.toString() },
+      { rawValue: initialPositionTokens.toString() },
+      { from: other }
+    );
+
+    // Create the initial pricelessPositionManager.
+    const createTokens = toWei("100");
+    const createCollateral = toWei("150");
+    await collateral.approve(pricelessPositionManager.address, createCollateral, { from: sponsor });
+    await pricelessPositionManager.create(
+      { rawValue: createCollateral },
+      { rawValue: createTokens },
+      { from: sponsor }
+    );
+
+    // Cannot withdraw full collateral because the GCR check will always fail.
+    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: createCollateral }, { from: sponsor })));
+  });
+
   it("Withdrawal request", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
@@ -300,7 +327,7 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedSponsorCollateral = toBN(initialSponsorCollateral).sub(toBN(withdrawalAmount));
     await pricelessPositionManager.requestWithdrawal({ rawValue: withdrawalAmount }, { from: sponsor });
 
-    // Can withdraw after time is up.
+    // Can withdraw until after time is up.
     await pricelessPositionManager.setCurrentTime(
       (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness + 1
     );
@@ -309,7 +336,7 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedSponsorFinalBalance = sponsorInitialBalance.add(toBN(withdrawalAmount));
 
     // Execute the withdrawal request. Check event is emitted
-    const resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
+    let resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
     truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
       return ev.sponsor == sponsor && ev.collateralAmount == withdrawalAmount.toString();
     });
@@ -339,6 +366,17 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Can't cancel if no withdrawals pending.
     assert(await didContractThrow(pricelessPositionManager.cancelWithdrawal({ from: sponsor })));
+
+    // Request to withdraw more than remaining collateral should result in the amount getting capped to the remaining collateral.
+    await pricelessPositionManager.requestWithdrawal({ rawValue: toWei("125.000000000000000001") }, { from: sponsor });
+    await pricelessPositionManager.setCurrentTime(
+      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness + 1
+    );
+    resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
+    truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
+      return ev.sponsor == sponsor && ev.collateralAmount == toWei("125").toString();
+    });
+    await checkBalances(toBN(initialSponsorTokens), toBN("0"));
 
     // Contract state should not have changed.
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
@@ -601,7 +639,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
   });
 
-  it("Can't redeem more than pricelessPositionManager size", async function() {
+  it("Can't redeem more than position size", async function() {
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
