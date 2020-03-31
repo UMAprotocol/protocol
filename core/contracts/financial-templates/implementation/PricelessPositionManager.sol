@@ -234,13 +234,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp <= getCurrentTime());
 
-        _removeCollateral(positionData.rawCollateral, positionData.withdrawalRequestAmount);
-        _removeCollateral(rawTotalPositionCollateral, positionData.withdrawalRequestAmount);
+        // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
+        FixedPoint.Unsigned memory amountToWithdraw = positionData.withdrawalRequestAmount;
+        if (positionData.withdrawalRequestAmount.isGreaterThan(_getCollateral(positionData.rawCollateral))) {
+            amountToWithdraw = _getCollateral(positionData.rawCollateral);
+        }
+
+        _removeCollateral(positionData.rawCollateral, amountToWithdraw);
+        _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        collateralCurrency.safeTransfer(msg.sender, positionData.withdrawalRequestAmount.rawValue);
+        collateralCurrency.safeTransfer(msg.sender, amountToWithdraw.rawValue);
 
-        emit RequestWithdrawalExecuted(msg.sender, positionData.withdrawalRequestAmount.rawValue);
+        emit RequestWithdrawalExecuted(msg.sender, amountToWithdraw.rawValue);
 
         // Reset withdrawal request
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
