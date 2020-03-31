@@ -370,7 +370,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.cancelWithdrawal({ from: sponsor })));
 
     // Request to withdraw more than remaining collateral should result in the amount getting capped to the remaining collateral.
-    await pricelessPositionManager.requestWithdrawal({ rawValue: toWei("125.000000000000000001") }, { from: sponsor });
+    await pricelessPositionManager.requestWithdrawal({ rawValue: toBN(toWei("125")).add(toBN("1")).toString() }, { from: sponsor });
     await pricelessPositionManager.setCurrentTime(
       (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness + 1
     );
