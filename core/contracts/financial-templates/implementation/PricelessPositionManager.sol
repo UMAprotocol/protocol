@@ -117,8 +117,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Construct the PricelessPositionManager
      * @param _isTest whether this contract is being constructed for the purpose of running tests.
-     * @param _expirationTimestamp unix timestamp of when the contrct will expire.
-     * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawls.
+     * @param _expirationTimestamp unix timestamp of when the contract will expire.
+     * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
@@ -153,8 +153,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Transfers ownership of the caller's current position to `newSponsorAddress`.
-     * @dev transfering positions can only occure if the recipiant does not already have a position.
-     * @param newSponsorAddress is the address to which the position will be transfered.
+     * @dev Transferring positions can only occur if the recipient does not already have a position.
+     * @param newSponsorAddress is the address to which the position will be transferred.
      */
     function transfer(address newSponsorAddress) public onlyPreExpiration() {
         require(_getCollateral(positions[newSponsorAddress].rawCollateral).isEqual(FixedPoint.fromUnscaledUint(0)));
@@ -330,7 +330,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice After a contract has passed expirary all token holders can redeem their tokens for
+     * @notice After a contract has passed expiry all token holders can redeem their tokens for
      * underlying at the prevailing price defined by the DVM from the `expire` function.
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional
      * amount of `collateralCurrency`.
@@ -370,7 +370,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
-        // Decrement total contract collateral and oustanding debt.
+        // Decrement total contract collateral and outstanding debt.
         _removeCollateral(rawTotalPositionCollateral, totalRedeemableCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
