@@ -1,6 +1,7 @@
 const { toWei, toBN } = web3.utils;
 
 const { UniswapPriceFeed } = require("../UniswapPriceFeed");
+const { mineTransactionsAtTime } = require("../../common/SolidityTestUtils.js");
 const { delay } = require("../delay.js");
 const { MAX_SAFE_JS_INT } = require("../../common/Constants");
 
@@ -32,6 +33,26 @@ contract("UniswapPriceFeed.js", function(accounts) {
     await uniswapMock.setPrice(toWei("4"), toWei("1"));
     await uniswapPriceFeed._update();
 
+    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
+  });
+
+  it.only("Selects most recent price in same block", async function() {
+    // Just use current system time because the time doesn't matter.
+    const time = Math.round(new Date().getTime() / 1000);
+
+    const transactions = [
+      uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1")),
+      uniswapMock.contract.methods.setPrice(toWei("2"), toWei("1")),
+      uniswapMock.contract.methods.setPrice(toWei("4"), toWei("1"))
+    ];
+
+    // Ensure all are included in the same block
+    const [receipt1, receipt2, receipt3] = await mineTransactionsAtTime(web3, transactions, time, owner);
+    assert.equal(receipt2.blockNumber, receipt1.blockNumber);
+    assert.equal(receipt3.blockNumber, receipt1.blockNumber);
+
+    // Update the PF and ensure the price it gives is the last price in the block.
+    await uniswapPriceFeed._update();
     assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
@@ -102,5 +123,5 @@ contract("UniswapPriceFeed.js", function(accounts) {
   // - Some events post TWAP window, some inside window.
   // - Complex (5+ value) TWAP with events overlapping on both sides of the window.
 
-  // TODO: add tests to ensure intra-block and intra-transaction price changes are handled correctly.
+  // TODO: add tests to ensure intra-transaction price changes are handled correctly.
 });
