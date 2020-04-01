@@ -70,5 +70,9 @@
   {
     "contractName": "LeveragedReturnCalculator",
     "address": "0xAcDE84590A2ba1aCfEbB220997Eb41B7A01f271f"
+  },
+  {
+    "contractName": "WETH9",
+    "address": "0xc778417E063141139Fce010982780140Aa0cD5Ab"
   }
 ]
