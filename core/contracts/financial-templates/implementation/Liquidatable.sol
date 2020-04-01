@@ -72,6 +72,7 @@ contract Liquidatable is PricelessPositionManager {
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
+        FixedPoint.Unsigned minSponsorTokens;
     }
 
     // Liquidations are unique by ID per sponsor
@@ -155,7 +156,8 @@ contract Liquidatable is PricelessPositionManager {
             params.priceFeedIdentifier,
             params.syntheticName,
             params.syntheticSymbol,
-            params.tokenFactoryAddress
+            params.tokenFactoryAddress,
+            params.minSponsorTokens
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
