@@ -33,7 +33,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
-  it.only("Selects most recent price in same block", async function() {
+  it("Selects most recent price in same block", async function() {
     // Just use current system time because the time doesn't matter.
     const time = Math.round(new Date().getTime() / 1000);
 
