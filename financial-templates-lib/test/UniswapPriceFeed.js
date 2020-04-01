@@ -33,7 +33,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
-  it("Selects most recent price in same block", async function() {
+  it.only("Selects most recent price in same block", async function() {
     // Just use current system time because the time doesn't matter.
     const time = Math.round(new Date().getTime() / 1000);
 
@@ -43,9 +43,13 @@ contract("UniswapPriceFeed.js", function(accounts) {
       uniswapMock.contract.methods.setPrice(toWei("4"), toWei("1"))
     ];
 
-    await mineTransactionsAtTime(web3, transactions, time, owner)
-    await uniswapPriceFeed._update();
+    // Ensure all are included in the same block
+    const [receipt1, receipt2, receipt3] = await mineTransactionsAtTime(web3, transactions, time, owner);
+    assert.equal(receipt2.blockNumber, receipt1.blockNumber);
+    assert.equal(receipt3.blockNumber, receipt1.blockNumber);
 
+    // Update the PF and ensure the price it gives is the last price in the block.
+    await uniswapPriceFeed._update();
     assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
