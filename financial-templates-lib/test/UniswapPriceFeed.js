@@ -1,7 +1,7 @@
 const { toWei, toBN } = web3.utils;
 
 const { UniswapPriceFeed } = require("../UniswapPriceFeed");
-const { mineTransactionsAtTime, startMining, stopMining, minePendingTransactions } = require("../../common/SolidityTestUtils.js");
+const { mineTransactionsAtTime } = require("../../common/SolidityTestUtils.js");
 const { delay } = require("../delay.js");
 const { MAX_SAFE_JS_INT } = require("../../common/Constants");
 
