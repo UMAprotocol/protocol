@@ -53,11 +53,10 @@ const withdraw = async (web3, artifacts, emp) => {
 
     // Get current contract time and withdrawal request expiration time.
     const currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
-    // Withdrawal request expires AFTER the withdraw request time, so add one second to the expiration time displayed.
-    const expirationTimeReadable = new Date(Number(withdrawalRequestPassedTimestamp.toString()) * 1000 + 1);
+    const expirationTimeReadable = new Date(Number(withdrawalRequestPassedTimestamp.toString()) * 1000);
 
     // Withdraw request is still pending. User can cancel withdraw.
-    if (toBN(withdrawalRequestPassedTimestamp.toString()).gte(toBN(currentTime.toString()))) {
+    if (toBN(withdrawalRequestPassedTimestamp.toString()).gt(toBN(currentTime.toString()))) {
       console.log(
         `You have a withdrawal request for ${fromWei(
           withdrawRequestAmount
