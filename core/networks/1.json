@@ -34,5 +34,9 @@
   {
     "contractName": "DesignatedVotingFactory",
     "address": "0xE81EeE5Da165fA6863bBc82dF66E62d18625d592"
+  },
+  {
+    "contractName": "WETH9",
+    "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
   }
 ]
