@@ -214,9 +214,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
-        // Not just pre-expiration: make sure the proposed expiration of this request is itself before expiry.
+        // Make sure the proposed expiration of this request is not post-expiry.
         uint requestPassTime = getCurrentTime() + withdrawalLiveness;
-        require(requestPassTime < expirationTimestamp);
+        require(requestPassTime <= expirationTimestamp);
 
         // Update the position object for the user.
         positionData.requestPassTimestamp = requestPassTime;
@@ -232,7 +232,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // TODO: Decide whether to fold this functionality into withdraw() method above.
     function withdrawPassedRequest() external onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp < getCurrentTime());
+        require(positionData.requestPassTimestamp <= getCurrentTime());
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
         FixedPoint.Unsigned memory amountToWithdraw = positionData.withdrawalRequestAmount;

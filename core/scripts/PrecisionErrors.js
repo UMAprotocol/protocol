@@ -590,10 +590,6 @@ async function runExport() {
     // Note: Must call `requestWithdrawal()` instead of `withdraw()` because we are the only position. I didn't create another
     // less-collateralized position because it would modify the total collateral and therefore the fee multiplier.
     await emp.requestWithdrawal({ rawValue: testConfig.amountToWithdraw }, { from: sponsor });
-    // Move time forward.
-    startTime = await emp.getCurrentTime();
-    // Advance time to 1 second past the withdrawal liveness.
-    await emp.setCurrentTime(startTime.addn(1));
     // Execute withdrawal request.
     await emp.withdrawPassedRequest({ from: sponsor });
   }

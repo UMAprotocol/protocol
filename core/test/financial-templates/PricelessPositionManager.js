@@ -331,7 +331,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Can withdraw until after time is up.
     await pricelessPositionManager.setCurrentTime(
-      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness + 1
+      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
     );
 
     const sponsorInitialBalance = await collateral.balanceOf(sponsor);
@@ -379,7 +379,7 @@ contract("PricelessPositionManager", function(accounts) {
       { from: sponsor }
     );
     await pricelessPositionManager.setCurrentTime(
-      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness + 1
+      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
     );
     resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
     truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
@@ -495,7 +495,7 @@ contract("PricelessPositionManager", function(accounts) {
       await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor }))
     );
 
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
 
     // All method calls should revert.
     assert(
@@ -532,7 +532,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     const expireResult = await pricelessPositionManager.expire({ from: other });
@@ -884,7 +884,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Expire the contract, causing the contract to pay its final fees
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
     await pricelessPositionManager.expire({ from: other });
 
@@ -982,7 +982,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     assert(await didContractThrow(pricelessPositionManager.expire({ from: other })));
@@ -1019,7 +1019,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     await pricelessPositionManager.expire({ from: other });
@@ -1189,7 +1189,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
 
     // Emergency shutdown should revert as post expiration.
     assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));

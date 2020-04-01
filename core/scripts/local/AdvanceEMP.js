@@ -20,7 +20,7 @@ const advanceTime = async callback => {
     const registry = await Registry.deployed();
     const contractAddresses = await registry.getAllRegisteredContracts();
 
-    const leapForward = argv.time ? argv.time : 3601;
+    const leapForward = argv.time ? argv.time : 3600;
     console.log(`Advancing contract time forward by ${leapForward} seconds`);
 
     // Query all registered EMP's.
