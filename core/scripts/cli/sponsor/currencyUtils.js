@@ -14,7 +14,23 @@ const unwrapToEth = async (web3, artifacts, emp, amount) => {
   await submitTransaction(web3, async () => await weth.withdraw(amount.toString()), "Unwrapping WETH to ETH");
 };
 
+const getIsWeth = async (web3, artifacts, collateralCurrency) => {
+  const WETH9 = artifacts.require("WETH9");
+  return collateralCurrency.address === WETH9.address;
+};
+
+const getCurrencySymbol = async (web3, artifacts, collateralCurrency) => {
+  if (await getIsWeth(web3, artifacts, collateralCurrency)) {
+    return "WETH";
+  } else {
+    // TODO: Do all collateral currencies we care about support `symbol()`?
+    return "collateral tokens";
+  }
+};
+
 module.exports = {
+  getCurrencySymbol,
+  getIsWeth,
   wrapToWeth,
   unwrapToEth
 };

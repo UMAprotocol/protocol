@@ -1,6 +1,6 @@
 const BigNumber = require("bignumber.js");
 const inquirer = require("inquirer");
-const { wrapToWeth } = require("./currencyUtils");
+const { wrapToWeth, getCurrencySymbol, getIsWeth } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
 
 const create = async (web3, artifacts, emp) => {
@@ -33,7 +33,10 @@ const create = async (web3, artifacts, emp) => {
     .div(scalingFactor)
     .integerValue()
     .toString();
-  console.log("You'll need", fromWei(collateralNeeded), "ETH to borrow tokens");
+  const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+  const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
+  const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+  console.log("You'll need", fromWei(collateralNeeded), isWeth ? "ETH" : collateralSymbol, "to borrow tokens");
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
@@ -41,12 +44,13 @@ const create = async (web3, artifacts, emp) => {
   });
 
   if (confirmation["confirm"]) {
-    await wrapToWeth(web3, artifacts, emp, collateralNeeded);
-    const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+    if (isWeth) {
+      await wrapToWeth(web3, artifacts, emp, collateralNeeded);
+    }
     await submitTransaction(
       web3,
       async () => await collateralCurrency.approve(emp.address, collateralNeeded),
-      "Approving WETH transfer"
+      "Approving " + collateralSymbol + " transfer"
     );
     await submitTransaction(
       web3,

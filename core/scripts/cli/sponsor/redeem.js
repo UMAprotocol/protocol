@@ -1,14 +1,20 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
-const { unwrapToEth } = require("./currencyUtils.js");
+const { unwrapToEth, getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { submitTransaction } = require("./transactionUtils");
 
 const redeem = async (web3, artifacts, emp) => {
+  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei, toWei, toBN } = web3.utils;
   const SyntheticToken = artifacts.require("SyntheticToken");
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const position = await emp.positions(sponsorAddress);
+
+  const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+  const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
+  const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+  const requiredCollateralSymbol = isWeth ? "ETH" : collateralSymbol;
 
   const tokenAddress = await emp.tokenCurrency();
   const token = await SyntheticToken.at(tokenAddress);
@@ -22,7 +28,7 @@ const redeem = async (web3, artifacts, emp) => {
     .div(toBN(position.tokensOutstanding.toString()));
   const input = await inquirer.prompt({
     name: "numTokens",
-    message: "How many tokens to repay, at " + fromWei(collateralPerToken) + " ETH each?",
+    message: "How many tokens to repay, at " + fromWei(collateralPerToken) + " " + requiredCollateralSymbol + " each?",
     validate: value =>
       (value > 0 && toBN(toWei(value)).lte(toBN(walletTokens))) ||
       "Number of tokens must be positive and up to your current balance"
@@ -30,7 +36,7 @@ const redeem = async (web3, artifacts, emp) => {
 
   const tokensToRedeem = toBN(toWei(input["numTokens"]));
   const expectedCollateral = collateralPerToken.mul(toBN(tokensToRedeem)).div(scalingFactor);
-  console.log("You'll receive", fromWei(expectedCollateral), "ETH");
+  console.log("You'll receive", fromWei(expectedCollateral), requiredCollateralSymbol);
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
@@ -47,7 +53,9 @@ const redeem = async (web3, artifacts, emp) => {
       async () => await emp.redeem({ rawValue: tokensToRedeem.toString() }),
       "Repaying tokens"
     );
-    await unwrapToEth(web3, artifacts, emp, expectedCollateral);
+    if (isWeth) {
+      await unwrapToEth(web3, artifacts, emp, expectedCollateral);
+    }
   }
 };
 
