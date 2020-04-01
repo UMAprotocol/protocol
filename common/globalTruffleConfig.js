@@ -131,6 +131,10 @@ module.exports = {
   // for more about customizing your Truffle configuration!
   networks: networks,
   plugins: ["solidity-coverage"],
+  mocha: {
+    enableTimeouts: false,
+    before_timeout: 1800000
+  },
   compilers: {
     solc: {
       version: "0.6.4",
