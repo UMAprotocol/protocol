@@ -1,6 +1,7 @@
 const { toWei } = web3.utils;
 
 const { UniswapPriceFeed } = require("../UniswapPriceFeed");
+const { mineTransactionsAtTime, startMining, stopMining, minePendingTransactions } = require("../../common/SolidityTestUtils.js");
 
 const UniswapMock = artifacts.require("UniswapMock");
 const Uniswap = artifacts.require("Uniswap");
@@ -32,11 +33,26 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
+  it.only("Selects most recent price in same block", async function() {
+    // Just use current system time because the time doesn't matter.
+    const time = Math.round(new Date().getTime() / 1000);
+
+    const transactions = [
+      uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1")),
+      uniswapMock.contract.methods.setPrice(toWei("2"), toWei("1")),
+      uniswapMock.contract.methods.setPrice(toWei("4"), toWei("1"))
+    ];
+
+    await mineTransactionsAtTime(web3, transactions, time, owner)
+    await uniswapPriceFeed._update();
+
+    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
+  });
+
   it("No price", async function() {
     await uniswapPriceFeed._update();
 
     assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
   });
-
-  // TODO: add tests to ensure intra-block and intra-transaction price changes are handled correctly.
+  // TODO: add tests to ensure intra-transaction price changes are handled correctly.
 });
