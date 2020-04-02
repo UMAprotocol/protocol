@@ -332,7 +332,8 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Can withdraw until after time is up.
     await pricelessPositionManager.setCurrentTime(
-      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness);
+      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
+    );
 
     const sponsorInitialBalance = await collateral.balanceOf(sponsor);
     const expectedSponsorFinalBalance = sponsorInitialBalance.add(toBN(withdrawalAmount));
@@ -379,7 +380,8 @@ contract("PricelessPositionManager", function(accounts) {
       { from: sponsor }
     );
     await pricelessPositionManager.setCurrentTime(
-      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness);
+      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
+    );
     resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
     truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
       return ev.sponsor == sponsor && ev.collateralAmount == toWei("125").toString();
