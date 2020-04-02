@@ -26,7 +26,7 @@ class Liquidator {
     Logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
-      price: priceFeed
+      inputPrice: priceFeed
     });
 
     // Update the client to get the latest position information.
