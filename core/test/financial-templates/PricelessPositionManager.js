@@ -1200,7 +1200,7 @@ contract("PricelessPositionManager", function(accounts) {
     // To test non-standard ERC20 token delimitation a new ERC20 token is created which has 6 decimal points of precision.
     // A new priceless position manager is then created and and set to use this token as collateral. To generate values
     // which represent the appropriate scaling for USDC, .muln(1e6) is used over toWei as the latter scaled by 1e18.
-    
+
     // Create a test net token with non-standard delimitation like USDC (6 decimals) and mint tokens.
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
@@ -1220,7 +1220,7 @@ contract("PricelessPositionManager", function(accounts) {
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
     // Create the initial customPricelessPositionManager position. 100 synthetics backed by 150 collat
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
-    
+
     // however the collateral is now delimited by a different number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
       .muln(1e6)
