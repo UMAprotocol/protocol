@@ -1221,7 +1221,7 @@ contract("Liquidatable", function(accounts) {
     // token delimitation a new ERC20 is created with a different number of decimals. Appropriate parameters used in
     // previous tests are scaled by 1e12 (1000000000000) to represent them in units of the new collateral currency.
     const USDCScalingFactor = toBN("1000000000000");
-    const USDCPricePerToken = pricePerToken.div(USDCScalingFactor) // 1.5e6
+    const USDCPricePerToken = pricePerToken.div(USDCScalingFactor); // 1.5e6
     const USDCDisputePrice = settlementPrice.div(USDCScalingFactor); // 1.0e6
     const USDCAmountOfCollateral = amountOfCollateral.div(USDCScalingFactor); // 150e6
 
