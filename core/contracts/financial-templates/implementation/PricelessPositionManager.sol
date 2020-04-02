@@ -371,16 +371,23 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             delete positions[msg.sender];
         }
 
+        // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
+        // the caller will get as much collateral as the contract can pay out.
+        FixedPoint.Unsigned memory payout = FixedPoint.min(
+            _getCollateral(rawTotalPositionCollateral),
+            totalRedeemableCollateral
+        );
+
+        // Decrement total contract collateral and outstanding debt.
+        _removeCollateral(rawTotalPositionCollateral, payout);
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
+
         // Transfer tokens & collateral and burn the redeemed tokens.
-        collateralCurrency.safeTransfer(msg.sender, totalRedeemableCollateral.rawValue);
+        collateralCurrency.safeTransfer(msg.sender, payout.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
-        // Decrement total contract collateral and outstanding debt.
-        _removeCollateral(rawTotalPositionCollateral, totalRedeemableCollateral);
-        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
-
-        emit SettleExpiredPosition(msg.sender, totalRedeemableCollateral.rawValue, tokensToRedeem.rawValue);
+        emit SettleExpiredPosition(msg.sender, payout.rawValue, tokensToRedeem.rawValue);
     }
 
     /****************************************
