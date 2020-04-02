@@ -1226,9 +1226,10 @@ contract("Liquidatable", function(accounts) {
     const USDCAmountOfCollateral = amountOfCollateral.div(USDCScalingFactor); // 150e6
 
     // We can also re-define a number of constants used before, such as settlementTRV & sponsor dispute reword
-    const USDTSettlementTRV = amountOfSynthetic.mul(USDCDisputePrice).div(toBN(toWei("1"))); // 100e6
-    const USDTSponsorDisputeReward = sponsorDisputeRewardPct.mul(USDTSettlementTRV).div(toBN(toWei("1"))); // 5e6
-
+    const USDCSettlementTRV = amountOfSynthetic.mul(USDCDisputePrice).div(toBN(toWei("1"))); // 100e6
+    const USDCSponsorDisputeReward = sponsorDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
+    const USDTDisputerDisputeReward = disputerDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1")));
+    const USDCDisputeBond = disputeBondPct.mul(USDCAmountOfCollateral).div(toBN(toWei("1")));
     beforeEach(async () => {
       // Start by creating a ERC20 token with different delimitations. 6 decimals for USDC
       collateralToken = await TestnetERC20.new("USDC", "USDC", 6);
@@ -1303,15 +1304,15 @@ contract("Liquidatable", function(accounts) {
             .toString()
         );
       });
-      it.only("Sponsor calls", async () => {
+      it("Sponsor calls", async () => {
         // capture balance change from withdrawal
-        const sponsorUSDTBalanceBefore = await collateralToken.balanceOf(sponsor);
+        const sponsorUSDCBalanceBefore = await collateralToken.balanceOf(sponsor);
         await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: sponsor });
-        const sponsorUSDTBalanceAfter = await collateralToken.balanceOf(sponsor);
+        const sponsorUSDCBalanceAfter = await collateralToken.balanceOf(sponsor);
 
         // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
-        const USDTExpectedPayment = USDCAmountOfCollateral.sub(USDTSettlementTRV).add(USDTSponsorDisputeReward);
-        assert.equal(sponsorUSDTBalanceAfter.sub(sponsorUSDTBalanceBefore).toString(), USDTExpectedPayment.toString());
+        const USDCExpectedPayment = USDCAmountOfCollateral.sub(USDCSettlementTRV).add(USDCSponsorDisputeReward);
+        assert.equal(sponsorUSDCBalanceAfter.sub(sponsorUSDCBalanceBefore).toString(), USDCExpectedPayment.toString());
 
         // Sponsor should not be able to call again
         assert(
@@ -1321,12 +1322,18 @@ contract("Liquidatable", function(accounts) {
         );
       });
       it("Liquidator calls", async () => {
+        const liquidatorUSDCBalanceBefore = await collateralToken.balanceOf(liquidator);
         await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
           from: liquidator
         });
+        const liquidatorUSDCBalanceAfter = await collateralToken.balanceOf(liquidator);
+
         // Expected Liquidator payment => TRV - dispute reward - sponsor reward
-        const expectedPayment = settlementTRV.sub(disputerDisputeReward).sub(sponsorDisputeReward);
-        assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
+        const expectedPayment = USDCSettlementTRV.sub(USDTDisputerDisputeReward).sub(USDCSponsorDisputeReward);
+        assert.equal(
+          liquidatorUSDCBalanceAfter.sub(liquidatorUSDCBalanceBefore).toString(),
+          expectedPayment.toString()
+        );
 
         // Liquidator should not be able to call again
         assert(
@@ -1335,11 +1342,14 @@ contract("Liquidatable", function(accounts) {
           )
         );
       });
-      it("Disputer calls", async () => {
+      it.only("Disputer calls", async () => {
+        const disputerUSDCBalanceBefore = await collateralToken.balanceOf(disputer);
         await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
+        const disputerUSDCBalanceAfter = await collateralToken.balanceOf(disputer);
+        
         // Expected Disputer payment => disputer reward + dispute bond
-        const expectedPayment = disputerDisputeReward.add(disputeBond);
-        assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPayment.toString());
+        const expectedPayment = USDTDisputerDisputeReward.add(USDCDisputeBond);
+        assert.equal(disputerUSDCBalanceAfter.sub(disputerUSDCBalanceBefore).toString(), expectedPayment.toString());
 
         // Disputer should not be able to call again
         assert(
