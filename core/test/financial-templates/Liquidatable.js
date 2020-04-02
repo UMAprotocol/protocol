@@ -1486,7 +1486,9 @@ contract("Liquidatable", function(accounts) {
       });
       it("Liquidator calls, liquidation is deleted", async () => {
         const liquidatorUSDCBalanceBefore = await collateralToken.balanceOf(liquidator);
-        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
+          from: liquidator
+        });
         const liquidatorUSDCBalanceAfter = await collateralToken.balanceOf(liquidator);
         // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
         const expectedPayment = USDCAmountOfCollateral.add(USDCDisputeBond);
@@ -1521,7 +1523,9 @@ contract("Liquidatable", function(accounts) {
             .add(liquidationLiveness)
             .toString()
         );
-        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
+          from: liquidator
+        });
       });
       it("Event is correctly emitted", async () => {
         const withdrawLiquidationResult = await USDCLiquidationContract.withdrawLiquidation(
@@ -1530,7 +1534,7 @@ contract("Liquidatable", function(accounts) {
           { from: liquidator }
         );
 
-        const expectedPayment =  USDCAmountOfCollateral.add(USDCDisputeBond);
+        const expectedPayment = USDCAmountOfCollateral.add(USDCDisputeBond);
         truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
           return (
             ev.caller == liquidator &&
