@@ -205,7 +205,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor })));
     await tokenCurrency.approve(pricelessPositionManager.address, redeemTokens, { from: sponsor });
     sponsorInitialBalance = await collateral.balanceOf(sponsor);
-    const redemptionResult = await pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor });
+    let redemptionResult = await pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor });
     truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
       return (
         ev.sponsor == sponsor &&
@@ -235,7 +235,15 @@ contract("PricelessPositionManager", function(accounts) {
     const redeemRemainingTokens = toWei("60");
     await tokenCurrency.approve(pricelessPositionManager.address, redeemRemainingTokens, { from: sponsor });
     sponsorInitialBalance = await collateral.balanceOf(sponsor);
-    await pricelessPositionManager.redeem({ rawValue: redeemRemainingTokens }, { from: sponsor });
+    redemptionResult = await pricelessPositionManager.redeem({ rawValue: redeemRemainingTokens }, { from: sponsor });
+    truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
+      return (
+        ev.sponsor == sponsor &&
+        ev.collateralAmount == expectedSponsorCollateral.toString() &&
+        ev.tokenAmount == redeemRemainingTokens.toString()
+      );
+    });
+
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
@@ -861,7 +869,7 @@ contract("PricelessPositionManager", function(accounts) {
     await store.setFinalFee(collateral.address, { rawValue: "0" });
   });
 
-  it("Final Fees: Rounding error causes redeemable collateral to sometimes be lower than expected", async () => {
+  it("_removeCollateral rounding errors in raw collateral are handled properly", async () => {
     // Setting the amount of collateral = 30 wei and the final fee to 1 wei will result in rounding errors
     // because of the intermediate calculation in `payFees()` for calculating the `feeAdjustment`: ( fees paid ) / (total collateral)
     // = 0.033... repeating, which cannot be represented precisely by a fixed point.
@@ -889,16 +897,26 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.expire({ from: other });
 
     // Absent any rounding errors, `getCollateral` should return (initial-collateral - final-fees) = 30 wei - 1 wei = 29 wei.
-    // But, because of the use of mulCeil and divCeil in _payFinalFees, getCollateral() will return slightly less
+    // But, because of the use of mul and div in _payFinalFees, getCollateral() will return slightly less
     // collateral than expected. When calculating the new `feeAdjustment`, we need to calculate the %: (fees paid / pfc), which is
-    // 1/30. However, 1/30 = 0.03333... repeating, which cannot be represented in FixedPoint. Normally mul() would floor
-    // this value to 0.033....33, but mulCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
+    // 1/30. However, 1/30 = 0.03333... repeating, which cannot be represented in FixedPoint. Normally div() would floor
+    // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
     // lower `totalPositionCollateral` and `positionAdjustment` values.
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
+    assert.equal(
+      (await pricelessPositionManager.cumulativeFeeMultiplier()).toString(),
+      toWei("0.966666666666666666").toString()
+    );
 
-    // The actual amount of fees paid to the store is as expected = 1e-18
+    // The actual amount of fees paid to the store is as expected = 1 wei.
+    // At this point, the store should have +1 wei, the contract should have 29 wei but the position will show 28 wei
+    // because `(30 * 0.966666666666666666 = 28.999...98)`. `30` is the rawCollateral and if the fee multiplier were correct,
+    // then `totalPositionCollateral` would be `(30 * 0.966666666666666666...) = 29`.
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
+    assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "29");
+    assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "28");
+    assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "30");
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 20 units of outstanding tokens this results in a token redemption value of: TRV = 20 * 1.2 = 24 USD.
@@ -908,7 +926,11 @@ contract("PricelessPositionManager", function(accounts) {
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 10 tokens settled at a price of 1.2 should yield 12 units of collateral.
-    // The rounding errors DO NOT affect the token holder's redemption amount
+    // So, `rawCollateral` is decreased by (`12 / 0.966666666666666666 ~= 12.4`) which gets truncated to 12.
+    // Before `settleExpired` is called, `totalPositionCollateral = rawCollateral * cumulativeFeeMultiplier = 30 * 0.966666666666666666 = 28`.
+    // After `settleExpired`, `rawCollateral -= 12`, so the new `totalPositionCollateral = `(30-12) * 0.966666666666666666 = 17.4` which is truncated to 17.
+    // So, due to precision loss, `totalPositionCollateral` is only decreased by 11, but it should be 12 without errors.
+    // In order not for `collateral` to be equal to `totalPositionCollateral`, the contract will return to the user only 11 collateral.
     const tokenHolderInitialCollateral = await collateral.balanceOf(tokenHolder);
     const tokenHolderInitialSynthetic = await tokenCurrency.balanceOf(tokenHolder);
     await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
@@ -919,16 +941,18 @@ contract("PricelessPositionManager", function(accounts) {
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
 
     // The token holder should gain the value of their synthetic tokens in underlying.
-    const expectedTokenHolderFinalCollateral = "12";
+    const expectedTokenHolderFinalCollateral = "11";
     assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
+    assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "18");
+    assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "17");
+    assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "18");
 
     // The token holder should have no synthetic positions left after settlement.
     assert.equal(tokenHolderFinalSynthetic, 0);
 
     // The sponsor is entitled to the underlying value of their remaining synthetic tokens + the excess collateral
-    // in their position at time of settlement - final fees.
-    // HOWEVER, the excess collateral calculated will be slightly less than expected because of the aformentioned rounding issues.
-    // The sponsor also has 10 synthetic tokens that they did not sell. This makes their expected redemption = 30 - (20 * 1.2) + (10 * 1.2) - 1 - rounding-error <= 17
+    // in their position at time of settlement - final fees. But we'll see that the "excess" collateral displays error
+    // due to precision loss.
     const sponsorInitialCollateral = await collateral.balanceOf(sponsor);
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
 
@@ -940,23 +964,37 @@ contract("PricelessPositionManager", function(accounts) {
     const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
 
     // The token Sponsor should gain the value of their synthetics in underlying
-    // + their excess collateral from the over collateralization in their position
-    // Excess collateral = 30 - 20 * 1.2 - 1 - roundingErrors <= 5
+    // + their excess collateral from the over collateralization in their position.
+    // Excess collateral should be = rawCollateral - fees - tokensOutstanding * price = 30 - 1 - (20 * 1.2) = 5
+    // However, recall that `totalPositionCollateral = (30 * 0.966666666666666666 = 28.999...98)` which gets truncated to 28.
+    // So, the excess collateral becomes 28 - (20 * 1.2) = 4
+    // The value of the remaining synthetic tokens = 10 * 1.2 = 12.
+    // So, we will attempt to withdraw (12 + 4) tokens from the contract.
+    // We need to decrease `rawCollateral` by `16 / 0.966666666666666666 ~= 16.5`
+    // which gets truncated to 16.
+    // Recall previously that rawCollateral was last set to 18, so `totalPositionCollateral = (18-16) * 0.966666666666666666 ~= 1.97`
+    // which gets truncated to 1.
+    // The previous totalPositionCollateral was 17, so we will withdraw (17-1) = 16 tokens instead of the 17 as the user expected.
+    assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "1");
+    assert.equal((await pricelessPositionManager.rawTotalPositionCollateral()).toString(), "2");
+    const expectedSponsorCollateralSynthetic = toBN("11");
     const expectedSponsorCollateralUnderlying = toBN("5");
-    // Value of remaining synthetic tokens = 10 * 1.2 = 12
-    const expectedSponsorCollateralSynthetic = toBN("12");
     const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
       expectedSponsorCollateralSynthetic
     );
-    // This should return slightly less collateral than expected
-    assert(sponsorFinalCollateral.sub(sponsorInitialCollateral).lt(expectedTotalSponsorCollateralReturned));
+    assert.equal(
+      sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
+      expectedTotalSponsorCollateralReturned.toString()
+    );
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);
 
-    // The contract should have a small remainder of collateral tokens due to rounding
-    // TODO(#934): Put a more precise upper bound on the rounding error. I purposefully choose small enough numbers here that I know before hand what the rounding error will be.
-    assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "1");
+    // The contract should have a small remainder of 2 collateral tokens due to rounding errors:
+    // We started with 30, paid 1 in final fees, returned 11 to the token holder, and 16 to the sponsor:
+    // (30 - 1 - 11 - 16 = 2)
+    assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "2");
+    assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "1");
 
     // Last check is that after redemption the position in the positions mapping has been removed.
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
