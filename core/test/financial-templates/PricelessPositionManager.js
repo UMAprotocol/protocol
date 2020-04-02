@@ -1197,6 +1197,10 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   it("Non-standard ERC20 delimitation", async function() {
+    // To test non-standard ERC20 token delimitation a new ERC20 token is created which has 6 decimal points of precision.
+    // A new priceless position manager is then created and and set to use this token as collateral. To generate values
+    // which represent the appropriate scaling for USDC, .muln(1e6) is used over toWei as the latter scaled by 1e18.
+    
     // Create a test net token with non-standard delimitation like USDC (6 decimals) and mint tokens.
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
@@ -1216,6 +1220,7 @@ contract("PricelessPositionManager", function(accounts) {
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
     // Create the initial customPricelessPositionManager position. 100 synthetics backed by 150 collat
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
+    
     // however the collateral is now delimited by a different number of decimals. 150 * 1e6
     const createCollateral = toBN("150")
       .muln(1e6)
@@ -1273,22 +1278,22 @@ contract("PricelessPositionManager", function(accounts) {
     // Dispute and liquidation is tested in `Liquidatable.js`. Here we test settlement.
 
     // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
-    // Sponsor now has 50 synthetics and 200 collateral.
+    // Sponsor now has 50 synthetics and 200 collateral. Note that synthetic tokens are still represented with 1e18 base.
     const tokenHolderTokens = toWei("50");
     await tokenCurrency.transfer(tokenHolder, tokenHolderTokens, {
       from: sponsor
     });
 
-    // Advance time until after expiration. Token holders and sponsors should now be able to settle.
+    // Advance time until expiration. Token holders and sponsors should now be able to settle.
     const expirationTime = await customPricelessPositionManager.expirationTimestamp();
-    await customPricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await customPricelessPositionManager.setCurrentTime(expirationTime.toNumber());
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     await customPricelessPositionManager.expire({ from: other });
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
-    // Note that due to scaling the price is scaled by 1e6 to accommodate the value of the stock denominated in USDC
+    // Note that due to scaling the price is scaled by 1e6 to accommodate the value of the stock denominated in USDC.
     const redemptionPrice = toBN(1200000); // 1.2*1e6. a price of 1.2 denominated in USD scaling.
     await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPrice.toString());
 
@@ -1309,6 +1314,7 @@ contract("PricelessPositionManager", function(accounts) {
     // The token holder should gain the value of their synthetic tokens in underlying.
     // The value in underlying is the number of tokens they held in the beginning * settlement price as TRV
     // When redeeming 50 tokens at a price of 1.2 we expect to receive 60 collateral tokens (50 * 1.2)
+    // This should be denominated in units of USDC and as such again scaled by 1e6
     const expectedTokenHolderFinalCollateral = toBN("60").muln(1e6);
     assert.equal(
       tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString(),
@@ -1331,7 +1337,7 @@ contract("PricelessPositionManager", function(accounts) {
     // in their position at time of settlement. The sponsor had 200 units of collateral in their position and the final TRV
     // of their synthetics they drew is 120 (100*1.2). Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell valued at 1.2 per token.
-    // This makes their expected redemption = 200 (collat) - 100 * 1.2 (debt) + 50 * 1.2 (synth returned) = 140
+    // This makes their expected redemption = 200 (collat) - 100 * 1.2 (debt) + 50 * 1.2 (synth returned) = 140 in e16 USDC
     const sponsorInitialCollateral = await USDCToken.balanceOf(sponsor);
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
 
