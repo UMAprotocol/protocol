@@ -50,6 +50,7 @@ contract("Liquidatable", function(accounts) {
     .muln(60)
     .muln(3); // In seconds
   const startTime = "15798990420";
+  const minSponsorTokens = toBN(toWei("1"));
 
   // Synthetic Token Position contract params
   const positionLiveness = toBN(60 * 60).mul(liquidationLiveness); // Add this to liquidation liveness so we can create more positions post-liquidation
@@ -119,7 +120,8 @@ contract("Liquidatable", function(accounts) {
       collateralRequirement: { rawValue: collateralRequirement.toString() },
       disputeBondPct: { rawValue: disputeBondPct.toString() },
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
-      disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() }
+      disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
+      minSponsorTokens: { rawValue: minSponsorTokens.toString() }
     };
 
     // Deploy liquidation contract and set global params
@@ -337,6 +339,22 @@ contract("Liquidatable", function(accounts) {
           .sub(toBN(liquidation.lockedCollateral.toString()))
           .abs()
           .lte(toBN(toWei("0.0001")))
+      );
+    });
+    it("Cannot create partial liquidation that sends sponsor below minimum", async () => {
+      const liquidationAmount = amountOfSynthetic.sub(toBN(toWei("0.99")));
+
+      // Liquidation should fail because it would leave only 0.99 tokens, which is below the min.
+      // Note: multiply the pricePerToken by 2 to ensure the max doesn't cause the transaction to fail.
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: pricePerToken.muln(2).toString() },
+            { rawValue: liquidationAmount.toString() },
+            { from: liquidator }
+          )
+        )
       );
     });
   });

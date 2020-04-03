@@ -69,7 +69,8 @@ contract("Disputer.js", function(accounts) {
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") }
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
