@@ -360,9 +360,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (_getCollateral(positionData.rawCollateral).isGreaterThan(0)) {
             // Calculate the underlying entitled to a token sponsor. This is collateral - debt in underlying.
             FixedPoint.Unsigned memory tokenDebtValueInCollateral = positionData.tokensOutstanding.mul(expiryPrice);
-            FixedPoint.Unsigned memory positionRedeemableCollateral = _getCollateral(positionData.rawCollateral).sub(
-                tokenDebtValueInCollateral
-            );
+            FixedPoint.Unsigned memory positionCollateral = _getCollateral(positionData.rawCollateral);
+
+            // If the debt is greater than the remaining collateral, they cannot redeem anything.
+            FixedPoint.Unsigned memory positionRedeemableCollateral = tokenDebtValueInCollateral.isLessThan(
+                positionCollateral
+            )
+                ? positionCollateral.sub(tokenDebtValueInCollateral)
+                : FixedPoint.Unsigned(0);
 
             // Add the number of redeemable tokens for the sponsor to their total redeemable collateral.
             totalRedeemableCollateral = totalRedeemableCollateral.add(positionRedeemableCollateral);

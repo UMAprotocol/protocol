@@ -1060,9 +1060,10 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
-  it("Undercapitalized contract", async function() {
+  it.only("Undercapitalized contract", async function() {
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: tokenHolder });
 
@@ -1094,6 +1095,11 @@ contract("PricelessPositionManager", function(accounts) {
     startingBalance = await collateral.balanceOf(other);
     await pricelessPositionManager.settleExpired({ from: other });
     assert.equal((await collateral.balanceOf(other)).toString(), startingBalance.add(toBN(toWei("50"))));
+
+    // The undercapitalized sponsor should get nothing even though they have tokens because the contract has no more collateral.
+    startingBalance = await collateral.balanceOf(sponsor);
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    assert.equal((await collateral.balanceOf(sponsor)).toString(), startingBalance.add(toBN("0")));
   });
 
   it("Emergency shutdown: lifecycle", async function() {
