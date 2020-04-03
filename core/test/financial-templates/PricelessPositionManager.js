@@ -1279,6 +1279,7 @@ contract("PricelessPositionManager", function(accounts) {
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
       TokenFactory.address, // _tokenFactoryAddress
+      { rawValue: minSponsorTokens },
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
