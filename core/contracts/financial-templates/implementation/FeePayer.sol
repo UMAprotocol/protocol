@@ -110,32 +110,30 @@ abstract contract FeePayer is Testable {
      * @notice Pays UMA DVM final fees to the Store contract.
      * @dev This is a flat fee charged for each price request.
      * @param payer address of who is paying the fees.
-     * @return totalPaid The amount of collateral that was paid to the Store.
+     * @param amount the amount of collateral to send as the final fee.
      */
-    function _payFinalFees(address payer) internal returns (FixedPoint.Unsigned memory totalPaid) {
-        StoreInterface store = _getStore();
-        totalPaid = store.computeFinalFee(address(collateralCurrency));
-
-        if (totalPaid.isEqual(0)) {
-            return totalPaid;
+    function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
+        if (amount.isEqual(0)) {
+            return;
         }
 
         if (payer != address(this)) {
             // If the payer is not the contract pull the collateral from the payer.
-            collateralCurrency.safeTransferFrom(payer, address(this), totalPaid.rawValue);
+            collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
         } else {
             // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
             FixedPoint.Unsigned memory _pfc = pfc();
 
             // The final fee must be < pfc or the fee will be larger than 100%.
-            require(_pfc.isGreaterThan(totalPaid));
+            require(_pfc.isGreaterThan(amount));
 
             // Add the adjustment.
-            FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(pfc());
+            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(pfc());
             cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
         }
 
-        collateralCurrency.safeIncreaseAllowance(address(store), totalPaid.rawValue);
+        StoreInterface store = _getStore();
+        collateralCurrency.safeIncreaseAllowance(address(store), amount.rawValue);
         store.payOracleFeesErc20(address(collateralCurrency));
     }
 
@@ -153,6 +151,11 @@ abstract contract FeePayer is Testable {
     function _getStore() internal view returns (StoreInterface) {
         bytes32 storeInterface = "Store";
         return StoreInterface(finder.getImplementationAddress(storeInterface));
+    }
+
+    function _computeFinalFees() internal returns (FixedPoint.Unsigned memory finalFees) {
+        StoreInterface store = _getStore();
+        return store.computeFinalFee(address(collateralCurrency));
     }
 
     // Returns the user's collateral minus any fees that have been subtracted since it was originally

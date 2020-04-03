@@ -9,10 +9,17 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  * this token should never be used to store real value since it allows permissionless minting.
  */
 contract TestnetERC20 is ERC20 {
+    string public name;
+    string public symbol;
+    uint8 public decimals;
+
+    constructor(string memory _name, string memory _symbol, uint8 _decimals) public {
+        name = _name; // solhint-disable-line const-name-snakecase
+        symbol = _symbol; // solhint-disable-line const-name-snakecase
+        decimals = _decimals; // solhint-disable-line const-name-snakecase
+    }
+
     // Sample token information.
-    string public constant name = "Dai"; // solhint-disable-line const-name-snakecase
-    string public constant symbol = "DAI"; // solhint-disable-line const-name-snakecase
-    uint8 public constant decimals = 18; // solhint-disable-line const-name-snakecase
 
     /**
      * @notice Mints value tokens to the owner address.
