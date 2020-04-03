@@ -194,11 +194,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
-        FixedPoint.Unsigned memory preBalance = _getCollateral(rawTotalPositionCollateral);
         _removeCollateral(positionData.rawCollateral, collateralAmount);
         require(_checkPositionCollateralization(positionData));
-        _removeCollateral(rawTotalPositionCollateral, collateralAmount);
-        FixedPoint.Unsigned memory amountWithdrawn = preBalance.sub(_getCollateral(rawTotalPositionCollateral));
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralAmount);
 
         // Move collateral currency from contract to sender.
         // Note that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
@@ -245,10 +243,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             amountToWithdraw = _getCollateral(positionData.rawCollateral);
         }
 
-        FixedPoint.Unsigned memory preBalance = _getCollateral(rawTotalPositionCollateral);
         _removeCollateral(positionData.rawCollateral, amountToWithdraw);
-        _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
-        FixedPoint.Unsigned memory amountWithdrawn = preBalance.sub(_getCollateral(rawTotalPositionCollateral));
+        FixedPoint.Unsigned memory amountWithdrawn =_removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
 
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
@@ -320,22 +316,21 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
             _getCollateral(positionData.rawCollateral)
         );
-        FixedPoint.Unsigned memory preBalance = _getCollateral(rawTotalPositionCollateral);
+
+        FixedPoint.Unsigned memory amountWithdrawn;
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
-            _deleteSponsorPosition(msg.sender);
+            amountWithdrawn = _deleteSponsorPosition(msg.sender);
         } else {
             // Decrease the sponsors position size of collateral and tokens.
             _removeCollateral(positionData.rawCollateral, collateralRedeemed);
             positionData.tokensOutstanding = positionData.tokensOutstanding.sub(numTokens);
 
             // Decrease the contract's collateral and tokens.
-            _removeCollateral(rawTotalPositionCollateral, collateralRedeemed);
+            amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralRedeemed);
             totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
         }
-
-        FixedPoint.Unsigned memory amountWithdrawn = preBalance.sub(_getCollateral(rawTotalPositionCollateral));
 
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
@@ -364,7 +359,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // Get caller's tokens balance and calculate amount of underlying entitled to them.
         FixedPoint.Unsigned memory tokensToRedeem = FixedPoint.Unsigned(tokenCurrency.balanceOf(msg.sender));
         FixedPoint.Unsigned memory totalRedeemableCollateral = tokensToRedeem.mul(expiryPrice);
-        FixedPoint.Unsigned memory preBalance = _getCollateral(rawTotalPositionCollateral);
 
         // If the caller is a sponsor with outstanding collateral they are also entitled to their excess collateral after their debt.
         PositionData storage positionData = positions[msg.sender];
@@ -383,9 +377,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
 
         // Decrement total contract collateral and outstanding debt.
-        _removeCollateral(rawTotalPositionCollateral, totalRedeemableCollateral);
+        FixedPoint.Unsigned memory amountWithdrawn =_removeCollateral(rawTotalPositionCollateral, totalRedeemableCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
-        FixedPoint.Unsigned memory amountWithdrawn = preBalance.sub(_getCollateral(rawTotalPositionCollateral));
 
         // Transfer tokens & collateral and burn the redeemed tokens.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
@@ -502,15 +495,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
 
-    function _deleteSponsorPosition(address sponsor) internal {
+    function _deleteSponsorPosition(address sponsor) internal returns (FixedPoint.Unsigned memory) {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         // Remove the collateral and outstanding from the overall total position.
-        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(positionToLiquidate.rawCollateral);
+        FixedPoint.Unsigned memory remainingRawCollateral = positionToLiquidate.rawCollateral;
+        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(remainingRawCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
         // Reset the sponsors position to have zero outstanding and collateral.
         delete positions[sponsor];
+
+        // Return fee-adjusted amount of collateral deleted from position.
+        return _getCollateral(remainingRawCollateral);
     }
 
     function _getPositionData(address sponsor)

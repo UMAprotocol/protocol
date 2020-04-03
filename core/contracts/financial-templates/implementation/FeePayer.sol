@@ -177,13 +177,26 @@ abstract contract FeePayer is Testable {
         return collateral.div(cumulativeFeeMultiplier);
     }
 
+    // Decrease rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // by dividing it by cumulativeFeeMutliplier. There is potential for this quotient to be floored, therefore rawCollateral
+    // is decreased by less than expected. Because this method is usually called in conjunction with an actual removal of collateral
+    // from this contract, return the fee-adjusted amount that the rawCollateral is decreased by so that the caller can
+    // minimize error between collateral removed and rawCollateral debited.
     function _removeCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToRemove)
         internal
+        returns (FixedPoint.Unsigned memory removedCollateral)
     {
+        FixedPoint.Unsigned memory initialBalance = _getCollateral(rawCollateral);
         FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToRemove);
         rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
+        removedCollateral = initialBalance.sub(_getCollateral(rawCollateral));
     }
 
+    // Increase rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // by dividing it by cumulativeFeeMutliplier. There is potential for this quotient to be floored, therefore rawCollateral
+    // is increased by less than expected. Because this method is usually called in conjunction with an actual addition of collateral
+    // into this contract, there is no need to return the fee-adjusted amount that the rawCollateral is increased by because the contract
+    // will have surplus collateral in case an error is introduced.
     function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
         internal
     {

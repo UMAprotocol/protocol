@@ -393,9 +393,7 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         require(withdrawalAmount.isGreaterThan(0));
-        FixedPoint.Unsigned memory preBalance = _getCollateral(rawLiquidationCollateral);
-        _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
-        FixedPoint.Unsigned memory amountWithdrawn = preBalance.sub(_getCollateral(rawLiquidationCollateral));
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
