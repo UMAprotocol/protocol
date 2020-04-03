@@ -1241,7 +1241,6 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));
   });
 
-
   it("Cannot create position smaller than min sponsor size", async function() {
     // Attempt to create position smaller than 20 wei tokens (the min sponsor position size)
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
@@ -1259,7 +1258,6 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.create({ rawValue: "40" }, { rawValue: "20" }, { from: sponsor });
 
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: "1" }, { from: sponsor })));
-
   });
 
   it("Non-standard ERC20 delimitation", async function() {
