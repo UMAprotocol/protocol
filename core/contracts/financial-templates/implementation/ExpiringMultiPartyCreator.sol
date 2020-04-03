@@ -29,6 +29,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
+        FixedPoint.Unsigned minSponsorTokens;
     }
 
     /**
@@ -161,5 +162,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.disputeBondPct = params.disputeBondPct;
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
+        constructorParams.minSponsorTokens = params.minSponsorTokens;
     }
 }

@@ -68,6 +68,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint public withdrawalLiveness;
 
+    // Minimum number of tokens in a sponsor's position.
+    FixedPoint.Unsigned public minSponsorTokens;
+
     // The expiry price pulled from the DVM.
     FixedPoint.Unsigned public expiryPrice;
 
@@ -135,12 +138,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         bytes32 _priceIdentifier,
         string memory _syntheticName,
         string memory _syntheticSymbol,
-        address _tokenFactoryAddress
+        address _tokenFactoryAddress,
+        FixedPoint.Unsigned memory _minSponsorTokens
     ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
+        minSponsorTokens = _minSponsorTokens;
 
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
@@ -284,6 +289,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = positions[msg.sender];
         require(positionData.requestPassTimestamp == 0);
         if (positionData.tokensOutstanding.isEqual(0)) {
+            require(numTokens.isGreaterThanOrEqual(minSponsorTokens));
             emit NewSponsor(msg.sender);
         }
         _addCollateral(positionData.rawCollateral, collateralAmount);
@@ -320,7 +326,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         } else {
             // Decrease the sponsors position size of collateral and tokens.
             _removeCollateral(positionData.rawCollateral, collateralRedeemed);
-            positionData.tokensOutstanding = positionData.tokensOutstanding.sub(numTokens);
+            FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
+            require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
+            positionData.tokensOutstanding = newTokenCount;
 
             // Decrease the contract's collateral and tokens.
             _removeCollateral(rawTotalPositionCollateral, collateralRedeemed);
@@ -494,7 +502,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         // Decrease the sponsor's collateral, tokens, and withdrawal request.
         _removeCollateral(positionData.rawCollateral, collateralToRemove);
-        positionData.tokensOutstanding = positionData.tokensOutstanding.sub(tokensToRemove);
+        FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(tokensToRemove);
+        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
+        positionData.tokensOutstanding = newTokenCount;
+
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
 
         // Decrease the contract's global counters of collateral and tokens.
