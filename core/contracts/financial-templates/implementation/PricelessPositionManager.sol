@@ -396,7 +396,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         contractState = ContractState.ExpiredPriceRequested;
 
         // The final fee for this request is paid out of the contract rather than by the caller.
-        _payFinalFees(address(this));
+        _payFinalFees(address(this), _computeFinalFees());
         _requestOraclePrice(expirationTimestamp);
 
         emit ContractExpired(msg.sender);
