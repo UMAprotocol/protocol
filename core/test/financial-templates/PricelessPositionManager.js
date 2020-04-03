@@ -1060,6 +1060,42 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
+  it("Undercapitalized contract", async function() {
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
+    await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
+    await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: tokenHolder });
+
+    // Create one undercapitalized sponsor and one overcollateralized sponsor.
+    await pricelessPositionManager.create({ rawValue: toWei("50") }, { rawValue: toWei("100") }, { from: sponsor });
+    await pricelessPositionManager.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: other });
+
+    // Transfer 150 tokens to the token holder and leave the overcollateralized sponsor with 25.
+    await tokenCurrency.transfer(tokenHolder, toWei("75"), { from: other });
+    await tokenCurrency.transfer(tokenHolder, toWei("75"), { from: sponsor });
+
+    // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
+    const expirationTime = await pricelessPositionManager.expirationTimestamp();
+    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await pricelessPositionManager.expire({ from: other });
+
+    // Settle the price to 1, meaning the overcollateralized sponsor has 50 units of excess collateral.
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime, toWei("1"));
+
+    // Token holder is the first to settle -- they should receive the entire value of their tokens (100) because they
+    // were first.
+    let startingBalance = await collateral.balanceOf(tokenHolder);
+    await pricelessPositionManager.settleExpired({ from: tokenHolder });
+    assert.equal((await collateral.balanceOf(tokenHolder)).toString(), startingBalance.add(toBN(toWei("150"))));
+
+    // The overcollateralized sponsor should see a haircut because they settled later.
+    // The overcollateralized sponsor is owed 75 because of the 50 in excess collateral and the 25 in tokens.
+    // But there's only 50 left in the contract, so we should see only 50 paid out.
+    startingBalance = await collateral.balanceOf(other);
+    await pricelessPositionManager.settleExpired({ from: other });
+    assert.equal((await collateral.balanceOf(other)).toString(), startingBalance.add(toBN(toWei("50"))));
+  });
+
   it("Emergency shutdown: lifecycle", async function() {
     // Create one position with 100 synthetic tokens to mint with 150 tokens of collateral. For this test say the
     // collateral is Dai with a value of 1USD and the synthetic is some fictional stock or commodity.
