@@ -201,6 +201,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         _removeCollateral(positionData.rawCollateral, collateralAmount);
         require(_checkPositionCollateralization(positionData));
+        // We elect to withdraw the amount that the global collateral is decreased by,
+        // rather than the individual position's collateral, because we need to maintain the invariant that
+        // the global collateral is always <= the collateral owned by the contract to avoid reverts on withdrawals.
         FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralAmount);
 
         // Move collateral currency from contract to sender.
@@ -521,6 +524,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _deleteSponsorPosition(address sponsor) internal returns (FixedPoint.Unsigned memory) {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
+        FixedPoint.Unsigned memory startingGlobalCollateral = _getCollateral(rawTotalPositionCollateral);
+
         // Remove the collateral and outstanding from the overall total position.
         FixedPoint.Unsigned memory remainingRawCollateral = positionToLiquidate.rawCollateral;
         rawTotalPositionCollateral = rawTotalPositionCollateral.sub(remainingRawCollateral);
@@ -530,7 +535,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         delete positions[sponsor];
 
         // Return fee-adjusted amount of collateral deleted from position.
-        return _getCollateral(remainingRawCollateral);
+        return startingGlobalCollateral.sub(_getCollateral(rawTotalPositionCollateral));
     }
 
     function _getPositionData(address sponsor)
