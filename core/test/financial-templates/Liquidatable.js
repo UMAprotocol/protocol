@@ -1287,6 +1287,8 @@ contract("Liquidatable", function(accounts) {
         // Settle the dispute as SUCCESSFUL. for this the liquidation needs to be unsuccessful.
         const liquidationTime = await USDCLiquidationContract.getCurrentTime();
         await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, USDCDisputePrice.toString());
+        // What is tested in the assertions that follow focus specifically on instances whewre in collateral
+        // moves around. Other kinds of tests (like revert on Rando calls) are not tested again for brevity
       });
       it("Sponsor calls", async () => {
         const sponsorUSDCBalanceBefore = await collateralToken.balanceOf(sponsor);
@@ -1443,8 +1445,6 @@ contract("Liquidatable", function(accounts) {
         const disputePrice = toBN(toWei("1.3")).div(USDCScalingFactor);
         await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
       });
-      // Note that the Sponsor, Disputer and Rando calls will revert as with previous tests. This test only is checking the
-      // impact of the non-standard decimalization and so we are only intrested in tests that modify the underlying callateral balance
       it("Liquidator calls, liquidation is deleted", async () => {
         const liquidatorUSDCBalanceBefore = await collateralToken.balanceOf(liquidator);
         await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
