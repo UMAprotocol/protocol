@@ -244,7 +244,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
 
         _removeCollateral(positionData.rawCollateral, amountToWithdraw);
-        FixedPoint.Unsigned memory amountWithdrawn =_removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
 
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
@@ -377,7 +377,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
 
         // Decrement total contract collateral and outstanding debt.
-        FixedPoint.Unsigned memory amountWithdrawn =_removeCollateral(rawTotalPositionCollateral, totalRedeemableCollateral);
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(
+            rawTotalPositionCollateral,
+            totalRedeemableCollateral
+        );
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
         // Transfer tokens & collateral and burn the redeemed tokens.
