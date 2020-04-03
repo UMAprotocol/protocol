@@ -6,6 +6,7 @@ const { toWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
+const TestnetERC20 = artifacts.require("TestnetERC20");
 
 // Contracts to unit test
 const Liquidatable = artifacts.require("Liquidatable");
@@ -50,6 +51,7 @@ contract("Liquidatable", function(accounts) {
     .muln(60)
     .muln(3); // In seconds
   const startTime = "15798990420";
+  const minSponsorTokens = toBN(toWei("1"));
 
   // Synthetic Token Position contract params
   const positionLiveness = toBN(60 * 60).mul(liquidationLiveness); // Add this to liquidation liveness so we can create more positions post-liquidation
@@ -61,6 +63,9 @@ contract("Liquidatable", function(accounts) {
     .muln(1);
   const pendingWithdrawalAmount = "0"; // Amount to liquidate can be less than amount of collateral iff there is a pending withdrawal
   const amountOfCollateralToLiquidate = amountOfCollateral.add(toBN(pendingWithdrawalAmount));
+
+  // Set final fee to a flat 1 collateral token.
+  const finalFeeAmount = toBN(toWei("1"));
 
   // Contracts
   let liquidationContract;
@@ -119,7 +124,8 @@ contract("Liquidatable", function(accounts) {
       collateralRequirement: { rawValue: collateralRequirement.toString() },
       disputeBondPct: { rawValue: disputeBondPct.toString() },
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
-      disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() }
+      disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
+      minSponsorTokens: { rawValue: minSponsorTokens.toString() }
     };
 
     // Deploy liquidation contract and set global params
@@ -136,13 +142,18 @@ contract("Liquidatable", function(accounts) {
     await collateralToken.mint(sponsor, amountOfCollateral, { from: contractDeployer });
 
     // Mint dispute bond to disputer
-    await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
+    await collateralToken.mint(disputer, disputeBond.add(finalFeeAmount), { from: contractDeployer });
 
     // Set allowance for contract to pull collateral tokens from sponsor
     await collateralToken.increaseAllowance(liquidationContract.address, amountOfCollateral, { from: sponsor });
 
-    // Set allowance for contract to pull dispute bond from disputer
-    await collateralToken.increaseAllowance(liquidationContract.address, disputeBond, { from: disputer });
+    // Set allowance for contract to pull dispute bond and final fee from disputer
+    await collateralToken.increaseAllowance(liquidationContract.address, disputeBond.add(finalFeeAmount), {
+      from: disputer
+    });
+
+    // Set allowance for contract to pull the final fee from the liquidator
+    await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, { from: liquidator });
 
     // Set allowance for contract to pull synthetic tokens from liquidator
     await syntheticToken.increaseAllowance(liquidationContract.address, amountOfSynthetic, { from: liquidator });
@@ -339,6 +350,22 @@ contract("Liquidatable", function(accounts) {
           .lte(toBN(toWei("0.0001")))
       );
     });
+    it("Cannot create partial liquidation that sends sponsor below minimum", async () => {
+      const liquidationAmount = amountOfSynthetic.sub(toBN(toWei("0.99")));
+
+      // Liquidation should fail because it would leave only 0.99 tokens, which is below the min.
+      // Note: multiply the pricePerToken by 2 to ensure the max doesn't cause the transaction to fail.
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: pricePerToken.muln(2).toString() },
+            { rawValue: liquidationAmount.toString() },
+            { from: liquidator }
+          )
+        )
+      );
+    });
   });
 
   describe("Liquidation has been created", () => {
@@ -349,8 +376,16 @@ contract("Liquidatable", function(accounts) {
         { rawValue: amountOfSynthetic.toString() },
         { from: sponsor }
       );
+
+      // Set final fee before initiating the liquidation.
+      await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount.toString() });
+
       // Transfer synthetic tokens to a liquidator
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+
+      // Mint a single collateral token for the liquidator.
+      await collateralToken.mint(liquidator, finalFeeAmount, { from: contractDeployer });
+
       // Create a Liquidation
       liquidationTime = await liquidationContract.getCurrentTime();
       await liquidationContract.createLiquidation(
@@ -359,6 +394,9 @@ contract("Liquidatable", function(accounts) {
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
       );
+
+      // Reset final fee to 0.
+      await store.setFinalFee(collateralToken.address, { rawValue: "0" });
     });
 
     describe("Get a Liquidation", () => {
@@ -448,13 +486,8 @@ contract("Liquidatable", function(accounts) {
         assert.equal(pendingRequests[0].time, liquidationTime);
       });
       it("Dispute pays a final fee", async () => {
-        const finalFeeAmount = toWei("1");
-        // Set final fee to a flat 1 collateral token
-        await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount });
         // Mint final fee amount to disputer
         await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
-        // Increase allowance for contract to spend disputer's tokens
-        await collateralToken.increaseAllowance(liquidationContract.address, finalFeeAmount, { from: disputer });
 
         // Check that store's collateral balance increases
         const storeInitialBalance = toBN(await collateralToken.balanceOf(store.address));
@@ -462,17 +495,19 @@ contract("Liquidatable", function(accounts) {
         const storeAfterDisputeBalance = toBN(await collateralToken.balanceOf(store.address));
         assert.equal(storeAfterDisputeBalance.sub(storeInitialBalance).toString(), finalFeeAmount);
 
-        // Check that collateral in liquidation contract remains the same
-        const expectedContractBalance = toBN(amountOfCollateral).add(disputeBond);
+        // Check that the contract only has one final fee refund, not two.
+        const expectedContractBalance = toBN(amountOfCollateral)
+          .add(disputeBond)
+          .add(finalFeeAmount);
         assert.equal(
           (await collateralToken.balanceOf(liquidationContract.address)).toString(),
           expectedContractBalance.toString()
         );
-
-        // Set the store fees back to 0 to prevent it from affecting other tests.
-        await store.setFinalFee(collateralToken.address, { rawValue: "0" });
       });
       it("Throw if liquidation has already been disputed", async () => {
+        // Mint final fee amount to disputer
+        await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
         // Mint enough tokens to disputer for another dispute bond
         await collateralToken.mint(disputer, disputeBond, { from: contractDeployer });
@@ -482,10 +517,16 @@ contract("Liquidatable", function(accounts) {
             liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer })
           )
         );
-        assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
+        assert.equal(
+          (await collateralToken.balanceOf(disputer)).toString(),
+          disputeBond.add(finalFeeAmount).toString()
+        );
       });
       // Weird edge cases, test anyways:
       it("Liquidation already disputed successfully", async () => {
+        // Mint final fee amount to disputer
+        await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
 
         // Push to oracle.
@@ -499,9 +540,15 @@ contract("Liquidatable", function(accounts) {
             liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer })
           )
         );
-        assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
+        assert.equal(
+          (await collateralToken.balanceOf(disputer)).toString(),
+          disputeBond.add(finalFeeAmount).toString()
+        );
       });
       it("Liquidation already disputed unsuccessfully", async () => {
+        // Mint final fee amount to disputer
+        await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
 
         // Push to oracle.
@@ -515,7 +562,10 @@ contract("Liquidatable", function(accounts) {
             liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer })
           )
         );
-        assert.equal((await collateralToken.balanceOf(disputer)).toString(), disputeBond.toString());
+        assert.equal(
+          (await collateralToken.balanceOf(disputer)).toString(),
+          disputeBond.add(finalFeeAmount).toString()
+        );
       });
     });
 
@@ -529,6 +579,9 @@ contract("Liquidatable", function(accounts) {
 
     describe("Settle Dispute: there is a pending dispute", () => {
       beforeEach(async () => {
+        // Mint final fee amount to disputer
+        await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+
         // Dispute the created liquidation
         await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
       });
@@ -580,7 +633,7 @@ contract("Liquidatable", function(accounts) {
         truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
           return !ev.DisputeSucceeded;
         });
-        const expectedPayout = disputeBond.add(liquidationParams.liquidatedCollateral);
+        const expectedPayout = disputeBond.add(liquidationParams.liquidatedCollateral).add(finalFeeAmount);
         // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
         // if the liquidator calls `withdrawLiquidation()` on a failed dispute, it will first `_settle` the contract
         // and set its status to "DISPUTE_FAILED", but they will also withdraw all of the
@@ -620,7 +673,7 @@ contract("Liquidatable", function(accounts) {
           );
         });
 
-        const expectedPayout = disputeBond.add(disputerDisputeReward);
+        const expectedPayout = disputeBond.add(disputerDisputeReward).add(finalFeeAmount);
         truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
           return (
             ev.caller == disputer &&
@@ -681,7 +734,10 @@ contract("Liquidatable", function(accounts) {
       });
       it("Liquidator calls", async () => {
         await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
-        assert.equal((await collateralToken.balanceOf(liquidator)).toString(), amountOfCollateral.toString());
+        assert.equal(
+          (await collateralToken.balanceOf(liquidator)).toString(),
+          amountOfCollateral.add(finalFeeAmount).toString()
+        );
 
         // Liquidation should still technically exist, but its status should get reset.
         const liquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
@@ -802,8 +858,8 @@ contract("Liquidatable", function(accounts) {
         });
         it("Disputer calls", async () => {
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
-          // Expected Disputer payment => disputer reward + dispute bond
-          const expectedPayment = disputerDisputeReward.add(disputeBond);
+          // Expected Disputer payment => disputer reward + dispute bond + final fee
+          const expectedPayment = disputerDisputeReward.add(disputeBond).add(finalFeeAmount);
           assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPayment.toString());
 
           // Disputer should not be able to call again
@@ -896,9 +952,9 @@ contract("Liquidatable", function(accounts) {
           // (100 - (0.05 * 100) - (0.05 * 100)   ) * (1 - 0.1           )  = 81.0
           assert.equal(liquidatorAmount, toWei("81"));
 
-          // (BOND        + DISPUTER_REWARD) * (1 - FEE_PERCENTAGE) = DISPUTER_WITHDRAW
-          // ((0.1 * 150) + (0.05 * 100)    ) * (1 - 0.1           ) = 18.0
-          assert.equal(disputerAmount, toWei("18"));
+          // (BOND        + DISPUTER_REWARD + FINAL_FEE) * (1 - FEE_PERCENTAGE) = DISPUTER_WITHDRAW
+          // ((0.1 * 150) + (0.05 * 100)    + 1        ) * (1 - 0.1           ) = 18.9
+          assert.equal(disputerAmount, toWei("18.9"));
 
           // Sponsor balance check.
           let startBalance = await collateralToken.balanceOf(sponsor);
@@ -944,8 +1000,8 @@ contract("Liquidatable", function(accounts) {
         });
         it("Liquidator calls, liquidation is deleted", async () => {
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
-          // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
-          const expectedPayment = amountOfCollateral.add(disputeBond);
+          // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral + final fee refund to liquidator
+          const expectedPayment = amountOfCollateral.add(disputeBond).add(finalFeeAmount);
           assert.equal((await collateralToken.balanceOf(liquidator)).toString(), expectedPayment.toString());
           assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
           const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
@@ -982,7 +1038,7 @@ contract("Liquidatable", function(accounts) {
             { from: liquidator }
           );
 
-          const expectedPayment = amountOfCollateral.add(disputeBond);
+          const expectedPayment = amountOfCollateral.add(disputeBond).add(finalFeeAmount);
           truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
             return (
               ev.caller == liquidator &&
@@ -1059,7 +1115,7 @@ contract("Liquidatable", function(accounts) {
       await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, settlementPrice.toString());
       await edgeLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
       // Expected Disputer payment => disputer reward + dispute bond
-      const expectedPaymentDisputer = disputerDisputeReward.add(edgeDisputeBond);
+      const expectedPaymentDisputer = disputerDisputeReward.add(edgeDisputeBond).add(finalFeeAmount);
       assert.equal((await collateralToken.balanceOf(disputer)).toString(), expectedPaymentDisputer.toString());
       await edgeLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator });
       // Expected Liquidator payment => TRV - dispute reward - sponsor reward
@@ -1213,6 +1269,255 @@ contract("Liquidatable", function(accounts) {
       assert.equal((await collateralToken.balanceOf(liquidationContract.address)).toString(), "0");
       const deletedLiquidation = await liquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
       assert.equal(deletedLiquidation.liquidator, zeroAddress);
+    });
+  });
+  describe("Non-standard ERC20 delimitation", () => {
+    // All parameters in this test suite up to now have been scaled by 1e18. To simulate non-standard ERC20
+    // token delimitation a new ERC20 is created with a different number of decimals. To simulate two popular
+    // stable coins as collateral (USDT & USDC) 6 decimal points are used. First, appropriate parameters used in
+    // previous tests are scaled by 1e12 (1000000000000) to represent them in units of the new collateral currency.
+    const USDCScalingFactor = toBN("1000000000000"); // 1e12
+
+    // By dividing the pre-defined parameters by the scaling factor 1e12 they are brought down from 1e18 to 1e6
+    const USDCPricePerToken = pricePerToken.div(USDCScalingFactor); // 1.5e6
+    const USDCDisputePrice = settlementPrice.div(USDCScalingFactor); // 1.0e6
+    const USDCAmountOfCollateral = amountOfCollateral.div(USDCScalingFactor); // 150e6
+    // Note: the number of synthetics does not get scaled. This is still the 100e18 as with other tests.
+
+    // Next, re-define a number of constants used before in terms of the newly scaled variables
+    const USDCSettlementTRV = amountOfSynthetic.mul(USDCDisputePrice).div(toBN(toWei("1"))); // 100e6
+    const USDCSponsorDisputeReward = sponsorDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
+    const USDTDisputerDisputeReward = disputerDisputeRewardPct.mul(USDCSettlementTRV).div(toBN(toWei("1"))); // 5e6
+    const USDCDisputeBond = disputeBondPct.mul(USDCAmountOfCollateral).div(toBN(toWei("1"))); // 15e6
+    beforeEach(async () => {
+      // Start by creating a ERC20 token with different delimitations. 6 decimals for USDC
+      collateralToken = await TestnetERC20.new("USDC", "USDC", 6);
+      await collateralToken.allocateTo(sponsor, toWei("100"));
+      await collateralToken.allocateTo(disputer, toWei("100"));
+
+      // Update the liquidatableParameters to use the new token as collateral and deploy a new Liquidatable contract
+      let USDCLiquidatableParameters = liquidatableParameters;
+      USDCLiquidatableParameters.collateralAddress = collateralToken.address;
+      USDCLiquidationContract = await Liquidatable.new(USDCLiquidatableParameters, {
+        from: contractDeployer
+      });
+
+      // Get newly created synthetic token and set it as the global synthetic token.
+      syntheticToken = await Token.at(await USDCLiquidationContract.tokenCurrency());
+
+      // Approve the contract to spend the tokens on behalf of the sponsor & liquidator. Simplify this process in a loop
+      for (let i = 1; i < 4; i++) {
+        await syntheticToken.approve(USDCLiquidationContract.address, toWei("100000"), {
+          from: accounts[i]
+        });
+        await collateralToken.approve(USDCLiquidationContract.address, toWei("100000"), {
+          from: accounts[i]
+        });
+      }
+
+      // Next, create the position which will be used in the liquidation event. Note that the input amount of collateral
+      // is the scaled value defined above as 150e6, representing 150 USDC. the Synthetics created have not changed at
+      // a value of 100e18.
+      await USDCLiquidationContract.create(
+        { rawValue: USDCAmountOfCollateral.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: sponsor }
+      );
+      // Transfer USDCSynthetic tokens to a liquidator
+      await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
+
+      // Create a Liquidation which can be tested against.
+      await USDCLiquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: USDCPricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+
+      // Finally, dispute the liquidation.
+      await USDCLiquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
+    });
+    describe("Dispute succeeded", () => {
+      beforeEach(async () => {
+        // Settle the dispute as SUCCESSFUL. for this the liquidation needs to be unsuccessful.
+        const liquidationTime = await USDCLiquidationContract.getCurrentTime();
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, USDCDisputePrice.toString());
+        // What is tested in the assertions that follow focus specifically on instances whewre in collateral
+        // moves around. Other kinds of tests (like revert on Rando calls) are not tested again for brevity
+      });
+      it("Sponsor calls", async () => {
+        const sponsorUSDCBalanceBefore = await collateralToken.balanceOf(sponsor);
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: sponsor });
+        const sponsorUSDCBalanceAfter = await collateralToken.balanceOf(sponsor);
+
+        // Expected Sponsor payment => remaining collateral (locked collateral - TRV) + sponsor reward
+        const USDCExpectedPayment = USDCAmountOfCollateral.sub(USDCSettlementTRV).add(USDCSponsorDisputeReward);
+        assert.equal(sponsorUSDCBalanceAfter.sub(sponsorUSDCBalanceBefore).toString(), USDCExpectedPayment.toString());
+
+        // Sponsor should not be able to call again
+        assert(
+          await didContractThrow(
+            USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: sponsor })
+          )
+        );
+      });
+      it("Liquidator calls", async () => {
+        const liquidatorUSDCBalanceBefore = await collateralToken.balanceOf(liquidator);
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
+          from: liquidator
+        });
+        const liquidatorUSDCBalanceAfter = await collateralToken.balanceOf(liquidator);
+
+        // Expected Liquidator payment => TRV - dispute reward - sponsor reward
+        const expectedPayment = USDCSettlementTRV.sub(USDTDisputerDisputeReward).sub(USDCSponsorDisputeReward);
+        assert.equal(
+          liquidatorUSDCBalanceAfter.sub(liquidatorUSDCBalanceBefore).toString(),
+          expectedPayment.toString()
+        );
+
+        // Liquidator should not be able to call again
+        assert(
+          await didContractThrow(
+            USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: liquidator })
+          )
+        );
+      });
+      it("Disputer calls", async () => {
+        const disputerUSDCBalanceBefore = await collateralToken.balanceOf(disputer);
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
+        const disputerUSDCBalanceAfter = await collateralToken.balanceOf(disputer);
+
+        // Expected Disputer payment => disputer reward + dispute bond
+        const expectedPayment = USDTDisputerDisputeReward.add(USDCDisputeBond);
+        assert.equal(disputerUSDCBalanceAfter.sub(disputerUSDCBalanceBefore).toString(), expectedPayment.toString());
+
+        // Disputer should not be able to call again
+        assert(
+          await didContractThrow(
+            USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer })
+          )
+        );
+      });
+      it("Liquidated contact should have no assets remaining after all withdrawals and be deleted", async () => {
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: sponsor });
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
+          from: liquidator
+        });
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
+        assert.equal((await collateralToken.balanceOf(USDCLiquidationContract.address)).toString(), "0");
+        const deletedLiquidation = await USDCLiquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+        assert.equal(deletedLiquidation.liquidator, zeroAddress);
+      });
+      it("Fees on liquidation", async () => {
+        // Charge a 10% fee per second.
+        await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
+
+        // Advance time to charge fee.
+        let currentTime = await USDCLiquidationContract.getCurrentTime();
+        await USDCLiquidationContract.setCurrentTime(currentTime.addn(1));
+
+        // Withdraw liquidation
+        const sponsorAmount = (
+          await USDCLiquidationContract.withdrawLiquidation.call(liquidationParams.liquidationId, sponsor, {
+            from: sponsor
+          })
+        ).rawValue;
+        const liquidatorAmount = (
+          await USDCLiquidationContract.withdrawLiquidation.call(liquidationParams.liquidationId, sponsor, {
+            from: liquidator
+          })
+        ).rawValue;
+        const disputerAmount = (
+          await USDCLiquidationContract.withdrawLiquidation.call(liquidationParams.liquidationId, sponsor, {
+            from: disputer
+          })
+        ).rawValue;
+
+        // The logic in the assertions that follows is identical to previous testes except the output
+        // is scaled to be represented in USDC.
+
+        // (TOT_COL  - TRV + TS_REWARD   ) * (1 - FEE_PERCENTAGE) = TS_WITHDRAW
+        // (150      - 100 + (0.05 * 100)) * (1 - 0.1           ) = 49.5
+        assert.equal(
+          sponsorAmount,
+          toBN(toWei("49.5"))
+            .div(USDCScalingFactor)
+            .toString()
+        );
+
+        // (TRV - TS_REWARD    - DISPUTER_REWARD) * (1 - FEE_PERCENTAGE) = LIQ_WITHDRAW
+        // (100 - (0.05 * 100) - (0.05 * 100)   ) * (1 - 0.1           )  = 81.0
+        assert.equal(
+          liquidatorAmount,
+          toBN(toWei("81"))
+            .div(USDCScalingFactor)
+            .toString()
+        );
+
+        // (BOND        + DISPUTER_REWARD) * (1 - FEE_PERCENTAGE) = DISPUTER_WITHDRAW
+        // ((0.1 * 150) + (0.05 * 100)    ) * (1 - 0.1           ) = 18.0
+        assert.equal(
+          disputerAmount,
+          toBN(toWei("18"))
+            .div(USDCScalingFactor)
+            .toString()
+        );
+
+        // Sponsor balance check.
+        let startBalance = await collateralToken.balanceOf(sponsor);
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: sponsor });
+        assert.equal(
+          (await collateralToken.balanceOf(sponsor)).toString(),
+          startBalance.add(toBN(sponsorAmount)).toString()
+        );
+
+        // Liquidator balance check.
+        startBalance = await collateralToken.balanceOf(liquidator);
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
+          from: liquidator
+        });
+        assert.equal(
+          (await collateralToken.balanceOf(liquidator)).toString(),
+          startBalance.add(toBN(liquidatorAmount)).toString()
+        );
+
+        // Disputer balance check.
+        startBalance = await collateralToken.balanceOf(disputer);
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, { from: disputer });
+        assert.equal(
+          (await collateralToken.balanceOf(disputer)).toString(),
+          startBalance.add(toBN(disputerAmount)).toString()
+        );
+
+        // Clean up store fees.
+        await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+      });
+    });
+    describe("Dispute failed", () => {
+      beforeEach(async () => {
+        // Settle the dispute as FAILED. To achieve this the liquidation must be correct.
+        const liquidationTime = await USDCLiquidationContract.getCurrentTime();
+        const disputePrice = toBN(toWei("1.3")).div(USDCScalingFactor);
+        await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
+      });
+      it("Liquidator calls, liquidation is deleted", async () => {
+        const liquidatorUSDCBalanceBefore = await collateralToken.balanceOf(liquidator);
+        await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor, {
+          from: liquidator
+        });
+        const liquidatorUSDCBalanceAfter = await collateralToken.balanceOf(liquidator);
+        // Expected Liquidator payment => lockedCollateral + liquidation.disputeBond % of liquidation.lockedCollateral to liquidator
+        const expectedPayment = USDCAmountOfCollateral.add(USDCDisputeBond);
+        assert.equal(
+          liquidatorUSDCBalanceAfter.sub(liquidatorUSDCBalanceBefore).toString(),
+          expectedPayment.toString()
+        );
+        // Liquidator contract should have nothing left in it and all params reset on the liquidation object
+        assert.equal((await collateralToken.balanceOf(USDCLiquidationContract.address)).toString(), "0");
+        const deletedLiquidation = await USDCLiquidationContract.liquidations(sponsor, liquidationParams.liquidationId);
+        assert.equal(deletedLiquidation.liquidator, zeroAddress);
+        assert.equal(deletedLiquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
+      });
     });
   });
 });

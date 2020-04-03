@@ -60,7 +60,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") }
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
