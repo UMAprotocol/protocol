@@ -1064,7 +1064,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
   });
 
-  it.only("Undercapitalized contract", async function() {
+  it("Undercapitalized contract", async function() {
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
     await collateral.approve(pricelessPositionManager.address, toWei("100000"), { from: other });
     await tokenCurrency.approve(pricelessPositionManager.address, toWei("100000"), { from: sponsor });
@@ -1279,6 +1279,7 @@ contract("PricelessPositionManager", function(accounts) {
       syntheticName, // _syntheticName
       syntheticSymbol, // _syntheticSymbol
       TokenFactory.address, // _tokenFactoryAddress
+      { rawValue: minSponsorTokens },
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
