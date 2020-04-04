@@ -965,7 +965,7 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal((await collateral.balanceOf(pricelessPositionManager.address)).toString(), "2");
       assert.equal((await pricelessPositionManager.totalPositionCollateral()).toString(), "1");
 
-      // Last check is that after redemption the position in the positions mapping has been removed.
+      // Last check is that after redemption the position in the positions mapping is still removed despite leaving collateral dust.
       const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
       assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
       assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
