@@ -2,7 +2,7 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { LiquidationStatesEnum } = require("../../../common/Enums");
 const truffleAssert = require("truffle-assertions");
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
@@ -1518,6 +1518,116 @@ contract("Liquidatable", function(accounts) {
         assert.equal(deletedLiquidation.liquidator, zeroAddress);
         assert.equal(deletedLiquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
       });
+    });
+  });
+  describe("Precision loss is handled as expected", () => {
+    let _liquidationContract;
+    beforeEach(async () => {
+      // Deploy a new Liquidation contract with no minimum sponsor token size.
+      liquidatableParameters.minSponsorTokens = { rawValue: "0" };
+      _liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+      syntheticToken = await Token.at(await _liquidationContract.tokenCurrency());
+
+      // Create a new position with:
+      // - 30 collateral
+      // - 20 synthetic tokens (10 held by token holder, 10 by sponsor)
+      await collateralToken.approve(_liquidationContract.address, "100000", { from: sponsor });
+      const numTokens = "20";
+      const amountCollateral = "30";
+      await _liquidationContract.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+      await syntheticToken.approve(_liquidationContract.address, numTokens, { from: sponsor });
+
+      // Setting the regular fee to 4 % per second will result in a miscalculated cumulativeFeeMultiplier after 1 second
+      // because of the intermediate calculation in `payFees()` for calculating the `feeAdjustment`: ( fees paid ) / (total collateral)
+      // = 0.033... repeating, which cannot be represented precisely by a fixed point.
+      // --> 0.04 * 30 wei = 1.2 wei, which gets truncated to 1 wei, so 1 wei of fees are paid
+      const regularFee = toWei("0.04");
+      await store.setFixedOracleFeePerSecond({ rawValue: regularFee });
+
+      // Advance the contract one second and make the contract pay its regular fees
+      let startTime = await _liquidationContract.getCurrentTime();
+      await _liquidationContract.setCurrentTime(startTime.addn(1));
+      await _liquidationContract.payFees();
+
+      // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
+      await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+
+      // Set allowance for contract to pull synthetic tokens from liquidator
+      await syntheticToken.increaseAllowance(_liquidationContract.address, numTokens, { from: liquidator });
+      await syntheticToken.transfer(liquidator, numTokens, { from: sponsor });
+
+      // Create a liquidation.
+      await _liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: toWei("1.5") },
+        { rawValue: numTokens },
+        { from: liquidator }
+      );
+    });
+    it("Fee multiplier is set properly with precision loss, and fees are paid as expected.", async () => {
+      // Absent any rounding errors, `getCollateral` should return (initial-collateral - final-fees) = 30 wei - 1 wei = 29 wei.
+      // But, because of the use of mul and div in _payFees(), getCollateral() will return slightly less
+      // collateral than expected. When calculating the new `feeAdjustment`, we need to calculate the %: (fees paid / pfc), which is
+      // 1/30. However, 1/30 = 0.03333... repeating, which cannot be represented in FixedPoint. Normally div() would floor
+      // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately
+      // lower `totalPositionCollateral` and `positionAdjustment` values.
+      let collateralAmount = await _liquidationContract.getCollateral(sponsor);
+      assert(toBN(collateralAmount.rawValue).lt(toBN("29")));
+      assert.equal(
+        (await _liquidationContract.cumulativeFeeMultiplier()).toString(),
+        toWei("0.966666666666666666").toString()
+      );
+
+      // The actual amount of fees paid to the store is as expected = 1 wei.
+      // At this point, the store should have +1 wei, the contract should have 29 wei but the position will show 28 wei
+      // because `(30 * 0.966666666666666666 = 28.999...98)`. `30` is the rawCollateral and if the fee multiplier were correct,
+      // then `rawLiquidationCollateral` would be `(30 * 0.966666666666666666...) = 29`.
+      // `rawTotalPositionCollateral` is decreased after `createLiquidation()` is called.
+      assert.equal((await collateralToken.balanceOf(_liquidationContract.address)).toString(), "29");
+      assert.equal((await _liquidationContract.rawLiquidationCollateral()).toString(), "28");
+      assert.equal((await _liquidationContract.rawTotalPositionCollateral()).toString(), "0");
+    });
+    it("Liquidation object is set up properly", async () => {
+      let liquidationData = await _liquidationContract.liquidations(sponsor, 0);
+
+      // The contract should own 29 collateral but show locked collateral in the liquidation as 28, using the same calculation
+      // as `totalPositionCollateral` which is `rawTotalPositionCollateral` from the liquidated position multiplied by the fee multiplier.
+      // There was no withdrawal request pending so the liquidated collateral should be 28 as well.
+      assert.equal(liquidationData.tokensOutstanding.toString(), "20");
+      assert.equal(liquidationData.lockedCollateral.toString(), "28");
+      assert.equal(liquidationData.liquidatedCollateral.toString(), "28");
+
+      // The available collateral for rewards is determined by multiplying the locked collateral by a `feeAttentuation` which is
+      // (feeMultiplier * liquidationData.rawUnitCollateral), where rawUnitCollateral is (1 / feeMultiplier). So, if no fees have been
+      // charged between the calling of `createLiquidation` and `withdrawLiquidation`, the available collateral will be equal to the
+      // locked collateral.
+      // - rawUnitCollateral = (1 / 0.966666666666666666) = 1.034482758620689655
+      assert.equal(fromWei(liquidationData.rawUnitCollateral.toString()), "1.034482758620689655");
+    });
+    it("withdrawLiquidation() returns the same amount of collateral that liquidationCollateral is decreased by", async () => {
+      // So, the available collateral for rewards should be (lockedCollateral * feeAttenuation),
+      // where feeAttenuation is (rawUnitCollateral * feeMultiplier) = 1.034482758620689655 * 0.966666666666666666 = 0.999999999999999999.
+      // This will compute in incorrect value for the lockedCollateral available for rewards, therefore rawUnitCollateral
+      // will decrease by less than its full lockedCollateral. The contract should transfer to the liquidator the same amount.
+
+      // First, expire the liquidation
+      let startTime = await _liquidationContract.getCurrentTime();
+      await _liquidationContract.setCurrentTime(
+        toBN(startTime)
+          .add(liquidationLiveness)
+          .toString()
+      );
+
+      // The liquidator is owed (0.999999999999999999 * 28 = 27.9999...) which gets truncated to 27.
+      // The contract should have 29 - 27 = 2 collateral remaining, and the liquidation should be deleted.
+      await _liquidationContract.withdrawLiquidation(0, sponsor, { from: liquidator });
+      assert.equal((await collateralToken.balanceOf(liquidator)).toString(), "27");
+      assert.equal((await collateralToken.balanceOf(_liquidationContract.address)).toString(), "2");
+      let deletedLiquidationData = await _liquidationContract.liquidations(sponsor, 0);
+      assert.equal(deletedLiquidationData.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
+
+      // rawLiquidationCollateral should also have been decreased by 27, from 28 to 1
+      assert.equal((await _liquidationContract.rawLiquidationCollateral()).toString(), "1");
     });
   });
 });

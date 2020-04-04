@@ -180,17 +180,35 @@ abstract contract FeePayer is Testable {
         return collateral.div(cumulativeFeeMultiplier);
     }
 
+    // Decrease rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // by dividing it by cumulativeFeeMutliplier. There is potential for this quotient to be floored, therefore rawCollateral
+    // is decreased by less than expected. Because this method is usually called in conjunction with an actual removal of collateral
+    // from this contract, return the fee-adjusted amount that the rawCollateral is decreased by so that the caller can
+    // minimize error between collateral removed and rawCollateral debited.
     function _removeCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToRemove)
         internal
+        returns (FixedPoint.Unsigned memory removedCollateral)
     {
+        FixedPoint.Unsigned memory initialBalance = _getCollateral(rawCollateral);
         FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToRemove);
         rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
+        removedCollateral = initialBalance.sub(_getCollateral(rawCollateral));
     }
 
+    // Increase rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // by dividing it by cumulativeFeeMutliplier. There is potential for this quotient to be floored, therefore rawCollateral
+    // is increased by less than expected. Because this method is usually called in conjunction with an actual addition of collateral
+    // to this contract, return the fee-adjusted amount that the rawCollateral is increased by so that the caller can
+    // minimize error between collateral removed and rawCollateral credited.
+    // @dev: This return value exists only for the sake of symmetry with `_removeCollateral`. We don't actually use it because
+    // we are OK if more collateral is stored in the contract than is represented by `totalPositionCollateral`.
     function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
         internal
+        returns (FixedPoint.Unsigned memory addedCollateral)
     {
+        FixedPoint.Unsigned memory initialBalance = _getCollateral(rawCollateral);
         FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
+        addedCollateral = _getCollateral(rawCollateral).sub(initialBalance);
     }
 }

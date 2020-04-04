@@ -201,12 +201,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         _removeCollateral(positionData.rawCollateral, collateralAmount);
         require(_checkPositionCollateralization(positionData));
-        _removeCollateral(rawTotalPositionCollateral, collateralAmount);
+        // We elect to withdraw the amount that the global collateral is decreased by,
+        // rather than the individual position's collateral, because we need to maintain the invariant that
+        // the global collateral is always <= the collateral owned by the contract to avoid reverts on withdrawals.
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralAmount);
 
         // Move collateral currency from contract to sender.
-        collateralCurrency.safeTransfer(msg.sender, collateralAmount.rawValue);
+        // Note that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
+        // instead of the user requested amount. This eliminates precision loss that could occur
+        // where the user withdraws more collateral than rawCollateral is decremented by.
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
-        emit Withdrawal(msg.sender, collateralAmount.rawValue);
+        emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
     }
 
     /**
@@ -246,12 +252,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
 
         _removeCollateral(positionData.rawCollateral, amountToWithdraw);
-        _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        collateralCurrency.safeTransfer(msg.sender, amountToWithdraw.rawValue);
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
-        emit RequestWithdrawalExecuted(msg.sender, amountToWithdraw.rawValue);
+        emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
 
         // Reset withdrawal request
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
@@ -320,9 +326,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             _getCollateral(positionData.rawCollateral)
         );
 
+        FixedPoint.Unsigned memory amountWithdrawn;
+
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
-            _deleteSponsorPosition(msg.sender);
+            amountWithdrawn = _deleteSponsorPosition(msg.sender);
         } else {
             // Decrease the sponsors position size of collateral and tokens.
             _removeCollateral(positionData.rawCollateral, collateralRedeemed);
@@ -331,16 +339,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             positionData.tokensOutstanding = newTokenCount;
 
             // Decrease the contract's collateral and tokens.
-            _removeCollateral(rawTotalPositionCollateral, collateralRedeemed);
+            amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralRedeemed);
             totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
         }
 
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
-        collateralCurrency.safeTransfer(msg.sender, collateralRedeemed.rawValue);
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
         tokenCurrency.burn(numTokens.rawValue);
 
-        emit Redeem(msg.sender, collateralRedeemed.rawValue, numTokens.rawValue);
+        emit Redeem(msg.sender, amountWithdrawn.rawValue, numTokens.rawValue);
     }
 
     /**
@@ -392,15 +400,15 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         );
 
         // Decrement total contract collateral and outstanding debt.
-        _removeCollateral(rawTotalPositionCollateral, payout);
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
         // Transfer tokens & collateral and burn the redeemed tokens.
-        collateralCurrency.safeTransfer(msg.sender, payout.rawValue);
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
 
-        emit SettleExpiredPosition(msg.sender, payout.rawValue, tokensToRedeem.rawValue);
+        emit SettleExpiredPosition(msg.sender, amountWithdrawn.rawValue, tokensToRedeem.rawValue);
     }
 
     /****************************************
@@ -513,15 +521,21 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
 
-    function _deleteSponsorPosition(address sponsor) internal {
+    function _deleteSponsorPosition(address sponsor) internal returns (FixedPoint.Unsigned memory) {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
+        FixedPoint.Unsigned memory startingGlobalCollateral = _getCollateral(rawTotalPositionCollateral);
+
         // Remove the collateral and outstanding from the overall total position.
-        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(positionToLiquidate.rawCollateral);
+        FixedPoint.Unsigned memory remainingRawCollateral = positionToLiquidate.rawCollateral;
+        rawTotalPositionCollateral = rawTotalPositionCollateral.sub(remainingRawCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
         // Reset the sponsors position to have zero outstanding and collateral.
         delete positions[sponsor];
+
+        // Return fee-adjusted amount of collateral deleted from position.
+        return startingGlobalCollateral.sub(_getCollateral(rawTotalPositionCollateral));
     }
 
     function _getPositionData(address sponsor)

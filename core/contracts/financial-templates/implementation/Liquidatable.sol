@@ -406,10 +406,10 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         require(withdrawalAmount.isGreaterThan(0));
-        _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
-        collateralCurrency.safeTransfer(msg.sender, withdrawalAmount.rawValue);
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
-        emit LiquidationWithdrawn(msg.sender, withdrawalAmount.rawValue, liquidation.state);
+        emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
     }
 
     /**

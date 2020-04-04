@@ -156,8 +156,10 @@ async function runExport() {
   let tokensOutstanding;
   let sponsorTokens;
   let userTokens;
-  // Collateral actually owned by contract (i.e. queryable via `collateral.balanceOf(contract)`).
+  // Collateral owned (i.e. queryable via `collateral.balanceOf()`).
   let contractCollateral;
+  let sponsorCollateral;
+  let userCollateral;
   // Credited collateral net of fees (i.e. queryable via `contract.totalPositionCollateral()`).
   let adjustedCollateral;
   // Scaled up collateral used by contract to track fees (i.e. queryable via `contract.rawTotalPositionCollateral()`).
@@ -502,23 +504,37 @@ async function runExport() {
   // Overview:
   // - Withdraws perform the same intermediate calculations as deposits, but it subtracts the adjustedCollateral
   //   from the rawCollateral: rawCollateral -= adjustedCollateral, and adjustedCollateral = (collateral / cumulativeFeeMultiplier)
-  // - Therefore, rawCollateral can be greater by 1e-18 than it should be
-  // Example: We receive collateral from the contract for a withdraw.
+  // - Therefore, rawCollateral could be greater by 1e-18 than it should be
+  // - This would be a problem as the collateral owned by the contract could be lower than (totalPositionCollateral = rawCollateral * feeMultiplier),
+  //   so we counter this by removing from the contract the exact amount that `totalPositionCollateral` is decreased by.
+  // Example: User wants to withdraw 1e-18 collateral, in this test we'll show how `totalPositionCollateral` drifts higher and higher away from `collateral`.
   // - cumulativeFeeMultiplier = 0.3
   // - amountToWithdraw = 1e-18
   // - adjustedCollateral = (1e-18 / 0.3 = 3.33e-18 repeating), which gets floored to 3e-18
-  // - So, the sponsor receives 1e-18 collateral from the contract, and the contract debits 3e-18 rawCollateral from the sponsor
+  // - So, the sponsor expects to receive 1e-18 collateral from the contract, but the contract debits 3e-18 rawCollateral from the sponsor
   // - Recall that (rawCollateral * feeMultiplier) should be equal to collateral, but (3e-18 * 0.3 < 1e-18)
   //   and we can't represent 3.33e-18 repeating in FixedPoint (3.33e-18 repeating * 0.3 == 1e-18)
-  // - So rawCollateral is decreased by 3e-18, but ideally it should have been decreased by 3.33e-18 repeating
-  // - i.e. rawCollateral becomes 0.999999999999999997 but should be 0.9999999999999999967,
-  // - For this specific test, we will process several withdrawals in a row. The reason we do this is because
-  //   the precision loss after the first withdrawal is actually hidden by `getCollateral()` because `rawCollateral * feeMultiplier` is floored,
-  //   which cancels out the +1e-18 error. We can see the error after >= +1e-17 has accrued.
-  // Quantifying Errors ((actual - expected) / expected):
-  // - error in rawCollateral: (+1e-18)
+  // - So rawCollateral, which starts at 1, is decreased by 3e-18, but ideally it should have been decreased by 3.33e-18 repeating
+  // - i.e. rawCollateral becomes 0.999999999999999997 but should be 0.9999999999999999967 <-- this has 19 digits,
+  // - Let's check how much `totalPositionCollateral` is decreased by:
+  //        before the `withdraw()`, `totalPositionCollateral = 1 * 0.3 = 0.3`
+  //        after the `withdraw()`, `totalPositionCollateral = 0.999999999999999997 * 0.3 = 0.2999999999999999991` which truncates the last decimal
+  // - So, this is as expected: `totalPositionCollateral` is decreased by 1e-18, so we can transfer 1e-18 to the user. However, what has really happened is that
+  //   `totalPositionCollateral` is 0.1e-18 higher than `collateral`. Each withdraw increases this error, which only becomes visible after the tenth withdrawal.
+  // - Let's look at the second `withdraw()`
+  //        before the second `withdraw()`, `totalPositionCollateral = 0.299999999999999999`
+  //        after the second `withdraw()`, `totalPositionCollateral = 0.999999999999999994 * 0.3 = 0.2999999999999999982` which truncates the last decimal
+  // - Again, this is as expected: `totalPositionCollateral` is decreased by 1e-18, so we can transfer 1e-18 to the user
+  // - In fact, the error does not emerge until the tenth `withdraw`. After the ninth withdraw, `rawCollateral = 0.999999999999999973` (1e-18 + 9 * 3e-18),
+  //        before the tenth `withdraw()`, `totalPositionCollateral = 0.999999999999999973 * 0.3 = 0.2999999999999999919`
+  //        after the tenth `withdraw()`, `totalPositionCollateral = 0.9999999999999999970 * 0.3 = 0.2999999999999999910` which truncates the last decimal
+  // - So, this is unexpected: `totalPositionCollateral` will show no decrease. After each withdrawal, `totalPositionCollateral` 0.9e-18 instead of the full
+  //   1e-18, and 1e-18 of error appears after the tenth withdrawal.
+  // - The contract does not want to have `totalPositionCollateral` return a value larger than `collateral` actually owned by the contract, so
+  //   because it does not see that `totalPositionCollateral` has changed after the tenth withdrawal, it will return the user 0 after a withdraw.
+  //   This will reset the error back to 0..
 
-  console.group("Precision loss in rawCollateralAmount via withdraw()");
+  console.group("No precision loss in rawCollateralAmount via withdraw()");
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -563,6 +579,7 @@ async function runExport() {
   startingStoreCollateral = await collateral.balanceOf(store.address);
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
+  sponsorCollateral = await collateral.balanceOf(sponsor);
   adjustedCollateral = await emp.totalPositionCollateral();
   rawContractCollateral = await emp.rawTotalPositionCollateral();
 
@@ -574,6 +591,7 @@ async function runExport() {
 
   // Log results in a table.
   breakdown["Collateral owned by Contract"] = new CollateralBreakdown(contractCollateral);
+  breakdown["Collateral owned by Sponsor"] = new CollateralBreakdown(sponsorCollateral);
   breakdown["Collateral credited to Sponsors"] = new CollateralBreakdown(adjustedCollateral);
   breakdown["Contract raw collateral"] = new CollateralBreakdown(rawContractCollateral);
   breakdown["Cumulative Fee Multiplier"] = new CollateralBreakdown(actualFeeMultiplier);
@@ -595,11 +613,13 @@ async function runExport() {
   }
   actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
   contractCollateral = await collateral.balanceOf(emp.address);
+  sponsorCollateral = await collateral.balanceOf(sponsor);
   adjustedCollateral = await emp.totalPositionCollateral();
   rawContractCollateral = await emp.rawTotalPositionCollateral();
 
   // Log results in a table.
   breakdown["Collateral owned by Contract"] = new CollateralBreakdown(contractCollateral);
+  breakdown["Collateral owned by Sponsor"] = new CollateralBreakdown(sponsorCollateral);
   breakdown["Collateral credited to Sponsors"] = new CollateralBreakdown(adjustedCollateral);
   breakdown["Contract raw collateral"] = new CollateralBreakdown(rawContractCollateral);
   breakdown["Cumulative Fee Multiplier"] = new CollateralBreakdown(actualFeeMultiplier);
@@ -642,11 +662,10 @@ async function runExport() {
   //       therefore the proportion of collateral returned is less than the synthetic burned: `(C - c)/C < (T-S)/T`.
   //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user,
   //       while `(c / M)` raw collateral is removed from `RC`. `(c / M)` is floored and therefore
-  //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`.
-  // Error Amount:
-  // -1e-17 in `c` if `(S / T)` has -1e-18 error and is then multiplied by C's least significant decimal
-  // +1e-18 in `RC` for the same reason as in a withdraw.
-  // Here's an example of (1):
+  //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`. We intentionally
+  //       deal with this error in the raw collateral the same way we would with a `withdraw`, so we won't demonstrate
+  //       this error in this test.
+  // Example of (1):
   // - M = cumulativeFeeMultiplier = 1
   // - RC = rawCollateral = 9
   // - T = tokensOutstanding = 9
@@ -654,8 +673,10 @@ async function runExport() {
   // - (S / T) = 0.888...repeating and gets floored to 0.888...88
   // - (S / T) * (RC * M) = 7.999...92, instead of 8
   // - So, the user burns 8 synthetic but receives 7.999...92 collateral, representing 8e-18 less than they were expecting.
+  // Error Amount:
+  // - (-1e-17) in `c` if `(S / T)` has -1e-18 error and is then multiplied by C's least significant decimal
 
-  console.group("Precision loss in proportion of collateral redeemed via redeem()");
+  console.group("Precision loss in % of collateral redeemed via redeem()");
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -746,11 +767,10 @@ async function runExport() {
   //       therefore the proportion of collateral returned is less than the synthetic burned: `(C - c)/C < (T-S)/T`.
   //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user,
   //       while `(c / M)` raw collateral is removed from `RC`. `(c / M)` is floored and therefore
-  //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`.
-  // Error Amount:
-  // -1e-18 in `c` if `(S * E)` has -1e-18 error
-  // +1e-18 in `RC` for the same reason as in a withdraw.
-  // Here's an example of (1):
+  //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`. We intentionally
+  //       deal with this error in the raw collateral the same way we would with a `withdraw`, so we won't demonstrate
+  //       this error in this test.
+  // Example for (1):
   // - M = cumulativeFeeMultiplier = 1
   // - RC = rawCollateral = 1e-18
   // - T = tokensOutstanding = 1e-18
@@ -758,8 +778,10 @@ async function runExport() {
   // - E = settlement price (collateral per synthetic) = 0.5
   // - (S * E) = 0.5e-18, which gets floored to 0
   // - So, the user burns 1e-18 synthetic but receives 0 collateral, representing 0.5e-18 less than they were expecting.
+  // Error Amount:
+  // - (-1e-18) in `c` if `(S * E)` has -1e-18 error
 
-  console.group("Precision loss in proportion of collateral redeemed via settleExpired()");
+  console.group("Precision loss in % of collateral redeemed via settleExpired()");
 
   /**
    * @notice CREATE NEW EXPERIMENT
@@ -806,8 +828,11 @@ async function runExport() {
   breakdown = {};
   tokensOutstanding = await emp.totalTokensOutstanding();
   userTokens = await synthetic.balanceOf(other);
+  userCollateral = await collateral.balanceOf(other);
   sponsorTokens = await synthetic.balanceOf(sponsor);
+  sponsorCollateral = await collateral.balanceOf(sponsor);
   contractCollateral = await collateral.balanceOf(emp.address);
+
   // Advance time to expiry
   const expirationTime = (await emp.expirationTimestamp()).toString();
   await emp.setCurrentTime(expirationTime);
@@ -820,7 +845,9 @@ async function runExport() {
   breakdown["Collateral owned by Contract"] = new CollateralBreakdown(contractCollateral);
   breakdown["Total position tokens outstanding"] = new CollateralBreakdown(tokensOutstanding);
   breakdown["Non-Sponsor token balance"] = new CollateralBreakdown(userTokens);
+  breakdown["Non-Sponsor collateral balance"] = new CollateralBreakdown(userCollateral);
   breakdown["Sponsor token balance"] = new CollateralBreakdown(sponsorTokens);
+  breakdown["Sponsor collateral balance"] = new CollateralBreakdown(sponsorCollateral);
   console.group(
     `** Position expires, settlement price is ${fromWei(
       testConfig.settlementPrice
@@ -836,13 +863,17 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   tokensOutstanding = await emp.totalTokensOutstanding();
   userTokens = await synthetic.balanceOf(other);
+  userCollateral = await collateral.balanceOf(other);
   sponsorTokens = await synthetic.balanceOf(sponsor);
+  sponsorCollateral = await collateral.balanceOf(sponsor);
 
   // Log results in a table.
   breakdown["Collateral owned by Contract"] = new CollateralBreakdown(contractCollateral);
   breakdown["Total position tokens outstanding"] = new CollateralBreakdown(tokensOutstanding);
   breakdown["Non-Sponsor token balance"] = new CollateralBreakdown(userTokens);
+  breakdown["Non-Sponsor collateral balance"] = new CollateralBreakdown(userCollateral);
   breakdown["Sponsor token balance"] = new CollateralBreakdown(sponsorTokens);
+  breakdown["Sponsor collateral balance"] = new CollateralBreakdown(sponsorCollateral);
   console.group("** After a Non-Sponsor settles their full synthetic balance: **");
   console.table(breakdown);
   console.groupEnd();
@@ -854,13 +885,17 @@ async function runExport() {
   contractCollateral = await collateral.balanceOf(emp.address);
   tokensOutstanding = await emp.totalTokensOutstanding();
   userTokens = await synthetic.balanceOf(other);
+  userCollateral = await collateral.balanceOf(other);
   sponsorTokens = await synthetic.balanceOf(sponsor);
+  sponsorCollateral = await collateral.balanceOf(sponsor);
 
   // Log results in a table.
   breakdown["Collateral owned by Contract"] = new CollateralBreakdown(contractCollateral);
   breakdown["Total position tokens outstanding"] = new CollateralBreakdown(tokensOutstanding);
   breakdown["Non-Sponsor token balance"] = new CollateralBreakdown(userTokens);
+  breakdown["Non-Sponsor collateral balance"] = new CollateralBreakdown(userCollateral);
   breakdown["Sponsor token balance"] = new CollateralBreakdown(sponsorTokens);
+  breakdown["Sponsor collateral balance"] = new CollateralBreakdown(sponsorCollateral);
   console.group("** After the Sponsor settles their full synthetic balance: **");
   console.table(breakdown);
   console.groupEnd();
@@ -881,7 +916,7 @@ async function runExport() {
    * START LIQUIDATE()
    *
    *****************************************************************************/
-  console.group("Precision in rawCollateralAmount via createLiquidation()");
+  console.group("Precision in % of collateral removed via createLiquidation()");
   // Overview:
   // - `T` = Contract's synthetic tokens outstanding
   // - `RC` = raw collateral
@@ -894,10 +929,7 @@ async function runExport() {
   //   (2) Identically to a withdraw, `c` collateral is sent from the contract to the user,
   //       while `(c / M)` raw collateral is removed from `RC`. `(c / M)` is floored and therefore
   //       the contract loses more collateral than it debits from sponsors: `(RC - c/M) * M > (C - c)`.
-  // Error Amount:
-  // -1e-17 in `c` if `(S / T)` has -1e-18 error and is then multiplied by C's least significant decimal
-  // +1e-18 in `RC` for the same reason as in a withdraw.
-  // Example:
+  // Example of (1):
   // - T = 9
   // - RC = 9
   // - M = 1
@@ -909,6 +941,9 @@ async function runExport() {
   // - This means that the amount of collateral we are liquidating is (9 - 2.999...97) * 0.5 = 3.000...15 (this gets floored to 3.000...1).
   // - Therefore, the collateral remaining in the contract according to `getCollateral` is now 6.000..3 - 3.000..1 = 3.00...2.
   // - The third liquidation of 3 synthetic tokens should result in a "ratio" of 1.0, meaning that all of the remaining 3.000...2 collateral is liquidated.
+  // Error Amount:
+  // -1e-17 in `c` if `(S / T)` has -1e-18 error and is then multiplied by C's least significant decimal
+  // +1e-18 in `RC` for the same reason as in a withdraw.
 
   /**
    * @notice CREATE NEW EXPERIMENT
