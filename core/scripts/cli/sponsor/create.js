@@ -36,7 +36,7 @@ const create = async (web3, artifacts, emp) => {
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
   const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
   const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
-  console.log("You'll need", fromWei(collateralNeeded), isWeth ? "ETH" : collateralSymbol, "to borrow tokens");
+  console.log("You'll need", fromWei(collateralNeeded), isWeth ? "ETH" : collateralSymbol, "to mint tokens");
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
@@ -44,18 +44,27 @@ const create = async (web3, artifacts, emp) => {
   });
 
   if (confirmation["confirm"]) {
+    let totalTransactions = 2;
+    let transactionNum = 1;
     if (isWeth) {
-      await wrapToWeth(web3, artifacts, emp, collateralNeeded);
+      totalTransactions = 3;
+      await wrapToWeth(web3, artifacts, emp, collateralNeeded, transactionNum, totalTransactions);
+      transactionNum++;
     }
     await submitTransaction(
       web3,
       async () => await collateralCurrency.approve(emp.address, collateralNeeded),
-      "Approving " + collateralSymbol + " transfer"
+      "Approving " + collateralSymbol + " transfer",
+      transactionNum,
+      totalTransactions
     );
+    transactionNum++;
     await submitTransaction(
       web3,
       async () => await emp.create({ rawValue: collateralNeeded }, { rawValue: tokens.toString() }),
-      "Borrowing more tokens"
+      "Minting more tokens",
+      transactionNum,
+      totalTransactions
     );
   }
 };

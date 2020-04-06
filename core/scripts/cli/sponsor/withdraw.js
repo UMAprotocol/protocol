@@ -37,9 +37,18 @@ const withdraw = async (web3, artifacts, emp) => {
       name: "confirm"
     });
     if (confirmation["confirm"]) {
-      await submitTransaction(web3, async () => await emp.withdrawPassedRequest(), "Withdrawing " + collateralSymbol);
+      let totalTransactions = isWeth ? 2 : 1;
+      let transactionNum = 1;
+      await submitTransaction(
+        web3,
+        async () => await emp.withdrawPassedRequest(),
+        "Withdrawing " + collateralSymbol,
+        transactionNum,
+        totalTransactions
+      );
+      transactionNum++;
       if (isWeth) {
-        await unwrapToEth(web3, artifacts, emp, withdrawRequestAmount);
+        await unwrapToEth(web3, artifacts, emp, withdrawRequestAmount, transactionNum, totalTransactions);
       }
     }
   };
@@ -156,6 +165,7 @@ const withdraw = async (web3, artifacts, emp) => {
     const excessCollateral = toBN(collateral).sub(minCollateralAboveGcr);
     const maxInstantWithdrawal = excessCollateral.gt(toBN(0)) ? excessCollateral : toBN(0);
     console.log("Maximum amount you can withdraw instantly:", fromWei(maxInstantWithdrawal));
+    console.log("To withdraw more than this amount, we will issue a withdrawal request first");
 
     // Prompt user to enter withdrawal amount
     const input = await inquirer.prompt({
@@ -176,13 +186,18 @@ const withdraw = async (web3, artifacts, emp) => {
         name: "confirm"
       });
       if (confirmation["confirm"]) {
+        let totalTransactions = isWeth ? 2 : 1;
+        let transactionNum = 1;
         await submitTransaction(
           web3,
           async () => await emp.withdraw({ rawValue: tokensToWithdraw.toString() }),
-          "Withdrawing " + collateralSymbol
+          "Withdrawing " + collateralSymbol,
+          transactionNum,
+          totalTransactions
         );
+        transactionNum++;
         if (isWeth) {
-          await unwrapToEth(web3, artifacts, emp, tokensToWithdraw.toString());
+          await unwrapToEth(web3, artifacts, emp, tokensToWithdraw.toString(), transactionNum, totalTransactions);
         }
       }
     }

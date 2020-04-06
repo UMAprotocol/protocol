@@ -43,18 +43,26 @@ const redeem = async (web3, artifacts, emp) => {
     name: "confirm"
   });
   if (confirmation["confirm"]) {
+    const totalTransactions = isWeth ? 3 : 2;
+    let transactionNum = 1;
     await submitTransaction(
       web3,
       async () => await token.approve(emp.address, tokensToRedeem),
-      "Approving synthetic token transfer"
+      "Approving synthetic token transfer",
+      transactionNum,
+      totalTransactions
     );
+    transactionNum++;
     await submitTransaction(
       web3,
       async () => await emp.redeem({ rawValue: tokensToRedeem.toString() }),
-      "Repaying tokens"
+      "Repaying tokens",
+      transactionNum,
+      totalTransactions
     );
+    transactionNum++;
     if (isWeth) {
-      await unwrapToEth(web3, artifacts, emp, expectedCollateral);
+      await unwrapToEth(web3, artifacts, emp, expectedCollateral, transactionNum, totalTransactions);
     }
   }
 };
