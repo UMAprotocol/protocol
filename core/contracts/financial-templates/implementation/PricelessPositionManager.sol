@@ -195,7 +195,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * collateralization ratio. In that case, use `requestWithdrawawal`.
      * @param collateralAmount is the amount of collateral to withdraw
      */
-    function withdraw(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
+    function withdraw(FixedPoint.Unsigned memory collateralAmount)
+        public
+        onlyPreExpiration()
+        fees()
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
+    {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
@@ -204,7 +209,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // We elect to withdraw the amount that the global collateral is decreased by,
         // rather than the individual position's collateral, because we need to maintain the invariant that
         // the global collateral is always <= the collateral owned by the contract to avoid reverts on withdrawals.
-        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralAmount);
+        amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralAmount);
 
         // Move collateral currency from contract to sender.
         // Note that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
@@ -241,7 +246,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
      */
     // TODO: Decide whether to fold this functionality into withdraw() method above.
-    function withdrawPassedRequest() external onlyPreExpiration() fees() {
+    function withdrawPassedRequest()
+        external
+        onlyPreExpiration()
+        fees()
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
+    {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp <= getCurrentTime());
 
@@ -252,7 +262,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
 
         _removeCollateral(positionData.rawCollateral, amountToWithdraw);
-        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
+        amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
 
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
