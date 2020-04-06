@@ -247,6 +247,9 @@ contract("PricelessPositionManager", function(accounts) {
         ev.tokenAmount == redeemRemainingTokens.toString()
       );
     });
+    truffleAssert.eventEmitted(redemptionResult, "EndedSponsor", ev => {
+      return ev.sponsor == sponsor;
+    });
 
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
@@ -697,7 +700,10 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(toWei("0.02")));
 
     // Pay the fees, then check the collateral and the store balance.
-    await pricelessPositionManager.payFees();
+    const payFeesResult = await pricelessPositionManager.payFees();
+    truffleAssert.eventEmitted(payFeesResult, "RegularFeesPaid", ev => {
+      return ev.regularFee.toString() === toWei("0.02") && ev.lateFee.toString() === "0";
+    });
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
@@ -743,9 +749,12 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
-    await pricelessPositionManager.expire({ from: other });
+    const expirationResult = await pricelessPositionManager.expire({ from: other });
 
     // Check that final fees were paid correctly and position's locked collateral was decremented
+    truffleAssert.eventEmitted(expirationResult, "FinalFeesPaid", ev => {
+      return ev.amount.toString() === finalFeePaid.toString();
+    });
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());

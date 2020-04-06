@@ -86,6 +86,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     event RequestWithdrawalCanceled(address indexed sponsor, uint indexed collateralAmount);
     event PositionCreated(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
     event NewSponsor(address indexed sponsor);
+    event EndedSponsor(address indexed sponsor);
     event Redeem(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
     event ContractExpired(address indexed caller);
     event SettleExpiredPosition(address indexed caller, uint indexed collateralReturned, uint indexed tokensBurned);
@@ -533,6 +534,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         // Reset the sponsors position to have zero outstanding and collateral.
         delete positions[sponsor];
+
+        emit EndedSponsor(sponsor);
 
         // Return fee-adjusted amount of collateral deleted from position.
         return startingGlobalCollateral.sub(_getCollateral(rawTotalPositionCollateral));

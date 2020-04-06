@@ -43,6 +43,13 @@ abstract contract FeePayer is Testable {
     FixedPoint.Unsigned public cumulativeFeeMultiplier;
 
     /****************************************
+     *                EVENTS                *
+     ****************************************/
+
+    event RegularFeesPaid(uint indexed regularFee, uint indexed lateFee);
+    event FinalFeesPaid(uint indexed amount);
+
+    /****************************************
      *              MODIFIERS               *
      ****************************************/
 
@@ -101,6 +108,8 @@ abstract contract FeePayer is Testable {
             collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
 
+        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
+
         totalPaid = regularFee.add(latePenalty);
         FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
         cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
@@ -131,6 +140,8 @@ abstract contract FeePayer is Testable {
             FixedPoint.Unsigned memory effectiveFee = amount.divCeil(pfc());
             cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
         }
+
+        emit FinalFeesPaid(amount.rawValue);
 
         StoreInterface store = _getStore();
         collateralCurrency.safeIncreaseAllowance(address(store), amount.rawValue);
