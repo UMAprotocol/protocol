@@ -2,7 +2,7 @@
 
 ## What is a price identifier?
 
-A price identifier is a natural language descriptor of the reference index determining how much collateral is needed for a token sponsor to be properly collateralized. 
+A [price identifier](../../synthetic_tokens/glossary.md) is a natural language descriptor of the reference index determining how much collateral is needed for a token sponsor to be properly collateralized. 
 Because DVM voters need to be able to vote on the value of this price identifier when disputes are raised, the DVM keeps a list of approved price identifiers. 
 
 An example of a price identifier is “GOLD_APR20”. 
