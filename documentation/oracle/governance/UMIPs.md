@@ -27,7 +27,9 @@ A successful UMIP will be in "Last Call" status for a reasonable period of time 
 
 ## Approved
 A UMIP that successfully passes the "Last Call" will be put to UMA tokenholder vote. 
-If tokenholders approve the proposal, the live protocol will be updated to reflect them.
+
+## Final
+If tokenholders approve the proposal, the live protocol will be updated to reflect them. The UMIP is then considered to be in the "Final" state. 
 
 ## Abandoned
 If at any point during the UMIP Finalization Process, a UMIP is abandoned, it will be labeled as such. 
