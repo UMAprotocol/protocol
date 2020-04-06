@@ -209,7 +209,12 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor })));
     await tokenCurrency.approve(pricelessPositionManager.address, redeemTokens, { from: sponsor });
     sponsorInitialBalance = await collateral.balanceOf(sponsor);
-    let redemptionResult = await pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor });
+
+    // Check redeem return value and event.
+    const redeem = pricelessPositionManager.redeem;
+    const redeemedCollateral = await redeem.call({ rawValue: redeemTokens }, { from: sponsor });
+    assert.equal(redeemedCollateral.toString(), expectedSponsorCollateral.toString());
+    let redemptionResult = await redeem({ rawValue: redeemTokens }, { from: sponsor });
     truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
       return (
         ev.sponsor == sponsor &&
@@ -612,9 +617,6 @@ contract("PricelessPositionManager", function(accounts) {
     await tokenCurrency.approve(pricelessPositionManager.address, sponsorInitialSynthetic, {
       from: sponsor
     });
-    await pricelessPositionManager.settleExpired({ from: sponsor });
-    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
-    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
 
     // The token Sponsor should gain the value of their synthetics in underlying
     // + their excess collateral from the over collateralization in their position
@@ -625,6 +627,17 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
       expectedSponsorCollateralSynthetic
     );
+
+    // Check return value.
+    const settleExpired = pricelessPositionManager.settleExpired;
+    const redeemedAmount = await settleExpired.call({ from: sponsor });
+    assert.equal(redeemedAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
+
+    // Execute the settlement and check balances.
+    await settleExpired({ from: sponsor });
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
+    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
       expectedTotalSponsorCollateralReturned

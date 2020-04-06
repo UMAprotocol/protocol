@@ -320,13 +320,13 @@ contract Liquidatable is PricelessPositionManager {
      * Once all collateral is withdrawn, delete the liquidation data.
      * @param liquidationId uniquely identifies the sponsor's liquidation.
      * @param sponsor address of the sponsor associated with the liquidation.
-     * @return withdrawalAmount the total amount of underlying returned from the liquidation.
+     * @return amountWithdrawn the total amount of underlying returned from the liquidation.
      */
     function withdrawLiquidation(uint liquidationId, address sponsor)
         public
         withdrawable(liquidationId, sponsor)
         fees()
-        returns (FixedPoint.Unsigned memory withdrawalAmount)
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require(
@@ -356,6 +356,7 @@ contract Liquidatable is PricelessPositionManager {
         // Based on the state, different parties of a liquidation can withdraw different amounts.
         // Once a caller has been paid their address deleted from the struct.
         // This prevents them from being paid multiple from times the same liquidation.
+        FixedPoint.Unsigned memory withdrawalAmount;
         if (liquidation.state == Status.DisputeSucceeded) {
             // If the dispute is successful then all three users can withdraw from the contract.
             if (msg.sender == liquidation.disputer) {
@@ -406,7 +407,7 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         require(withdrawalAmount.isGreaterThan(0));
-        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
+        amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);

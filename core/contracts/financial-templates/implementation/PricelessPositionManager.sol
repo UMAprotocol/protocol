@@ -192,8 +192,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` from the sponsor's position to the sponsor.
      * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global
-     * collateralization ratio. In that case, use `requestWithdrawawal`.
-     * @param collateralAmount is the amount of collateral to withdraw
+     * collateralization ratio. In that case, use `requestWithdrawawal`. Might not withdraw the full requested
+     * amount in order to account for precision loss.
+     * @param collateralAmount is the amount of collateral to withdraw.
+     * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function withdraw(FixedPoint.Unsigned memory collateralAmount)
         public
@@ -244,6 +246,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
+     * @dev Might not withdraw the full requested amount in order to account for precision loss.
+     * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     // TODO: Decide whether to fold this functionality into withdraw() method above.
     function withdrawPassedRequest()
@@ -323,10 +327,17 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
-     * @dev Can only be called by a token sponsor.
+     * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
+     * in order to account for precision loss.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
+     * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function redeem(FixedPoint.Unsigned memory numTokens) public onlyPreExpiration() fees() {
+    function redeem(FixedPoint.Unsigned memory numTokens)
+        public
+        onlyPreExpiration()
+        fees()
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
+    {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
@@ -335,8 +346,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
             _getCollateral(positionData.rawCollateral)
         );
-
-        FixedPoint.Unsigned memory amountWithdrawn;
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
@@ -365,9 +374,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice After a contract has passed expiry all token holders can redeem their tokens for
      * underlying at the prevailing price defined by the DVM from the `expire` function.
      * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional
-     * amount of `collateralCurrency`.
+     * amount of `collateralCurrency`. Might not redeem the full proportional amount of collateral
+     * in order to account for precision loss.
+     * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function settleExpired() external onlyPostExpiration() fees() {
+    function settleExpired() external onlyPostExpiration() fees() returns (FixedPoint.Unsigned memory amountWithdrawn) {
         // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
         require(contractState != ContractState.Open);
 
@@ -410,7 +421,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         );
 
         // Decrement total contract collateral and outstanding debt.
-        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
+        amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
         // Transfer tokens & collateral and burn the redeemed tokens.
