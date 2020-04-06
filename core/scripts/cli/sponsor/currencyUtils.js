@@ -1,17 +1,29 @@
 const { submitTransaction } = require("./transactionUtils");
 
-const wrapToWeth = async (web3, artifacts, emp, amount) => {
+const wrapToWeth = async (web3, artifacts, emp, amount, transactionNum, totalTransactions) => {
   const WETH9 = artifacts.require("WETH9");
   const weth = await WETH9.deployed();
 
-  await submitTransaction(web3, async () => await weth.deposit({ value: amount.toString() }), "Wrapping ETH to WETH");
+  await submitTransaction(
+    web3,
+    async () => await weth.deposit({ value: amount.toString() }),
+    "Wrapping ETH to WETH",
+    transactionNum,
+    totalTransactions
+  );
 };
 
-const unwrapToEth = async (web3, artifacts, emp, amount) => {
+const unwrapToEth = async (web3, artifacts, emp, amount, transactionNum, totalTransactions) => {
   const WETH9 = artifacts.require("WETH9");
   const weth = await WETH9.deployed();
 
-  await submitTransaction(web3, async () => await weth.withdraw(amount.toString()), "Unwrapping WETH to ETH");
+  await submitTransaction(
+    web3,
+    async () => await weth.withdraw(amount.toString()),
+    "Unwrapping WETH to ETH",
+    transactionNum,
+    totalTransactions
+  );
 };
 
 const getIsWeth = async (web3, artifacts, collateralCurrency) => {

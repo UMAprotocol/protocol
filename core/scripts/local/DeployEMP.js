@@ -34,7 +34,10 @@ let expiringMultiPartyCreator;
  /*****************************************************/
 const deployEMP = async callback => {
   try {
-    const deployer = (await web3.eth.getAccounts())[0];
+    const accounts = await web3.eth.getAccounts();
+    const deployer = accounts[0];
+    // Create position with a non-default account so the default CLI user can go through the new sponsor experience.
+    const firstSponsor = accounts[1];
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
     // Use WETH as the collateral token.
@@ -67,24 +70,25 @@ const deployEMP = async callback => {
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("0.01") }
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
     emp = await ExpiringMultiParty.at(_emp);
 
     // To create new tokens or deposit new collateral, must approve EMP to spend collateral.
-    await collateralToken.approve(emp.address, toWei("1000000"), { from: deployer });
+    await collateralToken.approve(emp.address, toWei("1000000"), { from: firstSponsor });
     // To redeem tokens, must approve EMP to spend synthetic tokens.
     syntheticToken = await Token.at(await emp.tokenCurrency());
-    await syntheticToken.approve(emp.address, toWei("100000000"), { from: deployer });
+    await syntheticToken.approve(emp.address, toWei("100000000"), { from: firstSponsor });
 
     // Create one small position so that you can create new positions from the CLI
     // (currently, it does not support creating the first position for the EMP).
     // Collateralize this at the minimum CR allowed.
     // Acquire 1000 of the collateralToken by depositing 1000 ETH.
-    await collateralToken.deposit({ value: toWei("1000") });
-    await emp.create({ rawValue: toWei("1.5") }, { rawValue: toWei("1") });
+    await collateralToken.deposit({ value: toWei("1000"), from: firstSponsor });
+    await emp.create({ rawValue: toWei("1.5") }, { rawValue: toWei("1") }, { from: firstSponsor });
 
     // Done!
     console.log(`Created a new EMP @${emp.address} with the configuration:`);
