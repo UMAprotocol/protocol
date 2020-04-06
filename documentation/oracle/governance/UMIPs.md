@@ -41,7 +41,7 @@ A UMIP that is fundamentally broken or rejected by the core team will not be imp
 - UMIP <#> 
 - UMIP title: <title>
 - Author (name or username and email)
-- Status: <Draft, Last Call, Approved, Abandoned, Rejected> 
+- Status: <Draft, Last Call, Approved, Final, Abandoned, Rejected> 
 - Created: <date created on>
 
 ## Summary (2-5 sentences)
@@ -64,4 +64,4 @@ An implementation must be completed before any UMIP proceeds to “Last Call” 
 
 ## Security considerations
 All UMIPs must include a discussion of the security implications/considerations relevant to the proposed change as well as proposed mitigations. 
-A UMIP cannot proceed to “Approved” status without a sufficient security review from the core team. 
+A UMIP cannot proceed to “Final” status without a sufficient security review from the core team. 
