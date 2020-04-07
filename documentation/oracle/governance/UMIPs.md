@@ -11,7 +11,7 @@ UMIPs are a convenient way to track the progress of an implementation.
 
 # What is the lifecycle of a UMIP? 
 
-A successful UMIP will move along the following stages: Draft -> Last Call -> Approved -> Final. 
+A successful UMIP will move along the following stages: Draft ⟶ Last Call ⟶ Approved ⟶ Final. 
 Unsuccessful states are also possible: Abandoned and Rejected.
 
 ## Draft
@@ -22,11 +22,13 @@ Every UMIP author is responsible for facilitating conversations and building com
 ## Last Call
 A UMIP that is done with its initial iteration and ready for review by a wide audience. 
 If upon review, there is a material change or substantial unaddressed complaints, the UMIP will revert to "Draft". 
-If the UMIP requires code changes, the core devs must approve the UMIP and the changes must be merged into the protocol repository. 
+If the UMIP requires code changes, the core devs must review the UMIP. 
 A successful UMIP will be in "Last Call" status for a reasonable period of time for comments and be merged (if necessary) before moving to a tokenholder vote. 
 
 ## Approved
 A UMIP that successfully passes the "Last Call" will be put to UMA tokenholder vote. 
+If tokenholders approve the proposal, the live protocol will be updated to reflect it. 
+At this time, any code changes (if relevant) should be merged into the core protocol repository so that the core protocol repository always reflects the live code that is running.
 
 ## Final
 If tokenholders approve the proposal, the live protocol will be updated to reflect them. The UMIP is then considered to be in the "Final" state. 
@@ -36,7 +38,7 @@ If at any point during the UMIP Finalization Process, a UMIP is abandoned, it wi
 Grounds for abandonment include a lack of interest by the original author(s), or it may not be a preferred option anymore.
 
 ## Rejected
-A UMIP that is fundamentally broken or rejected by the core team will not be implemented. 
+If tokenholders do not approve a proposal, or the UMIP is fundamentally broken or rejected by the core team, it will not be implemented. 
 
 # What are the components of a UMIP?
 ## Headers
