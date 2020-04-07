@@ -11,7 +11,7 @@ UMIPs are a convenient way to track the progress of an implementation.
 
 # What is the lifecycle of a UMIP? 
 
-A successful UMIP will move along the following stages: Draft -> Last Call -> Approved -> Final. 
+A successful UMIP will move along the following stages: Draft ⟶ Last Call ⟶ Approved ⟶ Final. 
 Unsuccessful states are also possible: Abandoned and Rejected.
 
 ## Draft
