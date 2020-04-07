@@ -36,7 +36,7 @@ If at any point during the UMIP Finalization Process, a UMIP is abandoned, it wi
 Grounds for abandonment include a lack of interest by the original author(s), or it may not be a preferred option anymore.
 
 ## Rejected
-A UMIP that is fundamentally broken or rejected by the core team will not be implemented. 
+If tokenholders do not approve a proposal, or the UMIP is fundamentally broken or rejected by the core team, it will not be implemented. 
 
 # What are the components of a UMIP?
 ## Headers
