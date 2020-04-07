@@ -296,8 +296,10 @@ contract("Liquidator.js", function(accounts) {
 
     // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
     await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+    // No need to force update the `empClient` here since we are not interested in detecting the `liquidatorBot`'s new position,
+    // but now when we try to liquidate the position the liquidation will go through because the bot will have the requisite balance.
 
-    // No transaction should be sent, so this should not throw.
+    // Can now liquidate the position.
     await liquidator.queryAndLiquidate(time => liquidationPrice);
 
     // The liquidation should have gone through.

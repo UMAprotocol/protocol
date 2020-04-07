@@ -22,7 +22,7 @@ class Disputer {
   // If a client has recently updated then it will do nothing.
   update = async () => {
     await this.empClient.update();
-    await this.gasEstimator._update();
+    await this.gasEstimator.update();
   };
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
