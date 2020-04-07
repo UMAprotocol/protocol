@@ -19,7 +19,10 @@ class Liquidator {
   }
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
-  queryAndLiquidate = async priceFeed => {
+  queryAndLiquidate = async priceFunction => {
+    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const priceFeed = priceFunction(contractTime);
+
     Logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
