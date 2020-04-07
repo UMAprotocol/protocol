@@ -22,7 +22,7 @@ Every UMIP author is responsible for facilitating conversations and building com
 ## Last Call
 A UMIP that is done with its initial iteration and ready for review by a wide audience. 
 If upon review, there is a material change or substantial unaddressed complaints, the UMIP will revert to "Draft". 
-If the UMIP requires code changes, the core devs must approve the UMIP and the changes must be merged into the protocol repository. 
+If the UMIP requires code changes, the core devs must review the UMIP. 
 A successful UMIP will be in "Last Call" status for a reasonable period of time for comments and be merged (if necessary) before moving to a tokenholder vote. 
 
 ## Approved
