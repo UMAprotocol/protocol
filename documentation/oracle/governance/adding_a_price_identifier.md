@@ -10,18 +10,18 @@ This price identifier would be documented in the UMIP that was approved by the U
 That UMIP would contain more information about how to calculate the price identifier. 
 
 ## Who controls the list of approved price identifiers?
-For each deployment of the DVM, the list of approved price identifiers is controlled by the ```IdentifierWhitelist``` contract.
-In local and testnet deployments of the DVM, ```IdentifierWhitelist``` is controlled by a single private key. 
-In the mainnet deployment of the DVM, ```IdentifierWhitelist``` is controlled by a decentralized governance process, as described below.
+For each deployment of the DVM, the list of approved price identifiers is controlled by the `IdentifierWhitelist` contract.
+In local and testnet deployments of the DVM, `IdentifierWhitelist` is controlled by a single private key. 
+In the mainnet deployment of the DVM, `IdentifierWhitelist` is controlled by a decentralized governance process, as described below.
 
 ## Adding a price identifier to a local deployment
-In a local deployment, your private key controls the ```IdentifierWhitelist``` contract. 
-You can therefore add any price identifier desired using the ```IdentifierWhitelist.addSupportedIdentifier```, as described in step 5 of this [tutorial](../synthetic_tokens/tutorials/creating_from_truffle.md). 
+In a local deployment, your private key controls the `IdentifierWhitelist` contract. 
+You can therefore add any price identifier desired using the `IdentifierWhitelist.addSupportedIdentifier`, as described in step 5 of this [tutorial](../synthetic_tokens/tutorials/creating_from_truffle.md). 
 
 ## Adding a price identifier to a testnet deployment
 
 ## Adding a price identifier to the mainnet deployment
-The ```IdentifierWhitelist``` contract in the mainnet deployment of the UMA DVM is controlled by a decentralized governance process. 
+The `IdentifierWhitelist` contract in the mainnet deployment of the UMA DVM is controlled by a decentralized governance process. 
 To add a new price identifier, UMA token holders must vote and approve the identifier. 
 
 - Step 1: Discuss
@@ -45,4 +45,4 @@ UMA voters will vote on the proposed transaction. Each UMA token represents one 
 - Step 4: Execute Transaction
 
 Once the price identifier is approved, anyone can tell the governor contract to execute the proposed transaction. 
-The governor contract will then execute the transaction, approving the identifier in ```IdentifierWhitelist```.
+The governor contract will then execute the transaction, approving the identifier in `IdentifierWhitelist`.
