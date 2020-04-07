@@ -205,7 +205,7 @@ contract("Liquidatable", function(accounts) {
       );
     });
     it("Returns correct ID", async () => {
-      const liquidationId = await liquidationContract.createLiquidation.call(
+      const { liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
@@ -266,7 +266,7 @@ contract("Liquidatable", function(accounts) {
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
 
       // Create second liquidation
-      const liquidationId = await liquidationContract.createLiquidation.call(
+      const { liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
@@ -300,7 +300,7 @@ contract("Liquidatable", function(accounts) {
       const expectedRemainingWithdrawalRequest = withdrawalAmount.sub(withdrawalAmount.divn(5));
 
       // Create partial liquidation.
-      let liquidationId = await liquidationContract.createLiquidation.call(
+      let { liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
@@ -331,12 +331,12 @@ contract("Liquidatable", function(accounts) {
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
       );
-      liquidationId = await liquidationContract.createLiquidation.call(
+      ({ liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
-      );
+      ));
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: pricePerToken.toString() },
@@ -776,7 +776,7 @@ contract("Liquidatable", function(accounts) {
         await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
 
         // Create another liquidation
-        const liquidationId = await liquidationContract.createLiquidation.call(
+        const { liquidationId } = await liquidationContract.createLiquidation.call(
           sponsor,
           { rawValue: pricePerToken.toString() },
           { rawValue: amountOfSynthetic.toString() },
