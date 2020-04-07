@@ -173,6 +173,7 @@ contract("Liquidator.js", function(accounts) {
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     const liquidationLiveness = 1000;
     await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+    await empClient.forceUpdate();
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -204,10 +205,9 @@ contract("Liquidator.js", function(accounts) {
     const liquidationPrice = toWei("1.3");
     await liquidator.queryAndLiquidate(time => liquidationPrice);
 
-    // Update the EMP client to detect new liquidations, and then
-    // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update();
+    // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
+    await empClient.forceUpdate();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
@@ -250,10 +250,9 @@ contract("Liquidator.js", function(accounts) {
     const liquidationPrice = toWei("1.3");
     await liquidator.queryAndLiquidate(time => liquidationPrice);
 
-    // Update the EMP client to detect new liquidations, and then
-    // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update();
+    // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
+    await empClient.forceUpdate();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
