@@ -18,6 +18,13 @@ class Disputer {
     this.web3 = this.empClient.web3;
   }
 
+  // Update the client and gasEstimator clients.
+  // If a client has recently updated then it will do nothing.
+  update = async () => {
+    await this.empClient.update();
+    await this.gasEstimator._update();
+  };
+
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   queryAndDispute = async priceFunction => {
     Logger.debug({
@@ -25,12 +32,7 @@ class Disputer {
       message: "Checking for any disputable liquidations"
     });
 
-    // Update the client to get the latest liquidation information.
-    await this.empClient._update();
-
-    // Update the gasEstimator to get the latest gas price data.
-    // If the client has a data point in the last 60 seconds returns immediately.
-    await this.gasEstimator._update();
+    await this.update();
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
@@ -103,6 +105,9 @@ class Disputer {
         disputeResult: logResult
       });
     }
+
+    // Update the EMP Client since we disputed liquidations.
+    await this.empClient.forceUpdate();
   };
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
@@ -112,12 +117,7 @@ class Disputer {
       message: "Checking for disputed liquidations that may have resolved"
     });
 
-    // Update the client to get the latest information.
-    await this.empClient._update();
-
-    // Update the gasEstimator to get the latest gas price data.
-    // If the client has a data point in the last 60 seconds returns immediately.
-    await this.gasEstimator._update();
+    await this.update();
 
     // Can only derive rewards from disputed liquidations that this account disputed.
     const disputedLiquidations = this.empClient
@@ -188,6 +188,9 @@ class Disputer {
         liquidationResult: logResult
       });
     }
+
+    // Update the EMP Client since we withdrew rewards.
+    await this.empClient.forceUpdate();
   };
 }
 
