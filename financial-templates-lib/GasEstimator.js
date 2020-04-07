@@ -42,18 +42,6 @@ class GasEstimator {
     }
   };
 
-  // Force call of _update.
-  forceUpdate = async () => {
-    const currentTime = Math.floor(Date.now() / 1000);
-    await this._update();
-    this.lastUpdateTimestamp = currentTime;
-    Logger.debug({
-      at: "GasEstimator",
-      message: "Gas estimator force updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
-    });
-  };
-
   _update = async () => {
     let returnedPrice = await this.getPrice(url);
     this.lastFastPriceGwei = returnedPrice;
