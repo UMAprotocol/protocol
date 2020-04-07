@@ -102,7 +102,8 @@ async function createTestEnvironment() {
     collateralRequirement: { rawValue: collateralRequirement },
     disputeBondPct: { rawValue: disputeBondPct },
     sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct },
-    disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct }
+    disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct },
+    minSponsorTokens: { rawValue: "0" }
   };
   emp = await ExpiringMultiParty.new(constructorParams, { from: contractDeployer });
   synthetic = await SyntheticToken.at(await emp.tokenCurrency());
@@ -525,14 +526,17 @@ async function runExport() {
   //        before the second `withdraw()`, `totalPositionCollateral = 0.299999999999999999`
   //        after the second `withdraw()`, `totalPositionCollateral = 0.999999999999999994 * 0.3 = 0.2999999999999999982` which truncates the last decimal
   // - Again, this is as expected: `totalPositionCollateral` is decreased by 1e-18, so we can transfer 1e-18 to the user
-  // - In fact, the error does not emerge until the tenth `withdraw`. After the ninth withdraw, `rawCollateral = 0.999999999999999973` (1e-18 + 9 * 3e-18),
+  // - In fact, the error does not emerge until the tenth `withdraw`. After the ninth withdraw, `rawCollateral = 0.999999999999999973` (1 - 9 * 3e-18),
   //        before the tenth `withdraw()`, `totalPositionCollateral = 0.999999999999999973 * 0.3 = 0.2999999999999999919`
   //        after the tenth `withdraw()`, `totalPositionCollateral = 0.9999999999999999970 * 0.3 = 0.2999999999999999910` which truncates the last decimal
-  // - So, this is unexpected: `totalPositionCollateral` will show no decrease. After each withdrawal, `totalPositionCollateral` 0.9e-18 instead of the full
+  // - So, this is unexpected: `totalPositionCollateral` will show no decrease. After each withdrawal, `totalPositionCollateral` decreases by 0.9e-18 instead of the full
   //   1e-18, and 1e-18 of error appears after the tenth withdrawal.
   // - The contract does not want to have `totalPositionCollateral` return a value larger than `collateral` actually owned by the contract, so
   //   because it does not see that `totalPositionCollateral` has changed after the tenth withdrawal, it will return the user 0 after a withdraw.
   //   This will reset the error back to 0..
+  // - If the contract instead withdrew 1e-18 collateral to the user, the contract would own `0.299999999999999990` collateral but its `totalPositionCollateral` would be
+  //   `0.299999999999999991`. This could be a problem for example if the user then tried to `redeem` 100% of the outstanding tokens. The contract
+  //   would attempt to transfer `0.299999999999999991` collateral but the contract would revert due to insufficient balance.
 
   console.group("No precision loss in rawCollateralAmount via withdraw()");
 
@@ -624,6 +628,28 @@ async function runExport() {
   breakdown["Contract raw collateral"] = new CollateralBreakdown(rawContractCollateral);
   breakdown["Cumulative Fee Multiplier"] = new CollateralBreakdown(actualFeeMultiplier);
   console.group(`** After 10 Withdrawals of ${fromWei(testConfig.amountToWithdraw)} collateral: **`);
+  console.table(breakdown);
+  console.groupEnd();
+
+  /**
+   * @notice CAN REDEEM 100% OF TOKENS
+   * !!This would redeem would revert if you change the amount that `withdrawPassedRequest` transfers via `collateralCurrency.safeTransfer`
+   * from `amountWithdrawn` to `amountToWithdraw`!!
+   */
+  await synthetic.approve(emp.address, toWei("100"), { from: sponsor });
+  await emp.redeem({ rawValue: toWei("100") }, { from: sponsor });
+  actualFeeMultiplier = await emp.cumulativeFeeMultiplier();
+  contractCollateral = await collateral.balanceOf(emp.address);
+  sponsorCollateral = await collateral.balanceOf(sponsor);
+  adjustedCollateral = await emp.totalPositionCollateral();
+  rawContractCollateral = await emp.rawTotalPositionCollateral();
+  // Log results in a table.
+  breakdown["Collateral owned by Contract"] = new CollateralBreakdown(contractCollateral);
+  breakdown["Collateral owned by Sponsor"] = new CollateralBreakdown(sponsorCollateral);
+  breakdown["Collateral credited to Sponsors"] = new CollateralBreakdown(adjustedCollateral);
+  breakdown["Contract raw collateral"] = new CollateralBreakdown(rawContractCollateral);
+  breakdown["Cumulative Fee Multiplier"] = new CollateralBreakdown(actualFeeMultiplier);
+  console.group("** After Redeeming 100% of Synthetic Tokens: **");
   console.table(breakdown);
   console.groupEnd();
 

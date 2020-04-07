@@ -4,7 +4,7 @@ After completing these set up steps, we'll be ready to start developing with the
 
 ## Core
 
-Start in the top-level directory in this repository, `protocol/`.
+Clone the UMA [repo](https://github.com/UMAprotocol/protocol). Start in the top-level directory in this repository, `protocol/`.
 
 1. Install the latest stable version of nodejs and ensure that npm is installed along with it.
 2. Run `npm install` in `protocol/`.
