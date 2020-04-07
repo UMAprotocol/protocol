@@ -27,6 +27,8 @@ A successful UMIP will be in "Last Call" status for a reasonable period of time 
 
 ## Approved
 A UMIP that successfully passes the "Last Call" will be put to UMA tokenholder vote. 
+If tokenholders approve the proposal, the live protocol will be updated to reflect it. 
+At this time, any code changes (if relevant) should be merged into the core protocol repository so that the core protocol repository always reflects the live code that is running.
 
 ## Final
 If tokenholders approve the proposal, the live protocol will be updated to reflect them. The UMIP is then considered to be in the "Final" state. 
