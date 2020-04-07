@@ -21,7 +21,7 @@ All governance issues will be addressed via an UMIP process. The UMIP process is
 Because UMA token owners will be responsible for voting on price requests from financial contracts depending on the DVM, they need to approve any price identifiers that they may be asked to opine on and any financial contracts that may create price requests. 
 To that end, they need to: 
 - Approve new price identifiers
-- Register new contract templates
-- De-register or shut down contract templates
+- Register and de-register contract templates
+- Shut down contract instantiations in rare circumstances
 
 Owners of UMA tokens also participate in governance of the DVM by upgrading the core DVM protocol and modifying DVM parameters. 
