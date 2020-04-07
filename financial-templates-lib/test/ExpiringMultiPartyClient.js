@@ -1,6 +1,7 @@
 const { toWei } = web3.utils;
 
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
+const { delay } = require('../delay');
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -23,7 +24,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   let identifierWhitelist;
 
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
-    await client._update();
+    await client.forceUpdate();
 
     assert.deepStrictEqual(expectedSponsors.sort(), client.getAllSponsors().sort());
     assert.deepStrictEqual(expectedPositions.sort(), client.getAllPositions().sort());
@@ -384,5 +385,23 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await emp.withdrawLiquidation("0", sponsor1, { from: liquidator })
     await client._update();
     assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
+  })
+
+  it("Does not update unless forced to", async function () {
+    await client.update();
+    const lastUpdateTime = client.lastUpdateTimestamp;
+
+    // Move time forward so that if an update were to happen, then 
+    // the `lastUpdateTimestamp` get reset.
+    await delay(Number(1_000));
+
+    // Call regular update function which should return because we are within the update threshold.
+    await client.update();
+    assert.equal(client.lastUpdateTimestamp, lastUpdateTime)
+
+    // Force an update and check that the last timestamp has reset.
+    await client.forceUpdate();
+    assert(client.lastUpdateTimestamp > lastUpdateTime)
+
   })
 });
