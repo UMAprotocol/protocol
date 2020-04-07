@@ -2,12 +2,12 @@
 
 ## What is a price identifier?
 
-A [price identifier](../../synthetic_tokens/glossary.md) is a natural language descriptor of the reference index determining how much collateral is needed for a token sponsor to be properly collateralized. 
+A [price identifier](../../synthetic_tokens/glossary.md#price-identifier) is a natural language descriptor of the reference index determining how much collateral is needed for a token sponsor to be properly collateralized. 
 Because DVM voters need to be able to vote on the value of this price identifier when disputes are raised, the DVM keeps a list of approved price identifiers. 
 
 An example of a price identifier is “GOLD_APR20”. 
 This price identifier would be documented in the UMIP that was approved by the UMA tokenholders. 
-That UMIP would contain more information about how to calculate the price identifier. 
+That UMIP would contain more information about how to determine the price identifier. 
 
 ## Who controls the list of approved price identifiers?
 For each deployment of the DVM, the list of approved price identifiers is controlled by the `IdentifierWhitelist` contract.
@@ -16,9 +16,9 @@ In the mainnet deployment of the DVM, `IdentifierWhitelist` is controlled by a d
 
 ## Adding a price identifier to a local deployment
 In a local deployment, your private key controls the `IdentifierWhitelist` contract. 
-You can therefore add any price identifier desired using the `IdentifierWhitelist.addSupportedIdentifier`, as described in step 5 of this [tutorial](../synthetic_tokens/tutorials/creating_from_truffle.md). 
+You can therefore add any price identifier desired using the `IdentifierWhitelist.addSupportedIdentifier`, as described in step 5 of this [tutorial](../../synthetic_tokens/tutorials/creating_from_truffle.md). 
 
-## Adding a price identifier to a testnet deployment
+<!-- TODO: Add a section for ## Adding a price identifier to a testnet deployment --> 
 
 ## Adding a price identifier to the mainnet deployment
 The `IdentifierWhitelist` contract in the mainnet deployment of the UMA DVM is controlled by a decentralized governance process. 
@@ -34,9 +34,9 @@ For details on how to write a UMIP, please see this document. This UMIP will be 
 - Step 2: Get Ready For Vote
 
 In order for the UMIP to move to the next stage of discussion, you should construct an off-chain transaction reflecting the implementation of the addition of a new price identifier and attach it to the UMIP. 
-The UMA team will put this UMIP to a UMA tokenholder vote. 
-This is achieved by the proposer address, controlled by the UMA team, proposing this UMIP to the governor contract, which initiates a vote on the UMIP. 
-The UMA team will simultaneously broadcast in other voter communities (e.g. Slack, Github) that the vote is being initiated. 
+The UMA foundation will put this UMIP to a UMA tokenholder vote. 
+This is achieved by the proposer address, controlled by the UMA foundation, proposing the transaction to the governor contract, which initiates a vote on the transaction. 
+The UMA foundation will simultaneously broadcast in other voter communities (e.g. Slack, Github) that the vote is being initiated. 
 
 - Step 3: Vote
 
@@ -44,5 +44,5 @@ UMA voters will vote on the proposed transaction. Each UMA token represents one 
 
 - Step 4: Execute Transaction
 
-Once the price identifier is approved, anyone can tell the governor contract to execute the proposed transaction. 
+Once the proposal has been approved, anyone can tell the governor contract to execute the proposed transaction. 
 The governor contract will then execute the transaction, approving the identifier in `IdentifierWhitelist`.
