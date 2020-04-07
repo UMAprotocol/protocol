@@ -15,7 +15,6 @@ const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const Token = artifacts.require("ExpandedERC20");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Registry = artifacts.require("Registry");
 const WETH9 = artifacts.require("WETH9");
 
@@ -25,7 +24,6 @@ let emp;
 let syntheticToken;
 let mockOracle;
 let identifierWhitelist;
-let collateralTokenWhitelist;
 let registry;
 let expiringMultiPartyCreator;
 

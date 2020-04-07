@@ -36,7 +36,7 @@ const redeem = async (web3, artifacts, emp) => {
 
   const tokensToRedeem = toBN(toWei(input["numTokens"]));
   const expectedCollateral = collateralPerToken.mul(toBN(tokensToRedeem)).div(scalingFactor);
-  console.log("You'll receive", fromWei(expectedCollateral), requiredCollateralSymbol);
+  console.log("You'll receive approximately", fromWei(expectedCollateral), requiredCollateralSymbol);
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
@@ -53,6 +53,9 @@ const redeem = async (web3, artifacts, emp) => {
       totalTransactions
     );
     transactionNum++;
+
+    // Simulate redemption to confirm exactly how much collateral you will receive back.
+    const exactCollateral = await emp.redeem.call({ rawValue: tokensToRedeem.toString() });
     await submitTransaction(
       web3,
       async () => await emp.redeem({ rawValue: tokensToRedeem.toString() }),
@@ -62,7 +65,7 @@ const redeem = async (web3, artifacts, emp) => {
     );
     transactionNum++;
     if (isWeth) {
-      await unwrapToEth(web3, artifacts, emp, expectedCollateral, transactionNum, totalTransactions);
+      await unwrapToEth(web3, artifacts, emp, exactCollateral, transactionNum, totalTransactions);
     }
   }
 };
