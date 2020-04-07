@@ -236,6 +236,9 @@ contract("Liquidatable", function(accounts) {
           ev.liquidatedCollateral == amountOfCollateral.toString()
         );
       });
+      truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsor", ev => {
+        return ev.sponsor == sponsor;
+      });
     });
     it("Increments ID after creation", async () => {
       // Create first liquidation
