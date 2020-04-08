@@ -85,7 +85,7 @@ const slackFormatter = info => {
           }
         });
       } else {
-        // If the value in the message object is an string or a integer then show it as _key: value
+        // If the value in the message object is an string or a integer then show it as key: value
         formattedResponse.blocks.push({
           type: "section",
           text: {
