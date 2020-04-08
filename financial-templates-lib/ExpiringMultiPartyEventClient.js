@@ -160,11 +160,6 @@ class ExpiringMultiPartyEventClient {
         });
       }
     }
-
-    Logger.debug({
-      at: "ExpiringMultiPartyEventClient",
-      message: "client updated"
-    });
   };
 }
 

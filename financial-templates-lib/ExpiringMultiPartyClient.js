@@ -213,10 +213,6 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    Logger.debug({
-      at: "ExpiringMultiPartyClient",
-      message: "client updated"
-    });
   };
 }
 
