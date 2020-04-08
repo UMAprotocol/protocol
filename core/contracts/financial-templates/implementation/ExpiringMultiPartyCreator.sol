@@ -142,7 +142,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
         // Enforce configuration constrainments.
         require(_isValidTimestamp(params.expirationTimestamp));
-        require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
         require(bytes(params.syntheticName).length != 0);
         require(bytes(params.syntheticSymbol).length != 0);
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
