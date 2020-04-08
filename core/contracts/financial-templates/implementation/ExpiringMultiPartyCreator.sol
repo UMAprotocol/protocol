@@ -77,9 +77,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // long we expect it to take disputers to notice bad liquidations. Malicious liquidators would
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
     uint public constant STRICT_LIQUIDATION_LIVENESS = 3600;
-    // - Minimum dispute bond: 0%. We think this should be positive so that every dispute has some cost
-    // so that disputers are disincentivized from wrongly disputing sponsors.
-    uint public constant MIN_DISPUTE_BOND_PCT = 0;
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
@@ -145,7 +142,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
         // Enforce configuration constrainments.
         require(_isValidTimestamp(params.expirationTimestamp));
-        require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
         require(bytes(params.syntheticName).length != 0);
         require(bytes(params.syntheticSymbol).length != 0);
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
