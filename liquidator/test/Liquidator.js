@@ -113,7 +113,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Start with a mocked price of 1 usd per token.
     // This puts both sponsors over collateralized so no liquidations should occur.
-    await liquidator.queryAndLiquidate(toWei("1"));
+    await liquidator.queryAndLiquidate(time => toWei("1"));
 
     // There should be no liquidations created from any sponsor account
     assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
@@ -132,7 +132,7 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor2: 100 * 1.3 * 1.2 > 150 [undercollateralized]
     // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
 
-    await liquidator.queryAndLiquidate(toWei("1.3"));
+    await liquidator.queryAndLiquidate(time => toWei("1.3"));
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
@@ -167,12 +167,13 @@ contract("Liquidator.js", function(accounts) {
     // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
-    await liquidator.queryAndLiquidate(toWei("1.3"));
+    await liquidator.queryAndLiquidate(time => toWei("1.3"));
 
     // Advance the timer to the liquidation expiry.
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     const liquidationLiveness = 1000;
     await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+    await empClient.forceUpdate();
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -202,12 +203,11 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     const liquidationPrice = toWei("1.3");
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
-    // Update the EMP client to detect new liquidations, and then
-    // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update();
+    // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
+    await empClient.forceUpdate();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
@@ -248,12 +248,11 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     const liquidationPrice = toWei("1.3");
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
-    // Update the EMP client to detect new liquidations, and then
-    // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update();
+    // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
+    await empClient.forceUpdate();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
@@ -290,16 +289,18 @@ contract("Liquidator.js", function(accounts) {
     const liquidationPrice = toWei("1.3");
 
     // No transaction should be sent, so this should not throw.
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
     // No liquidations should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
 
     // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
     await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+    // No need to force update the `empClient` here since we are not interested in detecting the `liquidatorBot`'s new position,
+    // but now when we try to liquidate the position the liquidation will go through because the bot will have the requisite balance.
 
-    // No transaction should be sent, so this should not throw.
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    // Can now liquidate the position.
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);

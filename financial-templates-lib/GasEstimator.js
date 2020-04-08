@@ -17,29 +17,34 @@ class GasEstimator {
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
   }
 
-  _update = async () => {
+  // Calls _update unless it was recently called, as determined by this.updateThreshold.
+  update = async () => {
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
       Logger.debug({
         at: "GasEstimator",
-        message: "Gas Estimator update skipped due to update threshold",
+        message: "Gas estimator update skipped",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTimestamp,
-        lastFastPriceGwei: this.lastFastPriceGwei,
+        currentFastPriceGwei: this.lastFastPriceGwei,
         timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime
       });
       return;
     } else {
-      let returnedPrice = await this.getPrice(url);
-      this.lastFastPriceGwei = returnedPrice;
+      await this._update();
       this.lastUpdateTimestamp = currentTime;
       Logger.debug({
         at: "GasEstimator",
-        message: "Gas Estimator updated",
-        currentFastPrice: returnedPrice,
-        lastUpdateTimestamp: this.lastUpdateTimestamp
+        message: "Gas estimator updated",
+        lastUpdateTimestamp: this.lastUpdateTimestamp,
+        currentFastPriceGwei: this.lastFastPriceGwei
       });
     }
+  };
+
+  _update = async () => {
+    let returnedPrice = await this.getPrice(url);
+    this.lastFastPriceGwei = returnedPrice;
   };
 
   // Returns the current fast gas price in Wei, converted from the stored Gwei value.

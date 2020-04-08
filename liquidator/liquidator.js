@@ -18,20 +18,25 @@ class Liquidator {
     this.empContract = this.empClient.emp;
   }
 
+  // Update the client and gasEstimator clients.
+  // If a client has recently updated then it will do nothing.
+  update = async () => {
+    await this.empClient.update();
+    await this.gasEstimator.update();
+  };
+
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
-  queryAndLiquidate = async priceFeed => {
+  queryAndLiquidate = async priceFunction => {
+    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const priceFeed = priceFunction(contractTime);
+
     Logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
       inputPrice: priceFeed
     });
 
-    // Update the client to get the latest position information.
-    await this.empClient._update();
-
-    // Update the gasEstimator to get the latest gas price data.
-    // If the client has a data point in the last 60 seconds returns immediately.
-    await this.gasEstimator._update();
+    await this.update();
 
     // Get the latest undercollateralized positions from the client.
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
@@ -108,6 +113,9 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
+
+    // Update the EMP Client since we created new liquidations.
+    await this.empClient.forceUpdate();
   };
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
@@ -117,12 +125,7 @@ class Liquidator {
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
 
-    // Update the client to get the latest information.
-    await this.empClient._update();
-
-    // Update the gasEstimator to get the latest gas price data.
-    // If the client has a data point in the last 60 seconds returns immediately.
-    await this.gasEstimator._update();
+    await this.update();
 
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
     // expired and disputed liquidations.
@@ -196,6 +199,9 @@ class Liquidator {
         liquidationResult: logResult
       });
     }
+
+    // Update the EMP Client since we withdrew rewards.
+    await this.empClient.forceUpdate();
   };
 }
 

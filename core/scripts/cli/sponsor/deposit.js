@@ -24,19 +24,28 @@ const deposit = async (web3, artifacts, emp) => {
   if (confirmation["confirm"]) {
     const collateral = toWei(input["depositCollateral"]);
 
+    let totalTransactions = 2;
+    let transactionNum = 1;
     if (isWeth) {
-      await wrapToWeth(web3, artifacts, emp, collateral);
+      totalTransactions = 3;
+      await wrapToWeth(web3, artifacts, emp, collateral, transactionNum, totalTransactions);
+      transactionNum++;
     }
 
     await submitTransaction(
       web3,
       async () => await collateralCurrency.approve(emp.address, collateral),
-      "Approving " + collateralSymbol + " transfer"
+      "Approving " + collateralSymbol + " transfer",
+      transactionNum,
+      totalTransactions
     );
+    transactionNum++;
     await submitTransaction(
       web3,
       async () => await emp.deposit({ rawValue: collateral.toString() }),
-      "Depositing collateral"
+      "Depositing collateral",
+      transactionNum,
+      totalTransactions
     );
   }
 };
