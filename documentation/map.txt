@@ -10,6 +10,7 @@
 ** tutorials
 *** voting_with_uma_tokens.md
 ** governance
+*** UMA_token_holder_responsibilities.md
 *** UMIPs.md
 *** adding_a_price_identifier.md
 * community
