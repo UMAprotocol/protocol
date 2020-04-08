@@ -58,8 +58,7 @@ class Disputer {
       } catch (error) {
         Logger.error({
           at: "Disputer",
-          message:
-            "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.✋",
+          message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.",
           sponsor: disputeableLiquidation.sponsor,
           liquidation: disputeableLiquidation,
           error: error
