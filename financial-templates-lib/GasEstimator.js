@@ -48,8 +48,7 @@ class GasEstimator {
   };
 
   _update = async () => {
-    let returnedPrice = await this._getPrice(url);
-    this.lastFastPriceGwei = returnedPrice;
+    this.lastFastPriceGwei = await this._getPrice(url);
   };
 
   _getPrice = async url => {
