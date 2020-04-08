@@ -30,17 +30,6 @@ class ContractMonitor {
     this.formatDecimalString = createFormatFunction(this.web3, 2);
   }
 
-  // Calculate the collateralization Ratio from the collateral, token amount and token price
-  // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, priceFunction) => {
-    return this.web3.utils
-      .toBN(collateral)
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(priceFunction.toString())))
-      .muln(100);
-  };
-
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async priceFunction => {
     Logger.debug({
