@@ -7,7 +7,7 @@ const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { ContractMonitor } = require("./ContractMonitor");
-const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
+const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -35,8 +35,8 @@ async function run(price, address, shouldPoll) {
   const emp = await ExpiringMultiParty.at(address);
 
   // Client and liquidator bot
-  const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-  const contractMonitor = new ContractMonitor(empClient, accounts[0], accounts[0]);
+  const empEventClient = new ExpiringMultiPartyEventClient(ExpiringMultiParty.abi, web3, emp.address, 10);
+  const contractMonitor = new ContractMonitor(empEventClient, accounts[0], accounts[0]);
 
   while (true) {
     try {
@@ -45,7 +45,7 @@ async function run(price, address, shouldPoll) {
       // 2. Check For new liquidation events
       // 3. Check for new disputes
       // 4. Check for new disputeSettlements
-      await empClient._update();
+      await empEventClient._update();
       await contractMonitor.checkForNewLiquidations(toWei(price.toString()));
       await contractMonitor.checkForNewDisputeEvents(toWei(price.toString()));
       await contractMonitor.checkForNewDisputeSettlementEvents(toWei(price.toString()));

@@ -23,10 +23,6 @@ class ExpiringMultiPartyClient {
     this.disputedLiquidations = [];
     this.collateralRequirement = null;
 
-    // EMP Events
-    this.liquidationEvents = [];
-    this.disputeEvents = [];
-    this.disputeSettlementEvents = [];
 
     // TODO: Ideally, we'd want to subscribe to events here, but subscriptions don't work with Truffle HDWalletProvider.
     // One possibility is to experiment with WebSocketProvider instead.
@@ -99,15 +95,6 @@ class ExpiringMultiPartyClient {
 
   // Returns an array of sponsor addresses.
   getAllSponsors = () => this.sponsorAddresses;
-
-  // Returns an array of liquidation events.
-  getAllLiquidationEvents = () => this.liquidationEvents;
-
-  // Returns an array of dispute events.
-  getAllDisputeEvents = () => this.disputeEvents;
-
-  // Returns an array of dispute events.
-  getAllDisputeSettlementEvents = () => this.disputeSettlementEvents;
 
   start = () => {
     this._poll();
@@ -227,71 +214,6 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-
-    //Events
-    let blockQueryNumber =
-      this.liquidationEvents.length > 0 ? this.liquidationEvents[this.liquidationEvents.length - 1].blockNumber + 1 : 0;
-    const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
-      fromBlock: blockQueryNumber
-    });
-
-    // If there have been previous events retrieve we should only query the chain for newer events.
-    if (liquidationEventsObj.length !== 0) {
-      for (let event of liquidationEventsObj) {
-        this.liquidationEvents.push({
-          transactionHash: event.transactionHash,
-          blockNumber: event.blockNumber,
-          sponsor: event.returnValues.sponsor,
-          liquidator: event.returnValues.liquidator,
-          liquidationId: event.returnValues.liquidationId,
-          tokensOutstanding: event.returnValues.tokensOutstanding,
-          lockedCollateral: event.returnValues.lockedCollateral,
-          liquidatedCollateral: event.returnValues.liquidatedCollateral
-        });
-      }
-    }
-
-    blockQueryNumber =
-      this.disputeEvents.length > 0 ? this.disputeEvents[this.disputeEvents.length - 1].blockNumber + 1 : 0;
-    const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
-      fromBlock: blockQueryNumber
-    });
-    if (disputeEventsObj.length !== 0) {
-      for (let event of disputeEventsObj) {
-        this.disputeEvents.push({
-          transactionHash: event.transactionHash,
-          blockNumber: event.blockNumber,
-          sponsor: event.returnValues.sponsor,
-          liquidator: event.returnValues.liquidator,
-          disputer: event.returnValues.disputer,
-          liquidationId: event.returnValues.liquidationId,
-          disputeBondAmount: event.returnValues.disputeBondAmount
-        });
-      }
-    }
-
-    blockQueryNumber =
-      this.disputeSettlementEvents.length > 0
-        ? this.disputeSettlementEvents[this.disputeSettlementEvents.length - 1].blockNumber + 1
-        : 0;
-    const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
-      fromBlock: blockQueryNumber
-    });
-    if (disputeSettlementEventsObj.length !== 0) {
-      for (let event of disputeSettlementEventsObj) {
-        this.disputeSettlementEvents.push({
-          transactionHash: event.transactionHash,
-          blockNumber: event.blockNumber,
-          caller: event.returnValues.caller,
-          sponsor: event.returnValues.sponsor,
-          liquidator: event.returnValues.liquidator,
-          disputer: event.returnValues.disputer,
-          disputeId: event.returnValues.disputeId,
-          disputeSucceeded: event.returnValues.DisputeSucceeded
-        });
-      }
-    }
-
     Logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "client updated"

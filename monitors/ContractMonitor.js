@@ -6,7 +6,7 @@ const networkUtils = require("../common/PublicNetworks");
 // const { toBN, toWei, fromWei } = this.web3.utils;
 
 class ContractMonitor {
-  constructor(expiringMultiPartyClient, account, umaLiquidatorAddress, umaDisputerAddress) {
+  constructor(expiringMultiPartyEventClient, account, umaLiquidatorAddress, umaDisputerAddress) {
     // Bot and ecosystem accounts.
     this.account = account;
     this.umaLiquidatorAddress = umaLiquidatorAddress;
@@ -18,8 +18,8 @@ class ContractMonitor {
     this.lastDisputeSettlementEvents = [];
 
     // Instance of the expiring multiparty to perform on-chain queries
-    this.empClient = expiringMultiPartyClient;
-    this.web3 = this.empClient.web3;
+    this.empEventClient = expiringMultiPartyEventClient;
+    this.web3 = this.empEventClient.web3;
 
     // Contract constants
     //TODO: replace this with an actual query to the collateral currency symbol
@@ -50,7 +50,7 @@ class ContractMonitor {
     });
 
     // Get the latest liquidation information.
-    let latestLiquidationEvents = this.empClient.getAllLiquidationEvents();
+    let latestLiquidationEvents = this.empEventClient.getAllLiquidationEvents();
 
     // Get the block number of the last event stored within the ContractMonitor.
     let highestOldBlockNumber =
@@ -101,7 +101,7 @@ class ContractMonitor {
     });
 
     // Get the latest dispute information.
-    let latestDisputeEvents = this.empClient.getAllDisputeEvents();
+    let latestDisputeEvents = this.empEventClient.getAllDisputeEvents();
 
     // Get the block number of the last event stored within the ContractMonitor.
     let highestOldBlockNumber =
@@ -142,7 +142,7 @@ class ContractMonitor {
     });
 
     // Get the latest disputeSettlement information.
-    let latestDisputeSettlementEvents = this.empClient.getAllDisputeSettlementEvents();
+    let latestDisputeSettlementEvents = this.empEventClient.getAllDisputeSettlementEvents();
 
     // Get the block number of the last event stored within the ContractMonitor.
     let highestOldBlockNumber =
