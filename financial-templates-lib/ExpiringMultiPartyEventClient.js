@@ -95,17 +95,21 @@ class ExpiringMultiPartyEventClient {
 
   _update = async () => {
     //Events
+    console.log("this.liquidationEvents", this.liquidationEvents);
     let liquidationBlockQueryNumber =
       this.liquidationEvents.length > 0 ? this.liquidationEvents[this.liquidationEvents.length - 1].blockNumber + 1 : 0;
+    console.log("liquidationBlockQueryNumber", liquidationBlockQueryNumber);
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
       fromBlock: liquidationBlockQueryNumber
     });
+    console.log("liquidationEventsObj", liquidationEventsObj);
 
     // If there have been previous events retrieve we should only query the chain for newer events.
     if (liquidationEventsObj.length !== 0) {
       for (let event of liquidationEventsObj) {
         this.liquidationEvents.push({
           transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
           sponsor: event.returnValues.sponsor,
           liquidator: event.returnValues.liquidator,
           liquidationId: event.returnValues.liquidationId,
@@ -125,6 +129,7 @@ class ExpiringMultiPartyEventClient {
       for (let event of disputeEventsObj) {
         this.disputeEvents.push({
           transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
           sponsor: event.returnValues.sponsor,
           liquidator: event.returnValues.liquidator,
           disputer: event.returnValues.disputer,
@@ -145,6 +150,7 @@ class ExpiringMultiPartyEventClient {
       for (let event of disputeSettlementEventsObj) {
         this.disputeSettlementEvents.push({
           transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
           caller: event.returnValues.caller,
           sponsor: event.returnValues.sponsor,
           liquidator: event.returnValues.liquidator,
