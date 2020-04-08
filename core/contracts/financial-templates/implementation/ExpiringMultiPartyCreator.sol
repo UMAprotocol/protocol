@@ -42,6 +42,11 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      **/
 
     // - Whitelist allowed collateral currencies.
+    // Note: before an instantiation of ExpiringMultipartyCreator is approved to register contracts, voters should
+    // ensure that the ownership of this collateralTokenWhitelist has been renounced (so it is effectively
+    // frozen). One could also set the owner to the address of the Governor contract, but voters may find that option
+    // less preferable since it would force them to take a more active role in managing this financial contract
+    // template.
     AddressWhitelist public collateralTokenWhitelist;
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
