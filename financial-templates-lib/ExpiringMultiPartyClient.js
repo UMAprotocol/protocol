@@ -23,7 +23,6 @@ class ExpiringMultiPartyClient {
     this.disputedLiquidations = [];
     this.collateralRequirement = null;
 
-
     // TODO: Ideally, we'd want to subscribe to events here, but subscriptions don't work with Truffle HDWalletProvider.
     // One possibility is to experiment with WebSocketProvider instead.
   }
