@@ -2,7 +2,7 @@
 
 ## What is a price identifier?
 
-A [price identifier](../../synthetic_tokens/glossary.md#price-identifier) is a natural language descriptor of the reference index determining how much collateral is needed for a token sponsor to be properly collateralized. 
+A [price identifier](../../synthetic_tokens/glossary.md#price-identifier) is a natural language descriptor of a reference index, whose value the oracle will determine upon request. 
 Because DVM voters need to be able to vote on the value of this price identifier when disputes are raised, the DVM keeps a list of approved price identifiers. 
 
 An example of a price identifier is “GOLD_APR20”. 
@@ -23,6 +23,7 @@ You can therefore add any price identifier desired using the `IdentifierWhitelis
 ## Adding a price identifier to the mainnet deployment
 The `IdentifierWhitelist` contract in the mainnet deployment of the UMA DVM is controlled by a decentralized governance process. 
 To add a new price identifier, UMA token holders must vote and approve the identifier. 
+This will be done via the UMIP. Details of the UMIP process are [here](./UMIPs.md). 
 
 - Step 1: Discuss
 
@@ -33,10 +34,7 @@ For details on how to write a UMIP, please see this document. This UMIP will be 
 
 - Step 2: Get Ready For Vote
 
-In order for the UMIP to move to the next stage of discussion, you should construct an off-chain transaction reflecting the implementation of the addition of a new price identifier and attach it to the UMIP. 
-The UMA foundation will put this UMIP to a UMA tokenholder vote. 
-This is achieved by the proposer address, controlled by the UMA foundation, proposing the transaction to the governor contract, which initiates a vote on the transaction. 
-The UMA foundation will simultaneously broadcast in other voter communities (e.g. Slack, Github) that the vote is being initiated. 
+In order for the UMIP to move to the next stage of discussion, you should construct an off-chain transaction to add the proposed price identifier to the mainnet `IdentifierWhitelist`. This transaction should be attached to the UMIP. 
 
 - Step 3: Vote
 
