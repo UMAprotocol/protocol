@@ -42,6 +42,9 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      **/
 
     // - Whitelist allowed collateral currencies.
+    // Note: before an instantiation of ExpiringMultipartyCreator is approved to register contracts, voters should
+    // ensure that the ownership of this collateralTokenWhitelist has been renounced, so the currency whitelist is
+    // frozen.
     AddressWhitelist public collateralTokenWhitelist;
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
