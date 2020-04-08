@@ -120,8 +120,8 @@ class ContractMonitor {
         (this.umaLiquidatorAddress == event.liquidator ? " (UMA liquidator bot)" : "") +
         " with a dispute bond of " +
         this.formatDecimalString(event.disputeBondAmount) +
-        " ";
-      this.collateralCurrencySymbol +
+        " " +
+        this.collateralCurrencySymbol +
         ". tx: " +
         createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
 
