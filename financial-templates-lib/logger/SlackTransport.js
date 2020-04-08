@@ -76,7 +76,7 @@ const slackFormatter = info => {
             text: ` • _tx_: <https://etherscan.io/tx/${info[key]}|${info[key]}> \n`
           }
         });
-      } else if (key == "markwn") {
+      } else if (key == "mrkdwn") {
         formattedResponse.blocks.push({
           type: "section",
           text: {
