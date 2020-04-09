@@ -21,6 +21,8 @@ class ExpiringMultiPartyEventClient {
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
+
+    this.highestBlockNumberSeen = 0;
   }
 
   // Calls _update unless it was recently called, as determined by this.updateThreshold.
@@ -94,14 +96,20 @@ class ExpiringMultiPartyEventClient {
   };
 
   _update = async () => {
-    //Events. If there have been previous events retrieve we should only query the chain from
-    // the last seen block number.
+    // If there have been previous events retrieve we should only query the chain from
+    // the last seen block number. This max block checks for the highest block number
+    // seen across the different internal data structures.
+    const highestBlockNumberSeen = Math.max(
+      this.liquidationEvents.length > 0 ? this.liquidationEvents[this.liquidationEvents.length - 1].blockNumber + 1 : 0,
+      this.disputeEvents.length > 0 ? this.disputeEvents[this.disputeEvents.length - 1].blockNumber + 1 : 0,
+      this.disputeSettlementEvents.length > 0
+        ? this.disputeSettlementEvents[this.disputeSettlementEvents.length - 1].blockNumber + 1
+        : 0
+    );
 
     // Liquidation events
-    let liquidationBlockQueryNumber =
-      this.liquidationEvents.length > 0 ? this.liquidationEvents[this.liquidationEvents.length - 1].blockNumber + 1 : 0;
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
-      fromBlock: liquidationBlockQueryNumber
+      fromBlock: highestBlockNumberSeen
     });
 
     for (let event of liquidationEventsObj) {
@@ -118,10 +126,8 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Dispute events
-    let disputeBlockQueryNumber =
-      this.disputeEvents.length > 0 ? this.disputeEvents[this.disputeEvents.length - 1].blockNumber + 1 : 0;
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
-      fromBlock: disputeBlockQueryNumber
+      fromBlock: highestBlockNumberSeen
     });
     for (let event of disputeEventsObj) {
       this.disputeEvents.push({
@@ -136,12 +142,8 @@ class ExpiringMultiPartyEventClient {
     }
 
     // Dispute settlement events
-    let disputeSettlementBlockQueryNumber =
-      this.disputeSettlementEvents.length > 0
-        ? this.disputeSettlementEvents[this.disputeSettlementEvents.length - 1].blockNumber + 1
-        : 0;
     const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
-      fromBlock: disputeSettlementBlockQueryNumber
+      fromBlock: highestBlockNumberSeen
     });
     for (let event of disputeSettlementEventsObj) {
       this.disputeSettlementEvents.push({
