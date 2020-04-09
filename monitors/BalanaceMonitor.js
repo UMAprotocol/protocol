@@ -1,5 +1,7 @@
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
+const { calculatePositionCRPercent } = require("./utils/PositionCRCalculator");
+
 class BalanceMonitor {
   constructor(account, botMonitorObject, walletMonitorObject) {
     this.account = account;
@@ -28,7 +30,7 @@ class BalanceMonitor {
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
-  checkBalances = async priceFunction => {
+  checkBotBalances = async priceFunction => {
     Logger.debug({
       at: "BalanceMonitor",
       message: "Checking for Balances"
@@ -36,6 +38,10 @@ class BalanceMonitor {
 
     // Update the client to get the latest liquidation information.
     await this.empClient._update();
+
+    for()
+
+
   };
 }
 
