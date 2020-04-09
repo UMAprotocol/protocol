@@ -10,15 +10,19 @@ class ExpiringMultiPartyClient {
     this.lastUpdateTimestamp;
 
     this.web3 = web3;
+
+    // EMP contract
+    this.emp = new web3.eth.Contract(abi, empAddress);
+    this.empAddress = empAddress;
+
+    // EMP Data structures & values
     this.sponsorAddresses = [];
     this.positions = [];
     this.undisputedLiquidations = [];
     this.expiredLiquidations = [];
     this.disputedLiquidations = [];
-    this.emp = new web3.eth.Contract(abi, empAddress);
-    this.empAddress = empAddress;
-
     this.collateralRequirement = null;
+
     // TODO: Ideally, we'd want to subscribe to events here, but subscriptions don't work with Truffle HDWalletProvider.
     // One possibility is to experiment with WebSocketProvider instead.
   }
