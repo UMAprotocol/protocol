@@ -552,7 +552,7 @@ contract("Governor", function(accounts) {
       {
         to: reentrancyChecker.address,
         value: 0,
-        data: constructTransferTransaction(account1, toWei("0")) // Data doesn't since it will hit the fallback regardless.
+        data: constructTransferTransaction(account2, toWei("0")) // Data doesn't since it will hit the fallback regardless.
       }
     ]);
 
