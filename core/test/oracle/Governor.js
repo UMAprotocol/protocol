@@ -201,20 +201,15 @@ contract("Governor", function(accounts) {
   it("Successful proposal that requires ETH", async function() {
     const amountToDeposit = toWei("1");
 
-    // Send the proposal to send ETH to account2 and simultaneously deposit the ETH.
+    // Send the proposal to send ETH to account2.
     const id = await governor.numProposals();
-    await governor.propose(
-      [
-        {
-          to: account2,
-          value: amountToDeposit,
-          data: web3.utils.hexToBytes("0x0")
-        }
-      ],
+    await governor.propose([
       {
-        value: amountToDeposit
+        to: account2,
+        value: amountToDeposit,
+        data: web3.utils.hexToBytes("0x0")
       }
-    );
+    ]);
 
     await moveToNextRound(voting);
     const pendingRequests = await voting.getPendingRequests();
@@ -229,9 +224,10 @@ contract("Governor", function(accounts) {
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
+    // Execute the proposal and simultaneously deposit ETH to pay for the transaction.
     // Check to make sure that the ETH gets transferred at the time of execution.
     const startingBalance = await web3.eth.getBalance(account2);
-    await governor.executeProposal(id, 0);
+    await governor.executeProposal(id, 0, { value: amountToDeposit });
     assert.equal(
       await web3.eth.getBalance(account2),
       toBN(startingBalance)
@@ -240,29 +236,36 @@ contract("Governor", function(accounts) {
     );
   });
 
-  it("Proposer did not send enough ETH to execute all payable transactions", async function() {
-    // Proposal transaction fails because caller did not send enough ETH to cover all payable transactions.
-    assert(
-      await didContractThrow(
-        governor.propose(
-          [
-            {
-              to: account2,
-              value: toWei("0.25"),
-              data: web3.utils.hexToBytes("0x0")
-            },
-            {
-              to: account2,
-              value: toWei("0.75"),
-              data: web3.utils.hexToBytes("0x0")
-            }
-          ],
-          {
-            value: toWei("0.99")
-          }
-        )
-      )
-    );
+  it("Proposer did not send enough ETH to execute payable transaction", async function() {
+    const amountToDeposit = toWei("1");
+
+    // Send the proposal to send ETH to account2.
+    const id = await governor.numProposals();
+    await governor.propose([
+      {
+        to: account2,
+        value: amountToDeposit,
+        data: web3.utils.hexToBytes("0x0")
+      }
+    ]);
+
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Execute the proposal but do not send enough ETH to pay for the transaction
+    const startingBalance = await web3.eth.getBalance(account2);
+    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("0.1") })));
+    assert.equal(await web3.eth.getBalance(account2), startingBalance);
   });
 
   it("Successful multi-transaction proposal", async function() {

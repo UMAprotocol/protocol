@@ -68,7 +68,6 @@ contract Governor is MultiRole, Testable {
 
     /**
      * @notice Proposes a new governance action. Can only be called by the holder of the Proposer role.
-     * Caller is expected to deposit ETH to execute all payable transactions.
      * @param transactions the list of transactions that are being proposed.
      * @dev You can create the data portion of each transaction by doing the following:
      * ```
@@ -79,10 +78,9 @@ contract Governor is MultiRole, Testable {
      * disallows structs arrays to be passed to external functions.
      * @param transactions array of `Transaction` which can be voted on.
      */
-    function propose(Transaction[] memory transactions) public payable onlyRoleHolder(uint(Roles.Proposer)) {
+    function propose(Transaction[] memory transactions) public onlyRoleHolder(uint(Roles.Proposer)) {
         uint id = proposals.length;
         uint time = getCurrentTime();
-        uint amountOfEthRequired = 0;
 
         // Note: doing all of this array manipulation manually is necessary because directly setting an array of
         // structs in storage to an an array of structs in memory is currently not implemented in solidity :/.
@@ -97,14 +95,8 @@ contract Governor is MultiRole, Testable {
         // Initialize the transaction array.
         for (uint i = 0; i < transactions.length; i++) {
             require(transactions[i].to != address(0), "The to address cannot be 0x0");
-            if (transactions[i].value > 0) {
-                amountOfEthRequired += transactions[i].value;
-            }
             proposal.transactions.push(transactions[i]);
         }
-
-        // Check that the caller sent enough ETH.
-        require(msg.value >= amountOfEthRequired, "Caller did not send enough ETH to execute all payable proposals");
 
         bytes32 identifier = _constructIdentifier(id);
 
@@ -121,11 +113,11 @@ contract Governor is MultiRole, Testable {
 
     /**
      * @notice Executes a proposed governance action that has been approved by voters.
-     * @dev This can be called by any address.
+     * @dev This can be called by any address. Caller is expected to send enough ETH to execute payable transactions.
      * @param id unique id for the executed proposal.
      * @param transactionIndex unique transaction index for the executed proposal.
      */
-    function executeProposal(uint id, uint transactionIndex) external {
+    function executeProposal(uint id, uint transactionIndex) external payable {
         Proposal storage proposal = proposals[id];
         int price = _getOracle().getPrice(_constructIdentifier(id), proposal.requestTime);
 
