@@ -111,7 +111,6 @@ contract Registry is RegistryInterface, MultiRole {
         address contractAddress = msg.sender;
 
         require(contractMap[contractAddress].valid == Validity.Valid, "Can only add to valid contract");
-        require(!isPartyMemberOfContract(party, contractAddress), "Can only register a party once");
 
         _addPartyToContract(party, contractAddress);
     }
