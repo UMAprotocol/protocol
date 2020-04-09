@@ -15,7 +15,7 @@ const submitTransaction = async (web3, submitFn, message, transactionNum, totalT
   const { receipt } = await submitFn();
   style.spinnerWritingContracts.stop();
   const etherscanLink = etherscanBaseUrl + "/tx/" + receipt.transactionHash;
-  console.log("Transaction submitted! Transaction link:", etherscanLink);
+  console.log("Transaction submitted. Transaction link:", etherscanLink);
 };
 
 module.exports = {

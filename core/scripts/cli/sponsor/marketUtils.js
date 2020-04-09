@@ -34,6 +34,7 @@ const getMarketSummary = async (web3, artifacts) => {
     const tokenAddress = await emp.tokenCurrency();
     const token = await SyntheticToken.at(tokenAddress);
     const name = await token.name();
+    const symbol = await token.symbol();
 
     const collateralRequirement = await emp.collateralRequirement();
     const asPercent = web3.utils.fromWei(collateralRequirement.muln(100).toString());
@@ -49,6 +50,7 @@ const getMarketSummary = async (web3, artifacts) => {
       emp,
       contractState,
       name,
+      symbol,
       collateralRequirement,
       collateralSymbol,
       expirationTimestamp,
