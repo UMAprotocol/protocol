@@ -53,7 +53,7 @@ library Shared {
 /**
  * @title Base class to manage permissions for the derived class.
  */
-contract MultiRole {
+abstract contract MultiRole {
     using Exclusive for Exclusive.RoleMembership;
     using Shared for Shared.RoleMembership;
 
