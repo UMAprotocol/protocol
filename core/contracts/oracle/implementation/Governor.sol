@@ -113,11 +113,11 @@ contract Governor is MultiRole, Testable {
 
     /**
      * @notice Executes a proposed governance action that has been approved by voters.
-     * @dev This can be called by any address.
+     * @dev This can be called by any address. Caller is expected to send enough ETH to execute payable transactions.
      * @param id unique id for the executed proposal.
      * @param transactionIndex unique transaction index for the executed proposal.
      */
-    function executeProposal(uint id, uint transactionIndex) external {
+    function executeProposal(uint id, uint transactionIndex) external payable {
         Proposal storage proposal = proposals[id];
         int price = _getOracle().getPrice(_constructIdentifier(id), proposal.requestTime);
 
@@ -129,6 +129,7 @@ contract Governor is MultiRole, Testable {
         );
         require(transaction.to != address(0), "Transaction has already been executed");
         require(price != 0, "Cannot execute, proposal was voted down");
+        require(msg.value == transaction.value, "Must send the exact amount of ETH to execute transaction");
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Transaction execution failed");
 
         // Delete the transaction.
