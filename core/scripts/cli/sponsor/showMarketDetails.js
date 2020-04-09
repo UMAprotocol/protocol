@@ -79,15 +79,17 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       viewLiquidations: "View your liquidations"
     };
   }
-  console.log("Summary of your position:");
-  await printSponsorSummary(sponsorAddress);
+    let message = "What would you like to do?";
   if (collateral === "0") {
     // Sponsor doesn't have a position.
     actions = {
       ...actions,
       create: "Sponsor new position"
     };
+      message = "You are not currently a sponsor. What would you like to do?";
   } else {
+   console.log("Summary of your position:");
+  await printSponsorSummary(sponsorAddress);
     const position = await emp.positions(sponsorAddress);
 
     const hasPendingWithdrawal = position.requestPassTimestamp.toString() !== "0";
@@ -100,6 +102,8 @@ const showMarketDetails = async (web3, artifacts, emp) => {
         withdraw: "Manage your withdrawals"
       };
     } else {
+   // console.log("Summary of your position:");
+  // await printSponsorSummary(sponsorAddress);
       actions = {
         ...actions,
         create: "Mint more tokens",
@@ -113,7 +117,8 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const prompt = {
     type: "list",
     name: "choice",
-    message: "What would you like to do?",
+    // message: "What would you like to do?",
+      message,
     choices: Object.values(actions)
   };
   const input = (await inquirer.prompt(prompt))["choice"];

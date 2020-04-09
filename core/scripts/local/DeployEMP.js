@@ -49,10 +49,10 @@ const deployEMP = async callback => {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
-    finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+   //  mockOracle = await MockOracle.new(identifierWhitelist.address);
+   //  finder = await Finder.deployed();
+   //  const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+   //  await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
     // Grant EMP the right to register new financial templates.
     registry = await Registry.deployed();
@@ -65,8 +65,8 @@ const deployEMP = async callback => {
       expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(6)).toString(),
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "BTCUSD",
-      syntheticSymbol: "BTCUSD",
+      syntheticName: "hello allison",
+      syntheticSymbol: "HA",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },

@@ -135,22 +135,27 @@ const withdraw = async (web3, artifacts, emp) => {
       }
     }
   } else {
-    console.log("You have:");
-    console.log(
-      "Position:",
-      fromWei(collateral),
-      collateralSymbol,
-      "backing",
-      fromWei(position.tokensOutstanding.toString()),
-      "synthetic tokens"
-    );
+  //   console.log("You have:");
+  //   console.log(
+  //     "Position:",
+  //     fromWei(collateral),
+  //     collateralSymbol,
+  //     "backing",
+  //     fromWei(position.tokensOutstanding.toString()),
+  //     "synthetic tokens"
+  //   );
 
+      const withdrawalLiveness = await emp.withdrawalLiveness();
+      const withdrawalLivenessInMinutes = toBN(withdrawalLiveness.toString())
+        .div(toBN(60))
+        .toString();
     // Calculate current collateralization ratio.
     const collateralPerToken = toBN(collateral)
       .mul(scalingFactor)
       .div(toBN(position.tokensOutstanding.toString()))
       .muln(100);
-    console.log("Current collateralization ratio: " + fromWei(collateralPerToken) + "%");
+      // TODO: Do rounding.
+    // console.log("Current collateralization ratio: " + fromWei(collateralPerToken) + "%");
 
     // Calculate GCR.
     const totalPositionCollateral = toBN((await emp.totalPositionCollateral()).rawValue.toString());
@@ -164,8 +169,9 @@ const withdraw = async (web3, artifacts, emp) => {
       .divRound(scalingFactor);
     const excessCollateral = toBN(collateral).sub(minCollateralAboveGcr);
     const maxInstantWithdrawal = excessCollateral.gt(toBN(0)) ? excessCollateral : toBN(0);
-    console.log("Maximum amount you can withdraw instantly:", fromWei(maxInstantWithdrawal));
-    console.log("To withdraw more than this amount, we will issue a withdrawal request first");
+    // console.log("You can instantly withdraw:", fromWei(maxInstantWithdrawal), "ETH");
+    console.log("You must request an amount to withdraw. The request takes", withdrawalLivenessInMinutes, "minutes to process.");
+      console.log("Max 1 ETH to maintain 150% collateralization requirement");
 
     // Prompt user to enter withdrawal amount
     const input = await inquirer.prompt({
@@ -173,7 +179,7 @@ const withdraw = async (web3, artifacts, emp) => {
       message: "How much " + requiredCollateralSymbol + " to withdraw?",
       validate: value =>
         (value > 0 && toBN(toWei(value)).lte(toBN(collateral))) ||
-        "Number of " + requiredCollateralSymbol + " must be positive and up to your current locked collateral"
+        "You can only withdraw up to 1 ETH"
     });
     const tokensToWithdraw = toBN(toWei(input["numCollateral"]));
 
@@ -203,17 +209,12 @@ const withdraw = async (web3, artifacts, emp) => {
     }
     // Requested withdrawal amount cannot be processed instantly, call `requestWithdrawal()`
     else {
-      const withdrawalLiveness = await emp.withdrawalLiveness();
-      const withdrawalLivenessInMinutes = toBN(withdrawalLiveness.toString())
-        .div(toBN(60))
-        .toString();
       console.log(
-        "Your requested withdrawal of",
-        fromWei(tokensToWithdraw),
-        requiredCollateralSymbol,
-        "will process after",
+          "Come back in",
         withdrawalLivenessInMinutes,
-        "minutes"
+        "minutes to execute your withdrawal of",
+        fromWei(tokensToWithdraw),
+        requiredCollateralSymbol
       );
       const confirmation = await inquirer.prompt({
         type: "confirm",
@@ -226,7 +227,7 @@ const withdraw = async (web3, artifacts, emp) => {
           async () => await emp.requestWithdrawal({ rawValue: tokensToWithdraw.toString() }),
           "Requesting withdrawal"
         );
-        console.log("Withdrawal requested. Please check back later to perform the withdrawal");
+        console.log("Withdrawal requested. Come back in 60 minutes to execute your withdrawal of 0.9 ETH");
       }
     }
   }

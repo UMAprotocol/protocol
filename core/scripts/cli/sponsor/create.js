@@ -66,6 +66,7 @@ const create = async (web3, artifacts, emp) => {
       transactionNum,
       totalTransactions
     );
+      // TODO: Add link to uniswap and bolded messaging.
   }
 };
 

@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
 const { getMarketSummary } = require("./marketUtils");
 const { PositionStatesEnum } = require("../../../../common/Enums");
+const showExpiredMarketDetails = require("./showExpiredMarketDetails");
 
 const listExpiredMarkets = async (web3, artifacts) => {
   const markets = await getMarketSummary(web3, artifacts);
@@ -10,6 +11,7 @@ const listExpiredMarkets = async (web3, artifacts) => {
   const choices = [];
   for (let i = 0; i < markets.length; i++) {
     const market = markets[i];
+    console.log(market);
     if (market.contractState === PositionStatesEnum.OPEN) {
       continue;
     }
@@ -20,6 +22,10 @@ const listExpiredMarkets = async (web3, artifacts) => {
     // Using the index as the value lets us easily find the right EMP.
     choices.push({ name: display, value: i });
   }
+  if (choices.length === 0) {
+    console.log("No expired markets");
+    return;
+  }
   choices.push({ name: backChoice });
   const prompt = {
     type: "list",
@@ -29,7 +35,7 @@ const listExpiredMarkets = async (web3, artifacts) => {
   };
   const input = await inquirer.prompt(prompt);
   if (input["chosenEmpIdx"] !== backChoice) {
-    console.log("Expiration market details not yet implemented!");
+    await showExpiredMarketDetails(web3, artifacts, markets[input["chosenEmpIdx"]].emp);
   }
 };
 

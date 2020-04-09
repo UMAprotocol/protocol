@@ -2,6 +2,7 @@ const style = require("../textStyle");
 const PublicNetworks = require("../../../../common/PublicNetworks");
 
 const submitTransaction = async (web3, submitFn, message, transactionNum, totalTransactions) => {
+    // TODO: Option to get rid of transaction submitted.
   const etherscanBaseUrl = PublicNetworks[web3.networkId]
     ? PublicNetworks[web3.networkId].etherscan
     : "https://fake-etherscan.com";
