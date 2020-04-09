@@ -56,7 +56,7 @@ async function run(price, address, shouldPoll) {
 
   const botMonitorObject = [
     {
-      name: "test liquidator Bot",
+      name: "UMA liquidator Bot",
       address: accounts[1],
       collateralThreshold: toWei("10000000"),
       syntheticThreshold: toWei("10000000"),

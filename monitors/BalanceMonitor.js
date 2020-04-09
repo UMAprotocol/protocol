@@ -61,7 +61,8 @@ class BalanceMonitor {
             bot,
             bot.collateralThreshold,
             this.client.getCollateralBalance(bot.address),
-            this.collateralCurrencySymbol
+            this.collateralCurrencySymbol,
+            "collateral"
           )
         });
       }
@@ -73,7 +74,8 @@ class BalanceMonitor {
             bot,
             bot.syntheticThreshold,
             this.client.getSyntheticBalance(bot.address),
-            this.syntheticCurrencySymbol
+            this.syntheticCurrencySymbol,
+            "synthetic"
           )
         });
       }
@@ -82,20 +84,27 @@ class BalanceMonitor {
         Logger.info({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
-          mrkdwn: this.createLowBalanceMrkdwn(bot, bot.etherThreshold, this.client.getEtherBalance(bot.address), "ETH")
+          mrkdwn: this.createLowBalanceMrkdwn(
+            bot,
+            bot.etherThreshold,
+            this.client.getEtherBalance(bot.address),
+            "ETH",
+            "ether"
+          )
         });
       }
     }
   };
 
-  createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol) => {
+  createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
+      "*" +
       bot.name +
-      " (" +
+      "* (" +
       createEtherscanLinkMarkdown(this.web3, networkUtils, bot.address) +
       ") " +
-      tokenSymbol +
-      " token balance is less than " +
+      tokenName +
+      " balance is less than " +
       this.formatDecimalString(threshold) +
       " " +
       tokenSymbol +
