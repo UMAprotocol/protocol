@@ -192,6 +192,9 @@ contract("Governor", function(accounts) {
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
+    // Cannot send ETH to execute a transaction that requires 0 ETH.
+    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("1") })));
+
     // Check to make sure that the tokens get transferred at the time of execution.
     const startingBalance = await testToken.balanceOf(proposer);
     await governor.executeProposal(id, 0);
