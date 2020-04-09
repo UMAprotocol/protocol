@@ -78,18 +78,6 @@ contract("ExpiringMultiParty", function(accounts) {
     );
   });
 
-  it("Cannot set dispute bond percentage below limit set by EMP creator", async function() {
-    // Change only dispute bond %.
-    constructorParams.disputeBondPct = { rawValue: toWei("0") };
-    assert(
-      await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator
-        })
-      )
-    );
-  });
-
   it("Cannot have empty synthetic token symbol", async function() {
     // Change only synthetic token symbol.
     constructorParams.syntheticSymbol = "";
