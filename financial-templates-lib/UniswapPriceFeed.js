@@ -5,15 +5,24 @@ const { MAX_SAFE_JS_INT } = require("../common/Constants");
 
 // A client for getting price information from a uniswap market.
 class UniswapPriceFeed {
-  constructor(abi, web3, uniswapAddress, twapLength, getTime) {
+  constructor(abi, web3, uniswapAddress, twapLength, historicalLookback, getTime) {
     this.web3 = web3;
     this.uniswap = new web3.eth.Contract(abi, uniswapAddress);
     this.twapLength = twapLength;
     this.getTime = getTime;
+    this.historicalLookback = historicalLookback;
   }
 
   getCurrentPrice = () => this.currentPrice;
   getCurrentTwap = () => this.currentTwap;
+  getHistoricalTwap = time => {
+    if (time < this.lastUpdateTime - this.historicalLookback) {
+      // Requesting an historical TWAP earlier than the lookback.
+      return null;
+    }
+
+    return this._computeTwap(this.events, time - this.twapLength, time);
+  };
 
   _update = async () => {
     // TODO: optimize this call. This may be very slow or break if there are many transactions.
@@ -42,12 +51,13 @@ class UniswapPriceFeed {
 
     // Search backwards through the array and grab block timestamps for everything in our lookback window.
     const currentTime = this.getTime();
+    const lookbackWindowStart = currentTime - (this.twapLength + this.historicalLookback);
     let i = events.length;
     while (i !== 0) {
       const event = events[--i];
       event.timestamp = (await web3.eth.getBlock(event.blockNumber)).timestamp;
       event.price = this._getPriceFromSyncEvent(event);
-      if (event.timestamp <= currentTime - this.twapLength) {
+      if (event.timestamp <= lookbackWindowStart) {
         break;
       }
     }
@@ -60,6 +70,8 @@ class UniswapPriceFeed {
 
     // Compute TWAP up to the current time.
     this.currentTwap = this._computeTwap(this.events, currentTime - this.twapLength, currentTime);
+
+    this.lastUpdateTime = currentTime;
   };
 
   _getPriceFromSyncEvent(event) {
