@@ -201,7 +201,8 @@ class ExpiringMultiPartyClient {
         // Filter out empty positions.
         positions[i].rawCollateral.toString() === "0"
           ? acc
-          : acc.concat([
+          : /* eslint-disable indent */
+            acc.concat([
               {
                 sponsor: address,
                 requestPassTimestamp: positions[i].requestPassTimestamp,

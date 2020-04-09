@@ -82,13 +82,18 @@ contract("UniswapPriceFeed.js", function(accounts) {
     // Allow the library to compute the TWAP.
     await uniswapPriceFeed._update();
 
-
     const totalTime = mockTime - time1;
     const weightedPrice1 = toBN(toWei("1")).muln(time2 - time1);
     const weightedPrice2 = toBN(toWei("0.5")); // 0.5 * 1 second since the mockTime is one second past time2.
 
     // Compare the TWAPs.
-    assert.equal(uniswapPriceFeed.getCurrentTwap().toString(), weightedPrice1.add(weightedPrice2).divn(totalTime).toString());
+    assert.equal(
+      uniswapPriceFeed.getCurrentTwap().toString(),
+      weightedPrice1
+        .add(weightedPrice2)
+        .divn(totalTime)
+        .toString()
+    );
   });
 
   it("All events before window", async function() {

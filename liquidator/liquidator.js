@@ -92,7 +92,7 @@ class Liquidator {
       } catch (error) {
         Logger.error({
           at: "Liquidator",
-          message: `Failed to liquidate position`,
+          message: "Failed to liquidate position",
           error: error
         });
         continue;
@@ -181,7 +181,7 @@ class Liquidator {
       } catch (error) {
         Logger.error({
           at: "Liquidator",
-          message: `Failed to withdraw liquidation rewards`,
+          message: "Failed to withdraw liquidation rewards",
           error: error
         });
         continue;

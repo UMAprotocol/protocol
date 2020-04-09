@@ -2,12 +2,17 @@ module.exports = {
   env: {
     browser: true
   },
-  extends: "eslint:recommended",
+  extends: ["plugin:prettier/recommended"],
+  plugins: ["prettier"],
   parserOptions: {
-    ecmaVersion: 2018,
-    sourceType: "module"
+    ecmaFeatures: {
+      jsx: true,
+      modules: true
+    }
   },
+  parser: "babel-eslint",
   rules: {
+    "prettier/prettier": ["error"],
     indent: ["error", 2, { SwitchCase: 1 }],
     "linebreak-style": ["error", "unix"],
     quotes: ["error", "double", { avoidEscape: true }],
