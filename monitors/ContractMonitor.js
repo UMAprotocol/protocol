@@ -22,7 +22,8 @@ class ContractMonitor {
     this.web3 = this.empEventClient.web3;
 
     // Contract constants
-    //TODO: replace this with an actual query to the collateral currency symbol
+    //TODO: replace this with an actual query to the collateral currency symbol in the contract
+    // need to decide where this logic goes.
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "UMATEST";
 
@@ -30,6 +31,14 @@ class ContractMonitor {
     this.formatDecimalString = createFormatFunction(this.web3, 2);
   }
 
+  calculatePositionCRPercent = (web3, collateral, tokensOutstanding, priceFunction) => {
+    return web3.utils
+      .toBN(collateral)
+      .mul(web3.utils.toBN(web3.utils.toWei("1")))
+      .mul(web3.utils.toBN(web3.utils.toWei("1")))
+      .div(web3.utils.toBN(tokensOutstanding).mul(web3.utils.toBN(priceFunction.toString())))
+      .muln(100);
+  };
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async priceFunction => {
     Logger.debug({
