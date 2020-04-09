@@ -94,17 +94,16 @@ class ExpiringMultiPartyEventClient {
   };
 
   _update = async () => {
-    //Events
-    console.log("this.liquidationEvents", this.liquidationEvents);
+    //Events. If there have been previous events retrieve we should only query the chain from
+    // the last seen block number.
+
+    // Liquidation events
     let liquidationBlockQueryNumber =
       this.liquidationEvents.length > 0 ? this.liquidationEvents[this.liquidationEvents.length - 1].blockNumber + 1 : 0;
-    console.log("liquidationBlockQueryNumber", liquidationBlockQueryNumber);
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
       fromBlock: liquidationBlockQueryNumber
     });
-    console.log("liquidationEventsObj", liquidationEventsObj);
 
-    // If there have been previous events retrieve we should only query the chain for newer events.
     for (let event of liquidationEventsObj) {
       this.liquidationEvents.push({
         transactionHash: event.transactionHash,
@@ -118,6 +117,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
+    // Dispute events
     let disputeBlockQueryNumber =
       this.disputeEvents.length > 0 ? this.disputeEvents[this.disputeEvents.length - 1].blockNumber + 1 : 0;
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
@@ -135,6 +135,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
 
+    // Dispute settlement events
     let disputeSettlementBlockQueryNumber =
       this.disputeSettlementEvents.length > 0
         ? this.disputeSettlementEvents[this.disputeSettlementEvents.length - 1].blockNumber + 1
