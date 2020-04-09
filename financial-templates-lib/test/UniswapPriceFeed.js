@@ -160,7 +160,8 @@ contract("UniswapPriceFeed.js", function(accounts) {
     mockTime = currentTime;
     await uniswapPriceFeed._update();
 
-    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 7201), null);
+    // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
+    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 3601), null);
   });
   // TODO: add the following TWAP tests using simulated block times:
   // - Some events pre TWAP window, some inside window.
