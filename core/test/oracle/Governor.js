@@ -236,7 +236,7 @@ contract("Governor", function(accounts) {
     );
   });
 
-  it("Proposer did not send enough ETH to execute payable transaction", async function() {
+  it("Proposer did not send exact amount of ETH to execute payable transaction", async function() {
     const amountToDeposit = toWei("1");
 
     // Send the proposal to send ETH to account2.
@@ -262,9 +262,11 @@ contract("Governor", function(accounts) {
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
-    // Execute the proposal but do not send enough ETH to pay for the transaction
     const startingBalance = await web3.eth.getBalance(account2);
-    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("0.1") })));
+    // Sent too little ETH.
+    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("0.9") })));
+    // Sent too much ETH.
+    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("1.1") })));
     assert.equal(await web3.eth.getBalance(account2), startingBalance);
   });
 

@@ -129,6 +129,7 @@ contract Governor is MultiRole, Testable {
         );
         require(transaction.to != address(0), "Transaction has already been executed");
         require(price != 0, "Cannot execute, proposal was voted down");
+        require(msg.value == transaction.value, "Must send the exact amount of ETH to execute transaction");
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Transaction execution failed");
 
         // Delete the transaction.
