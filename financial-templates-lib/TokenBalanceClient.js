@@ -117,7 +117,6 @@ class TokenBalanceClient {
   };
 
   _update = async () => {
-    console.log("update function");
     // loop over all account addresses in the monitor list and for each check the
     // balances of the respective tokens and there balances.Store these for
     // synchronous retrieval by bots.
@@ -127,7 +126,6 @@ class TokenBalanceClient {
       this.tokenBalances.syntheticBalances[account] = await this.syntheticToken.methods.balanceOf(account).call();
       this.tokenBalances.etherBalances[account] = await this.web3.eth.getBalance(account);
     }
-    console.log("this.tokenBalances", this.tokenBalances);
   };
 }
 
