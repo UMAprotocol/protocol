@@ -11,7 +11,7 @@ import "../interfaces/StoreInterface.sol";
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
-contract Store is StoreInterface, MultiRole, Withdrawable {
+contract Store is StoreInterface, Withdrawable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint;
