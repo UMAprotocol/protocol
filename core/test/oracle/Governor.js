@@ -563,7 +563,7 @@ contract("Governor", function(accounts) {
     const request = pendingRequests[0];
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
