@@ -84,7 +84,9 @@ contract("TokenizedDerivative", function(accounts) {
     returnCalculatorWhitelist = await AddressWhitelist.at(await tokenizedDerivativeCreator.returnCalculatorWhitelist());
 
     // Make sure the Oracle and PriceFeed support the underlying product.
-    await supportedIdentifiers.addSupportedIdentifier(identifierBytes);
+    if (!(await supportedIdentifiers.isIdentifierSupported.call(identifierBytes))) {
+      await supportedIdentifiers.addSupportedIdentifier(identifierBytes);
+    }
     await deployedManualPriceFeed.setCurrentTime(100000);
     await pushPrice(web3.utils.toWei("1", "ether"));
 

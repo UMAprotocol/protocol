@@ -52,9 +52,13 @@ contract("ExpiringMultiParty", function(accounts) {
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: contractCreator
-    });
+
+    // If the identifer is not already registered, add it.
+    if (!(await identifierWhitelist.isIdentifierSupported.call(constructorParams.priceFeedIdentifier))) {
+      await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
+        from: contractCreator
+      });
+    }
   });
 
   it("TokenFactory address should be set on construction", async function() {

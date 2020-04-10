@@ -78,9 +78,12 @@ contract("PricelessPositionManager", function(accounts) {
   beforeEach(async function() {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
-      from: contractDeployer
-    });
+
+    if (!(await identifierWhitelist.isIdentifierSupported.call(priceFeedIdentifier))) {
+      await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
+        from: contractDeployer
+      });
+    }
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address, {

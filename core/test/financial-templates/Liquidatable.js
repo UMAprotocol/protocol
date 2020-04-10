@@ -95,10 +95,11 @@ contract("Liquidatable", function(accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     priceFeedIdentifier = web3.utils.utf8ToHex("ETHUSD");
-    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
-      from: contractDeployer
-    });
-
+    if (!(await identifierWhitelist.isIdentifierSupported.call(priceFeedIdentifier))) {
+      await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
+        from: contractDeployer
+      });
+    }
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address, {
       from: contractDeployer

@@ -86,7 +86,9 @@ contract("scripts/Voting.js", function(accounts) {
     // Add supported identifiers
     for (const identifier in TEST_IDENTIFIERS) {
       const key = TEST_IDENTIFIERS[identifier].key;
-      await supportedIdentifiers.addSupportedIdentifier(key);
+      if (!(await supportedIdentifiers.isIdentifierSupported.call(key))) {
+        await supportedIdentifiers.addSupportedIdentifier(key);
+      }
     }
   });
 
