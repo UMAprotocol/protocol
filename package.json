@@ -52,6 +52,7 @@
     "node-fetch": "^2.3.0",
     "node-metamask": "github:UMAprotocol/node-metamask",
     "ora": "^4.0.3",
+    "pretty-quick": "^2.0.1",
     "require-context": "^1.1.0",
     "secp256k1": "^3.7.1",
     "truffle": "^5.1.14",
@@ -72,7 +73,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "lint-staged --allow-empty"
+      "pre-commit": "lint-staged --allow-empty && pretty-quick --staged"
     }
   },
   "lint-staged": {
