@@ -136,7 +136,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // If a position is liquidated it should be removed from the list of positions and added to the undisputed liquidations.
-    const id = await emp.createLiquidation.call(
+    const { liquidationId } = await emp.createLiquidation.call(
       sponsor2,
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
@@ -161,7 +161,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     const expectedLiquidations = [
       {
         sponsor: sponsor2,
-        id: id.toString(),
+        id: liquidationId.toString(),
         numTokens: toWei("45"),
         amountCollateral: toWei("100"),
         liquidationTime: (await emp.getCurrentTime()).toString(),
@@ -226,7 +226,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
 
     // Create a new liquidation for account[0]'s position.
-    const id = await emp.createLiquidation.call(
+    const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
@@ -249,7 +249,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
-    await emp.dispute(id.toString(), sponsor1, { from: sponsor1 });
+    await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
     // The disputed liquidation should no longer show up as undisputed.
@@ -331,7 +331,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
 
     // Create a new liquidation for account[0]'s position.
-    const id = await emp.createLiquidation.call(
+    const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
@@ -353,7 +353,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
-    await emp.dispute(id.toString(), sponsor1, { from: sponsor1 });
+    await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
     // The disputed liquidation should no longer show up as undisputed.

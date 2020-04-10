@@ -8,7 +8,7 @@ import "./Registry.sol";
 /**
  * @title Base contract for all financial contract creators
  */
-contract ContractCreator {
+abstract contract ContractCreator {
     address internal finderAddress;
 
     constructor(address _finderAddress) public {

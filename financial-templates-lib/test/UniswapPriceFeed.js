@@ -17,7 +17,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
   beforeEach(async function() {
     uniswapMock = await UniswapMock.new({ from: owner });
-    uniswapPriceFeed = new UniswapPriceFeed(Uniswap.abi, web3, uniswapMock.address, 3600, () => mockTime);
+    uniswapPriceFeed = new UniswapPriceFeed(Uniswap.abi, web3, uniswapMock.address, 3600, 3600, () => mockTime);
   });
 
   it("Basic current price", async function() {
@@ -36,7 +36,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
-  it.only("Selects most recent price in same block", async function() {
+  it("Selects most recent price in same block", async function() {
     // Just use current system time because the time doesn't matter.
     const time = Math.round(new Date().getTime() / 1000);
 
@@ -122,6 +122,51 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
     // Since all the events are past our window, there is no valid price, and the TWAP should return null.
     assert.equal(uniswapPriceFeed.getCurrentTwap(), null);
+  });
+
+  it("Basic historical TWAP", async function() {
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly. 
+    const currentTime = Math.round(new Date().getTime() / 1000);
+
+    // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
+    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("100"))], currentTime - 7200, owner);
+
+    // At an hour and a half ago, set the price to 90.
+    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("90"))], currentTime - 5400, owner);
+
+    // At an hour ago, set the price to 80.
+    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("80"))], currentTime - 3600, owner);
+
+    // At half an hour ago, set the price to 70.
+    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("70"))], currentTime - 1800, owner);
+
+    mockTime = currentTime;
+
+    await uniswapPriceFeed._update();
+
+    // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
+    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 3600).toString(), toWei("95"));
+
+    // The historical TWAP for 45 mins ago should be 100 for the first quarter, 90 for the middle half, and 80 for the last quarter -> 90.
+    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 2700).toString(), toWei("90"));
+
+    // The historical TWAP for 30 minutes ago should be 90 for the first half and then 80 for the second half -> 85.
+    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 1800).toString(), toWei("85"));
+
+    // The historical TWAP for 15 minutes ago should be 90 for the first quarter, 80 for the middle half, and 70 for the last quarter -> 80.
+    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 900).toString(), toWei("80"));
+
+    // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
+    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime).toString(), toWei("75"));
+  });
+
+  it("Historical TWAP too far back", async function() {
+    const currentTime = Math.round(new Date().getTime() / 1000);
+    mockTime = currentTime;
+    await uniswapPriceFeed._update();
+
+    // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
+    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 3601), null);
   });
   // TODO: add the following TWAP tests using simulated block times:
   // - Some events pre TWAP window, some inside window.

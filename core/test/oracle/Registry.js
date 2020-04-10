@@ -54,6 +54,15 @@ contract("Registry", function(accounts) {
     result = await registry.registerContract(parties, arbitraryContract, { from: creator1 });
     assert.isTrue(await registry.isContractRegistered(arbitraryContract));
 
+    // Make sure a PartyAdded event is emitted on initial contract registration.
+    truffleAssert.eventEmitted(result, "PartyAdded", ev => {
+      return (
+        web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(arbitraryContract) &&
+        // Check that the party is a member of the parties array used in registration above
+        parties.map(party => web3.utils.toChecksumAddress(party).indexOf(web3.utils.toChecksumAddress(ev.party)))
+      );
+    });
+
     // Make sure a NewContractRegistered event is emitted.
     truffleAssert.eventEmitted(result, "NewContractRegistered", ev => {
       return (
@@ -77,7 +86,6 @@ contract("Registry", function(accounts) {
     await registry.resetMember(RegistryRolesEnum.OWNER, rando1, { from: owner });
 
     // The owner can no longer add or remove contract creators.
-    assert(await didContractThrow(registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner })));
     assert(
       await didContractThrow(registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner }))
     );
@@ -140,6 +148,15 @@ contract("Registry", function(accounts) {
 
     // Cannot register a contract that is already registered.
     assert(await didContractThrow(registry.registerContract([], fc1, { from: creator1 })));
+
+    // Cannot register the same address to a contract multiple times. In other words one
+    // address cant be multiple party members of one contract at registration.
+    const party = web3.utils.randomHex(20);
+    const party2 = web3.utils.randomHex(20);
+
+    assert(
+      await didContractThrow(registry.registerContract([party, party, party, party2], contract1, { from: creator1 }))
+    );
   });
 
   it("Adding parties to contracts", async function() {
