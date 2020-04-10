@@ -15,7 +15,7 @@ class ContractMonitor {
     this.lastDisputeBlockNumber = 0;
     this.lastDisputeSettlementBlockNumber = 0;
 
-    // Instance of the expiring multiparty to perform on-chain queries
+    // EMP event client to read latest contract events
     this.empEventClient = expiringMultiPartyEventClient;
     this.web3 = this.empEventClient.web3;
 
