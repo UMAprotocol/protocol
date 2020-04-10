@@ -115,7 +115,11 @@ contract("Voting", function(accounts) {
     // Voters can alter their commits.
     const newPrice = getRandomSignedInt();
     const newSalt = getRandomUnsignedInt();
-    const newHash = web3.utils.soliditySha3(newPrice, newSalt, account1);
+    const newHash = web3.utils.soliditySha3(
+      { t: 'int', v: newPrice }, 
+      { t: 'int', v: newSalt }, 
+      { t: 'address', v: account1 }
+    );
 
     // Can alter a committed hash.
     await voting.commitVote(identifier, time, newHash);
@@ -1375,7 +1379,7 @@ contract("Voting", function(accounts) {
     // Commit vote.
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    const hash = web3.utils.soliditySha3(price, salt, account1);
     await votingTest.commitVote(identifier, time, hash);
 
     // Reveal phase.
