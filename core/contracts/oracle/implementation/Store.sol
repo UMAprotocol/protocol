@@ -2,6 +2,8 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
@@ -15,6 +17,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint;
+    using SafeERC20 for IERC20;
 
     /****************************************
      *    INTERNAL VARIABLES AND STORAGE    *
@@ -68,7 +71,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         IERC20 erc20 = IERC20(erc20Address);
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(authorizedAmount > 0);
-        require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
+        erc20.safeTransferFrom(msg.sender, address(this), authorizedAmount);
     }
 
     /**
