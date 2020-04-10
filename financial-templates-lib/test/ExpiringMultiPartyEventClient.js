@@ -92,11 +92,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
   it("Return Liquidation Events", async function() {
     // Create liquidation to liquidate sponsor2 from sponsor1
-<<<<<<< HEAD
-    let txObject1 = await emp.createLiquidation(
-=======
     const txObject1 = await emp.createLiquidation(
->>>>>>> master
       sponsor1,
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
@@ -112,10 +108,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       [
         {
           transactionHash: txObject1.tx,
-<<<<<<< HEAD
-=======
           blockNumber: txObject1.receipt.blockNumber,
->>>>>>> master
           sponsor: sponsor1,
           liquidator: liquidator,
           liquidationId: "0",
@@ -128,11 +121,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     );
 
     // Correctly adds a second event after creating a new liquidation
-<<<<<<< HEAD
-    let txObject2 = await emp.createLiquidation(
-=======
     const txObject2 = await emp.createLiquidation(
->>>>>>> master
       sponsor2,
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
@@ -144,10 +133,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       [
         {
           transactionHash: txObject1.tx,
-<<<<<<< HEAD
-=======
           blockNumber: txObject1.receipt.blockNumber,
->>>>>>> master
           sponsor: sponsor1,
           liquidator: liquidator,
           liquidationId: "0",
@@ -157,10 +143,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
         },
         {
           transactionHash: txObject2.tx,
-<<<<<<< HEAD
-=======
           blockNumber: txObject2.receipt.blockNumber,
->>>>>>> master
           sponsor: sponsor2,
           liquidator: liquidator,
           liquidationId: "0",
@@ -193,10 +176,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       [
         {
           transactionHash: txObject.tx,
-<<<<<<< HEAD
-=======
           blockNumber: txObject.receipt.blockNumber,
->>>>>>> master
           sponsor: sponsor1,
           liquidator: liquidator,
           disputer: sponsor2,
@@ -243,10 +223,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       [
         {
           transactionHash: txObject.tx,
-<<<<<<< HEAD
-=======
           blockNumber: txObject.receipt.blockNumber,
->>>>>>> master
           caller: liquidator,
           sponsor: sponsor1,
           liquidator: liquidator,
