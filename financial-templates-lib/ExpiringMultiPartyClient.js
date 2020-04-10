@@ -168,7 +168,7 @@ class ExpiringMultiPartyClient {
           continue;
         }
 
-        // Construct Liquidation data to save
+        // Construct Liquidation data to save.
         const liquidationData = {
           sponsor: liquidation.sponsor,
           id: id.toString(),
