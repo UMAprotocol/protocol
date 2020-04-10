@@ -73,7 +73,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "echo '🕺Running eslint on staged files' && lint-staged --allow-empty && echo '🏃‍♂️Running pretty-quick on staged files' && pretty-quick --staged"
+      "pre-commit": "echo '🕺 Running eslint on staged files' && lint-staged --allow-empty && echo '🏃‍♂️ Running pretty-quick on staged files' && pretty-quick --staged"
     }
   },
   "lint-staged": {
