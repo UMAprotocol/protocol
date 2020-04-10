@@ -65,16 +65,15 @@ contract("IdentifierWhitelist", function(accounts) {
     assert.isTrue(await identifierWhitelist.isIdentifierSupported(randomIdentifierToAdd));
     assert.isFalse(await identifierWhitelist.isIdentifierSupported(identifierToRemove));
 
-    // Double remove from whitelist. Shouldn't error, but shouldn't generate an event.
-    result = await identifierWhitelist.removeSupportedIdentifier(identifierToRemove, { from: owner });
-    truffleAssert.eventNotEmitted(result, "SupportedIdentifierRemoved");
+    // Double remove from whitelist should revert.
+    assert(await didContractThrow(identifierWhitelist.removeSupportedIdentifier(identifierToRemove, { from: owner })));
   });
 
   it("Add to whitelist twice", async function() {
     await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
-    const result = await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
 
-    truffleAssert.eventNotEmitted(result, "SupportedIdentifierAdded");
+    // Double registration in whitelist should revert.
+    assert(await didContractThrow(identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner })));
 
     assert.isTrue(await identifierWhitelist.isIdentifierSupported(randomIdentifierToAdd));
   });

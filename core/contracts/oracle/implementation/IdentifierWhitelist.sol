@@ -33,10 +33,9 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function addSupportedIdentifier(bytes32 identifier) external override onlyOwner {
-        if (!supportedIdentifiers[identifier]) {
-            supportedIdentifiers[identifier] = true;
-            emit SupportedIdentifierAdded(identifier);
-        }
+        require(!supportedIdentifiers[identifier], "Can only add a new identifer");
+        supportedIdentifiers[identifier] = true;
+        emit SupportedIdentifierAdded(identifier);
     }
 
     /**
@@ -47,10 +46,9 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function removeSupportedIdentifier(bytes32 identifier) external override onlyOwner {
-        if (supportedIdentifiers[identifier]) {
-            supportedIdentifiers[identifier] = false;
-            emit SupportedIdentifierRemoved(identifier);
-        }
+        require(supportedIdentifiers[identifier], "Can only remove an existing identifer");
+        supportedIdentifiers[identifier] = false;
+        emit SupportedIdentifierRemoved(identifier);
     }
 
     /****************************************
