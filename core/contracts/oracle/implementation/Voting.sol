@@ -709,7 +709,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         }
 
         // Grab the snapshotted supply from the voting token. It's already scaled by 10**18, so we can directly
-            // initialize the Unsigned value with the returned uint.
+        // initialize the Unsigned value with the returned uint.
         FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
 
         // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
