@@ -364,7 +364,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // Cannot reveal an uncommitted or previously revealed hash
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
         // Committed hash doesn't match revealed voter address, price and salt
-        require(keccak256(abi.encodePacked(price, salt, msg.sender)) == voteSubmission.commit, "Invalid commit hash, address & salt");
+        require(keccak256(abi.encodePacked(
+            price,
+            salt,
+            msg.sender,
+            time,
+            roundId,
+            identifier
+        )) == voteSubmission.commit, "Commit hash must match px, salt, address, timestamp, round, and identifier");
         delete voteSubmission.commit;
 
         // Lock in round variables including snapshotId and inflation rate

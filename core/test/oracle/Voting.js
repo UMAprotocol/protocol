@@ -76,12 +76,21 @@ contract("Voting", function(accounts) {
     // Reset the rounds.
     await moveToNextRound(voting);
 
+    // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
+    // RoundId for Commit and Reveal phases should be the same.
+    const currentTime = (await voting.getCurrentTime()).toNumber();
+    const commitRoundId = await voting.getCurrentRoundId();
+    assert.equal(commitRoundId.toString(), Math.floor(currentTime / 172800));
+
     // Rounds should start with Commit.
     assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
 
     // Shift of one phase should be Reveal.
     await moveToNextPhase(voting);
     assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.REVEAL);
+
+    // Round ID between Commit and Reveal phases should be the same.
+    assert.equal(commitRoundId.toString(), (await voting.getCurrentRoundId()).toString());
 
     // A second shift should go back to commit.
     await moveToNextPhase(voting);
@@ -96,11 +105,10 @@ contract("Voting", function(accounts) {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.requestPrice(identifier, time, { from: registeredContract });
-    // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
-    const currentTime = (await voting.getCurrentTime()).toNumber();
-    assert.equal((await voting.getCurrentRoundId()).toString(), Math.floor(currentTime / 172800));
-    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
     await moveToNextRound(voting);
+    // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
+    // RoundId for Commit and Reveal phases should be the same.
+    const currentRoundId = await voting.getCurrentRoundId();
 
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
@@ -118,7 +126,10 @@ contract("Voting", function(accounts) {
     const newHash = web3.utils.soliditySha3(
       { t: "int", v: newPrice },
       { t: "int", v: newSalt },
-      { t: "address", v: account1 }
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: currentRoundId },
+      { t: "bytes32", v: identifier }
     );
 
     // Can alter a committed hash.
@@ -143,64 +154,21 @@ contract("Voting", function(accounts) {
     // Can't reveal with the incorrect address.
     assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt, { from: account2 })));
 
+    // Can't reveal with incorrect timestamp.
+    assert(await didContractThrow(voting.revealVote(identifier, (Number(time) + 1).toString(), newPrice, salt)));
+
+    // Can't reveal with incorrect identifier.
+    assert(
+      await didContractThrow(
+        voting.revealVote(web3.utils.utf8ToHex("wrong-identifier"), time, newPrice, newSalt, { from: account2 })
+      )
+    );
+
     // Successfully reveal the latest commit.
     await voting.revealVote(identifier, time, newPrice, newSalt);
 
     // Can't reveal the same commit again.
     assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
-  });
-
-  it("Multiple voters", async function() {
-    const identifier = web3.utils.utf8ToHex("multiple-voters");
-    const time = "1000";
-
-    // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
-
-    await voting.requestPrice(identifier, time, { from: registeredContract });
-    await moveToNextRound(voting);
-
-    const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1, account1);
-
-    const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2, account2);
-
-    // Voter3 wants to vote the same price as voter1.
-    const price3 = price1;
-    const salt3 = getRandomUnsignedInt();
-    const hash3 = web3.utils.soliditySha3(price3, salt3, account3);
-
-    // Multiple voters can commit.
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
-    await voting.commitVote(identifier, time, hash2, { from: account2 });
-    await voting.commitVote(identifier, time, hash3, { from: account3 });
-
-    // Move to the reveal phase.
-    await moveToNextPhase(voting);
-
-    // They can't reveal each other's votes.
-    assert(await didContractThrow(voting.revealVote(identifier, time, price2, salt2, { from: account1 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price3, salt3, { from: account1 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price1, salt1, { from: account2 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price1, salt1, { from: account2 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price3, salt3, { from: account2 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price2, salt2, { from: account3 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price1, salt1, { from: account3 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price2, salt2, { from: account3 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price3, salt3, { from: account1 })));
-
-    // Someone who didn't even commit can't reveal anything either.
-    assert(await didContractThrow(voting.revealVote(identifier, time, price1, salt1, { from: account4 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price2, salt2, { from: account4 })));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price3, salt3, { from: account4 })));
-
-    // They can reveal their own votes.
-    await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
-    await voting.revealVote(identifier, time, price2, salt2, { from: account2 });
-    await voting.revealVote(identifier, time, price3, salt3, { from: account3 });
   });
 
   it("Overlapping request keys", async function() {
@@ -224,12 +192,25 @@ contract("Voting", function(accounts) {
 
     const price1 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price1 },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time2 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier1 }
+    );
 
     const price2 = getRandomSignedInt();
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2, account1);
-
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: price2 },
+      { t: "int", v: salt2 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier2 }
+    );
     await voting.commitVote(identifier1, time2, hash1);
     await voting.commitVote(identifier2, time1, hash2);
 
@@ -273,13 +254,27 @@ contract("Voting", function(accounts) {
     // Commit vote 1.
     const price1 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price1 },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier1 }
+    );
     await voting.commitVote(identifier1, time1, hash1);
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2, account1);
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: price2 },
+      { t: "int", v: salt2 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time2 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier2 }
+    );
     await voting.commitVote(identifier2, time2, hash2);
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
@@ -339,7 +334,14 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: timeSucceed },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, timeSucceed, hash);
 
     // Move to reveal phase and reveal vote.
@@ -371,7 +373,14 @@ contract("Voting", function(accounts) {
     // Commit vote.
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash);
 
     // Move to reveal phase and reveal vote.
@@ -390,7 +399,6 @@ contract("Voting", function(accounts) {
   it("Pending Requests", async function() {
     await moveToNextRound(voting);
 
-    const startingTime = await voting.getCurrentTime();
     const identifier1 = web3.utils.utf8ToHex("pending-requests1");
     const time1 = "1000";
     const identifier2 = web3.utils.utf8ToHex("pending-requests2");
@@ -430,12 +438,26 @@ contract("Voting", function(accounts) {
     // Commit votes.
     const price1 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price1 },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier1 }
+    );
     await voting.commitVote(identifier1, time1, hash1);
 
     const price2 = getRandomSignedInt();
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2, account1);
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: price2 },
+      { t: "int", v: salt2 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time2 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier2 }
+    );
     await voting.commitVote(identifier2, time2, hash2);
 
     // Pending requests should still have a single entry in the reveal phase.
@@ -481,14 +503,29 @@ contract("Voting", function(accounts) {
 
     const price = 123;
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt, account1);
+    const invalidHash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
 
     // Can't commit without advancing the round forward.
-    assert(await didContractThrow(voting.commitVote(identifier, time, hash)));
+    assert(await didContractThrow(voting.commitVote(identifier, time, invalidHash)));
 
     await moveToNextRound(voting);
 
     // Commit vote.
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash);
 
     // Reveal the vote.
@@ -515,12 +552,26 @@ contract("Voting", function(accounts) {
     // Commit votes.
     const price1 = 123;
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1, account1);
+    let hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price1 },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
     const price2 = 456;
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2, account2);
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: price2 },
+      { t: "int", v: salt2 },
+      { t: "address", v: account2 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
     // Reveal the votes.
@@ -533,6 +584,14 @@ contract("Voting", function(accounts) {
     assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
 
     // Cleanup: resolve the vote this round.
+    hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price1 },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash1, { from: account1 });
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
@@ -552,18 +611,39 @@ contract("Voting", function(accounts) {
     // Commit votes.
     const losingPrice = 123;
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(losingPrice, salt1, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: losingPrice },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
     // Both account 2 and 3 vote for 456.
     const winningPrice = 456;
 
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(winningPrice, salt2, account2);
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: winningPrice },
+      { t: "int", v: salt2 },
+      { t: "address", v: account2 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
     const salt3 = getRandomUnsignedInt();
-    const hash3 = web3.utils.soliditySha3(winningPrice, salt3, account3);
+    const hash3 = web3.utils.soliditySha3(
+      { t: "int", v: winningPrice },
+      { t: "int", v: salt3 },
+      { t: "address", v: account3 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash3, { from: account3 });
 
     // Reveal the votes.
@@ -594,8 +674,22 @@ contract("Voting", function(accounts) {
     // Commit vote.
     const price = 123;
     const salt = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price, salt, account1);
-    const hash4 = web3.utils.soliditySha3(price, salt, account4);
+    let hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
+    let hash4 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account4 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash4, { from: account4 });
 
     // Reveal the vote.
@@ -618,7 +712,15 @@ contract("Voting", function(accounts) {
     // With a smaller GAT value of 3%, account4 can pass the vote on their own with 4% of all tokens.
     await setNewGatPercentage(web3.utils.toWei("0.03", "ether"));
 
-    // Commit votes.
+    // Create new vote hashes with the new round ID and commit votes.
+    hash4 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account4 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash4, { from: account4 });
 
     // Reveal votes.
@@ -643,6 +745,22 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
 
     // Commit votes.
+    hash4 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account4 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
+    hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash4, { from: account4 });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
@@ -675,18 +793,39 @@ contract("Voting", function(accounts) {
     // account3 starts with only 1/3 of the tokens, but votes for 123.
     const winningPrice = 123;
     const salt3 = getRandomUnsignedInt();
-    const hash3 = web3.utils.soliditySha3(winningPrice, salt3, account3);
+    const hash3 = web3.utils.soliditySha3(
+      { t: "int", v: winningPrice },
+      { t: "int", v: salt3 },
+      { t: "address", v: account3 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash3, { from: account3 });
 
     // Both account 2 and 3, who start with 2/3 of the tokens, vote for 456.
     const losingPrice = 456;
 
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(losingPrice, salt1, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: losingPrice },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(losingPrice, salt2, account2);
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: losingPrice },
+      { t: "int", v: salt2 },
+      { t: "address", v: account2 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
     // All 3 accounts should have equal balances to start, so for winningPrice to win, account1 or account2 must
@@ -736,7 +875,14 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     const winningPrice = 123;
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(winningPrice, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: winningPrice },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash, { from: account1 });
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
@@ -786,11 +932,25 @@ contract("Voting", function(accounts) {
 
     // Accounts 1 and 2 commit votes.
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price, salt1, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price, salt2, account2);
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt2 },
+      { t: "address", v: account2 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
     await moveToNextPhase(voting);
@@ -827,7 +987,14 @@ contract("Voting", function(accounts) {
     const winningPrice = 456;
 
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(winningPrice, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: winningPrice },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash, { from: account1 });
 
     // Reveal the votes.
@@ -904,18 +1071,39 @@ contract("Voting", function(accounts) {
     // Commit votes.
     const losingPrice = 123;
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(losingPrice, salt1, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: losingPrice },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time1, hash1, { from: account1 });
 
     // Both account 2 and 3 vote for 456.
     const winningPrice = 456;
 
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(winningPrice, salt2, account2);
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: winningPrice },
+      { t: "int", v: salt2 },
+      { t: "address", v: account2 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time1, hash2, { from: account2 });
 
     const salt3 = getRandomUnsignedInt();
-    const hash3 = web3.utils.soliditySha3(winningPrice, salt3, account3);
+    const hash3 = web3.utils.soliditySha3(
+      { t: "int", v: winningPrice },
+      { t: "int", v: salt3 },
+      { t: "address", v: account3 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time1, hash3, { from: account3 });
 
     // Reveal the votes.
@@ -1003,7 +1191,14 @@ contract("Voting", function(accounts) {
     // Commit vote.
     const price = 123;
     const salt = getRandomUnsignedInt();
-    const hash4 = web3.utils.soliditySha3(price, salt, account4);
+    const hash4 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account4 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     result = await voting.commitVote(identifier, time, hash4, { from: account4 });
     truffleAssert.eventEmitted(result, "VoteCommitted", ev => {
       return (
@@ -1034,7 +1229,14 @@ contract("Voting", function(accounts) {
     // Since none of the whales voted, the price couldn't be resolved.
 
     // Now the whale votes and the vote resolves.
-    const hash1 = web3.utils.soliditySha3(price, salt, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time, hash1, { from: account1 });
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt, { from: account1 });
@@ -1078,7 +1280,14 @@ contract("Voting", function(accounts) {
 
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     const roundId = await voting.getCurrentRoundId();
 
     const { privateKey, publicKey } = await deriveKeyPairFromSignatureTruffle(
@@ -1123,21 +1332,23 @@ contract("Voting", function(accounts) {
 
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     const roundId = await voting.getCurrentRoundId();
 
-    const { privateKey, publicKey } = await deriveKeyPairFromSignatureTruffle(
-      web3,
-      getKeyGenMessage(roundId),
-      account1
-    );
+    const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
     await voting.commitAndPersistEncryptedVote(identifier, time, hash, encryptedMessage);
 
     const topicHash = computeTopicHash({ identifier, time }, roundId);
-    const retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
 
     const secondEncryptedMessage = await encryptMessage(publicKey, getRandomUnsignedInt());
 
@@ -1234,15 +1445,25 @@ contract("Voting", function(accounts) {
     const price2 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
     const salt2 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1, account1);
-    const hash2 = web3.utils.soliditySha3(price2, salt2, account1);
+    const hash1 = web3.utils.soliditySha3(
+      { t: "int", v: price1 },
+      { t: "int", v: salt1 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
+    const hash2 = web3.utils.soliditySha3(
+      { t: "int", v: price2 },
+      { t: "int", v: salt2 },
+      { t: "address", v: account1 },
+      { t: "uint", v: time2 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     const roundId = await voting.getCurrentRoundId();
 
-    const { privateKey, publicKey } = await deriveKeyPairFromSignatureTruffle(
-      web3,
-      getKeyGenMessage(roundId),
-      account1
-    );
+    const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
     const vote = { price: price1.toString(), salt: salt2.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
@@ -1320,7 +1541,14 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     const price = 123;
     const salt = getRandomSignedInt();
-    const hash = web3.utils.soliditySha3(price, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time1 },
+      { t: "uint", v: (await voting.getCurrentRoundId()).toString() },
+      { t: "bytes32", v: identifier }
+    );
     await voting.commitVote(identifier, time1, hash, { from: account1 });
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time1, price, salt, { from: account1 });
@@ -1355,7 +1583,6 @@ contract("Voting", function(accounts) {
 
     await moveToNextRound(votingTest);
 
-    const startingTime = await votingTest.getCurrentTime();
     const identifier = web3.utils.utf8ToHex("array-size");
     const time = "1000";
     const startingLength = (await votingTest.getPendingPriceRequestsArray()).length;
@@ -1379,7 +1606,14 @@ contract("Voting", function(accounts) {
     // Commit vote.
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt, account1);
+    const hash = web3.utils.soliditySha3(
+      { t: "int", v: price },
+      { t: "int", v: salt },
+      { t: "address", v: account1 },
+      { t: "uint", v: time },
+      { t: "uint", v: votingRound.toString() },
+      { t: "bytes32", v: identifier }
+    );
     await votingTest.commitVote(identifier, time, hash);
 
     // Reveal phase.
