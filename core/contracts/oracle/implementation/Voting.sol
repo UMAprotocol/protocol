@@ -127,7 +127,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // Max value of an unsigned integer.
     uint private constant UINT_MAX = ~uint(0);
 
-    /***************************************
+    /****************************************
      *                EVENTS                *
      ****************************************/
 
@@ -167,7 +167,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     constructor(
         uint _phaseLength,
-            FixedPoint.Unsigned memory _gatPercentage,
+        FixedPoint.Unsigned memory _gatPercentage,
         FixedPoint.Unsigned memory _inflationRate,
         uint _rewardsExpirationTimeout,
         address _votingToken,
