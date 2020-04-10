@@ -9,7 +9,7 @@ pragma experimental ABIEncoderV2;
 interface IdentifierWhitelistInterface {
     /**
      * @notice Adds the provided identifier as a supported identifier.
-     * @dev Price requests using this identifier will be succeed after this call.
+     * @dev Price requests using this identifier will succeed after this call.
      * @param identifier bytes32 encoding of the string identifier. Eg: BTC/USD.
      */
     function addSupportedIdentifier(bytes32 identifier) external;
