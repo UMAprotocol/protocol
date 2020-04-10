@@ -167,7 +167,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     constructor(
         uint _phaseLength,
-        FixedPoint.Unsigned memory _gatPercentage,
+            FixedPoint.Unsigned memory _gatPercentage,
         FixedPoint.Unsigned memory _inflationRate,
         uint _rewardsExpirationTimeout,
         address _votingToken,

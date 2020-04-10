@@ -158,7 +158,7 @@ class ExpiringMultiPartyClient {
 
     const undisputedLiquidations = [];
     const expiredLiquidations = [];
-    const disputedLiquidations = [];
+    const disputedLiquidations = []
     for (const address of this.sponsorAddresses) {
       const liquidations = await this.emp.methods.getLiquidations(address).call();
       for (const [id, liquidation] of liquidations.entries()) {
