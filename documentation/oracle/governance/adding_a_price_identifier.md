@@ -3,10 +3,10 @@
 ## What is a price identifier?
 
 A [price identifier](../../synthetic_tokens/glossary.md#price-identifier) is a natural language descriptor of a reference index, whose value the oracle will determine upon request. 
-Because DVM voters need to be able to vote on the value of this price identifier when disputes are raised, the DVM keeps a list of approved price identifiers. 
+Because UMA token holders need to be able to vote on the value of this price identifier when disputes are raised, the DVM keeps a list of approved price identifiers. 
 
-An example of a price identifier is “GOLD_APR20”. 
-This price identifier would be documented in the UMIP that was approved by the UMA tokenholders. 
+For example, `GOLD_USD` might be a price identifier to return the USD spot price of 1oz of gold according to a pre-defined set of rules. If approved, UMA token holders would be expected to vote on the `GOLD_USD` value when price requests are raised to the DVM. 
+The rules behind this `GOLD_USD` price identifier would be documented in detail in an [UMIP](./UMIPs.md) that was has been approved by UMA token holders. 
 That UMIP would contain more information about how to determine the price identifier. 
 
 ## Who controls the list of approved price identifiers?
@@ -23,7 +23,7 @@ You can therefore add any price identifier desired using the `IdentifierWhitelis
 ## Adding a price identifier to the mainnet deployment
 The `IdentifierWhitelist` contract in the mainnet deployment of the UMA DVM is controlled by a decentralized governance process. 
 To add a new price identifier, UMA token holders must vote and approve the identifier. 
-This will be done via the UMIP. Details of the UMIP process are [here](./UMIPs.md). 
+This is done via the UMIP process, as described [here](./UMIPs.md). 
 
 - Step 1: Discuss
 
