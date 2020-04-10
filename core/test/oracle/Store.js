@@ -65,7 +65,7 @@ contract("Store", function(accounts) {
     // TODO Check that only permitted role can change the fee
   });
 
-  it.only("Final fees", async function() {
+  it("Final fees", async function() {
     // Add final fee and confirm
     const result = await store.setFinalFee(
       arbitraryTokenAddr,
@@ -80,7 +80,7 @@ contract("Store", function(accounts) {
     assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
   });
 
-  it.only("Weekly delay fees", async function() {
+  it("Weekly delay fees", async function() {
     // Add final fee and confirm
     const result = await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.5", "ether") }, { from: owner });
 
