@@ -1,6 +1,7 @@
 const { toWei } = web3.utils;
 
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
+const { delay } = require('../delay');
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -23,7 +24,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   let identifierWhitelist;
 
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
-    await client._update();
+    await client.forceUpdate();
 
     assert.deepStrictEqual(expectedSponsors.sort(), client.getAllSponsors().sort());
     assert.deepStrictEqual(expectedPositions.sort(), client.getAllPositions().sort());
@@ -135,7 +136,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // If a position is liquidated it should be removed from the list of positions and added to the undisputed liquidations.
-    const id = await emp.createLiquidation.call(
+    const { liquidationId } = await emp.createLiquidation.call(
       sponsor2,
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
@@ -165,7 +166,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     const expectedLiquidations = [
       {
         sponsor: sponsor2,
-        id: id.toString(),
+        id: liquidationId.toString(),
         numTokens: toWei("45"),
         amountCollateral: toWei("100"),
         liquidationTime: (await emp.getCurrentTime()).toString(),
@@ -230,7 +231,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 })
 
     // Create a new liquidation for account[0]'s position.
-    const id = await emp.createLiquidation.call(
+    const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
@@ -253,7 +254,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
-    await emp.dispute(id.toString(), sponsor1, { from: sponsor1 });
+    await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
     // The disputed liquidation should no longer show up as undisputed.
@@ -335,7 +336,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
 
     // Create a new liquidation for account[0]'s position.
-    const id = await emp.createLiquidation.call(
+    const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
@@ -357,7 +358,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
-    await emp.dispute(id.toString(), sponsor1, { from: sponsor1 });
+    await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
     // The disputed liquidation should no longer show up as undisputed.
@@ -384,5 +385,23 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await emp.withdrawLiquidation("0", sponsor1, { from: liquidator })
     await client._update();
     assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
+  })
+
+  it("Does not update unless forced to", async function () {
+    await client.update();
+    const lastUpdateTime = client.lastUpdateTimestamp;
+
+    // Move time forward so that if an update were to happen, then 
+    // the `lastUpdateTimestamp` get reset.
+    await delay(Number(1_000));
+
+    // Call regular update function which should return because we are within the update threshold.
+    await client.update();
+    assert.equal(client.lastUpdateTimestamp, lastUpdateTime)
+
+    // Force an update and check that the last timestamp has reset.
+    await client.forceUpdate();
+    assert(client.lastUpdateTimestamp > lastUpdateTime)
+
   })
 });

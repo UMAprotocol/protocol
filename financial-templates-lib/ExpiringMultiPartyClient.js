@@ -3,21 +3,64 @@ const { Logger } = require("./logger/Logger");
 const { LiquidationStatesEnum } = require("../common/Enums");
 
 // A thick client for getting information about an ExpiringMultiParty.
+// If no updateThreshold is specified then default to updating every 60 seconds.
 class ExpiringMultiPartyClient {
-  constructor(abi, web3, empAddress) {
+  constructor(abi, web3, empAddress, updateThreshold = 60) {
+    this.updateThreshold = updateThreshold;
+    this.lastUpdateTimestamp;
+
     this.web3 = web3;
+
+    // EMP contract
+    this.emp = new web3.eth.Contract(abi, empAddress);
+    this.empAddress = empAddress;
+
+    // EMP Data structures & values
     this.sponsorAddresses = [];
     this.positions = [];
     this.undisputedLiquidations = [];
     this.expiredLiquidations = [];
     this.disputedLiquidations = [];
-    this.emp = new web3.eth.Contract(abi, empAddress);
-    this.empAddress = empAddress;
-
     this.collateralRequirement = null;
+
     // TODO: Ideally, we'd want to subscribe to events here, but subscriptions don't work with Truffle HDWalletProvider.
     // One possibility is to experiment with WebSocketProvider instead.
   }
+
+  // Calls _update unless it was recently called, as determined by this.updateThreshold.
+  update = async () => {
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
+      Logger.debug({
+        at: "ExpiringMultiPartyClient",
+        message: "EMP state update skipped",
+        currentTime: currentTime,
+        lastUpdateTimestamp: this.lastUpdateTimestamp,
+        timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime
+      });
+      return;
+    } else {
+      await this._update();
+      this.lastUpdateTimestamp = currentTime;
+      Logger.debug({
+        at: "ExpiringMultiPartyClient",
+        message: "EMP state updated",
+        lastUpdateTimestamp: this.lastUpdateTimestamp
+      });
+    }
+  };
+
+  // Force call of _update, designed to be called by downstream caller that knowingly updated the EMP state.
+  forceUpdate = async () => {
+    const currentTime = Math.floor(Date.now() / 1000);
+    await this._update();
+    this.lastUpdateTimestamp = currentTime;
+    Logger.debug({
+      at: "ExpiringMultiPartyClient",
+      message: "EMP state force updated",
+      lastUpdateTimestamp: this.lastUpdateTimestamp
+    });
+  };
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
   getAllPositions = () => this.positions;
@@ -170,10 +213,6 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    Logger.debug({
-      at: "ExpiringMultiPartyClient",
-      message: "client updated"
-    });
   };
 }
 

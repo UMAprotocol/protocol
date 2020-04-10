@@ -205,7 +205,7 @@ contract("Liquidatable", function(accounts) {
       );
     });
     it("Returns correct ID", async () => {
-      const liquidationId = await liquidationContract.createLiquidation.call(
+      const { liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
@@ -218,6 +218,61 @@ contract("Liquidatable", function(accounts) {
         { from: liquidator }
       );
       assert.equal(liquidationId.toString(), liquidationParams.liquidationId.toString());
+    });
+    it("Pulls correct token amount", async () => {
+      const { tokensLiquidated } = await liquidationContract.createLiquidation.call(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+
+      // Should return the correct number of tokens.
+      assert.equal(tokensLiquidated.toString(), amountOfSynthetic.toString());
+
+      const intitialBalance = await syntheticToken.balanceOf(liquidator);
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+
+      // Synthetic balance decrease should equal amountOfSynthetic.
+      assert.equal(intitialBalance.sub(await syntheticToken.balanceOf(liquidator)), amountOfSynthetic.toString());
+    });
+    it("Liquidator pays final fee", async () => {
+      // Mint liquidator enough tokens to pay the final fee.
+      await collateralToken.mint(liquidator, finalFeeAmount, { from: contractDeployer });
+
+      // Set final fee.
+      await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount.toString() });
+
+      const { finalFeeBond } = await liquidationContract.createLiquidation.call(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+      // Should return the correct final fee amount.
+      assert.equal(finalFeeBond.toString(), finalFeeAmount.toString());
+
+      const intitialBalance = await collateralToken.balanceOf(liquidator);
+      await liquidationContract.createLiquidation(
+        sponsor,
+        { rawValue: pricePerToken.toString() },
+        { rawValue: amountOfSynthetic.toString() },
+        { from: liquidator }
+      );
+
+      // Collateral balance change should equal the final fee.
+      assert.equal(
+        intitialBalance.sub(await collateralToken.balanceOf(liquidator)).toString(),
+        finalFeeAmount.toString()
+      );
+
+      // Reset final fee to 0.
+      await store.setFinalFee(collateralToken.address, { rawValue: "0" });
     });
     it("Emits an event", async () => {
       const createLiquidationResult = await liquidationContract.createLiquidation(
@@ -235,6 +290,9 @@ contract("Liquidatable", function(accounts) {
           ev.lockedCollateral == amountOfCollateral.toString(),
           ev.liquidatedCollateral == amountOfCollateral.toString()
         );
+      });
+      truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsor", ev => {
+        return ev.sponsor == sponsor;
       });
     });
     it("Increments ID after creation", async () => {
@@ -263,7 +321,7 @@ contract("Liquidatable", function(accounts) {
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
 
       // Create second liquidation
-      const liquidationId = await liquidationContract.createLiquidation.call(
+      const { liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
@@ -297,7 +355,7 @@ contract("Liquidatable", function(accounts) {
       const expectedRemainingWithdrawalRequest = withdrawalAmount.sub(withdrawalAmount.divn(5));
 
       // Create partial liquidation.
-      let liquidationId = await liquidationContract.createLiquidation.call(
+      let { liquidationId, tokensLiquidated } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
@@ -319,6 +377,7 @@ contract("Liquidatable", function(accounts) {
       );
       assert.equal(expectedLiquidatedTokens.toString(), liquidation.tokensOutstanding.toString());
       assert.equal(expectedLockedCollateral.toString(), liquidation.lockedCollateral.toString());
+      assert.equal(expectedLiquidatedTokens.toString(), tokensLiquidated.toString());
 
       // A independent and identical liquidation can be created.
       await liquidationContract.createLiquidation(
@@ -328,12 +387,12 @@ contract("Liquidatable", function(accounts) {
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
       );
-      liquidationId = await liquidationContract.createLiquidation.call(
+      ({ liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
-      );
+      ));
       await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: pricePerToken.toString() },
@@ -488,6 +547,12 @@ contract("Liquidatable", function(accounts) {
       it("Dispute pays a final fee", async () => {
         // Mint final fee amount to disputer
         await collateralToken.mint(disputer, finalFeeAmount, { from: contractDeployer });
+
+        // Returns correct total bond.
+        const totalPaid = await liquidationContract.dispute.call(liquidationParams.liquidationId, sponsor, {
+          from: disputer
+        });
+        assert.equal(totalPaid.toString(), disputeBond.add(finalFeeAmount).toString());
 
         // Check that store's collateral balance increases
         const storeInitialBalance = toBN(await collateralToken.balanceOf(store.address));
@@ -773,7 +838,7 @@ contract("Liquidatable", function(accounts) {
         await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
 
         // Create another liquidation
-        const liquidationId = await liquidationContract.createLiquidation.call(
+        const { liquidationId } = await liquidationContract.createLiquidation.call(
           sponsor,
           { rawValue: pricePerToken.toString() },
           { rawValue: amountOfSynthetic.toString() },

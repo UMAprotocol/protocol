@@ -209,7 +209,12 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor })));
     await tokenCurrency.approve(pricelessPositionManager.address, redeemTokens, { from: sponsor });
     sponsorInitialBalance = await collateral.balanceOf(sponsor);
-    let redemptionResult = await pricelessPositionManager.redeem({ rawValue: redeemTokens }, { from: sponsor });
+
+    // Check redeem return value and event.
+    const redeem = pricelessPositionManager.redeem;
+    const redeemedCollateral = await redeem.call({ rawValue: redeemTokens }, { from: sponsor });
+    assert.equal(redeemedCollateral.toString(), expectedSponsorCollateral.toString());
+    let redemptionResult = await redeem({ rawValue: redeemTokens }, { from: sponsor });
     truffleAssert.eventEmitted(redemptionResult, "Redeem", ev => {
       return (
         ev.sponsor == sponsor &&
@@ -246,6 +251,9 @@ contract("PricelessPositionManager", function(accounts) {
         ev.collateralAmount == expectedSponsorCollateral.toString() &&
         ev.tokenAmount == redeemRemainingTokens.toString()
       );
+    });
+    truffleAssert.eventEmitted(redemptionResult, "EndedSponsor", ev => {
+      return ev.sponsor == sponsor;
     });
 
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
@@ -349,8 +357,11 @@ contract("PricelessPositionManager", function(accounts) {
     const sponsorInitialBalance = await collateral.balanceOf(sponsor);
     const expectedSponsorFinalBalance = sponsorInitialBalance.add(toBN(withdrawalAmount));
 
-    // Execute the withdrawal request. Check event is emitted
-    let resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
+    // Execute the withdrawal request. Check event is emitted and return value is correct.
+    const withdrawPassedRequest = pricelessPositionManager.withdrawPassedRequest;
+    let amountWithdrawn = await withdrawPassedRequest.call({ from: sponsor });
+    assert.equal(amountWithdrawn.toString(), withdrawalAmount.toString());
+    let resultWithdrawPassedRequest = await withdrawPassedRequest({ from: sponsor });
     truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
       return ev.sponsor == sponsor && ev.collateralAmount == withdrawalAmount.toString();
     });
@@ -368,8 +379,11 @@ contract("PricelessPositionManager", function(accounts) {
     // Methods are now unlocked again.
     await pricelessPositionManager.deposit({ rawValue: toWei("1") }, { from: sponsor });
 
-    // First withdrawal that should pass. Ensure event is emmited
-    const resultWithdraw = await pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor });
+    // First withdrawal that should pass. Ensure event is emitted and return value is correct.
+    const withdraw = pricelessPositionManager.withdraw;
+    amountWithdrawn = await withdraw.call({ rawValue: toWei("1") }, { from: sponsor });
+    assert.equal(amountWithdrawn.toString(), toWei("1"));
+    const resultWithdraw = await withdraw({ rawValue: toWei("1") }, { from: sponsor });
     truffleAssert.eventEmitted(resultWithdraw, "Withdrawal", ev => {
       return ev.sponsor == sponsor && ev.collateralAmount.toString() == toWei("1");
     });
@@ -606,9 +620,6 @@ contract("PricelessPositionManager", function(accounts) {
     await tokenCurrency.approve(pricelessPositionManager.address, sponsorInitialSynthetic, {
       from: sponsor
     });
-    await pricelessPositionManager.settleExpired({ from: sponsor });
-    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
-    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
 
     // The token Sponsor should gain the value of their synthetics in underlying
     // + their excess collateral from the over collateralization in their position
@@ -619,6 +630,17 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedTotalSponsorCollateralReturned = expectedSponsorCollateralUnderlying.add(
       expectedSponsorCollateralSynthetic
     );
+
+    // Check return value.
+    const settleExpired = pricelessPositionManager.settleExpired;
+    const redeemedAmount = await settleExpired.call({ from: sponsor });
+    assert.equal(redeemedAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
+
+    // Execute the settlement and check balances.
+    await settleExpired({ from: sponsor });
+    await pricelessPositionManager.settleExpired({ from: sponsor });
+    const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
+    const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
       expectedTotalSponsorCollateralReturned
@@ -696,8 +718,14 @@ contract("PricelessPositionManager", function(accounts) {
     // Multiply by 2 because there are two active positions
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(toWei("0.02")));
 
-    // Pay the fees, then check the collateral and the store balance.
-    await pricelessPositionManager.payFees();
+    // Pay the fees, check the return value, and then check the collateral and the store balance.
+    const payFees = pricelessPositionManager.payFees;
+    const feesPaid = await payFees.call();
+    assert.equal(feesPaid.toString(), toWei("0.02"));
+    const payFeesResult = await payFees();
+    truffleAssert.eventEmitted(payFeesResult, "RegularFeesPaid", ev => {
+      return ev.regularFee.toString() === toWei("0.02") && ev.lateFee.toString() === "0";
+    });
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
@@ -743,9 +771,12 @@ contract("PricelessPositionManager", function(accounts) {
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
-    await pricelessPositionManager.expire({ from: other });
+    const expirationResult = await pricelessPositionManager.expire({ from: other });
 
     // Check that final fees were paid correctly and position's locked collateral was decremented
+    truffleAssert.eventEmitted(expirationResult, "FinalFeesPaid", ev => {
+      return ev.amount.toString() === finalFeePaid.toString();
+    });
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());

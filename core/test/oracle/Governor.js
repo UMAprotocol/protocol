@@ -4,14 +4,15 @@ const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
-const Registry = artifacts.require("Registry");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
+const ReentrancyChecker = artifacts.require("ReentrancyChecker");
+const GovernorTest = artifacts.require("GovernorTest");
 
 // Extract web3 functions into primary namespace.
-const { toBN, toWei, toChecksumAddress } = web3.utils;
+const { toBN, toWei, hexToUtf8, randomHex, utf8ToHex } = web3.utils;
 
 contract("Governor", function(accounts) {
   let voting;
@@ -19,7 +20,7 @@ contract("Governor", function(accounts) {
   let testToken;
   let supportedIdentifiers;
 
-  const account1 = accounts[0];
+  const proposer = accounts[0];
   const account2 = accounts[1];
 
   const setNewInflationRate = async inflationRate => {
@@ -37,12 +38,12 @@ contract("Governor", function(accounts) {
     testToken = await TestnetERC20.deployed();
     let votingToken = await VotingToken.deployed();
 
-    // Allow account1 to mint tokens.
+    // Allow proposer to mint tokens.
     const minterRole = 1;
-    await votingToken.addMember(minterRole, account1);
+    await votingToken.addMember(minterRole, proposer);
 
     // Mint 99 tokens to this account so it has 99% of the tokens.
-    await votingToken.mint(account1, toWei("99", "ether"));
+    await votingToken.mint(proposer, toWei("99", "ether"));
 
     // Mint 1 token to this account so it has 1% of the tokens (not enough to reach the GAT).
     await votingToken.mint(account2, toWei("1", "ether"));
@@ -62,7 +63,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Proposal permissions", async function() {
-    const txnData = constructTransferTransaction(account1, "0");
+    const txnData = constructTransferTransaction(proposer, "0");
     assert(
       await didContractThrow(
         governor.propose(
@@ -80,7 +81,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Cannot send to 0x0", async function() {
-    const txnData = constructTransferTransaction(account1, "0");
+    const txnData = constructTransferTransaction(proposer, "0");
 
     const zeroAddress = "0x0000000000000000000000000000000000000000";
     assert(
@@ -115,7 +116,7 @@ contract("Governor", function(accounts) {
 
   it("Identifier construction", async function() {
     // Construct the transaction to send 0 tokens.
-    const txnData = constructTransferTransaction(account1, "0");
+    const txnData = constructTransferTransaction(proposer, "0");
 
     // The id is the number of proposals before sending.
     const id1 = await governor.numProposals();
@@ -168,8 +169,8 @@ contract("Governor", function(accounts) {
     // Issue some test tokens to the governor address.
     await testToken.allocateTo(governor.address, toWei("1"));
 
-    // Construct the transaction data to send the newly minted tokens to account1.
-    const txnData = constructTransferTransaction(account1, toWei("1"));
+    // Construct the transaction data to send the newly minted tokens to proposer.
+    const txnData = constructTransferTransaction(proposer, toWei("1"));
 
     // Send the proposal.
     const id = await governor.numProposals();
@@ -193,10 +194,85 @@ contract("Governor", function(accounts) {
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
 
+    // Cannot send ETH to execute a transaction that requires 0 ETH.
+    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("1") })));
+
     // Check to make sure that the tokens get transferred at the time of execution.
-    const startingBalance = await testToken.balanceOf(account1);
+    const startingBalance = await testToken.balanceOf(proposer);
     await governor.executeProposal(id, 0);
-    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
+    assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
+  });
+
+  it("Successful proposal that requires ETH", async function() {
+    const amountToDeposit = toWei("1");
+
+    // Send the proposal to send ETH to account2.
+    const id = await governor.numProposals();
+    await governor.propose([
+      {
+        to: account2,
+        value: amountToDeposit,
+        data: web3.utils.hexToBytes("0x0")
+      }
+    ]);
+
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Execute the proposal and simultaneously deposit ETH to pay for the transaction.
+    // Check to make sure that the ETH gets transferred at the time of execution.
+    const startingBalance = await web3.eth.getBalance(account2);
+    await governor.executeProposal(id, 0, { value: amountToDeposit });
+    assert.equal(
+      await web3.eth.getBalance(account2),
+      toBN(startingBalance)
+        .add(toBN(amountToDeposit))
+        .toString()
+    );
+  });
+
+  it("Proposer did not send exact amount of ETH to execute payable transaction", async function() {
+    const amountToDeposit = toWei("1");
+
+    // Send the proposal to send ETH to account2.
+    const id = await governor.numProposals();
+    await governor.propose([
+      {
+        to: account2,
+        value: amountToDeposit,
+        data: web3.utils.hexToBytes("0x0")
+      }
+    ]);
+
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    const startingBalance = await web3.eth.getBalance(account2);
+    // Sent too little ETH.
+    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("0.9") })));
+    // Sent too much ETH.
+    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("1.1") })));
+    assert.equal(await web3.eth.getBalance(account2), startingBalance);
   });
 
   it("Successful multi-transaction proposal", async function() {
@@ -204,7 +280,7 @@ contract("Governor", function(accounts) {
     await testToken.allocateTo(governor.address, toWei("2"));
 
     // Construct two transactions to send the newly minted tokens to different accounts.
-    const txnData1 = constructTransferTransaction(account1, toWei("1"));
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
     const txnData2 = constructTransferTransaction(account2, toWei("1"));
 
     // Send the proposal with multiple transactions.
@@ -236,9 +312,9 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
 
     // Check to make sure that the tokens get transferred at the time of each successive execution.
-    const startingBalance1 = await testToken.balanceOf(account1);
+    const startingBalance1 = await testToken.balanceOf(proposer);
     await governor.executeProposal(id, 0);
-    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance1.add(toBN(toWei("1"))).toString());
+    assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance1.add(toBN(toWei("1"))).toString());
 
     const startingBalance2 = await testToken.balanceOf(account2);
     await governor.executeProposal(id, 1);
@@ -247,7 +323,7 @@ contract("Governor", function(accounts) {
 
   it("No repeated executions", async function() {
     // Setup
-    const txnData = constructTransferTransaction(account1, "0");
+    const txnData = constructTransferTransaction(proposer, "0");
     const id = await governor.numProposals();
     await governor.propose([
       {
@@ -278,7 +354,7 @@ contract("Governor", function(accounts) {
 
   it("No out of order executions", async function() {
     // Setup
-    const txnData = constructTransferTransaction(account1, "0");
+    const txnData = constructTransferTransaction(proposer, "0");
     const id = await governor.numProposals();
     await governor.propose([
       {
@@ -317,8 +393,8 @@ contract("Governor", function(accounts) {
     // Issue some test tokens to the governor address.
     await testToken.allocateTo(governor.address, toWei("1"));
 
-    // Construct the transaction data to send the newly minted tokens to account1.
-    const txnData = constructTransferTransaction(account1, toWei("1"));
+    // Construct the transaction data to send the newly minted tokens to proposer.
+    const txnData = constructTransferTransaction(proposer, toWei("1"));
 
     // Send the proposal.
     const id = await governor.numProposals();
@@ -343,17 +419,17 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
 
     // Check to make sure that the execution fails and no tokens get transferred.
-    const startingBalance = await testToken.balanceOf(account1);
+    const startingBalance = await testToken.balanceOf(proposer);
     assert(await didContractThrow(governor.executeProposal(id, 0)));
-    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
+    assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.toString());
   });
 
   it("Unresolved vote", async function() {
     // Issue some test tokens to the governor address.
     await testToken.allocateTo(governor.address, toWei("1"));
 
-    // Construct the transaction data to send the newly minted tokens to account1.
-    const txnData = constructTransferTransaction(account1, toWei("1"));
+    // Construct the transaction data to send the newly minted tokens to proposer.
+    const txnData = constructTransferTransaction(proposer, toWei("1"));
 
     // Send the proposal.
     const id = await governor.numProposals();
@@ -378,9 +454,9 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
 
     // Check to make sure that the execution fails and no tokens get transferred.
-    const startingBalance = await testToken.balanceOf(account1);
+    const startingBalance = await testToken.balanceOf(proposer);
     assert(await didContractThrow(governor.executeProposal(id, 0)));
-    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
+    assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.toString());
 
     // Resolve the vote to clean up.
     await voting.commitVote(request.identifier, request.time, hash);
@@ -391,7 +467,7 @@ contract("Governor", function(accounts) {
 
   it("Failed transaction", async function() {
     // Construct a transaction that will obviously fail.
-    const txnData = constructTransferTransaction(account1, toWei("1000"));
+    const txnData = constructTransferTransaction(proposer, toWei("1000"));
 
     // Send the proposal.
     const id = await governor.numProposals();
@@ -416,14 +492,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
 
     // Check to make sure that the execution fails and no tokens get transferred.
-    const startingBalance = await testToken.balanceOf(account1);
+    const startingBalance = await testToken.balanceOf(proposer);
     assert(await didContractThrow(governor.executeProposal(id, 0)));
-    assert.equal((await testToken.balanceOf(account1)).toString(), startingBalance.toString());
+    assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.toString());
   });
 
   it("Events", async function() {
-    // Construct the transaction data to send the newly minted tokens to account1.
-    const txnData = constructTransferTransaction(account1, toWei("0"));
+    // Construct the transaction data to send the newly minted tokens to proposer.
+    const txnData = constructTransferTransaction(proposer, toWei("0"));
 
     // Send the proposal and verify that an event is produced.
     const id = await governor.numProposals();
@@ -461,5 +537,149 @@ contract("Governor", function(accounts) {
     truffleAssert.eventEmitted(receipt, "ProposalExecuted", ev => {
       return ev.id.toString() === id.toString() && ev.transactionIndex.toString() === "0";
     });
+  });
+
+  it("No re-entrant execution", async function() {
+    // Send the proposal and verify that an event is produced.
+    const id = await governor.numProposals();
+
+    // Construct the transaction that we want to re-enter and pass the txn data to the ReentrancyChecker.
+    const txnData = governor.contract.methods.executeProposal(id.toString(), "0").encodeABI();
+    const reentrancyChecker = await ReentrancyChecker.new();
+    await reentrancyChecker.setTransactionData(txnData);
+
+    // Propose the reentrant transaction.
+    await governor.propose([
+      {
+        to: reentrancyChecker.address,
+        value: 0,
+        data: constructTransferTransaction(account2, toWei("0")) // Data doesn't since it will hit the fallback regardless.
+      }
+    ]);
+
+    // Vote the proposal through.
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Since we're using the reentrancy checker, this transaction should FAIL if the reentrancy is successful.
+    await governor.executeProposal(id, 0);
+  });
+
+  // _uintToUtf8() tests.
+  it("Low-level _uintToUtf8(): 0 input", async function() {
+    const governorTest = await GovernorTest.new();
+
+    const input = "0";
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), "0");
+  });
+
+  it("Low-level _uintToUtf8(): nonzero input", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Arbitrary nonzero input.
+    const input = "177203972462008655";
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), input);
+  });
+
+  it("Low-level _uintToUtf8(): largest input before truncation", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // The largest representable number in 32 digits is 32 9s.
+    const input = "9".repeat(32);
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), input);
+  });
+
+  it("Low-level _uintToUtf8(): truncates at least significant digit", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // The smallest number to be truncated is 1 followed by 32 0s.
+    const input = "1" + "0".repeat(32);
+
+    // Remove the last 0 to emulate truncation.
+    const expectedOutput = "1" + "0".repeat(31);
+
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), expectedOutput);
+  });
+
+  // _addPrefix() tests.
+  it("Low-level _addPrefix(): no truncation", async function() {
+    const governorTest = await GovernorTest.new();
+
+    const input = utf8ToHex("input");
+    const prefix = utf8ToHex("prefix ");
+    const prefixLength = "7";
+    const output = await governorTest.addPrefix(input, prefix, prefixLength);
+
+    assert.equal(hexToUtf8(output), "prefix input");
+  });
+
+  it("Low-level _addPrefix(): output truncation", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Prefix output cannot be longer than 32 characters or the function will truncate.
+    const input = utf8ToHex(" truncated");
+
+    // A prefix of 23 characters will cause the last character of the 10 character input to be removed from the output.
+    const prefixString = "a".repeat(23);
+    const prefix = utf8ToHex(prefixString);
+    const prefixLength = "23";
+    const output = await governorTest.addPrefix(input, prefix, prefixLength);
+
+    assert.equal(hexToUtf8(output), `${prefixString} truncate`);
+  });
+
+  // _constructIdentifier() tests.
+  it("Low-level _constructIdentifier(): normal proposal id", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Construct an arbitrary identifier.
+    const proposalId = "1234567890";
+    const identifier = await governorTest.constructIdentifier(proposalId);
+
+    assert.equal(hexToUtf8(identifier), `Admin ${proposalId}`);
+  });
+
+  it("Low-level _constructIdentifier(): correctly identifier for 26 characters", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Identifiers can be 32 digits long.
+    // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.
+    // The max number that can be represented, then, is 10^26 - 1.
+    const maxIdValue = "9".repeat(26);
+    const identifier = await governorTest.constructIdentifier(maxIdValue);
+
+    assert.equal(hexToUtf8(identifier), `Admin ${maxIdValue}`);
+  });
+
+  it("Low-level _constructIdentifier(): proposal id truncates after 26 characters", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Identifiers can be 32 digits long.
+    // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.
+    // 10^26, then is above the max and will be truncated.
+    const aboveMaxIdValue = "1" + "0".repeat(26);
+
+    // Expected output truncates the last 0.
+    const expectedOutputIdValue = "1" + "0".repeat(25);
+
+    const identifier = await governorTest.constructIdentifier(aboveMaxIdValue);
+
+    assert.equal(hexToUtf8(identifier), `Admin ${expectedOutputIdValue}`);
   });
 });

@@ -48,7 +48,7 @@ async function run(price, address, shouldPoll) {
       // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
       // Liquidate any undercollateralized positions!
       // Withdraw money from any liquidations that are expired or DisputeFailed.
-      await liquidator.queryAndLiquidate(toWei(price.toString()));
+      await liquidator.queryAndLiquidate(() => toWei(price));
       await liquidator.queryAndWithdrawRewards();
     } catch (error) {
       Logger.error({

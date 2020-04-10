@@ -189,7 +189,7 @@ contract("Disputer.js", function(accounts) {
 
     await disputer.queryAndWithdrawRewards();
 
-    // sponsor1's dipsute was unsuccessful, so the disputeBot should not have called the withdraw method.
+    // sponsor1's dispute was unsuccessful, so the disputeBot should not have called the withdraw method.
     assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
 
