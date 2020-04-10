@@ -11,6 +11,7 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
+const VotingTest = artifacts.require("VotingTest");
 
 contract("Voting", function(accounts) {
   let voting;
@@ -1333,5 +1334,62 @@ contract("Voting", function(accounts) {
     assert(await voting.hasPrice(identifier, time1, { from: migratedVoting }));
     assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: registeredContract })));
     assert(await didContractThrow(voting.commitVote(identifier, time2, hash, { from: account1 })));
+  });
+
+  it("pendingPriceRequests array length", async function() {
+    // Use a test derived contract to expose the internal array (and its length).
+    const votingTest = await VotingTest.new(
+      "86400", // 1 day phase length
+      { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
+      { rawValue: "0" }, // No inflation
+      "1209600", // 2 week reward expiration
+      votingToken.address,
+      supportedIdentifiers.address,
+      Finder.address,
+      true
+    );
+
+    await moveToNextRound(votingTest);
+
+    const startingTime = await votingTest.getCurrentTime();
+    const identifier = web3.utils.utf8ToHex("array-size");
+    const time = "1000";
+    const startingLength = (await votingTest.getPendingPriceRequestsArray()).length;
+
+    // pendingPriceRequests should start with no elements.
+    assert.equal(startingLength, 0);
+
+    // Make the Oracle support the identifier.
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
+
+    // Request a price.
+    await votingTest.requestPrice(identifier, time, { from: registeredContract });
+
+    // There should be one element in the array after the first price request.
+    assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 1);
+
+    // Move to voting round.
+    await moveToNextRound(votingTest);
+    const votingRound = await votingTest.getCurrentRoundId();
+
+    // Commit vote.
+    const price = getRandomSignedInt();
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(price, salt);
+    await votingTest.commitVote(identifier, time, hash);
+
+    // Reveal phase.
+    await moveToNextPhase(votingTest);
+
+    // Reveal vote.
+    await votingTest.revealVote(identifier, time, price, salt);
+
+    // Pending requests should be empty after the voting round ends and the price is resolved.
+    await moveToNextRound(votingTest);
+
+    await votingTest.retrieveRewards(account1, votingRound, [{ identifier, time }]);
+
+    // After retrieval, the length should be decreased back to 0 since the element added in this test is now deleted.
+    assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 0);
   });
 });

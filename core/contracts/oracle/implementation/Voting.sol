@@ -95,7 +95,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
-    bytes32[] private pendingPriceRequests;
+    bytes32[] internal pendingPriceRequests;
 
     VoteTiming.Data public voteTiming;
 
@@ -695,7 +695,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
         lastPriceRequest.index = priceRequest.index;
         pendingPriceRequests[priceRequest.index] = pendingPriceRequests[lastIndex];
-        delete pendingPriceRequests[lastIndex];
+        pendingPriceRequests.pop();
 
         priceRequest.index = UINT_MAX;
         emit PriceResolved(priceRequest.lastVotingRound, priceRequest.identifier, priceRequest.time, resolvedPrice);
