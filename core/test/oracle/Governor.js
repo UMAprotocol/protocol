@@ -8,6 +8,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
+const ReentrancyChecker = artifacts.require("ReentrancyChecker");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei } = web3.utils;
@@ -536,5 +537,39 @@ contract("Governor", function(accounts) {
     truffleAssert.eventEmitted(receipt, "ProposalExecuted", ev => {
       return ev.id.toString() === id.toString() && ev.transactionIndex.toString() === "0";
     });
+  });
+
+  it("No re-entrant execution", async function() {
+    // Send the proposal and verify that an event is produced.
+    const id = await governor.numProposals();
+
+    // Construct the transaction that we want to re-enter and pass the txn data to the ReentrancyChecker.
+    const txnData = governor.contract.methods.executeProposal(id.toString(), "0").encodeABI();
+    const reentrancyChecker = await ReentrancyChecker.new();
+    await reentrancyChecker.setTransactionData(txnData);
+
+    // Propose the reentrant transaction.
+    await governor.propose([
+      {
+        to: reentrancyChecker.address,
+        value: 0,
+        data: constructTransferTransaction(account2, toWei("0")) // Data doesn't since it will hit the fallback regardless.
+      }
+    ]);
+
+    // Vote the proposal through.
+    await moveToNextRound(voting);
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = web3.utils.soliditySha3(vote, salt);
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Since we're using the reentrancy checker, this transaction should FAIL if the reentrancy is successful.
+    await governor.executeProposal(id, 0);
   });
 });

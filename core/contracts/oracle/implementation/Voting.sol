@@ -212,7 +212,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
-     * @param time unix timestamp of for the price request.
+     * @param time unix timestamp for the price request.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
@@ -276,8 +276,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     /**
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
-     * @param requests array of time PendingRequest which includes a identifier and timestamp for each request.
-     * @return requestStates A lis, in the same order as the input list, giving the status of each of the specified price requests.
+     * @param requests array of type PendingRequest which includes an identifier and timestamp for each request.
+     * @return requestStates A list, in the same order as the input list, giving the status of each of the specified price requests.
      */
     function getPriceRequestStatuses(PendingRequest[] memory requests)
         public
@@ -343,7 +343,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @dev The revealed `address`, `price` and `salt` must match the latest `hash` that `commitVote()` was called with.
      * Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
-     * @param time specifies the unix timestamp of the price is being voted on.
+     * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
@@ -393,7 +393,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     /**
      * @notice commits a vote and stores an encrypted version which can be later decrypted
      * to recover the voter's price & salt.
-     * @dev The encryption mechanism uses encrypt from a signature from a users price key. See `EncryptedSender.sol`
+     * @dev The encryption mechanism uses encrypt from a signature from a users price key. See `EncryptedStore.sol`
      * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
      * @param time unix timestamp of for the price request.
      * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
@@ -602,7 +602,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     /**
      * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
-     * @param newInflationRate sets the next rounds inflation rate.
+     * @param newInflationRate sets the next round's inflation rate.
      */
     function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public onlyOwner {
         inflationRate = newInflationRate;
@@ -611,7 +611,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
-     * @param newGatPercentage sets the next rounds Gat percentage.
+     * @param newGatPercentage sets the next round's Gat percentage.
      */
     function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public onlyOwner {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
@@ -708,8 +708,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             return FixedPoint.Unsigned(UINT_MAX);
         }
 
-        // Grab the snaphotted supply from the voting token. It's already scaled by 10**18, so we can directly
-        // initialize the Unsigned value with the returned uint.
+        // Grab the snapshotted supply from the voting token. It's already scaled by 10**18, so we can directly
+            // initialize the Unsigned value with the returned uint.
         FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
 
         // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.

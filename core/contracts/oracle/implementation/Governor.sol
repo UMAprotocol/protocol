@@ -121,7 +121,7 @@ contract Governor is MultiRole, Testable {
         Proposal storage proposal = proposals[id];
         int price = _getOracle().getPrice(_constructIdentifier(id), proposal.requestTime);
 
-        Transaction storage transaction = proposal.transactions[transactionIndex];
+        Transaction memory transaction = proposal.transactions[transactionIndex];
 
         require(
             transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
@@ -130,10 +130,11 @@ contract Governor is MultiRole, Testable {
         require(transaction.to != address(0), "Transaction has already been executed");
         require(price != 0, "Cannot execute, proposal was voted down");
         require(msg.value == transaction.value, "Must send the exact amount of ETH to execute transaction");
-        require(_executeCall(transaction.to, transaction.value, transaction.data), "Transaction execution failed");
 
-        // Delete the transaction.
+        // Delete the transaction before execution to avoid any potential re-entrancy issues.
         delete proposal.transactions[transactionIndex];
+
+        require(_executeCall(transaction.to, transaction.value, transaction.data), "Transaction execution failed");
 
         emit ProposalExecuted(id, transactionIndex);
     }

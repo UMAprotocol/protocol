@@ -43,8 +43,8 @@ abstract contract VotingInterface {
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
-     * @param time unix timestamp of the price is being voted on.
-     * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
+     * @param time unix timestamp of the price being voted on.
+     * @param hash keccak256 hash of the price you want to vote for and your random salt.
      */
     function commitVote(bytes32 identifier, uint time, bytes32 hash) external virtual;
 
@@ -53,7 +53,7 @@ abstract contract VotingInterface {
      * @dev Using `encryptedVote` is optional. If included then commitment is stored on chain.
      * Look at `project-root/common/Constants.js` for the tested maximum number of
      * commitments that can fit in one transaction.
-     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
+     * @param commits array of structs that encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
     function batchCommit(Commitment[] calldata commits) external virtual;
 
@@ -103,7 +103,7 @@ abstract contract VotingInterface {
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
-     * @return totalRewardToIssue total amount of rewards returned to the voter.
+     * @return total amount of rewards returned to the voter.
      */
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public

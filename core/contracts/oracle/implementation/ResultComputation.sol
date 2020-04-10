@@ -52,7 +52,7 @@ library ResultComputation {
      * @notice Returns whether the result is resolved, and if so, what value it resolved to.
      * @dev `price` should be ignored if `isResolved` is false.
      * @param data contains information against which the `minVoteThreshold` is applied.
-     * @param minVoteThreshold min number of tokens that must have been voted for the result to be valid. Can be
+     * @param minVoteThreshold min number of tokens that must have voted for the result to be valid. Can be
      * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      * @return isResolved indicates if the price has been resolved correctly.
      * @return price the price that the dvm resolved to.
@@ -92,7 +92,7 @@ library ResultComputation {
      * @notice Gets the total number of tokens whose votes are considered correct.
      * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
      * @param data contains all votes against which the correctly voted tokens are counted.
-     * @return FixedPoint.Unsigned which indicates the correctly frequency of the correctly voted tokens.
+     * @return FixedPoint.Unsigned which indicates the frequency of the correctly voted tokens.
      */
     function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (FixedPoint.Unsigned memory) {
         return data.voteFrequency[data.currentMode];

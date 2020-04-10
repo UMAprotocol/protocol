@@ -4,7 +4,7 @@ pragma solidity ^0.6.0;
 /**
  * @title Base class that provides time overrides, but only if being run in test mode.
  */
-contract Testable {
+abstract contract Testable {
     // Is the contract being run on the test network. Note: this variable should be set on construction and never
     // modified.
     bool public isTest;
