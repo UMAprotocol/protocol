@@ -126,7 +126,7 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredContr
   // Create the batch of commitments.
   for (var i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    const hash = web3.utils.soliditySha3(price, salt, voter);
     salts[i] = salt;
 
     // Generate encrypted vote to store on chain.
@@ -158,7 +158,7 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredContr
   // Generate Commitments. We will use single commit so no upper bound from the previous test
   for (var i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    const hash = web3.utils.soliditySha3(price, salt, voter);
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
   }
@@ -189,7 +189,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
 
   for (var i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    const hash = web3.utils.soliditySha3(price, salt, voter);
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
   }

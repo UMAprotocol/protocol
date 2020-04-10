@@ -152,7 +152,7 @@ contract("Governor", function(accounts) {
     // Execute the proposals to clean up.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request1.identifier, request1.time, hash);
     await voting.commitVote(request2.identifier, request2.time, hash);
     await moveToNextPhase(voting);
@@ -186,7 +186,7 @@ contract("Governor", function(accounts) {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -221,7 +221,7 @@ contract("Governor", function(accounts) {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -259,7 +259,7 @@ contract("Governor", function(accounts) {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -303,7 +303,7 @@ contract("Governor", function(accounts) {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -337,7 +337,7 @@ contract("Governor", function(accounts) {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -373,7 +373,7 @@ contract("Governor", function(accounts) {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -410,7 +410,7 @@ contract("Governor", function(accounts) {
     // Vote down the proposal.
     const vote = "0";
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -445,8 +445,8 @@ contract("Governor", function(accounts) {
     // Vote on the proposal, but don't reach the GAT.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
-    await voting.commitVote(request.identifier, request.time, hash, { from: account2 });
+    const hash2 = web3.utils.soliditySha3(vote, salt, account2);
+    await voting.commitVote(request.identifier, request.time, hash2, { from: account2 });
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt, { from: account2 });
     await moveToNextRound(voting);
@@ -457,7 +457,8 @@ contract("Governor", function(accounts) {
     assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.toString());
 
     // Resolve the vote to clean up.
-    await voting.commitVote(request.identifier, request.time, hash);
+    const hash1 = web3.utils.soliditySha3(vote, salt, proposer);
+    await voting.commitVote(request.identifier, request.time, hash1);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
@@ -483,7 +484,7 @@ contract("Governor", function(accounts) {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -524,7 +525,7 @@ contract("Governor", function(accounts) {
     const request = pendingRequests[0];
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = web3.utils.soliditySha3(vote, salt, proposer);
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);

@@ -106,9 +106,8 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
 
     for (var j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
-      const hash = web3.utils.soliditySha3(price, salt);
-
       const voter = getVoter(accounts, j);
+      const hash = web3.utils.soliditySha3(price, salt, voter);
 
       const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
       const gasUsed = result.receipt.gasUsed;

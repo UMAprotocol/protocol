@@ -92,7 +92,9 @@ contract("DesignatedVoting", function(accounts) {
 
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    // Note: the "voter" address for this vote must be the designated voting contract since its the one that will ultimately
+    // "reveal" the vote. Only the voter can call reveal through the designated voting contract.
+    const hash = web3.utils.soliditySha3(price, salt, designatedVoting.address);
 
     // Only the voter can commit a vote.
     await designatedVoting.commitVote(identifier, time, hash, { from: voter });
@@ -106,9 +108,9 @@ contract("DesignatedVoting", function(accounts) {
     await moveToNextPhase(voting);
 
     // Only the voter can reveal a vote.
-    await designatedVoting.revealVote(identifier, time, price, salt, { from: voter });
     assert(await didContractThrow(designatedVoting.revealVote(identifier, time, price, salt, { from: tokenOwner })));
     assert(await didContractThrow(designatedVoting.revealVote(identifier, time, price, salt, { from: umaAdmin })));
+    await designatedVoting.revealVote(identifier, time, price, salt, { from: voter });
 
     // Check the resolved price.
     const roundId = await voting.getCurrentRoundId();
@@ -154,12 +156,12 @@ contract("DesignatedVoting", function(accounts) {
 
     const price1 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1);
+    const hash1 = web3.utils.soliditySha3(price1, salt1, designatedVoting.address);
     const message1 = web3.utils.randomHex(4);
 
     const price2 = getRandomSignedInt();
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2);
+    const hash2 = web3.utils.soliditySha3(price2, salt2, designatedVoting.address);
     const message2 = web3.utils.randomHex(4);
 
     // Batch commit.

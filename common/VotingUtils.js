@@ -21,7 +21,7 @@ const argv = require("minimist")(process.argv.slice());
 const constructCommitment = async (request, roundId, web3, price, account) => {
   const priceWei = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
-  const hash = web3.utils.soliditySha3(priceWei, salt);
+  const hash = web3.utils.soliditySha3(priceWei, salt, account);
 
   const vote = { price: priceWei, salt };
   let publicKey;

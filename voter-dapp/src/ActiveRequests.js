@@ -230,7 +230,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       commits.push({
         identifier: pendingRequests[index].identifier,
         time: pendingRequests[index].time,
-        hash: web3.utils.soliditySha3(price, salt),
+        hash: web3.utils.soliditySha3(price, salt, account),
         encryptedVote
       });
       indicesCommitted.push(index);
