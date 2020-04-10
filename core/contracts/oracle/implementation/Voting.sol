@@ -28,7 +28,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     using VoteTiming for VoteTiming.Data;
     using ResultComputation for ResultComputation.Data;
 
-    /****************************************
+    /***************************************
      *        VOTING DATA STRUCTURES        *
      ****************************************/
 
@@ -37,7 +37,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     struct PriceRequest {
         bytes32 identifier;
         uint time;
-        //A map containing all votes for this price in various rounds.
+        // A map containing all votes for this price in various rounds.
         mapping(uint => VoteInstance) voteInstances;
         // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
         // this is the voting round where this price will be voted on, but not necessarily resolved.
