@@ -124,7 +124,7 @@ contract Registry is RegistryInterface, MultiRole {
     }
 
     /**
-     * @notice Removes a party member to the calling contract.
+     * @notice Removes a party member from the calling contract.
      * @dev msg.sender will be used to determine the contract that this party is removed from.
      * @param partyAddress address to be removed from the calling contract.
      */
