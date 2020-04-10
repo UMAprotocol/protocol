@@ -116,9 +116,9 @@ contract("Voting", function(accounts) {
     const newPrice = getRandomSignedInt();
     const newSalt = getRandomUnsignedInt();
     const newHash = web3.utils.soliditySha3(
-      { t: 'int', v: newPrice }, 
-      { t: 'int', v: newSalt }, 
-      { t: 'address', v: account1 }
+      { t: "int", v: newPrice },
+      { t: "int", v: newSalt },
+      { t: "address", v: account1 }
     );
 
     // Can alter a committed hash.
