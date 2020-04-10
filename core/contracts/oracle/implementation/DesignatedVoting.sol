@@ -19,7 +19,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      ****************************************/
 
     enum Roles {
-        Owner, // Can set the Voter and Withdrawer roles.
+        Owner, // Can set the Voter role. Is also permissioned to be a Withdrawer from initialization.
         Voter // Can vote through this contract.
     }
 

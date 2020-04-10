@@ -76,7 +76,6 @@ contract Governor is MultiRole, Testable {
      * ```
      * Note: this method must be public because of a solidity limitation that
      * disallows structs arrays to be passed to external functions.
-     * @param transactions array of `Transaction` which can be voted on.
      */
     function propose(Transaction[] memory transactions) public onlyRoleHolder(uint(Roles.Proposer)) {
         uint id = proposals.length;
@@ -139,7 +138,7 @@ contract Governor is MultiRole, Testable {
         emit ProposalExecuted(id, transactionIndex);
     }
 
-    /***************************************
+    /****************************************
      *       GOVERNOR STATE GETTERS         *
      ****************************************/
 
@@ -153,7 +152,6 @@ contract Governor is MultiRole, Testable {
 
     /**
      * @notice Gets the proposal data for a particular id.
-     * @dev after a proposal is executed, its data will be zeroed out.
      * @param id uniquely identify the identity of the proposal.
      * @return proposal struct containing transactions[] and requestTime.
      */
