@@ -38,7 +38,7 @@
     "@truffle/hdwallet-provider": "^1.0.25",
     "@umaprotocol/truffle-ledger-provider": "^1.0.3",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
-    "babel-eslint": "^10.1.0",
+    "babel-eslint": "^10.0.1",
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",
