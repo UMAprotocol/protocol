@@ -13,7 +13,7 @@ import "../interfaces/FinderInterface.sol";
  * @dev Allows a UMA token holder to designate another address to vote on their behalf.
  * Each voter must deploy their own instance of this contract.
  */
-contract DesignatedVoting is MultiRole, Withdrawable {
+contract DesignatedVoting is Withdrawable {
     /****************************************
      *    INTERNAL VARIABLES AND STORAGE    *
      ****************************************/
