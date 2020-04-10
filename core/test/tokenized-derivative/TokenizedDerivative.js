@@ -2525,8 +2525,9 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Product unsupported by price feed.
       const productUnsupportedByPriceFeed = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByFeed"));
-      await supportedIdentifiers.addSupportedIdentifier(productUnsupportedByPriceFeed);
-
+      if (!(await supportedIdentifiers.isIdentifierSupported.call(productUnsupportedByPriceFeed))) {
+        await supportedIdentifiers.addSupportedIdentifier(productUnsupportedByPriceFeed);
+      }
       const unsupportedByPriceFeedParams = { ...defaultConstructorParams, product: productUnsupportedByPriceFeed };
       assert(
         await didContractThrow(
