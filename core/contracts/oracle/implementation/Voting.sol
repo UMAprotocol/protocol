@@ -28,7 +28,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     using VoteTiming for VoteTiming.Data;
     using ResultComputation for ResultComputation.Data;
 
-    /***************************************
+    /****************************************
      *        VOTING DATA STRUCTURES        *
      ****************************************/
 
@@ -127,7 +127,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // Max value of an unsigned integer.
     uint private constant UINT_MAX = ~uint(0);
 
-    /****************************************
+    /***************************************
      *                EVENTS                *
      ****************************************/
 
