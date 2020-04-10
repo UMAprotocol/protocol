@@ -94,9 +94,7 @@ contract Registry is RegistryInterface, MultiRole {
         // For all parties in the array add them to the contract's parties.
         financialContract.valid = Validity.Valid;
         for (uint i = 0; i < parties.length; i = i.add(1)) {
-            partyMap[parties[i]].contracts.push(contractAddress);
-            uint newLength = partyMap[parties[i]].contracts.length;
-            partyMap[parties[i]].contractIndex[contractAddress] = newLength - 1;
+            _addPartyToContract(parties[i], contractAddress);
         }
 
         emit NewContractRegistered(contractAddress, msg.sender, parties);
@@ -113,14 +111,8 @@ contract Registry is RegistryInterface, MultiRole {
         address contractAddress = msg.sender;
 
         require(contractMap[contractAddress].valid == Validity.Valid, "Can only add to valid contract");
-        require(!isPartyMemberOfContract(party, contractAddress), "Can only register a party once");
 
-        // Push the contract address and store the index.
-        uint contractIndex = partyMap[party].contracts.length;
-        partyMap[party].contracts.push(contractAddress);
-        partyMap[party].contractIndex[contractAddress] = contractIndex;
-
-        emit PartyAdded(contractAddress, party);
+        _addPartyToContract(party, contractAddress);
     }
 
     /**
@@ -206,5 +198,18 @@ contract Registry is RegistryInterface, MultiRole {
     function isPartyMemberOfContract(address party, address contractAddress) public override view returns (bool) {
         uint index = partyMap[party].contractIndex[contractAddress];
         return partyMap[party].contracts.length > index && partyMap[party].contracts[index] == contractAddress;
+    }
+
+    /****************************************
+     *           INTERNAL FUNCTIONS         *
+     ****************************************/
+
+    function _addPartyToContract(address party, address contractAddress) internal {
+        require(!isPartyMemberOfContract(party, contractAddress), "Can only register a party once");
+        uint contractIndex = partyMap[party].contracts.length;
+        partyMap[party].contracts.push(contractAddress);
+        partyMap[party].contractIndex[contractAddress] = contractIndex;
+
+        emit PartyAdded(contractAddress, party);
     }
 }

@@ -1,4 +1,4 @@
-const { didContractThrow } = require("../../common/SolidityTestUtils.js");
+const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 
 const Finder = artifacts.require("Finder");
 

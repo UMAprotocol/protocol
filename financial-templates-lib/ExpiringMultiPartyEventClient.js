@@ -21,6 +21,8 @@ class ExpiringMultiPartyEventClient {
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
+
+    this.lastBlockNumberSeen = 0;
   }
 
   // Calls _update unless it was recently called, as determined by this.updateThreshold.
@@ -94,71 +96,62 @@ class ExpiringMultiPartyEventClient {
   };
 
   _update = async () => {
-    //Events
-    let liquidationBlockQueryNumber =
-      this.liquidationEvents.length > 0 ? this.liquidationEvents[this.liquidationEvents.length - 1].blockNumber + 1 : 0;
+    const currentBlockNumber = await web3.eth.getBlockNumber();
+    // Look for events on chain from the previous seen block number to the current block number.
+    // Liquidation events
     const liquidationEventsObj = await this.emp.getPastEvents("LiquidationCreated", {
-      fromBlock: liquidationBlockQueryNumber
+      fromBlock: this.lastBlockNumberSeen,
+      toBlock: currentBlockNumber
     });
 
-    // If there have been previous events retrieve we should only query the chain for newer events.
-    if (liquidationEventsObj.length !== 0) {
-      for (let event of liquidationEventsObj) {
-        this.liquidationEvents.push({
-          transactionHash: event.transactionHash,
-          sponsor: event.returnValues.sponsor,
-          liquidator: event.returnValues.liquidator,
-          liquidationId: event.returnValues.liquidationId,
-          tokensOutstanding: event.returnValues.tokensOutstanding,
-          lockedCollateral: event.returnValues.lockedCollateral,
-          liquidatedCollateral: event.returnValues.liquidatedCollateral
-        });
-      }
+    for (let event of liquidationEventsObj) {
+      this.liquidationEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        sponsor: event.returnValues.sponsor,
+        liquidator: event.returnValues.liquidator,
+        liquidationId: event.returnValues.liquidationId,
+        tokensOutstanding: event.returnValues.tokensOutstanding,
+        lockedCollateral: event.returnValues.lockedCollateral,
+        liquidatedCollateral: event.returnValues.liquidatedCollateral
+      });
     }
 
-    let disputeBlockQueryNumber =
-      this.disputeEvents.length > 0 ? this.disputeEvents[this.disputeEvents.length - 1].blockNumber + 1 : 0;
+    // Dispute events
     const disputeEventsObj = await this.emp.getPastEvents("LiquidationDisputed", {
-      fromBlock: disputeBlockQueryNumber
+      fromBlock: this.lastBlockNumberSeen,
+      toBlock: currentBlockNumber
     });
-    if (disputeEventsObj.length !== 0) {
-      for (let event of disputeEventsObj) {
-        this.disputeEvents.push({
-          transactionHash: event.transactionHash,
-          sponsor: event.returnValues.sponsor,
-          liquidator: event.returnValues.liquidator,
-          disputer: event.returnValues.disputer,
-          liquidationId: event.returnValues.liquidationId,
-          disputeBondAmount: event.returnValues.disputeBondAmount
-        });
-      }
+    for (let event of disputeEventsObj) {
+      this.disputeEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        sponsor: event.returnValues.sponsor,
+        liquidator: event.returnValues.liquidator,
+        disputer: event.returnValues.disputer,
+        liquidationId: event.returnValues.liquidationId,
+        disputeBondAmount: event.returnValues.disputeBondAmount
+      });
     }
 
-    let disputeSettlementBlockQueryNumber =
-      this.disputeSettlementEvents.length > 0
-        ? this.disputeSettlementEvents[this.disputeSettlementEvents.length - 1].blockNumber + 1
-        : 0;
+    // Dispute settlement events
     const disputeSettlementEventsObj = await this.emp.getPastEvents("DisputeSettled", {
-      fromBlock: disputeSettlementBlockQueryNumber
+      fromBlock: this.lastBlockNumberSeen,
+      toBlock: currentBlockNumber
     });
-    if (disputeSettlementEventsObj.length !== 0) {
-      for (let event of disputeSettlementEventsObj) {
-        this.disputeSettlementEvents.push({
-          transactionHash: event.transactionHash,
-          caller: event.returnValues.caller,
-          sponsor: event.returnValues.sponsor,
-          liquidator: event.returnValues.liquidator,
-          disputer: event.returnValues.disputer,
-          liquidationId: event.returnValues.liquidationId,
-          disputeSucceeded: event.returnValues.DisputeSucceeded
-        });
-      }
+    for (let event of disputeSettlementEventsObj) {
+      this.disputeSettlementEvents.push({
+        transactionHash: event.transactionHash,
+        blockNumber: event.blockNumber,
+        caller: event.returnValues.caller,
+        sponsor: event.returnValues.sponsor,
+        liquidator: event.returnValues.liquidator,
+        disputer: event.returnValues.disputer,
+        liquidationId: event.returnValues.liquidationId,
+        disputeSucceeded: event.returnValues.DisputeSucceeded
+      });
     }
-
-    Logger.debug({
-      at: "ExpiringMultiPartyEventClient",
-      message: "client updated"
-    });
+    this.lastBlockNumberSeen = currentBlockNumber;
   };
 }
 

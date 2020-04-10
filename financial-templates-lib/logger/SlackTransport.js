@@ -76,7 +76,7 @@ const slackFormatter = info => {
             text: ` • _tx_: <https://etherscan.io/tx/${info[key]}|${info[key]}> \n`
           }
         });
-      } else if (key == "markwn") {
+      } else if (key == "mrkdwn") {
         formattedResponse.blocks.push({
           type: "section",
           text: {
@@ -85,7 +85,7 @@ const slackFormatter = info => {
           }
         });
       } else {
-        // If the value in the message object is an string or a integer then show it as _key: value
+        // If the value in the message object is an string or a integer then show it as key: value
         formattedResponse.blocks.push({
           type: "section",
           text: {

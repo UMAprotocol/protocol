@@ -42,6 +42,11 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      **/
 
     // - Whitelist allowed collateral currencies.
+    // Note: before an instantiation of ExpiringMultipartyCreator is approved to register contracts, voters should
+    // ensure that the ownership of this collateralTokenWhitelist has been renounced (so it is effectively
+    // frozen). One could also set the owner to the address of the Governor contract, but voters may find that option
+    // less preferable since it would force them to take a more active role in managing this financial contract
+    // template.
     AddressWhitelist public collateralTokenWhitelist;
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
@@ -77,9 +82,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // long we expect it to take disputers to notice bad liquidations. Malicious liquidators would
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
     uint public constant STRICT_LIQUIDATION_LIVENESS = 3600;
-    // - Minimum dispute bond: 0%. We think this should be positive so that every dispute has some cost
-    // so that disputers are disincentivized from wrongly disputing sponsors.
-    uint public constant MIN_DISPUTE_BOND_PCT = 0;
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
@@ -145,7 +147,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
         // Enforce configuration constrainments.
         require(_isValidTimestamp(params.expirationTimestamp));
-        require(params.disputeBondPct.isGreaterThan(MIN_DISPUTE_BOND_PCT));
         require(bytes(params.syntheticName).length != 0);
         require(bytes(params.syntheticSymbol).length != 0);
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
