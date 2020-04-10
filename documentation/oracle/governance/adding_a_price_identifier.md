@@ -8,6 +8,7 @@ Because UMA token holders need to be able to vote on the value of this price ide
 For example, `GOLD_USD` might be a price identifier to return the USD spot price of 1oz of gold according to a pre-defined set of rules. If approved, UMA token holders would be expected to vote on the `GOLD_USD` value when price requests are raised to the DVM. 
 The rules behind this `GOLD_USD` price identifier would be documented in detail in an [UMIP](./UMIPs.md) that was has been approved by UMA token holders. 
 That UMIP would contain more information about how to determine the price identifier. 
+<!-- TODO: Add a link to the UMIP for adding the ETHBTC price identifier when it is ready. -->
 
 ## Who controls the list of approved price identifiers?
 For each deployment of the DVM, the list of approved price identifiers is controlled by the `IdentifierWhitelist` contract.
@@ -30,7 +31,7 @@ This is done via the UMIP process, as described [here](./UMIPs.md).
 If you are building with a price identifier not currently supported by the UMA DVM, you will need to propose it to the community of UMA token holders for a vote. 
 You should create an UMIP in which you describe your project and the new price identifier(s) being requested. 
 At this time, you do not need to provide an implementation for the addition of a new price identifier. 
-For details on how to write a UMIP, please see this document. This UMIP will be discussed by members of the UMA community. 
+Details on how to write a UMIP are [here](./UMIPs.md). This UMIP will be discussed by members of the UMA community. 
 
 - Step 2: Get Ready For Vote
 
