@@ -546,7 +546,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
-        // `pendingPriceRequests` only to those requests that has an Active RequestStatus.
+        // `pendingPriceRequests` only to those requests that have an Active RequestStatus.
         PendingRequest[] memory unresolved = new PendingRequest[](pendingPriceRequests.length);
         uint numUnresolved = 0;
 
