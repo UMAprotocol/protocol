@@ -11,7 +11,7 @@ library Exclusive {
     }
 
     function resetMember(RoleMembership storage roleMembership, address newMember) internal {
-        require(newMember != address(0x0), "Cannot set an exclusive role to 0x0");
+        require(newMember != address(0x0));
         roleMembership.member = newMember;
     }
 
@@ -35,7 +35,7 @@ library Shared {
     }
 
     function addMember(RoleMembership storage roleMembership, address memberToAdd) internal {
-        require(memberToAdd != address(0x0), "Cannot set add shared role to 0x0");
+        require(memberToAdd != address(0x0));
         roleMembership.members[memberToAdd] = true;
     }
 
@@ -138,6 +138,7 @@ abstract contract MultiRole {
      * managing role for `roleId`.
      */
     function addMember(uint roleId, address newMember) public onlyShared(roleId) onlyRoleManager(roleId) {
+        require(newMember != address(0x0));
         roles[roleId].sharedRoleMembership.addMember(newMember);
     }
 
