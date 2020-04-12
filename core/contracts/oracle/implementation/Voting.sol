@@ -363,7 +363,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // 0 hashes are disallowed in the commit phase, so they indicate a different error.
         // Cannot reveal an uncommitted or previously revealed hash
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
-        // Committed hash doesn't match revealed voter address, price and salt
         require(keccak256(abi.encodePacked(
             price,
             salt,

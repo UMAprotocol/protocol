@@ -1,6 +1,7 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { computeVoteHash } = require("../../../common/EncryptionHelper");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
@@ -141,6 +142,7 @@ contract("Governor", function(accounts) {
 
     // The proposals should show up in the pending requests in the *next* round.
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
 
     // Check that the proposals shows up and that the identifiers are constructed correctly.
@@ -153,9 +155,24 @@ contract("Governor", function(accounts) {
     // Execute the proposals to clean up.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
-    await voting.commitVote(request1.identifier, request1.time, hash);
-    await voting.commitVote(request2.identifier, request2.time, hash);
+    const hash1 = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request1.time,
+      roundId,
+      identifier: request1.identifier
+    });
+    const hash2 = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request2.time,
+      roundId,
+      identifier: request2.identifier
+    });
+    await voting.commitVote(request1.identifier, request1.time, hash1);
+    await voting.commitVote(request2.identifier, request2.time, hash2);
     await moveToNextPhase(voting);
     await voting.revealVote(request1.identifier, request1.time, vote, salt);
     await voting.revealVote(request2.identifier, request2.time, vote, salt);
@@ -181,13 +198,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -216,13 +241,21 @@ contract("Governor", function(accounts) {
     ]);
 
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -254,13 +287,21 @@ contract("Governor", function(accounts) {
     ]);
 
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -298,13 +339,21 @@ contract("Governor", function(accounts) {
     ]);
 
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -332,13 +381,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -368,13 +425,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -405,13 +470,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote down the proposal.
     const vote = "0";
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -440,13 +513,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    let roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote on the proposal, but don't reach the GAT.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(vote, salt, account2);
+    const hash2 = computeVoteHash({
+      price: vote,
+      salt,
+      account: account2,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash2, { from: account2 });
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt, { from: account2 });
@@ -458,7 +539,15 @@ contract("Governor", function(accounts) {
     assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.toString());
 
     // Resolve the vote to clean up.
-    const hash1 = web3.utils.soliditySha3(vote, salt, proposer);
+    roundId = await voting.getCurrentRoundId();
+    const hash1 = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash1);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -479,13 +568,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -522,11 +619,19 @@ contract("Governor", function(accounts) {
 
     // Vote the proposal through.
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -559,11 +664,19 @@ contract("Governor", function(accounts) {
 
     // Vote the proposal through.
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt, proposer);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);

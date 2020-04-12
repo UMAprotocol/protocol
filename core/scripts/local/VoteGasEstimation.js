@@ -1,6 +1,7 @@
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { computeVoteHash } = require("../../../common/EncryptionHelper");
 
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
@@ -93,6 +94,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
 
   // Advance to commit phase
   await moveToNextRound(voting);
+  const roundId = await voting.getCurrentRoundId();
 
   const salts = {};
   const price = getRandomSignedInt();
@@ -107,7 +109,14 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
     for (var j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
       const voter = getVoter(accounts, j);
-      const hash = web3.utils.soliditySha3(price, salt, voter);
+      const hash = computeVoteHash({
+        price,
+        salt,
+        account: voter,
+        time: time + i,
+        roundId,
+        identifier
+      });
 
       const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
       const gasUsed = result.receipt.gasUsed;

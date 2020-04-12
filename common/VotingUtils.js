@@ -4,7 +4,7 @@ const {
   deriveKeyPairFromSignatureTruffle,
   deriveKeyPairFromSignatureMetamask
 } = require("./Crypto");
-const { getKeyGenMessage, computeTopicHash } = require("./EncryptionHelper");
+const { getKeyGenMessage, computeTopicHash, computeVoteHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 
 const argv = require("minimist")(process.argv.slice());
@@ -21,7 +21,14 @@ const argv = require("minimist")(process.argv.slice());
 const constructCommitment = async (request, roundId, web3, price, account) => {
   const priceWei = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
-  const hash = web3.utils.soliditySha3(priceWei, salt, account);
+  const hash = computeVoteHash({
+    price: priceWei,
+    salt,
+    account,
+    time: request.time,
+    roundId,
+    identifier: request.identifier
+  });
 
   const vote = { price: priceWei, salt };
   let publicKey;

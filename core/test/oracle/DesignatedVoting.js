@@ -9,7 +9,7 @@ const VotingToken = artifacts.require("VotingToken");
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
-const { computeTopicHash, getKeyGenMessage } = require("../../../common/EncryptionHelper.js");
+const { computeTopicHash, computeVoteHash, getKeyGenMessage } = require("../../../common/EncryptionHelper.js");
 
 contract("DesignatedVoting", function(accounts) {
   const umaAdmin = accounts[0];
@@ -89,12 +89,20 @@ contract("DesignatedVoting", function(accounts) {
     await supportedIdentifiers.addSupportedIdentifier(identifier);
     await voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
+    let roundId = await voting.getCurrentRoundId();
 
     const price = getRandomSignedInt();
     const salt = getRandomUnsignedInt();
     // Note: the "voter" address for this vote must be the designated voting contract since its the one that will ultimately
     // "reveal" the vote. Only the voter can call reveal through the designated voting contract.
-    const hash = web3.utils.soliditySha3(price, salt, designatedVoting.address);
+    const hash = computeVoteHash({
+      price,
+      salt,
+      account: designatedVoting.address,
+      time,
+      roundId,
+      identifier
+    });
 
     // Only the voter can commit a vote.
     await designatedVoting.commitVote(identifier, time, hash, { from: voter });
@@ -113,7 +121,7 @@ contract("DesignatedVoting", function(accounts) {
     await designatedVoting.revealVote(identifier, time, price, salt, { from: voter });
 
     // Check the resolved price.
-    const roundId = await voting.getCurrentRoundId();
+    roundId = await voting.getCurrentRoundId();
     await moveToNextRound(voting);
     assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price);
 
@@ -156,12 +164,26 @@ contract("DesignatedVoting", function(accounts) {
 
     const price1 = getRandomSignedInt();
     const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(price1, salt1, designatedVoting.address);
+    const hash1 = computeVoteHash({
+      price: price1,
+      salt: salt1,
+      account: designatedVoting.address,
+      time: time1,
+      roundId,
+      identifier
+    });
     const message1 = web3.utils.randomHex(4);
 
     const price2 = getRandomSignedInt();
     const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(price2, salt2, designatedVoting.address);
+    const hash2 = computeVoteHash({
+      price: price2,
+      salt: salt2,
+      account: designatedVoting.address,
+      time: time2,
+      roundId,
+      identifier
+    });
     const message2 = web3.utils.randomHex(4);
 
     // Batch commit.
