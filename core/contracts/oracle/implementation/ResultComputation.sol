@@ -92,7 +92,7 @@ library ResultComputation {
      * @notice Gets the total number of tokens whose votes are considered correct.
      * @dev Should only be called after a vote is resolved, i.e., via `getResolvedPrice`.
      * @param data contains all votes against which the correctly voted tokens are counted.
-     * @return FixedPoint.Unsigned which indicates the correctly frequency of the correctly voted tokens.
+     * @return FixedPoint.Unsigned which indicates the frequency of the correctly voted tokens.
      */
     function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (FixedPoint.Unsigned memory) {
         return data.voteFrequency[data.currentMode];
