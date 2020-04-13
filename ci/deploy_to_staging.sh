@@ -24,9 +24,6 @@ gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 # Copy the staging config into the voter-dapp dir
 gsutil cp gs://staging-deployment-configuration/voter-app.yaml voter-dapp/app.yaml
 
-# Deploy voter dapp
-./scripts/deploy_dapp.sh voter-dapp voter-dapp/app.yaml -q
-
 # Deploy docs
 ./scripts/deploy_docs.sh documentation/gae_app.yaml -q
 
