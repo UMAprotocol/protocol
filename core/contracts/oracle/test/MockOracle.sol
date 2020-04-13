@@ -14,30 +14,30 @@ contract MockOracle is OracleInterface, Testable {
         bool isAvailable;
         int price;
         // Time the verified price became available.
-        uint verifiedTime;
+        uint256 verifiedTime;
     }
 
     // The two structs below are used in an array and mapping to keep track of prices that have been requested but are
     // not yet available.
     struct QueryIndex {
         bool isValid;
-        uint index;
+        uint256 index;
     }
 
     // Represents a (identifier, time) point that has been queried.
     struct QueryPoint {
         bytes32 identifier;
-        uint time;
+        uint256 time;
     }
 
     IdentifierWhitelistInterface public identifierWhitelist;
 
     // Conceptually we want a (time, identifier) -> price map.
-    mapping(bytes32 => mapping(uint => Price)) private verifiedPrices;
+    mapping(bytes32 => mapping(uint256 => Price)) private verifiedPrices;
 
     // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
     // Can we generalize this data structure?
-    mapping(bytes32 => mapping(uint => QueryIndex)) private queryIndices;
+    mapping(bytes32 => mapping(uint256 => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
     constructor(address _identifierWhitelist) public Testable(true) {
@@ -48,7 +48,7 @@ contract MockOracle is OracleInterface, Testable {
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function requestPrice(bytes32 identifier, uint time) external override {
+    function requestPrice(bytes32 identifier, uint256 time) external override {
         require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
@@ -59,16 +59,16 @@ contract MockOracle is OracleInterface, Testable {
     }
 
     // Pushes the verified price for a requested query.
-    function pushPrice(bytes32 identifier, uint time, int price) external {
+    function pushPrice(bytes32 identifier, uint256 time, int price) external {
         verifiedPrices[identifier][time] = Price(true, price, getCurrentTime());
 
         QueryIndex storage queryIndex = queryIndices[identifier][time];
         require(queryIndex.isValid, "Can't push prices that haven't been requested");
         // Delete from the array. Instead of shifting the queries over, replace the contents of `indexToReplace` with
         // the contents of the last index (unless it is the last index).
-        uint indexToReplace = queryIndex.index;
+        uint256 indexToReplace = queryIndex.index;
         delete queryIndices[identifier][time];
-        uint lastIndex = requestedPrices.length - 1;
+        uint256 lastIndex = requestedPrices.length - 1;
         if (lastIndex != indexToReplace) {
             QueryPoint storage queryToCopy = requestedPrices[lastIndex];
             queryIndices[queryToCopy.identifier][queryToCopy.time].index = indexToReplace;
@@ -79,7 +79,7 @@ contract MockOracle is OracleInterface, Testable {
     // Checks whether a price has been resolved.
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function hasPrice(bytes32 identifier, uint time) external override view returns (bool hasPriceAvailable) {
+    function hasPrice(bytes32 identifier, uint256 time) external override view returns (bool hasPriceAvailable) {
         require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
@@ -88,7 +88,7 @@ contract MockOracle is OracleInterface, Testable {
     // Gets a price that has already been resolved.
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function getPrice(bytes32 identifier, uint time) external override view returns (int price) {
+    function getPrice(bytes32 identifier, uint256 time) external override view returns (int price) {
         require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);

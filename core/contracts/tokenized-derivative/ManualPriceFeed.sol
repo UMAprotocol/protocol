@@ -15,7 +15,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
 
     // A single price update.
     struct PriceTick {
-        uint timestamp;
+        uint256 timestamp;
         int price;
     }
 
@@ -27,7 +27,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
     // we are assuming that blocks will never get more than this amount *behind* the current time. The only requirement
     // limiting how early the timestamp can be is that it must have a later timestamp than its parent. However,
     // this bound will probably work reasonably well in both directions.
-    uint private constant BLOCK_TIMESTAMP_TOLERANCE = 900;
+    uint256 private constant BLOCK_TIMESTAMP_TOLERANCE = 900;
 
     enum Roles { Governance, Writer, Withdraw }
 
@@ -41,7 +41,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
      * @notice Adds a new price to the series for a given identifier.
      * @dev The pushed publishTime must be later than the last time pushed so far.
      */
-    function pushLatestPrice(bytes32 identifier, uint publishTime, int newPrice)
+    function pushLatestPrice(bytes32 identifier, uint256 publishTime, int newPrice)
         external
         onlyRoleHolder(uint(Roles.Writer))
     {
@@ -62,7 +62,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function latestPrice(bytes32 identifier) external override view returns (uint publishTime, int price) {
+    function latestPrice(bytes32 identifier) external override view returns (uint256 publishTime, int price) {
         require(_isIdentifierSupported(identifier));
         publishTime = prices[identifier].timestamp;
         price = prices[identifier].price;

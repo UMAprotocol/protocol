@@ -15,19 +15,19 @@ import "./MultiRole.sol";
 abstract contract Withdrawable is MultiRole {
     using SafeERC20 for IERC20;
 
-    uint private _roleId;
+    uint256 private _roleId;
 
     /**
      * @notice Withdraws ETH from the contract.
      */
-    function withdraw(uint amount) external onlyRoleHolder(_roleId) {
+    function withdraw(uint256 amount) external onlyRoleHolder(_roleId) {
         msg.sender.transfer(amount);
     }
 
     /**
      * @notice Withdraws ERC20 tokens from the contract.
      */
-    function withdrawErc20(address erc20Address, uint amount) external onlyRoleHolder(_roleId) {
+    function withdrawErc20(address erc20Address, uint256 amount) external onlyRoleHolder(_roleId) {
         IERC20 erc20 = IERC20(erc20Address);
         erc20.safeTransfer(msg.sender, amount);
     }
@@ -37,7 +37,7 @@ abstract contract Withdrawable is MultiRole {
      * @dev Either this method or `setWithdrawRole` must be called by the derived class for this contract to function
      * properly.
      */
-    function createWithdrawRole(uint roleId, uint managingRoleId, address owner) internal {
+    function createWithdrawRole(uint256 roleId, uint256 managingRoleId, address owner) internal {
         _roleId = roleId;
         _createExclusiveRole(roleId, managingRoleId, owner);
     }
@@ -47,7 +47,7 @@ abstract contract Withdrawable is MultiRole {
      * @dev The role `roleId` must exist. Either this method or `createWithdrawRole` must be called by the derived class
      * for this contract to function properly.
      */
-    function setWithdrawRole(uint roleId) internal {
+    function setWithdrawRole(uint256 roleId) internal {
         _roleId = roleId;
     }
 }

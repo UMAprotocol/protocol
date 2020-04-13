@@ -25,19 +25,19 @@ library TokenizedDerivativeParams {
         address sponsor;
         address finderAddress;
         address priceFeedAddress;
-        uint defaultPenalty; // Percentage of margin requirement * 10^18
-        uint supportedMove; // Expected percentage move in the underlying price that the long is protected against.
+        uint256 defaultPenalty; // Percentage of margin requirement * 10^18
+        uint256 supportedMove; // Expected percentage move in the underlying price that the long is protected against.
         bytes32 product;
-        uint fixedYearlyFee; // Percentage of nav * 10^18
-        uint disputeDeposit; // Percentage of margin requirement * 10^18
+        uint256 fixedYearlyFee; // Percentage of nav * 10^18
+        uint256 disputeDeposit; // Percentage of margin requirement * 10^18
         address returnCalculator;
-        uint startingTokenPrice;
-        uint expiry;
+        uint256 startingTokenPrice;
+        uint256 expiry;
         address marginCurrency;
-        uint withdrawLimit; // Percentage of derivativeStorage.shortBalance * 10^18
+        uint256 withdrawLimit; // Percentage of derivativeStorage.shortBalance * 10^18
         ReturnType returnType;
-        uint startingUnderlyingPrice;
-        uint creationTime;
+        uint256 startingUnderlyingPrice;
+        uint256 creationTime;
     }
 }
 
@@ -82,31 +82,31 @@ library TDS {
     struct TokenState {
         int underlyingPrice;
         int tokenPrice;
-        uint time;
+        uint256 time;
     }
 
     // The information in the following struct is only valid if in the midst of a Dispute.
     struct Dispute {
         int disputedNav;
-        uint deposit;
+        uint256 deposit;
     }
 
     struct WithdrawThrottle {
-        uint startTime;
-        uint remainingWithdrawal;
+        uint256 startTime;
+        uint256 remainingWithdrawal;
     }
 
     struct FixedParameters {
         // Fixed contract parameters.
-        uint defaultPenalty; // Percentage of margin requirement * 10^18
-        uint supportedMove; // Expected percentage move that the long is protected against.
-        uint disputeDeposit; // Percentage of margin requirement * 10^18
-        uint fixedFeePerSecond; // Percentage of nav*10^18
-        uint withdrawLimit; // Percentage of derivativeStorage.shortBalance*10^18
+        uint256 defaultPenalty; // Percentage of margin requirement * 10^18
+        uint256 supportedMove; // Expected percentage move that the long is protected against.
+        uint256 disputeDeposit; // Percentage of margin requirement * 10^18
+        uint256 fixedFeePerSecond; // Percentage of nav*10^18
+        uint256 withdrawLimit; // Percentage of derivativeStorage.shortBalance*10^18
         bytes32 product;
         TokenizedDerivativeParams.ReturnType returnType;
-        uint initialTokenUnderlyingRatio;
-        uint creationTime;
+        uint256 initialTokenUnderlyingRatio;
+        uint256 creationTime;
         string symbol;
     }
 
@@ -127,7 +127,7 @@ library TDS {
         int shortBalance;
         int longBalance;
         State state;
-        uint endTime;
+        uint256 endTime;
         // The NAV of the contract always reflects the transition from (`prev`, `current`).
         // In the case of a remargin, a `latest` price is retrieved from the price feed, and we shift
         // `current` -> `prev` and `latest` -> `current` (and then recompute).
@@ -152,10 +152,10 @@ library TokenizedDerivativeUtils {
     using SignedSafeMath for int;
     using FixedPoint for FixedPoint.Unsigned;
 
-    uint private constant SECONDS_PER_DAY = 86400;
-    uint private constant SECONDS_PER_YEAR = 31536000;
-    uint private constant INT_MAX = 2**255 - 1;
-    uint private constant UINT_FP_SCALING_FACTOR = 10**18;
+    uint256 private constant SECONDS_PER_DAY = 86400;
+    uint256 private constant SECONDS_PER_YEAR = 31536000;
+    uint256 private constant INT_MAX = 2**255 - 1;
+    uint256 private constant UINT_FP_SCALING_FACTOR = 10**18;
     int private constant INT_FP_SCALING_FACTOR = 10**18;
 
     // Note that we can't have the symbol parameter be `indexed` due to:
@@ -163,23 +163,23 @@ library TokenizedDerivativeUtils {
     // An event emitted when the NAV of the contract changes.
     event NavUpdated(string symbol, int newNav, int newTokenPrice);
     // An event emitted when the contract enters the Default state on a remargin.
-    event Default(string symbol, uint defaultTime, int defaultNav);
+    event Default(string symbol, uint256 defaultTime, int defaultNav);
     // An event emitted when the contract settles.
-    event Settled(string symbol, uint settleTime, int finalNav);
+    event Settled(string symbol, uint256 settleTime, int finalNav);
     // An event emitted when the contract expires.
-    event Expired(string symbol, uint expiryTime);
+    event Expired(string symbol, uint256 expiryTime);
     // An event emitted when the contract's NAV is disputed by the sponsor.
-    event Disputed(string symbol, uint timeDisputed, int navDisputed);
+    event Disputed(string symbol, uint256 timeDisputed, int navDisputed);
     // An event emitted when the contract enters emergency shutdown.
-    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
+    event EmergencyShutdownTransition(string symbol, uint256 shutdownTime);
     // An event emitted when tokens are created.
-    event TokensCreated(string symbol, uint numTokensCreated);
+    event TokensCreated(string symbol, uint256 numTokensCreated);
     // An event emitted when tokens are redeemed.
-    event TokensRedeemed(string symbol, uint numTokensRedeemed);
+    event TokensRedeemed(string symbol, uint256 numTokensRedeemed);
     // An event emitted when margin currency is deposited.
-    event Deposited(string symbol, uint amount);
+    event Deposited(string symbol, uint256 amount);
     // An event emitted when margin currency is withdrawn.
-    event Withdrawal(string symbol, uint amount);
+    event Withdrawal(string symbol, uint256 amount);
 
     modifier onlySponsor(TDS.Storage storage s) {
         require(msg.sender == s.externalAddresses.sponsor);
@@ -201,7 +201,7 @@ library TokenizedDerivativeUtils {
         _;
     }
 
-    function _depositAndCreateTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase)
+    function _depositAndCreateTokens(TDS.Storage storage s, uint256 marginForPurchase, uint256 tokensToPurchase)
         external
         onlySponsorOrApDelegate(s)
     {
@@ -213,14 +213,14 @@ library TokenizedDerivativeUtils {
             newTokenNav = 0;
         }
 
-        uint positiveTokenNav = _safeUintCast(newTokenNav);
+        uint256 positiveTokenNav = _safeUintCast(newTokenNav);
 
         // Get any refund due to sending more margin than the argument indicated (should only be able to happen in the
         // ETH case).
-        uint refund = s._pullSentMargin(marginForPurchase);
+        uint256 refund = s._pullSentMargin(marginForPurchase);
 
         // Subtract newTokenNav from amount sent.
-        uint depositAmount = marginForPurchase.sub(positiveTokenNav);
+        uint256 depositAmount = marginForPurchase.sub(positiveTokenNav);
 
         // Deposit additional margin into the short account.
         s._depositInternal(depositAmount);
@@ -235,7 +235,7 @@ library TokenizedDerivativeUtils {
         s._sendMargin(refund);
     }
 
-    function _redeemTokens(TDS.Storage storage s, uint tokensToRedeem) external {
+    function _redeemTokens(TDS.Storage storage s, uint256 tokensToRedeem) external {
         require(s.state == TDS.State.Live || s.state == TDS.State.Settled);
         require(tokensToRedeem > 0);
 
@@ -247,7 +247,7 @@ library TokenizedDerivativeUtils {
 
         ExpandedIERC20 thisErc20Token = ExpandedIERC20(address(this));
 
-        uint initialSupply = _totalSupply();
+        uint256 initialSupply = _totalSupply();
         require(initialSupply > 0);
 
         _pullAuthorizedTokens(thisErc20Token, tokensToRedeem);
@@ -256,8 +256,8 @@ library TokenizedDerivativeUtils {
 
         // Value of the tokens is just the percentage of all the tokens multiplied by the balance of the investor
         // margin account.
-        uint tokenPercentage = tokensToRedeem.mul(UINT_FP_SCALING_FACTOR).div(initialSupply);
-        uint tokenMargin = _takePercentage(_safeUintCast(s.longBalance), tokenPercentage);
+        uint256 tokenPercentage = tokensToRedeem.mul(UINT_FP_SCALING_FACTOR).div(initialSupply);
+        uint256 tokenMargin = _takePercentage(_safeUintCast(s.longBalance), tokenPercentage);
 
         s.longBalance = s.longBalance.sub(_safeIntCast(tokenMargin));
         assert(s.longBalance >= 0);
@@ -266,17 +266,17 @@ library TokenizedDerivativeUtils {
         s._sendMargin(tokenMargin);
     }
 
-    function _dispute(TDS.Storage storage s, uint depositMargin) external onlySponsor(s) {
+    function _dispute(TDS.Storage storage s, uint256 depositMargin) external onlySponsor(s) {
         require(s.state == TDS.State.Live, "Contract must be Live to dispute");
 
-        uint requiredDeposit = _safeUintCast(
+        uint256 requiredDeposit = _safeUintCast(
             _takePercentage(s._getRequiredMargin(s.currentTokenState), s.fixedParameters.disputeDeposit)
         );
 
-        uint sendInconsistencyRefund = s._pullSentMargin(depositMargin);
+        uint256 sendInconsistencyRefund = s._pullSentMargin(depositMargin);
 
         require(depositMargin >= requiredDeposit);
-        uint overpaymentRefund = depositMargin.sub(requiredDeposit);
+        uint256 overpaymentRefund = depositMargin.sub(requiredDeposit);
 
         s.state = TDS.State.Disputed;
         s.endTime = s.currentTokenState.time;
@@ -295,7 +295,7 @@ library TokenizedDerivativeUtils {
         s._sendMargin(sendInconsistencyRefund.add(overpaymentRefund));
     }
 
-    function _withdraw(TDS.Storage storage s, uint amount) external onlySponsor(s) {
+    function _withdraw(TDS.Storage storage s, uint256 amount) external onlySponsor(s) {
         // Remargin before allowing a withdrawal, but only if in the live state.
         if (s.state == TDS.State.Live) {
             s._remarginInternal();
@@ -313,7 +313,7 @@ library TokenizedDerivativeUtils {
             withdrawableAmount = s.shortBalance;
         } else {
             // Update throttling snapshot and verify that this withdrawal doesn't go past the throttle limit.
-            uint currentTime = s.currentTokenState.time;
+            uint256 currentTime = s.currentTokenState.time;
             if (s.withdrawThrottle.startTime <= currentTime.sub(SECONDS_PER_DAY)) {
                 // We've passed the previous s.withdrawThrottle window. Start new one.
                 s.withdrawThrottle.startTime = currentTime;
@@ -371,13 +371,13 @@ library TokenizedDerivativeUtils {
         s._settleInternal();
     }
 
-    function _createTokens(TDS.Storage storage s, uint marginForPurchase, uint tokensToPurchase)
+    function _createTokens(TDS.Storage storage s, uint256 marginForPurchase, uint256 tokensToPurchase)
         external
         onlySponsorOrApDelegate(s)
     {
         // Returns any refund due to sending more margin than the argument indicated (should only be able to happen in
         // the ETH case).
-        uint refund = s._pullSentMargin(marginForPurchase);
+        uint256 refund = s._pullSentMargin(marginForPurchase);
 
         // The _createTokensInternal call returns any refund due to the amount sent being larger than the amount
         // required to purchase the tokens, so we add that to the running refund.
@@ -387,9 +387,9 @@ library TokenizedDerivativeUtils {
         s._sendMargin(refund);
     }
 
-    function _deposit(TDS.Storage storage s, uint marginToDeposit) external onlySponsor(s) {
+    function _deposit(TDS.Storage storage s, uint256 marginToDeposit) external onlySponsor(s) {
         // Only allow the s.externalAddresses.sponsor to deposit margin.
-        uint refund = s._pullSentMargin(marginToDeposit);
+        uint256 refund = s._pullSentMargin(marginToDeposit);
         s._depositInternal(marginToDeposit);
 
         // Send any refund due to sending more margin than the argument indicated (should only be able to happen in the
@@ -401,15 +401,15 @@ library TokenizedDerivativeUtils {
         s._remarginInternal();
     }
 
-    function _withdrawUnexpectedErc20(TDS.Storage storage s, address erc20Address, uint amount)
+    function _withdrawUnexpectedErc20(TDS.Storage storage s, address erc20Address, uint256 amount)
         external
         onlySponsor(s)
     {
         if (address(s.externalAddresses.marginCurrency) == erc20Address) {
-            uint currentBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
+            uint256 currentBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
             int totalBalances = s.shortBalance.add(s.longBalance);
             assert(totalBalances >= 0);
-            uint withdrawableAmount = currentBalance.sub(_safeUintCast(totalBalances)).sub(s.disputeInfo.deposit);
+            uint256 withdrawableAmount = currentBalance.sub(_safeUintCast(totalBalances)).sub(s.disputeInfo.deposit);
             require(withdrawableAmount >= amount);
         }
 
@@ -460,7 +460,7 @@ library TokenizedDerivativeUtils {
 
         // Technically we should also check if price will default the contract, but that isn't a normal flow of
         // operations that we want to simulate: we want to discourage the sponsor remargining into a default.
-        (uint priceFeedTime, ) = s._getLatestPrice();
+        (uint256 priceFeedTime, ) = s._getLatestPrice();
         if (currentState == TDS.State.Live && (priceFeedTime < s.endTime)) {
             return false;
         }
@@ -468,7 +468,11 @@ library TokenizedDerivativeUtils {
         return OracleInterface(_getOracleAddress(s)).hasPrice(s.fixedParameters.product, s.endTime);
     }
 
-    function _getUpdatedUnderlyingPrice(TDS.Storage storage s) external view returns (int underlyingPrice, uint time) {
+    function _getUpdatedUnderlyingPrice(TDS.Storage storage s)
+        external
+        view
+        returns (int underlyingPrice, uint256 time)
+    {
         (TDS.TokenState memory newTokenState, ) = s._calcNewTokenStateAndBalance();
         return (newTokenState.underlyingPrice, newTokenState.time);
     }
@@ -490,7 +494,7 @@ library TokenizedDerivativeUtils {
         require(params.startingTokenPrice <= UINT_FP_SCALING_FACTOR.mul(10**9));
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
+        (uint256 latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
             s.fixedParameters.product
         );
 
@@ -508,7 +512,7 @@ library TokenizedDerivativeUtils {
         );
         require(s.fixedParameters.initialTokenUnderlyingRatio != 0);
 
-        // Set end time to max value of uint to implement no expiry.
+        // Set end time to max value of uint256 to implement no expiry.
         if (params.expiry == 0) {
             s.endTime = ~uint(0);
         } else {
@@ -557,7 +561,7 @@ library TokenizedDerivativeUtils {
         }
 
         // Grab the price feed pricetime.
-        (uint priceFeedTime, int priceFeedPrice) = s._getLatestPrice();
+        (uint256 priceFeedTime, int priceFeedPrice) = s._getLatestPrice();
 
         bool isContractLive = s.state == TDS.State.Live;
         bool isContractPostExpiry = priceFeedTime >= s.endTime;
@@ -578,7 +582,7 @@ library TokenizedDerivativeUtils {
         );
 
         // Use the oracle settlement price/time if the contract is frozen or will move to expiry on the next remargin.
-        (uint recomputeTime, int recomputePrice) = !isContractLive || isContractPostExpiry
+        (uint256 recomputeTime, int recomputePrice) = !isContractLive || isContractPostExpiry
             ? (s.endTime, OracleInterface(_getOracleAddress(s)).getPrice(s.fixedParameters.product, s.endTime))
             : (priceFeedTime, priceFeedPrice);
 
@@ -601,7 +605,7 @@ library TokenizedDerivativeUtils {
         // If the contract is about to enter a frozen state (i.e., either expiry or default), then an Oracle final fee
         // will need to be paid.
         if (isContractLive && (isContractPostExpiry || inDefault)) {
-            uint oracleFinalFee = s._computeOracleFinalFee(newShortMarginBalance);
+            uint256 oracleFinalFee = s._computeOracleFinalFee(newShortMarginBalance);
             newShortMarginBalance = newShortMarginBalance.sub(_safeIntCast(oracleFinalFee));
         }
 
@@ -628,8 +632,8 @@ library TokenizedDerivativeUtils {
     function _computeInitialNav(
         TDS.Storage storage s,
         int latestUnderlyingPrice,
-        uint latestTime,
-        uint startingTokenPrice
+        uint256 latestTime,
+        uint256 startingTokenPrice
     ) internal returns (int navNew) {
         int unitNav = _safeIntCast(startingTokenPrice);
         s.referenceTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
@@ -695,7 +699,7 @@ library TokenizedDerivativeUtils {
         // If the state is not live, remargining does not make sense.
         require(s.state == TDS.State.Live);
 
-        (uint latestTime, int latestPrice) = s._getLatestPrice();
+        (uint256 latestTime, int latestPrice) = s._getLatestPrice();
         // Checks whether contract has ended.
         if (latestTime <= s.currentTokenState.time) {
             // If the price feed hasn't advanced, remargining should be a no-op.
@@ -713,7 +717,7 @@ library TokenizedDerivativeUtils {
             int recomputedNav = s._computeNav(s.currentTokenState.underlyingPrice, s.currentTokenState.time);
             assert(recomputedNav == s.nav);
 
-            uint feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime);
+            uint256 feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime);
 
             // Save the precomputed default penalty in case the expiry price pushes the sponsor into default.
             s.defaultPenaltyAmount = potentialPenaltyAmount;
@@ -724,7 +728,7 @@ library TokenizedDerivativeUtils {
             s._payOracleFees(feeAmount);
             return;
         }
-        uint feeAmount = s._deductOracleFees(s.currentTokenState.time, latestTime);
+        uint256 feeAmount = s._deductOracleFees(s.currentTokenState.time, latestTime);
 
         // Update nav of contract.
         int navNew = s._computeNav(latestPrice, latestTime);
@@ -745,9 +749,9 @@ library TokenizedDerivativeUtils {
         s._payOracleFees(feeAmount);
     }
 
-    function _createTokensInternal(TDS.Storage storage s, uint tokensToPurchase, uint navSent)
+    function _createTokensInternal(TDS.Storage storage s, uint256 tokensToPurchase, uint256 navSent)
         internal
-        returns (uint refund)
+        returns (uint256 refund)
     {
         s._remarginInternal();
 
@@ -776,7 +780,7 @@ library TokenizedDerivativeUtils {
         require(s._satisfiesMarginRequirement(s.shortBalance, s.currentTokenState));
     }
 
-    function _depositInternal(TDS.Storage storage s, uint value) internal {
+    function _depositInternal(TDS.Storage storage s, uint256 value) internal {
         // Make sure that we are in a "depositable" state.
         require(s.state == TDS.State.Live);
         s.shortBalance = s.shortBalance.add(_safeIntCast(value));
@@ -803,9 +807,9 @@ library TokenizedDerivativeUtils {
     }
 
     // Deducts the fees from the margin account.
-    function _deductOracleFees(TDS.Storage storage s, uint lastTimeOracleFeesPaid, uint currentTime)
+    function _deductOracleFees(TDS.Storage storage s, uint256 lastTimeOracleFeesPaid, uint256 currentTime)
         internal
-        returns (uint feeAmount)
+        returns (uint256 feeAmount)
     {
         feeAmount = s._computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime);
         s.shortBalance = s.shortBalance.sub(_safeIntCast(feeAmount));
@@ -814,7 +818,7 @@ library TokenizedDerivativeUtils {
     }
 
     // Pays out the fees to the Oracle.
-    function _payOracleFees(TDS.Storage storage s, uint feeAmount) internal {
+    function _payOracleFees(TDS.Storage storage s, uint256 feeAmount) internal {
         if (feeAmount == 0) {
             return;
         }
@@ -828,10 +832,10 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeExpectedOracleFees(TDS.Storage storage s, uint lastTimeOracleFeesPaid, uint currentTime)
+    function _computeExpectedOracleFees(TDS.Storage storage s, uint256 lastTimeOracleFeesPaid, uint256 currentTime)
         internal
         view
-        returns (uint feeAmount)
+        returns (uint256 feeAmount)
     {
         StoreInterface store = StoreInterface(_getStoreAddress(s));
         // The profit from corruption is set as the max(longBalance, shortBalance).
@@ -842,10 +846,10 @@ library TokenizedDerivativeUtils {
             FixedPoint.Unsigned(_safeUintCast(pfc))
         );
         // TODO(ptare): Implement a keeper system, but for now, pay the delay fee to the Oracle.
-        uint expectedFeeAmount = regularFee.add(delayFee).rawValue;
+        uint256 expectedFeeAmount = regularFee.add(delayFee).rawValue;
 
         // Ensure the fee returned can actually be paid by the short margin account.
-        uint shortBalance = _safeUintCast(s.shortBalance);
+        uint256 shortBalance = _safeUintCast(s.shortBalance);
         return (shortBalance < expectedFeeAmount) ? shortBalance : expectedFeeAmount;
     }
 
@@ -853,7 +857,7 @@ library TokenizedDerivativeUtils {
         TDS.Storage storage s,
         TDS.TokenState memory beginningTokenState,
         int latestUnderlyingPrice,
-        uint recomputeTime
+        uint256 recomputeTime
     ) internal view returns (TDS.TokenState memory newTokenState) {
         int underlyingReturn = s.externalAddresses.returnCalculator.computeReturn(
             beginningTokenState.underlyingPrice,
@@ -881,8 +885,8 @@ library TokenizedDerivativeUtils {
         return s._getRequiredMargin(tokenState) <= balance;
     }
 
-    function _requestOraclePrice(TDS.Storage storage s, uint requestedTime) internal {
-        uint finalFee = s._computeOracleFinalFee(s.shortBalance);
+    function _requestOraclePrice(TDS.Storage storage s, uint256 requestedTime) internal {
+        uint256 finalFee = s._computeOracleFinalFee(s.shortBalance);
         s.shortBalance = s.shortBalance.sub(_safeIntCast(finalFee));
         s._payOracleFees(finalFee);
 
@@ -899,22 +903,26 @@ library TokenizedDerivativeUtils {
     function _computeOracleFinalFee(TDS.Storage storage s, int shortBalance)
         internal
         view
-        returns (uint actualFeeAmount)
+        returns (uint256 actualFeeAmount)
     {
         StoreInterface store = StoreInterface(_getStoreAddress(s));
         FixedPoint.Unsigned memory expectedFee = store.computeFinalFee(address(s.externalAddresses.marginCurrency));
-        uint expectedFeeAmount = expectedFee.rawValue;
+        uint256 expectedFeeAmount = expectedFee.rawValue;
         // Ensure the fee returned can actually be paid by the short margin account.
-        uint shortBalanceUint = _safeUintCast(shortBalance);
-        actualFeeAmount = (shortBalanceUint < expectedFeeAmount) ? shortBalanceUint : expectedFeeAmount;
+        uint256 shortBalanceuint256 = _safeUintCast(shortBalance);
+        actualFeeAmount = (shortBalanceuint256 < expectedFeeAmount) ? shortBalanceuint256 : expectedFeeAmount;
     }
 
-    function _getLatestPrice(TDS.Storage storage s) internal view returns (uint latestTime, int latestUnderlyingPrice) {
+    function _getLatestPrice(TDS.Storage storage s)
+        internal
+        view
+        returns (uint256 latestTime, int latestUnderlyingPrice)
+    {
         (latestTime, latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
         require(latestTime != 0);
     }
 
-    function _computeNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime)
+    function _computeNav(TDS.Storage storage s, int latestUnderlyingPrice, uint256 latestTime)
         internal
         returns (int navNew)
     {
@@ -926,7 +934,7 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeCompoundNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime)
+    function _computeCompoundNav(TDS.Storage storage s, int latestUnderlyingPrice, uint256 latestTime)
         internal
         returns (int navNew)
     {
@@ -936,7 +944,7 @@ library TokenizedDerivativeUtils {
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
-    function _computeLinearNav(TDS.Storage storage s, int latestUnderlyingPrice, uint latestTime)
+    function _computeLinearNav(TDS.Storage storage s, int latestUnderlyingPrice, uint256 latestTime)
         internal
         returns (int navNew)
     {
@@ -947,7 +955,10 @@ library TokenizedDerivativeUtils {
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
-    function _recomputeNav(TDS.Storage storage s, int oraclePrice, uint recomputeTime) internal returns (int navNew) {
+    function _recomputeNav(TDS.Storage storage s, int oraclePrice, uint256 recomputeTime)
+        internal
+        returns (int navNew)
+    {
         // We're updating `last` based on what the Oracle has told us.
         assert(s.endTime == recomputeTime);
         s.currentTokenState = s._computeNewTokenState(s.referenceTokenState, oraclePrice, recomputeTime);
@@ -1017,7 +1028,7 @@ library TokenizedDerivativeUtils {
         requiredMargin = _takePercentage(_absoluteValue(effectiveNotional), s.fixedParameters.supportedMove);
     }
 
-    function _pullSentMargin(TDS.Storage storage s, uint expectedMargin) internal returns (uint refund) {
+    function _pullSentMargin(TDS.Storage storage s, uint256 expectedMargin) internal returns (uint256 refund) {
         if (address(s.externalAddresses.marginCurrency) == address(0x0)) {
             // Refund is any amount of ETH that was sent that was above the amount that was expected.
             // Note: SafeMath will force a revert if msg.value < expectedMargin.
@@ -1032,7 +1043,7 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _sendMargin(TDS.Storage storage s, uint amount) internal {
+    function _sendMargin(TDS.Storage storage s, uint256 amount) internal {
         // There's no point in attempting a send if there's nothing to send.
         if (amount == 0) {
             return;
@@ -1057,7 +1068,7 @@ library TokenizedDerivativeUtils {
         s._settleWithPrice(oraclePrice);
     }
 
-    function _pullAuthorizedTokens(IERC20 erc20, uint amountToPull) private {
+    function _pullAuthorizedTokens(IERC20 erc20, uint256 amountToPull) private {
         // If nothing is being pulled, there's no point in calling a transfer.
         if (amountToPull > 0) {
             require(erc20.transferFrom(msg.sender, address(this), amountToPull));
@@ -1082,7 +1093,7 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeNavForTokens(int tokenPrice, uint numTokens) private pure returns (int navNew) {
+    function _computeNavForTokens(int tokenPrice, uint256 numTokens) private pure returns (int navNew) {
         int navPreDivision = _safeIntCast(numTokens).mul(tokenPrice);
         navNew = navPreDivision.div(INT_FP_SCALING_FACTOR);
 
@@ -1093,16 +1104,16 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _totalSupply() private view returns (uint totalSupply) {
+    function _totalSupply() private view returns (uint256 totalSupply) {
         ExpandedIERC20 thisErc20Token = ExpandedIERC20(address(this));
         return thisErc20Token.totalSupply();
     }
 
-    function _takePercentage(uint value, uint percentage) private pure returns (uint result) {
+    function _takePercentage(uint256 value, uint256 percentage) private pure returns (uint256 result) {
         return value.mul(percentage).div(UINT_FP_SCALING_FACTOR);
     }
 
-    function _takePercentage(int value, uint percentage) private pure returns (int result) {
+    function _takePercentage(int value, uint256 percentage) private pure returns (int result) {
         return value.mul(_safeIntCast(percentage)).div(INT_FP_SCALING_FACTOR);
     }
 
@@ -1114,12 +1125,12 @@ library TokenizedDerivativeUtils {
         return value < 0 ? value.mul(-1) : value;
     }
 
-    function _safeIntCast(uint value) private pure returns (int result) {
+    function _safeIntCast(uint256 value) private pure returns (int result) {
         require(value <= INT_MAX);
         return int(value);
     }
 
-    function _safeUintCast(int value) private pure returns (uint result) {
+    function _safeUintCast(int value) private pure returns (uint256 result) {
         require(value >= 0);
         return uint(value);
     }
@@ -1142,15 +1153,15 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     // These events are actually emitted by TokenizedDerivativeUtils, but we unfortunately have to define the events
     // here as well.
     event NavUpdated(string symbol, int newNav, int newTokenPrice);
-    event Default(string symbol, uint defaultTime, int defaultNav);
-    event Settled(string symbol, uint settleTime, int finalNav);
-    event Expired(string symbol, uint expiryTime);
-    event Disputed(string symbol, uint timeDisputed, int navDisputed);
-    event EmergencyShutdownTransition(string symbol, uint shutdownTime);
-    event TokensCreated(string symbol, uint numTokensCreated);
-    event TokensRedeemed(string symbol, uint numTokensRedeemed);
-    event Deposited(string symbol, uint amount);
-    event Withdrawal(string symbol, uint amount);
+    event Default(string symbol, uint256 defaultTime, int defaultNav);
+    event Settled(string symbol, uint256 settleTime, int finalNav);
+    event Expired(string symbol, uint256 expiryTime);
+    event Disputed(string symbol, uint256 timeDisputed, int navDisputed);
+    event EmergencyShutdownTransition(string symbol, uint256 shutdownTime);
+    event TokensCreated(string symbol, uint256 numTokensCreated);
+    event TokensRedeemed(string symbol, uint256 numTokensRedeemed);
+    event Deposited(string symbol, uint256 amount);
+    event Withdrawal(string symbol, uint256 amount);
 
     constructor(TokenizedDerivativeParams.ConstructorParams memory params, string memory _name, string memory _symbol)
         public
@@ -1168,7 +1179,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @param marginForPurchase Maximum amount of margin currency to use to create tokens.
      * @param tokensToPurchase Number of tokens to create.
      */
-    function createTokens(uint marginForPurchase, uint tokensToPurchase) external payable {
+    function createTokens(uint256 marginForPurchase, uint256 tokensToPurchase) external payable {
         derivativeStorage._createTokens(marginForPurchase, tokensToPurchase);
     }
 
@@ -1177,14 +1188,14 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @param marginForPurchase Maximum amount of margin currency to use to create tokens.
      * @param tokensToPurchase Number of tokens to create.
      */
-    function depositAndCreateTokens(uint marginForPurchase, uint tokensToPurchase) external payable {
+    function depositAndCreateTokens(uint256 marginForPurchase, uint256 tokensToPurchase) external payable {
         derivativeStorage._depositAndCreateTokens(marginForPurchase, tokensToPurchase);
     }
 
     /**
      * @notice Redeems tokens for margin currency.
      */
-    function redeemTokens(uint tokensToRedeem) external {
+    function redeemTokens(uint256 tokensToRedeem) external {
         derivativeStorage._redeemTokens(tokensToRedeem);
     }
 
@@ -1192,14 +1203,14 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Triggers a price dispute for the most recent remargin time.
      * @param depositMargin Must be at least `disputeDeposit` percent of the required margin.
      */
-    function dispute(uint depositMargin) external payable {
+    function dispute(uint256 depositMargin) external payable {
         derivativeStorage._dispute(depositMargin);
     }
 
     /**
      * @notice Withdraws `amount` from short margin account.
      */
-    function withdraw(uint amount) external {
+    function withdraw(uint256 amount) external {
         derivativeStorage._withdraw(amount);
     }
 
@@ -1253,14 +1264,14 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @dev For ETH-margined contracts, send ETH along with the call. In the case of an ERC20 margin currency, authorize
      * before calling this method.
      */
-    function deposit(uint amountToDeposit) external payable {
+    function deposit(uint256 amountToDeposit) external payable {
         derivativeStorage._deposit(amountToDeposit);
     }
 
     /**
      * @notice Withdraw any ERC20 balance that is not the margin token. Only callable by the sponsor.
      */
-    function withdrawUnexpectedErc20(address erc20Address, uint amount) external {
+    function withdrawUnexpectedErc20(address erc20Address, uint256 amount) external {
         derivativeStorage._withdrawUnexpectedErc20(erc20Address, amount);
     }
 
@@ -1276,7 +1287,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function burn(uint value) external override onlyThis {
+    function burn(uint256 value) external override onlyThis {
         _burn(msg.sender, value);
     }
 
@@ -1343,7 +1354,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * contract is settled/about to be settled.  Reverts if no Oracle price is available but an Oracle price is
      * required.
      */
-    function getUpdatedUnderlyingPrice() external view returns (int underlyingPrice, uint time) {
+    function getUpdatedUnderlyingPrice() external view returns (int underlyingPrice, uint256 time) {
         return derivativeStorage._getUpdatedUnderlyingPrice();
     }
 }

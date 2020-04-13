@@ -93,7 +93,7 @@ contract Registry is RegistryInterface, MultiRole {
 
         // For all parties in the array add them to the contract's parties.
         financialContract.valid = Validity.Valid;
-        for (uint i = 0; i < parties.length; i = i.add(1)) {
+        for (uint256 i = 0; i < parties.length; i = i.add(1)) {
             _addPartyToContract(parties[i], contractAddress);
         }
 
@@ -132,7 +132,7 @@ contract Registry is RegistryInterface, MultiRole {
         require(isPartyMemberOfContract(partyAddress, contractAddress), "Can only remove an existing party");
 
         // Index of the current location of the contract to remove.
-        uint deleteIndex = party.contractIndex[contractAddress];
+        uint256 deleteIndex = party.contractIndex[contractAddress];
 
         // Store the last contract's address to update the lookup map.
         address lastContractAddress = party.contracts[numberOfContracts - 1];
@@ -196,7 +196,7 @@ contract Registry is RegistryInterface, MultiRole {
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function isPartyMemberOfContract(address party, address contractAddress) public override view returns (bool) {
-        uint index = partyMap[party].contractIndex[contractAddress];
+        uint256 index = partyMap[party].contractIndex[contractAddress];
         return partyMap[party].contracts.length > index && partyMap[party].contracts[index] == contractAddress;
     }
 
@@ -206,7 +206,7 @@ contract Registry is RegistryInterface, MultiRole {
 
     function _addPartyToContract(address party, address contractAddress) internal {
         require(!isPartyMemberOfContract(party, contractAddress), "Can only register a party once");
-        uint contractIndex = partyMap[party].contracts.length;
+        uint256 contractIndex = partyMap[party].contracts.length;
         partyMap[party].contracts.push(contractAddress);
         partyMap[party].contractIndex[contractAddress] = contractIndex;
 

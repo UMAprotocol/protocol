@@ -29,13 +29,13 @@ contract Governor is MultiRole, Testable {
 
     struct Transaction {
         address to;
-        uint value;
+        uint256 value;
         bytes data;
     }
 
     struct Proposal {
         Transaction[] transactions;
-        uint requestTime;
+        uint256 requestTime;
     }
 
     FinderInterface private finder;
@@ -46,10 +46,10 @@ contract Governor is MultiRole, Testable {
      ****************************************/
 
     // Emitted when a new proposal is created.
-    event NewProposal(uint indexed id, Transaction[] transactions);
+    event NewProposal(uint256 indexed id, Transaction[] transactions);
 
     // Emitted when an existing proposal is executed.
-    event ProposalExecuted(uint indexed id, uint transactionIndex);
+    event ProposalExecuted(uint256 indexed id, uint256 transactionIndex);
 
     /**
      * @notice Construct the Governor contract.
@@ -79,8 +79,8 @@ contract Governor is MultiRole, Testable {
      * @param transactions array of `Transaction` which can be voted on.
      */
     function propose(Transaction[] memory transactions) public onlyRoleHolder(uint(Roles.Proposer)) {
-        uint id = proposals.length;
-        uint time = getCurrentTime();
+        uint256 id = proposals.length;
+        uint256 time = getCurrentTime();
 
         // Note: doing all of this array manipulation manually is necessary because directly setting an array of
         // structs in storage to an an array of structs in memory is currently not implemented in solidity :/.
@@ -93,7 +93,7 @@ contract Governor is MultiRole, Testable {
         proposal.requestTime = time;
 
         // Initialize the transaction array.
-        for (uint i = 0; i < transactions.length; i++) {
+        for (uint256 i = 0; i < transactions.length; i++) {
             require(transactions[i].to != address(0), "The to address cannot be 0x0");
             proposal.transactions.push(transactions[i]);
         }
@@ -117,7 +117,7 @@ contract Governor is MultiRole, Testable {
      * @param id unique id for the executed proposal.
      * @param transactionIndex unique transaction index for the executed proposal.
      */
-    function executeProposal(uint id, uint transactionIndex) external payable {
+    function executeProposal(uint256 id, uint256 transactionIndex) external payable {
         Proposal storage proposal = proposals[id];
         int price = _getOracle().getPrice(_constructIdentifier(id), proposal.requestTime);
 
@@ -145,7 +145,7 @@ contract Governor is MultiRole, Testable {
 
     /**
      * @notice Gets the total number of proposals (includes executed and non-executed).
-     * @return uint representing the current number of proposals.
+     * @return uint256 representing the current number of proposals.
      */
     function numProposals() external view returns (uint) {
         return proposals.length;
@@ -157,7 +157,7 @@ contract Governor is MultiRole, Testable {
      * @param id uniquely identify the identity of the proposal.
      * @return proposal struct containing transactions[] and requestTime.
      */
-    function getProposal(uint id) external view returns (Proposal memory proposal) {
+    function getProposal(uint256 id) external view returns (Proposal memory proposal) {
         return proposals[id];
     }
 
@@ -188,7 +188,7 @@ contract Governor is MultiRole, Testable {
 
     // Returns a UTF-8 identifier representing a particular admin proposal.
     // The identifier is of the form "Admin n", where n is the proposal id provided.
-    function _constructIdentifier(uint id) internal pure returns (bytes32 identifier) {
+    function _constructIdentifier(uint256 id) internal pure returns (bytes32 identifier) {
         bytes32 bytesId = _uintToUtf8(id);
         return _addPrefix(bytesId, "Admin ", 6);
     }
@@ -196,22 +196,22 @@ contract Governor is MultiRole, Testable {
     // This method converts the integer `v` into a base-10, UTF-8 representation stored in a `bytes32` type.
     // If the input cannot be represented by 32 base-10 digits, it returns only the highest 32 digits.
     // This method is based off of this code: https://ethereum.stackexchange.com/a/6613/47801.
-    function _uintToUtf8(uint v) internal pure returns (bytes32 ret) {
+    function _uintToUtf8(uint256 v) internal pure returns (bytes32 ret) {
         if (v == 0) {
             // Handle 0 case explicitly.
             ret = "0";
         } else {
             // Constants.
-            uint bitsPerByte = 8;
-            uint base = 10; // Note: the output should be base-10. The below implementation will not work for bases > 10.
-            uint utf8NumberOffset = 48;
+            uint256 bitsPerByte = 8;
+            uint256 base = 10; // Note: the output should be base-10. The below implementation will not work for bases > 10.
+            uint256 utf8NumberOffset = 48;
             while (v > 0) {
                 // Downshift the entire bytes32 to allow the new digit to be added at the "front" of the bytes32, which
                 // translates to the beginning of the UTF-8 representation.
                 ret = ret >> bitsPerByte;
 
                 // Separate the last digit that remains in v by modding by the base of desired output representation.
-                uint leastSignificantDigit = v % base;
+                uint256 leastSignificantDigit = v % base;
 
                 // Digits 0-9 are represented by 48-57 in UTF-8, so an offset must be added to create the character.
                 bytes32 utf8Digit = bytes32(leastSignificantDigit + utf8NumberOffset);
@@ -235,7 +235,7 @@ contract Governor is MultiRole, Testable {
     // 1. If the resulting UTF-8 is larger than 32 characters, then only the first 32 characters will be represented
     //    by the bytes32 output.
     // 2. If `prefix` has more characters than `prefixLength`, the function will produce an invalid result.
-    function _addPrefix(bytes32 input, bytes32 prefix, uint prefixLength) internal pure returns (bytes32 output) {
+    function _addPrefix(bytes32 input, bytes32 prefix, uint256 prefixLength) internal pure returns (bytes32 output) {
         // Downshift `input` to open space at the "front" of the bytes32
         bytes32 shiftedInput = input >> (prefixLength * 8);
         return shiftedInput | prefix;
