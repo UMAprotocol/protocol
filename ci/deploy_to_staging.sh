@@ -21,9 +21,6 @@ gcloud auth activate-service-account --key-file=$GCLOUD_FNAME
 gcloud --quiet config set project ${GOOGLE_PROJECT_ID}
 gcloud --quiet config set compute/zone ${GOOGLE_COMPUTE_ZONE}
 
-# Copy the staging config into the voter-dapp dir
-gsutil cp gs://staging-deployment-configuration/voter-app.yaml voter-dapp/app.yaml
-
 # Deploy docs
 ./scripts/deploy_docs.sh documentation/gae_app.yaml -q
 
