@@ -186,26 +186,57 @@ contract Governor is MultiRole, Testable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress("IdentifierWhitelist"));
     }
 
-    function _constructIdentifier(uint id) private pure returns (bytes32 identifier) {
-        bytes32 bytesId = _uintToBytes(id);
+    // Returns a UTF-8 identifier representing a particular admin proposal.
+    // The identifier is of the form "Admin n", where n is the proposal id provided.
+    function _constructIdentifier(uint id) internal pure returns (bytes32 identifier) {
+        bytes32 bytesId = _uintToUtf8(id);
         return _addPrefix(bytesId, "Admin ", 6);
     }
 
+    // This method converts the integer `v` into a base-10, UTF-8 representation stored in a `bytes32` type.
+    // If the input cannot be represented by 32 base-10 digits, it returns only the highest 32 digits.
     // This method is based off of this code: https://ethereum.stackexchange.com/a/6613/47801.
-    function _uintToBytes(uint v) private pure returns (bytes32 ret) {
+    function _uintToUtf8(uint v) internal pure returns (bytes32 ret) {
         if (v == 0) {
+            // Handle 0 case explicitly.
             ret = "0";
         } else {
+            // Constants.
+            uint bitsPerByte = 8;
+            uint base = 10; // Note: the output should be base-10. The below implementation will not work for bases > 10.
+            uint utf8NumberOffset = 48;
             while (v > 0) {
-                ret = ret >> 8;
-                ret |= bytes32((v % 10) + 48) << (31 * 8);
-                v /= 10;
+                // Downshift the entire bytes32 to allow the new digit to be added at the "front" of the bytes32, which
+                // translates to the beginning of the UTF-8 representation.
+                ret = ret >> bitsPerByte;
+
+                // Separate the last digit that remains in v by modding by the base of desired output representation.
+                uint leastSignificantDigit = v % base;
+
+                // Digits 0-9 are represented by 48-57 in UTF-8, so an offset must be added to create the character.
+                bytes32 utf8Digit = bytes32(leastSignificantDigit + utf8NumberOffset);
+
+                // The top bit of ret has already been cleared to make room for the new digit.
+                // Upshift by 31 bytes to put it in position, and OR it with ret to leave the other characters untouched.
+                ret |= utf8Digit << (31 * bitsPerByte);
+
+                // Divide v by the base to remove the digit that was just added.
+                v /= base;
             }
         }
         return ret;
     }
 
-    function _addPrefix(bytes32 input, bytes32 prefix, uint prefixLength) private pure returns (bytes32 output) {
+    // This method takes two UTF-8 strings represented as bytes32 and outputs one as a prefixed by the other.
+    // `input` is the UTF-8 that should have the prefix prepended.
+    // `prefix` is the UTF-8 that should be prepended onto input.
+    // `prefixLength` is number of UTF-8 characters represented by `prefix`.
+    // Notes:
+    // 1. If the resulting UTF-8 is larger than 32 characters, then only the first 32 characters will be represented
+    //    by the bytes32 output.
+    // 2. If `prefix` has more characters than `prefixLength`, the function will produce an invalid result.
+    function _addPrefix(bytes32 input, bytes32 prefix, uint prefixLength) internal pure returns (bytes32 output) {
+        // Downshift `input` to open space at the "front" of the bytes32
         bytes32 shiftedInput = input >> (prefixLength * 8);
         return shiftedInput | prefix;
     }
