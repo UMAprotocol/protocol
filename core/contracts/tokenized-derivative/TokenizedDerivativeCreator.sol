@@ -39,8 +39,9 @@ contract TokenizedDerivativeCreator is ContractCreator, Testable {
         address _finderAddress,
         address _returnCalculatorWhitelist,
         address _marginCurrencyWhitelist,
-        bool _isTest
-    ) public ContractCreator(_finderAddress) Testable(_isTest) {
+        bool _isTest,
+        address _timerAddress
+    ) public ContractCreator(_finderAddress) Testable(_isTest, _timerAddress) {
         returnCalculatorWhitelist = AddressWhitelist(_returnCalculatorWhitelist);
         marginCurrencyWhitelist = AddressWhitelist(_marginCurrencyWhitelist);
     }

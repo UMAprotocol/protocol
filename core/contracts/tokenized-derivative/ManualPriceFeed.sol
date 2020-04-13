@@ -31,7 +31,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
 
     enum Roles { Governance, Writer, Withdraw }
 
-    constructor(bool _isTest) public Testable(_isTest) {
+    constructor(bool _isTest, address _timerAddress) public Testable(_isTest, _timerAddress) {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
         createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);

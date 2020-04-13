@@ -164,6 +164,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param _identifierWhitelist defines the identifiers that can have have synthetics created against.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _isTest whether this contract is being constructed for the purpose of running automated tests.
+     * @param _timerAddress Universal store of time for contracts in test environment.
      */
     constructor(
         uint _phaseLength,
@@ -173,8 +174,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         address _votingToken,
         address _identifierWhitelist,
         address _finder,
-        bool _isTest
-    ) public Testable(_isTest) {
+        bool _isTest,
+        address _timerAddress
+    ) public Testable(_isTest, _timerAddress) {
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;

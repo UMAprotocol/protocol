@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -129,6 +128,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param _syntheticName name for the token contract that will be deployed.
      * @param _syntheticSymbol symbol for the token contract that will be deployed.
      * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
+     * @param _timerAddress Universal store of time for contracts in test environment.
      */
     constructor(
         bool _isTest,
@@ -140,8 +140,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         string memory _syntheticName,
         string memory _syntheticSymbol,
         address _tokenFactoryAddress,
-        FixedPoint.Unsigned memory _minSponsorTokens
-    ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
+        FixedPoint.Unsigned memory _minSponsorTokens,
+        address _timerAddress
+    ) public FeePayer(_collateralAddress, _finderAddress, _isTest, _timerAddress) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);

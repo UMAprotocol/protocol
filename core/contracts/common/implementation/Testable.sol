@@ -1,5 +1,6 @@
 pragma solidity ^0.6.0;
 
+import "./Timer.sol";
 
 /**
  * @title Base class that provides time overrides, but only if being run in test mode.
@@ -9,13 +10,11 @@ abstract contract Testable {
     // modified.
     bool public isTest;
 
-    uint private currentTime;
+    Timer public timer;
 
-    constructor(bool _isTest) internal {
+    constructor(bool _isTest, address _timerAddress) internal {
         isTest = _isTest;
-        if (_isTest) {
-            currentTime = now; // solhint-disable-line not-rely-on-time
-        }
+        timer = Timer(_timerAddress);
     }
 
     /**
@@ -31,7 +30,7 @@ abstract contract Testable {
      * @dev Will revert if not running in test mode.
      */
     function setCurrentTime(uint _time) external onlyIfTest {
-        currentTime = _time;
+        timer.setCurrentTime(_time);
     }
 
     /**
@@ -40,7 +39,7 @@ abstract contract Testable {
      */
     function getCurrentTime() public view returns (uint) {
         if (isTest) {
-            return currentTime;
+            return timer.getCurrentTime();
         } else {
             return now; // solhint-disable-line not-rely-on-time
         }

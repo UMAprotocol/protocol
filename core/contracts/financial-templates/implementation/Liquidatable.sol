@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 
@@ -64,6 +63,7 @@ contract Liquidatable is PricelessPositionManager {
         address collateralAddress;
         address finderAddress;
         address tokenFactoryAddress;
+        address timerAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -158,7 +158,8 @@ contract Liquidatable is PricelessPositionManager {
             params.syntheticName,
             params.syntheticSymbol,
             params.tokenFactoryAddress,
-            params.minSponsorTokens
+            params.minSponsorTokens,
+            params.timerAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
