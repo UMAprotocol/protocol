@@ -3,6 +3,9 @@
 ** tutorials
 *** prerequisites.md
 *** creating_from_truffle.md
+** security
+*** attack_vectors.md
+*** open_issues.md
 ** glossary.md
 * oracle
 ** architecture.md
