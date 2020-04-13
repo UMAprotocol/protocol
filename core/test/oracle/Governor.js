@@ -10,9 +10,10 @@ const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const ReentrancyChecker = artifacts.require("ReentrancyChecker");
+const GovernorTest = artifacts.require("GovernorTest");
 
 // Extract web3 functions into primary namespace.
-const { toBN, toWei } = web3.utils;
+const { toBN, toWei, hexToUtf8, randomHex, utf8ToHex } = web3.utils;
 
 contract("Governor", function(accounts) {
   let voting;
@@ -684,5 +685,115 @@ contract("Governor", function(accounts) {
 
     // Since we're using the reentrancy checker, this transaction should FAIL if the reentrancy is successful.
     await governor.executeProposal(id, 0);
+  });
+
+  // _uintToUtf8() tests.
+  it("Low-level _uintToUtf8(): 0 input", async function() {
+    const governorTest = await GovernorTest.new();
+
+    const input = "0";
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), "0");
+  });
+
+  it("Low-level _uintToUtf8(): nonzero input", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Arbitrary nonzero input.
+    const input = "177203972462008655";
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), input);
+  });
+
+  it("Low-level _uintToUtf8(): largest input before truncation", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // The largest representable number in 32 digits is 32 9s.
+    const input = "9".repeat(32);
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), input);
+  });
+
+  it("Low-level _uintToUtf8(): truncates at least significant digit", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // The smallest number to be truncated is 1 followed by 32 0s.
+    const input = "1" + "0".repeat(32);
+
+    // Remove the last 0 to emulate truncation.
+    const expectedOutput = "1" + "0".repeat(31);
+
+    const output = await governorTest.uintToUtf8(input);
+
+    assert.equal(hexToUtf8(output), expectedOutput);
+  });
+
+  // _addPrefix() tests.
+  it("Low-level _addPrefix(): no truncation", async function() {
+    const governorTest = await GovernorTest.new();
+
+    const input = utf8ToHex("input");
+    const prefix = utf8ToHex("prefix ");
+    const prefixLength = "7";
+    const output = await governorTest.addPrefix(input, prefix, prefixLength);
+
+    assert.equal(hexToUtf8(output), "prefix input");
+  });
+
+  it("Low-level _addPrefix(): output truncation", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Prefix output cannot be longer than 32 characters or the function will truncate.
+    const input = utf8ToHex(" truncated");
+
+    // A prefix of 23 characters will cause the last character of the 10 character input to be removed from the output.
+    const prefixString = "a".repeat(23);
+    const prefix = utf8ToHex(prefixString);
+    const prefixLength = "23";
+    const output = await governorTest.addPrefix(input, prefix, prefixLength);
+
+    assert.equal(hexToUtf8(output), `${prefixString} truncate`);
+  });
+
+  // _constructIdentifier() tests.
+  it("Low-level _constructIdentifier(): normal proposal id", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Construct an arbitrary identifier.
+    const proposalId = "1234567890";
+    const identifier = await governorTest.constructIdentifier(proposalId);
+
+    assert.equal(hexToUtf8(identifier), `Admin ${proposalId}`);
+  });
+
+  it("Low-level _constructIdentifier(): correctly identifier for 26 characters", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Identifiers can be 32 digits long.
+    // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.
+    // The max number that can be represented, then, is 10^26 - 1.
+    const maxIdValue = "9".repeat(26);
+    const identifier = await governorTest.constructIdentifier(maxIdValue);
+
+    assert.equal(hexToUtf8(identifier), `Admin ${maxIdValue}`);
+  });
+
+  it("Low-level _constructIdentifier(): proposal id truncates after 26 characters", async function() {
+    const governorTest = await GovernorTest.new();
+
+    // Identifiers can be 32 digits long.
+    // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.
+    // 10^26, then is above the max and will be truncated.
+    const aboveMaxIdValue = "1" + "0".repeat(26);
+
+    // Expected output truncates the last 0.
+    const expectedOutputIdValue = "1" + "0".repeat(25);
+
+    const identifier = await governorTest.constructIdentifier(aboveMaxIdValue);
+
+    assert.equal(hexToUtf8(identifier), `Admin ${expectedOutputIdValue}`);
   });
 });
