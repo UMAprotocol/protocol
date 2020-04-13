@@ -8,7 +8,6 @@ import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "./EncryptedStore.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
@@ -22,7 +21,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, Ownable, OracleInterface, VotingInterface, EncryptedStore {
+contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -132,6 +131,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      ****************************************/
 
     event VoteCommitted(address indexed voter, uint indexed roundId, bytes32 indexed identifier, uint time);
+
+    event EncryptedVote(
+        address indexed voter,
+        uint indexed roundId,
+        bytes32 indexed identifier,
+        uint time,
+        bytes encryptedVote
+    );
 
     event VoteRevealed(
         address indexed voter,
@@ -383,35 +390,29 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        // Remove the stored message for this price request, if it exists.
-        bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        removeMessage(topicHash);
-
         emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
 
     /**
-     * @notice commits a vote and stores an encrypted version which can be later decrypted
-     * to recover the voter's price & salt.
+     * @notice commits a vote and logs an event with an encrypted version
      * @dev The encryption mechanism uses encrypt from a signature from a users price key. See `EncryptedStore.sol`
      * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
      * @param time unix timestamp of for the price request.
      * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
-    function commitAndPersistEncryptedVote(bytes32 identifier, uint time, bytes32 hash, bytes memory encryptedVote)
+    function commitAndEmitEncryptedVote(bytes32 identifier, uint time, bytes32 hash, bytes memory encryptedVote)
         public
     {
         commitVote(identifier, time, hash);
 
         uint roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        storeMessage(topicHash, encryptedVote);
+        emit EncryptedVote(msg.sender, roundId, identifier, time, encryptedVote);
     }
 
     /**
      * @notice Submit a batch of commits in a single transaction.
-     * @dev Using `encryptedVote` is optional. If included then commitment is stored on chain.
+     * @dev Using `encryptedVote` is optional. If included then commitment is emitted in an event.
      * Look at `project-root/common/Constants.js` for the tested maximum number of
      * commitments that can fit in one transaction.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
@@ -423,7 +424,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             if (commits[i].encryptedVote.length == 0) {
                 commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
             } else {
-                commitAndPersistEncryptedVote(
+                commitAndEmitEncryptedVote(
                     commits[i].identifier,
                     commits[i].time,
                     commits[i].hash,

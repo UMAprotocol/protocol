@@ -173,15 +173,10 @@ contract("DesignatedVoting", function(accounts) {
     // Move to the reveal phase.
     await moveToNextPhase(voting);
 
-    // Check message retrieval.
-    assert.equal(
-      await voting.getMessage(designatedVoting.address, computeTopicHash({ identifier, time: time1 }, roundId)),
-      message1
-    );
-    assert.equal(
-      await voting.getMessage(designatedVoting.address, computeTopicHash({ identifier, time: time2 }, roundId)),
-      message2
-    );
+    // Check messages in emitted events.
+    let events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0, filter: { identifier } });
+    assert.equal(events[events.length - 2].returnValues.encryptedVote, message1);
+    assert.equal(events[events.length - 1].returnValues.encryptedVote, message2);
 
     // Batch reveal.
     const reveals = [
