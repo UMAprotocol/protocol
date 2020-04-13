@@ -42,17 +42,16 @@ class GasEstimator {
     }
   };
 
-  _update = async () => {
-    let returnedPrice = await this.getPrice(url);
-    this.lastFastPriceGwei = returnedPrice;
-  };
-
   // Returns the current fast gas price in Wei, converted from the stored Gwei value.
   getCurrentFastPrice = () => {
     return this.lastFastPriceGwei * 1e9;
   };
 
-  getPrice = async url => {
+  _update = async () => {
+    this.lastFastPriceGwei = await this._getPrice(url);
+  };
+
+  _getPrice = async url => {
     try {
       const response = await fetch(url);
       const json = await response.json();

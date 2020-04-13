@@ -5,13 +5,16 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./MultiRole.sol";
 
 
 /**
  * @title Base contract that allows a specific role to withdraw any ETH and/or ERC20 tokens that the contract holds.
  */
-contract Withdrawable is MultiRole {
+abstract contract Withdrawable is MultiRole {
+    using SafeERC20 for IERC20;
+
     uint private _roleId;
 
     /**
@@ -26,7 +29,7 @@ contract Withdrawable is MultiRole {
      */
     function withdrawErc20(address erc20Address, uint amount) external onlyRoleHolder(_roleId) {
         IERC20 erc20 = IERC20(erc20Address);
-        require(erc20.transfer(msg.sender, amount));
+        erc20.safeTransfer(msg.sender, amount);
     }
 
     /**

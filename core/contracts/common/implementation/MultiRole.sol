@@ -53,7 +53,7 @@ library Shared {
 /**
  * @title Base class to manage permissions for the derived class.
  */
-contract MultiRole {
+abstract contract MultiRole {
     using Exclusive for Exclusive.RoleMembership;
     using Shared for Shared.RoleMembership;
 
@@ -186,8 +186,8 @@ contract MultiRole {
     }
 
     /**
-     * @notice Internal method to initialize a exclusive role, `roleId`, which will be managed by `managingRoleId`.
-     * `initialMembers` will be immediately added to the role.
+     * @notice Internal method to initialize an exclusive role, `roleId`, which will be managed by `managingRoleId`.
+     * `initialMember` will be immediately added to the role.
      * @dev Should be called by derived contracts, usually at construction time. Will revert if the role is already
      * initialized.
      */

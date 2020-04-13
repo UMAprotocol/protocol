@@ -15,6 +15,11 @@ Some of the most creative ideas for synthetic tokens fall in the last category. 
 ## Priceless Synthetic Tokens
 “Priceless” synthetic tokens are synthetic tokens that are securely collateralized without an on-chain price feed. These tokens are designed with mechanisms to incentivize token sponsors (those who create synthetic tokens) to properly collateralize their positions. These mechanisms include a liquidation and dispute process that allows token holders to be rewarded for identifying improperly collateralized [token sponsor](glossary.md#token-sponsor) positions. The dispute process relies on an oracle, the UMA [DVM](glossary.md#dvm), to settle disputes regarding liquidations. 
 
+To ensure that the rewards for liquidations and disputes are economical (i.e. worth the gas/transaction cost to liquidate or dispute), deployers of this financial contract template can set a minimum sponsor size. 
+This is the minimum number of tokens that a token sponsor must have created against the contract. 
+Any action that would reduce a token sponsor's position to below this threshold is disallowed and will revert. 
+This includes partial liquidations that leave the sponsor's position smaller than the minimum size, token redemptions that bring the position below the minimum size, and new position creations that request to mint fewer than the minimum number of tokens.
+
 For more details on how a “priceless” framework can be applied more generally to other types of financial contract templates on the blockchain, check out this blog post. <!-- TODO: add link to blog post -->
 
 ## Launching a New Synthetic Token
@@ -64,7 +69,11 @@ If the “[withdrawal liveness period](glossary.md#withdrawal-liveness-period)�
 ## Liquidation and Dispute
 At any time, a token holder may liquidate a token sponsor’s position. Liquidations happen immediately without calling the oracle. Anyone may dispute a liquidation within the “[liquidation liveness period](glossary.md#liquidation-liveness-period)”. 
 
-To liquidate a token sponsor position, a token holder submits tokens to the contract. The tokens are submitted for 3 purposes: to indicate the size of the position to be liquidated, to close the token sponsor’s position, and to post a bond attesting to the liquidator’s belief that the token sponsor’s position should be liquidated. The liquidator will lose a portion of this bond if their liquidation is disputed and found to be invalid.
+To liquidate a token sponsor position, a token holder submits tokens to the contract and posts a liquidation bond. 
+The liquidation bond covers the cost of calling the DVM if the liquidation is disputed. 
+If the liquidation is not disputed, the liquidation bond is returned to the liquidator. 
+The tokens are submitted for 3 purposes: to indicate the size of the position to be liquidated, to close the token sponsor’s position, and to attest to the liquidator’s belief that the token sponsor’s position should be liquidated. 
+The liquidator will lose a portion of the collateral corresponding to the tokens if their liquidation is disputed and found to be invalid.
 
 Here are three ways in which a liquidation can be resolved: 
 1. No one disputes the liquidation during the liquidation liveness period. After the liquidation liveness period ends, collateral deposited by the token sponsor is returned to the liquidator, proportional to the number of synthetic tokens the liquidator has submitted in liquidation. As a numerical example, assume a token sponsor has deposited 150 DAI of collateral to create 100 synthetic tokens, which they then sold to the market. Later, a liquidator submits 30 synthetic tokens to liquidate the token sponsor. If no one disputes the liquidation, the liquidator will receive 30% of the token sponsor’s collateral, or 45 DAI. 
