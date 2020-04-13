@@ -91,7 +91,7 @@ contract DesignatedVoting is Withdrawable {
     function retrieveRewards(uint roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public
         onlyRoleHolder(uint(Roles.Voter))
-        returns (FixedPoint.Unsigned memory rewardsIssued)
+        returns (FixedPoint.Unsigned memory)
     {
         return _getVotingAddress().retrieveRewards(address(this), roundId, toRetrieve);
     }

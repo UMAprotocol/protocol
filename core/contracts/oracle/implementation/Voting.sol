@@ -252,8 +252,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function hasPrice(bytes32 identifier, uint time) external override view onlyRegisteredContract() returns (bool _hasPrice) {
-        (_hasPrice, , ) = _getPriceOrError(identifier, time);
+    function hasPrice(bytes32 identifier, uint time) external override view onlyRegisteredContract() returns (bool) {
+        (bool _hasPrice, , ) = _getPriceOrError(identifier, time);
+        return _hasPrice;
     }
 
     /**
@@ -279,12 +280,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param requests array of type PendingRequest which includes an identifier and timestamp for each request.
      * @return requestStates A list, in the same order as the input list, giving the status of each of the specified price requests.
      */
-    function getPriceRequestStatuses(PendingRequest[] memory requests)
-        public
-        view
-        returns (RequestState[] memory requestStates)
-    {
-        requestStates = new RequestState[](requests.length);
+    function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
+        RequestState[] memory requestStates = new RequestState[](requests.length);
         uint currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         for (uint i = 0; i < requests.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(requests[i].identifier, requests[i].time);
@@ -297,9 +294,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             } else {
                 requestStates[i].lastVotingRound = priceRequest.lastVotingRound;
             }
-
             requestStates[i].status = status;
         }
+        return requestStates;
     }
 
     /****************************************
@@ -461,7 +458,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     // prettier-ignore
     function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
         public
-        override 
+        override
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
         if (migratedAddress != address(0)) {
@@ -541,7 +538,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function getPendingRequests() external override view returns (PendingRequest[] memory pendingRequests) {
+    function getPendingRequests() external override view returns (PendingRequest[] memory) {
         uint blockTime = getCurrentTime();
         uint currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -561,10 +558,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             }
         }
 
-        pendingRequests = new PendingRequest[](numUnresolved);
+        PendingRequest[] memory pendingRequests = new PendingRequest[](numUnresolved);
         for (uint i = 0; i < numUnresolved; i++) {
             pendingRequests[i] = unresolved[i];
         }
+        return pendingRequests;
     }
 
     /**
@@ -631,11 +629,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
-    function _getPriceOrError(bytes32 identifier, uint time)
-        private
-        view
-        returns (bool _hasPrice, int price, string memory err)
-    {
+    function _getPriceOrError(bytes32 identifier, uint time) private view returns (bool, int, string memory) {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         uint currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
 
