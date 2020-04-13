@@ -18,6 +18,7 @@ class ContractMonitor {
     // EMP event client to read latest contract events
     this.empEventClient = expiringMultiPartyEventClient;
     this.web3 = this.empEventClient.web3;
+    this.empContract = this.empEventClient.emp;
 
     // Contract constants
     //TODO: replace this with an actual query to the collateral currency symbol
@@ -41,10 +42,13 @@ class ContractMonitor {
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async priceFunction => {
+    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const priceFeed = priceFunction(contractTime);
+
     Logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
-      price: priceFunction.toString(),
+      price: priceFeed.toString(),
       lastLiquidationBlockNumber: this.lastLiquidationBlockNumber
     });
 
@@ -74,7 +78,7 @@ class ContractMonitor {
         this.syntheticCurrencySymbol +
         " tokens. Sponsor collateralization was " +
         this.formatDecimalString(
-          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, priceFunction)
+          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, priceFeed)
         ) +
         "%. tx: " +
         createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
