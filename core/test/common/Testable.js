@@ -30,5 +30,5 @@ contract("Testable", function() {
     await testable1.setCurrentTime(0);
     assert.equal(await testable1.getCurrentTime(), 0);
     assert.equal(await testable2.getCurrentTime(), 0);
-  })
+  });
 });

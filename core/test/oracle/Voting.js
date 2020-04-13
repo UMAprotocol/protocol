@@ -12,6 +12,7 @@ const Voting = artifacts.require("Voting");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const VotingTest = artifacts.require("VotingTest");
+const Timer = artifacts.require("Timer");
 
 contract("Voting", function(accounts) {
   let voting;
@@ -1300,7 +1301,8 @@ contract("Voting", function(accounts) {
       votingToken.address,
       supportedIdentifiers.address,
       (await Finder.deployed()).address,
-      true
+      true,
+      Timer.address
     );
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1339,7 +1341,8 @@ contract("Voting", function(accounts) {
       votingToken.address,
       supportedIdentifiers.address,
       Finder.address,
-      true
+      true,
+      Timer.address
     );
 
     await moveToNextRound(votingTest);

@@ -10,6 +10,7 @@ const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const ReentrancyChecker = artifacts.require("ReentrancyChecker");
 const GovernorTest = artifacts.require("GovernorTest");
+const Timer = artifacts.require("Timer");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, randomHex, utf8ToHex } = web3.utils;
@@ -575,7 +576,7 @@ contract("Governor", function(accounts) {
 
   // _uintToUtf8() tests.
   it("Low-level _uintToUtf8(): 0 input", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     const input = "0";
     const output = await governorTest.uintToUtf8(input);
@@ -584,7 +585,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): nonzero input", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Arbitrary nonzero input.
     const input = "177203972462008655";
@@ -594,7 +595,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): largest input before truncation", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // The largest representable number in 32 digits is 32 9s.
     const input = "9".repeat(32);
@@ -604,7 +605,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): truncates at least significant digit", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // The smallest number to be truncated is 1 followed by 32 0s.
     const input = "1" + "0".repeat(32);
@@ -619,7 +620,7 @@ contract("Governor", function(accounts) {
 
   // _addPrefix() tests.
   it("Low-level _addPrefix(): no truncation", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     const input = utf8ToHex("input");
     const prefix = utf8ToHex("prefix ");
@@ -630,7 +631,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _addPrefix(): output truncation", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Prefix output cannot be longer than 32 characters or the function will truncate.
     const input = utf8ToHex(" truncated");
@@ -646,7 +647,7 @@ contract("Governor", function(accounts) {
 
   // _constructIdentifier() tests.
   it("Low-level _constructIdentifier(): normal proposal id", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Construct an arbitrary identifier.
     const proposalId = "1234567890";
@@ -656,7 +657,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _constructIdentifier(): correctly identifier for 26 characters", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Identifiers can be 32 digits long.
     // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.
@@ -668,7 +669,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _constructIdentifier(): proposal id truncates after 26 characters", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Identifiers can be 32 digits long.
     // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.

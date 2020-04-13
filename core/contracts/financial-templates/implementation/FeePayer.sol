@@ -66,7 +66,10 @@ abstract contract FeePayer is Testable {
      * @param isTest whether this contract is being constructed for the purpose of running tests.
      * @param _timerAddress Universal store of time for contracts in test environment.
      */
-    constructor(address collateralAddress, address finderAddress, bool isTest, address _timerAddress) public Testable(isTest, _timerAddress) {
+    constructor(address collateralAddress, address finderAddress, bool isTest, address _timerAddress)
+        public
+        Testable(isTest, _timerAddress)
+    {
         collateralCurrency = IERC20(collateralAddress);
         finder = FinderInterface(finderAddress);
         lastPaymentTime = getCurrentTime();

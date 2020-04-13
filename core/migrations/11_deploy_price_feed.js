@@ -6,7 +6,14 @@ module.exports = async function(deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
   const keys = getKeysForNetwork(network, accounts);
 
-  const { contract: manualPriceFeed } = await deploy(deployer, network, ManualPriceFeed, controllableTiming, Timer.address, {
-    from: keys.deployer
-  });
+  const { contract: manualPriceFeed } = await deploy(
+    deployer,
+    network,
+    ManualPriceFeed,
+    controllableTiming,
+    Timer.address,
+    {
+      from: keys.deployer
+    }
+  );
 };

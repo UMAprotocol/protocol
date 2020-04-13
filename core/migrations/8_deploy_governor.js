@@ -9,9 +9,17 @@ module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
-  const { contract: governor } = await deploy(deployer, network, Governor, Finder.address, controllableTiming, Timer.address, {
-    from: keys.deployer
-  });
+  const { contract: governor } = await deploy(
+    deployer,
+    network,
+    Governor,
+    Finder.address,
+    controllableTiming,
+    Timer.address,
+    {
+      from: keys.deployer
+    }
+  );
 
   // Add governor to registry so it can send price requests.
   const registry = await Registry.deployed();

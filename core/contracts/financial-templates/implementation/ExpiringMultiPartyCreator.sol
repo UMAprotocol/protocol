@@ -94,11 +94,13 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      * @param _tokenFactoryAddress ERC20 token factory used to deploy synthetic token instances.
      * @param _timerAddress Universal store of time for contracts in test environment.
      */
-    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist, address _tokenFactoryAddress, address _timerAddress)
-        public
-        ContractCreator(_finderAddress)
-        Testable(_isTest, _timerAddress)
-    {
+    constructor(
+        bool _isTest,
+        address _finderAddress,
+        address _collateralTokenWhitelist,
+        address _tokenFactoryAddress,
+        address _timerAddress
+    ) public ContractCreator(_finderAddress) Testable(_isTest, _timerAddress) {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
     }
@@ -166,5 +168,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
         constructorParams.minSponsorTokens = params.minSponsorTokens;
+        constructorParams.timerAddress = params.timerAddress;
     }
 }
