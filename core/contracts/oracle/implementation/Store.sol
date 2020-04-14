@@ -102,8 +102,13 @@ contract Store is StoreInterface, Withdrawable, Testable {
         // Compute how long ago the start time was to compute the delay penalty.
         uint paymentDelay = getCurrentTime().sub(startTime);
 
-        // `weeklyDelayFee` is already scaled up.
-        latePenalty = pfc.mul(weeklyDelayFee.mul(paymentDelay.div(SECONDS_PER_WEEK)));
+        // Compute the additional percentage (per second) that will be charged because of the penalty.
+        // Note: if less than a week has gone by since the startTime, paymentDelay / SECONDS_PER_WEEK will truncate to
+        // 0, causing no penalty to be charged.
+        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFee.mul(paymentDelay.div(SECONDS_PER_WEEK));
+
+        // Apply the penaltyPercentagePerSecond to the payment period.
+        latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
 
         return (regularFee, latePenalty);
     }
