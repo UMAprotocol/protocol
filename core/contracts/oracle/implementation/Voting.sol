@@ -339,6 +339,19 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     }
 
     /**
+     * @notice Snapshot the current round's token ballances and lock in the inflation rate and GAT.
+     * @dev This function can be called multiple times but each round will only every have one snapshot at the
+     * time of calling `_freezeRoundVariables`.
+     */
+    function snapshotCurrentRound() external override onlyIfNotMigrated() {
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot snapshot in commit phase");
+
+        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
+        _freezeRoundVariables(roundId);
+    }
+
+    /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with.
      * Only the committer can reveal their vote.
@@ -352,8 +365,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function revealVote(bytes32 identifier, uint time, int price, int salt) public override onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
-        // Note: computing the current round is required to disallow people from revealing an old commit after the
-        // round is over.
+        
+        // Note: computing the current round is required to disallow callers from revealing
+        // an old commit after the round is over.
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
@@ -367,10 +381,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         require(keccak256(abi.encode(price, salt)) == voteSubmission.commit, "Invalid commit hash & salt");
         delete voteSubmission.commit;
 
-        // Lock in round variables including snapshotId and inflation rate
+        // Create a snapshot iff this was not called seperately by the snapshotCurrentRound function.
+        // This will only snapshot on the first voter to reveal.
         _freezeRoundVariables(roundId);
 
-        // Get the frozen snapshotId
+        // Get the frozen snapshotId.
         uint snapshotId = rounds[roundId].snapshotId;
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly

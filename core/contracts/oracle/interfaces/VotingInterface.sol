@@ -58,6 +58,13 @@ abstract contract VotingInterface {
     function batchCommit(Commitment[] calldata commits) external virtual;
 
     /**
+     * @notice snapshot the current round's token ballances and lock in the inflation rate and GAT.
+     * @dev This function can be called multiple times but each round will only every have one snapshot at the
+     * time of calling `_freezeRoundVariables`.
+     */
+    function snapshotCurrentRound() external virtual;
+    
+    /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with.
      * Only the committer can reveal their vote.
