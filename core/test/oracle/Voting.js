@@ -865,6 +865,25 @@ contract("Voting", function(accounts) {
       );
     });
 
+    // Check overflow edge case by setting really long expiration timeout that'll overflow.
+    await voting.setRewardsExpirationTimeout(
+      web3.utils
+        .toBN(2)
+        .pow(web3.utils.toBN(256))
+        .subn(10)
+        .toString()
+    );
+    await moveToNextPhase(voting);
+    const time2 = "1001";
+    await voting.requestPrice(identifier, time2, { from: registeredContract });
+    await moveToNextRound(voting);
+    const price = 456;
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = web3.utils.soliditySha3(price, salt2);
+    await voting.commitVote(identifier, time2, hash2, { from: account1 });
+    await moveToNextPhase(voting);
+    assert(await didContractThrow(voting.revealVote(identifier, time2, price, salt2, { from: account1 })));
+
     // Reset the inflation rate and rewards expiration time.
     await setNewInflationRate("0");
     await voting.setRewardsExpirationTimeout(60 * 60 * 24 * 14);

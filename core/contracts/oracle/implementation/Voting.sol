@@ -677,7 +677,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             rounds[roundId].gatPercentage = gatPercentage;
 
             // Set the rewards expiration time based on end of time of this round and the current global timeout.
-            rounds[roundId].rewardsExpirationTime = voteTiming.computeRoundEndTime(roundId) + rewardsExpirationTimeout;
+            rounds[roundId].rewardsExpirationTime = voteTiming.computeRoundEndTime(roundId).add(
+                rewardsExpirationTimeout
+            );
         }
     }
 
