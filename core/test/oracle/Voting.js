@@ -649,13 +649,6 @@ contract("Voting", function(accounts) {
   });
 
   it("Basic Snapshotting", async function() {
-    // Snapshotting can occur in one of two ways:
-    // 1) Someone calls the dedicated `snapshotCurrentRound` function which locks in the current token balances,
-    // inflation and GAT.
-    // 2) No-one calls the dedicated `snapshotCurrentRound` function and so snapshots are captured during the first
-    // `revealVote` call. This has the same effect as (1) except it is possible for this call to be front run wherein a
-    // voter could buy or sell tokens based on the contents of the first revealed vote. They may use this to change the
-    // stake associated with their vote when they discover whether it matches another voter.
     const identifier = web3.utils.utf8ToHex("basic-snapshotting");
     const time = "1000";
 
