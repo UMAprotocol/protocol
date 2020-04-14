@@ -688,10 +688,10 @@ contract("Voting", function(accounts) {
     // Cant reveal vote until snapshot is taken. Any reveal action should revert.
     assert(await didContractThrow(voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 })));
 
-    // Directly snapshot the current round to lock in token balances.
     // The snapshotId of the current round should be zero before initiating the snapshot
     assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
 
+  // Directly snapshot the current round to lock in token balances.
     await voting.snapshotCurrentRound();
 
     // The snapshotId of the current round should be non zero after the snapshot is taken
