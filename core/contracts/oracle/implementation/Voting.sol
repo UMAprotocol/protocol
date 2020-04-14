@@ -343,7 +343,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @dev This function can be called multiple times but each round will only every have one snapshot at the
      * time of calling `_freezeRoundVariables`.
      */
-    function snapshotCurrentRound() external override onlyIfNotMigrated() {
+    function snapshotCurrentRound() external onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot snapshot in commit phase");
 

@@ -695,9 +695,9 @@ contract("Voting", function(accounts) {
     // Directly snapshot the current round to lock in token balances.
     // The snapshotId of the current round should be zero before initiating the snapshot
     assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
-    
+
     await voting.snapshotCurrentRound();
-    
+
     // The snapshotId of the current round should be non zero after the snapshot is taken
     assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
 
@@ -765,7 +765,7 @@ contract("Voting", function(accounts) {
     // account2's reveal should create a snapshot since it's the first action of the reveal.
     // The snapshotId of the current round should be zero before initiating the snapshot
     assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
-    
+
     await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
 
     // The snapshotId of the current round should be non zero after the snapshot is taken

@@ -63,7 +63,7 @@ abstract contract VotingInterface {
      * time of calling `_freezeRoundVariables`.
      */
     function snapshotCurrentRound() external virtual;
-    
+
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with.
