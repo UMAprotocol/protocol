@@ -629,6 +629,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
+    // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
+    // the respolved price and a string which is filled with an error message, if there was an error or "".
     function _getPriceOrError(bytes32 identifier, uint time) private view returns (bool, int, string memory) {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         uint currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
