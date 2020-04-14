@@ -40,6 +40,8 @@ contract("ContractMonitor.js", function(accounts) {
   let expirationTime;
   let constructorParams;
 
+  const spy = sinon.spy();
+
   before(async function() {
     collateralToken = await Token.new({ from: tokenSponsor });
     await collateralToken.addMember(1, tokenSponsor, {
@@ -92,7 +94,6 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
     // logs the correct text based on interactions with the emp.
-    const spy = sinon.spy();
 
     const spyLogger = winston.createLogger({
       level: "info",
@@ -139,7 +140,21 @@ contract("ContractMonitor.js", function(accounts) {
     console.log("calling");
     await contractMonitor.checkForNewLiquidations(time => toWei("1"));
     console.log("called");
-    // // Compare with expected processed event object
+
+    // console.log(
+    //   "CALLED WITH",
+    //   spy.calledWith({
+    //     level: "info",
+    //     at: "ContractMonitor",
+    //     message: "Liquidation Alert 🧙‍♂️!",
+    //     mrkdwn:
+    //       "<https://etherscan.io/address/0x6e4400769c2Cf2296b7071768d8769eBE06DAa92|0x6e4...6DAa9> (UMA liquidator bot) initiated liquidation for 10.00 DAI of sponsor <https://etherscan.io/address/0x34D7b4d6C38db204b19Fe040F4Ae4246417Dd718|0x34D...7Dd71> collateral backing 50.00 UMATEST tokens. Sponsor collateralization was 20.00%. tx: <https://etherscan.io/tx/0x26fd295691795e24590980bafd4cde2259b26a1c957a8c10af70fedc79ba02e6|0x26f...ba02e>",
+    //   })
+    // );
+
+    console.log("spygett", spy.getCall(-1).lastArg);
+
+    // Compare with expected processed event object
     // assert.deepStrictEqual(
     //   [
     //     {
