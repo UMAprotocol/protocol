@@ -17,7 +17,7 @@ import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 import { useTableStyles } from "./Styles.js";
-import { getKeyGenMessage } from "./common/EncryptionHelper.js";
+import { getKeyGenMessage, computeVoteHash, computeTopicHash } from "./common/EncryptionHelper.js";
 import { getRandomUnsignedInt } from "./common/Random.js";
 import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "./common/Constants.js";
 import { getAdminRequestId, isAdminRequest, decodeTransaction } from "./common/AdminUtils.js";
@@ -112,7 +112,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         "Voting",
         "getMessage",
         votingAccount,
-        web3.utils.soliditySha3(request.identifier, request.time, currentRoundId)
+        computeTopicHash({ identifier: request.identifier, time: request.time }, currentRoundId)
       )
     }));
   });
@@ -230,7 +230,14 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       commits.push({
         identifier: pendingRequests[index].identifier,
         time: pendingRequests[index].time,
-        hash: web3.utils.soliditySha3(price, salt),
+        hash: computeVoteHash({
+          price,
+          salt,
+          account,
+          time: pendingRequests[index].time,
+          roundId: currentRoundId,
+          identifier: pendingRequests[index].identifier
+        }),
         encryptedVote
       });
       indicesCommitted.push(index);

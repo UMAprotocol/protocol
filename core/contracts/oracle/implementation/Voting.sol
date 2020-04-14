@@ -312,7 +312,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
-     * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
+     * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
@@ -340,7 +340,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with.
+     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash` that `commitVote()` was called with.
      * Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
@@ -363,8 +363,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // 0 hashes are disallowed in the commit phase, so they indicate a different error.
         // Cannot reveal an uncommitted or previously revealed hash
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
-        // Committed hash doesn't match revealed price and salt
-        require(keccak256(abi.encode(price, salt)) == voteSubmission.commit, "Invalid commit hash & salt");
+        require(keccak256(abi.encodePacked(
+            price,
+            salt,
+            msg.sender,
+            time,
+            roundId,
+            identifier
+        )) == voteSubmission.commit, "Revealed data != commit hash");
         delete voteSubmission.commit;
 
         // Lock in round variables including snapshotId and inflation rate
