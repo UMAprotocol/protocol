@@ -1,8 +1,13 @@
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy } = require("../../common/MigrationUtils.js");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
+  const controllableTiming = enableControllableTiming(network);
 
-  await deploy(deployer, network, Timer, { from: keys.deployer });
+  if (controllableTiming) {
+    await deploy(deployer, network, Timer, { from: keys.deployer });
+  } else {
+    return;
+  }
 };
