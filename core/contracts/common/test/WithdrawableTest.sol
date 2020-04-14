@@ -16,4 +16,8 @@ contract WithdrawableTest is Withdrawable {
     function pay() external payable {
         require(msg.value > 0);
     }
+
+    function setInternalWithdrawRole(uint roleId) public {
+        setWithdrawRole(roleId);
+    }
 }

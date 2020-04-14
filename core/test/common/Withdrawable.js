@@ -80,4 +80,17 @@ contract("Withdrawable", function(accounts) {
     endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.address));
     assert.equal(endingBalance.toString(), "0");
   });
+
+  it("Can only set WithdrawRole to a valid role", async function() {
+    const withdrawable = await WithdrawableTest.new();
+
+    // can set to 0 (Owner)
+    await withdrawable.setInternalWithdrawRole(0);
+
+    // can set to 1 (Voter)
+    await withdrawable.setInternalWithdrawRole(1);
+
+    // cant set to anything other than 0 or 1
+    assert(await didContractThrow(withdrawable.setInternalWithdrawRole(2)));
+  });
 });

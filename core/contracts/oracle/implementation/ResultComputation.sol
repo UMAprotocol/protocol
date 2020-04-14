@@ -52,7 +52,7 @@ library ResultComputation {
      * @notice Returns whether the result is resolved, and if so, what value it resolved to.
      * @dev `price` should be ignored if `isResolved` is false.
      * @param data contains information against which the `minVoteThreshold` is applied.
-     * @param minVoteThreshold min number of tokens that must have voted for the result to be valid. Can be
+     * @param minVoteThreshold min (exclusive) number of tokens that must have voted for the result to be valid. Can be
      * used to enforce a minimum voter participation rate, regardless of how the votes are distributed.
      * @return isResolved indicates if the price has been resolved correctly.
      * @return price the price that the dvm resolved to.
@@ -69,7 +69,7 @@ library ResultComputation {
             data.totalVotes.isGreaterThan(minVoteThreshold) &&
             data.voteFrequency[data.currentMode].div(data.totalVotes).isGreaterThan(modeThreshold)
         ) {
-            // `modeThreshold` and `minVoteThreshold` are met, so the current mode is the resolved price.
+            // `modeThreshold` and `minVoteThreshold` are exceeded, so the current mode is the resolved price.
             isResolved = true;
             price = data.currentMode;
         } else {
