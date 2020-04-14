@@ -119,7 +119,7 @@ contract Governor is MultiRole, Testable {
      */
     function executeProposal(uint256 id, uint256 transactionIndex) external payable {
         Proposal storage proposal = proposals[id];
-        int price = _getOracle().getPrice(_constructIdentifier(id), proposal.requestTime);
+        int256 price = _getOracle().getPrice(_constructIdentifier(id), proposal.requestTime);
 
         Transaction memory transaction = proposal.transactions[transactionIndex];
 

@@ -28,7 +28,7 @@ interface OracleInterface {
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
-     * @return int representing the resolved price for the given identifier and timestamp.
+     * @return int256 representing the resolved price for the given identifier and timestamp.
      */
-    function getPrice(bytes32 identifier, uint256 time) external view returns (int);
+    function getPrice(bytes32 identifier, uint256 time) external view returns (int256);
 }

@@ -604,7 +604,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");
-        int oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
+        int256 oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
@@ -642,7 +642,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
     }
 
-    function _safeUintCast(int value) private pure returns (uint256 result) {
+    function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0, "uint256 underflow");
         return uint(value);
     }

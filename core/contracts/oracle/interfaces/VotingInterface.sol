@@ -30,8 +30,8 @@ abstract contract VotingInterface {
     struct Reveal {
         bytes32 identifier;
         uint256 time;
-        int price;
-        int salt;
+        int256 price;
+        int256 salt;
     }
 
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
@@ -66,7 +66,7 @@ abstract contract VotingInterface {
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint256 time, int price, int salt) external virtual;
+    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) external virtual;
 
     /**
      * @notice Reveal multiple votes in a single transaction.

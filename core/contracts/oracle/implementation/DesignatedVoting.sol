@@ -70,7 +70,7 @@ contract DesignatedVoting is Withdrawable {
      * @param price used along with the `salt` to produce the `hash` during the commit phase.
      * @param salt used along with the `price` to produce the `hash` during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint256 time, int price, int salt)
+    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt)
         external
         onlyRoleHolder(uint(Roles.Voter))
     {

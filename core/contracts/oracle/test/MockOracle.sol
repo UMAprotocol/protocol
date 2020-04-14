@@ -12,7 +12,7 @@ contract MockOracle is OracleInterface, Testable {
     // Represents an available price. Have to keep a separate bool to allow for price=0.
     struct Price {
         bool isAvailable;
-        int price;
+        int256 price;
         // Time the verified price became available.
         uint256 verifiedTime;
     }
@@ -59,7 +59,7 @@ contract MockOracle is OracleInterface, Testable {
     }
 
     // Pushes the verified price for a requested query.
-    function pushPrice(bytes32 identifier, uint256 time, int price) external {
+    function pushPrice(bytes32 identifier, uint256 time, int256 price) external {
         verifiedPrices[identifier][time] = Price(true, price, getCurrentTime());
 
         QueryIndex storage queryIndex = queryIndices[identifier][time];
@@ -88,7 +88,7 @@ contract MockOracle is OracleInterface, Testable {
     // Gets a price that has already been resolved.
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function getPrice(bytes32 identifier, uint256 time) external override view returns (int price) {
+    function getPrice(bytes32 identifier, uint256 time) external override view returns (int256 price) {
         require(identifierWhitelist.isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);

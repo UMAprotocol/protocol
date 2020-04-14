@@ -16,7 +16,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
     // A single price update.
     struct PriceTick {
         uint256 timestamp;
-        int price;
+        int256 price;
     }
 
     // Mapping from identifier to the latest price for that identifier.
@@ -41,7 +41,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
      * @notice Adds a new price to the series for a given identifier.
      * @dev The pushed publishTime must be later than the last time pushed so far.
      */
-    function pushLatestPrice(bytes32 identifier, uint256 publishTime, int newPrice)
+    function pushLatestPrice(bytes32 identifier, uint256 publishTime, int256 newPrice)
         external
         onlyRoleHolder(uint(Roles.Writer))
     {
@@ -62,7 +62,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function latestPrice(bytes32 identifier) external override view returns (uint256 publishTime, int price) {
+    function latestPrice(bytes32 identifier) external override view returns (uint256 publishTime, int256 price) {
         require(_isIdentifierSupported(identifier));
         publishTime = prices[identifier].timestamp;
         price = prices[identifier].price;

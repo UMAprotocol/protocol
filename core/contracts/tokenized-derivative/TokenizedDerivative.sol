@@ -80,14 +80,14 @@ library TDS {
 
     // The state of the token at a particular time. The state gets updated on remargin.
     struct TokenState {
-        int underlyingPrice;
-        int tokenPrice;
+        int256 underlyingPrice;
+        int256 tokenPrice;
         uint256 time;
     }
 
     // The information in the following struct is only valid if in the midst of a Dispute.
     struct Dispute {
-        int disputedNav;
+        int256 disputedNav;
         uint256 deposit;
     }
 
@@ -124,8 +124,8 @@ library TDS {
         FixedParameters fixedParameters;
         ExternalAddresses externalAddresses;
         // Balances
-        int shortBalance;
-        int longBalance;
+        int256 shortBalance;
+        int256 longBalance;
         State state;
         uint256 endTime;
         // The NAV of the contract always reflects the transition from (`prev`, `current`).
@@ -134,10 +134,10 @@ library TDS {
         // In the case of a dispute, `current` might change (which is why we have to hold on to `prev`).
         TokenState referenceTokenState;
         TokenState currentTokenState;
-        int nav; // Net asset value is measured in Wei
+        int256 nav; // Net asset value is measured in Wei
         Dispute disputeInfo;
         // Only populated once the contract enters a frozen state.
-        int defaultPenaltyAmount;
+        int256 defaultPenaltyAmount;
         WithdrawThrottle withdrawThrottle;
     }
 }
@@ -149,27 +149,27 @@ library TDS {
 library TokenizedDerivativeUtils {
     using TokenizedDerivativeUtils for TDS.Storage;
     using SafeMath for uint;
-    using SignedSafeMath for int;
+    using SignedSafeMath for int256;
     using FixedPoint for FixedPoint.Unsigned;
 
     uint256 private constant SECONDS_PER_DAY = 86400;
     uint256 private constant SECONDS_PER_YEAR = 31536000;
     uint256 private constant INT_MAX = 2**255 - 1;
     uint256 private constant UINT_FP_SCALING_FACTOR = 10**18;
-    int private constant INT_FP_SCALING_FACTOR = 10**18;
+    int256 private constant INT_FP_SCALING_FACTOR = 10**18;
 
     // Note that we can't have the symbol parameter be `indexed` due to:
     // TypeError: Indexed reference types cannot yet be used with ABIEncoderV2.
     // An event emitted when the NAV of the contract changes.
-    event NavUpdated(string symbol, int newNav, int newTokenPrice);
+    event NavUpdated(string symbol, int256 newNav, int256 newTokenPrice);
     // An event emitted when the contract enters the Default state on a remargin.
-    event Default(string symbol, uint256 defaultTime, int defaultNav);
+    event Default(string symbol, uint256 defaultTime, int256 defaultNav);
     // An event emitted when the contract settles.
-    event Settled(string symbol, uint256 settleTime, int finalNav);
+    event Settled(string symbol, uint256 settleTime, int256 finalNav);
     // An event emitted when the contract expires.
     event Expired(string symbol, uint256 expiryTime);
     // An event emitted when the contract's NAV is disputed by the sponsor.
-    event Disputed(string symbol, uint256 timeDisputed, int navDisputed);
+    event Disputed(string symbol, uint256 timeDisputed, int256 navDisputed);
     // An event emitted when the contract enters emergency shutdown.
     event EmergencyShutdownTransition(string symbol, uint256 shutdownTime);
     // An event emitted when tokens are created.
@@ -207,7 +207,7 @@ library TokenizedDerivativeUtils {
     {
         s._remarginInternal();
 
-        int newTokenNav = _computeNavForTokens(s.currentTokenState.tokenPrice, tokensToPurchase);
+        int256 newTokenNav = _computeNavForTokens(s.currentTokenState.tokenPrice, tokensToPurchase);
 
         if (newTokenNav < 0) {
             newTokenNav = 0;
@@ -308,7 +308,7 @@ library TokenizedDerivativeUtils {
         // withdraw up to full balance. If the contract is in live state then
         // must leave at least the required margin. Not allowed to withdraw in
         // other states.
-        int withdrawableAmount;
+        int256 withdrawableAmount;
         if (s.state == TDS.State.Settled) {
             withdrawableAmount = s.shortBalance;
         } else {
@@ -323,8 +323,8 @@ library TokenizedDerivativeUtils {
                 );
             }
 
-            int marginMaxWithdraw = s.shortBalance.sub(s._getRequiredMargin(s.currentTokenState));
-            int throttleMaxWithdraw = _safeIntCast(s.withdrawThrottle.remainingWithdrawal);
+            int256 marginMaxWithdraw = s.shortBalance.sub(s._getRequiredMargin(s.currentTokenState));
+            int256 throttleMaxWithdraw = _safeIntCast(s.withdrawThrottle.remainingWithdrawal);
 
             // Take the smallest of the two withdrawal limits.
             withdrawableAmount = throttleMaxWithdraw < marginMaxWithdraw ? throttleMaxWithdraw : marginMaxWithdraw;
@@ -407,7 +407,7 @@ library TokenizedDerivativeUtils {
     {
         if (address(s.externalAddresses.marginCurrency) == erc20Address) {
             uint256 currentBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
-            int totalBalances = s.shortBalance.add(s.longBalance);
+            int256 totalBalances = s.shortBalance.add(s.longBalance);
             assert(totalBalances >= 0);
             uint256 withdrawableAmount = currentBalance.sub(_safeUintCast(totalBalances)).sub(s.disputeInfo.deposit);
             require(withdrawableAmount >= amount);
@@ -418,31 +418,31 @@ library TokenizedDerivativeUtils {
     }
 
     // Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
-    function _calcNAV(TDS.Storage storage s) external view returns (int navNew) {
+    function _calcNAV(TDS.Storage storage s) external view returns (int256 navNew) {
         (TDS.TokenState memory newTokenState, ) = s._calcNewTokenStateAndBalance();
         navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
     }
 
     // Returns the expected value of each the outstanding tokens of the contract using the latest available Price Feed
     // price.
-    function _calcTokenValue(TDS.Storage storage s) external view returns (int newTokenValue) {
+    function _calcTokenValue(TDS.Storage storage s) external view returns (int256 newTokenValue) {
         (TDS.TokenState memory newTokenState, ) = s._calcNewTokenStateAndBalance();
         newTokenValue = newTokenState.tokenPrice;
     }
 
     // Returns the expected balance of the short margin account using the latest available Price Feed price.
-    function _calcShortMarginBalance(TDS.Storage storage s) external view returns (int newShortMarginBalance) {
+    function _calcShortMarginBalance(TDS.Storage storage s) external view returns (int256 newShortMarginBalance) {
         (, newShortMarginBalance) = s._calcNewTokenStateAndBalance();
     }
 
-    function _calcExcessMargin(TDS.Storage storage s) external view returns (int newExcessMargin) {
-        (TDS.TokenState memory newTokenState, int newShortMarginBalance) = s._calcNewTokenStateAndBalance();
+    function _calcExcessMargin(TDS.Storage storage s) external view returns (int256 newExcessMargin) {
+        (TDS.TokenState memory newTokenState, int256 newShortMarginBalance) = s._calcNewTokenStateAndBalance();
         // If the contract is in/will be moved to a settled state, the margin requirement will be 0.
-        int requiredMargin = newTokenState.time >= s.endTime ? 0 : s._getRequiredMargin(newTokenState);
+        int256 requiredMargin = newTokenState.time >= s.endTime ? 0 : s._getRequiredMargin(newTokenState);
         return newShortMarginBalance.sub(requiredMargin);
     }
 
-    function _getCurrentRequiredMargin(TDS.Storage storage s) external view returns (int requiredMargin) {
+    function _getCurrentRequiredMargin(TDS.Storage storage s) external view returns (int256 requiredMargin) {
         if (s.state == TDS.State.Settled) {
             // No margin needs to be maintained when the contract is settled.
             return 0;
@@ -471,7 +471,7 @@ library TokenizedDerivativeUtils {
     function _getUpdatedUnderlyingPrice(TDS.Storage storage s)
         external
         view
-        returns (int underlyingPrice, uint256 time)
+        returns (int256 underlyingPrice, uint256 time)
     {
         (TDS.TokenState memory newTokenState, ) = s._calcNewTokenStateAndBalance();
         return (newTokenState.underlyingPrice, newTokenState.time);
@@ -494,7 +494,7 @@ library TokenizedDerivativeUtils {
         require(params.startingTokenPrice <= UINT_FP_SCALING_FACTOR.mul(10**9));
 
         // TODO(mrice32): we should have an ideal start time rather than blindly polling.
-        (uint256 latestTime, int latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
+        (uint256 latestTime, int256 latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(
             s.fixedParameters.product
         );
 
@@ -548,7 +548,7 @@ library TokenizedDerivativeUtils {
     function _calcNewTokenStateAndBalance(TDS.Storage storage s)
         internal
         view
-        returns (TDS.TokenState memory newTokenState, int newShortMarginBalance)
+        returns (TDS.TokenState memory newTokenState, int256 newShortMarginBalance)
     {
         // TODO: there's a lot of repeated logic in this method from elsewhere in the contract. It should be extracted
         // so the logic can be written once and used twice. However, much of this was written post-audit, so it was
@@ -561,7 +561,7 @@ library TokenizedDerivativeUtils {
         }
 
         // Grab the price feed pricetime.
-        (uint256 priceFeedTime, int priceFeedPrice) = s._getLatestPrice();
+        (uint256 priceFeedTime, int256 priceFeedPrice) = s._getLatestPrice();
 
         bool isContractLive = s.state == TDS.State.Live;
         bool isContractPostExpiry = priceFeedTime >= s.endTime;
@@ -582,7 +582,7 @@ library TokenizedDerivativeUtils {
         );
 
         // Use the oracle settlement price/time if the contract is frozen or will move to expiry on the next remargin.
-        (uint256 recomputeTime, int recomputePrice) = !isContractLive || isContractPostExpiry
+        (uint256 recomputeTime, int256 recomputePrice) = !isContractLive || isContractPostExpiry
             ? (s.endTime, OracleInterface(_getOracleAddress(s)).getPrice(s.fixedParameters.product, s.endTime))
             : (priceFeedTime, priceFeedPrice);
 
@@ -598,7 +598,7 @@ library TokenizedDerivativeUtils {
 
         // Compute the new NAV
         newTokenState = s._computeNewTokenState(lastTokenState, recomputePrice, recomputeTime);
-        int navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
+        int256 navNew = _computeNavForTokens(newTokenState.tokenPrice, _totalSupply());
         newShortMarginBalance = newShortMarginBalance.sub(_getLongDiff(navNew, s.longBalance, newShortMarginBalance));
 
         bool inDefault = !s._satisfiesMarginRequirement(newShortMarginBalance, newTokenState);
@@ -614,8 +614,8 @@ library TokenizedDerivativeUtils {
         if (!isContractLive || isContractPostExpiry) {
             // Subtract default penalty (if necessary) from the short balance.
             if (inDefault) {
-                int expectedDefaultPenalty = isContractLive ? s._computeDefaultPenalty() : s._getDefaultPenalty();
-                int defaultPenalty = (newShortMarginBalance < expectedDefaultPenalty)
+                int256 expectedDefaultPenalty = isContractLive ? s._computeDefaultPenalty() : s._getDefaultPenalty();
+                int256 defaultPenalty = (newShortMarginBalance < expectedDefaultPenalty)
                     ? newShortMarginBalance
                     : expectedDefaultPenalty;
                 newShortMarginBalance = newShortMarginBalance.sub(defaultPenalty);
@@ -623,7 +623,7 @@ library TokenizedDerivativeUtils {
 
             // Add the dispute deposit to the short balance if necessary.
             if (s.state == TDS.State.Disputed && navNew != s.disputeInfo.disputedNav) {
-                int depositValue = _safeIntCast(s.disputeInfo.deposit);
+                int256 depositValue = _safeIntCast(s.disputeInfo.deposit);
                 newShortMarginBalance = newShortMarginBalance.add(depositValue);
             }
         }
@@ -631,11 +631,11 @@ library TokenizedDerivativeUtils {
 
     function _computeInitialNav(
         TDS.Storage storage s,
-        int latestUnderlyingPrice,
+        int256 latestUnderlyingPrice,
         uint256 latestTime,
         uint256 startingTokenPrice
-    ) internal returns (int navNew) {
-        int unitNav = _safeIntCast(startingTokenPrice);
+    ) internal returns (int256 navNew) {
+        int256 unitNav = _safeIntCast(startingTokenPrice);
         s.referenceTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
         s.currentTokenState = TDS.TokenState(latestUnderlyingPrice, unitNav, latestTime);
         // Starting NAV is always 0 in the TokenizedDerivative case.
@@ -699,7 +699,7 @@ library TokenizedDerivativeUtils {
         // If the state is not live, remargining does not make sense.
         require(s.state == TDS.State.Live);
 
-        (uint256 latestTime, int latestPrice) = s._getLatestPrice();
+        (uint256 latestTime, int256 latestPrice) = s._getLatestPrice();
         // Checks whether contract has ended.
         if (latestTime <= s.currentTokenState.time) {
             // If the price feed hasn't advanced, remargining should be a no-op.
@@ -707,14 +707,14 @@ library TokenizedDerivativeUtils {
         }
 
         // Save the penalty using the current state in case it needs to be used.
-        int potentialPenaltyAmount = s._computeDefaultPenalty();
+        int256 potentialPenaltyAmount = s._computeDefaultPenalty();
 
         if (latestTime >= s.endTime) {
             s.state = TDS.State.Expired;
             emit Expired(s.fixedParameters.symbol, s.endTime);
 
             // Applies the same update a second time to effectively move the current state to the reference state.
-            int recomputedNav = s._computeNav(s.currentTokenState.underlyingPrice, s.currentTokenState.time);
+            int256 recomputedNav = s._computeNav(s.currentTokenState.underlyingPrice, s.currentTokenState.time);
             assert(recomputedNav == s.nav);
 
             uint256 feeAmount = s._deductOracleFees(s.currentTokenState.time, s.endTime);
@@ -731,7 +731,7 @@ library TokenizedDerivativeUtils {
         uint256 feeAmount = s._deductOracleFees(s.currentTokenState.time, latestTime);
 
         // Update nav of contract.
-        int navNew = s._computeNav(latestPrice, latestTime);
+        int256 navNew = s._computeNav(latestPrice, latestTime);
 
         // Update the balances of the contract.
         s._updateBalances(navNew);
@@ -758,7 +758,7 @@ library TokenizedDerivativeUtils {
         // Verify that remargining didn't push the contract into expiry or default.
         require(s.state == TDS.State.Live);
 
-        int purchasedNav = _computeNavForTokens(s.currentTokenState.tokenPrice, tokensToPurchase);
+        int256 purchasedNav = _computeNavForTokens(s.currentTokenState.tokenPrice, tokensToPurchase);
 
         if (purchasedNav < 0) {
             purchasedNav = 0;
@@ -797,7 +797,7 @@ library TokenizedDerivativeUtils {
         );
         s._settleVerifiedPrice();
         if (startingState == TDS.State.Disputed) {
-            int depositValue = _safeIntCast(s.disputeInfo.deposit);
+            int256 depositValue = _safeIntCast(s.disputeInfo.deposit);
             if (s.nav != s.disputeInfo.disputedNav) {
                 s.shortBalance = s.shortBalance.add(depositValue);
             } else {
@@ -839,7 +839,7 @@ library TokenizedDerivativeUtils {
     {
         StoreInterface store = StoreInterface(_getStoreAddress(s));
         // The profit from corruption is set as the max(longBalance, shortBalance).
-        int pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
+        int256 pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory delayFee) = store.computeRegularFee(
             lastTimeOracleFeesPaid,
             currentTime,
@@ -856,28 +856,28 @@ library TokenizedDerivativeUtils {
     function _computeNewTokenState(
         TDS.Storage storage s,
         TDS.TokenState memory beginningTokenState,
-        int latestUnderlyingPrice,
+        int256 latestUnderlyingPrice,
         uint256 recomputeTime
     ) internal view returns (TDS.TokenState memory newTokenState) {
-        int underlyingReturn = s.externalAddresses.returnCalculator.computeReturn(
+        int256 underlyingReturn = s.externalAddresses.returnCalculator.computeReturn(
             beginningTokenState.underlyingPrice,
             latestUnderlyingPrice
         );
-        int tokenReturn = underlyingReturn.sub(
+        int256 tokenReturn = underlyingReturn.sub(
             _safeIntCast(s.fixedParameters.fixedFeePerSecond.mul(recomputeTime.sub(beginningTokenState.time)))
         );
-        int tokenMultiplier = tokenReturn.add(INT_FP_SCALING_FACTOR);
+        int256 tokenMultiplier = tokenReturn.add(INT_FP_SCALING_FACTOR);
 
         // In the compound case, don't allow the token price to go below 0.
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound && tokenMultiplier < 0) {
             tokenMultiplier = 0;
         }
 
-        int newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, tokenMultiplier);
+        int256 newTokenPrice = _takePercentage(beginningTokenState.tokenPrice, tokenMultiplier);
         newTokenState = TDS.TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
     }
 
-    function _satisfiesMarginRequirement(TDS.Storage storage s, int balance, TDS.TokenState memory tokenState)
+    function _satisfiesMarginRequirement(TDS.Storage storage s, int256 balance, TDS.TokenState memory tokenState)
         internal
         view
         returns (bool doesSatisfyRequirement)
@@ -900,7 +900,7 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeOracleFinalFee(TDS.Storage storage s, int shortBalance)
+    function _computeOracleFinalFee(TDS.Storage storage s, int256 shortBalance)
         internal
         view
         returns (uint256 actualFeeAmount)
@@ -916,15 +916,15 @@ library TokenizedDerivativeUtils {
     function _getLatestPrice(TDS.Storage storage s)
         internal
         view
-        returns (uint256 latestTime, int latestUnderlyingPrice)
+        returns (uint256 latestTime, int256 latestUnderlyingPrice)
     {
         (latestTime, latestUnderlyingPrice) = s.externalAddresses.priceFeed.latestPrice(s.fixedParameters.product);
         require(latestTime != 0);
     }
 
-    function _computeNav(TDS.Storage storage s, int latestUnderlyingPrice, uint256 latestTime)
+    function _computeNav(TDS.Storage storage s, int256 latestUnderlyingPrice, uint256 latestTime)
         internal
-        returns (int navNew)
+        returns (int256 navNew)
     {
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound) {
             navNew = s._computeCompoundNav(latestUnderlyingPrice, latestTime);
@@ -934,9 +934,9 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeCompoundNav(TDS.Storage storage s, int latestUnderlyingPrice, uint256 latestTime)
+    function _computeCompoundNav(TDS.Storage storage s, int256 latestUnderlyingPrice, uint256 latestTime)
         internal
-        returns (int navNew)
+        returns (int256 navNew)
     {
         s.referenceTokenState = s.currentTokenState;
         s.currentTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
@@ -944,9 +944,9 @@ library TokenizedDerivativeUtils {
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
-    function _computeLinearNav(TDS.Storage storage s, int latestUnderlyingPrice, uint256 latestTime)
+    function _computeLinearNav(TDS.Storage storage s, int256 latestUnderlyingPrice, uint256 latestTime)
         internal
-        returns (int navNew)
+        returns (int256 navNew)
     {
         // Only update the time - don't update the prices becuase all price changes are relative to the initial price.
         s.referenceTokenState.time = s.currentTokenState.time;
@@ -955,9 +955,9 @@ library TokenizedDerivativeUtils {
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
-    function _recomputeNav(TDS.Storage storage s, int oraclePrice, uint256 recomputeTime)
+    function _recomputeNav(TDS.Storage storage s, int256 oraclePrice, uint256 recomputeTime)
         internal
-        returns (int navNew)
+        returns (int256 navNew)
     {
         // We're updating `last` based on what the Oracle has told us.
         assert(s.endTime == recomputeTime);
@@ -968,15 +968,15 @@ library TokenizedDerivativeUtils {
 
     // Function is internally only called by `_settleAgreedPrice` or `_settleVerifiedPrice`. This function handles all
     // of the settlement logic including assessing penalties and then moves the state to `Settled`.
-    function _settleWithPrice(TDS.Storage storage s, int price) internal {
+    function _settleWithPrice(TDS.Storage storage s, int256 price) internal {
         // Remargin at whatever price we're using (verified or unverified).
         s._updateBalances(s._recomputeNav(price, s.endTime));
 
         bool inDefault = !s._satisfiesMarginRequirement(s.shortBalance, s.currentTokenState);
 
         if (inDefault) {
-            int expectedDefaultPenalty = s._getDefaultPenalty();
-            int penalty = (s.shortBalance < expectedDefaultPenalty) ? s.shortBalance : expectedDefaultPenalty;
+            int256 expectedDefaultPenalty = s._getDefaultPenalty();
+            int256 penalty = (s.shortBalance < expectedDefaultPenalty) ? s.shortBalance : expectedDefaultPenalty;
 
             s.shortBalance = s.shortBalance.sub(penalty);
             s.longBalance = s.longBalance.add(penalty);
@@ -986,40 +986,40 @@ library TokenizedDerivativeUtils {
         emit Settled(s.fixedParameters.symbol, s.endTime, s.nav);
     }
 
-    function _updateBalances(TDS.Storage storage s, int navNew) internal {
+    function _updateBalances(TDS.Storage storage s, int256 navNew) internal {
         // Compute difference -- Add the difference to owner and subtract
         // from counterparty. Then update nav state variable.
-        int longDiff = _getLongDiff(navNew, s.longBalance, s.shortBalance);
+        int256 longDiff = _getLongDiff(navNew, s.longBalance, s.shortBalance);
         s.nav = navNew;
 
         s.longBalance = s.longBalance.add(longDiff);
         s.shortBalance = s.shortBalance.sub(longDiff);
     }
 
-    function _getDefaultPenalty(TDS.Storage storage s) internal view returns (int penalty) {
+    function _getDefaultPenalty(TDS.Storage storage s) internal view returns (int256 penalty) {
         return s.defaultPenaltyAmount;
     }
 
-    function _computeDefaultPenalty(TDS.Storage storage s) internal view returns (int penalty) {
+    function _computeDefaultPenalty(TDS.Storage storage s) internal view returns (int256 penalty) {
         return _takePercentage(s._getRequiredMargin(s.currentTokenState), s.fixedParameters.defaultPenalty);
     }
 
     function _getRequiredMargin(TDS.Storage storage s, TDS.TokenState memory tokenState)
         internal
         view
-        returns (int requiredMargin)
+        returns (int256 requiredMargin)
     {
-        int leverageMagnitude = _absoluteValue(s.externalAddresses.returnCalculator.leverage());
+        int256 leverageMagnitude = _absoluteValue(s.externalAddresses.returnCalculator.leverage());
 
-        int effectiveNotional;
+        int256 effectiveNotional;
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Linear) {
-            int effectiveUnitsOfUnderlying = _safeIntCast(
+            int256 effectiveUnitsOfUnderlying = _safeIntCast(
                 _totalSupply().mul(s.fixedParameters.initialTokenUnderlyingRatio).div(UINT_FP_SCALING_FACTOR)
             )
                 .mul(leverageMagnitude);
             effectiveNotional = effectiveUnitsOfUnderlying.mul(tokenState.underlyingPrice).div(INT_FP_SCALING_FACTOR);
         } else {
-            int currentNav = _computeNavForTokens(tokenState.tokenPrice, _totalSupply());
+            int256 currentNav = _computeNavForTokens(tokenState.tokenPrice, _totalSupply());
             effectiveNotional = currentNav.mul(leverageMagnitude);
         }
 
@@ -1057,14 +1057,14 @@ library TokenizedDerivativeUtils {
     }
 
     function _settleAgreedPrice(TDS.Storage storage s) internal {
-        int agreedPrice = s.currentTokenState.underlyingPrice;
+        int256 agreedPrice = s.currentTokenState.underlyingPrice;
 
         s._settleWithPrice(agreedPrice);
     }
 
     function _settleVerifiedPrice(TDS.Storage storage s) internal {
         OracleInterface oracle = OracleInterface(_getOracleAddress(s));
-        int oraclePrice = oracle.getPrice(s.fixedParameters.product, s.endTime);
+        int256 oraclePrice = oracle.getPrice(s.fixedParameters.product, s.endTime);
         s._settleWithPrice(oraclePrice);
     }
 
@@ -1077,8 +1077,12 @@ library TokenizedDerivativeUtils {
 
     // Gets the change in balance for the long side.
     // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
-    function _getLongDiff(int navNew, int longBalance, int shortBalance) private pure returns (int longDiff) {
-        int newLongBalance = navNew;
+    function _getLongDiff(int256 navNew, int256 longBalance, int256 shortBalance)
+        private
+        pure
+        returns (int256 longDiff)
+    {
+        int256 newLongBalance = navNew;
 
         // Long balance cannot go below zero.
         if (newLongBalance < 0) {
@@ -1093,8 +1097,8 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeNavForTokens(int tokenPrice, uint256 numTokens) private pure returns (int navNew) {
-        int navPreDivision = _safeIntCast(numTokens).mul(tokenPrice);
+    function _computeNavForTokens(int256 tokenPrice, uint256 numTokens) private pure returns (int256 navNew) {
+        int256 navPreDivision = _safeIntCast(numTokens).mul(tokenPrice);
         navNew = navPreDivision.div(INT_FP_SCALING_FACTOR);
 
         // The navNew division above truncates by default. Instead, we prefer to ceil this value to ensure tokens
@@ -1113,24 +1117,24 @@ library TokenizedDerivativeUtils {
         return value.mul(percentage).div(UINT_FP_SCALING_FACTOR);
     }
 
-    function _takePercentage(int value, uint256 percentage) private pure returns (int result) {
+    function _takePercentage(int256 value, uint256 percentage) private pure returns (int256 result) {
         return value.mul(_safeIntCast(percentage)).div(INT_FP_SCALING_FACTOR);
     }
 
-    function _takePercentage(int value, int percentage) private pure returns (int result) {
+    function _takePercentage(int256 value, int256 percentage) private pure returns (int256 result) {
         return value.mul(percentage).div(INT_FP_SCALING_FACTOR);
     }
 
-    function _absoluteValue(int value) private pure returns (int result) {
+    function _absoluteValue(int256 value) private pure returns (int256 result) {
         return value < 0 ? value.mul(-1) : value;
     }
 
-    function _safeIntCast(uint256 value) private pure returns (int result) {
+    function _safeIntCast(uint256 value) private pure returns (int256 result) {
         require(value <= INT_MAX);
-        return int(value);
+        return int256(value);
     }
 
-    function _safeUintCast(int value) private pure returns (uint256 result) {
+    function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0);
         return uint(value);
     }
@@ -1152,11 +1156,11 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
 
     // These events are actually emitted by TokenizedDerivativeUtils, but we unfortunately have to define the events
     // here as well.
-    event NavUpdated(string symbol, int newNav, int newTokenPrice);
-    event Default(string symbol, uint256 defaultTime, int defaultNav);
-    event Settled(string symbol, uint256 settleTime, int finalNav);
+    event NavUpdated(string symbol, int256 newNav, int256 newTokenPrice);
+    event Default(string symbol, uint256 defaultTime, int256 defaultNav);
+    event Settled(string symbol, uint256 settleTime, int256 finalNav);
     event Expired(string symbol, uint256 expiryTime);
-    event Disputed(string symbol, uint256 timeDisputed, int navDisputed);
+    event Disputed(string symbol, uint256 timeDisputed, int256 navDisputed);
     event EmergencyShutdownTransition(string symbol, uint256 shutdownTime);
     event TokensCreated(string symbol, uint256 numTokensCreated);
     event TokensRedeemed(string symbol, uint256 numTokensRedeemed);
@@ -1305,7 +1309,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     /**
      * @notice Returns the expected net asset value (NAV) of the contract using the latest available Price Feed price.
      */
-    function calcNAV() external view returns (int navNew) {
+    function calcNAV() external view returns (int256 navNew) {
         return derivativeStorage._calcNAV();
     }
 
@@ -1313,14 +1317,14 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Returns the expected value of each the outstanding tokens of the contract using the latest available
      * Price Feed price.
      */
-    function calcTokenValue() external view returns (int newTokenValue) {
+    function calcTokenValue() external view returns (int256 newTokenValue) {
         return derivativeStorage._calcTokenValue();
     }
 
     /**
      * @notice Returns the expected balance of the short margin account using the latest available Price Feed price.
      */
-    function calcShortMarginBalance() external view returns (int newShortMarginBalance) {
+    function calcShortMarginBalance() external view returns (int256 newShortMarginBalance) {
         return derivativeStorage._calcShortMarginBalance();
     }
 
@@ -1329,7 +1333,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * Feed price.
      * @dev Value will be negative if the short margin is expected to be below the margin requirement.
      */
-    function calcExcessMargin() external view returns (int excessMargin) {
+    function calcExcessMargin() external view returns (int256 excessMargin) {
         return derivativeStorage._calcExcessMargin();
     }
 
@@ -1337,7 +1341,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Returns the required margin, as of the last remargin.
      * @dev Note that `calcExcessMargin` uses updated values using the latest available Price Feed price.
      */
-    function getCurrentRequiredMargin() external view returns (int requiredMargin) {
+    function getCurrentRequiredMargin() external view returns (int256 requiredMargin) {
         return derivativeStorage._getCurrentRequiredMargin();
     }
 
@@ -1354,7 +1358,7 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * contract is settled/about to be settled.  Reverts if no Oracle price is available but an Oracle price is
      * required.
      */
-    function getUpdatedUnderlyingPrice() external view returns (int underlyingPrice, uint256 time) {
+    function getUpdatedUnderlyingPrice() external view returns (int256 underlyingPrice, uint256 time) {
         return derivativeStorage._getUpdatedUnderlyingPrice();
     }
 }
