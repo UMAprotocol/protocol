@@ -370,7 +370,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             time,
             roundId,
             identifier
-        )) == voteSubmission.commit, "Commit hash must match px, salt, address, timestamp, round, and identifier");
+        )) == voteSubmission.commit, "Revealed data != commit hash");
         delete voteSubmission.commit;
 
         // Lock in round variables including snapshotId and inflation rate
