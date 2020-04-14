@@ -47,7 +47,6 @@ contract("IntegrationTest", function(accounts) {
   let mockOracle;
   let collateralTokenWhitelist;
   let expiringMultiParty;
-  let timer;
 
   // Re-used variables
   let constructorParams;
@@ -76,7 +75,6 @@ contract("IntegrationTest", function(accounts) {
     startingTime = await expiringMultiPartyCreator.getCurrentTime();
     expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30 * 3)); // Three month in the future
     constructorParams = {
-      isTest: true,
       expirationTimestamp: expirationTime.toString(),
       withdrawalLiveness: "3600",
       collateralAddress: collateralToken.address,

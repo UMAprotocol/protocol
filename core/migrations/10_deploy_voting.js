@@ -42,8 +42,7 @@ module.exports = async function(deployer, network, accounts) {
     votingToken.address,
     identifierWhitelist.address,
     finder.address,
-    controllableTiming,
-    Timer.address,
+    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 

@@ -57,7 +57,6 @@ contract Liquidatable is PricelessPositionManager {
     // This is required to enable more params, over and above Solidity's limits.
     struct ConstructorParams {
         // Params for PricelessPositionManager only.
-        bool isTest;
         uint expirationTimestamp;
         uint withdrawalLiveness;
         address collateralAddress;
@@ -149,7 +148,6 @@ contract Liquidatable is PricelessPositionManager {
     constructor(ConstructorParams memory params)
         public
         PricelessPositionManager(
-            params.isTest,
             params.expirationTimestamp,
             params.withdrawalLiveness,
             params.collateralAddress,

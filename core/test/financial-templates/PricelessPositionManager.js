@@ -100,7 +100,6 @@ contract("PricelessPositionManager", function(accounts) {
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
     pricelessPositionManager = await PricelessPositionManager.new(
-      true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
@@ -1350,7 +1349,6 @@ contract("PricelessPositionManager", function(accounts) {
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
     let customPricelessPositionManager = await PricelessPositionManager.new(
-      true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress

@@ -7,22 +7,19 @@ import "./Timer.sol";
  * @title Base class that provides time overrides, but only if being run in test mode.
  */
 abstract contract Testable {
-    // Is the contract being run on the test network. Note: this variable should be set on construction and never
+    // If the contract is being run on the test network, then `timerAddress` will be the 0x0. Note: this variable should be set on construction and never
     // modified.
-    bool public isTest;
+    address public timerAddress;
 
-    Timer public timer;
-
-    constructor(bool _isTest, address _timerAddress) internal {
-        isTest = _isTest;
-        timer = Timer(_timerAddress);
+    constructor(address _timerAddress) internal {
+        timerAddress = _timerAddress;
     }
 
     /**
      * @notice Reverts if not running in test mode.
      */
     modifier onlyIfTest {
-        require(isTest);
+        require(timerAddress != address(0x0));
         _;
     }
 
@@ -31,7 +28,7 @@ abstract contract Testable {
      * @dev Will revert if not running in test mode.
      */
     function setCurrentTime(uint _time) external onlyIfTest {
-        timer.setCurrentTime(_time);
+        Timer(timerAddress).setCurrentTime(_time);
     }
 
     /**
@@ -39,8 +36,8 @@ abstract contract Testable {
      * Otherwise, it will return the block timestamp.
      */
     function getCurrentTime() public view returns (uint) {
-        if (isTest) {
-            return timer.getCurrentTime();
+        if (timerAddress != address(0x0)) {
+            return Timer(timerAddress).getCurrentTime();
         } else {
             return now; // solhint-disable-line not-rely-on-time
         }

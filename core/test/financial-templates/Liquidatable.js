@@ -115,7 +115,6 @@ contract("Liquidatable", function(accounts) {
     });
 
     liquidatableParameters = {
-      isTest: true,
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,

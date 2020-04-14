@@ -88,19 +88,17 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     /**
      * @notice Constructs the ExpiringMultiPartyCreator contract.
-     * @param _isTest whether this contract is being constructed for the purpose of running tests.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _collateralTokenWhitelist UMA protocol contract to track whitelisted collateral.
      * @param _tokenFactoryAddress ERC20 token factory used to deploy synthetic token instances.
      * @param _timerAddress Universal store of time for contracts in test environment.
      */
     constructor(
-        bool _isTest,
         address _finderAddress,
         address _collateralTokenWhitelist,
         address _tokenFactoryAddress,
         address _timerAddress
-    ) public ContractCreator(_finderAddress) Testable(_isTest, _timerAddress) {
+    ) public ContractCreator(_finderAddress) Testable(_timerAddress) {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
     }
@@ -145,7 +143,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         returns (ExpiringMultiParty.ConstructorParams memory constructorParams)
     {
         // Known from creator deployment.
-        constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
         constructorParams.tokenFactoryAddress = tokenFactoryAddress;
 

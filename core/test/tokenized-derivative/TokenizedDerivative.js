@@ -2456,7 +2456,10 @@ contract("TokenizedDerivative", function(accounts) {
       await deployNewTokenizedDerivative();
 
       const creationTime = await tokenizedDerivativeCreator.getCurrentTime();
-      assert.equal((await derivativeContract.derivativeStorage()).fixedParameters.creationTime, creationTime.toString());
+      assert.equal(
+        (await derivativeContract.derivativeStorage()).fixedParameters.creationTime,
+        creationTime.toString()
+      );
     });
 
     it(annotateTitle("High withdraw throttle"), async function() {

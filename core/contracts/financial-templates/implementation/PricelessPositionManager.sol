@@ -119,7 +119,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Construct the PricelessPositionManager
-     * @param _isTest whether this contract is being constructed for the purpose of running tests.
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
@@ -131,7 +130,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param _timerAddress Universal store of time for contracts in test environment.
      */
     constructor(
-        bool _isTest,
         uint _expirationTimestamp,
         uint _withdrawalLiveness,
         address _collateralAddress,
@@ -142,7 +140,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _isTest, _timerAddress) {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);

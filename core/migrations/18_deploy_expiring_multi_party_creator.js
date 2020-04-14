@@ -21,11 +21,10 @@ module.exports = async function(deployer, network, accounts) {
     deployer,
     network,
     ExpiringMultiPartyCreator,
-    controllableTiming,
     finder.address,
     collateralCurrencyWhitelist.address,
     tokenFactory.address,
-    Timer.address,
+    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 };

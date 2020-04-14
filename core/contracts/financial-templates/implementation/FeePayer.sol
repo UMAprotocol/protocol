@@ -63,13 +63,9 @@ abstract contract FeePayer is Testable {
      * @notice Constructs the FeePayer contract. Called by child contracts.
      * @param collateralAddress ERC20 token that is used as the underlying collateral for the synthetic.
      * @param finderAddress UMA protocol Finder used to discover other protocol contracts.
-     * @param isTest whether this contract is being constructed for the purpose of running tests.
-     * @param _timerAddress Universal store of time for contracts in test environment.
+     * @param timerAddress Universal store of time for contracts in test environment.
      */
-    constructor(address collateralAddress, address finderAddress, bool isTest, address _timerAddress)
-        public
-        Testable(isTest, _timerAddress)
-    {
+    constructor(address collateralAddress, address finderAddress, address timerAddress) public Testable(timerAddress) {
         collateralCurrency = IERC20(collateralAddress);
         finder = FinderInterface(finderAddress);
         lastPaymentTime = getCurrentTime();

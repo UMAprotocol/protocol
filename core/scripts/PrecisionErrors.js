@@ -93,7 +93,6 @@ async function createTestEnvironment() {
   // Create the instance of the emp to test against.
   // The contract expires 10k seconds in the future -> will not expire during this test case.
   const constructorParams = {
-    isTest: true,
     expirationTimestamp: expirationTimestamp,
     withdrawalLiveness: withdrawalLiveness,
     collateralAddress: collateral.address,

@@ -11,7 +11,7 @@ contract("ManualPriceFeed", function(accounts) {
   let rando = accounts[1];
 
   before(async function() {
-    manualPriceFeed = await ManualPriceFeed.new(true, Timer.address);
+    manualPriceFeed = await ManualPriceFeed.new(Timer.address);
   });
 
   it("No prices > One price > Updated price", async function() {

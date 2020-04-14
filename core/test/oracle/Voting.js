@@ -1301,7 +1301,6 @@ contract("Voting", function(accounts) {
       votingToken.address,
       supportedIdentifiers.address,
       (await Finder.deployed()).address,
-      true,
       Timer.address
     );
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -1341,7 +1340,6 @@ contract("Voting", function(accounts) {
       votingToken.address,
       supportedIdentifiers.address,
       Finder.address,
-      true,
       Timer.address
     );
 

@@ -15,7 +15,6 @@ contract("ExpiringMultiParty", function(accounts) {
     const collateralToken = await Token.new({ from: accounts[0] });
 
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "1234567890",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,

@@ -30,8 +30,7 @@ module.exports = async function(deployer, network, accounts) {
     finder.address,
     returnCalculatorWhitelist.address,
     marginCurrencyWhitelist.address,
-    controllableTiming,
-    Timer.address,
+    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 
