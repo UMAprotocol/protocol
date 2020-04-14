@@ -48,7 +48,9 @@ contract("Liquidator.js", function(accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
+  });
 
+  beforeEach(async function() {
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
       from: contractCreator
@@ -56,9 +58,7 @@ contract("Liquidator.js", function(accounts) {
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  });
 
-  beforeEach(async function() {
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
