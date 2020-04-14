@@ -112,7 +112,7 @@ contract("ContractMonitor.js", function(accounts) {
     await eventClient._update();
 
     console.log("calling");
-    await contractMonitor.checkForNewLiquidations(time => toWei("1"));
+    awaitcontractMonitor.checkForNewLiquidations(time => toWei("1"));
     console.log("called");
     // // Compare with expected processed event object
     // assert.deepStrictEqual(

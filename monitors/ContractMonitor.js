@@ -1,10 +1,37 @@
+const sinon = require("sinon");
+
 const { Logger } = require("../financial-templates-lib/logger/Logger");
+const spyLogger = require("../financial-templates-lib/logger/SpyTransport");
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 const networkUtils = require("../common/PublicNetworks");
 
 class ContractMonitor {
   constructor(expiringMultiPartyEventClient, account, umaLiquidatorAddress, umaDisputerAddress) {
+    // console.log("Logger", Logger);
+
+    this.spy = sinon.spy();
+    // Logger.remove(winston.transports.Console);
+    Logger.add(new spyLogger({ spy: this.spy, level: "info" }));
+    console.log("END");
+
+    console.log("LOGGER");
+    console.log(Logger);
+
+    console.log("spy.calledOnce", this.spy.calledOnce);
+
+    Logger.info({
+      at: "MY YOLO",
+      message: "zzz",
+      price: 1,
+      lastLiquidationBlockNumber: 1231
+    });
+
+    console.log("spy.calledOnce", this.spy.calledOnce);
+
+    // console.log("winston");
+    // console.log(winston);
+
     // Bot and ecosystem accounts.
     this.account = account;
     this.umaLiquidatorAddress = umaLiquidatorAddress;
@@ -43,12 +70,12 @@ class ContractMonitor {
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async priceFunction => {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
-    const priceFeed = priceFunction(contractTime);
+    const priceFeed = priceFunction(contractTime.toString());
 
     Logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
-      price: priceFeed.toString(),
+      price: priceFeed,
       lastLiquidationBlockNumber: this.lastLiquidationBlockNumber
     });
 
@@ -93,10 +120,13 @@ class ContractMonitor {
   };
 
   checkForNewDisputeEvents = async priceFunction => {
+    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const priceFeed = priceFunction(contractTime.toString());
+
     Logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute events",
-      price: priceFunction.toString(),
+      price: priceFeed,
       lastDisputeBlockNumber: this.lastDisputeBlockNumber
     });
 
@@ -132,10 +162,13 @@ class ContractMonitor {
   };
 
   checkForNewDisputeSettlementEvents = async priceFunction => {
+    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const priceFeed = priceFunction(contractTime.toString());
+
     Logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute settlement events",
-      price: priceFunction.toString(),
+      price: priceFeed,
       lastDisputeSettlementBlockNumber: this.lastDisputeSettlementBlockNumber
     });
 

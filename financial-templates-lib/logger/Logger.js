@@ -24,7 +24,7 @@
 // });
 
 const winston = require("winston");
-const { transports } = require("./Transport");
+const { transports } = require("./Transports");
 
 const Logger = winston.createLogger({
   level: "debug",
