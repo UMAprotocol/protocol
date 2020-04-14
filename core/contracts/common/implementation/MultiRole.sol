@@ -111,7 +111,7 @@ abstract contract MultiRole {
         } else if (role.roleType == RoleType.Shared) {
             return role.sharedRoleMembership.isMember(memberToCheck);
         }
-        require(false, "Invalid roleId");
+        revert("Invalid roleId");
     }
 
     /**
