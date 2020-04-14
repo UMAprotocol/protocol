@@ -35,7 +35,7 @@ contract Registry is RegistryInterface, MultiRole {
 
     struct Party {
         address[] contracts; // Each financial contract address is stored in this array.
-        // The index of each financial contract is mapped to it's address for constant time look up and deletion.
+        // The address of each financial contract is mapped to its index for constant time look up and deletion.
         mapping(address => uint) contractIndex;
     }
 
@@ -45,7 +45,7 @@ contract Registry is RegistryInterface, MultiRole {
     // Map of financial contract contracts to the associated FinancialContract struct.
     mapping(address => FinancialContract) public contractMap;
 
-    // Map each party member to their associated FinancialContract struct.
+    // Map each party member to their their associated Party struct.
     mapping(address => Party) private partyMap;
 
     /****************************************
@@ -73,7 +73,7 @@ contract Registry is RegistryInterface, MultiRole {
      * @notice Registers a new financial contract.
      * @dev Only authorized contract creators can call this method.
      * @param parties an array of addresses who become parties in the contract.
-     * @param contractAddress defines the address of the deployed finan.
+     * @param contractAddress address of the contract against which the parties are registered.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore

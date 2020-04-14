@@ -19,7 +19,7 @@ contract DesignatedVoting is Withdrawable {
      ****************************************/
 
     enum Roles {
-        Owner, // Can set the Voter and Withdrawer roles.
+        Owner, // Can set the Voter role. Is also permanently permissioned as the minter roll.
         Voter // Can vote through this contract.
     }
 
