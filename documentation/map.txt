@@ -1,10 +1,10 @@
+* getting_started
+** bug_bounty.md
 * synthetic_tokens
 ** explainer.md
 ** tutorials
 *** prerequisites.md
 *** creating_from_truffle.md
-** security
-*** bug_bounty.md
 ** glossary.md
 * oracle
 ** architecture.md
