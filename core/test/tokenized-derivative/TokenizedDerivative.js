@@ -33,7 +33,6 @@ contract("TokenizedDerivative", function(accounts) {
   let noLeverageCalculator;
   let marginToken;
   let returnCalculatorWhitelist;
-  let timer;
 
   const owner = accounts[0];
   const sponsor = accounts[1];
@@ -2453,14 +2452,11 @@ contract("TokenizedDerivative", function(accounts) {
     });
 
     it(annotateTitle("Creation Time"), async function() {
-      // Set the current time in the creator and expect that that time will propagate to the derivative.
-      const creationTime = "1550878663";
-      tokenizedDerivativeCreator.setCurrentTime(creationTime);
-
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
 
-      assert.equal((await derivativeContract.derivativeStorage()).fixedParameters.creationTime, creationTime);
+      const creationTime = await tokenizedDerivativeCreator.getCurrentTime();
+      assert.equal((await derivativeContract.derivativeStorage()).fixedParameters.creationTime, creationTime.toString());
     });
 
     it(annotateTitle("High withdraw throttle"), async function() {
