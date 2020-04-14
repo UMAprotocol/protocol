@@ -312,7 +312,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
-     * @param hash keccak256 hash of the price, salt, voter address, `time`, current round ID, and `identifier`.
+     * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
