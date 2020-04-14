@@ -17,6 +17,7 @@ const MockOracle = artifacts.require("MockOracle");
 const Token = artifacts.require("ExpandedERC20");
 const Registry = artifacts.require("Registry");
 const WETH9 = artifacts.require("WETH9");
+const Timer = artifacts.require("Timer");
 
 // Contracts we need to interact with.
 let collateralToken;
@@ -46,8 +47,11 @@ const deployEMP = async callback => {
     const priceFeedIdentifier = web3.utils.utf8ToHex("BTC/USD");
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
 
+    // Start a new Timer to use for both the oracle and the EMP.
+    const timer = await Timer.new();
+
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
+    mockOracle = await MockOracle.new(identifierWhitelist.address, timer.address);
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
@@ -69,7 +73,8 @@ const deployEMP = async callback => {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("0.01") }
+      minSponsorTokens: { rawValue: toWei("0.01") },
+      timerAddress: timer.address
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });

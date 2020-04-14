@@ -30,6 +30,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const Store = artifacts.require("Store");
+const Timer = artifacts.require("Timer");
 
 contract("IntegrationTest", function(accounts) {
   let contractCreator = accounts[0];
@@ -46,6 +47,7 @@ contract("IntegrationTest", function(accounts) {
   let mockOracle;
   let collateralTokenWhitelist;
   let expiringMultiParty;
+  let timer;
 
   // Re-used variables
   let constructorParams;
@@ -87,7 +89,8 @@ contract("IntegrationTest", function(accounts) {
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      timerAddress: Timer.address
     };
 
     // register the price identifer within the identifer whitelist
@@ -97,7 +100,7 @@ contract("IntegrationTest", function(accounts) {
     });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
       from: contractCreator
     });
     finder = await Finder.deployed();

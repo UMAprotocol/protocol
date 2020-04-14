@@ -12,6 +12,7 @@ const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Timer = artifacts.require("Timer");
 
 // Pull in contracts from dependencies.
 const Token = artifacts.require("ExpandedERC20");
@@ -32,6 +33,7 @@ contract("TokenizedDerivative", function(accounts) {
   let noLeverageCalculator;
   let marginToken;
   let returnCalculatorWhitelist;
+  let timer;
 
   const owner = accounts[0];
   const sponsor = accounts[1];
@@ -59,7 +61,7 @@ contract("TokenizedDerivative", function(accounts) {
     deployedFinder = await Finder.deployed();
     deployedAdmin = await FinancialContractsAdmin.deployed();
     supportedIdentifiers = await IdentifierWhitelist.deployed();
-    mockOracle = await MockOracle.new(supportedIdentifiers.address);
+    mockOracle = await MockOracle.new(supportedIdentifiers.address, Timer.address);
     deployedStore = await Store.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
