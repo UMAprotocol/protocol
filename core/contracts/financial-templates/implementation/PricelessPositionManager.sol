@@ -127,7 +127,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param _syntheticName name for the token contract that will be deployed.
      * @param _syntheticSymbol symbol for the token contract that will be deployed.
      * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
-     * @param _timerAddress Universal store of time for contracts in test environment.
+     * @param _timerAddress Contract that stores the current time in a testing environment. Should be set to 0x0 for production environments that use live time.
      */
     constructor(
         uint _expirationTimestamp,
