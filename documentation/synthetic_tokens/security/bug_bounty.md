@@ -26,9 +26,7 @@ The severity is calculated according to the [OWASP](https://owasp.org/www-projec
 The scope of our bug bounty program includes core smart contracts related to release [v1.0] of the DVM and financial templates. 
 -->
 It does not include known issues with the intended behavior. 
-<!-- TODO: create overview document for system
-Please refer to the [readme file] in the repository for an extensive overview of the intended behavior of the system.
---> 
+Our [documentation site](https://docs.umaproject.org/uma/index.html) has an extensive overview of the intended behavior of the system. 
 
 ### In scope:
 * DVM contracts [link](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/oracle/implementation)
