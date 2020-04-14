@@ -32,6 +32,7 @@ contract("PricelessPositionManager", function(accounts) {
   let identifierWhitelist;
   let mockOracle;
   let financialContractsAdmin;
+  let store;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -63,6 +64,11 @@ contract("PricelessPositionManager", function(accounts) {
     );
     assert.equal((await pricelessPositionManager.totalTokensOutstanding()).toString(), expectedTotalTokens.toString());
     assert.equal(await collateral.balanceOf(pricelessPositionManager.address), expectedTotalCollateral.toString());
+  };
+
+  const setCurrentTime = async currentTime => {
+    await pricelessPositionManager.setCurrentTime(currentTime);
+    await store.setCurrentTime(currentTime);
   };
 
   before(async function() {
@@ -108,6 +114,10 @@ contract("PricelessPositionManager", function(accounts) {
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+
+    // Sync other contracts' time to contract time.
+    const currentTime = await pricelessPositionManager.getCurrentTime();
+    await setCurrentTime(currentTime);
   });
 
   it("Correct deployment and variable assignment", async function() {
@@ -335,7 +345,7 @@ contract("PricelessPositionManager", function(accounts) {
     );
 
     // Can't withdraw before time is up.
-    await pricelessPositionManager.setCurrentTime(startTime.toNumber() + withdrawalLiveness - 1);
+    await setCurrentTime(startTime.toNumber() + withdrawalLiveness - 1);
     assert(await didContractThrow(pricelessPositionManager.withdrawPassedRequest({ from: sponsor })));
 
     // The price moved against the sponsor, and they need to cancel. Ensure event is emitted.
@@ -350,9 +360,7 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.requestWithdrawal({ rawValue: withdrawalAmount }, { from: sponsor });
 
     // Can withdraw until after time is up.
-    await pricelessPositionManager.setCurrentTime(
-      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
-    );
+    await setCurrentTime((await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness);
 
     const sponsorInitialBalance = await collateral.balanceOf(sponsor);
     const expectedSponsorFinalBalance = sponsorInitialBalance.add(toBN(withdrawalAmount));
@@ -404,9 +412,7 @@ contract("PricelessPositionManager", function(accounts) {
       },
       { from: sponsor }
     );
-    await pricelessPositionManager.setCurrentTime(
-      (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
-    );
+    await setCurrentTime((await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness);
     resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
     truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
       return ev.sponsor == sponsor && ev.collateralAmount == toWei("125").toString();
@@ -514,14 +520,14 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
 
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() - 1);
+    await setCurrentTime(expirationTime.toNumber() - 1);
 
     // Even though the contract isn't expired yet, can't issue a withdrawal request that would expire beyond the position expiry time.
     assert(
       await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor }))
     );
 
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await setCurrentTime(expirationTime.toNumber());
 
     // All method calls should revert.
     assert(
@@ -558,7 +564,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await setCurrentTime(expirationTime.toNumber());
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     const expireResult = await pricelessPositionManager.expire({ from: other });
@@ -712,7 +718,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Move time in the contract forward by 1 second to capture a 1% fee.
     const startTime = await pricelessPositionManager.getCurrentTime();
-    await pricelessPositionManager.setCurrentTime(startTime.addn(1));
+    await setCurrentTime(startTime.addn(1));
 
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
     // Multiply by 2 because there are two active positions
@@ -765,7 +771,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber() + 1);
+    await setCurrentTime(expirationTime.toNumber() + 1);
 
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
     const expectedStoreBalance = (await collateral.balanceOf(store.address)).add(toBN(finalFeePaid));
@@ -884,7 +890,7 @@ contract("PricelessPositionManager", function(accounts) {
 
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = await pricelessPositionManager.getCurrentTime();
-      await pricelessPositionManager.setCurrentTime(startTime.addn(1));
+      await setCurrentTime(startTime.addn(1));
       await pricelessPositionManager.payFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
@@ -915,7 +921,7 @@ contract("PricelessPositionManager", function(accounts) {
     it("settleExpired() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
       // Expire the contract
       const expirationTime = await pricelessPositionManager.expirationTimestamp();
-      await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+      await setCurrentTime(expirationTime.toNumber());
       await pricelessPositionManager.expire({ from: other });
 
       // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
@@ -1013,7 +1019,7 @@ contract("PricelessPositionManager", function(accounts) {
       const initialCollateral = await collateral.balanceOf(sponsor);
       await pricelessPositionManager.requestWithdrawal({ rawValue: "12" }, { from: sponsor });
       startTime = await pricelessPositionManager.getCurrentTime();
-      await pricelessPositionManager.setCurrentTime(startTime.addn(withdrawalLiveness));
+      await setCurrentTime(startTime.addn(withdrawalLiveness));
       await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
       const finalCollateral = await collateral.balanceOf(sponsor);
 
@@ -1060,7 +1066,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await setCurrentTime(expirationTime.toNumber());
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     assert(await didContractThrow(pricelessPositionManager.expire({ from: other })));
@@ -1097,7 +1103,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await setCurrentTime(expirationTime.toNumber());
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     await pricelessPositionManager.expire({ from: other });
@@ -1155,7 +1161,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await setCurrentTime(expirationTime.toNumber());
     await pricelessPositionManager.expire({ from: other });
 
     // Settle the price to 1, meaning the overcollateralized sponsor has 50 units of excess collateral.
@@ -1194,7 +1200,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Some time passes and the UMA token holders decide that Emergency shutdown needs to occur.
     const shutdownTimestamp = expirationTimestamp - 1000;
-    await pricelessPositionManager.setCurrentTime(shutdownTimestamp);
+    await setCurrentTime(shutdownTimestamp);
 
     // Should revert if emergency shutdown initialized by non-FinancialContractsAdmin (governor).
     assert(await didContractThrow(pricelessPositionManager.emergencyShutdown({ from: other })));
@@ -1309,7 +1315,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Advance time until after expiration. Token holders and sponsors should now be able to start trying to settle.
     const expirationTime = await pricelessPositionManager.expirationTimestamp();
-    await pricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await setCurrentTime(expirationTime.toNumber());
 
     // Emergency shutdown should revert as post expiration.
     assert(await didContractThrow(financialContractsAdmin.callEmergencyShutdown(pricelessPositionManager.address)));
@@ -1343,7 +1349,7 @@ contract("PricelessPositionManager", function(accounts) {
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6);
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
-    let customPricelessPositionManager = await PricelessPositionManager.new(
+    pricelessPositionManager = await PricelessPositionManager.new(
       true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
@@ -1356,8 +1362,12 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: minSponsorTokens }, // _minSponsorTokens
       { from: contractDeployer }
     );
-    tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
-    // Create the initial customPricelessPositionManager position. 100 synthetics backed by 150 collat
+    tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+
+    // Sync the other ecosystem contracts' time with the pricelessPositionManager.
+    await setCurrentTime(await pricelessPositionManager.getCurrentTime());
+
+    // Create the initial pricelessPositionManager position. 100 synthetics backed by 150 collat
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18
 
     // however the collateral is now delimited by a different number of decimals. 150 * 1e6
@@ -1367,8 +1377,8 @@ contract("PricelessPositionManager", function(accounts) {
     let expectedSponsorTokens = toBN(createTokens);
     let expectedContractCollateral = toBN(createCollateral);
 
-    await USDCToken.approve(customPricelessPositionManager.address, createCollateral, { from: sponsor });
-    await customPricelessPositionManager.create(
+    await USDCToken.approve(pricelessPositionManager.address, createCollateral, { from: sponsor });
+    await pricelessPositionManager.create(
       { rawValue: createCollateral },
       { rawValue: createTokens },
       { from: sponsor }
@@ -1376,7 +1386,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // The balances minted should equal that expected from the create function.
     assert.equal(
-      (await USDCToken.balanceOf(customPricelessPositionManager.address)).toString(),
+      (await USDCToken.balanceOf(pricelessPositionManager.address)).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
@@ -1386,29 +1396,29 @@ contract("PricelessPositionManager", function(accounts) {
       .muln(1e6)
       .toString();
     expectedContractCollateral = expectedContractCollateral.add(toBN(depositCollateral));
-    await USDCToken.approve(customPricelessPositionManager.address, depositCollateral, { from: sponsor });
-    await customPricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
+    await USDCToken.approve(pricelessPositionManager.address, depositCollateral, { from: sponsor });
+    await pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
 
     // The balances should reflect the additional collateral added.
     assert.equal(
-      (await USDCToken.balanceOf(customPricelessPositionManager.address)).toString(),
+      (await USDCToken.balanceOf(pricelessPositionManager.address)).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal((await tokenCurrency.balanceOf(sponsor)).toString(), expectedSponsorTokens.toString());
     assert.equal(
-      (await customPricelessPositionManager.getCollateral(sponsor)).toString(),
+      (await pricelessPositionManager.getCollateral(sponsor)).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal(
-      (await customPricelessPositionManager.positions(sponsor)).tokensOutstanding.toString(),
+      (await pricelessPositionManager.positions(sponsor)).tokensOutstanding.toString(),
       expectedSponsorTokens.toString()
     );
     assert.equal(
-      (await customPricelessPositionManager.totalPositionCollateral()).toString(),
+      (await pricelessPositionManager.totalPositionCollateral()).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal(
-      (await customPricelessPositionManager.totalTokensOutstanding()).toString(),
+      (await pricelessPositionManager.totalTokensOutstanding()).toString(),
       expectedSponsorTokens.toString()
     );
 
@@ -1424,17 +1434,16 @@ contract("PricelessPositionManager", function(accounts) {
     });
 
     // Advance time until expiration. Token holders and sponsors should now be able to settle.
-    const expirationTime = await customPricelessPositionManager.expirationTimestamp();
-    await customPricelessPositionManager.setCurrentTime(expirationTime.toNumber());
+    await setCurrentTime(expirationTimestamp);
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
-    await customPricelessPositionManager.expire({ from: other });
+    await pricelessPositionManager.expire({ from: other });
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
     // Note that due to scaling the price is scaled by 1e6 to accommodate the value of the stock denominated in USDC.
     const redemptionPrice = toBN(1200000); // 1.2*1e6. a price of 1.2 denominated in USD scaling.
-    await mockOracle.pushPrice(priceFeedIdentifier, expirationTime.toNumber(), redemptionPrice.toString());
+    await mockOracle.pushPrice(priceFeedIdentifier, expirationTimestamp, redemptionPrice.toString());
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
@@ -1443,10 +1452,10 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
     // Approve the tokens to be moved by the contract and execute the settlement.
-    await tokenCurrency.approve(customPricelessPositionManager.address, tokenHolderInitialSynthetic, {
+    await tokenCurrency.approve(pricelessPositionManager.address, tokenHolderInitialSynthetic, {
       from: tokenHolder
     });
-    let settleExpiredResult = await customPricelessPositionManager.settleExpired({ from: tokenHolder });
+    let settleExpiredResult = await pricelessPositionManager.settleExpired({ from: tokenHolder });
     const tokenHolderFinalCollateral = await USDCToken.balanceOf(tokenHolder);
     const tokenHolderFinalSynthetic = await tokenCurrency.balanceOf(tokenHolder);
 
@@ -1481,10 +1490,10 @@ contract("PricelessPositionManager", function(accounts) {
     const sponsorInitialSynthetic = await tokenCurrency.balanceOf(sponsor);
 
     // Approve tokens to be moved by the contract and execute the settlement.
-    await tokenCurrency.approve(customPricelessPositionManager.address, sponsorInitialSynthetic, {
+    await tokenCurrency.approve(pricelessPositionManager.address, sponsorInitialSynthetic, {
       from: sponsor
     });
-    await customPricelessPositionManager.settleExpired({ from: sponsor });
+    await pricelessPositionManager.settleExpired({ from: sponsor });
     const sponsorFinalCollateral = await USDCToken.balanceOf(sponsor);
     const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
 
@@ -1506,7 +1515,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorFinalSynthetic, 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
-    const sponsorsPosition = await customPricelessPositionManager.positions(sponsor);
+    const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
     assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);

@@ -2701,6 +2701,8 @@ contract("TokenizedDerivative", function(accounts) {
       const secondsInTwoWeeks = 60 * 60 * 24 * 7 * numWeeks;
       const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + secondsInTwoWeeks;
       await deployedManualPriceFeed.setCurrentTime(latestTime);
+      const initialStoreTime = await deployedStore.getCurrentTime();
+      await deployedStore.setCurrentTime(latestTime);
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, web3.utils.toWei("1", "ether"));
       await derivativeContract.remargin({ from: sponsor });
 
@@ -2731,6 +2733,9 @@ contract("TokenizedDerivative", function(accounts) {
       storeBalance = web3.utils.toBN(await getMarginBalance(deployedStore.address));
       assert.equal(shortBalance.toString(), expectedShortBalance.toString());
       assert.equal(storeBalance.toString(), expectedStoreBalance.toString());
+
+      // Reset store time to not disturb other tests.
+      await deployedStore.setCurrentTime(initialStoreTime);
     });
   });
 });
