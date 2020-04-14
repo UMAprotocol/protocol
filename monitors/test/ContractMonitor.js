@@ -1,11 +1,15 @@
 const { toWei } = web3.utils;
+const winston = require("winston");
+const sinon = require("sinon");
 
 // Script to test
 const { ContractMonitor } = require("../ContractMonitor");
 
 // Helper client script
 const { ExpiringMultiPartyEventClient } = require("../../financial-templates-lib/ExpiringMultiPartyEventClient");
+const SpyTransport = require("../../financial-templates-lib/logger/SpyTransport");
 
+// Truffle artifacts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
@@ -14,6 +18,60 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 
 contract("ContractMonitor.js", function(accounts) {
+  // this.Logger.remove(winston.transports.Console);
+  // this.Logger.add(new spyLogger({ level: "info" }, { spy: this.spy }));
+
+  // console.log("spy.calledOnce", this.spy.calledOnce);
+
+  // // console.log("spy.calledOnce", this.spy);
+
+  // console.log(
+  //   "spy.called with",
+  //   this.spy.calledWith({
+  //     level: "info",
+  //     at: "MY YOLO",
+  //     message: "zzz",
+  //     price: 1.1,
+  //     lastLiquidationBlockNumber: 1231
+  //   })
+  // );
+  // console.log("this.spy", this.spy);
+
+  // sinon.assert.calledWith(this.spy, sinon.match.has("level", "info"));
+
+  // console.log("winston");
+  // console.log(winston);
+
+  console.log("LOGGING SPY");
+
+  // configure winston transport to use spy
+  const spy = sinon.spy();
+
+  const spyLogger = winston.createLogger({
+    level: "info",
+    transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+  });
+
+  spyLogger.info({
+    at: "MY YOLO",
+    message: "zzz",
+    price: 1.1,
+    lastLiquidationBlockNumber: 1231
+  });
+
+  console.log(
+    "CALLED WITH",
+    spy.calledWith({
+      level: "info",
+      at: "MY YOLO",
+      message: "zzz",
+      price: 1.1,
+      lastLiquidationBlockNumber: 12312
+    })
+  );
+
+  console.log("spy.getCalls(-1)", spy.getCall(-1));
+
   const tokenSponsor = accounts[0];
   const liquidator = accounts[1];
   const disputer = accounts[2];
@@ -38,12 +96,20 @@ contract("ContractMonitor.js", function(accounts) {
 
   before(async function() {
     collateralToken = await Token.new({ from: tokenSponsor });
-    await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
+    await collateralToken.addMember(1, tokenSponsor, {
+      from: tokenSponsor
+    });
     for (let i = 1; i < 5; i++) {
       // For each of the first 5 accounts used
-      await collateralToken.mint(accounts[i], toWei("100000"), { from: tokenSponsor });
-      await collateralToken.mint(accounts[i], toWei("100000"), { from: tokenSponsor });
-      await collateralToken.mint(accounts[i], toWei("100000"), { from: tokenSponsor });
+      await collateralToken.mint(accounts[i], toWei("100000"), {
+        from: tokenSponsor
+      });
+      await collateralToken.mint(accounts[i], toWei("100000"), {
+        from: tokenSponsor
+      });
+      await collateralToken.mint(accounts[i], toWei("100000"), {
+        from: tokenSponsor
+      });
     }
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -86,8 +152,12 @@ contract("ContractMonitor.js", function(accounts) {
 
     //   Bulk approve for all wallets
     for (let i = 1; i < 5; i++) {
-      await collateralToken.approve(emp.address, toWei("100000000"), { from: accounts[i] });
-      await syntheticToken.approve(emp.address, toWei("100000000"), { from: accounts[i] });
+      await collateralToken.approve(emp.address, toWei("100000000"), {
+        from: accounts[i]
+      });
+      await syntheticToken.approve(emp.address, toWei("100000000"), {
+        from: accounts[i]
+      });
     }
 
     // Create two positions for the sponsors
