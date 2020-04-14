@@ -11,7 +11,7 @@ library Exclusive {
     }
 
     function resetMember(RoleMembership storage roleMembership, address newMember) internal {
-        require(newMember != address(0x0));
+        require(newMember != address(0x0), "Cannot set an exclusive role to 0x0");
         roleMembership.member = newMember;
     }
 
