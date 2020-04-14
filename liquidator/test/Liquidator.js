@@ -306,7 +306,6 @@ contract("Liquidator.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
   });
 
-
   it.only("set up positions", async function() {
     console.log("seeding emp @", emp.address);
     for (let i = 1; i < 2; i++) {
