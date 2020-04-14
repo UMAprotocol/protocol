@@ -35,6 +35,8 @@ library Shared {
     }
 
     function addMember(RoleMembership storage roleMembership, address memberToAdd) internal {
+        // This require does not have an error message becuase it breaks the complilation if the optimizer is on.
+        // Ideally it should have one but this can only be enabled once this optimizer issue has been resolved.
         require(memberToAdd != address(0x0));
         roleMembership.members[memberToAdd] = true;
     }
@@ -138,7 +140,6 @@ abstract contract MultiRole {
      * managing role for `roleId`.
      */
     function addMember(uint roleId, address newMember) public onlyShared(roleId) onlyRoleManager(roleId) {
-        require(newMember != address(0x0));
         roles[roleId].sharedRoleMembership.addMember(newMember);
     }
 
