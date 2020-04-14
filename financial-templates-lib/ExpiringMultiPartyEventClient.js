@@ -7,11 +7,12 @@ const { LiquidationStatesEnum } = require("../common/Enums");
 // a clear separation of concerns and to limit the overhead from querying chain necessarily.
 // If no updateThreshold is specified then default to updating every 60 seconds.
 class ExpiringMultiPartyEventClient {
-  constructor(abi, web3, empAddress, updateThreshold = 60) {
+  constructor(logger, abi, web3, empAddress, updateThreshold = 60) {
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
 
     this.web3 = web3;
+    this.logger = logger;
 
     // EMP contract
     this.emp = new web3.eth.Contract(abi, empAddress);
@@ -29,7 +30,7 @@ class ExpiringMultiPartyEventClient {
   update = async () => {
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
-      Logger.debug({
+      this.logger.debug({
         at: "ExpiringMultiPartyEventClient",
         message: "EMP state update skipped",
         currentTime: currentTime,
@@ -40,7 +41,7 @@ class ExpiringMultiPartyEventClient {
     } else {
       await this._update();
       this.lastUpdateTimestamp = currentTime;
-      Logger.debug({
+      this.logger.debug({
         at: "ExpiringMultiPartyEventClient",
         message: "EMP state updated",
         lastUpdateTimestamp: this.lastUpdateTimestamp
@@ -53,7 +54,7 @@ class ExpiringMultiPartyEventClient {
     const currentTime = Math.floor(Date.now() / 1000);
     await this._update();
     this.lastUpdateTimestamp = currentTime;
-    Logger.debug({
+    this.logger.debug({
       at: "ExpiringMultiPartyEventClient",
       message: "EMP state force updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
@@ -85,7 +86,7 @@ class ExpiringMultiPartyEventClient {
       try {
         await this._update();
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "ExpiringMultiPartyEventClient",
           message: "client polling error",
           error: error

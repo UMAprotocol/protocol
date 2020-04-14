@@ -2,8 +2,8 @@ const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common
 const networkUtils = require("../common/PublicNetworks");
 
 class ContractMonitor {
-  constructor(Logger, eventClient, account, umaLiquidatorAddress, umaDisputerAddress) {
-    this.Logger = Logger;
+  constructor(logger, eventClient, account, umaLiquidatorAddress, umaDisputerAddress) {
+    this.logger = logger;
 
     // Bot and ecosystem accounts.
     this.account = account;
@@ -45,7 +45,7 @@ class ContractMonitor {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime.toString());
 
-    this.Logger.debug({
+    this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
       price: priceFeed,
@@ -83,7 +83,7 @@ class ContractMonitor {
         "%. tx: " +
         createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
 
-      this.Logger.info({
+      this.logger.info({
         at: "ContractMonitor",
         message: "Liquidation Alert 🧙‍♂️!",
         mrkdwn: mrkdwn
@@ -96,7 +96,7 @@ class ContractMonitor {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime.toString());
 
-    this.Logger.debug({
+    this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute events",
       price: priceFeed,
@@ -125,7 +125,7 @@ class ContractMonitor {
         ". tx: " +
         createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
 
-      this.Logger.info({
+      this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Alert 👻!",
         mrkdwn: mrkdwn
@@ -138,7 +138,7 @@ class ContractMonitor {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime.toString());
 
-    this.Logger.debug({
+    this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute settlement events",
       price: priceFeed,
@@ -168,7 +168,7 @@ class ContractMonitor {
         (event.disputeSucceeded == true ? "success" : "failed") +
         ". tx: " +
         createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
-      this.Logger.info({
+      this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
         mrkdwn: mrkdwn

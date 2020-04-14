@@ -18,60 +18,6 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 
 contract("ContractMonitor.js", function(accounts) {
-  // this.Logger.remove(winston.transports.Console);
-  // this.Logger.add(new spyLogger({ level: "info" }, { spy: this.spy }));
-
-  // console.log("spy.calledOnce", this.spy.calledOnce);
-
-  // // console.log("spy.calledOnce", this.spy);
-
-  // console.log(
-  //   "spy.called with",
-  //   this.spy.calledWith({
-  //     level: "info",
-  //     at: "MY YOLO",
-  //     message: "zzz",
-  //     price: 1.1,
-  //     lastLiquidationBlockNumber: 1231
-  //   })
-  // );
-  // console.log("this.spy", this.spy);
-
-  // sinon.assert.calledWith(this.spy, sinon.match.has("level", "info"));
-
-  // console.log("winston");
-  // console.log(winston);
-
-  console.log("LOGGING SPY");
-
-  // configure winston transport to use spy
-  const spy = sinon.spy();
-
-  const spyLogger = winston.createLogger({
-    level: "info",
-    transports: [new SpyTransport({ level: "info" }, { spy: spy })]
-  });
-
-  spyLogger.info({
-    at: "MY YOLO",
-    message: "zzz",
-    price: 1.1,
-    lastLiquidationBlockNumber: 1231
-  });
-
-  console.log(
-    "CALLED WITH",
-    spy.calledWith({
-      level: "info",
-      at: "MY YOLO",
-      message: "zzz",
-      price: 1.1,
-      lastLiquidationBlockNumber: 12312
-    })
-  );
-
-  console.log("spy.getCalls(-1)", spy.getCall(-1));
-
   const tokenSponsor = accounts[0];
   const liquidator = accounts[1];
   const disputer = accounts[2];
@@ -144,9 +90,18 @@ contract("ContractMonitor.js", function(accounts) {
       minSponsorTokens: { rawValue: toWei("1") }
     };
 
+    // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
+    // logs the correct text based on interactions with the emp.
+    const spy = sinon.spy();
+
+    const spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
     emp = await ExpiringMultiParty.new(constructorParams);
-    eventClient = new ExpiringMultiPartyEventClient(ExpiringMultiParty.abi, web3, emp.address);
-    contractMonitor = new ContractMonitor(eventClient, accounts[0], accounts[1]);
+    eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, accounts[0], accounts[1]);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -182,7 +137,7 @@ contract("ContractMonitor.js", function(accounts) {
     await eventClient._update();
 
     console.log("calling");
-    awaitcontractMonitor.checkForNewLiquidations(time => toWei("1"));
+    await contractMonitor.checkForNewLiquidations(time => toWei("1"));
     console.log("called");
     // // Compare with expected processed event object
     // assert.deepStrictEqual(
