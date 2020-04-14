@@ -4,7 +4,10 @@
 
 pragma solidity ^0.6.0;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
 import "./MultiRole.sol";
 
 
@@ -12,13 +15,15 @@ import "./MultiRole.sol";
  * @title Base contract that allows a specific role to withdraw any ETH and/or ERC20 tokens that the contract holds.
  */
 abstract contract Withdrawable is MultiRole {
+    using SafeERC20 for IERC20;
+
     uint private _roleId;
 
     /**
      * @notice Withdraws ETH from the contract.
      */
     function withdraw(uint amount) external onlyRoleHolder(_roleId) {
-        msg.sender.transfer(amount);
+        Address.sendValue(msg.sender, amount);
     }
 
     /**
@@ -26,7 +31,7 @@ abstract contract Withdrawable is MultiRole {
      */
     function withdrawErc20(address erc20Address, uint amount) external onlyRoleHolder(_roleId) {
         IERC20 erc20 = IERC20(erc20Address);
-        require(erc20.transfer(msg.sender, amount));
+        erc20.safeTransfer(msg.sender, amount);
     }
 
     /**
@@ -41,10 +46,10 @@ abstract contract Withdrawable is MultiRole {
 
     /**
      * @notice Internal method that allows derived contracts to choose the role for withdrawal.
-     * @dev The role `roleId` must exist. Either this method or `createWithdrawRole` must be called by the derived class
-     * for this contract to function properly.
+     * @dev The role `roleId` must exist. Either this method or `createWithdrawRole` must be
+     * called by the derived class for this contract to function properly.
      */
-    function setWithdrawRole(uint roleId) internal {
+    function setWithdrawRole(uint roleId) internal onlyValidRole(roleId) {
         _roleId = roleId;
     }
 }

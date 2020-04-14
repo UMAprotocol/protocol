@@ -2,6 +2,8 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
@@ -11,10 +13,11 @@ import "../interfaces/StoreInterface.sol";
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
-contract Store is StoreInterface, MultiRole, Withdrawable {
+contract Store is StoreInterface, Withdrawable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint;
+    using SafeERC20 for IERC20;
 
     /****************************************
      *    INTERNAL VARIABLES AND STORAGE    *
@@ -33,6 +36,8 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      ****************************************/
 
     event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
+    event NewWeeklyDelayFee(FixedPoint.Unsigned newWeeklyDelayFee);
+    event NewFinalFee(FixedPoint.Unsigned newFinalFee);
 
     /**
      * @notice Construct the Store contract.
@@ -68,7 +73,7 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
         IERC20 erc20 = IERC20(erc20Address);
         uint authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(authorizedAmount > 0);
-        require(erc20.transferFrom(msg.sender, address(this), authorizedAmount));
+        erc20.safeTransferFrom(msg.sender, address(this), authorizedAmount);
     }
 
     /**
@@ -133,17 +138,19 @@ contract Store is StoreInterface, MultiRole, Withdrawable {
      */
     function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
         weeklyDelayFee = newWeeklyDelayFee;
+        emit NewWeeklyDelayFee(newWeeklyDelayFee);
     }
 
     /**
      * @notice Sets a new final fee for a particular currency.
      * @param currency defines the token currency used to pay the final fee.
-     * @param finalFee final fee amount.
+     * @param newFinalFee final fee amount.
      */
-    function setFinalFee(address currency, FixedPoint.Unsigned memory finalFee)
+    function setFinalFee(address currency, FixedPoint.Unsigned memory newFinalFee)
         public
         onlyRoleHolder(uint(Roles.Owner))
     {
-        finalFees[currency] = finalFee;
+        finalFees[currency] = newFinalFee;
+        emit NewFinalFee(newFinalFee);
     }
 }
