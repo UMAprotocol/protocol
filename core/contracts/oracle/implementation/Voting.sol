@@ -343,7 +343,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @dev This function can be called multiple times but each round will only every have one snapshot at the
      * time of calling `_freezeRoundVariables`.
      */
-    function snapshotCurrentRound() external onlyIfNotMigrated() {
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function snapshotCurrentRound() external override onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot snapshot in commit phase");
 
