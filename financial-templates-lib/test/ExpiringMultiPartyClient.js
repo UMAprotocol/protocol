@@ -32,7 +32,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   };
 
   before(async function() {
-    timer = await Timer.new();
     collateralToken = await Token.new({ from: sponsor1 });
     await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
     await collateralToken.mint(sponsor1, toWei("100000"), { from: sponsor1 });
