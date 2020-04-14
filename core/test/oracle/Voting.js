@@ -648,7 +648,7 @@ contract("Voting", function(accounts) {
     await voting.retrieveRewards(account4, newRoundId, req);
   });
 
-  it("Basic Snapshotting from direct snapshot call", async function() {
+  it("Basic Snapshotting", async function() {
     // Snapshotting can occur in one of two ways:
     // 1) Someone calls the dedicated `snapshotCurrentRound` function which locks in the current token balances,
     // inflation and GAT.
@@ -692,6 +692,9 @@ contract("Voting", function(accounts) {
     // Move to the reveal phase, where the snapshot should be taken.
     await moveToNextPhase(voting);
 
+    // Cant reveal vote until snapshot is taken. Any reveal action should revert.
+    assert(await didContractThrow(voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 })));
+
     // Directly snapshot the current round to lock in token balances.
     // The snapshotId of the current round should be zero before initiating the snapshot
     assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
@@ -708,74 +711,6 @@ contract("Voting", function(accounts) {
     await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
 
     // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been locked into the snapshot. Increasing the GAT to 90% (requiring close to unanimous agreement) should therefore have no effect.
-    await setNewGatPercentage(web3.utils.toWei("0.9", "ether"));
-
-    // Do the final two reveals.
-    await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
-    await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
-
-    // The resulting price should be the winningPrice that account3 voted for.
-    await moveToNextRound(voting);
-    assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredContract })).toString(),
-      winningPrice.toString()
-    );
-
-    // Reset the GAT to 5% for subsequent rounds.
-    await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
-  });
-
-  it("Basic Snapshotting from first reveal", async function() {
-    const identifier = web3.utils.utf8ToHex("basic-snapshotting2");
-    const time = "1000";
-
-    // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
-
-    // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
-    await moveToNextRound(voting);
-
-    // Commit votes.
-
-    // account3 starts with only 1/3 of the tokens, but votes for 123.
-    const winningPrice = 123;
-    const salt3 = getRandomUnsignedInt();
-    const hash3 = web3.utils.soliditySha3(winningPrice, salt3);
-    await voting.commitVote(identifier, time, hash3, { from: account3 });
-
-    // Both account 2 and 3, who start with 2/3 of the tokens, vote for 456.
-    const losingPrice = 456;
-
-    const salt1 = getRandomUnsignedInt();
-    const hash1 = web3.utils.soliditySha3(losingPrice, salt1);
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
-
-    const salt2 = getRandomUnsignedInt();
-    const hash2 = web3.utils.soliditySha3(losingPrice, salt2);
-    await voting.commitVote(identifier, time, hash2, { from: account2 });
-
-    // All 3 accounts should have equal balances to start, so for winningPrice to win, account1 or account2 must
-    // transfer more than half of their balance to account3 before the snapshot.
-    await votingToken.transfer(account3, web3.utils.toWei("24000000", "ether"), { from: account1 });
-
-    // Move to the reveal phase, where the snapshot should be taken.
-    await moveToNextPhase(voting);
-
-    // account2's reveal should create a snapshot since it's the first action of the reveal.
-    // The snapshotId of the current round should be zero before initiating the snapshot
-    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
-
-    await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
-
-    // The snapshotId of the current round should be non zero after the snapshot is taken
-    assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
-
-    // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
-    await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
-
-    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been locked into
-    // the snapshot. Increasing the GAT to 90% (requiring close to unanimous agreement) should therefore have no effect.
     await setNewGatPercentage(web3.utils.toWei("0.9", "ether"));
 
     // Do the final two reveals.

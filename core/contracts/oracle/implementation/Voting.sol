@@ -370,6 +370,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // an old commit after the round is over.
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
 
+        // A global state snapshot needs to be taken before a vote can be revealed.
+        require(rounds[roundId].snapshotId != 0, "Cant reveal before snapshot");
+
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
@@ -380,10 +383,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // Committed hash doesn't match revealed price and salt
         require(keccak256(abi.encode(price, salt)) == voteSubmission.commit, "Invalid commit hash & salt");
         delete voteSubmission.commit;
-
-        // Create a snapshot iff this was not called seperately by the snapshotCurrentRound function.
-        // This will only snapshot on the first voter to reveal.
-        _freezeRoundVariables(roundId);
 
         // Get the frozen snapshotId.
         uint snapshotId = rounds[roundId].snapshotId;
