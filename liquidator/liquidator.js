@@ -5,7 +5,7 @@ const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 class Liquidator {
   constructor(expiringMultiPartyClient, gasEstimator, account) {
-    this.account = account
+    this.account = account;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
