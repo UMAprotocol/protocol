@@ -1236,7 +1236,7 @@ contract("Voting", function(accounts) {
     // Commit vote.
     const price = 123;
     const salt = getRandomUnsignedInt();
-    const hash4 = computeVoteHash({
+    let hash4 = computeVoteHash({
       price,
       salt,
       account: account4,
@@ -1273,7 +1273,7 @@ contract("Voting", function(accounts) {
     currentRoundId = await voting.getCurrentRoundId();
     // Since none of the whales voted, the price couldn't be resolved.
 
-    // Now the whale votes and the vote resolves.
+    // Now the whale and account4 vote and the vote resolves.
     const hash1 = computeVoteHash({
       price,
       salt,
@@ -1282,9 +1282,20 @@ contract("Voting", function(accounts) {
       roundId: currentRoundId,
       identifier
     });
+    const wrongPrice = 124;
+    hash4 = computeVoteHash({
+      price: wrongPrice,
+      salt,
+      account: account4,
+      time,
+      roundId: currentRoundId,
+      identifier
+    });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
+    result = await voting.commitVote(identifier, time, hash4, { from: account4 });
     await moveToNextPhase(voting);
     await voting.revealVote(identifier, time, price, salt, { from: account1 });
+    await voting.revealVote(identifier, time, wrongPrice, salt, { from: account4 });
     const initialTotalSupply = await votingToken.totalSupply();
     const roundId = await voting.getCurrentRoundId();
     await moveToNextRound(voting);
@@ -1310,9 +1321,18 @@ contract("Voting", function(accounts) {
       );
     });
 
-    // RewardsRetrieved event gets emitted for every reward retrieval that's attempted, even if no tokens are minted.
+    // RewardsRetrieved event gets emitted for every reward retrieval that's attempted, even if no tokens are minted
+    // because the vote was wrong.
     result = await voting.retrieveRewards(account4, roundId, [{ identifier, time }]);
-    truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => true);
+    truffleAssert.eventEmitted(result, "RewardsRetrieved");
+
+    // No duplicate events if the same user tries to claim rewards again.
+    result = await voting.retrieveRewards(account1, roundId, [{ identifier, time }]);
+    truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
+
+    // No RewardsRetrieved event if the user didn't vote at all.
+    result = await voting.retrieveRewards(account3, roundId, [{ identifier, time }]);
+    truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
   });
 
   it("Commit and persist the encrypted price", async function() {
