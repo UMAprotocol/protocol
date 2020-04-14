@@ -143,83 +143,83 @@ contract("ContractMonitor.js", function(accounts) {
     // console.log()
   });
 
-//   it("Return Dispute Events", async function() {
-//     // Create liquidation to liquidate sponsor2 from sponsor1
-//     await emp.createLiquidation(
-//       sponsor1,
-//       { rawValue: toWei("99999") },
-//       { rawValue: toWei("100") },
-//       { from: liquidator }
-//     );
+  //   it("Return Dispute Events", async function() {
+  //     // Create liquidation to liquidate sponsor2 from sponsor1
+  //     await emp.createLiquidation(
+  //       sponsor1,
+  //       { rawValue: toWei("99999") },
+  //       { rawValue: toWei("100") },
+  //       { from: liquidator }
+  //     );
 
-//     const txObject = await emp.dispute("0", sponsor1, { from: sponsor2 });
+  //     const txObject = await emp.dispute("0", sponsor1, { from: sponsor2 });
 
-//     // Update the eventClient and check it has the dispute event stored correctly
-//     await eventClient.clearState();
-//     await eventClient._update();
+  //     // Update the eventClient and check it has the dispute event stored correctly
+  //     await eventClient.clearState();
+  //     await eventClient._update();
 
-//     // Compare with expected processed event object
-//     assert.deepStrictEqual(
-//       [
-//         {
-//           transactionHash: txObject.tx,
-//           blockNumber: txObject.receipt.blockNumber,
-//           sponsor: sponsor1,
-//           liquidator: liquidator,
-//           disputer: sponsor2,
-//           liquidationId: "0",
-//           disputeBondAmount: toWei("1") // 10% of the liquidated position's collateral.
-//         }
-//       ],
-//       eventClient.getAllDisputeEvents()
-//     );
-//   });
-//   it("Return Dispute Settlement Events", async function() {
-//     // Create liquidation to liquidate sponsor2 from sponsor1
-//     const liquidationTime = (await emp.getCurrentTime()).toNumber();
-//     await emp.createLiquidation(
-//       sponsor1,
-//       { rawValue: toWei("99999") },
-//       { rawValue: toWei("100") },
-//       { from: liquidator }
-//     );
+  //     // Compare with expected processed event object
+  //     assert.deepStrictEqual(
+  //       [
+  //         {
+  //           transactionHash: txObject.tx,
+  //           blockNumber: txObject.receipt.blockNumber,
+  //           sponsor: sponsor1,
+  //           liquidator: liquidator,
+  //           disputer: sponsor2,
+  //           liquidationId: "0",
+  //           disputeBondAmount: toWei("1") // 10% of the liquidated position's collateral.
+  //         }
+  //       ],
+  //       eventClient.getAllDisputeEvents()
+  //     );
+  //   });
+  //   it("Return Dispute Settlement Events", async function() {
+  //     // Create liquidation to liquidate sponsor2 from sponsor1
+  //     const liquidationTime = (await emp.getCurrentTime()).toNumber();
+  //     await emp.createLiquidation(
+  //       sponsor1,
+  //       { rawValue: toWei("99999") },
+  //       { rawValue: toWei("100") },
+  //       { from: liquidator }
+  //     );
 
-//     // Dispute the position from the second sponsor
-//     await emp.dispute("0", sponsor1, {
-//       from: sponsor2
-//     });
+  //     // Dispute the position from the second sponsor
+  //     await emp.dispute("0", sponsor1, {
+  //       from: sponsor2
+  //     });
 
-//     // Advance time and settle
-//     const timeAfterLiquidationLiveness = liquidationTime + 10;
-//     await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-//     await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
+  //     // Advance time and settle
+  //     const timeAfterLiquidationLiveness = liquidationTime + 10;
+  //     await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
+  //     await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
 
-//     // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
-//     // disputed liquidation.
-//     const disputePrice = toWei("1.6");
-//     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
+  //     // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
+  //     // disputed liquidation.
+  //     const disputePrice = toWei("1.6");
+  //     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
 
-//     const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
-//     await eventClient.clearState();
+  //     const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+  //     await eventClient.clearState();
 
-//     // Update the eventClient and check it has the dispute event stored correctly
-//     await eventClient._update();
+  //     // Update the eventClient and check it has the dispute event stored correctly
+  //     await eventClient._update();
 
-//     // Compare with expected processed event object
-//     assert.deepStrictEqual(
-//       [
-//         {
-//           transactionHash: txObject.tx,
-//           blockNumber: txObject.receipt.blockNumber,
-//           caller: liquidator,
-//           sponsor: sponsor1,
-//           liquidator: liquidator,
-//           disputer: sponsor2,
-//           liquidationId: "0",
-//           disputeSucceeded: false // Settlement price makes liquidation valid
-//         }
-//       ],
-//       eventClient.getAllDisputeSettlementEvents()
-//     );
-//   });
+  //     // Compare with expected processed event object
+  //     assert.deepStrictEqual(
+  //       [
+  //         {
+  //           transactionHash: txObject.tx,
+  //           blockNumber: txObject.receipt.blockNumber,
+  //           caller: liquidator,
+  //           sponsor: sponsor1,
+  //           liquidator: liquidator,
+  //           disputer: sponsor2,
+  //           liquidationId: "0",
+  //           disputeSucceeded: false // Settlement price makes liquidation valid
+  //         }
+  //       ],
+  //       eventClient.getAllDisputeSettlementEvents()
+  //     );
+  //   });
 });
