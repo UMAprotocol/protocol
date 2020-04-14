@@ -14,7 +14,7 @@ class Liquidator {
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
 
-    // Instance of the expiring multiparty to perform on-chain liquidations
+    // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
   }
 
@@ -22,7 +22,7 @@ class Liquidator {
   // If a client has recently updated then it will do nothing.
   update = async () => {
     await this.empClient.update();
-    await this.gasEstimator.update()
+    await this.gasEstimator.update();
   };
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
