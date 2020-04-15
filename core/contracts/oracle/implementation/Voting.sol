@@ -163,7 +163,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _identifierWhitelist defines the identifiers that can have have synthetics created against.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
-     * @param _timerAddress Contract that stores the current time in a testing environment. Should be set to 0x0 for production environments that use live time.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
         uint _phaseLength,
