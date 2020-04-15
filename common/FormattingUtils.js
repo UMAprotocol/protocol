@@ -1,3 +1,5 @@
+const networkUtils = require("../common/PublicNetworks");
+
 const BigNumber = require("bignumber.js");
 
 const formatDate = (timestampInSeconds, web3) => {
@@ -40,16 +42,15 @@ const createFormatFunction = (web3, numDisplayedDecimals) => {
 };
 
 // generate a etherscan link prefix
-function createEtherscanLinkFromtx(web3, networkUtils) {
+function createEtherscanLinkFromtx(web3) {
   // Construct etherscan link based on network
-  // const networkId = web3.networkId;
-  const networkId = 1;
+  const networkId = web3.networkId;
   let url;
   if (networkUtils[networkId]) {
     url = `${networkUtils[networkId].etherscan}`;
   } else {
-    // No URL for localhost, just show transaction ID
-    url = "";
+    // Default to mainnet, even though it won't work for ganache runs.
+    url = "https://etherscan.io/";
   }
   return url;
 }
@@ -62,7 +63,7 @@ function createShortHexString(hex) {
 
 // Take in either a transaction or an account and generate an etherscan link for the corresponding
 // network formatted in markdown.
-function createEtherscanLinkMarkdown(web3, networkUtils, hex) {
+function createEtherscanLinkMarkdown(web3, hex) {
   let shortURLString = createShortHexString(hex);
 
   // Transaction hash

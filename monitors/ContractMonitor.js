@@ -1,7 +1,6 @@
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const networkUtils = require("../common/PublicNetworks");
 
 class ContractMonitor {
   constructor(expiringMultiPartyEventClient, account, umaLiquidatorAddress, umaDisputerAddress) {
@@ -60,14 +59,14 @@ class ContractMonitor {
       // initiated liquidation for for [x][collateral currency]of sponsor collateral
       // backing[n] tokens - sponsor collateralization was[y] %.  [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.liquidator) +
+        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
         (this.umaLiquidatorAddress == event.liquidator ? " (UMA liquidator bot)" : "") +
         " initiated liquidation for " +
         this.formatDecimalString(event.liquidatedCollateral) +
         " " +
         this.collateralCurrencySymbol +
         " of sponsor " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.sponsor) +
+        createEtherscanLinkMarkdown(this.web3, event.sponsor) +
         " collateral backing " +
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
@@ -77,7 +76,7 @@ class ContractMonitor {
           this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, priceFunction)
         ) +
         "%. tx: " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
+        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
 
       Logger.info({
         at: "ContractMonitor",
@@ -106,17 +105,17 @@ class ContractMonitor {
       // Dispute alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // initiated dispute [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.disputer) +
+        createEtherscanLinkMarkdown(this.web3, event.disputer) +
         (this.umaDisputerAddress == event.disputer ? " (UMA dispute bot)" : "") +
         " initiated dispute against liquidator " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.liquidator) +
+        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
         (this.umaLiquidatorAddress == event.liquidator ? " (UMA liquidator bot)" : "") +
         " with a dispute bond of " +
         this.formatDecimalString(event.disputeBondAmount) +
         " " +
         this.collateralCurrencySymbol +
         ". tx: " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
+        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
 
       Logger.info({
         at: "ContractMonitor",
@@ -149,15 +148,15 @@ class ContractMonitor {
       // it’s our bot]has resolved as [success or failed] [etherscan link to txn]
       const mrkdwn =
         "Dispute between liquidator " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.liquidator) +
+        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
         (this.umaLiquidatorAddress == event.liquidator ? "(UMA liquidator bot)" : "") +
         " and disputer " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.disputer) +
+        createEtherscanLinkMarkdown(this.web3, event.disputer) +
         (this.umaDisputerAddress == event.disputer ? "(UMA dispute bot)" : "") +
         " has been resolved as " +
         (event.disputeSucceeded == true ? "success" : "failed") +
         ". tx: " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
+        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
       Logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
