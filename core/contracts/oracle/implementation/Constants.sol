@@ -4,7 +4,7 @@ pragma solidity ^0.6.0;
 /**
  * @title Stores common interface names used through the protocol through registration in the Finder.
  */
-library InterfaceRegistry {
+library OracleInterfaces {
     bytes32 public constant Oracle = "Oracle";
     bytes32 public constant IdentifierWhitelist = "IdentifierWhitelist";
     bytes32 public constant Store = "Store";

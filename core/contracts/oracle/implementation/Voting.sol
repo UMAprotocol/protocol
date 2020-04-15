@@ -13,7 +13,7 @@ import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
 import "./VotingToken.sol";
-import "./InterfaceRegistry.sol";
+import "./Constants.sol";
 
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -194,7 +194,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         if (migratedAddress != address(0)) {
             require(msg.sender == migratedAddress);
         } else {
-            Registry registry = Registry(finder.getImplementationAddress(InterfaceRegistry.Registry));
+            Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
             require(registry.isContractRegistered(msg.sender));
         }
         _;

@@ -12,7 +12,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
-import "../../oracle/implementation/InterfaceRegistry.sol";
+import "../../oracle/implementation/Constants.sol";
 
 import "./TokenFactory.sol";
 import "./FeePayer.sol";
@@ -575,19 +575,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
-        return IdentifierWhitelistInterface(finder.getImplementationAddress(InterfaceRegistry.IdentifierWhitelist));
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
     function _getOracle() internal view returns (OracleInterface) {
-        return OracleInterface(finder.getImplementationAddress(InterfaceRegistry.Oracle));
+        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function _getStoreAddress() internal view returns (address) {
-        return finder.getImplementationAddress(InterfaceRegistry.Store);
+        return finder.getImplementationAddress(OracleInterfaces.Store);
     }
 
     function _getFinancialContractsAdminAddress() internal view returns (address) {
-        return finder.getImplementationAddress(InterfaceRegistry.FinancialContractsAdmin);
+        return finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 
     function _requestOraclePrice(uint requestedTime) internal {

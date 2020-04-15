@@ -6,7 +6,7 @@ import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
-import "./InterfaceRegistry.sol";
+import "./Constants.sol";
 
 
 /**
@@ -98,6 +98,6 @@ contract DesignatedVoting is Withdrawable {
     }
 
     function _getVotingAddress() private view returns (VotingInterface) {
-        return VotingInterface(finder.getImplementationAddress(InterfaceRegistry.Oracle));
+        return VotingInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }

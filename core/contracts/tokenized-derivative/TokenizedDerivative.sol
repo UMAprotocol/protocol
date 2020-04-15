@@ -9,7 +9,7 @@ import "../oracle/interfaces/OracleInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../oracle/interfaces/FinderInterface.sol";
-import "../oracle/implementation/InterfaceRegistry.sol";
+import "../oracle/implementation/Constants.sol";
 import "./PriceFeedInterface.sol";
 import "./ReturnCalculatorInterface.sol";
 
@@ -523,19 +523,19 @@ library TokenizedDerivativeUtils {
     }
 
     function _getOracleAddress(TDS.Storage storage s) internal view returns (address) {
-        return s.externalAddresses.finder.getImplementationAddress(InterfaceRegistry.Oracle);
+        return s.externalAddresses.finder.getImplementationAddress(OracleInterfaces.Oracle);
     }
 
     function _getIdentifierWhitelistAddress(TDS.Storage storage s) internal view returns (address) {
-        return s.externalAddresses.finder.getImplementationAddress(InterfaceRegistry.IdentifierWhitelist);
+        return s.externalAddresses.finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist);
     }
 
     function _getStoreAddress(TDS.Storage storage s) internal view returns (address) {
-        return s.externalAddresses.finder.getImplementationAddress(InterfaceRegistry.Store);
+        return s.externalAddresses.finder.getImplementationAddress(OracleInterfaces.Store);
     }
 
     function _getAdminAddress(TDS.Storage storage s) internal view returns (address) {
-        return s.externalAddresses.finder.getImplementationAddress(InterfaceRegistry.FinancialContractsAdmin);
+        return s.externalAddresses.finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 
     function _calcNewTokenStateAndBalance(TDS.Storage storage s)
