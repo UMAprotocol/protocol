@@ -184,25 +184,24 @@ const getLatestEvent = async (eventName, request, roundId, account, votingContra
     fromBlock: 0,
     filter: { identifier: request.identifier, roundId: roundId.toString(), voter: account.toString() }
   });
-  // Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
+  // Sort descending. Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
   events.sort((a, b) => {
     if (a.blockNumber !== b.blockNumber) {
-      return a.blockNumber - b.blockNumber;
+      return b.blockNumber - a.blockNumber;
     }
 
     if (a.transactionIndex !== b.transactionIndex) {
-      return a.transactionIndex - b.transactionIndex;
+      return b.transactionIndex - a.transactionIndex;
     }
 
-    return a.logIndex - b.logIndex;
+    return b.logIndex - a.logIndex;
   });
-  let matchedEvent = null;
   for (const ev of events) {
     if (ev.returnValues.time.toString() === request.time.toString()) {
-      matchedEvent = ev.returnValues;
+      return ev.returnValues;
     }
   }
-  return matchedEvent;
+  return null;
 };
 
 module.exports = {
