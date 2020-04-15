@@ -9,7 +9,7 @@ abstract contract Testable {
     // modified.
     bool public isTest;
 
-    uint private currentTime;
+    uint256 private currentTime;
 
     constructor(bool _isTest) internal {
         isTest = _isTest;
@@ -30,7 +30,7 @@ abstract contract Testable {
      * @notice Sets the current time.
      * @dev Will revert if not running in test mode.
      */
-    function setCurrentTime(uint _time) external onlyIfTest {
+    function setCurrentTime(uint256 _time) external onlyIfTest {
         currentTime = _time;
     }
 

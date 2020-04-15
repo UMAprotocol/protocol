@@ -9,15 +9,15 @@ import "../Governor.sol";
 contract GovernorTest is Governor {
     constructor() public Governor(address(0), true) {}
 
-    function addPrefix(bytes32 input, bytes32 prefix, uint prefixLength) external pure returns (bytes32 output) {
+    function addPrefix(bytes32 input, bytes32 prefix, uint256 prefixLength) external pure returns (bytes32 output) {
         return _addPrefix(input, prefix, prefixLength);
     }
 
-    function uintToUtf8(uint v) external pure returns (bytes32 ret) {
+    function uintToUtf8(uint256 v) external pure returns (bytes32 ret) {
         return _uintToUtf8(v);
     }
 
-    function constructIdentifier(uint id) external pure returns (bytes32 identifier) {
+    function constructIdentifier(uint256 id) external pure returns (bytes32 identifier) {
         return _constructIdentifier(id);
     }
 }

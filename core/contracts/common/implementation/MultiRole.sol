@@ -43,7 +43,7 @@ library Shared {
     }
 
     function init(RoleMembership storage roleMembership, address[] memory initialMembers) internal {
-        for (uint i = 0; i < initialMembers.length; i++) {
+        for (uint256 i = 0; i < initialMembers.length; i++) {
             addMember(roleMembership, initialMembers[i]);
         }
     }
@@ -60,18 +60,18 @@ abstract contract MultiRole {
     enum RoleType { Invalid, Exclusive, Shared }
 
     struct Role {
-        uint managingRole;
+        uint256 managingRole;
         RoleType roleType;
         Exclusive.RoleMembership exclusiveRoleMembership;
         Shared.RoleMembership sharedRoleMembership;
     }
 
-    mapping(uint => Role) private roles;
+    mapping(uint256 => Role) private roles;
 
     /**
      * @notice Reverts unless the caller is a member of the specified roleId.
      */
-    modifier onlyRoleHolder(uint roleId) {
+    modifier onlyRoleHolder(uint256 roleId) {
         require(holdsRole(roleId, msg.sender), "Sender does not hold required role");
         _;
     }
@@ -79,7 +79,7 @@ abstract contract MultiRole {
     /**
      * @notice Reverts unless the caller is a member of the manager role for the specified roleId.
      */
-    modifier onlyRoleManager(uint roleId) {
+    modifier onlyRoleManager(uint256 roleId) {
         require(holdsRole(roles[roleId].managingRole, msg.sender), "Can only be called by a role manager");
         _;
     }
@@ -87,7 +87,7 @@ abstract contract MultiRole {
     /**
      * @notice Reverts unless the roleId represents an initialized, exclusive roleId.
      */
-    modifier onlyExclusive(uint roleId) {
+    modifier onlyExclusive(uint256 roleId) {
         require(roles[roleId].roleType == RoleType.Exclusive, "Must be called on an initialized Exclusive role");
         _;
     }
@@ -95,7 +95,7 @@ abstract contract MultiRole {
     /**
      * @notice Reverts unless the roleId represents an initialized, shared roleId.
      */
-    modifier onlyShared(uint roleId) {
+    modifier onlyShared(uint256 roleId) {
         require(roles[roleId].roleType == RoleType.Shared, "Must be called on an initialized Shared role");
         _;
     }
@@ -104,14 +104,14 @@ abstract contract MultiRole {
      * @notice Whether `memberToCheck` is a member of roleId.
      * @dev Reverts if roleId does not correspond to an initialized role.
      */
-    function holdsRole(uint roleId, address memberToCheck) public view returns (bool) {
+    function holdsRole(uint256 roleId, address memberToCheck) public view returns (bool) {
         Role storage role = roles[roleId];
         if (role.roleType == RoleType.Exclusive) {
             return role.exclusiveRoleMembership.isMember(memberToCheck);
         } else if (role.roleType == RoleType.Shared) {
             return role.sharedRoleMembership.isMember(memberToCheck);
         }
-        require(false, "Invalid roleId");
+        revert("Invalid roleId");
     }
 
     /**
@@ -119,7 +119,7 @@ abstract contract MultiRole {
      * @dev Reverts if the caller is not a member of the managing role for `roleId` or if `roleId` is not an
      * initialized, exclusive role.
      */
-    function resetMember(uint roleId, address newMember) public onlyExclusive(roleId) onlyRoleManager(roleId) {
+    function resetMember(uint256 roleId, address newMember) public onlyExclusive(roleId) onlyRoleManager(roleId) {
         roles[roleId].exclusiveRoleMembership.resetMember(newMember);
     }
 
@@ -127,7 +127,7 @@ abstract contract MultiRole {
      * @notice Gets the current holder of the exclusive role, `roleId`.
      * @dev Reverts if `roleId` does not represent an initialized, exclusive role.
      */
-    function getMember(uint roleId) public view onlyExclusive(roleId) returns (address) {
+    function getMember(uint256 roleId) public view onlyExclusive(roleId) returns (address) {
         return roles[roleId].exclusiveRoleMembership.getMember();
     }
 
@@ -136,7 +136,7 @@ abstract contract MultiRole {
      * @dev Reverts if `roleId` does not represent an initialized, shared role or if the caller is not a member of the
      * managing role for `roleId`.
      */
-    function addMember(uint roleId, address newMember) public onlyShared(roleId) onlyRoleManager(roleId) {
+    function addMember(uint256 roleId, address newMember) public onlyShared(roleId) onlyRoleManager(roleId) {
         roles[roleId].sharedRoleMembership.addMember(newMember);
     }
 
@@ -145,14 +145,14 @@ abstract contract MultiRole {
      * @dev Reverts if `roleId` does not represent an initialized, shared role or if the caller is not a member of the
      * managing role for `roleId`.
      */
-    function removeMember(uint roleId, address memberToRemove) public onlyShared(roleId) onlyRoleManager(roleId) {
+    function removeMember(uint256 roleId, address memberToRemove) public onlyShared(roleId) onlyRoleManager(roleId) {
         roles[roleId].sharedRoleMembership.removeMember(memberToRemove);
     }
 
     /**
      * @notice Reverts if `roleId` is not initialized.
      */
-    modifier onlyValidRole(uint roleId) {
+    modifier onlyValidRole(uint256 roleId) {
         require(roles[roleId].roleType != RoleType.Invalid, "Attempted to use an invalid roleId");
         _;
     }
@@ -160,7 +160,7 @@ abstract contract MultiRole {
     /**
      * @notice Reverts if `roleId` is initialized.
      */
-    modifier onlyInvalidRole(uint roleId) {
+    modifier onlyInvalidRole(uint256 roleId) {
         require(roles[roleId].roleType == RoleType.Invalid, "Cannot use a pre-existing role");
         _;
     }
@@ -171,7 +171,7 @@ abstract contract MultiRole {
      * @dev Should be called by derived contracts, usually at construction time. Will revert if the role is already
      * initialized.
      */
-    function _createSharedRole(uint roleId, uint managingRoleId, address[] memory initialMembers)
+    function _createSharedRole(uint256 roleId, uint256 managingRoleId, address[] memory initialMembers)
         internal
         onlyInvalidRole(roleId)
     {
@@ -191,7 +191,7 @@ abstract contract MultiRole {
      * @dev Should be called by derived contracts, usually at construction time. Will revert if the role is already
      * initialized.
      */
-    function _createExclusiveRole(uint roleId, uint managingRoleId, address initialMember)
+    function _createExclusiveRole(uint256 roleId, uint256 managingRoleId, address initialMember)
         internal
         onlyInvalidRole(roleId)
     {

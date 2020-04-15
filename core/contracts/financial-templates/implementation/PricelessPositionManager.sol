@@ -40,7 +40,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     struct PositionData {
         FixedPoint.Unsigned tokensOutstanding;
         // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
-        uint requestPassTimestamp;
+        uint256 requestPassTimestamp;
         FixedPoint.Unsigned withdrawalRequestAmount;
         // Raw collateral value. This value should never be accessed directly -- always use _getCollateral().
         // To add or remove collateral, use _addCollateral() and _removeCollateral().
@@ -64,9 +64,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
     // Time that this contract expires. Should not change post-construction unless a emergency shutdown occurs.
-    uint public expirationTimestamp;
+    uint256 public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
-    uint public withdrawalLiveness;
+    uint256 public withdrawalLiveness;
 
     // Minimum number of tokens in a sponsor's position.
     FixedPoint.Unsigned public minSponsorTokens;
@@ -79,18 +79,22 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      ****************************************/
 
     event Transfer(address indexed oldSponsor, address indexed newSponsor);
-    event Deposit(address indexed sponsor, uint indexed collateralAmount);
-    event Withdrawal(address indexed sponsor, uint indexed collateralAmount);
-    event RequestWithdrawal(address indexed sponsor, uint indexed collateralAmount);
-    event RequestWithdrawalExecuted(address indexed sponsor, uint indexed collateralAmount);
-    event RequestWithdrawalCanceled(address indexed sponsor, uint indexed collateralAmount);
-    event PositionCreated(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
+    event Deposit(address indexed sponsor, uint256 indexed collateralAmount);
+    event Withdrawal(address indexed sponsor, uint256 indexed collateralAmount);
+    event RequestWithdrawal(address indexed sponsor, uint256 indexed collateralAmount);
+    event RequestWithdrawalExecuted(address indexed sponsor, uint256 indexed collateralAmount);
+    event RequestWithdrawalCanceled(address indexed sponsor, uint256 indexed collateralAmount);
+    event PositionCreated(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
     event NewSponsor(address indexed sponsor);
     event EndedSponsor(address indexed sponsor);
-    event Redeem(address indexed sponsor, uint indexed collateralAmount, uint indexed tokenAmount);
+    event Redeem(address indexed sponsor, uint256 indexed collateralAmount, uint256 indexed tokenAmount);
     event ContractExpired(address indexed caller);
-    event SettleExpiredPosition(address indexed caller, uint indexed collateralReturned, uint indexed tokensBurned);
-    event EmergencyShutdown(address indexed caller, uint originalExpirationTimestamp, uint shutdownTimestamp);
+    event SettleExpiredPosition(
+        address indexed caller,
+        uint256 indexed collateralReturned,
+        uint256 indexed tokensBurned
+    );
+    event EmergencyShutdown(address indexed caller, uint256 originalExpirationTimestamp, uint256 shutdownTimestamp);
 
     /****************************************
      *               MODIFIERS              *
@@ -132,8 +136,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     constructor(
         bool _isTest,
-        uint _expirationTimestamp,
-        uint _withdrawalLiveness,
+        uint256 _expirationTimestamp,
+        uint256 _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
@@ -234,7 +238,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(positionData.requestPassTimestamp == 0);
 
         // Make sure the proposed expiration of this request is not post-expiry.
-        uint requestPassTime = getCurrentTime() + withdrawalLiveness;
+        uint256 requestPassTime = getCurrentTime() + withdrawalLiveness;
         require(requestPassTime <= expirationTimestamp);
 
         // Update the position object for the user.
@@ -468,7 +472,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         contractState = ContractState.ExpiredPriceRequested;
         // Expiratory time now becomes the current time (emergency shutdown time).
         // Price requested at this time stamp. `settleExpired` can now withdraw at this timestamp.
-        uint oldExpirationTimestamp = expirationTimestamp;
+        uint256 oldExpirationTimestamp = expirationTimestamp;
         expirationTimestamp = getCurrentTime();
         _requestOraclePrice(expirationTimestamp);
 
@@ -591,16 +595,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return finder.getImplementationAddress(financialContractsAdminInterface);
     }
 
-    function _requestOraclePrice(uint requestedTime) internal {
+    function _requestOraclePrice(uint256 requestedTime) internal {
         OracleInterface oracle = _getOracle();
         oracle.requestPrice(priceIdentifer, requestedTime);
     }
 
-    function _getOraclePrice(uint requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifer, requestedTime), "Can only get a price once the DVM has resolved");
-        int oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
+        int256 oraclePrice = oracle.getPrice(priceIdentifer, requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
         if (oraclePrice < 0) {
@@ -638,8 +642,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
     }
 
-    function _safeUintCast(int value) private pure returns (uint result) {
-        require(value >= 0, "Uint underflow");
+    function _safeUintCast(int256 value) private pure returns (uint256 result) {
+        require(value >= 0, "uint256 underflow");
         return uint(value);
     }
 
