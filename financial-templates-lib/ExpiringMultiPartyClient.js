@@ -168,7 +168,7 @@ class ExpiringMultiPartyClient {
           continue;
         }
 
-        // Construct Liquidation data to save.
+        // Construct Liquidation data to save
         const liquidationData = {
           sponsor: liquidation.sponsor,
           id: id.toString(),
@@ -201,7 +201,8 @@ class ExpiringMultiPartyClient {
         // Filter out empty positions.
         positions[i].rawCollateral.toString() === "0"
           ? acc
-          : acc.concat([
+          : /* eslint-disable indent */
+            acc.concat([
               {
                 sponsor: address,
                 requestPassTimestamp: positions[i].requestPassTimestamp,
