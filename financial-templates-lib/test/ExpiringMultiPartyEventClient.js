@@ -10,6 +10,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Store = artifacts.require("Store");
+const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const tokenSponsor = accounts[0];
@@ -44,7 +45,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
@@ -55,7 +56,6 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
 
     constructorParams = {
-      isTest: true,
       expirationTimestamp: expirationTime.toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -69,7 +69,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);

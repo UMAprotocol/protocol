@@ -5,8 +5,8 @@ import "../../interfaces/AdministrateeInterface.sol";
 
 // A mock implementation of AdministrateeInterface, taking the place of a financial contract.
 contract MockAdministratee is AdministrateeInterface {
-    uint public timesRemargined;
-    uint public timesEmergencyShutdown;
+    uint256 public timesRemargined;
+    uint256 public timesEmergencyShutdown;
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
