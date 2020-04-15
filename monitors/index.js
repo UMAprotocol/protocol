@@ -36,7 +36,7 @@ async function run(price, address, shouldPoll) {
 
   // Client and liquidator bot
   const empEventClient = new ExpiringMultiPartyEventClient(ExpiringMultiParty.abi, web3, emp.address, 10);
-  const contractMonitor = new ContractMonitor(empEventClient, accounts[0], accounts[0]);
+  const contractMonitor = new ContractMonitor(empEventClient, [accounts[0]], [accounts[0]]);
 
   while (true) {
     try {
@@ -46,9 +46,9 @@ async function run(price, address, shouldPoll) {
       // 3. Check for new disputes
       // 4. Check for new disputeSettlements
       await empEventClient._update();
-      await contractMonitor.checkForNewLiquidations(toWei(price.toString()));
-      await contractMonitor.checkForNewDisputeEvents(toWei(price.toString()));
-      await contractMonitor.checkForNewDisputeSettlementEvents(toWei(price.toString()));
+      await contractMonitor.checkForNewLiquidations(() => toWei(price.toString()));
+      await contractMonitor.checkForNewDisputeEvents(() => toWei(price.toString()));
+      await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei(price.toString()));
     } catch (error) {
       Logger.error({
         at: "Monitors#index",
