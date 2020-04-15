@@ -91,14 +91,14 @@ contract Store is StoreInterface, Withdrawable {
         external
         override
         view
-        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
+        returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory)
     {
         uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
-        regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
+        FixedPoint.Unsigned memory regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
         // `weeklyDelayFee` is already scaled up.
-        latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
+        FixedPoint.Unsigned memory latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
     }
@@ -110,8 +110,8 @@ contract Store is StoreInterface, Withdrawable {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory finalFee) {
-        finalFee = finalFees[currency];
+    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory) {
+        return finalFees[currency];
     }
 
     /****************************************
