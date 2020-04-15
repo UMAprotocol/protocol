@@ -115,6 +115,22 @@ contract("Governor", function(accounts) {
     );
   });
 
+  it.only("Cannot send transaction with data to EOA", async function() {
+    const txnData = constructTransferTransaction(proposer, "0");
+    // A proposal with data should not be able to be sent to an EOA as only a contract can process data in a tx.
+    assert(
+      await didContractThrow(
+        governor.propose([
+          {
+            to: account2,
+            value: 0,
+            data: txnData
+          }
+        ])
+      )
+    );
+  });
+
   it("Identifier construction", async function() {
     // Construct the transaction to send 0 tokens.
     const txnData = constructTransferTransaction(proposer, "0");
