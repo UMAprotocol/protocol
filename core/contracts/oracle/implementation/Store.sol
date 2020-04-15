@@ -43,7 +43,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
     /**
      * @notice Construct the Store contract.
      */
-    constructor(bool _isTest) public Testable(_isTest) {
+    constructor(address _timerAddress) public Testable(_timerAddress) {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
     }

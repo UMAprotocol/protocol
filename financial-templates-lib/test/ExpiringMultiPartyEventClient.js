@@ -9,7 +9,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
-const Store = artifacts.require("Store");
 const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiPartyEventClient.js", function(accounts) {
@@ -81,10 +80,6 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     syntheticToken = await Token.at(await emp.tokenCurrency());
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor1 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
-
-    // Sync store's current time with the EMP's current time.
-    const store = await Store.deployed();
-    await store.setCurrentTime(await emp.getCurrentTime());
 
     // Create two positions
     await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });

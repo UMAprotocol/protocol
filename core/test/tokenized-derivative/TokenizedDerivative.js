@@ -118,15 +118,10 @@ contract("TokenizedDerivative", function(accounts) {
     return pfc.mul(oracleFeeRatio).div(fp_multiplier);
   };
 
-  const setCurrentTime = async time => {
-    await deployedManualPriceFeed.setCurrentTime(time);
-    await deployedStore.setCurrentTime(time);
-  };
-
   // Pushes a price to the ManualPriceFeed, incrementing time by `priceFeedUpdatesInterval`.
   const pushPrice = async price => {
     const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + priceFeedUpdatesInterval;
-    await setCurrentTime(latestTime);
+    await deployedManualPriceFeed.setCurrentTime(latestTime);
     await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, price);
   };
 
@@ -1429,7 +1424,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Manually push feed forward by 1 day.
       const newTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + 864000;
-      await setCurrentTime(newTime);
+      await deployedManualPriceFeed.setCurrentTime(newTime);
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, newTime, web3.utils.toWei("1", "ether"));
 
       // Set the Oracle fee to 0 for this withdraw. This is required because the oracle fee is set so high in these
@@ -2517,7 +2512,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Product unsupported by the Oracle.
       const productUnsupportedByOracle = web3.utils.hexToBytes(web3.utils.utf8ToHex("unsupportedByOracle"));
       const time = (await deployedManualPriceFeed.getCurrentTime()).addn(100000);
-      await setCurrentTime(time);
+      await deployedManualPriceFeed.setCurrentTime(time);
       await deployedManualPriceFeed.pushLatestPrice(productUnsupportedByOracle, time, web3.utils.toWei("1", "ether"));
 
       const unsupportedByOracleParams = { ...defaultConstructorParams, product: productUnsupportedByOracle };
@@ -2706,7 +2701,7 @@ contract("TokenizedDerivative", function(accounts) {
       const numWeeks = 2;
       const secondsInTwoWeeks = 60 * 60 * 24 * 7 * numWeeks;
       const latestTime = parseInt(await deployedManualPriceFeed.getCurrentTime(), 10) + secondsInTwoWeeks;
-      await setCurrentTime(latestTime);
+      await deployedManualPriceFeed.setCurrentTime(latestTime);
       await deployedManualPriceFeed.pushLatestPrice(identifierBytes, latestTime, web3.utils.toWei("1", "ether"));
       await derivativeContract.remargin({ from: sponsor });
 

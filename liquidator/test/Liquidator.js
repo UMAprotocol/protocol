@@ -15,7 +15,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
-const Store = artifacts.require("Store");
 const Timer = artifacts.require("Timer");
 
 contract("Liquidator.js", function(accounts) {
@@ -31,13 +30,6 @@ contract("Liquidator.js", function(accounts) {
   let liquidator;
   let syntheticToken;
   let mockOracle;
-  let store;
-
-  const setCurrentTime = async time => {
-    await emp.setCurrentTime(time);
-    await store.setCurrentTime(time);
-    await mockOracle.setCurrentTime(time);
-  };
 
   before(async function() {
     collateralToken = await Token.new({ from: contractCreator });
@@ -105,9 +97,6 @@ contract("Liquidator.js", function(accounts) {
 
     // Create a new instance of the liquidator to test
     liquidator = new Liquidator(empClient, gasEstimator, accounts[0]);
-
-    // Sync other contracts' time with the emp.
-    await setCurrentTime(await emp.getCurrentTime());
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {
@@ -184,7 +173,7 @@ contract("Liquidator.js", function(accounts) {
     // Advance the timer to the liquidation expiry.
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     const liquidationLiveness = 1000;
-    await setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+    await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
     await empClient.forceUpdate();
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
