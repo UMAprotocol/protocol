@@ -39,6 +39,7 @@ abstract contract Testable {
     /**
      * @notice Gets the current time. Will return the last time set in `setCurrentTime` if running in test mode.
      * Otherwise, it will return the block timestamp.
+     * @return uint for the current Testable timestamp.
      */
     function getCurrentTime() public view returns (uint) {
         if (timerAddress != address(0x0)) {
