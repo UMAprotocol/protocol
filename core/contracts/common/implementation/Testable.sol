@@ -30,6 +30,7 @@ abstract contract Testable {
     /**
      * @notice Sets the current time.
      * @dev Will revert if not running in test mode.
+     * @param _time timestamp to set current Tesable time to.
      */
     function setCurrentTime(uint _time) external onlyIfTest {
         Timer(timerAddress).setCurrentTime(_time);
