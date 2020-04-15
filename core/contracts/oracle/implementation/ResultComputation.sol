@@ -16,11 +16,11 @@ library ResultComputation {
 
     struct Data {
         // Maps price to number of tokens that voted for that price.
-        mapping(int => FixedPoint.Unsigned) voteFrequency;
+        mapping(int256 => FixedPoint.Unsigned) voteFrequency;
         // The total votes that have been added.
         FixedPoint.Unsigned totalVotes;
         // The price that is the current mode, i.e., the price with the highest frequency in `voteFrequency`.
-        int currentMode;
+        int256 currentMode;
     }
 
     /****************************************
@@ -33,7 +33,7 @@ library ResultComputation {
      * @param votePrice value specified in the vote for the given `numberTokens`.
      * @param numberTokens number of tokens that voted on the `votePrice`.
      */
-    function addVote(Data storage data, int votePrice, FixedPoint.Unsigned memory numberTokens) internal {
+    function addVote(Data storage data, int256 votePrice, FixedPoint.Unsigned memory numberTokens) internal {
         data.totalVotes = data.totalVotes.add(numberTokens);
         data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
         if (
@@ -60,7 +60,7 @@ library ResultComputation {
     function getResolvedPrice(Data storage data, FixedPoint.Unsigned memory minVoteThreshold)
         internal
         view
-        returns (bool isResolved, int price)
+        returns (bool isResolved, int256 price)
     {
         // TODO(ptare): Figure out where this parameter is supposed to come from.
         FixedPoint.Unsigned memory modeThreshold = FixedPoint.fromUnscaledUint(50).div(100);

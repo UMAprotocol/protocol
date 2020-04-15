@@ -31,7 +31,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function mint(address recipient, uint value) external override onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
+    function mint(address recipient, uint256 value) external override onlyRoleHolder(uint(Roles.Minter)) returns (bool) {
         _mint(recipient, value);
         return true;
     }
@@ -42,7 +42,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function burn(uint value) external override onlyRoleHolder(uint(Roles.Burner)) {
+    function burn(uint256 value) external override onlyRoleHolder(uint(Roles.Burner)) {
         _burn(msg.sender, value);
     }
 }

@@ -10,19 +10,19 @@ contract VoteTimingTest {
 
     VoteTiming.Data public voteTiming;
 
-    constructor(uint phaseLength) public {
+    constructor(uint256 phaseLength) public {
         wrapInit(phaseLength);
     }
 
-    function wrapComputeCurrentRoundId(uint currentTime) external view returns (uint) {
+    function wrapComputeCurrentRoundId(uint256 currentTime) external view returns (uint) {
         return voteTiming.computeCurrentRoundId(currentTime);
     }
 
-    function wrapComputeCurrentPhase(uint currentTime) external view returns (VotingInterface.Phase) {
+    function wrapComputeCurrentPhase(uint256 currentTime) external view returns (VotingInterface.Phase) {
         return voteTiming.computeCurrentPhase(currentTime);
     }
 
-    function wrapInit(uint phaseLength) public {
+    function wrapInit(uint256 phaseLength) public {
         voteTiming.init(phaseLength);
     }
 }
