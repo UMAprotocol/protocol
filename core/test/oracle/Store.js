@@ -1,4 +1,5 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const truffleAssert = require("truffle-assertions");
 
 const Token = artifacts.require("ExpandedERC20");
 const Store = artifacts.require("Store");
@@ -74,9 +75,26 @@ contract("Store", function(accounts) {
 
   it("Final fees", async function() {
     // Add final fee and confirm
-    await store.setFinalFee(arbitraryTokenAddr, { rawValue: web3.utils.toWei("5", "ether") }, { from: owner });
+    const result = await store.setFinalFee(
+      arbitraryTokenAddr,
+      { rawValue: web3.utils.toWei("5", "ether") },
+      { from: owner }
+    );
+
+    truffleAssert.eventEmitted(result, "NewFinalFee", ev => {
+      return ev.newFinalFee.rawValue === web3.utils.toWei("5", "ether");
+    });
     const fee = await store.computeFinalFee(arbitraryTokenAddr);
     assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
+  });
+
+  it("Weekly delay fees", async function() {
+    // Add final fee and confirm
+    const result = await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.5", "ether") }, { from: owner });
+
+    truffleAssert.eventEmitted(result, "NewWeeklyDelayFee", ev => {
+      return ev.newWeeklyDelayFee.rawValue === web3.utils.toWei("0.5", "ether");
+    });
   });
 
   it("Pay fees in Ether", async function() {

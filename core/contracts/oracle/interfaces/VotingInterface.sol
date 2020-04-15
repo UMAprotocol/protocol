@@ -11,7 +11,7 @@ import "../../common/implementation/FixedPoint.sol";
 abstract contract VotingInterface {
     struct PendingRequest {
         bytes32 identifier;
-        uint time;
+        uint256 time;
     }
 
     // Captures the necessary data for making a commitment.
@@ -19,7 +19,7 @@ abstract contract VotingInterface {
     // Not used as a data structure for storage.
     struct Commitment {
         bytes32 identifier;
-        uint time;
+        uint256 time;
         bytes32 hash;
         bytes encryptedVote;
     }
@@ -29,9 +29,9 @@ abstract contract VotingInterface {
     // Not used as a data structure for storage.
     struct Reveal {
         bytes32 identifier;
-        uint time;
-        int price;
-        int salt;
+        uint256 time;
+        int256 price;
+        int256 salt;
     }
 
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
@@ -43,17 +43,17 @@ abstract contract VotingInterface {
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
-     * @param time unix timestamp of the price is being voted on.
-     * @param hash keccak256 hash of the price you want to vote for and a `int salt`.
+     * @param time unix timestamp of the price being voted on.
+     * @param hash keccak256 hash of the price you want to vote for and your random salt.
      */
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) external virtual;
+    function commitVote(bytes32 identifier, uint256 time, bytes32 hash) external virtual;
 
     /**
      * @notice Submit a batch of commits in a single transaction.
      * @dev Using `encryptedVote` is optional. If included then commitment is stored on chain.
      * Look at `project-root/common/Constants.js` for the tested maximum number of
      * commitments that can fit in one transaction.
-     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
+     * @param commits array of structs that encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
     function batchCommit(Commitment[] calldata commits) external virtual;
 
@@ -66,7 +66,7 @@ abstract contract VotingInterface {
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint time, int price, int salt) external virtual;
+    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) external virtual;
 
     /**
      * @notice Reveal multiple votes in a single transaction.
@@ -92,7 +92,7 @@ abstract contract VotingInterface {
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
-     * @return uint representing the unique round ID.
+     * @return uint256 representing the unique round ID.
      */
     function getCurrentRoundId() external virtual view returns (uint);
 
@@ -103,9 +103,9 @@ abstract contract VotingInterface {
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
-     * @return totalRewardToIssue total amount of rewards returned to the voter.
+     * @return total amount of rewards returned to the voter.
      */
-    function retrieveRewards(address voterAddress, uint roundId, PendingRequest[] memory toRetrieve)
+    function retrieveRewards(address voterAddress, uint256 roundId, PendingRequest[] memory toRetrieve)
         public
         virtual
         returns (FixedPoint.Unsigned memory);
