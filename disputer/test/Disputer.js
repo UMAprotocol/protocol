@@ -15,6 +15,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Store = artifacts.require("Store");
 
 contract("Disputer.js", function(accounts) {
   const disputeBot = accounts[0];
@@ -29,8 +30,15 @@ contract("Disputer.js", function(accounts) {
   let emp;
   let syntheticToken;
   let mockOracle;
+  let store;
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+
+  const setCurrentTime = async time => {
+    await emp.setCurrentTime(time);
+    await store.setCurrentTime(time);
+    await mockOracle.setCurrentTime(time);
+  };
 
   before(async function() {
     collateralToken = await Token.new({ from: contractCreator });
@@ -52,6 +60,8 @@ contract("Disputer.js", function(accounts) {
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+
+    store = await Store.deployed();
   });
 
   beforeEach(async function() {
@@ -100,6 +110,9 @@ contract("Disputer.js", function(accounts) {
 
     // Create a new instance of the disputer to test
     disputer = new Disputer(empClient, gasEstimator, accounts[0]);
+
+    // Sync other contracts' current time with the emp.
+    await setCurrentTime(await emp.getCurrentTime());
   });
 
   it("Detect disputable positions and send dipsutes", async function() {
