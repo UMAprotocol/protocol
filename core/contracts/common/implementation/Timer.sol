@@ -23,6 +23,7 @@ contract Timer {
     /**
      * @notice Gets the current time. Will return the last time set in `setCurrentTime` if running in test mode.
      * Otherwise, it will return the block timestamp.
+     * @return uint for the current Testable timestamp.
      */
     function getCurrentTime() public view returns (uint) {
         return currentTime;
