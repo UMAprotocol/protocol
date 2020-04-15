@@ -14,18 +14,18 @@ import "./TokenizedDerivative.sol";
 contract TokenizedDerivativeCreator is ContractCreator, Testable {
     struct Params {
         address priceFeedAddress;
-        uint defaultPenalty; // Percentage of mergin requirement * 10^18
-        uint supportedMove; // Expected percentage move in the underlying that the long is protected against.
+        uint256 defaultPenalty; // Percentage of mergin requirement * 10^18
+        uint256 supportedMove; // Expected percentage move in the underlying that the long is protected against.
         bytes32 product;
-        uint fixedYearlyFee; // Percentage of nav * 10^18
-        uint disputeDeposit; // Percentage of mergin requirement * 10^18
+        uint256 fixedYearlyFee; // Percentage of nav * 10^18
+        uint256 disputeDeposit; // Percentage of mergin requirement * 10^18
         address returnCalculator;
-        uint startingTokenPrice;
-        uint expiry;
+        uint256 startingTokenPrice;
+        uint256 expiry;
         address marginCurrency;
-        uint withdrawLimit; // Percentage of shortBalance * 10^18
+        uint256 withdrawLimit; // Percentage of shortBalance * 10^18
         TokenizedDerivativeParams.ReturnType returnType;
-        uint startingUnderlyingPrice;
+        uint256 startingUnderlyingPrice;
         string name;
         string symbol;
     }

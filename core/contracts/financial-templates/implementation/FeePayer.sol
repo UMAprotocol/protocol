@@ -31,7 +31,7 @@ abstract contract FeePayer is Testable {
     FinderInterface public finder;
 
     // Tracks the last block time when the fees were paid.
-    uint public lastPaymentTime;
+    uint256 public lastPaymentTime;
 
     // Tracks the cumulative fees that have been paid by the contract for use by derived contracts.
     // The multiplier starts at 1, and is updated by computing cumulativeFeeMultiplier * (1 - effectiveFee).
@@ -46,8 +46,8 @@ abstract contract FeePayer is Testable {
      *                EVENTS                *
      ****************************************/
 
-    event RegularFeesPaid(uint indexed regularFee, uint indexed lateFee);
-    event FinalFeesPaid(uint indexed amount);
+    event RegularFeesPaid(uint256 indexed regularFee, uint256 indexed lateFee);
+    event FinalFeesPaid(uint256 indexed amount);
 
     /****************************************
      *              MODIFIERS               *
@@ -85,7 +85,7 @@ abstract contract FeePayer is Testable {
      */
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
-        uint time = getCurrentTime();
+        uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory _pfc = pfc();
 
         // Exit early if there is no pfc (thus, no fees to be paid).

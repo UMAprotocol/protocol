@@ -60,8 +60,8 @@ contract AddressWhitelist is Ownable {
      */
     function getWhitelist() external view returns (address[] memory activeWhitelist) {
         // Determine size of whitelist first
-        uint activeCount = 0;
-        for (uint i = 0; i < whitelistIndices.length; i++) {
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < whitelistIndices.length; i++) {
             if (whitelist[whitelistIndices[i]] == Status.In) {
                 activeCount++;
             }
@@ -70,7 +70,7 @@ contract AddressWhitelist is Ownable {
         // Populate whitelist
         activeWhitelist = new address[](activeCount);
         activeCount = 0;
-        for (uint i = 0; i < whitelistIndices.length; i++) {
+        for (uint256 i = 0; i < whitelistIndices.length; i++) {
             address addr = whitelistIndices[i];
             if (whitelist[addr] == Status.In) {
                 activeWhitelist[activeCount] = addr;

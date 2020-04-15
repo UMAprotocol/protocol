@@ -21,7 +21,7 @@ contract TokenMigrator {
     ERC20Snapshot public oldToken;
     ExpandedIERC20 public newToken;
 
-    uint public snapshotId;
+    uint256 public snapshotId;
     FixedPoint.Unsigned public rate;
 
     mapping(address => bool) public hasMigrated;

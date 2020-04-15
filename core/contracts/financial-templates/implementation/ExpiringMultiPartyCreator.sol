@@ -20,7 +20,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      ****************************************/
 
     struct Params {
-        uint expirationTimestamp;
+        uint256 expirationTimestamp;
         address collateralAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
@@ -77,12 +77,12 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // their withdrawal processed maliciously (if set too low, it’s quite easy for malicious sponsors to
     // request a withdrawal and spend gas to prevent other transactions from processing until the withdrawal
     //  gets approved). Ultimately, liveness is a friction to be minimized, but not critical to system function.
-    uint public constant STRICT_WITHDRAWAL_LIVENESS = 3600;
+    uint256 public constant STRICT_WITHDRAWAL_LIVENESS = 3600;
     // - Time for liquidation to be disputed: 60 minutes. Similar reasoning to withdrawal liveness.
     // Lower liveness is more usable for liquidators. However, the parameter is a reflection of how
     // long we expect it to take disputers to notice bad liquidations. Malicious liquidators would
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
-    uint public constant STRICT_LIQUIDATION_LIVENESS = 3600;
+    uint256 public constant STRICT_LIQUIDATION_LIVENESS = 3600;
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
@@ -128,8 +128,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      ****************************************/
 
     //  Returns if expiration timestamp is on hardcoded list.
-    function _isValidTimestamp(uint timestamp) private view returns (bool) {
-        for (uint i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
+    function _isValidTimestamp(uint256 timestamp) private view returns (bool) {
+        for (uint256 i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
             if (VALID_EXPIRATION_TIMESTAMPS[i] == timestamp) {
                 return true;
             }
