@@ -499,7 +499,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
             _resolvePriceRequest(priceRequest, voteInstance);
 
-            if (isExpired) {
+            if (voteInstance.voteSubmissions[voterAddress].revealHash == 0) {
+                continue;
+            } else if (isExpired) {
                 // Emit a 0 token retrieval on expired rewards.
                 emit RewardsRetrieved(voterAddress, roundId, toRetrieve[i].identifier, toRetrieve[i].time, 0);
             } else if (
