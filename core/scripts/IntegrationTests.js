@@ -80,6 +80,7 @@ contract("IntegrationTest", function(accounts) {
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
+      timerAddress: Timer.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
@@ -88,7 +89,7 @@ contract("IntegrationTest", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      timerAddress: Timer.address
+      minSponsorTokens: { rawValue: toWei("0") }
     };
 
     // register the price identifer within the identifer whitelist
