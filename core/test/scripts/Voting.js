@@ -10,7 +10,7 @@ const { createVisibleAccount } = require("../../../common/Crypto");
 const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../../common/Constants");
 
 // Set this to TRUE to print out logs that a production AVS would display
-const USE_PROD_LOGS = true;
+const USE_PROD_LOGS = false;
 
 class MockNotifier {
   constructor() {
@@ -135,7 +135,6 @@ contract("scripts/Voting.js", function(accounts) {
 
     // This vote should have been removed from the persistence layer so we don't re-reveal.
     result = await votingSystem.runIteration(USE_PROD_LOGS);
-      console.log("RESULT:", result);
     assert.equal(result.batches, 1);
     assert.equal(result.updates.length, 1);
     assert.equal(notifier.notificationsSent, 3);
@@ -169,7 +168,9 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(notifier.notificationsSent, 1);
 
     // Replace the encrypted vote by committing again with an indecipherable string.
-      await voting.commitAndEmitEncryptedVote(identifier, time, web3.utils.randomHex(32), web3.utils.randomHex(64), { from: voter});
+    await voting.commitAndEmitEncryptedVote(identifier, time, web3.utils.randomHex(32), web3.utils.randomHex(64), {
+      from: voter
+    });
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
