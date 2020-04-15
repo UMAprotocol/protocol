@@ -18,6 +18,7 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Timer = artifacts.require("Timer");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -78,6 +79,7 @@ contract("Liquidatable", function(accounts) {
   let liquidatableParameters;
   let store;
   let financialContractsAdmin;
+  let timer;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -99,8 +101,10 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
+    timer = await Timer.new();
+
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    mockOracle = await MockOracle.new(identifierWhitelist.address, timer.address, {
       from: contractDeployer
     });
     finder = await Finder.deployed();
@@ -111,7 +115,6 @@ contract("Liquidatable", function(accounts) {
     });
 
     liquidatableParameters = {
-      isTest: true,
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
@@ -125,7 +128,8 @@ contract("Liquidatable", function(accounts) {
       disputeBondPct: { rawValue: disputeBondPct.toString() },
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
-      minSponsorTokens: { rawValue: minSponsorTokens.toString() }
+      minSponsorTokens: { rawValue: minSponsorTokens.toString() },
+      timerAddress: timer.address
     };
 
     // Deploy liquidation contract and set global params

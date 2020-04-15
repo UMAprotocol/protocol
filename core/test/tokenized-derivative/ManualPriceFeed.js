@@ -1,7 +1,7 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 
 const ManualPriceFeed = artifacts.require("ManualPriceFeed");
-const BigNumber = require("bignumber.js");
+const Timer = artifacts.require("Timer");
 
 contract("ManualPriceFeed", function(accounts) {
   // A deployed instance of the ManualPriceFeed contract, ready for testing.
@@ -11,7 +11,7 @@ contract("ManualPriceFeed", function(accounts) {
   let rando = accounts[1];
 
   before(async function() {
-    manualPriceFeed = await ManualPriceFeed.new(true);
+    manualPriceFeed = await ManualPriceFeed.new(Timer.address);
   });
 
   it("No prices > One price > Updated price", async function() {
