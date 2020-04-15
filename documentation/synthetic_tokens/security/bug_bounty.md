@@ -60,9 +60,7 @@ We ask that you:
 * Report any vulnerability you’ve discovered promptly.
 * Avoid violating the privacy of others, disrupting our systems, destroying data, or harming user experience.
 * Use only bugs@umaproject.org to discuss vulnerabilities with us.
-<!-- TODO: Clarify what "fixed" means 
-* Keep the details of any discovered vulnerabilities confidential until they are fixed and publicly announced by the UMA {foundation?, team?} on {Medium, docs.umaproject.org/bugs, twitter, somewhere else?}.
--->
+* Keep the details of any discovered vulnerabilities confidential until they are publicly announced by the UMA Foundation on the [documentation website](https://docs.umaproject.org/uma/index.html). 
 * Perform testing only on in-scope systems, and respect systems and activities which are out-of-scope.
 * Not engage in blackmail, extortion, or any other unlawful conduct.
 * Not be a current or former UMA Foundation employee, vendor, contractor, or the employee of an UMA vendor or contractor.
