@@ -35,9 +35,7 @@ library Shared {
     }
 
     function addMember(RoleMembership storage roleMembership, address memberToAdd) internal {
-        // This require does not have an error message becuase it breaks the complilation if the optimizer is on.
-        // Ideally it should have one but this can only be enabled once this optimizer issue has been resolved.
-        require(memberToAdd != address(0x0));
+        require(memberToAdd != address(0x0), "Cannot set an exclusive role to 0x0");
         roleMembership.members[memberToAdd] = true;
     }
 
