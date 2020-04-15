@@ -14,6 +14,7 @@
 const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
+const { interfaceName } = require("../utils/Constants.js");
 
 // Contracts to test
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -83,7 +84,7 @@ async function createTestEnvironment() {
   // (2) we don't need to register the contract with the Registry to request prices
   mockOracle = await MockOracle.new(identifierWhitelist.address);
   finder = await Finder.deployed();
-  const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+  const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
   await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
   // Create the instance of the emp to test against.

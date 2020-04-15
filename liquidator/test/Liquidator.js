@@ -1,5 +1,7 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
+
 const { LiquidationStatesEnum } = require("../../common/Enums");
+const { interfaceName } = require("../../core/utils/Constants.js");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
@@ -53,7 +55,7 @@ contract("Liquidator.js", function(accounts) {
       from: contractCreator
     });
     finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 

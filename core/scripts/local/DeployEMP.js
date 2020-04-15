@@ -7,6 +7,7 @@
  */
 const { toWei } = web3.utils;
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { interfaceName } = require("../../utils/Constants.js");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -49,7 +50,7 @@ const deployEMP = async callback => {
     // Create a mockOracle and finder. Register the mockOracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address);
     finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
     // Grant EMP the right to register new financial templates.
