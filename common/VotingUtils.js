@@ -58,8 +58,8 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
  * @param {* Object} votingContract deployed Voting.sol instance
  */
 const constructReveal = async (request, roundId, web3, account, votingContract) => {
-  const topicHash = computeTopicHash(request, roundId);
-  const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
+  const encryptedCommit = (await getLatestEvent("EncryptedVote", request, roundId, account, votingContract))
+    .encryptedVote;
 
   let privateKey;
   if (argv.network === "metamask") {
@@ -177,7 +177,24 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, account) 
   };
 };
 
+// Get the latest event matching the provided parameters. Assumes that all events from Voting.sol have indexed
+// parameters for identifier, roundId, and voter.
+const getLatestEvent = async (eventName, request, roundId, account, votingContract) => {
+  const events = await votingContract.getPastEvents(eventName, {
+    fromBlock: 0,
+    filter: { identifier: request.identifier, roundId: roundId.toString(), voter: account.toString() }
+  });
+  let matchedEvent = null;
+  for (const ev of events) {
+    if (ev.returnValues.time.toString() === request.time.toString()) {
+      matchedEvent = ev.returnValues;
+    }
+  }
+  return matchedEvent;
+};
+
 module.exports = {
+  getLatestEvent,
   constructCommitment,
   constructReveal,
   batchCommitVotes,
