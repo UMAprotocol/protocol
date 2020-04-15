@@ -27,8 +27,8 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
 
     /**
      * @notice Adds the provided identifier as a supported identifier.
-     * @dev Price requests using this identifier will be succeed after this call.
-     * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
+     * @dev Price requests using this identifier will succeed after this call.
+     * @param identifier unique UTF-8 representation for the feed being added. Eg: BTC/USD.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
@@ -42,7 +42,7 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
     /**
      * @notice Removes the identifier from the whitelist.
      * @dev Price requests using this identifier will no longer succeed after this call.
-     * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
+     * @param identifier unique UTF-8 representation for the feed being removed. Eg: BTC/USD.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
@@ -59,7 +59,7 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
 
     /**
      * @notice Checks whether an identifier is on the whitelist.
-     * @param identifier uniquely identifies added the identifier. Eg: BTC/UCD.
+     * @param identifier unique UTF-8 representation for the feed being queried. Eg: BTC/USD.
      * @return bool if the identifier is supported (or not).
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword

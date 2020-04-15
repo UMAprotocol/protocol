@@ -13,13 +13,13 @@ import "../interfaces/FinderInterface.sol";
  * @dev Allows a UMA token holder to designate another address to vote on their behalf.
  * Each voter must deploy their own instance of this contract.
  */
-contract DesignatedVoting is MultiRole, Withdrawable {
+contract DesignatedVoting is Withdrawable {
     /****************************************
      *    INTERNAL VARIABLES AND STORAGE    *
      ****************************************/
 
     enum Roles {
-        Owner, // Can set the Voter and Withdrawer roles.
+        Owner, // Can set the Voter role. Is also permanently permissioned as the minter roll.
         Voter // Can vote through this contract.
     }
 
@@ -51,7 +51,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @param time specifies the unix timestamp of the price being voted on.
      * @param hash the keccak256 hash of the price you want to vote for and a random integer salt value.
      */
-    function commitVote(bytes32 identifier, uint time, bytes32 hash) external onlyRoleHolder(uint(Roles.Voter)) {
+    function commitVote(bytes32 identifier, uint256 time, bytes32 hash) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().commitVote(identifier, time, hash);
     }
 
@@ -70,7 +70,10 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @param price used along with the `salt` to produce the `hash` during the commit phase.
      * @param salt used along with the `price` to produce the `hash` during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint time, int price, int salt) external onlyRoleHolder(uint(Roles.Voter)) {
+    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt)
+        external
+        onlyRoleHolder(uint(Roles.Voter))
+    {
         _getVotingAddress().revealVote(identifier, time, price, salt);
     }
 
@@ -88,7 +91,7 @@ contract DesignatedVoting is MultiRole, Withdrawable {
      * @param roundId defines the round from which voting rewards will be retrieved from.
      * @param toRetrieve an array of PendingRequests which rewards are retrieved from.
      */
-    function retrieveRewards(uint roundId, VotingInterface.PendingRequest[] memory toRetrieve)
+    function retrieveRewards(uint256 roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public
         onlyRoleHolder(uint(Roles.Voter))
         returns (FixedPoint.Unsigned memory rewardsIssued)

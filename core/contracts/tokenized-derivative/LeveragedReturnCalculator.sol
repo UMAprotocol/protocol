@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/drafts/SignedSafeMath.sol";
  * @title Computes return values based on a fixed leverage.
  */
 contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
-    using SignedSafeMath for int;
+    using SignedSafeMath for int256;
 
     // Leverage value. Negative values return the leveraged short return.
     // Examples:
@@ -17,12 +17,12 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
     // 2 -> 2x levered long
     // -1 -> unlevered short
     // -2 -> 2x levered short
-    int internal leverageMultiplier;
-    int private constant FP_SCALING_FACTOR = 10**18;
+    int256 internal leverageMultiplier;
+    int256 private constant FP_SCALING_FACTOR = 10**18;
 
     enum Roles { Governance, Withdraw }
 
-    constructor(int _leverageMultiplier) public {
+    constructor(int256 _leverageMultiplier) public {
         require(_leverageMultiplier != 0);
         leverageMultiplier = _leverageMultiplier;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
@@ -31,14 +31,14 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function computeReturn(int oldPrice, int newPrice) external override view returns (int assetReturn) {
+    function computeReturn(int256 oldPrice, int256 newPrice) external override view returns (int256 assetReturn) {
         if (oldPrice == 0) {
             // To avoid a divide-by-zero, just return 0 instead of hitting an exception.
             return 0;
         }
 
         // Compute the underlying asset return: +1% would be 1.01 (* 1 ether).
-        int underlyingAssetReturn = newPrice.mul(FP_SCALING_FACTOR).div(oldPrice);
+        int256 underlyingAssetReturn = newPrice.mul(FP_SCALING_FACTOR).div(oldPrice);
 
         // Compute the RoR of the underlying asset and multiply by leverageMultiplier to get the modified return.
         assetReturn = underlyingAssetReturn.sub(FP_SCALING_FACTOR).mul(leverageMultiplier);
@@ -52,7 +52,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function leverage() external override view returns (int _leverage) {
+    function leverage() external override view returns (int256 _leverage) {
         return leverageMultiplier;
     }
 }

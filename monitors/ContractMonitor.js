@@ -20,7 +20,7 @@ class ContractMonitor {
     this.web3 = this.empEventClient.web3;
 
     // Contract constants
-    //TODO: replace this with an actual query to the collateral currency symbol
+    // TODO: replace this with an actual query to the collateral currency symbol
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "UMATEST";
 

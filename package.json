@@ -3,16 +3,10 @@
   "version": "0.1.0",
   "description": "UMA Protocol Smart Contracts",
   "scripts": {
-    "lint": "npm run eslint && npm run prettier",
-    "lint_check": "npm run eslint_check && npm run prettier_check",
-    "lint_check_quick": "npm run eslint_check && npm run prettier_check_quick",
-    "eslint": "npm run eslint_vanilla -- --fix",
-    "eslint_check": "npm run eslint_vanilla",
-    "eslint_vanilla": "eslint 'core/**/*.js'",
-    "prettier": "COMMAND=prettier npm run prettier_vanilla -- --write",
-    "prettier_check": "COMMAND=prettier npm run prettier_vanilla -- --check",
-    "prettier_check_quick": "COMMAND=pretty-quick npm run prettier_vanilla -- --check",
-    "prettier_vanilla": "$COMMAND --bracket-spacing 'core/**/*.js' 'common/**/*.js' '*.js' 'voter-dapp/src/**/*.js' 'sponsor-dapp-v2/src/**/*.js' 'core/contracts/**/*.sol' 'financial-templates-lib/*.js' 'liquidator/**/*.js' 'disputer/**/*.js' 'monitors/*.js'"
+    "lint": "npm run eslint && npm run prettier -- --list-different",
+    "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
+    "eslint": "eslint './**/*.js'",
+    "prettier": "prettier './**/*.js' './**/*.sol'"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
@@ -21,11 +15,14 @@
     "url": "https://github.com/UMAprotocol/protocol.git"
   },
   "devDependencies": {
-    "eslint": "5.16.0",
+    "eslint": "^5.16.0",
+    "eslint-config-prettier": "^6.10.1",
+    "eslint-plugin-prettier": "^3.1.2",
     "husky": "^4.2.3",
+    "lint-staged": "^10.1.3",
+    "pretty-quick": "^2.0.1",
     "prettier": "1.19.1",
     "prettier-plugin-solidity": "^1.0.0-alpha.46",
-    "pretty-quick": "^2.0.1",
     "solidity-coverage": "^0.7.2",
     "truffle-deploy-registry": "^0.5.1"
   },
@@ -41,6 +38,7 @@
     "@truffle/hdwallet-provider": "^1.0.25",
     "@umaprotocol/truffle-ledger-provider": "^1.0.3",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
+    "babel-eslint": "10.0.1",
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",
@@ -75,7 +73,10 @@
   },
   "husky": {
     "hooks": {
-      "pre-push": "npm run lint_check_quick"
+      "pre-commit": "echo '🕺  Running eslint on staged files' && lint-staged --allow-empty && echo '🏃‍♂️  Running pretty-quick on staged files' && pretty-quick --staged"
     }
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix"
   }
 }
