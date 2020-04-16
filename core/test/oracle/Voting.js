@@ -858,9 +858,6 @@ contract("Voting", function(accounts) {
     // Move to the reveal phase, where the snapshot should be taken.
     await moveToNextPhase(voting);
 
-    // Cant reveal vote until snapshot is taken. Any reveal action should revert.
-    assert(await didContractThrow(voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 })));
-
     // The snapshotId of the current round should be zero before initiating the snapshot
     assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
 
@@ -892,6 +889,43 @@ contract("Voting", function(accounts) {
 
     // Reset the GAT to 5% for subsequent rounds.
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
+  });
+
+  it("Snapshotting from initial reveal", async function() {
+    const identifier = web3.utils.utf8ToHex("basic-snapshotting2");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await moveToNextRound(voting);
+    const roundId = (await voting.getCurrentRoundId()).toString();
+
+    // Commit vote from one account.
+    const price = 456;
+    const salt = getRandomUnsignedInt();
+    const hash = computeVoteHash({
+      price: price,
+      salt: salt,
+      account: account1,
+      time,
+      roundId,
+      identifier
+    });
+    await voting.commitVote(identifier, time, hash, { from: account1 });
+    // Move to the reveal phase, where the snapshot should be taken.
+    await moveToNextPhase(voting);
+
+    // The snapshotId of the current round should be zero before initiating the snapshot
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+
+    // The first revealer should result in a snapshot being taken
+    await didContractThrow(voting.revealVote(identifier, time, price, salt, { from: account1 }));
+
+    // The snapshotId of the current round should be non zero after the snapshot is taken
+    assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
   });
 
   it("Only registered contracts", async function() {
