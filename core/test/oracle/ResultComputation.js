@@ -15,8 +15,8 @@ contract("ResultComputation", function(accounts) {
     await resultComputation.wrapAddVote(priceOne, web3.utils.toWei("5"));
     // Frequency table: priceOne->5. Cutoff: 2.5.
     let resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
-    assert.isTrue(resolved[0]);
-    assert.equal(resolved[1], priceOne);
+    assert.isTrue(resolved[0]); // resolved[0]-> isResolved: indicates if the price has been resolved correctly.
+    assert.equal(resolved[1], priceOne); // resolved[1] -> price: the price that the dvm resolved to. // price
     assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
     assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
     assert.equal(await resultComputation.wrapGetTotalCorrectlyVotedTokens(), web3.utils.toWei("5"));
@@ -24,8 +24,8 @@ contract("ResultComputation", function(accounts) {
     await resultComputation.wrapAddVote(priceTwo, web3.utils.toWei("4"));
     // Frequency table: priceOne->5, priceTwo->4. Cutoff: 4.5.
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
-    assert.isTrue(resolved[0]);
-    assert.equal(resolved[1], priceOne);
+    assert.isTrue(resolved[0]); // isResolved
+    assert.equal(resolved[1], priceOne); // price
     assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
     assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
     assert.equal(await resultComputation.wrapGetTotalCorrectlyVotedTokens(), web3.utils.toWei("5"));
@@ -34,19 +34,19 @@ contract("ResultComputation", function(accounts) {
     // Frequency table: priceOne->5, priceTwo->4, priceThree->4. Cutoff: 6.5.
     // No price has 6.5.
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
-    assert.isFalse(resolved[0]);
+    assert.isFalse(resolved[0]); // isResolved
 
     await resultComputation.wrapAddVote(priceTwo, web3.utils.toWei("4"));
     // Frequency table: priceOne->5, priceTwo->8, priceThree->4. Cutoff: 8.5.
     // No price has 8.5.
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
-    assert.isFalse(resolved[0]);
+    assert.isFalse(resolved[0]); // isResolved
 
     await resultComputation.wrapAddVote(priceTwo, web3.utils.toWei("1.1"));
     // Frequency table: priceOne->5, priceTwo->9.1, priceThree->4. Cutoff: 9.05.
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
-    assert.isTrue(resolved[0]);
-    assert.equal(resolved[1], priceTwo);
+    assert.isTrue(resolved[0]); // isResolved
+    assert.equal(resolved[1], priceTwo); // price
     assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
     assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
     assert.equal((await resultComputation.wrapGetTotalCorrectlyVotedTokens()).toString(), web3.utils.toWei("9.1"));
@@ -60,14 +60,14 @@ contract("ResultComputation", function(accounts) {
 
     // Unresolved if no votes have been submitted.
     let resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
-    assert.isFalse(resolved[0]);
+    assert.isFalse(resolved[0]); // isResolved
 
     const zeroPrice = web3.utils.toWei("0");
     // Make sure zero prices can still work and can be distinguished from no votes.
     await resultComputation.wrapAddVote(zeroPrice, web3.utils.toWei("5"));
     resolved = await resultComputation.wrapGetResolvedPrice(minVoteThreshold);
-    assert.isTrue(resolved[0]);
-    assert.equal(resolved[1], zeroPrice);
+    assert.isTrue(resolved[0]); // isResolved
+    assert.equal(resolved[1], zeroPrice); // price
     assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(zeroPrice)));
     assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(web3.utils.toWei("1"))));
     assert.equal((await resultComputation.wrapGetTotalCorrectlyVotedTokens()).toString(), web3.utils.toWei("5"));
@@ -86,18 +86,18 @@ contract("ResultComputation", function(accounts) {
     // Price isn't resolved because minimum votes threshold isn't met, even though 100% of votes are for the median.
     await resultComputation.wrapAddVote(priceOne, minVotes);
     let resolved = await resultComputation.wrapGetResolvedPrice(minVotes);
-    assert.isFalse(resolved[0]);
+    assert.isFalse(resolved[0]); // isResolved
 
     // Minimum votes threshold is satisfied, but mode threshold isn't satisfied.
     await resultComputation.wrapAddVote(priceTwo, minVotes);
     resolved = await resultComputation.wrapGetResolvedPrice(minVotes);
-    assert.isFalse(resolved[0]);
+    assert.isFalse(resolved[0]); // isResolved
 
     // Both thresholds are satisfied.
     await resultComputation.wrapAddVote(priceOne, minVotes);
     resolved = await resultComputation.wrapGetResolvedPrice(minVotes);
-    assert.isTrue(resolved[0]);
-    assert.equal(resolved[1], priceOne);
+    assert.isTrue(resolved[0]); // isResolved
+    assert.equal(resolved[1], priceOne); // price
     assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
     assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
     assert.equal((await resultComputation.wrapGetTotalCorrectlyVotedTokens()).toString(), web3.utils.toWei("10"));
