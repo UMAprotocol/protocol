@@ -1,3 +1,6 @@
+const { LiquidationStatesEnum } = require("../../common/Enums");
+const { interfaceName } = require("../../core/utils/Constants.js");
+
 const { toWei, toBN, utf8ToHex } = web3.utils;
 
 // Script to test
@@ -6,7 +9,6 @@ const { Disputer } = require("../disputer.js");
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
 const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
-const { LiquidationStatesEnum } = require("../../common/Enums");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -51,7 +53,7 @@ contract("Disputer.js", function(accounts) {
     mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractCreator
     });
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 

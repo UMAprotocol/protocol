@@ -1,6 +1,7 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { LiquidationStatesEnum } = require("../../../common/Enums");
+const { interfaceName } = require("../../utils/Constants.js");
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
@@ -110,7 +111,7 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
     });

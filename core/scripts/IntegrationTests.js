@@ -16,6 +16,7 @@
 // Helpers
 const { toWei, toBN } = web3.utils;
 const { RegistryRolesEnum } = require("../../common/Enums.js");
+const { interfaceName } = require("../utils/Constants.js");
 
 // Contract to test
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -107,7 +108,7 @@ contract("IntegrationTest", function(accounts) {
 
     store = await Store.deployed();
 
-    await finder.changeImplementationAddress(web3.utils.utf8ToHex("Oracle"), mockOracle.address, {
+    await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), mockOracle.address, {
       from: contractCreator
     });
 
