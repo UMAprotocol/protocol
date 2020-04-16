@@ -6,6 +6,7 @@ import "../../common/implementation/Testable.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/FinderInterface.sol";
+import "../implementation/Constants.sol";
 
 
 // A mock oracle used for testing.
@@ -103,6 +104,6 @@ contract MockOracle is OracleInterface, Testable {
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
-        return IdentifierWhitelistInterface(finder.getImplementationAddress("IdentifierWhitelist"));
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }

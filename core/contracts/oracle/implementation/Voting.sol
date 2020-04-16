@@ -747,6 +747,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
-        return IdentifierWhitelistInterface(finder.getImplementationAddress("IdentifierWhitelist"));
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }
