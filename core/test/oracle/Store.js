@@ -63,11 +63,13 @@ contract("Store", function(accounts) {
     assert(await didContractThrow(store.setFixedOracleFeePerSecondPerPfc(highFee, { from: owner })));
 
     // Can set weekly late fees to less than 100%.
-    await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.99", "ether") }, { from: owner });
+    await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("0.99", "ether") }, { from: owner });
 
     // Disallow setting fees >= 100%.
     assert(
-      await didContractThrow(store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("1", "ether") }, { from: owner }))
+      await didContractThrow(
+        store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("1", "ether") }, { from: owner })
+      )
     );
 
     // TODO Check that only permitted role can change the fee
@@ -95,8 +97,8 @@ contract("Store", function(accounts) {
       { from: owner }
     );
 
-    truffleAssert.eventEmitted(result, "NewWeeklyDelayFeePerPfc", ev => {
-      return ev.NewWeeklyDelayFeePerPfc.rawValue === web3.utils.toWei("0.5", "ether");
+    truffleAssert.eventEmitted(result, "NewWeeklyDelayFeePerSecondPerPfc", ev => {
+      return ev.NewWeeklyDelayFeePerSecondPerPfc.rawValue === web3.utils.toWei("0.5", "ether");
     });
   });
 
