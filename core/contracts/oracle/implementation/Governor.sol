@@ -56,9 +56,10 @@ contract Governor is MultiRole, Testable {
     /**
      * @notice Construct the Governor contract.
      * @param _finderAddress keeps track of all contracts within the system based on their interfaceName.
-     * @param _isTest whether this contract is being constructed for the purpose of running automated tests.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(address _finderAddress, bool _isTest) public Testable(_isTest) {
+    constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createExclusiveRole(uint(Roles.Proposer), uint(Roles.Owner), msg.sender);

@@ -16,7 +16,7 @@ contract VotingTest is Voting {
         address _votingToken,
         address _identifierWhitelist,
         address _finder,
-        bool _isTest
+        address _timerAddress
     )
         public
         Voting(
@@ -27,7 +27,7 @@ contract VotingTest is Voting {
             _votingToken,
             _identifierWhitelist,
             _finder,
-            _isTest
+            _timerAddress
         )
     {}
 

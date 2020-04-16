@@ -137,6 +137,7 @@ contract Store is StoreInterface, Withdrawable {
      * @param newWeeklyDelayFee fee escalation per week of late fee payment.
      */
     function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
+        require(newWeeklyDelayFee.isLessThan(1), "weekly delay fee must be < 100%");
         weeklyDelayFee = newWeeklyDelayFee;
         emit NewWeeklyDelayFee(newWeeklyDelayFee);
     }
