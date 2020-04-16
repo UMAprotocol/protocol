@@ -903,29 +903,47 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     const roundId = (await voting.getCurrentRoundId()).toString();
 
-    // Commit vote from one account.
+    // Commit votes
     const price = 456;
-    const salt = getRandomUnsignedInt();
-    const hash = computeVoteHash({
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = computeVoteHash({
       price: price,
-      salt: salt,
+      salt: salt1,
       account: account1,
       time,
       roundId,
       identifier
     });
-    await voting.commitVote(identifier, time, hash, { from: account1 });
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = computeVoteHash({
+      price: price,
+      salt: salt2,
+      account: account2,
+      time,
+      roundId,
+      identifier
+    });
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
     // Move to the reveal phase, where the snapshot should be taken.
     await moveToNextPhase(voting);
 
-    // The snapshotId of the current round should be zero before initiating the snapshot
+    // The snapshotId of the current round should be zero before initiating the snapshot.
     assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
 
-    // The first revealer should result in a snapshot being taken
-    await didContractThrow(voting.revealVote(identifier, time, price, salt, { from: account1 }));
+    // The first revealer should result in a snapshot being taken.
+    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
 
-    // The snapshotId of the current round should be non zero after the snapshot is taken
-    assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+    // The snapshotId of the current round should be non zero after the snapshot is taken.
+    const snapShotId = (await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString();
+    assert.notEqual(snapShotId, "0");
+
+    // A second reveal should or a direct snapshot call should not modify the shapshot id.
+    await voting.revealVote(identifier, time, price, salt2, { from: account2 });
+    await voting.snapshotCurrentRound();
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), snapShotId);
   });
 
   it("Only registered contracts", async function() {
