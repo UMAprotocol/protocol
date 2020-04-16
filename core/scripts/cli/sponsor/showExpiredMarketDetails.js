@@ -12,7 +12,7 @@ const showExpiredMarketDetails = async (web3, artifacts, emp) => {
     console.log("This contract is waiting for a price from the Oracle. Please check back later.");
   } else {
     const expiryPrice = (await emp.expiryPrice()).toString();
-    console.log("This market settled to", fromWei(expiryPrice));
+    console.log(`This market settled to ${fromWei(expiryPrice)}`);
 
     const sponsorAddress = await getDefaultAccount(web3);
     const collateral = (await emp.getCollateral(sponsorAddress)).toString();
