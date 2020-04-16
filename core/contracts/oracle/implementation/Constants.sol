@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 
 /**
- * @title Stores common interface names used through the protocol through registration in the Finder.
+ * @title Stores common interface names used throughout the DVM by registration in the Finder.
  */
 library OracleInterfaces {
     bytes32 public constant Oracle = "Oracle";
