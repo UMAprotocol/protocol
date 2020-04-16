@@ -151,12 +151,17 @@ abstract contract MultiRole {
     }
 
     /**
-     * @notice Removes caller from the exclusive role, `roleId`, and sets the zero address as the role holder.
-     * @dev Reverts if the caller is not a member of the managing role for `roleId` or if `roleId` is not an
-     * initialized, exclusive role.
+     * @notice Removes caller from the role, `roleId`. For exclusive roles, resets the member to the zero address.
+     * @dev Reverts if the caller is not a member of the role for `roleId` or if `roleId` is not an
+     * initialized.
      */
-    function renounceMembership(uint256 roleId) public onlyExclusive(roleId) onlyRoleHolder(roleId) {
-        roles[roleId].exclusiveRoleMembership.resetMember(address(0x0));
+    function renounceMembership(uint256 roleId) public onlyRoleHolder(roleId) {
+        Role storage role = roles[roleId];
+        if (role.roleType == RoleType.Exclusive) {
+            roles[roleId].exclusiveRoleMembership.resetMember(address(0x0));
+        } else {
+            roles[roleId].sharedRoleMembership.removeMember(msg.sender);
+        }
     }
 
     /**
