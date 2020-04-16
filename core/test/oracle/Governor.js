@@ -254,7 +254,7 @@ contract("Governor", function(accounts) {
       {
         to: account2,
         value: amountToDeposit,
-        data: web3.utils.hexToBytes("0x")
+        data: web3.utils.hexToBytes("0x") // "0x" is an empty bytes array to indicate no data tx.
       }
     ]);
 
