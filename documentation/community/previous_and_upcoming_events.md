@@ -1,9 +1,11 @@
 # Previous and Upcoming Events
 
 ## Upcoming Events
+
 - May 1-2, 2020: DeFi Full-Stack [Agenda](https://defi-fullstack.dystopialabs.com/)
 
 ## Past Events
+
 - April 8, 2020: Priceless Synthetic Tokens on Liquid Staking Working Group Call [Video](https://youtu.be/hua-qhA28Vc)
 - March 30, 2020: Monolith Digital #DeFi [Meetup](https://www.meetup.com/monolith/events/269605712)
 - Feb 7, 2020 in SF: Tokenizing Traditional Assets Panel at 0xpo [Agenda](https://www.0xpo.com/)
@@ -22,11 +24,11 @@
 - Room B2: Building Synthetic Derivatives on Ethereum, [Slides](https://docs.google.com/presentation/d/1syx5UmERftHfuiLeuSatI-GZGMIkkSPggRpNaDxDjkU/edit?usp=sharing) and [Video](https://www.youtube.com/watch?v=TjeB27zIn4g)
 - Hall D: BitDEX: Building a Decentralized BitMEX, [Slides](https://docs.google.com/presentation/d/19SuDaniZD7alZVsPDHIIpHBVKRJfMe9bRFVnBqqIoJA/edit?usp=sharing) and [Video](https://www.youtube.com/watch?v=4Uwznzfne1w)
 - Oct 7 in Osaka: The path from overcollateralization to undercollateralization, [video at 6:16](https://youtu.be/M8fBFhi-EE0)
--  Oct 5 in Tokyo: [node.tokyo How to scale DeFi to $T of value](https://nodetokyo.jp/schedule/)
+- Oct 5 in Tokyo: [node.tokyo How to scale DeFi to \$T of value](https://nodetokyo.jp/schedule/)
 - Oct 3 in NYC: [DeFi NYC: Demo Day](https://www.meetup.com/DeFiNYC/events/265090673/)
 - Oct 1 in NYC: [TQuorum DeFi meets CeFi Panel](http://tquorum.com/)
 - Sept 16 in NYC: [NYC Blockchain Devs: Intro to DeFi and Financial Derivatives on the Blockchain](https://www.meetup.com/nyc-blockchain-devs/events/264896876/)
-- Sep 10-11 in London: [How to scale DeFi to $T of value](https://defisumm.it), [Video](https://www.youtube.com/watch?v=T-AbXAeTKtQ)
+- Sep 10-11 in London: [How to scale DeFi to \$T of value](https://defisumm.it), [Video](https://www.youtube.com/watch?v=T-AbXAeTKtQ)
 - Sep 10-11 in London: [How to build synthetic derivatives on Ethereum](https://defisumm.it), [Video](https://www.youtube.com/watch?v=KxL4oJN4Adw&list=PLhbK0NpGv8dWsjLpYA-OM4gQk-GdQe7X2&index=14&t=190s)
 - Sep 10 in London: [Who really cares about decentralization anyway?](https://www.meetup.com/0xCommunity/events/264324368/), [Video](https://www.youtube.com/watch?v=i_-ujemOF7Y&feature=youtu.be)
 - Sep 6-8 at [ETH Boston Oracle TechTalk](https://www.youtube.com/watch?v=Qe85PsrS7Ho)

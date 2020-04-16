@@ -14,7 +14,6 @@ If you'd like to start working with the UMA platform, we have a variety of tutor
 with the technology. A good place to start is the [prerequisites](../synthetic_tokens/tutorials/prerequisites.md), which will be required
 before working through any of the other tutorials.
 
-
 ## Explainers
 
 To learn more about how the platform works, there are a few high-level explainers to help you conceptually understand

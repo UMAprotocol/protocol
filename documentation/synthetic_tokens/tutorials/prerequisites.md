@@ -1,8 +1,8 @@
 # Prerequisites
 
-After completing these set up steps, we'll be ready to start developing with the UMA system locally. 
+After completing these set up steps, we'll be ready to start developing with the UMA system locally.
 
-The following steps require the `git` CLI to be installed. If you are on Windows, you can install via Git Bash Shell ([link](https://gitforwindows.org/)). 
+The following steps require the `git` CLI to be installed. If you are on Windows, you can install via Git Bash Shell ([link](https://gitforwindows.org/)).
 
 ## Core
 
@@ -45,11 +45,11 @@ to specify for the `--network` argument.
 Public networks include the Ethereum mainnet and any public testnets, like Rinkeby, Kovan, or Ropsten. If you are using
 these networks, you'll generally need to know:
 
-1. Which public network you intend to use. 
-A list of UMA supported networks is available [here](https://github.com/UMAprotocol/protocol/blob/master/common/PublicNetworks.js). 
+1. Which public network you intend to use.
+   A list of UMA supported networks is available [here](https://github.com/UMAprotocol/protocol/blob/master/common/PublicNetworks.js).
 
-2. What private key you want to use and how your private keys are stored. 
-Below is information regarding the two types of keys that are supported, mnemonics/seed phrases and hardware wallets.
+2. What private key you want to use and how your private keys are stored.
+   Below is information regarding the two types of keys that are supported, mnemonics/seed phrases and hardware wallets.
 
 The `--network` parameter that's passed to all truffle commands depends on both of these factors. Here's an example:
 
@@ -58,7 +58,7 @@ $(npm bin)/truffle console --network rinkeby_mnemonic
 ```
 
 That command will tell truffle that the user wants to use the Rinkeby testnet and their private key is a mnemonic, or
-seed phrase. Generally, the network argument is structured as `--network [NETWORK_NAME]_[KEY_TYPE]`. 
+seed phrase. Generally, the network argument is structured as `--network [NETWORK_NAME]_[KEY_TYPE]`.
 
 ### Mnemonic, or seed phrase (less secure)
 
@@ -71,12 +71,14 @@ export MNEMONIC="YOUR_MNEMONIC_HERE"
 ```
 
 With a real mnemonic, this would look like:
+
 ```bash
 export MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
 ```
 
 Once you've done that you're ready to run a truffle command. When using a mnemonic, your network argument should look
 be `--network [NETWORK_NAME]_mnemonic`. So, for example, using a mnemonic on kovan would look like:
+
 ```bash
 $(npm bin)/truffle console --network kovan_mnemonic
 ```
@@ -99,7 +101,7 @@ To set up a Ledger hardware wallet for use with our system:
 5. Go to the Ethereum app settings on the device and change the "Contract data" setting to yes if it isn't already.
 
 Now that you're set up, you should be able to run truffle commands with the network argument
-`--network [NETWORK_NAME]_ledger`. Note: this network uses the default Ledger Live derivation path: `m/44'/60'/x'/0/0`. 
+`--network [NETWORK_NAME]_ledger`. Note: this network uses the default Ledger Live derivation path: `m/44'/60'/x'/0/0`.
 For the legacy derivation path (`m/44'/60'/0'/x`), use `[NETWORK_NAME]_legder_legacy`.
 
 For example, you could connect your ledger wallet to the truffle console and begin running commands against mainnet

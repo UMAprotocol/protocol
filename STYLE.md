@@ -44,7 +44,6 @@ rules:
 3. Sort each group of functions (e.g. external abstract, external abstract view...) alphabetically.
 4. If two functions share a name, alphabetically order by the arguments (both type and name).
 
-
 ## Javascript
 
 TODO
