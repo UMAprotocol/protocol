@@ -79,7 +79,6 @@ contract("Liquidatable", function(accounts) {
   let liquidatableParameters;
   let store;
   let financialContractsAdmin;
-  let timer;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -91,6 +90,10 @@ contract("Liquidatable", function(accounts) {
   };
 
   beforeEach(async () => {
+    // Force each test to start with a simulated time that's synced to the startTimestamp.
+    const timer = await Timer.deployed();
+    await timer.setCurrentTime(startTime);
+
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new({ from: contractDeployer });
 
@@ -101,10 +104,8 @@ contract("Liquidatable", function(accounts) {
       from: contractDeployer
     });
 
-    timer = await Timer.new();
-
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, timer.address, {
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
       from: contractDeployer
     });
     finder = await Finder.deployed();
@@ -129,7 +130,7 @@ contract("Liquidatable", function(accounts) {
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
-      timerAddress: timer.address
+      timerAddress: Timer.address
     };
 
     // Deploy liquidation contract and set global params

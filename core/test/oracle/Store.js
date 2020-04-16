@@ -91,7 +91,7 @@ contract("Store", function(accounts) {
   });
 
   it("Weekly delay fees", async function() {
-    // Add final fee and confirm
+    // Add weekly delay fee and confirm
     const result = await store.setWeeklyDelayFeePerSecondPerPfc(
       { rawValue: web3.utils.toWei("0.5", "ether") },
       { from: owner }
@@ -224,5 +224,26 @@ contract("Store", function(accounts) {
 
     // Change withdraw back to owner.
     await store.resetMember(withdrawRole, owner, { from: owner });
+  });
+
+  it("Late penalty based on current time", async function() {
+    await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.1", "ether") }, { from: owner });
+
+    const startTime = await store.getCurrentTime();
+
+    const secondsPerWeek = 604800;
+
+    // Set current time to 1 week in the future to ensure the fee gets charged.
+    await store.setCurrentTime((await store.getCurrentTime()).addn(secondsPerWeek));
+
+    // Pay for a short period a week ago. Even though the endTime is < 1 week past the start time, the currentTime
+    // should cause the late fee to be charged.
+    const { latePenalty } = await store.computeRegularFee(startTime, startTime.addn(1), {
+      rawValue: web3.utils.toWei("1")
+    });
+
+    // Payment is 1 week late, but the penalty is 10% per second of the period. Since the period is only 1 second,
+    // we should see a 10% late fee.
+    assert.equal(latePenalty.rawValue, web3.utils.toWei("0.1"));
   });
 });
