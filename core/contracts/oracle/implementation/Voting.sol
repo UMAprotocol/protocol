@@ -99,8 +99,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     VoteTiming.Data public voteTiming;
 
-    IdentifierWhitelistInterface public identifierWhitelist;
-
     // Percentage of the total token supply that must be used in a vote to
     // create a valid price resolution. 1 == 100%.
     FixedPoint.Unsigned public gatPercentage;
@@ -161,7 +159,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param _inflationRate percentage inflation per round used to increase token supply of correct voters.
      * @param _rewardsExpirationTimeout timeout, in seconds, within which rewards must be claimed.
      * @param _votingToken address of the UMA token contract used to commit votes.
-     * @param _identifierWhitelist defines the identifiers that can have have synthetics created against.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
@@ -172,7 +169,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned memory _inflationRate,
         uint256 _rewardsExpirationTimeout,
         address _votingToken,
-        address _identifierWhitelist,
         address _finder,
         address _timerAddress
     ) public Testable(_timerAddress) {
@@ -181,7 +177,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
-        identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
         finder = FinderInterface(_finder);
         rewardsExpirationTimeout = _rewardsExpirationTimeout;
     }
@@ -220,7 +215,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function requestPrice(bytes32 identifier, uint256 time) external override onlyRegisteredContract() {
         uint256 blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
-        require(identifierWhitelist.isIdentifierSupported(identifier), "Unsupported identifier request");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier request");
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
@@ -746,5 +741,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             // Means than priceRequest.lastVotingRound > currentRoundId
             return RequestStatus.Future;
         }
+    }
+
+    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress("IdentifierWhitelist"));
     }
 }

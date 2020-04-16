@@ -48,8 +48,8 @@ const deployEMP = async callback => {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address);
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
@@ -91,7 +91,8 @@ const deployEMP = async callback => {
     await emp.create({ rawValue: toWei("1.5") }, { rawValue: toWei("1") }, { from: firstSponsor });
 
     // Done!
-    console.log(`Created a new EMP @${emp.address} with the configuration:`);
+    console.log(`Using Mock Oracle @ ${mockOracle.address}`);
+    console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
     console.table(constructorParams);
   } catch (err) {
     console.error(err);

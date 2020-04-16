@@ -105,10 +105,10 @@ contract("Liquidatable", function(accounts) {
     });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractDeployer
     });
-    finder = await Finder.deployed();
 
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {

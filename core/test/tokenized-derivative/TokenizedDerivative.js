@@ -60,7 +60,7 @@ contract("TokenizedDerivative", function(accounts) {
     deployedFinder = await Finder.deployed();
     deployedAdmin = await FinancialContractsAdmin.deployed();
     supportedIdentifiers = await IdentifierWhitelist.deployed();
-    mockOracle = await MockOracle.new(supportedIdentifiers.address, Timer.address);
+    mockOracle = await MockOracle.new(deployedFinder.address, Timer.address);
     deployedStore = await Store.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
