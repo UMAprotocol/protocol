@@ -140,6 +140,7 @@ contract Store is StoreInterface, Withdrawable {
         public
         onlyRoleHolder(uint(Roles.Owner))
     {
+        require(newWeeklyDelayFeePerPfc.isLessThan(1), "weekly delay fee must be < 100%");
         weeklyDelayFeePerPfc = newWeeklyDelayFeePerPfc;
         emit NewWeeklyDelayFeePerPfc(newWeeklyDelayFeePerPfc);
     }
