@@ -39,6 +39,13 @@ class ContractMonitor {
       .muln(100);
   };
 
+  getLastSeenBlockNumber(eventArray) {
+    if (eventArray.length == 0) {
+      return 0;
+    }
+    return eventArray[eventArray.length - 1].blockNumber;
+  }
+
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async priceFunction => {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
@@ -88,7 +95,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastLiquidationBlockNumber = latestLiquidationEvents[latestLiquidationEvents.length - 1].blockNumber;
+    this.lastLiquidationBlockNumber = getLastSeenBlockNumber(latestLiquidationEvents);
   };
 
   checkForNewDisputeEvents = async priceFunction => {
@@ -130,7 +137,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeBlockNumber = latestDisputeEvents[latestDisputeEvents.length - 1].blockNumber;
+    this.lastDisputeBlockNumber = getLastSeenBlockNumber(latestDisputeEvents);
   };
 
   checkForNewDisputeSettlementEvents = async priceFunction => {
@@ -173,8 +180,7 @@ class ContractMonitor {
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeSettlementBlockNumber =
-      latestDisputeSettlementEvents[latestDisputeSettlementEvents.length - 1].blockNumber;
+    this.lastDisputeSettlementBlockNumber = getLastSeenBlockNumber(latestDisputeSettlementEvents);
   };
 }
 
