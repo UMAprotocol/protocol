@@ -7,13 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
+import "../../common/implementation/Testable.sol";
 import "../interfaces/StoreInterface.sol";
 
 
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
-contract Store is StoreInterface, Withdrawable {
+contract Store is StoreInterface, Withdrawable, Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint;
@@ -42,7 +43,7 @@ contract Store is StoreInterface, Withdrawable {
     /**
      * @notice Construct the Store contract.
      */
-    constructor() public {
+    constructor(address _timerAddress) public Testable(_timerAddress) {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
     }
@@ -97,8 +98,17 @@ contract Store is StoreInterface, Withdrawable {
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
         regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
-        // `weeklyDelayFee` is already scaled up.
-        latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
+
+        // Compute how long ago the start time was to compute the delay penalty.
+        uint paymentDelay = getCurrentTime().sub(startTime);
+
+        // Compute the additional percentage (per second) that will be charged because of the penalty.
+        // Note: if less than a week has gone by since the startTime, paymentDelay / SECONDS_PER_WEEK will truncate to
+        // 0, causing no penalty to be charged.
+        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFee.mul(paymentDelay.div(SECONDS_PER_WEEK));
+
+        // Apply the penaltyPercentagePerSecond to the payment period.
+        latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
 
         return (regularFee, latePenalty);
     }

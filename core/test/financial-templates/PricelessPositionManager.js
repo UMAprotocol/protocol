@@ -33,7 +33,6 @@ contract("PricelessPositionManager", function(accounts) {
   let identifierWhitelist;
   let mockOracle;
   let financialContractsAdmin;
-  let timer;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -79,16 +78,18 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   beforeEach(async function() {
+    // Force each test to start with a simulated time that's synced to the startTimestamp.
+    const timer = await Timer.deployed();
+    await timer.setCurrentTime(startTimestamp);
+
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });
 
-    timer = await Timer.new();
-
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, timer.address, {
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
       from: contractDeployer
     });
     finder = await Finder.deployed();
@@ -109,7 +110,7 @@ contract("PricelessPositionManager", function(accounts) {
       syntheticSymbol, // _syntheticSymbol
       TokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      timer.address, // _timerAddress
+      Timer.address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -1118,7 +1119,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
 
     // Create new oracle, replace it in the finder, and push a different price to it.
-    const newMockOracle = await MockOracle.new(identifierWhitelist.address, timer.address);
+    const newMockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
       from: contractDeployer
@@ -1358,7 +1359,7 @@ contract("PricelessPositionManager", function(accounts) {
       syntheticSymbol, // _syntheticSymbol
       TokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
-      timer.address, // _timerAddress
+      Timer.address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
