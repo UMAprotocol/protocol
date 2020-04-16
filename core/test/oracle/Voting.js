@@ -1365,12 +1365,21 @@ contract("Voting", function(accounts) {
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
-    await voting.commitAndPersistEncryptedVote(identifier, time, hash, encryptedMessage);
+    let result = await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
+    truffleAssert.eventEmitted(result, "EncryptedVote", ev => {
+      return (
+        ev.voter.toString() === account1 &&
+        ev.roundId.toString() === roundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time &&
+        ev.encryptedVote === encryptedMessage
+      );
+    });
 
-    const topicHash = computeTopicHash({ identifier, time }, roundId);
-    const retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+    const events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0 });
+    const retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
 
-    // Check that the stored message is correct.
+    // Check that the emitted message is correct.
     assert.equal(encryptedMessage, retrievedEncryptedMessage);
 
     await moveToNextPhase(voting);
@@ -1379,14 +1388,7 @@ contract("Voting", function(accounts) {
     const retrievedVote = JSON.parse(decryptedMessage);
 
     assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomUnsignedInt())));
-
-    // Check that the message was not deleted.
-    assert.isNotNull(await voting.getMessage(account1, topicHash));
-
     await voting.revealVote(identifier, time, retrievedVote.price, retrievedVote.salt);
-
-    // Check that the message was deleted.
-    assert.isNull(await voting.getMessage(account1, topicHash));
   });
 
   it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
@@ -1412,15 +1414,13 @@ contract("Voting", function(accounts) {
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
-
-    await voting.commitAndPersistEncryptedVote(identifier, time, hash, encryptedMessage);
-
-    const topicHash = computeTopicHash({ identifier, time }, roundId);
+    await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
 
     const secondEncryptedMessage = await encryptMessage(publicKey, getRandomUnsignedInt());
+    await voting.commitAndEmitEncryptedVote(identifier, time, hash, secondEncryptedMessage);
 
-    await voting.commitAndPersistEncryptedVote(identifier, time, hash, secondEncryptedMessage);
-    const secondRetrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+    const events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0 });
+    const secondRetrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
 
     assert.equal(secondEncryptedMessage, secondRetrievedEncryptedMessage);
   });
@@ -1447,8 +1447,8 @@ contract("Voting", function(accounts) {
 
     const roundId = await voting.getCurrentRoundId();
 
-    // Commit without storing any encrypted messages
-    await voting.batchCommit(
+    // Commit without emitting any encrypted messages
+    const result = await voting.batchCommit(
       priceRequests.map(request => ({
         identifier: request.identifier,
         time: request.time,
@@ -1456,24 +1456,18 @@ contract("Voting", function(accounts) {
         encryptedVote: []
       }))
     );
-
-    // Verify that no messages were stored
-    for (let i = 0; i < numRequests; i++) {
-      let request = priceRequests[i];
-      let topicHash = computeTopicHash({ identifier: request.identifier, time: request.time }, roundId);
-
-      assert.isNull(await voting.getMessage(account1, topicHash));
-    }
+    truffleAssert.eventNotEmitted(result, "EncryptedVote");
 
     // This time we commit while storing the encrypted messages
     await voting.batchCommit(priceRequests);
 
-    // Test that the encrypted messages were stored properly
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
-      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
-      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
-
+      let events = await voting.getPastEvents("EncryptedVote", {
+        fromBlock: 0,
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time }
+      });
+      let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
 
@@ -1481,7 +1475,7 @@ contract("Voting", function(accounts) {
     const modifiedPriceRequest = priceRequests[0];
     modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomUnsignedInt());
     modifiedPriceRequest.encryptedVote = web3.utils.utf8ToHex("some other encrypted message");
-    await voting.commitAndPersistEncryptedVote(
+    await voting.commitAndEmitEncryptedVote(
       modifiedPriceRequest.identifier,
       modifiedPriceRequest.time,
       modifiedPriceRequest.hash,
@@ -1491,9 +1485,11 @@ contract("Voting", function(accounts) {
     // Test that the encrypted messages are still correct
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
-      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
-      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
-
+      let events = await voting.getPastEvents("EncryptedVote", {
+        fromBlock: 0,
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time }
+      });
+      let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
   });
@@ -1534,15 +1530,8 @@ contract("Voting", function(accounts) {
     const vote = { price: price1.toString(), salt: salt2.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
-    await voting.commitAndPersistEncryptedVote(identifier, time1, hash1, encryptedMessage);
+    await voting.commitAndEmitEncryptedVote(identifier, time1, hash1, encryptedMessage);
     await voting.commitVote(identifier, time2, hash2);
-
-    const topicHash1 = computeTopicHash({ identifier, time: time1 }, roundId);
-    const topicHash2 = computeTopicHash({ identifier, time: time2 }, roundId);
-
-    // Check the encrypted message storage slot.
-    assert.isNotNull(await voting.getMessage(account1, topicHash1));
-    assert.isNull(await voting.getMessage(account1, topicHash2));
 
     await moveToNextPhase(voting);
 
@@ -1580,10 +1569,6 @@ contract("Voting", function(accounts) {
         ev.price.toString() == price2.toString()
       );
     });
-
-    // Check that the encrypted message has been removed from storage
-    assert.isNull(await voting.getMessage(account1, topicHash1));
-    assert.isNull(await voting.getMessage(account1, topicHash2));
   });
 
   it("Migration", async function() {
