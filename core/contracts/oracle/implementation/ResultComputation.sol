@@ -62,7 +62,6 @@ library ResultComputation {
         view
         returns (bool isResolved, int256 price)
     {
-        // TODO(ptare): Figure out where this parameter is supposed to come from.
         FixedPoint.Unsigned memory modeThreshold = FixedPoint.fromUnscaledUint(50).div(100);
 
         if (
