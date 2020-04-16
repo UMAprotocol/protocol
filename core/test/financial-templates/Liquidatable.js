@@ -18,6 +18,7 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Timer = artifacts.require("Timer");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -89,6 +90,10 @@ contract("Liquidatable", function(accounts) {
   };
 
   beforeEach(async () => {
+    // Force each test to start with a simulated time that's synced to the startTimestamp.
+    const timer = await Timer.deployed();
+    await timer.setCurrentTime(startTime);
+
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new({ from: contractDeployer });
 
@@ -100,7 +105,7 @@ contract("Liquidatable", function(accounts) {
     });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
       from: contractDeployer
     });
     finder = await Finder.deployed();
@@ -111,7 +116,6 @@ contract("Liquidatable", function(accounts) {
     });
 
     liquidatableParameters = {
-      isTest: true,
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
@@ -125,7 +129,8 @@ contract("Liquidatable", function(accounts) {
       disputeBondPct: { rawValue: disputeBondPct.toString() },
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
-      minSponsorTokens: { rawValue: minSponsorTokens.toString() }
+      minSponsorTokens: { rawValue: minSponsorTokens.toString() },
+      timerAddress: Timer.address
     };
 
     // Deploy liquidation contract and set global params

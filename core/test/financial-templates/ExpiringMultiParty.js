@@ -8,13 +8,13 @@ const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Can deploy", async function() {
     const collateralToken = await Token.new({ from: accounts[0] });
 
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "1234567890",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -28,7 +28,8 @@ contract("ExpiringMultiParty", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();

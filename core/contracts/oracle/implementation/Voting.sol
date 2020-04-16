@@ -163,7 +163,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _identifierWhitelist defines the identifiers that can have have synthetics created against.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
-     * @param _isTest whether this contract is being constructed for the purpose of running automated tests.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
         uint256 _phaseLength,
@@ -173,8 +174,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         address _votingToken,
         address _identifierWhitelist,
         address _finder,
-        bool _isTest
-    ) public Testable(_isTest) {
+        address _timerAddress
+    ) public Testable(_timerAddress) {
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;

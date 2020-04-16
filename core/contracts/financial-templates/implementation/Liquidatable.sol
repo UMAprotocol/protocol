@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 
@@ -58,12 +57,12 @@ contract Liquidatable is PricelessPositionManager {
     // This is required to enable more params, over and above Solidity's limits.
     struct ConstructorParams {
         // Params for PricelessPositionManager only.
-        bool isTest;
-        uint256 expirationTimestamp;
-        uint256 withdrawalLiveness;
+        uint expirationTimestamp;
+        uint withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
         address tokenFactoryAddress;
+        address timerAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
@@ -149,7 +148,6 @@ contract Liquidatable is PricelessPositionManager {
     constructor(ConstructorParams memory params)
         public
         PricelessPositionManager(
-            params.isTest,
             params.expirationTimestamp,
             params.withdrawalLiveness,
             params.collateralAddress,
@@ -158,7 +156,8 @@ contract Liquidatable is PricelessPositionManager {
             params.syntheticName,
             params.syntheticSymbol,
             params.tokenFactoryAddress,
-            params.minSponsorTokens
+            params.minSponsorTokens,
+            params.timerAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
