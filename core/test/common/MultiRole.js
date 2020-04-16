@@ -120,6 +120,9 @@ contract("MultiRole", function(accounts) {
     // Cannot set a shared role role to the 0x0 address.
     assert(await didContractThrow(multiRole.addMember("1", zeroAddress, { from: account2 })));
 
+    // Cannot renounce a shared role.
+    assert(await didContractThrow(multiRole.renounceMembership("1", { from: account3 })));
+
     // Anyone who holds the role should be able to remove members.
     await multiRole.removeMember("1", account2, { from: account3 });
     assert.isFalse(await multiRole.holdsRole("1", account2));
