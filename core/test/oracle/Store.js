@@ -221,7 +221,7 @@ contract("Store", function(accounts) {
     await store.resetMember(withdrawRole, owner, { from: owner });
   });
 
-  it.only("Basic late penalty", async function() {
+  it("Basic late penalty", async function() {
     const lateFeeRate = web3.utils.toWei("0.0001");
     const regularFeeRate = web3.utils.toWei("0.0002");
     await store.setWeeklyDelayFee({ rawValue: lateFeeRate }, { from: owner });
