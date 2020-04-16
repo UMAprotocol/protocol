@@ -2694,7 +2694,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Wipe out the regular component of the Oracle fee but set a weekly delay fee.
       await setNewFixedOracleFee("0");
-      const weeklyDelayFee = web3.utils.toWei("0.1", "ether");
+      const weeklyDelayFee = web3.utils.toBN(web3.utils.toWei("0.000000001", "ether"));
       await setNewWeeklyDelayFee(weeklyDelayFee);
 
       // Go two weeks without remargining, and see if the delay fee was paid.
@@ -2707,8 +2707,9 @@ contract("TokenizedDerivative", function(accounts) {
 
       const expectedDelayFee = web3.utils
         .toBN(shortBalance)
-        .mul(web3.utils.toBN(weeklyDelayFee))
+        .mul(weeklyDelayFee)
         .muln(numWeeks)
+        .muln(secondsInTwoWeeks)
         .div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
       expectedShortBalance = web3.utils.toBN(shortBalance).sub(expectedDelayFee);
       expectedStoreBalance = storeBalance.add(expectedDelayFee);
