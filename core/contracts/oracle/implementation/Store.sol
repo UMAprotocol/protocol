@@ -130,16 +130,16 @@ contract Store is StoreInterface, Withdrawable, Testable {
 
     /**
      * @notice Sets a new oracle fee per second.
-     * @param newOracleFeePerSecondPerPfc new fee per second charged to use the oracle.
+     * @param newFixedOracleFeePerSecondPerPfc new fee per second charged to use the oracle.
      */
-    function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newOracleFeePerSecondPerPfc)
+    function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newFixedOracleFeePerSecondPerPfc)
         public
         onlyRoleHolder(uint(Roles.Owner))
     {
         // Oracle fees at or over 100% don't make sense.
-        require(newOracleFeePerSecondPerPfc.isLessThan(1));
-        fixedOracleFeePerSecondPerPfc = newOracleFeePerSecondPerPfc;
-        emit NewFixedOracleFeePerSecondPerPfc(newOracleFeePerSecondPerPfc);
+        require(newFixedOracleFeePerSecondPerPfc.isLessThan(1));
+        fixedOracleFeePerSecondPerPfc = newFixedOracleFeePerSecondPerPfc;
+        emit NewFixedOracleFeePerSecondPerPfc(newFixedOracleFeePerSecondPerPfc);
     }
 
     /**
