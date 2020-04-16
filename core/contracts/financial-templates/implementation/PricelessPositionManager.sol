@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -124,7 +123,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Construct the PricelessPositionManager
-     * @param _isTest whether this contract is being constructed for the purpose of running tests.
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _withdrawalLiveness liveness delay, in seconds, for pending withdrawals.
      * @param _collateralAddress ERC20 token used as collateral for all positions.
@@ -133,19 +131,21 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param _syntheticName name for the token contract that will be deployed.
      * @param _syntheticSymbol symbol for the token contract that will be deployed.
      * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
-        bool _isTest,
-        uint256 _expirationTimestamp,
-        uint256 _withdrawalLiveness,
+        uint _expirationTimestamp,
+        uint _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
         string memory _syntheticName,
         string memory _syntheticSymbol,
         address _tokenFactoryAddress,
-        FixedPoint.Unsigned memory _minSponsorTokens
-    ) public FeePayer(_collateralAddress, _finderAddress, _isTest) {
+        FixedPoint.Unsigned memory _minSponsorTokens,
+        address _timerAddress
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);

@@ -35,6 +35,7 @@ library Shared {
     }
 
     function addMember(RoleMembership storage roleMembership, address memberToAdd) internal {
+        require(memberToAdd != address(0x0), "Cannot add 0x0 to a shared role");
         roleMembership.members[memberToAdd] = true;
     }
 

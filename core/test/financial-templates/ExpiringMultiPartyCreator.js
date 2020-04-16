@@ -13,6 +13,7 @@ const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiParty", function(accounts) {
   let contractCreator = accounts[0];
@@ -48,7 +49,8 @@ contract("ExpiringMultiParty", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();

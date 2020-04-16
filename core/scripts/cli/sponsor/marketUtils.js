@@ -19,7 +19,12 @@ const getMarketSummary = async (web3, artifacts) => {
   for (const address of contractAddresses) {
     // The governor is always registered as a contract, but it isn't an ExpiringMultiParty.
     if (address !== Governor.address) {
-      emps.push(await ExpiringMultiParty.at(address));
+      // Additional check that the address is a contract.
+      try {
+        emps.push(await ExpiringMultiParty.at(address));
+      } catch (err) {
+        continue;
+      }
     }
   }
 
@@ -36,7 +41,6 @@ const getMarketSummary = async (web3, artifacts) => {
     const name = await token.name();
 
     const collateralRequirement = await emp.collateralRequirement();
-    const asPercent = web3.utils.fromWei(collateralRequirement.muln(100).toString());
 
     const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
     const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);

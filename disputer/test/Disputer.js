@@ -15,6 +15,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("Disputer.js", function(accounts) {
   const disputeBot = accounts[0];
@@ -46,7 +47,7 @@ contract("Disputer.js", function(accounts) {
     await collateralToken.mint(disputeBot, toWei("100000"), { from: contractCreator });
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(IdentifierWhitelist.address, {
+    mockOracle = await MockOracle.new(IdentifierWhitelist.address, Timer.address, {
       from: contractCreator
     });
     finder = await Finder.deployed();
@@ -56,7 +57,6 @@ contract("Disputer.js", function(accounts) {
 
   beforeEach(async function() {
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -70,7 +70,8 @@ contract("Disputer.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();

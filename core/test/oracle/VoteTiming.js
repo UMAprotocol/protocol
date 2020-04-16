@@ -1,3 +1,5 @@
+const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+
 const VoteTimingTest = artifacts.require("VoteTimingTest");
 
 contract("VoteTiming", function(accounts) {
@@ -5,6 +7,10 @@ contract("VoteTiming", function(accounts) {
   const REVEAL_PHASE = "1";
   beforeEach(async function() {
     voteTiming = await VoteTimingTest.new("100");
+  });
+  it("Reject invalid init params", async function() {
+    // Should not be able to create an instance of VoteTiming with 0 phase length.
+    assert(await didContractThrow(VoteTimingTest.new("0")));
   });
 
   it("Phasing", async function() {

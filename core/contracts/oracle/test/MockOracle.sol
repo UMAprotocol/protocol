@@ -40,7 +40,7 @@ contract MockOracle is OracleInterface, Testable {
     mapping(bytes32 => mapping(uint256 => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    constructor(address _identifierWhitelist) public Testable(true) {
+    constructor(address _identifierWhitelist, address _timerAddress) public Testable(_timerAddress) {
         identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
     }
 
