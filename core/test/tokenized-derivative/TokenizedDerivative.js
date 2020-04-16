@@ -1,5 +1,6 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { interfaceName } = require("../../utils/Constants.js");
 
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
@@ -67,7 +68,7 @@ contract("TokenizedDerivative", function(accounts) {
     noLeverageCalculator = await LeveragedReturnCalculator.deployed();
 
     // Change the Oracle to MockOracle so that we can push prices from test cases.
-    const oracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex("Oracle"));
+    const oracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex(interfaceName.Oracle));
     await deployedFinder.changeImplementationAddress(oracleInterfaceName, mockOracle.address);
 
     // Create an arbitrary ERC20 margin token.

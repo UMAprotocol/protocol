@@ -1,5 +1,7 @@
 const { toWei } = web3.utils;
 
+const { interfaceName } = require("../../core/utils/Constants.js");
+
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
 const { delay } = require("../delay");
 
@@ -43,7 +45,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Create a mockOracle and finder. Register the mockOracle with the finder.
     mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 

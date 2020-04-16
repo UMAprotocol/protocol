@@ -8,6 +8,7 @@ import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleInterface.sol";
+import "./Constants.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -179,11 +180,11 @@ contract Governor is MultiRole, Testable {
     }
 
     function _getOracle() private view returns (OracleInterface oracle) {
-        return OracleInterface(finder.getImplementationAddress("Oracle"));
+        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
-        return IdentifierWhitelistInterface(finder.getImplementationAddress("IdentifierWhitelist"));
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
     // Returns a UTF-8 identifier representing a particular admin proposal.
