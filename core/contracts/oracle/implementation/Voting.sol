@@ -342,13 +342,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     /**
      * @notice Snapshot the current round's token balances and lock in the inflation rate and GAT.
      * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
-     * will create the round snapshot. Any later calls will be a no-op.
+     * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function snapshotCurrentRound() external override onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot snapshot in commit phase");
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Can only snapshot in reveal phase");
 
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
