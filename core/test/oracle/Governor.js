@@ -254,7 +254,7 @@ contract("Governor", function(accounts) {
       {
         to: account2,
         value: amountToDeposit,
-        data: web3.utils.hexToBytes("0x0")
+        data: web3.utils.hexToBytes("0x")
       }
     ]);
 
@@ -300,7 +300,7 @@ contract("Governor", function(accounts) {
       {
         to: account2,
         value: amountToDeposit,
-        data: web3.utils.hexToBytes("0x0")
+        data: web3.utils.hexToBytes("0x")
       }
     ]);
 
