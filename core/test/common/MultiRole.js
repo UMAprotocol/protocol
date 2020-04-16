@@ -50,7 +50,7 @@ contract("MultiRole", function(accounts) {
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account1 })));
   });
 
-  it("Exlusive externally managed role", async function() {
+  it("Exclusive externally managed role", async function() {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createExclusiveRole("1", "1", account1);
 
@@ -108,6 +108,11 @@ contract("MultiRole", function(accounts) {
     await multiRole.removeMember("1", account2, { from: account3 });
     assert.isFalse(await multiRole.holdsRole("1", account2));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account2 })));
+
+    // Anyone who who holds the role can renounce their membership.
+    await multiRole.removeMember("1", account3, { from: account3 });
+    assert.isFalse(await multiRole.holdsRole("1", account3));
+    assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account3 })));
   });
 
   it("Shared externally-managed (shared) role", async function() {
@@ -137,6 +142,11 @@ contract("MultiRole", function(accounts) {
     await multiRole.removeMember("2", account2, { from: account1 });
     assert.isFalse(await multiRole.holdsRole("2", account2));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account2 })));
+
+    // Anyone who who holds the managing role can renounce their membership.
+    await multiRole.removeMember("2", account1, { from: account1 });
+    assert.isFalse(await multiRole.holdsRole("2", account1));
+    assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account1 })));
   });
 
   it("Shared externally-managed (exclusive) role", async function() {
