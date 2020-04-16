@@ -84,7 +84,7 @@ contract("Store", function(accounts) {
     );
 
     truffleAssert.eventEmitted(result, "NewFinalFee", ev => {
-      return ev.NewFinalFee.rawValue === web3.utils.toWei("5", "ether");
+      return ev.newFinalFee.rawValue === web3.utils.toWei("5", "ether");
     });
     const fee = await store.computeFinalFee(arbitraryTokenAddr);
     assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
@@ -98,7 +98,7 @@ contract("Store", function(accounts) {
     );
 
     truffleAssert.eventEmitted(result, "NewWeeklyDelayFeePerSecondPerPfc", ev => {
-      return ev.NewWeeklyDelayFeePerSecondPerPfc.rawValue === web3.utils.toWei("0.5", "ether");
+      return ev.newWeeklyDelayFeePerSecondPerPfc.rawValue === web3.utils.toWei("0.5", "ether");
     });
   });
 
@@ -227,7 +227,7 @@ contract("Store", function(accounts) {
   });
 
   it("Late penalty based on current time", async function() {
-    await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.1", "ether") }, { from: owner });
+    await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("0.1", "ether") }, { from: owner });
 
     const startTime = await store.getCurrentTime();
 
