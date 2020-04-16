@@ -125,11 +125,11 @@ contract("TokenizedDerivative", function(accounts) {
   };
 
   const setNewFixedOracleFee = async feePerSecond => {
-    await deployedStore.setFixedOracleFeePerSecond({ rawValue: feePerSecond.toString() });
+    await deployedStore.setFixedOracleFeePerSecondPerPfc({ rawValue: feePerSecond.toString() });
   };
 
-  const setNewWeeklyDelayFee = async weeklyDelayFee => {
-    await deployedStore.setWeeklyDelayFee({ rawValue: weeklyDelayFee.toString() });
+  const setNewWeeklyDelayFeePerPfc = async weeklyDelayFee => {
+    await deployedStore.setWeeklyDelayFeePerSecondPerPfc({ rawValue: weeklyDelayFee.toString() });
   };
 
   const getRandomIntBetween = (min, max) => {
@@ -195,7 +195,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Set the Oracle fees.
       await setNewFixedOracleFee(oracleFeePerSecond);
-      await setNewWeeklyDelayFee("0");
+      await setNewWeeklyDelayFeePerPfc("0");
       await setOracleFinalFee("0");
 
       // Pre-auth when required.
@@ -2694,7 +2694,7 @@ contract("TokenizedDerivative", function(accounts) {
       // Wipe out the regular component of the Oracle fee but set a weekly delay fee.
       await setNewFixedOracleFee("0");
       const weeklyDelayFee = web3.utils.toWei("0.1", "ether");
-      await setNewWeeklyDelayFee(weeklyDelayFee);
+      await setNewWeeklyDelayFeePerPfc(weeklyDelayFee);
 
       // Go two weeks without remargining, and see if the delay fee was paid.
       const numWeeks = 2;

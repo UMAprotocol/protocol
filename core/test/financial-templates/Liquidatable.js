@@ -986,7 +986,7 @@ contract("Liquidatable", function(accounts) {
         });
         it("Fees on liquidation", async () => {
           // Charge a 10% fee per second.
-          await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
+          await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.1") });
 
           // Advance time to charge fee.
           let currentTime = await liquidationContract.getCurrentTime();
@@ -1046,7 +1046,7 @@ contract("Liquidatable", function(accounts) {
           );
 
           // Clean up store fees.
-          await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+          await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
         });
       });
       describe("Dispute failed", () => {
@@ -1475,7 +1475,7 @@ contract("Liquidatable", function(accounts) {
       });
       it("Fees on liquidation", async () => {
         // Charge a 10% fee per second.
-        await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
+        await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.1") });
 
         // Advance time to charge fee.
         let currentTime = await USDCLiquidationContract.getCurrentTime();
@@ -1555,7 +1555,7 @@ contract("Liquidatable", function(accounts) {
         );
 
         // Clean up store fees.
-        await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+        await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
       });
     });
     describe("Dispute failed", () => {
@@ -1607,7 +1607,7 @@ contract("Liquidatable", function(accounts) {
       // = 0.033... repeating, which cannot be represented precisely by a fixed point.
       // --> 0.04 * 30 wei = 1.2 wei, which gets truncated to 1 wei, so 1 wei of fees are paid
       const regularFee = toWei("0.04");
-      await store.setFixedOracleFeePerSecond({ rawValue: regularFee });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFee });
 
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = await _liquidationContract.getCurrentTime();
@@ -1615,7 +1615,7 @@ contract("Liquidatable", function(accounts) {
       await _liquidationContract.payFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
-      await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
 
       // Set allowance for contract to pull synthetic tokens from liquidator
       await syntheticToken.increaseAllowance(_liquidationContract.address, numTokens, { from: liquidator });

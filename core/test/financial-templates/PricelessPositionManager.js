@@ -708,7 +708,7 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
 
     // Set store fees to 1% per second.
-    await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.01") });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
 
     // Move time in the contract forward by 1 second to capture a 1% fee.
     const startTime = await pricelessPositionManager.getCurrentTime();
@@ -743,7 +743,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
-    await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
 
   it("Final fees", async function() {
@@ -880,7 +880,7 @@ contract("PricelessPositionManager", function(accounts) {
       // = 0.033... repeating, which cannot be represented precisely by a fixed point.
       // --> 0.04 * 30 wei = 1.2 wei, which gets truncated to 1 wei, so 1 wei of fees are paid
       const regularFee = toWei("0.04");
-      await store.setFixedOracleFeePerSecond({ rawValue: regularFee });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFee });
 
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = await pricelessPositionManager.getCurrentTime();
@@ -888,7 +888,7 @@ contract("PricelessPositionManager", function(accounts) {
       await pricelessPositionManager.payFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
-      await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
     });
     it("Fee multiplier is set properly with precision loss, and fees are paid as expected", async () => {
       // Absent any rounding errors, `getCollateral` should return (initial-collateral - final-fees) = 30 wei - 1 wei = 29 wei.

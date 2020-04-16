@@ -25,8 +25,8 @@ contract Store is StoreInterface, Withdrawable {
 
     enum Roles { Owner, Withdrawer }
 
-    FixedPoint.Unsigned public fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
-    FixedPoint.Unsigned public weeklyDelayFee; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
+    FixedPoint.Unsigned public fixedOracleFeePerSecondPerPfc; // Percentage of 1 E.g., .1 is 10% Oracle fee.
+    FixedPoint.Unsigned public weeklyDelayFeePerPfc; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
 
     mapping(address => FixedPoint.Unsigned) public finalFees;
     uint256 public constant SECONDS_PER_WEEK = 604800;
@@ -35,8 +35,8 @@ contract Store is StoreInterface, Withdrawable {
      *                EVENTS                *
      ****************************************/
 
-    event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
-    event NewWeeklyDelayFee(FixedPoint.Unsigned newWeeklyDelayFee);
+    event NewFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned newOracleFee);
+    event NewWeeklyDelayFeePerPfc(FixedPoint.Unsigned newWeeklyDelayFeePerPfc);
     event NewFinalFee(FixedPoint.Unsigned newFinalFee);
 
     /**
@@ -96,9 +96,9 @@ contract Store is StoreInterface, Withdrawable {
         uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
-        regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
-        // `weeklyDelayFee` is already scaled up.
-        latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
+        regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecondPerPfc);
+        // `weeklyDelayFeePerPfc` is already scaled up.
+        latePenalty = pfc.mul(weeklyDelayFeePerPfc.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
     }
@@ -120,25 +120,28 @@ contract Store is StoreInterface, Withdrawable {
 
     /**
      * @notice Sets a new oracle fee per second.
-     * @param newOracleFee new fee per second charged to use the oracle.
+     * @param newOracleFeePerSecondPerPfc new fee per second charged to use the oracle.
      */
-    function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee)
+    function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newOracleFeePerSecondPerPfc)
         public
         onlyRoleHolder(uint(Roles.Owner))
     {
         // Oracle fees at or over 100% don't make sense.
-        require(newOracleFee.isLessThan(1));
-        fixedOracleFeePerSecond = newOracleFee;
-        emit NewFixedOracleFeePerSecond(newOracleFee);
+        require(newOracleFeePerSecondPerPfc.isLessThan(1));
+        fixedOracleFeePerSecondPerPfc = newOracleFeePerSecondPerPfc;
+        emit NewFixedOracleFeePerSecondPerPfc(newOracleFeePerSecondPerPfc);
     }
 
     /**
      * @notice Sets a new weekly delay fee.
-     * @param newWeeklyDelayFee fee escalation per week of late fee payment.
+     * @param newWeeklyDelayFeePerPfc fee escalation per week of late fee payment.
      */
-    function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
-        weeklyDelayFee = newWeeklyDelayFee;
-        emit NewWeeklyDelayFee(newWeeklyDelayFee);
+    function setWeeklyDelayFeePerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerPfc)
+        public
+        onlyRoleHolder(uint(Roles.Owner))
+    {
+        weeklyDelayFeePerPfc = newWeeklyDelayFeePerPfc;
+        emit NewWeeklyDelayFeePerPfc(newWeeklyDelayFeePerPfc);
     }
 
     /**
