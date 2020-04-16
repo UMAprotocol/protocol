@@ -348,9 +348,24 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     }
 
     /**
+     * @notice Snapshot the current round's token balances and lock in the inflation rate and GAT.
+     * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
+     * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
+     */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function snapshotCurrentRound() external override onlyIfNotMigrated() {
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Can only snapshot in reveal phase");
+
+        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
+        _freezeRoundVariables(roundId);
+    }
+
+    /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash` that `commitVote()` was called with.
-     * Only the committer can reveal their vote.
+     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * that `commitVote()` was called with. Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
@@ -361,8 +376,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) public override onlyIfNotMigrated() {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
-        // Note: computing the current round is required to disallow people from revealing an old commit after the
-        // round is over.
+        // Note: computing the current round is required to disallow people from
+        // revealing an old commit after the round is over.
         uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
@@ -382,7 +397,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         )) == voteSubmission.commit, "Revealed data != commit hash");
         delete voteSubmission.commit;
 
-        // Lock in round variables including snapshotId and inflation rate
+        // Lock in round variables including snapshotId and inflation rate. Not that this will only execute a snapshot
+        // if the `snapshotCurrentRound` function was not already called for this round.
         _freezeRoundVariables(roundId);
 
         // Get the frozen snapshotId
