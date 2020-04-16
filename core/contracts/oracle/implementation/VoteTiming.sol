@@ -28,7 +28,7 @@ library VoteTiming {
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength.mul(uint256(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
+        uint256 roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
         return currentTime.div(roundLength);
     }
 
@@ -39,7 +39,7 @@ library VoteTiming {
      * @return timestamp unix time of when the current round will end.
      */
     function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength.mul(uint256(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
+        uint256 roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
         return roundLength.mul(roundId.add(1));
     }
 
@@ -50,7 +50,7 @@ library VoteTiming {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
         return
             VotingInterface.Phase(
-                currentTime.div(data.phaseLength).mod(uint256(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER))
+                currentTime.div(data.phaseLength).mod(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER))
             );
     }
 }
