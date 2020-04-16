@@ -465,7 +465,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function retrieveRewards(address voterAddress, uint256 roundId, PendingRequest[] memory toRetrieve)
         public
         override
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
         if (migratedAddress != address(0)) {
             require(msg.sender == migratedAddress, "Can only call from migrated");
@@ -486,7 +486,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
 
         // Keep track of the voter's accumulated token reward.
-        FixedPoint.Unsigned memory totalRewardToIssue = FixedPoint.Unsigned(0);
+        totalRewardToIssue = FixedPoint.Unsigned(0);
 
         for (uint256 i = 0; i < toRetrieve.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time);
