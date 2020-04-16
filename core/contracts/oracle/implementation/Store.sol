@@ -36,7 +36,7 @@ contract Store is StoreInterface, Withdrawable {
      ****************************************/
 
     event NewFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned newOracleFee);
-    event NewWeeklyDelayFeePerPfc(FixedPoint.Unsigned newWeeklyDelayFeePerPfc);
+    event NewWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned newWeeklyDelayFeePerSecondPerPfc);
     event NewFinalFee(FixedPoint.Unsigned newFinalFee);
 
     /**
@@ -134,15 +134,15 @@ contract Store is StoreInterface, Withdrawable {
 
     /**
      * @notice Sets a new weekly delay fee.
-     * @param newWeeklyDelayFeePerPfc fee escalation per week of late fee payment.
+     * @param newWeeklyDelayFeePerSecondPerPfc fee escalation per week of late fee payment.
      */
-    function setWeeklyDelayFeePerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerPfc)
+    function setWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerSecondPerPfc)
         public
         onlyRoleHolder(uint(Roles.Owner))
     {
-        require(newWeeklyDelayFeePerPfc.isLessThan(1), "weekly delay fee must be < 100%");
-        weeklyDelayFeePerPfc = newWeeklyDelayFeePerPfc;
-        emit NewWeeklyDelayFeePerPfc(newWeeklyDelayFeePerPfc);
+        require(newWeeklyDelayFeePerSecondPerPfc.isLessThan(1), "weekly delay fee must be < 100%");
+        weeklyDelayFeePerPfc = newWeeklyDelayFeePerSecondPerPfc;
+        emit NewWeeklyDelayFeePerSecondPerPfc(newWeeklyDelayFeePerSecondPerPfc);
     }
 
     /**
