@@ -84,7 +84,7 @@ contract("Store", function(accounts) {
     );
 
     truffleAssert.eventEmitted(result, "NewFinalFee", ev => {
-      return ev.newFinalFee.rawValue === web3.utils.toWei("5", "ether");
+      return ev.NewFinalFee.rawValue === web3.utils.toWei("5", "ether");
     });
     const fee = await store.computeFinalFee(arbitraryTokenAddr);
     assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
