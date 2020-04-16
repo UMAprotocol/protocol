@@ -356,8 +356,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash` that `commitVote()` was called with.
-     * Only the committer can reveal their vote.
+     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * that `commitVote()` was called with. Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
@@ -368,18 +368,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) public override onlyIfNotMigrated() {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
-
-        // Note: computing the current round is required to disallow callers from revealing
-        // an old commit after the round is over.
-        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
-
-        // Lock in round variables including snapshotId and inflation rate. Not that this will only execute a snapshot
-        // if the `snapshotCurrentRound` function was not already called for this round.
-        _freezeRoundVariables(roundId);
-
-        // Get the frozen snapshotId. State snapshot needs to be taken before a vote can be revealed.
-        uint snapshotId = rounds[roundId].snapshotId;
-        require(snapshotId != 0, "Cant reveal before snapshot");
+        // Note: computing the current round is required to disallow people from
+        // revealing an old commit after the round is over.
+        uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
@@ -397,6 +388,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             identifier
         )) == voteSubmission.commit, "Revealed data != commit hash");
         delete voteSubmission.commit;
+
+        // Lock in round variables including snapshotId and inflation rate. Not that this will only execute a snapshot
+        // if the `snapshotCurrentRound` function was not already called for this round.
+        _freezeRoundVariables(roundId);
+
+        // Get the frozen snapshotId
+        uint256 snapshotId = rounds[roundId].snapshotId;
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
