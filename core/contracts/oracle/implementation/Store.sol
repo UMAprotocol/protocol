@@ -29,7 +29,7 @@ contract Store is StoreInterface, Withdrawable {
     FixedPoint.Unsigned public weeklyDelayFee; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
 
     mapping(address => FixedPoint.Unsigned) public finalFees;
-    uint public constant SECONDS_PER_WEEK = 604800;
+    uint256 public constant SECONDS_PER_WEEK = 604800;
 
     /****************************************
      *                EVENTS                *
@@ -71,7 +71,7 @@ contract Store is StoreInterface, Withdrawable {
     // prettier-ignore
     function payOracleFeesErc20(address erc20Address) external override {
         IERC20 erc20 = IERC20(erc20Address);
-        uint authorizedAmount = erc20.allowance(msg.sender, address(this));
+        uint256 authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(authorizedAmount > 0);
         erc20.safeTransferFrom(msg.sender, address(this), authorizedAmount);
     }
@@ -87,13 +87,13 @@ contract Store is StoreInterface, Withdrawable {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
+    function computeRegularFee(uint256 startTime, uint256 endTime, FixedPoint.Unsigned calldata pfc)
         external
         override
         view
         returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
     {
-        uint timeDiff = endTime.sub(startTime);
+        uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
         regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
@@ -137,6 +137,7 @@ contract Store is StoreInterface, Withdrawable {
      * @param newWeeklyDelayFee fee escalation per week of late fee payment.
      */
     function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
+        require(newWeeklyDelayFee.isLessThan(1), "weekly delay fee must be < 100%");
         weeklyDelayFee = newWeeklyDelayFee;
         emit NewWeeklyDelayFee(newWeeklyDelayFee);
     }

@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
 import "./PricelessPositionManager.sol";
 
 
@@ -38,7 +37,7 @@ contract Liquidatable is PricelessPositionManager {
         address sponsor; // Address of the liquidated position's sponsor
         address liquidator; // Address who created this liquidation
         Status state; // Liquidated (and expired or not), Pending a Dispute, or Dispute has resolved
-        uint liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
+        uint256 liquidationTime; // Time when liquidation is initiated, needed to get price from Oracle
         // Following variables determined by the position that is being liquidated:
         FixedPoint.Unsigned tokensOutstanding; // Synthetic Tokens required to be burned by liquidator to initiate dispute
         FixedPoint.Unsigned lockedCollateral; // Collateral locked by contract and released upon expiry or post-dispute
@@ -58,17 +57,17 @@ contract Liquidatable is PricelessPositionManager {
     // This is required to enable more params, over and above Solidity's limits.
     struct ConstructorParams {
         // Params for PricelessPositionManager only.
-        bool isTest;
         uint expirationTimestamp;
         uint withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
         address tokenFactoryAddress;
+        address timerAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
         // Params specifically for Liquidatable.
-        uint liquidationLiveness;
+        uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
@@ -85,7 +84,7 @@ contract Liquidatable is PricelessPositionManager {
     // Immutable contract parameters.
 
     // Amount of time for pending liquidation before expiry
-    uint public liquidationLiveness;
+    uint256 public liquidationLiveness;
     // Required collateral:TRV ratio for a position to be considered sufficiently collateralized.
     FixedPoint.Unsigned public collateralRequirement;
     // Percent of a Liquidation/Position's lockedCollateral to be deposited by a potential disputer
@@ -105,24 +104,24 @@ contract Liquidatable is PricelessPositionManager {
     event LiquidationCreated(
         address indexed sponsor,
         address indexed liquidator,
-        uint indexed liquidationId,
-        uint tokensOutstanding,
-        uint lockedCollateral,
-        uint liquidatedCollateral
+        uint256 indexed liquidationId,
+        uint256 tokensOutstanding,
+        uint256 lockedCollateral,
+        uint256 liquidatedCollateral
     );
     event LiquidationDisputed(
         address indexed sponsor,
         address indexed liquidator,
         address indexed disputer,
-        uint liquidationId,
-        uint disputeBondAmount
+        uint256 liquidationId,
+        uint256 disputeBondAmount
     );
     event DisputeSettled(
         address indexed caller,
         address indexed sponsor,
         address indexed liquidator,
         address disputer,
-        uint liquidationId,
+        uint256 liquidationId,
         bool DisputeSucceeded
     );
     event LiquidationWithdrawn(address caller, uint256 withdrawalAmount, Status liquidationStatus);
@@ -131,12 +130,12 @@ contract Liquidatable is PricelessPositionManager {
      *              MODIFIERS               *
      ****************************************/
 
-    modifier disputable(uint liquidationId, address sponsor) {
+    modifier disputable(uint256 liquidationId, address sponsor) {
         _disputable(liquidationId, sponsor);
         _;
     }
 
-    modifier withdrawable(uint liquidationId, address sponsor) {
+    modifier withdrawable(uint256 liquidationId, address sponsor) {
         _withdrawable(liquidationId, sponsor);
         _;
     }
@@ -149,7 +148,6 @@ contract Liquidatable is PricelessPositionManager {
     constructor(ConstructorParams memory params)
         public
         PricelessPositionManager(
-            params.isTest,
             params.expirationTimestamp,
             params.withdrawalLiveness,
             params.collateralAddress,
@@ -158,7 +156,8 @@ contract Liquidatable is PricelessPositionManager {
             params.syntheticName,
             params.syntheticSymbol,
             params.tokenFactoryAddress,
-            params.minSponsorTokens
+            params.minSponsorTokens,
+            params.timerAddress
         )
     {
         require(params.collateralRequirement.isGreaterThan(1));
@@ -194,7 +193,7 @@ contract Liquidatable is PricelessPositionManager {
         fees()
         onlyPreExpiration()
         returns (
-            uint liquidationId,
+            uint256 liquidationId,
             FixedPoint.Unsigned memory tokensLiquidated,
             FixedPoint.Unsigned memory finalFeeBond
         )
@@ -287,7 +286,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param liquidationId of the disputed liquidation.
      * @param sponsor the address of the sponsor who's liquidation is being disputed.
      */
-    function dispute(uint liquidationId, address sponsor)
+    function dispute(uint256 liquidationId, address sponsor)
         external
         disputable(liquidationId, sponsor)
         fees()
@@ -335,7 +334,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param sponsor address of the sponsor associated with the liquidation.
      * @return amountWithdrawn the total amount of underlying returned from the liquidation.
      */
-    function withdrawLiquidation(uint liquidationId, address sponsor)
+    function withdrawLiquidation(uint256 liquidationId, address sponsor)
         public
         withdrawable(liquidationId, sponsor)
         fees()
@@ -445,7 +444,7 @@ contract Liquidatable is PricelessPositionManager {
 
     // This settles a liquidation if it is in the PendingDispute state. If not, it will immediately return.
     // If the liquidation is in the PendingDispute state, but a price is not available, this will revert.
-    function _settle(uint liquidationId, address sponsor) internal {
+    function _settle(uint256 liquidationId, address sponsor) internal {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
 
         // Settlement only happens when state == PendingDispute and will only happen once per liquidation.
@@ -480,7 +479,7 @@ contract Liquidatable is PricelessPositionManager {
         );
     }
 
-    function _getLiquidationData(address sponsor, uint liquidationId)
+    function _getLiquidationData(address sponsor, uint256 liquidationId)
         internal
         view
         returns (LiquidationData storage liquidation)
@@ -504,12 +503,12 @@ contract Liquidatable is PricelessPositionManager {
      * unnecessarily increase contract bytecode size.
      * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
      */
-    function _disputable(uint liquidationId, address sponsor) internal view {
+    function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
     }
 
-    function _withdrawable(uint liquidationId, address sponsor) internal view {
+    function _withdrawable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         Status state = liquidation.state;
 

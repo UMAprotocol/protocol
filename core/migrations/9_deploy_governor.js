@@ -1,6 +1,7 @@
 const Governor = artifacts.require("Governor");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
+const Timer = artifacts.require("Timer");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 
@@ -8,9 +9,16 @@ module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
-  const { contract: governor } = await deploy(deployer, network, Governor, Finder.address, controllableTiming, {
-    from: keys.deployer
-  });
+  const { contract: governor } = await deploy(
+    deployer,
+    network,
+    Governor,
+    Finder.address,
+    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
+    {
+      from: keys.deployer
+    }
+  );
 
   // Add governor to registry so it can send price requests.
   const registry = await Registry.deployed();

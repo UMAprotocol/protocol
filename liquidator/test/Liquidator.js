@@ -17,6 +17,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("Liquidator.js", function(accounts) {
   // implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0]
@@ -49,19 +50,18 @@ contract("Liquidator.js", function(accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
+  });
 
+  beforeEach(async function() {
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
       from: contractCreator
     });
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  });
 
-  beforeEach(async function() {
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -75,7 +75,8 @@ contract("Liquidator.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     // Deploy a new expiring multi party

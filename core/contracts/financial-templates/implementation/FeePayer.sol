@@ -32,7 +32,7 @@ abstract contract FeePayer is Testable {
     FinderInterface public finder;
 
     // Tracks the last block time when the fees were paid.
-    uint public lastPaymentTime;
+    uint256 public lastPaymentTime;
 
     // Tracks the cumulative fees that have been paid by the contract for use by derived contracts.
     // The multiplier starts at 1, and is updated by computing cumulativeFeeMultiplier * (1 - effectiveFee).
@@ -47,8 +47,8 @@ abstract contract FeePayer is Testable {
      *                EVENTS                *
      ****************************************/
 
-    event RegularFeesPaid(uint indexed regularFee, uint indexed lateFee);
-    event FinalFeesPaid(uint indexed amount);
+    event RegularFeesPaid(uint256 indexed regularFee, uint256 indexed lateFee);
+    event FinalFeesPaid(uint256 indexed amount);
 
     /****************************************
      *              MODIFIERS               *
@@ -64,9 +64,10 @@ abstract contract FeePayer is Testable {
      * @notice Constructs the FeePayer contract. Called by child contracts.
      * @param collateralAddress ERC20 token that is used as the underlying collateral for the synthetic.
      * @param finderAddress UMA protocol Finder used to discover other protocol contracts.
-     * @param isTest whether this contract is being constructed for the purpose of running tests.
+     * @param timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(address collateralAddress, address finderAddress, bool isTest) public Testable(isTest) {
+    constructor(address collateralAddress, address finderAddress, address timerAddress) public Testable(timerAddress) {
         collateralCurrency = IERC20(collateralAddress);
         finder = FinderInterface(finderAddress);
         lastPaymentTime = getCurrentTime();
@@ -85,7 +86,7 @@ abstract contract FeePayer is Testable {
      */
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
-        uint time = getCurrentTime();
+        uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory _pfc = pfc();
 
         // Exit early if there is no pfc (thus, no fees to be paid).
