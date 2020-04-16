@@ -12,6 +12,7 @@ const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Timer = artifacts.require("Timer");
 
 // Pull in contracts from dependencies.
 const Token = artifacts.require("ExpandedERC20");
@@ -59,7 +60,7 @@ contract("TokenizedDerivative", function(accounts) {
     deployedFinder = await Finder.deployed();
     deployedAdmin = await FinancialContractsAdmin.deployed();
     supportedIdentifiers = await IdentifierWhitelist.deployed();
-    mockOracle = await MockOracle.new(supportedIdentifiers.address);
+    mockOracle = await MockOracle.new(supportedIdentifiers.address, Timer.address);
     deployedStore = await Store.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
@@ -2451,14 +2452,14 @@ contract("TokenizedDerivative", function(accounts) {
     });
 
     it(annotateTitle("Creation Time"), async function() {
-      // Set the current time in the creator and expect that that time will propagate to the derivative.
-      const creationTime = "1550878663";
-      tokenizedDerivativeCreator.setCurrentTime(creationTime);
-
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
 
-      assert.equal((await derivativeContract.derivativeStorage()).fixedParameters.creationTime, creationTime);
+      const creationTime = await tokenizedDerivativeCreator.getCurrentTime();
+      assert.equal(
+        (await derivativeContract.derivativeStorage()).fixedParameters.creationTime,
+        creationTime.toString()
+      );
     });
 
     it(annotateTitle("High withdraw throttle"), async function() {

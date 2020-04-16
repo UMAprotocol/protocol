@@ -32,7 +32,7 @@ interface StoreInterface {
      * @return regularFee amount owed for the duration from start to end time for the given pfc.
      * @return latePenalty for paying the fee after the deadline.
      */
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
+    function computeRegularFee(uint256 startTime, uint256 endTime, FixedPoint.Unsigned calldata pfc)
         external
         view
         returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty);

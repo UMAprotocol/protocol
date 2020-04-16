@@ -1,7 +1,7 @@
 const { toWei } = web3.utils;
 
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
-const { delay } = require('../delay');
+const { delay } = require("../delay");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -9,10 +9,11 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
-  const sponsor1 = accounts[0]
-  const sponsor2 = accounts[1]
+  const sponsor1 = accounts[0];
+  const sponsor2 = accounts[1];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -40,7 +41,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
@@ -48,7 +49,6 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
   beforeEach(async function() {
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -62,7 +62,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
@@ -80,7 +81,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
     await updateAndVerify(
       client,
-      [sponsor1], //expected sponsor
+      [sponsor1], // expected sponsor
       [
         {
           sponsor: sponsor1,
@@ -90,7 +91,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           requestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         }
-      ] //expected position
+      ] // expected position
     );
 
     // Calling create again from the same sponsor should add additional collateral & debt.
@@ -142,12 +143,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: toWei("100") },
       { from: sponsor1 }
     );
-    await emp.createLiquidation(
-      sponsor2,
-      { rawValue: toWei("99999") },
-      { rawValue: toWei("100") },
-      { from: sponsor1 }
-    );
+    await emp.createLiquidation(sponsor2, { rawValue: toWei("99999") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
     await updateAndVerify(
       client,
@@ -224,11 +220,11 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
   });
 
-  it("Returns undisputed liquidations", async function () {
+  it("Returns undisputed liquidations", async function() {
     const liquidator = sponsor2;
 
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
-    await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 })
+    await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
 
     // Create a new liquidation for account[0]'s position.
     const { liquidationId } = await emp.createLiquidation.call(
@@ -253,7 +249,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
-    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
+    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
     await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
@@ -261,7 +257,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
   });
 
-  it("Returns expired liquidations", async function () {
+  it("Returns expired liquidations", async function() {
     const liquidator = sponsor2;
 
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -324,13 +320,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     );
 
     // Withdraw from the expired liquidation and check that the liquidation is deleted.
-    await emp.withdrawLiquidation("0", sponsor1, { from: liquidator })
+    await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
     await client._update();
     assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
   });
 
-  it("Returns disputed liquidations", async function () {
-    const liquidator = sponsor2; 
+  it("Returns disputed liquidations", async function() {
+    const liquidator = sponsor2;
 
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
     await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsor1 });
@@ -357,7 +353,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
-    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
+    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
     await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
@@ -373,7 +369,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           liquidator: liquidator,
           disputer: sponsor1
         }
-      ], 
+      ],
       client.getDisputedLiquidations().sort()
     );
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
@@ -382,26 +378,25 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
     const disputePrice = toWei("1.6");
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
-    await emp.withdrawLiquidation("0", sponsor1, { from: liquidator })
+    await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
     await client._update();
     assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
-  })
+  });
 
-  it("Does not update unless forced to", async function () {
+  it("Does not update unless forced to", async function() {
     await client.update();
     const lastUpdateTime = client.lastUpdateTimestamp;
 
-    // Move time forward so that if an update were to happen, then 
+    // Move time forward so that if an update were to happen, then
     // the `lastUpdateTimestamp` get reset.
     await delay(Number(1_000));
 
     // Call regular update function which should return because we are within the update threshold.
     await client.update();
-    assert.equal(client.lastUpdateTimestamp, lastUpdateTime)
+    assert.equal(client.lastUpdateTimestamp, lastUpdateTime);
 
     // Force an update and check that the last timestamp has reset.
     await client.forceUpdate();
-    assert(client.lastUpdateTimestamp > lastUpdateTime)
-
-  })
+    assert(client.lastUpdateTimestamp > lastUpdateTime);
+  });
 });

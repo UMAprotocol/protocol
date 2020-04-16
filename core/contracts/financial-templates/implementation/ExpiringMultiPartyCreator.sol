@@ -20,7 +20,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      ****************************************/
 
     struct Params {
-        uint expirationTimestamp;
+        uint256 expirationTimestamp;
         address collateralAddress;
         bytes32 priceFeedIdentifier;
         string syntheticName;
@@ -30,6 +30,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
         FixedPoint.Unsigned minSponsorTokens;
+        address timerAddress;
     }
 
     /**
@@ -76,27 +77,29 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // their withdrawal processed maliciously (if set too low, it’s quite easy for malicious sponsors to
     // request a withdrawal and spend gas to prevent other transactions from processing until the withdrawal
     //  gets approved). Ultimately, liveness is a friction to be minimized, but not critical to system function.
-    uint public constant STRICT_WITHDRAWAL_LIVENESS = 3600;
+    uint256 public constant STRICT_WITHDRAWAL_LIVENESS = 3600;
     // - Time for liquidation to be disputed: 60 minutes. Similar reasoning to withdrawal liveness.
     // Lower liveness is more usable for liquidators. However, the parameter is a reflection of how
     // long we expect it to take disputers to notice bad liquidations. Malicious liquidators would
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
-    uint public constant STRICT_LIQUIDATION_LIVENESS = 3600;
+    uint256 public constant STRICT_LIQUIDATION_LIVENESS = 3600;
 
     event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
 
     /**
      * @notice Constructs the ExpiringMultiPartyCreator contract.
-     * @param _isTest whether this contract is being constructed for the purpose of running tests.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _collateralTokenWhitelist UMA protocol contract to track whitelisted collateral.
      * @param _tokenFactoryAddress ERC20 token factory used to deploy synthetic token instances.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(bool _isTest, address _finderAddress, address _collateralTokenWhitelist, address _tokenFactoryAddress)
-        public
-        ContractCreator(_finderAddress)
-        Testable(_isTest)
-    {
+    constructor(
+        address _finderAddress,
+        address _collateralTokenWhitelist,
+        address _tokenFactoryAddress,
+        address _timerAddress
+    ) public ContractCreator(_finderAddress) Testable(_timerAddress) {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
     }
@@ -125,8 +128,8 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      ****************************************/
 
     //  Returns if expiration timestamp is on hardcoded list.
-    function _isValidTimestamp(uint timestamp) private view returns (bool) {
-        for (uint i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
+    function _isValidTimestamp(uint256 timestamp) private view returns (bool) {
+        for (uint256 i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
             if (VALID_EXPIRATION_TIMESTAMPS[i] == timestamp) {
                 return true;
             }
@@ -141,7 +144,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         returns (ExpiringMultiParty.ConstructorParams memory constructorParams)
     {
         // Known from creator deployment.
-        constructorParams.isTest = isTest;
         constructorParams.finderAddress = finderAddress;
         constructorParams.tokenFactoryAddress = tokenFactoryAddress;
 
@@ -164,5 +166,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
         constructorParams.minSponsorTokens = params.minSponsorTokens;
+        constructorParams.timerAddress = params.timerAddress;
     }
 }
