@@ -341,8 +341,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     /**
      * @notice Snapshot the current round's token balances and lock in the inflation rate and GAT.
-     * @dev This function can be called multiple times but each round will only every have one snapshot at the
-     * time of calling `_freezeRoundVariables`.
+     * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
+     * will create the round snapshot. Any later calls will be a no-op.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
