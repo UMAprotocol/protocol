@@ -31,22 +31,17 @@ const redeem = async (web3, artifacts, emp) => {
   const maxTokens = BN.min(walletTokens, positionTokens.sub(minSponsorTokens));
   const input = await inquirer.prompt({
     name: "numTokens",
-    message:
-      "Your wallet has " +
-      fromWei(walletTokens) +
-      " synthetic tokens. How many tokens to repay, at " +
-      fromWei(collateralPerToken) +
-      " " +
-      requiredCollateralSymbol +
-      " each?",
+    message: `Your wallet has ${fromWei(walletTokens)} synthetic tokens. How many tokens to repay, at ${fromWei(
+      collateralPerToken
+    )} ${requiredCollateralSymbol} each?`,
     validate: value =>
       (value > 0 && (toBN(toWei(value)).lte(maxTokens) || toBN(toWei(value)).eq(positionTokens))) ||
-      "Number of tokens must be between 0 and " + fromWei(maxTokens) + ", or exactly " + fromWei(positionTokens)
+      `Number of tokens must be between 0 and ${fromWei(maxTokens)}, or exactly ${fromWei(positionTokens)}`
   });
 
   const tokensToRedeem = toBN(toWei(input["numTokens"]));
   const expectedCollateral = collateralPerToken.mul(toBN(tokensToRedeem)).div(scalingFactor);
-  console.log("You'll receive approximately", fromWei(expectedCollateral), requiredCollateralSymbol);
+  console.log(`You'll receive approximately ${fromWei(expectedCollateral)} ${requiredCollateralSymbol}`);
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
