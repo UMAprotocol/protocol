@@ -26,7 +26,7 @@ contract Store is StoreInterface, Withdrawable {
     enum Roles { Owner, Withdrawer }
 
     FixedPoint.Unsigned public fixedOracleFeePerSecondPerPfc; // Percentage of 1 E.g., .1 is 10% Oracle fee.
-    FixedPoint.Unsigned public weeklyDelayFeePerPfc; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
+    FixedPoint.Unsigned public weeklyDelayFeePerSecondPerPfc; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
 
     mapping(address => FixedPoint.Unsigned) public finalFees;
     uint256 public constant SECONDS_PER_WEEK = 604800;
@@ -97,8 +97,8 @@ contract Store is StoreInterface, Withdrawable {
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
         regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecondPerPfc);
-        // `weeklyDelayFeePerPfc` is already scaled up.
-        latePenalty = pfc.mul(weeklyDelayFeePerPfc.mul(timeDiff.div(SECONDS_PER_WEEK)));
+        // `weeklyDelayFeePerSecondPerPfc` is already scaled up.
+        latePenalty = pfc.mul(weeklyDelayFeePerSecondPerPfc.mul(timeDiff.div(SECONDS_PER_WEEK)));
 
         return (regularFee, latePenalty);
     }
@@ -141,7 +141,7 @@ contract Store is StoreInterface, Withdrawable {
         onlyRoleHolder(uint(Roles.Owner))
     {
         require(newWeeklyDelayFeePerSecondPerPfc.isLessThan(1), "weekly delay fee must be < 100%");
-        weeklyDelayFeePerPfc = newWeeklyDelayFeePerSecondPerPfc;
+        weeklyDelayFeePerSecondPerPfc = newWeeklyDelayFeePerSecondPerPfc;
         emit NewWeeklyDelayFeePerSecondPerPfc(newWeeklyDelayFeePerSecondPerPfc);
     }
 
