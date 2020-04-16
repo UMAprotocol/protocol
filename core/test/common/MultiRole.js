@@ -71,6 +71,9 @@ contract("MultiRole", function(accounts) {
     await multiRole.revertIfNotHoldingRole("2", { from: account2 });
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account1 })));
 
+    // Only the holder of the managing role can renounce membership.
+    assert(await didContractThrow(multiRole.renounceMembership("2", { from: account1 })));
+
     // account2 can renounce their membership.
     await multiRole.renounceMembership("2", { from: account2 });
     assert.isFalse(await multiRole.holdsRole("2", account2));
