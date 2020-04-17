@@ -26,8 +26,8 @@ contract Store is StoreInterface, Withdrawable, Testable {
 
     enum Roles { Owner, Withdrawer }
 
-    FixedPoint.Unsigned public fixedOracleFeePerSecond; // Percentage of 1 E.g., .1 is 10% Oracle fee.
-    FixedPoint.Unsigned public weeklyDelayFee; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
+    FixedPoint.Unsigned public fixedOracleFeePerSecondPerPfc; // Percentage of 1 E.g., .1 is 10% Oracle fee.
+    FixedPoint.Unsigned public weeklyDelayFeePerSecondPerPfc; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
 
     mapping(address => FixedPoint.Unsigned) public finalFees;
     uint256 public constant SECONDS_PER_WEEK = 604800;
@@ -36,8 +36,8 @@ contract Store is StoreInterface, Withdrawable, Testable {
      *                EVENTS                *
      ****************************************/
 
-    event NewFixedOracleFeePerSecond(FixedPoint.Unsigned newOracleFee);
-    event NewWeeklyDelayFee(FixedPoint.Unsigned newWeeklyDelayFee);
+    event NewFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned newOracleFee);
+    event NewWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned newWeeklyDelayFeePerSecondPerPfc);
     event NewFinalFee(FixedPoint.Unsigned newFinalFee);
 
     /**
@@ -79,6 +79,12 @@ contract Store is StoreInterface, Withdrawable, Testable {
 
     /**
      * @notice Computes the regular oracle fees that a contract should pay for a period.
+     * @dev The late penalty is similar to the regular fee in that is is charged per second over the period between
+     * startTime and endTime. The late penalty percentage increases over time as follows:
+     * - 0-1 week since startTime: no late penalty
+     * - 1-2 weeks since startTime: 1x late penalty percentage is applied
+     * - 2-3 weeks since startTime: 2x late penalty percentage is applied
+     * - ...
      * @param startTime defines the beginning time from which the fee is paid.
      * @param endTime end time until which the fee is paid.
      * @param pfc "profit from corruption", or the maximum amount of margin currency that a
@@ -97,7 +103,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
         uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
-        regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
+        regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecondPerPfc);
 
         // Compute how long ago the start time was to compute the delay penalty.
         uint paymentDelay = getCurrentTime().sub(startTime);
@@ -105,12 +111,10 @@ contract Store is StoreInterface, Withdrawable, Testable {
         // Compute the additional percentage (per second) that will be charged because of the penalty.
         // Note: if less than a week has gone by since the startTime, paymentDelay / SECONDS_PER_WEEK will truncate to
         // 0, causing no penalty to be charged.
-        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFee.mul(paymentDelay.div(SECONDS_PER_WEEK));
+        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFeePerSecondPerPfc.mul(paymentDelay.div(SECONDS_PER_WEEK));
 
         // Apply the penaltyPercentagePerSecond to the payment period.
         latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
-
-        return (regularFee, latePenalty);
     }
 
     /**
@@ -120,8 +124,8 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory finalFee) {
-        finalFee = finalFees[currency];
+    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory) {
+        return finalFees[currency];
     }
 
     /****************************************
@@ -130,26 +134,29 @@ contract Store is StoreInterface, Withdrawable, Testable {
 
     /**
      * @notice Sets a new oracle fee per second.
-     * @param newOracleFee new fee per second charged to use the oracle.
+     * @param newFixedOracleFeePerSecondPerPfc new fee per second charged to use the oracle.
      */
-    function setFixedOracleFeePerSecond(FixedPoint.Unsigned memory newOracleFee)
+    function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newFixedOracleFeePerSecondPerPfc)
         public
         onlyRoleHolder(uint(Roles.Owner))
     {
         // Oracle fees at or over 100% don't make sense.
-        require(newOracleFee.isLessThan(1));
-        fixedOracleFeePerSecond = newOracleFee;
-        emit NewFixedOracleFeePerSecond(newOracleFee);
+        require(newFixedOracleFeePerSecondPerPfc.isLessThan(1));
+        fixedOracleFeePerSecondPerPfc = newFixedOracleFeePerSecondPerPfc;
+        emit NewFixedOracleFeePerSecondPerPfc(newFixedOracleFeePerSecondPerPfc);
     }
 
     /**
      * @notice Sets a new weekly delay fee.
-     * @param newWeeklyDelayFee fee escalation per week of late fee payment.
+     * @param newWeeklyDelayFeePerSecondPerPfc fee escalation per week of late fee payment.
      */
-    function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
-        require(newWeeklyDelayFee.isLessThan(1), "weekly delay fee must be < 100%");
-        weeklyDelayFee = newWeeklyDelayFee;
-        emit NewWeeklyDelayFee(newWeeklyDelayFee);
+    function setWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerSecondPerPfc)
+        public
+        onlyRoleHolder(uint(Roles.Owner))
+    {
+        require(newWeeklyDelayFeePerSecondPerPfc.isLessThan(1), "weekly delay fee must be < 100%");
+        weeklyDelayFeePerSecondPerPfc = newWeeklyDelayFeePerSecondPerPfc;
+        emit NewWeeklyDelayFeePerSecondPerPfc(newWeeklyDelayFeePerSecondPerPfc);
     }
 
     /**

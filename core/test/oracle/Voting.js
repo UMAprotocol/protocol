@@ -65,10 +65,17 @@ contract("Voting", function(accounts) {
   it("Constructor", async function() {
     // GAT must be <= 1.0 (100%)
     const invalidGat = { rawValue: web3.utils.toWei("1.000001") };
-    const finder = await Finder.deployed();
     assert(
       await didContractThrow(
-        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, 1, votingToken.address, finder.address, true)
+        Voting.new(
+          5,
+          invalidGat,
+          { rawValue: web3.utils.toWei("1") },
+          1,
+          votingToken.address,
+          Finder.address,
+          Timer.address
+        )
       )
     );
   });
@@ -858,14 +865,22 @@ contract("Voting", function(accounts) {
     // Move to the reveal phase, where the snapshot should be taken.
     await moveToNextPhase(voting);
 
-    // account2's reveal should create a snapshot since it's the first action of the reveal.
+    // The snapshotId of the current round should be zero before initiating the snapshot
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+
+    // Directly snapshot the current round to lock in token balances.
+    await voting.snapshotCurrentRound();
+
+    // The snapshotId of the current round should be non zero after the snapshot is taken
+    assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+
+    // Account2 can now reveal their vote.
     await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
 
     // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
     await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
 
-    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been locked into
-    // the snapshot. Increasing the GAT to 90% (requiring close to unanimous agreement) should therefore have no effect.
+    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been locked into the snapshot. Increasing the GAT to 90% (requiring close to unanimous agreement) should therefore have no effect.
     await setNewGatPercentage(web3.utils.toWei("0.9", "ether"));
 
     // Do the final two reveals.
@@ -881,6 +896,61 @@ contract("Voting", function(accounts) {
 
     // Reset the GAT to 5% for subsequent rounds.
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
+  });
+
+  it("Snapshotting from initial reveal", async function() {
+    const identifier = web3.utils.utf8ToHex("basic-snapshotting2");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await moveToNextRound(voting);
+    const roundId = (await voting.getCurrentRoundId()).toString();
+
+    // Commit votes
+    const price = 456;
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = computeVoteHash({
+      price: price,
+      salt: salt1,
+      account: account1,
+      time,
+      roundId,
+      identifier
+    });
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = computeVoteHash({
+      price: price,
+      salt: salt2,
+      account: account2,
+      time,
+      roundId,
+      identifier
+    });
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
+    // Move to the reveal phase, where the snapshot should be taken.
+    await moveToNextPhase(voting);
+
+    // The snapshotId of the current round should be zero before initiating the snapshot.
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+
+    // The first revealer should result in a snapshot being taken.
+    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
+
+    // The snapshotId of the current round should be non zero after the snapshot is taken.
+    const snapShotId = (await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString();
+    assert.notEqual(snapShotId, "0");
+
+    // A second reveal should or a direct snapshot call should not modify the shapshot id.
+    await voting.revealVote(identifier, time, price, salt2, { from: account2 });
+    await voting.snapshotCurrentRound();
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), snapShotId);
   });
 
   it("Only registered contracts", async function() {
@@ -1582,7 +1652,6 @@ contract("Voting", function(accounts) {
       { rawValue: "0" },
       "86400",
       votingToken.address,
-      supportedIdentifiers.address,
       (await Finder.deployed()).address,
       Timer.address
     );
@@ -1629,7 +1698,6 @@ contract("Voting", function(accounts) {
       { rawValue: "0" }, // No inflation
       "1209600", // 2 week reward expiration
       votingToken.address,
-      supportedIdentifiers.address,
       Finder.address,
       Timer.address
     );

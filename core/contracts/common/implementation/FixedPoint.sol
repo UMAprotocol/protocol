@@ -177,9 +177,9 @@ library FixedPoint {
 
     /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0, and ceil's the resultant product rather than the default floor behavior. */
     function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        uint256 divRaw = a.rawValue.mul(FP_SCALING_FACTOR);
-        uint256 divFloor = divRaw.div(b.rawValue);
-        uint256 mod = divRaw.mod(b.rawValue);
+        uint256 aScaled = a.rawValue.mul(FP_SCALING_FACTOR);
+        uint256 divFloor = aScaled.div(b.rawValue);
+        uint256 mod = aScaled.mod(b.rawValue);
         if (mod != 0) {
             return Unsigned(divFloor.add(1));
         } else {
@@ -201,8 +201,6 @@ library FixedPoint {
 
     /** @dev Raises an `Unsigned` to the power of an unscaled uint, reverting on overflow. E.g., `b=2` squares `a`. */
     function pow(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory output) {
-        // TODO(ptare): Consider using the exponentiation by squaring technique instead:
-        // https://en.wikipedia.org/wiki/Exponentiation_by_squaring
         output = fromUnscaledUint(1);
         for (uint256 i = 0; i < b; i = i.add(1)) {
             output = mul(output, a);

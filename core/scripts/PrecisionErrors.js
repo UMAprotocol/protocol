@@ -14,6 +14,7 @@
 const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
+const { interfaceName } = require("../utils/Constants.js");
 
 // Contracts to test
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -54,7 +55,6 @@ async function createTestEnvironment() {
   let identifierWhitelist;
   let mockOracle;
   let finder;
-  let timer;
 
   // Initial constant values
   const syntheticName = "UMA test Token";
@@ -80,14 +80,12 @@ async function createTestEnvironment() {
   identifierWhitelist = await IdentifierWhitelist.deployed();
   await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, { from: contractDeployer });
 
-  timer = await Timer.new();
-
   // Change oracle to the mock oracle for two reasons:
   // (1) we can manually set settlement prices
   // (2) we don't need to register the contract with the Registry to request prices
-  mockOracle = await MockOracle.new(identifierWhitelist.address, timer.address);
   finder = await Finder.deployed();
-  const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+  mockOracle = await MockOracle.new(finder.address, Timer.address);
+  const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
   await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
   // Create the instance of the emp to test against.
@@ -107,7 +105,7 @@ async function createTestEnvironment() {
     sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct },
     disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct },
     minSponsorTokens: { rawValue: "0" },
-    timerAddress: timer.address
+    timerAddress: Timer.address
   };
   emp = await ExpiringMultiParty.new(constructorParams, { from: contractDeployer });
   synthetic = await SyntheticToken.at(await emp.tokenCurrency());
@@ -238,7 +236,10 @@ async function runExport() {
     { from: sponsor }
   );
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei(testConfig.feeRatePerSecond) }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc(
+    { rawValue: toWei(testConfig.feeRatePerSecond) },
+    { from: contractDeployer }
+  );
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1), { from: contractDeployer });
@@ -308,7 +309,7 @@ async function runExport() {
   console.log(`** Depositing another ${fromWei(testConfig.expectedFeesCollected)} **`);
   await emp.deposit({ rawValue: testConfig.expectedFeesCollected }, { from: sponsor });
   // 1) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond(
+  await store.setFixedOracleFeePerSecondPerPfc(
     { rawValue: toWei(testConfig.modifiedFeeRatePerSecond) },
     { from: contractDeployer }
   );
@@ -347,7 +348,7 @@ async function runExport() {
    */
 
   // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
   /** ***************************************************************************
@@ -413,7 +414,7 @@ async function runExport() {
   await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create({ rawValue: testConfig.sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
@@ -480,7 +481,7 @@ async function runExport() {
    */
 
   // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
   /** ***************************************************************************
@@ -573,7 +574,7 @@ async function runExport() {
   await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create({ rawValue: testConfig.sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
@@ -611,7 +612,7 @@ async function runExport() {
    * @notice RUN THE TEST TEN TIMES
    */
   // Need to set fees to 0 so as not to change the fee multiplier.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
   for (let i = 0; i < 10; i++) {
     // Note: Must call `requestWithdrawal()` instead of `withdraw()` because we are the only position. I didn't create another
     // less-collateralized position because it would modify the total collateral and therefore the fee multiplier.
@@ -1122,7 +1123,7 @@ async function runExport() {
    */
 
   // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
   /** ***************************************************************************

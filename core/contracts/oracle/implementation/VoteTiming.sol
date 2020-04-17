@@ -29,7 +29,7 @@ library VoteTiming {
      * @param currentTime input unix timeStamp used to compute the current roundId.
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
-    function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256 roundId) {
+    function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
         uint256 roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
         return currentTime.div(roundLength);
     }
@@ -40,7 +40,7 @@ library VoteTiming {
      * @param roundId uniquely identifies the current round.
      * @return timestamp unix time of when the current round will end.
      */
-    function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256 timestamp) {
+    function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256) {
         uint256 roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
         return roundLength.mul(roundId.add(1));
     }

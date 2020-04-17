@@ -7,6 +7,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
+import "../../oracle/implementation/Constants.sol";
 
 
 /**
@@ -161,8 +162,7 @@ abstract contract FeePayer is Testable {
      ****************************************/
 
     function _getStore() internal view returns (StoreInterface) {
-        bytes32 storeInterface = "Store";
-        return StoreInterface(finder.getImplementationAddress(storeInterface));
+        return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
     function _computeFinalFees() internal returns (FixedPoint.Unsigned memory finalFees) {

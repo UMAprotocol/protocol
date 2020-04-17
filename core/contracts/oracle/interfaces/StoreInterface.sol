@@ -42,5 +42,5 @@ interface StoreInterface {
      * @param currency token used to pay the final fee.
      * @return finalFee amount due.
      */
-    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory finalFee);
+    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory);
 }

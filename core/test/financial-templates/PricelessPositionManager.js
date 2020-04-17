@@ -2,6 +2,7 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
 const { PositionStatesEnum } = require("../../../common/Enums");
+const { interfaceName } = require("../../utils/Constants.js");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
@@ -89,11 +90,11 @@ contract("PricelessPositionManager", function(accounts) {
     });
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractDeployer
     });
-    finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractDeployer });
 
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
@@ -714,7 +715,7 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
 
     // Set store fees to 1% per second.
-    await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.01") });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
 
     // Move time in the contract forward by 1 second to capture a 1% fee.
     const startTime = await pricelessPositionManager.getCurrentTime();
@@ -749,7 +750,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
-    await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
 
   it("Final fees", async function() {
@@ -886,7 +887,7 @@ contract("PricelessPositionManager", function(accounts) {
       // = 0.033... repeating, which cannot be represented precisely by a fixed point.
       // --> 0.04 * 30 wei = 1.2 wei, which gets truncated to 1 wei, so 1 wei of fees are paid
       const regularFee = toWei("0.04");
-      await store.setFixedOracleFeePerSecond({ rawValue: regularFee });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFee });
 
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = await pricelessPositionManager.getCurrentTime();
@@ -894,7 +895,7 @@ contract("PricelessPositionManager", function(accounts) {
       await pricelessPositionManager.payFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
-      await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
     });
     it("Fee multiplier is set properly with precision loss, and fees are paid as expected", async () => {
       // Absent any rounding errors, `getCollateral` should return (initial-collateral - final-fees) = 30 wei - 1 wei = 29 wei.
@@ -1119,8 +1120,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
 
     // Create new oracle, replace it in the finder, and push a different price to it.
-    const newMockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const newMockOracle = await MockOracle.new(finder.address, Timer.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
       from: contractDeployer
     });

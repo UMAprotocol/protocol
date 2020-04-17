@@ -39,9 +39,9 @@ abstract contract Withdrawable is MultiRole {
      * @dev Either this method or `setWithdrawRole` must be called by the derived class for this contract to function
      * properly.
      */
-    function createWithdrawRole(uint256 roleId, uint256 managingRoleId, address owner) internal {
+    function createWithdrawRole(uint256 roleId, uint256 managingRoleId, address withdrawerAddress) internal {
         _roleId = roleId;
-        _createExclusiveRole(roleId, managingRoleId, owner);
+        _createExclusiveRole(roleId, managingRoleId, withdrawerAddress);
     }
 
     /**

@@ -6,6 +6,7 @@ import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
+import "./Constants.sol";
 
 
 /**
@@ -94,12 +95,12 @@ contract DesignatedVoting is Withdrawable {
     function retrieveRewards(uint256 roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public
         onlyRoleHolder(uint(Roles.Voter))
-        returns (FixedPoint.Unsigned memory rewardsIssued)
+        returns (FixedPoint.Unsigned memory)
     {
         return _getVotingAddress().retrieveRewards(address(this), roundId, toRetrieve);
     }
 
     function _getVotingAddress() private view returns (VotingInterface) {
-        return VotingInterface(finder.getImplementationAddress("Oracle"));
+        return VotingInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }
