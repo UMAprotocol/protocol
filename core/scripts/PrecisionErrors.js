@@ -69,7 +69,7 @@ async function createTestEnvironment() {
   const disputerDisputeRewardPct = toWei("0.1");
 
   // Create and mint collateral token.
-  collateral = await MarginToken.new();
+  collateral = await MarginToken.new("UMA", "UMA", 18);
   await collateral.addMember(1, contractDeployer, { from: contractDeployer });
   await collateral.mint(sponsor, toWei("1000000"), { from: contractDeployer });
   await collateral.mint(other, toWei("1000000"), { from: contractDeployer });

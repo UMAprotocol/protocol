@@ -96,7 +96,7 @@ contract("Liquidatable", function(accounts) {
     await timer.setCurrentTime(startTime);
 
     // Create Collateral and Synthetic ERC20's
-    collateralToken = await Token.new({ from: contractDeployer });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();

@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/Withdrawable.sol";
 import "./PriceFeedInterface.sol";

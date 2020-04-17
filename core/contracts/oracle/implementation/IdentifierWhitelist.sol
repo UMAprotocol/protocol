@@ -1,7 +1,7 @@
 pragma solidity ^0.6.0;
 
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 
 /**
