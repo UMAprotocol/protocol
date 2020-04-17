@@ -157,16 +157,18 @@ contract("Store", function(accounts) {
     assert.equal(secondTokenBalanceInDerivative, web3.utils.toWei("100", "ether"));
 
     // Pay 10 of the first margin token to the store and verify balances.
-    await firstMarginToken.approve(store.address, web3.utils.toWei("10", "ether"), { from: derivative });
-    await store.payOracleFeesErc20(firstMarginToken.address, { from: derivative });
+    let feeAmount = web3.utils.toWei("10", "ether");
+    await firstMarginToken.approve(store.address, feeAmount, { from: derivative });
+    await store.payOracleFeesErc20(firstMarginToken.address, { rawValue: feeAmount }, { from: derivative });
     firstTokenBalanceInStore = await firstMarginToken.balanceOf(store.address);
     firstTokenBalanceInDerivative = await firstMarginToken.balanceOf(derivative);
     assert.equal(firstTokenBalanceInStore.toString(), web3.utils.toWei("10", "ether"));
     assert.equal(firstTokenBalanceInDerivative.toString(), web3.utils.toWei("90", "ether"));
 
     // Pay 20 of the second margin token to the store and verify balances.
-    await secondMarginToken.approve(store.address, web3.utils.toWei("20", "ether"), { from: derivative });
-    await store.payOracleFeesErc20(secondMarginToken.address, { from: derivative });
+    feeAmount = web3.utils.toWei("20", "ether");
+    await secondMarginToken.approve(store.address, feeAmount, { from: derivative });
+    await store.payOracleFeesErc20(secondMarginToken.address, { rawValue: feeAmount }, { from: derivative });
     secondTokenBalanceInStore = await secondMarginToken.balanceOf(store.address);
     secondTokenBalanceInDerivative = await secondMarginToken.balanceOf(derivative);
     assert.equal(secondTokenBalanceInStore.toString(), web3.utils.toWei("20", "ether"));
