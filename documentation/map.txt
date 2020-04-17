@@ -3,7 +3,7 @@
 ** tutorials
 *** prerequisites.md
 *** creating_from_truffle.md
-** security.md
+** known_issues.md
 ** glossary.md
 * oracle
 ** architecture.md
