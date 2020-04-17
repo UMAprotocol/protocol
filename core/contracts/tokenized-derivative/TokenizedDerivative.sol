@@ -825,7 +825,7 @@ library TokenizedDerivativeUtils {
             store.payOracleFees.value(feeAmount)();
         } else {
             require(s.externalAddresses.marginCurrency.approve(address(store), feeAmount));
-            store.payOracleFeesErc20(address(s.externalAddresses.marginCurrency));
+            store.payOracleFeesErc20(address(s.externalAddresses.marginCurrency), FixedPoint.Unsigned(feeAmount));
         }
     }
 

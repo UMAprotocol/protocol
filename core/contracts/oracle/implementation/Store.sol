@@ -65,16 +65,15 @@ contract Store is StoreInterface, Withdrawable, Testable {
     /**
      * @notice Pays oracle fees in the margin currency, erc20Address, to the store.
      * @dev To be used if the margin currency is an ERC20 token rather than ETH.
-     * All approved tokens are transferred.
      * @param erc20Address address of the ERC20 token used to pay the fee.
+     * @param amount number of tokens to transfer. An approval for at least this amount must exist.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function payOracleFeesErc20(address erc20Address) external override {
+    function payOracleFeesErc20(address erc20Address, FixedPoint.Unsigned calldata amount) external override {
         IERC20 erc20 = IERC20(erc20Address);
-        uint256 authorizedAmount = erc20.allowance(msg.sender, address(this));
-        require(authorizedAmount > 0);
-        erc20.safeTransferFrom(msg.sender, address(this), authorizedAmount);
+        require(amount.isGreaterThan(0));
+        erc20.safeTransferFrom(msg.sender, address(this), amount.rawValue);
     }
 
     /**
