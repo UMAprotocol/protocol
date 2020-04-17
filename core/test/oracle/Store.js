@@ -25,7 +25,7 @@ contract("Store", function(accounts) {
   it("Compute fees basic check", async function() {
     // Set fee to 10%
     let newFee = { rawValue: web3.utils.toWei("0.1", "ether") };
-    await store.setFixedOracleFeePerSecond(newFee, { from: owner });
+    await store.setFixedOracleFeePerSecondPerPfc(newFee, { from: owner });
 
     let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
@@ -42,7 +42,7 @@ contract("Store", function(accounts) {
   it("Compute fees at 20%", async function() {
     // Change fee to 20%
     let newFee = { rawValue: web3.utils.toWei("0.2", "ether") };
-    await store.setFixedOracleFeePerSecond(newFee, { from: owner });
+    await store.setFixedOracleFeePerSecondPerPfc(newFee, { from: owner });
 
     let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
@@ -60,14 +60,16 @@ contract("Store", function(accounts) {
 
     // Disallow setting fees higher than 100%.
     let highFee = { rawValue: web3.utils.toWei("1", "ether") };
-    assert(await didContractThrow(store.setFixedOracleFeePerSecond(highFee, { from: owner })));
+    assert(await didContractThrow(store.setFixedOracleFeePerSecondPerPfc(highFee, { from: owner })));
 
     // Can set weekly late fees to less than 100%.
-    await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.99", "ether") }, { from: owner });
+    await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("0.99", "ether") }, { from: owner });
 
     // Disallow setting fees >= 100%.
     assert(
-      await didContractThrow(store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("1", "ether") }, { from: owner }))
+      await didContractThrow(
+        store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("1", "ether") }, { from: owner })
+      )
     );
 
     // TODO Check that only permitted role can change the fee
@@ -90,10 +92,13 @@ contract("Store", function(accounts) {
 
   it("Weekly delay fees", async function() {
     // Add weekly delay fee and confirm
-    const result = await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.5", "ether") }, { from: owner });
+    const result = await store.setWeeklyDelayFeePerSecondPerPfc(
+      { rawValue: web3.utils.toWei("0.5", "ether") },
+      { from: owner }
+    );
 
-    truffleAssert.eventEmitted(result, "NewWeeklyDelayFee", ev => {
-      return ev.newWeeklyDelayFee.rawValue === web3.utils.toWei("0.5", "ether");
+    truffleAssert.eventEmitted(result, "NewWeeklyDelayFeePerSecondPerPfc", ev => {
+      return ev.newWeeklyDelayFeePerSecondPerPfc.rawValue === web3.utils.toWei("0.5", "ether");
     });
   });
 
@@ -257,7 +262,7 @@ contract("Store", function(accounts) {
   });
 
   it("Late penalty based on current time", async function() {
-    await store.setWeeklyDelayFee({ rawValue: web3.utils.toWei("0.1", "ether") }, { from: owner });
+    await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("0.1", "ether") }, { from: owner });
 
     const startTime = await store.getCurrentTime();
 

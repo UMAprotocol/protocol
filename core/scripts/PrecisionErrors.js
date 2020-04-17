@@ -236,7 +236,10 @@ async function runExport() {
     { from: sponsor }
   );
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei(testConfig.feeRatePerSecond) }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc(
+    { rawValue: toWei(testConfig.feeRatePerSecond) },
+    { from: contractDeployer }
+  );
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1), { from: contractDeployer });
@@ -306,7 +309,7 @@ async function runExport() {
   console.log(`** Depositing another ${fromWei(testConfig.expectedFeesCollected)} **`);
   await emp.deposit({ rawValue: testConfig.expectedFeesCollected }, { from: sponsor });
   // 1) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond(
+  await store.setFixedOracleFeePerSecondPerPfc(
     { rawValue: toWei(testConfig.modifiedFeeRatePerSecond) },
     { from: contractDeployer }
   );
@@ -345,7 +348,7 @@ async function runExport() {
    */
 
   // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
   /** ***************************************************************************
@@ -411,7 +414,7 @@ async function runExport() {
   await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create({ rawValue: testConfig.sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
@@ -478,7 +481,7 @@ async function runExport() {
    */
 
   // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
   /** ***************************************************************************
@@ -571,7 +574,7 @@ async function runExport() {
   await collateral.approve(emp.address, toWei("999999999"), { from: sponsor });
   await emp.create({ rawValue: testConfig.sponsorCollateralAmount }, { rawValue: toWei("100") }, { from: sponsor });
   // 2) Set fee rate per second.
-  await store.setFixedOracleFeePerSecond({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: testConfig.feePerSecond }, { from: contractDeployer });
   // 3) Move time in the contract forward by 1 second to capture unit fee.
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
@@ -609,7 +612,7 @@ async function runExport() {
    * @notice RUN THE TEST TEN TIMES
    */
   // Need to set fees to 0 so as not to change the fee multiplier.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
   for (let i = 0; i < 10; i++) {
     // Note: Must call `requestWithdrawal()` instead of `withdraw()` because we are the only position. I didn't create another
     // less-collateralized position because it would modify the total collateral and therefore the fee multiplier.
@@ -1120,7 +1123,7 @@ async function runExport() {
    */
 
   // Reset store fees.
-  await store.setFixedOracleFeePerSecond({ rawValue: toWei("0") }, { from: contractDeployer });
+  await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0") }, { from: contractDeployer });
 
   console.groupEnd();
   /** ***************************************************************************

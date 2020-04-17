@@ -178,7 +178,7 @@ contract("IntegrationTest", function(accounts) {
     let liquidationsObject = [];
 
     // STEP: 0.a) set the oracle fee
-    await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
 
     // STEP: 0.b: seed liquidator
     console.log("Seeding liquidator");
@@ -377,7 +377,7 @@ contract("IntegrationTest", function(accounts) {
     let maxCollateralLocked = 0;
 
     // STEP: 0.a) set the oracle fee
-    await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
 
     // STEP: 0.b): seed one over sized position
     console.log("Seeding liquidator");
@@ -590,7 +590,7 @@ contract("IntegrationTest", function(accounts) {
     let maxCollateralLocked = 0;
 
     // STEP: 0.a) set the oracle fee
-    await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
 
     let sponsor;
     let tokenHolder;
