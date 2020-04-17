@@ -92,12 +92,12 @@ contract Store is StoreInterface, Withdrawable, Testable {
         external
         override
         view
-        returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
     {
         uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
-        FixedPoint.Unsigned memory regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
+        regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
 
         // Compute how long ago the start time was to compute the delay penalty.
         uint paymentDelay = getCurrentTime().sub(startTime);
@@ -108,9 +108,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
         FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFee.mul(paymentDelay.div(SECONDS_PER_WEEK));
 
         // Apply the penaltyPercentagePerSecond to the payment period.
-        FixedPoint.Unsigned memory latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
-
-        return (regularFee, latePenalty);
+        latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
     }
 
     /**

@@ -31,12 +31,12 @@ contract("Store", function(accounts) {
 
     // Wait one second, then check fees are correct
     let fees = await store.computeRegularFee(100, 101, pfc);
-    assert.equal(fees[0].toString(), web3.utils.toWei("0.2", "ether")); // fee[0] -> regularFee: amount owed for the duration from start to end time for the given pfc.
-    assert.equal(fees[1].toString(), "0"); // fee[1] -> latePenalty: penalty percentage, if any, for paying the fee after the deadline.
+    assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.2", "ether"));
+    assert.equal(fees.latePenalty.toString(), "0");
 
     // Wait 10 seconds, then check fees are correct
     fees = await store.computeRegularFee(100, 110, pfc);
-    assert.equal(fees[0].toString(), web3.utils.toWei("2", "ether"));
+    assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
   });
 
   it("Compute fees at 20%", async function() {
@@ -48,10 +48,10 @@ contract("Store", function(accounts) {
 
     // Run time tests again
     let fees = await store.computeRegularFee(100, 101, pfc);
-    assert.equal(fees[0].toString(), web3.utils.toWei("0.4", "ether")); // regularFee
+    assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.4", "ether"));
 
     fees = await store.computeRegularFee(100, 110, pfc);
-    assert.equal(fees[0].toString(), web3.utils.toWei("4", "ether")); // latePenalty
+    assert.equal(fees.regularFee.toString(), web3.utils.toWei("4", "ether"));
   });
 
   it("Check for illegal params", async function() {

@@ -60,7 +60,7 @@ library ResultComputation {
     function getResolvedPrice(Data storage data, FixedPoint.Unsigned memory minVoteThreshold)
         internal
         view
-        returns (bool, int256)
+        returns (bool isResolved, int256 price)
     {
         // TODO(ptare): Figure out where this parameter is supposed to come from.
         FixedPoint.Unsigned memory modeThreshold = FixedPoint.fromUnscaledUint(50).div(100);
@@ -70,9 +70,10 @@ library ResultComputation {
             data.voteFrequency[data.currentMode].div(data.totalVotes).isGreaterThan(modeThreshold)
         ) {
             // `modeThreshold` and `minVoteThreshold` are exceeded, so the current mode is the resolved price.
-            return (true, data.currentMode);
+            isResolved = true;
+            price = data.currentMode;
         } else {
-            return (false, 0);
+            isResolved = false;
         }
     }
 
