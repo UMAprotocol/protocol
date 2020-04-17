@@ -16,7 +16,7 @@ contract ResultComputationTest {
         data.addVote(votePrice, FixedPoint.Unsigned(numberTokens));
     }
 
-    function wrapGetResolvedPrice(uint256 minVoteThreshold) external view returns (bool, int256) {
+    function wrapGetResolvedPrice(uint256 minVoteThreshold) external view returns (bool isResolved, int256 price) {
         return data.getResolvedPrice(FixedPoint.Unsigned(minVoteThreshold));
     }
 

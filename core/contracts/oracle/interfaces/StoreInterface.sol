@@ -35,7 +35,7 @@ interface StoreInterface {
     function computeRegularFee(uint256 startTime, uint256 endTime, FixedPoint.Unsigned calldata pfc)
         external
         view
-        returns (FixedPoint.Unsigned memory, FixedPoint.Unsigned memory);
+        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty);
 
     /**
      * @notice Computes the final oracle fees that a contract should pay at settlement.
