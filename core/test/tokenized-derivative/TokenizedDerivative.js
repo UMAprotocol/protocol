@@ -1,5 +1,6 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { interfaceName } = require("../../utils/Constants.js");
 
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
@@ -12,6 +13,7 @@ const Registry = artifacts.require("Registry");
 const TokenizedDerivative = artifacts.require("TokenizedDerivative");
 const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Timer = artifacts.require("Timer");
 
 // Pull in contracts from dependencies.
 const Token = artifacts.require("ExpandedERC20");
@@ -59,14 +61,14 @@ contract("TokenizedDerivative", function(accounts) {
     deployedFinder = await Finder.deployed();
     deployedAdmin = await FinancialContractsAdmin.deployed();
     supportedIdentifiers = await IdentifierWhitelist.deployed();
-    mockOracle = await MockOracle.new(supportedIdentifiers.address);
+    mockOracle = await MockOracle.new(deployedFinder.address, Timer.address);
     deployedStore = await Store.deployed();
     deployedManualPriceFeed = await ManualPriceFeed.deployed();
     tokenizedDerivativeCreator = await TokenizedDerivativeCreator.deployed();
     noLeverageCalculator = await LeveragedReturnCalculator.deployed();
 
     // Change the Oracle to MockOracle so that we can push prices from test cases.
-    const oracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex("Oracle"));
+    const oracleInterfaceName = web3.utils.hexToBytes(web3.utils.utf8ToHex(interfaceName.Oracle));
     await deployedFinder.changeImplementationAddress(oracleInterfaceName, mockOracle.address);
 
     // Create an arbitrary ERC20 margin token.
@@ -2451,14 +2453,14 @@ contract("TokenizedDerivative", function(accounts) {
     });
 
     it(annotateTitle("Creation Time"), async function() {
-      // Set the current time in the creator and expect that that time will propagate to the derivative.
-      const creationTime = "1550878663";
-      tokenizedDerivativeCreator.setCurrentTime(creationTime);
-
       // A new TokenizedDerivative must be deployed before the start of each test case.
       await deployNewTokenizedDerivative();
 
-      assert.equal((await derivativeContract.derivativeStorage()).fixedParameters.creationTime, creationTime);
+      const creationTime = await tokenizedDerivativeCreator.getCurrentTime();
+      assert.equal(
+        (await derivativeContract.derivativeStorage()).fixedParameters.creationTime,
+        creationTime.toString()
+      );
     });
 
     it(annotateTitle("High withdraw throttle"), async function() {
@@ -2693,7 +2695,7 @@ contract("TokenizedDerivative", function(accounts) {
 
       // Wipe out the regular component of the Oracle fee but set a weekly delay fee.
       await setNewFixedOracleFee("0");
-      const weeklyDelayFee = web3.utils.toWei("0.1", "ether");
+      const weeklyDelayFee = web3.utils.toBN(web3.utils.toWei("0.000000001", "ether"));
       await setNewWeeklyDelayFee(weeklyDelayFee);
 
       // Go two weeks without remargining, and see if the delay fee was paid.
@@ -2706,8 +2708,9 @@ contract("TokenizedDerivative", function(accounts) {
 
       const expectedDelayFee = web3.utils
         .toBN(shortBalance)
-        .mul(web3.utils.toBN(weeklyDelayFee))
+        .mul(weeklyDelayFee)
         .muln(numWeeks)
+        .muln(secondsInTwoWeeks)
         .div(web3.utils.toBN(web3.utils.toWei("1", "ether")));
       expectedShortBalance = web3.utils.toBN(shortBalance).sub(expectedDelayFee);
       expectedStoreBalance = storeBalance.add(expectedDelayFee);

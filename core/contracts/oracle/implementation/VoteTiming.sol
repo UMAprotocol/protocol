@@ -11,13 +11,15 @@ library VoteTiming {
     using SafeMath for uint;
 
     struct Data {
-        uint phaseLength;
+        uint256 phaseLength;
     }
 
     /**
      * @notice Initializes the data object. Sets the phase length based on the input.
      */
-    function init(Data storage data, uint phaseLength) internal {
+    function init(Data storage data, uint256 phaseLength) internal {
+        // This should have a require message but this results in an internal Solidity error.
+        require(phaseLength > 0);
         data.phaseLength = phaseLength;
     }
 
@@ -27,8 +29,8 @@ library VoteTiming {
      * @param currentTime input unix timeStamp used to compute the current roundId.
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
-    function computeCurrentRoundId(Data storage data, uint currentTime) internal view returns (uint roundId) {
-        uint roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
+    function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256 roundId) {
+        uint256 roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
         return currentTime.div(roundLength);
     }
 
@@ -38,15 +40,15 @@ library VoteTiming {
      * @param roundId uniquely identifies the current round.
      * @return timestamp unix time of when the current round will end.
      */
-    function computeRoundEndTime(Data storage data, uint roundId) internal view returns (uint timestamp) {
-        uint roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
+    function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256 timestamp) {
+        uint256 roundLength = data.phaseLength.mul(uint(VotingInterface.Phase.NUM_PHASES_PLACEHOLDER));
         return roundLength.mul(roundId.add(1));
     }
 
     /**
      * @notice Computes the current phase based only on the current time.
      */
-    function computeCurrentPhase(Data storage data, uint currentTime) internal view returns (VotingInterface.Phase) {
+    function computeCurrentPhase(Data storage data, uint256 currentTime) internal view returns (VotingInterface.Phase) {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
         return
             VotingInterface.Phase(

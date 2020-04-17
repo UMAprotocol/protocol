@@ -1,5 +1,7 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
+
 const { LiquidationStatesEnum } = require("../../common/Enums");
+const { interfaceName } = require("../../core/utils/Constants.js");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
@@ -15,6 +17,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("Liquidator.js", function(accounts) {
   // implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0]
@@ -47,19 +50,18 @@ contract("Liquidator.js", function(accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
-
-    // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
-      from: contractCreator
-    });
-    finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 
   beforeEach(async function() {
+    // Create a mockOracle and finder. Register the mockMoracle with the finder.
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
+      from: contractCreator
+    });
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -73,7 +75,8 @@ contract("Liquidator.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     // Deploy a new expiring multi party
@@ -308,11 +311,11 @@ contract("Liquidator.js", function(accounts) {
 
   it.only("set up positions", async function() {
     console.log("seeding emp @", emp.address);
-    for (let i = 1; i < 2; i++) {
+    for (let i = 1; i < 6; i++) {
       console.log("Creating position for account", accounts[i]);
       await collateralToken.mint(accounts[i], toWei("100000"), { from: contractCreator });
       await collateralToken.approve(emp.address, toWei("1000000"), { from: accounts[i] });
-      await emp.create({ rawValue: toWei("151.00011101") }, { rawValue: toWei("99") }, { from: accounts[i] });
+      await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: accounts[i] });
     }
 
     // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.

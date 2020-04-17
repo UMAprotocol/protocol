@@ -1,6 +1,7 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { LiquidationStatesEnum } = require("../../../common/Enums");
+const { interfaceName } = require("../../utils/Constants.js");
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
@@ -18,6 +19,7 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Timer = artifacts.require("Timer");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -89,6 +91,10 @@ contract("Liquidatable", function(accounts) {
   };
 
   beforeEach(async () => {
+    // Force each test to start with a simulated time that's synced to the startTimestamp.
+    const timer = await Timer.deployed();
+    await timer.setCurrentTime(startTime);
+
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new({ from: contractDeployer });
 
@@ -100,18 +106,17 @@ contract("Liquidatable", function(accounts) {
     });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractDeployer
     });
-    finder = await Finder.deployed();
 
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
     });
 
     liquidatableParameters = {
-      isTest: true,
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
@@ -125,7 +130,8 @@ contract("Liquidatable", function(accounts) {
       disputeBondPct: { rawValue: disputeBondPct.toString() },
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
-      minSponsorTokens: { rawValue: minSponsorTokens.toString() }
+      minSponsorTokens: { rawValue: minSponsorTokens.toString() },
+      timerAddress: Timer.address
     };
 
     // Deploy liquidation contract and set global params

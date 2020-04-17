@@ -9,6 +9,7 @@ const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
@@ -26,7 +27,6 @@ contract("index.js", function(accounts) {
 
   beforeEach(async function() {
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -40,7 +40,8 @@ contract("index.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     // Deploy a new expiring multi party

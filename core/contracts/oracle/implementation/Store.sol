@@ -7,13 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
+import "../../common/implementation/Testable.sol";
 import "../interfaces/StoreInterface.sol";
 
 
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
-contract Store is StoreInterface, Withdrawable {
+contract Store is StoreInterface, Withdrawable, Testable {
     using SafeMath for uint;
     using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for uint;
@@ -29,7 +30,7 @@ contract Store is StoreInterface, Withdrawable {
     FixedPoint.Unsigned public weeklyDelayFee; // Percentage of 1 E.g., .1 is 10% weekly delay fee.
 
     mapping(address => FixedPoint.Unsigned) public finalFees;
-    uint public constant SECONDS_PER_WEEK = 604800;
+    uint256 public constant SECONDS_PER_WEEK = 604800;
 
     /****************************************
      *                EVENTS                *
@@ -42,7 +43,7 @@ contract Store is StoreInterface, Withdrawable {
     /**
      * @notice Construct the Store contract.
      */
-    constructor() public {
+    constructor(address _timerAddress) public Testable(_timerAddress) {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
     }
@@ -71,7 +72,7 @@ contract Store is StoreInterface, Withdrawable {
     // prettier-ignore
     function payOracleFeesErc20(address erc20Address) external override {
         IERC20 erc20 = IERC20(erc20Address);
-        uint authorizedAmount = erc20.allowance(msg.sender, address(this));
+        uint256 authorizedAmount = erc20.allowance(msg.sender, address(this));
         require(authorizedAmount > 0);
         erc20.safeTransferFrom(msg.sender, address(this), authorizedAmount);
     }
@@ -87,18 +88,27 @@ contract Store is StoreInterface, Withdrawable {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function computeRegularFee(uint startTime, uint endTime, FixedPoint.Unsigned calldata pfc)
+    function computeRegularFee(uint256 startTime, uint256 endTime, FixedPoint.Unsigned calldata pfc)
         external
         override
         view
         returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
     {
-        uint timeDiff = endTime.sub(startTime);
+        uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
         regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecond);
-        // `weeklyDelayFee` is already scaled up.
-        latePenalty = pfc.mul(weeklyDelayFee.mul(timeDiff.div(SECONDS_PER_WEEK)));
+
+        // Compute how long ago the start time was to compute the delay penalty.
+        uint paymentDelay = getCurrentTime().sub(startTime);
+
+        // Compute the additional percentage (per second) that will be charged because of the penalty.
+        // Note: if less than a week has gone by since the startTime, paymentDelay / SECONDS_PER_WEEK will truncate to
+        // 0, causing no penalty to be charged.
+        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFee.mul(paymentDelay.div(SECONDS_PER_WEEK));
+
+        // Apply the penaltyPercentagePerSecond to the payment period.
+        latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
 
         return (regularFee, latePenalty);
     }
@@ -137,6 +147,7 @@ contract Store is StoreInterface, Withdrawable {
      * @param newWeeklyDelayFee fee escalation per week of late fee payment.
      */
     function setWeeklyDelayFee(FixedPoint.Unsigned memory newWeeklyDelayFee) public onlyRoleHolder(uint(Roles.Owner)) {
+        require(newWeeklyDelayFee.isLessThan(1), "weekly delay fee must be < 100%");
         weeklyDelayFee = newWeeklyDelayFee;
         emit NewWeeklyDelayFee(newWeeklyDelayFee);
     }

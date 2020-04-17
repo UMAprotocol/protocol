@@ -1,10 +1,10 @@
 // The logger has a number of different levels based on the severity of the incident:
-//-> Debugs: self explanatory. Normal status-based logging. These can trigger
+// -> Debugs: self explanatory. Normal status-based logging. These can trigger
 //   every iteration. Unlimited volume. Prints to console.
-//-> Info: when something happens that is notable, but not necessarily actionable.
+// -> Info: when something happens that is notable, but not necessarily actionable.
 //   These should not trigger every iteration. Any on-chain event that executed correctly.
 //   Print to console & trigger a slack message.
-//-> Error: anything that requires human intervention. If the bot is low on funds or a
+// -> Error: anything that requires human intervention. If the bot is low on funds or a
 //   transaction fails(some txn failures are sporadic and normal, but it may be difficult
 //   to distinguish).These can trigger every iteration, but only if it's because the bot
 //   encounters a persistent issue that requires human intervention to solve.

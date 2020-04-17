@@ -14,6 +14,7 @@
 const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
+const { interfaceName } = require("../utils/Constants.js");
 
 // Contracts to test
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -26,6 +27,7 @@ const MarginToken = artifacts.require("ExpandedERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
 const MockOracle = artifacts.require("MockOracle");
+const Timer = artifacts.require("Timer");
 
 /**
  * @notice Deploys a brand new ExpiringMultiParty contract so that each experiment can run in isolation.
@@ -81,15 +83,14 @@ async function createTestEnvironment() {
   // Change oracle to the mock oracle for two reasons:
   // (1) we can manually set settlement prices
   // (2) we don't need to register the contract with the Registry to request prices
-  mockOracle = await MockOracle.new(identifierWhitelist.address);
   finder = await Finder.deployed();
-  const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+  mockOracle = await MockOracle.new(finder.address, Timer.address);
+  const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
   await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
   // Create the instance of the emp to test against.
   // The contract expires 10k seconds in the future -> will not expire during this test case.
   const constructorParams = {
-    isTest: true,
     expirationTimestamp: expirationTimestamp,
     withdrawalLiveness: withdrawalLiveness,
     collateralAddress: collateral.address,
@@ -103,7 +104,8 @@ async function createTestEnvironment() {
     disputeBondPct: { rawValue: disputeBondPct },
     sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct },
     disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct },
-    minSponsorTokens: { rawValue: "0" }
+    minSponsorTokens: { rawValue: "0" },
+    timerAddress: Timer.address
   };
   emp = await ExpiringMultiParty.new(constructorParams, { from: contractDeployer });
   synthetic = await SyntheticToken.at(await emp.tokenCurrency());

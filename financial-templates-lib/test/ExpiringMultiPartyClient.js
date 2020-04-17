@@ -1,5 +1,7 @@
 const { toWei } = web3.utils;
 
+const { interfaceName } = require("../../core/utils/Constants.js");
+
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
 const { delay } = require("../delay");
 
@@ -9,6 +11,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor1 = accounts[0];
@@ -40,15 +43,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
     finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    mockOracle = await MockOracle.new(finder.address, Timer.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 
   beforeEach(async function() {
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -62,7 +64,8 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
@@ -80,7 +83,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
     await updateAndVerify(
       client,
-      [sponsor1], //expected sponsor
+      [sponsor1], // expected sponsor
       [
         {
           sponsor: sponsor1,
@@ -90,7 +93,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           requestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         }
-      ] //expected position
+      ] // expected position
     );
 
     // Calling create again from the same sponsor should add additional collateral & debt.
@@ -248,7 +251,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
-    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
+    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
     await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 
@@ -352,7 +355,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // Dispute the liquidation and make sure it no longer shows up in the list.
     // We need to advance the Oracle time forward to make `requestPrice` work.
-    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1000);
+    await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
     await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
     await client._update();
 

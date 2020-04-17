@@ -12,11 +12,11 @@ contract ResultComputationTest {
 
     ResultComputation.Data public data;
 
-    function wrapAddVote(int votePrice, uint numberTokens) external {
+    function wrapAddVote(int256 votePrice, uint256 numberTokens) external {
         data.addVote(votePrice, FixedPoint.Unsigned(numberTokens));
     }
 
-    function wrapGetResolvedPrice(uint minVoteThreshold) external view returns (bool isResolved, int price) {
+    function wrapGetResolvedPrice(uint256 minVoteThreshold) external view returns (bool isResolved, int256 price) {
         return data.getResolvedPrice(FixedPoint.Unsigned(minVoteThreshold));
     }
 

@@ -13,7 +13,7 @@ const slackFormatter = info => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*incorrectly formatted winston message!*`
+            text: "*incorrectly formatted winston message!*"
           }
         }
       ]
@@ -35,7 +35,7 @@ const slackFormatter = info => {
   };
 
   // All messages from winston come in as a Json object. The loop below expands this object
-  //and adds mrkdwn sections for each key value pair with a bullet point. If the section is
+  // and adds mrkdwn sections for each key value pair with a bullet point. If the section is
   // an object then it was passed containing multiple sub points. This is also expanded as a
   // sub indented section. If the key is `tx` then it is encoded as a etherscan URL.
   for (const key in info) {

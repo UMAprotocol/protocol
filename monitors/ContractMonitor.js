@@ -1,14 +1,14 @@
+
+
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const networkUtils = require("../common/PublicNetworks");
 
 class ContractMonitor {
-  constructor(logger, eventClient, account, umaLiquidatorAddress, umaDisputerAddress) {
-    this.logger = logger;
-
+  constructor(logger, expiringMultiPartyEventClient, account, monitoredLiquidators, monitoredDisputers) {
+    this.logger = logger
     // Bot and ecosystem accounts.
     this.account = account;
-    this.umaLiquidatorAddress = umaLiquidatorAddress;
-    this.umaDisputerAddress = umaDisputerAddress;
+    this.monitoredLiquidators = monitoredLiquidators;
+    this.monitoredDisputers = monitoredDisputers;
 
     // Previous contract state used to check for new entries between calls
     this.lastLiquidationBlockNumber = 0;
@@ -16,12 +16,12 @@ class ContractMonitor {
     this.lastDisputeSettlementBlockNumber = 0;
 
     // EMP event client to read latest contract events
-    this.empEventClient = eventClient;
-    this.web3 = this.empEventClient.web3;
+    this.empEventClient = expiringMultiPartyEventClient;
     this.empContract = this.empEventClient.emp;
+    this.web3 = this.empEventClient.web3;
 
     // Contract constants
-    //TODO: replace this with an actual query to the collateral currency symbol
+    // TODO: replace this with an actual query to the collateral currency symbol
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "UMATEST";
 
@@ -31,21 +31,28 @@ class ContractMonitor {
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, priceFunction) => {
+  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
     return this.web3.utils
       .toBN(collateral)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(priceFunction.toString())))
+      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice.toString())))
       .muln(100);
   };
+
+  getLastSeenBlockNumber(eventArray) {
+    if (eventArray.length == 0) {
+      return 0;
+    }
+    return eventArray[eventArray.length - 1].blockNumber;
+  }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async priceFunction => {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
-    const priceFeed = priceFunction(contractTime.toString());
+    const priceFeed = priceFunction(contractTime);
 
-    this.logger.debug({
+    Logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
       price: priceFeed,
@@ -64,14 +71,14 @@ class ContractMonitor {
       // initiated liquidation for for [x][collateral currency]of sponsor collateral
       // backing[n] tokens - sponsor collateralization was[y] %.  [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.liquidator) +
-        (this.umaLiquidatorAddress == event.liquidator ? " (UMA liquidator bot)" : "") +
+        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
+        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (UMA liquidator bot)" : "") +
         " initiated liquidation for " +
         this.formatDecimalString(event.liquidatedCollateral) +
         " " +
         this.collateralCurrencySymbol +
         " of sponsor " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.sponsor) +
+        createEtherscanLinkMarkdown(this.web3, event.sponsor) +
         " collateral backing " +
         this.formatDecimalString(event.tokensOutstanding) +
         " " +
@@ -81,22 +88,22 @@ class ContractMonitor {
           this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, priceFeed)
         ) +
         "%. tx: " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
+        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
 
-      this.logger.info({
+      Logger.info({
         at: "ContractMonitor",
         message: "Liquidation Alert 🧙‍♂️!",
         mrkdwn: mrkdwn
       });
     }
-    this.lastLiquidationBlockNumber = await this.web3.eth.getBlockNumber();
+    this.lastLiquidationBlockNumber = getLastSeenBlockNumber(latestLiquidationEvents);
   };
 
   checkForNewDisputeEvents = async priceFunction => {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
-    const priceFeed = priceFunction(contractTime.toString());
+    const priceFeed = priceFunction(contractTime);
 
-    this.logger.debug({
+    Logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute events",
       price: priceFeed,
@@ -113,32 +120,32 @@ class ContractMonitor {
       // Dispute alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // initiated dispute [etherscan link to txn]
       const mrkdwn =
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.disputer) +
-        (this.umaDisputerAddress == event.disputer ? " (UMA dispute bot)" : "") +
+        createEtherscanLinkMarkdown(this.web3, event.disputer) +
+        (this.monitoredDisputers.indexOf(event.disputer) != -1 ? " (UMA dispute bot)" : "") +
         " initiated dispute against liquidator " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.liquidator) +
-        (this.umaLiquidatorAddress == event.liquidator ? " (UMA liquidator bot)" : "") +
+        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
+        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (UMA liquidator bot)" : "") +
         " with a dispute bond of " +
         this.formatDecimalString(event.disputeBondAmount) +
         " " +
         this.collateralCurrencySymbol +
         ". tx: " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
+        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
 
-      this.logger.info({
+      Logger.info({
         at: "ContractMonitor",
         message: "Dispute Alert 👻!",
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeBlockNumber = await this.web3.eth.getBlockNumber();
+    this.lastDisputeBlockNumber = getLastSeenBlockNumber(latestDisputeEvents);
   };
 
   checkForNewDisputeSettlementEvents = async priceFunction => {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
-    const priceFeed = priceFunction(contractTime.toString());
+    const priceFeed = priceFunction(contractTime);
 
-    this.logger.debug({
+    Logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute settlement events",
       price: priceFeed,
@@ -159,22 +166,22 @@ class ContractMonitor {
       // it’s our bot]has resolved as [success or failed] [etherscan link to txn]
       const mrkdwn =
         "Dispute between liquidator " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.liquidator) +
-        (this.umaLiquidatorAddress == event.liquidator ? "(UMA liquidator bot)" : "") +
+        createEtherscanLinkMarkdown(this.web3, event.liquidator) +
+        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? "(UMA liquidator bot)" : "") +
         " and disputer " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.disputer) +
-        (this.umaDisputerAddress == event.disputer ? "(UMA dispute bot)" : "") +
+        createEtherscanLinkMarkdown(this.web3, event.disputer) +
+        (this.monitoredDisputers.indexOf(event.disputer) != -1 ? "(UMA dispute bot)" : "") +
         " has been resolved as " +
         (event.disputeSucceeded == true ? "success" : "failed") +
         ". tx: " +
-        createEtherscanLinkMarkdown(this.web3, networkUtils, event.transactionHash);
-      this.logger.info({
+        createEtherscanLinkMarkdown(this.web3, event.transactionHash);
+      Logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeSettlementBlockNumber = await this.web3.eth.getBlockNumber();
+    this.lastDisputeSettlementBlockNumber = getLastSeenBlockNumber(latestDisputeSettlementEvents);
   };
 }
 

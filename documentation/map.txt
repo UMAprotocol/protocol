@@ -1,3 +1,5 @@
+* getting_started
+** bug_bounty.md
 * synthetic_tokens
 ** explainer.md
 ** tutorials
