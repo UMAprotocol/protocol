@@ -1,6 +1,7 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { LiquidationStatesEnum } = require("../../../common/Enums");
+const { interfaceName } = require("../../utils/Constants.js");
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
@@ -105,12 +106,12 @@ contract("Liquidatable", function(accounts) {
     });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractDeployer
     });
-    finder = await Finder.deployed();
 
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
     });

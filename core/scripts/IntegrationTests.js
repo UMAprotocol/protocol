@@ -16,6 +16,7 @@
 // Helpers
 const { toWei, toBN } = web3.utils;
 const { RegistryRolesEnum } = require("../../common/Enums.js");
+const { interfaceName } = require("../utils/Constants.js");
 
 // Contract to test
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -98,15 +99,16 @@ contract("IntegrationTest", function(accounts) {
       from: contractCreator
     });
 
+    finder = await Finder.deployed();
+
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractCreator
     });
-    finder = await Finder.deployed();
 
     store = await Store.deployed();
 
-    await finder.changeImplementationAddress(web3.utils.utf8ToHex("Oracle"), mockOracle.address, {
+    await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), mockOracle.address, {
       from: contractCreator
     });
 

@@ -14,7 +14,6 @@ contract VotingTest is Voting {
         FixedPoint.Unsigned memory _inflationRate,
         uint256 _rewardsExpirationTimeout,
         address _votingToken,
-        address _identifierWhitelist,
         address _finder,
         address _timerAddress
     )
@@ -25,7 +24,6 @@ contract VotingTest is Voting {
             _inflationRate,
             _rewardsExpirationTimeout,
             _votingToken,
-            _identifierWhitelist,
             _finder,
             _timerAddress
         )

@@ -49,13 +49,9 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     const choices = [{ name: backChoice }];
     for (let i = 0; i < liquidations.length; i++) {
       const liquidation = liquidations[i];
-      const display =
-        "Minted: " +
-        fromWei(liquidation.tokensOutstanding) +
-        " Collateral: " +
-        fromWei(liquidation.lockedCollateral) +
-        " Status: " +
-        liquidationStateToDisplay(liquidation.state);
+      const display = `Minted: ${fromWei(liquidation.tokensOutstanding)} Collateral: ${fromWei(
+        liquidation.lockedCollateral
+      )} Status: ${liquidationStateToDisplay(liquidation.state)}`;
       choices.push({ name: display, value: i });
     }
     const input = await inquirer.prompt({

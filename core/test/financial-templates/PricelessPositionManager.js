@@ -2,6 +2,7 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
 const { PositionStatesEnum } = require("../../../common/Enums");
+const { interfaceName } = require("../../utils/Constants.js");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
@@ -89,11 +90,11 @@ contract("PricelessPositionManager", function(accounts) {
     });
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractDeployer
     });
-    finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractDeployer });
 
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
@@ -1119,8 +1120,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
 
     // Create new oracle, replace it in the finder, and push a different price to it.
-    const newMockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const newMockOracle = await MockOracle.new(finder.address, Timer.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
       from: contractDeployer
     });

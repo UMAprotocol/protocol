@@ -8,8 +8,10 @@ import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleInterface.sol";
+import "./Constants.sol";
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 
 /**
@@ -17,6 +19,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  */
 contract Governor is MultiRole, Testable {
     using SafeMath for uint;
+    using Address for address;
 
     /****************************************
      *     INTERNAL VARIABLES AND STORAGE   *
@@ -95,6 +98,10 @@ contract Governor is MultiRole, Testable {
         // Initialize the transaction array.
         for (uint256 i = 0; i < transactions.length; i++) {
             require(transactions[i].to != address(0), "The to address cannot be 0x0");
+            // If the transaction has any data with it the recipient must be a contract, not an EOA.
+            if (transactions[i].data.length > 0) {
+                require(transactions[i].to.isContract(), "Only propose transactions on a contract");
+            }
             proposal.transactions.push(transactions[i]);
         }
 
@@ -179,11 +186,11 @@ contract Governor is MultiRole, Testable {
     }
 
     function _getOracle() private view returns (OracleInterface oracle) {
-        return OracleInterface(finder.getImplementationAddress("Oracle"));
+        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
-        return IdentifierWhitelistInterface(finder.getImplementationAddress("IdentifierWhitelist"));
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
     // Returns a UTF-8 identifier representing a particular admin proposal.

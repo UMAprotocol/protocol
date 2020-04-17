@@ -48,7 +48,7 @@ const getMarketSummary = async (web3, artifacts) => {
 
     const expirationTimestamp = (await emp.expirationTimestamp()).toString();
 
-    const etherscanLink = etherscanBaseUrl + "/contracts/" + emp.address;
+    const etherscanLink = `${etherscanBaseUrl}/contracts/${emp.address}`;
 
     markets.push({
       emp,

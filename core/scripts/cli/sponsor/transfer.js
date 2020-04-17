@@ -12,16 +12,14 @@ const transfer = async (web3, artifacts, emp) => {
   const targetCollateral = (await emp.getCollateral(input["address"])).toString();
   if (targetCollateral !== "0") {
     console.log(
-      "Target address already has",
-      fromWei(targetCollateral),
-      "WETH. Can only transfer to an owner without a position"
+      `Target address already has ${fromWei(targetCollateral)} WETH. Can only transfer to an owner without a position`
     );
     return;
   }
 
   const confirmation = await inquirer.prompt({
     type: "confirm",
-    message: "Transferring to " + input["address"] + ". This cannot be reversed!",
+    message: `Transferring to ${input["address"]}. This cannot be reversed!`,
     name: "confirm"
   });
   if (confirmation["confirm"]) {
