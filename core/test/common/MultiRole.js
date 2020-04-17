@@ -49,12 +49,8 @@ contract("MultiRole", function(accounts) {
     await multiRole.revertIfNotHoldingRole("1", { from: account2 });
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account1 })));
 
-    // account2 can renounce their membership, and no one will be able to reset membership in the future.
-    await multiRole.renounceMembership("1", { from: account2 });
-    assert.isFalse(await multiRole.holdsRole("1", account2));
-    assert.isTrue(await multiRole.holdsRole("1", zeroAddress));
-    assert.equal(await multiRole.getMember("1"), zeroAddress);
-    assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account2 })));
+    // Cannot renounce an exclusive role.
+    assert(await didContractThrow(multiRole.renounceMembership("1", { from: account2 })));
   });
 
   it("Exclusive externally managed role", async function() {
@@ -72,15 +68,8 @@ contract("MultiRole", function(accounts) {
     await multiRole.revertIfNotHoldingRole("2", { from: account2 });
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account1 })));
 
-    // Only the holder of the managing role can renounce membership.
-    assert(await didContractThrow(multiRole.renounceMembership("2", { from: account1 })));
-
-    // Any role holder can renounce their membership.
-    await multiRole.renounceMembership("2", { from: account2 });
-    assert.isFalse(await multiRole.holdsRole("2", account2));
-    assert.isTrue(await multiRole.holdsRole("2", zeroAddress));
-    assert.equal(await multiRole.getMember("2"), zeroAddress);
-    assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account2 })));
+    // Cannot renounce an exclusive role.
+    assert(await didContractThrow(multiRole.renounceMembership("2", { from: account2 })));
 
     // Only the holder of the managing role should be able to modify it.
     assert(await didContractThrow(multiRole.resetMember("2", account1, { from: account2 })));
@@ -126,7 +115,7 @@ contract("MultiRole", function(accounts) {
     assert.isFalse(await multiRole.holdsRole("1", account2));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account2 })));
 
-    // Any role holder can renounce their membership.
+    // Any shared role holder can renounce their membership.
     await multiRole.renounceMembership("1", { from: account3 });
     assert.isFalse(await multiRole.holdsRole("1", account3));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account3 })));
@@ -162,7 +151,7 @@ contract("MultiRole", function(accounts) {
     assert.isFalse(await multiRole.holdsRole("2", account2));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account2 })));
 
-    // Any role holder can renounce their membership, even if they do not hold the managing role.
+    // Any shared role holder can renounce their membership, even if they do not hold the managing role.
     assert(await didContractThrow(multiRole.renounceMembership("2", { from: account2 })));
     await multiRole.renounceMembership("2", { from: account3 });
     assert.isFalse(await multiRole.holdsRole("2", account3));
@@ -196,7 +185,7 @@ contract("MultiRole", function(accounts) {
     assert.isFalse(await multiRole.holdsRole("2", account2));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account2 })));
 
-    // Any role holder can renounce their membership, even if they do not hold the managing role.
+    // Any shared role holder can renounce their membership, even if they do not hold the managing role.
     assert(await didContractThrow(multiRole.renounceMembership("2", { from: account2 })));
     await multiRole.renounceMembership("2", { from: account3 });
     assert.isFalse(await multiRole.holdsRole("2", account3));

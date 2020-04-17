@@ -11,6 +11,7 @@ library Exclusive {
     }
 
     function resetMember(RoleMembership storage roleMembership, address newMember) internal {
+        require(newMember != address(0x0), "Cannot set an exclusive role to 0x0");
         roleMembership.member = newMember;
     }
 
@@ -117,10 +118,9 @@ abstract contract MultiRole {
     /**
      * @notice Changes the exclusive role holder of `roleId` to `newMember`.
      * @dev Reverts if the caller is not a member of the managing role for `roleId` or if `roleId` is not an
-     * initialized, exclusive role. Cannot set the new role holder to the zero address.
+     * initialized, exclusive role.
      */
     function resetMember(uint256 roleId, address newMember) public onlyExclusive(roleId) onlyRoleManager(roleId) {
-        require(newMember != address(0x0), "Cannot set an exclusive role to 0x0");
         roles[roleId].exclusiveRoleMembership.resetMember(newMember);
     }
 
@@ -153,15 +153,10 @@ abstract contract MultiRole {
     /**
      * @notice Removes caller from the role, `roleId`. For exclusive roles, resets the member to the zero address.
      * @dev Reverts if the caller is not a member of the role for `roleId` or if `roleId` is not an
-     * initialized.
+     * initialized, shared role.
      */
-    function renounceMembership(uint256 roleId) public onlyRoleHolder(roleId) {
-        Role storage role = roles[roleId];
-        if (role.roleType == RoleType.Exclusive) {
-            roles[roleId].exclusiveRoleMembership.resetMember(address(0x0));
-        } else {
-            roles[roleId].sharedRoleMembership.removeMember(msg.sender);
-        }
+    function renounceMembership(uint256 roleId) public onlyShared(roleId) onlyRoleHolder(roleId) {
+        roles[roleId].sharedRoleMembership.removeMember(msg.sender);
     }
 
     /**
