@@ -229,8 +229,8 @@ contract("Store", function(accounts) {
   it("Basic late penalty", async function() {
     const lateFeeRate = web3.utils.toWei("0.0001");
     const regularFeeRate = web3.utils.toWei("0.0002");
-    await store.setWeeklyDelayFee({ rawValue: lateFeeRate }, { from: owner });
-    await store.setFixedOracleFeePerSecond({ rawValue: regularFeeRate }, { from: owner });
+    await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: lateFeeRate }, { from: owner });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFeeRate }, { from: owner });
 
     const startTime = await store.getCurrentTime();
 
