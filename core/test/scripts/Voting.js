@@ -167,13 +167,13 @@ contract("scripts/Voting.js", function(accounts) {
     assert.equal(result.failures.length, 0);
     assert.equal(notifier.notificationsSent, 1);
 
+    // Replace the encrypted vote by committing again with an indecipherable string.
+    await voting.commitAndEmitEncryptedVote(identifier, time, web3.utils.randomHex(32), web3.utils.randomHex(64), {
+      from: voter
+    });
+
     // Move to the reveal phase.
     await moveToNextPhase(voting);
-
-    // Replace the message with an indecipherable string.
-    const roundId = await voting.getCurrentRoundId();
-    const topicHash = computeTopicHash({ identifier, time }, roundId);
-    await voting.storeMessage(topicHash, web3.utils.randomHex(64), { from: voter });
 
     // Replace the voting system object with a new one so the class can't persist the commit.
     votingSystem = new VotingScript.VotingSystem(voting, voter, [notifier]);

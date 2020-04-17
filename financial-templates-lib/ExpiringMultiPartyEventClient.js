@@ -96,7 +96,7 @@ class ExpiringMultiPartyEventClient {
   };
 
   _update = async () => {
-    const currentBlockNumber = await web3.eth.getBlockNumber();
+    const currentBlockNumber = await this.web3.eth.getBlockNumber();
 
     // Look for events on chain from the previous seen block number to the current block number.
     // Liquidation events

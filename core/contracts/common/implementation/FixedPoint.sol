@@ -201,8 +201,6 @@ library FixedPoint {
 
     /** @dev Raises an `Unsigned` to the power of an unscaled uint, reverting on overflow. E.g., `b=2` squares `a`. */
     function pow(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory output) {
-        // TODO(ptare): Consider using the exponentiation by squaring technique instead:
-        // https://en.wikipedia.org/wiki/Exponentiation_by_squaring
         output = fromUnscaledUint(1);
         for (uint256 i = 0; i < b; i = i.add(1)) {
             output = mul(output, a);

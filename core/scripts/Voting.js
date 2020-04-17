@@ -12,7 +12,8 @@ const {
   constructCommitment: _constructCommitment,
   constructReveal: _constructReveal,
   batchRevealVotes,
-  batchCommitVotes
+  batchCommitVotes,
+  getLatestEvent
 } = require("../../common/VotingUtils");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
@@ -460,9 +461,19 @@ class VotingSystem {
     this.maxBatchReveals = BATCH_MAX_REVEALS;
   }
 
-  async getMessage(request, roundId) {
-    const topicHash = computeTopicHash(request, roundId);
-    return await this.voting.getMessage(this.account, topicHash, { from: this.account });
+  async hasCommit(request, roundId) {
+    const ev = await getLatestEvent("EncryptedVote", request, roundId, this.account, this.voting);
+    return ev == null ? false : true;
+  }
+
+  async getCommit(request, roundId) {
+    const ev = await getLatestEvent("EncryptedVote", request, roundId, this.account, this.voting);
+    return ev == null ? null : ev.encryptedVote;
+  }
+
+  async hasReveal(request, roundId) {
+    const ev = await getLatestEvent("VoteRevealed", request, roundId, this.account, this.voting);
+    return ev == null ? false : true;
   }
 
   async constructCommitment(request, roundId, isProd) {
@@ -493,7 +504,7 @@ class VotingSystem {
 
         // Skip commits if a message already exists for this request.
         // This does not check the existence of an actual commit.
-        if (await this.getMessage(request, roundId)) {
+        if (await this.hasCommit(request, roundId)) {
           skipped.push(request);
           continue;
         }
@@ -501,7 +512,7 @@ class VotingSystem {
         try {
           newCommitments.push(await this.constructCommitment(request, roundId, isProd));
         } catch (error) {
-          // console.error("Failed to construct commitment", error);
+          console.error("Failed to construct commitment", error);
           failures.push({ request, error });
         }
       }
@@ -522,7 +533,7 @@ class VotingSystem {
       return await _constructReveal(request, roundId, web3, this.account, this.voting);
     } catch (e) {
       if (isProd) {
-        console.error("Failed to decrypt message:", encryptedCommit, "\n", e);
+        console.error("Failed to decrypt message:", e);
       }
       return null;
     }
@@ -547,8 +558,9 @@ class VotingSystem {
 
         requestsProcessed += 1;
 
-        const encryptedCommit = await this.getMessage(request, roundId);
-        if (!encryptedCommit) {
+        const encryptedCommit = await this.getCommit(request, roundId);
+        const hasRevealed = await this.hasReveal(request, roundId);
+        if (!encryptedCommit || hasRevealed) {
           continue;
         }
 

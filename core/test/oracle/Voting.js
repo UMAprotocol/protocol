@@ -65,10 +65,17 @@ contract("Voting", function(accounts) {
   it("Constructor", async function() {
     // GAT must be <= 1.0 (100%)
     const invalidGat = { rawValue: web3.utils.toWei("1.000001") };
-    const finder = await Finder.deployed();
     assert(
       await didContractThrow(
-        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, 1, votingToken.address, finder.address, true)
+        Voting.new(
+          5,
+          invalidGat,
+          { rawValue: web3.utils.toWei("1") },
+          1,
+          votingToken.address,
+          Finder.address,
+          Timer.address
+        )
       )
     );
   });
@@ -858,14 +865,22 @@ contract("Voting", function(accounts) {
     // Move to the reveal phase, where the snapshot should be taken.
     await moveToNextPhase(voting);
 
-    // account2's reveal should create a snapshot since it's the first action of the reveal.
+    // The snapshotId of the current round should be zero before initiating the snapshot
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+
+    // Directly snapshot the current round to lock in token balances.
+    await voting.snapshotCurrentRound();
+
+    // The snapshotId of the current round should be non zero after the snapshot is taken
+    assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+
+    // Account2 can now reveal their vote.
     await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
 
     // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
     await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
 
-    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been locked into
-    // the snapshot. Increasing the GAT to 90% (requiring close to unanimous agreement) should therefore have no effect.
+    // Modification of the GAT or inflation rate should also not effect this rounds vote outcome as these have been locked into the snapshot. Increasing the GAT to 90% (requiring close to unanimous agreement) should therefore have no effect.
     await setNewGatPercentage(web3.utils.toWei("0.9", "ether"));
 
     // Do the final two reveals.
@@ -881,6 +896,61 @@ contract("Voting", function(accounts) {
 
     // Reset the GAT to 5% for subsequent rounds.
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
+  });
+
+  it("Snapshotting from initial reveal", async function() {
+    const identifier = web3.utils.utf8ToHex("basic-snapshotting2");
+    const time = "1000";
+
+    // Make the Oracle support this identifier.
+    await supportedIdentifiers.addSupportedIdentifier(identifier);
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await moveToNextRound(voting);
+    const roundId = (await voting.getCurrentRoundId()).toString();
+
+    // Commit votes
+    const price = 456;
+    const salt1 = getRandomUnsignedInt();
+    const hash1 = computeVoteHash({
+      price: price,
+      salt: salt1,
+      account: account1,
+      time,
+      roundId,
+      identifier
+    });
+    await voting.commitVote(identifier, time, hash1, { from: account1 });
+
+    const salt2 = getRandomUnsignedInt();
+    const hash2 = computeVoteHash({
+      price: price,
+      salt: salt2,
+      account: account2,
+      time,
+      roundId,
+      identifier
+    });
+    await voting.commitVote(identifier, time, hash2, { from: account2 });
+
+    // Move to the reveal phase, where the snapshot should be taken.
+    await moveToNextPhase(voting);
+
+    // The snapshotId of the current round should be zero before initiating the snapshot.
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+
+    // The first revealer should result in a snapshot being taken.
+    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
+
+    // The snapshotId of the current round should be non zero after the snapshot is taken.
+    const snapShotId = (await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString();
+    assert.notEqual(snapShotId, "0");
+
+    // A second reveal should or a direct snapshot call should not modify the shapshot id.
+    await voting.revealVote(identifier, time, price, salt2, { from: account2 });
+    await voting.snapshotCurrentRound();
+    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), snapShotId);
   });
 
   it("Only registered contracts", async function() {
@@ -1365,12 +1435,21 @@ contract("Voting", function(accounts) {
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
-    await voting.commitAndPersistEncryptedVote(identifier, time, hash, encryptedMessage);
+    let result = await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
+    truffleAssert.eventEmitted(result, "EncryptedVote", ev => {
+      return (
+        ev.voter.toString() === account1 &&
+        ev.roundId.toString() === roundId.toString() &&
+        web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
+        ev.time.toString() == time &&
+        ev.encryptedVote === encryptedMessage
+      );
+    });
 
-    const topicHash = computeTopicHash({ identifier, time }, roundId);
-    const retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+    const events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0 });
+    const retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
 
-    // Check that the stored message is correct.
+    // Check that the emitted message is correct.
     assert.equal(encryptedMessage, retrievedEncryptedMessage);
 
     await moveToNextPhase(voting);
@@ -1379,14 +1458,7 @@ contract("Voting", function(accounts) {
     const retrievedVote = JSON.parse(decryptedMessage);
 
     assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomUnsignedInt())));
-
-    // Check that the message was not deleted.
-    assert.isNotNull(await voting.getMessage(account1, topicHash));
-
     await voting.revealVote(identifier, time, retrievedVote.price, retrievedVote.salt);
-
-    // Check that the message was deleted.
-    assert.isNull(await voting.getMessage(account1, topicHash));
   });
 
   it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
@@ -1412,15 +1484,13 @@ contract("Voting", function(accounts) {
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
-
-    await voting.commitAndPersistEncryptedVote(identifier, time, hash, encryptedMessage);
-
-    const topicHash = computeTopicHash({ identifier, time }, roundId);
+    await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
 
     const secondEncryptedMessage = await encryptMessage(publicKey, getRandomUnsignedInt());
+    await voting.commitAndEmitEncryptedVote(identifier, time, hash, secondEncryptedMessage);
 
-    await voting.commitAndPersistEncryptedVote(identifier, time, hash, secondEncryptedMessage);
-    const secondRetrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
+    const events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0 });
+    const secondRetrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
 
     assert.equal(secondEncryptedMessage, secondRetrievedEncryptedMessage);
   });
@@ -1447,8 +1517,8 @@ contract("Voting", function(accounts) {
 
     const roundId = await voting.getCurrentRoundId();
 
-    // Commit without storing any encrypted messages
-    await voting.batchCommit(
+    // Commit without emitting any encrypted messages
+    const result = await voting.batchCommit(
       priceRequests.map(request => ({
         identifier: request.identifier,
         time: request.time,
@@ -1456,24 +1526,18 @@ contract("Voting", function(accounts) {
         encryptedVote: []
       }))
     );
-
-    // Verify that no messages were stored
-    for (let i = 0; i < numRequests; i++) {
-      let request = priceRequests[i];
-      let topicHash = computeTopicHash({ identifier: request.identifier, time: request.time }, roundId);
-
-      assert.isNull(await voting.getMessage(account1, topicHash));
-    }
+    truffleAssert.eventNotEmitted(result, "EncryptedVote");
 
     // This time we commit while storing the encrypted messages
     await voting.batchCommit(priceRequests);
 
-    // Test that the encrypted messages were stored properly
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
-      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
-      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
-
+      let events = await voting.getPastEvents("EncryptedVote", {
+        fromBlock: 0,
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time }
+      });
+      let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
 
@@ -1481,7 +1545,7 @@ contract("Voting", function(accounts) {
     const modifiedPriceRequest = priceRequests[0];
     modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomUnsignedInt());
     modifiedPriceRequest.encryptedVote = web3.utils.utf8ToHex("some other encrypted message");
-    await voting.commitAndPersistEncryptedVote(
+    await voting.commitAndEmitEncryptedVote(
       modifiedPriceRequest.identifier,
       modifiedPriceRequest.time,
       modifiedPriceRequest.hash,
@@ -1491,9 +1555,11 @@ contract("Voting", function(accounts) {
     // Test that the encrypted messages are still correct
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
-      let topicHash = computeTopicHash({ identifier: priceRequest.identifier, time: priceRequest.time }, roundId);
-      let retrievedEncryptedMessage = await voting.getMessage(account1, topicHash);
-
+      let events = await voting.getPastEvents("EncryptedVote", {
+        fromBlock: 0,
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time }
+      });
+      let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
   });
@@ -1534,15 +1600,8 @@ contract("Voting", function(accounts) {
     const vote = { price: price1.toString(), salt: salt2.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
-    await voting.commitAndPersistEncryptedVote(identifier, time1, hash1, encryptedMessage);
+    await voting.commitAndEmitEncryptedVote(identifier, time1, hash1, encryptedMessage);
     await voting.commitVote(identifier, time2, hash2);
-
-    const topicHash1 = computeTopicHash({ identifier, time: time1 }, roundId);
-    const topicHash2 = computeTopicHash({ identifier, time: time2 }, roundId);
-
-    // Check the encrypted message storage slot.
-    assert.isNotNull(await voting.getMessage(account1, topicHash1));
-    assert.isNull(await voting.getMessage(account1, topicHash2));
 
     await moveToNextPhase(voting);
 
@@ -1580,10 +1639,6 @@ contract("Voting", function(accounts) {
         ev.price.toString() == price2.toString()
       );
     });
-
-    // Check that the encrypted message has been removed from storage
-    assert.isNull(await voting.getMessage(account1, topicHash1));
-    assert.isNull(await voting.getMessage(account1, topicHash2));
   });
 
   it("Migration", async function() {
@@ -1597,7 +1652,6 @@ contract("Voting", function(accounts) {
       { rawValue: "0" },
       "86400",
       votingToken.address,
-      supportedIdentifiers.address,
       (await Finder.deployed()).address,
       Timer.address
     );
@@ -1644,7 +1698,6 @@ contract("Voting", function(accounts) {
       { rawValue: "0" }, // No inflation
       "1209600", // 2 week reward expiration
       votingToken.address,
-      supportedIdentifiers.address,
       Finder.address,
       Timer.address
     );

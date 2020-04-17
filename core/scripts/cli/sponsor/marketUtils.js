@@ -39,6 +39,7 @@ const getMarketSummary = async (web3, artifacts) => {
     const tokenAddress = await emp.tokenCurrency();
     const token = await SyntheticToken.at(tokenAddress);
     const name = await token.name();
+    const symbol = await token.symbol();
 
     const collateralRequirement = await emp.collateralRequirement();
 
@@ -47,12 +48,13 @@ const getMarketSummary = async (web3, artifacts) => {
 
     const expirationTimestamp = (await emp.expirationTimestamp()).toString();
 
-    const etherscanLink = etherscanBaseUrl + "/contracts/" + emp.address;
+    const etherscanLink = `${etherscanBaseUrl}/contracts/${emp.address}`;
 
     markets.push({
       emp,
       contractState,
       name,
+      symbol,
       collateralRequirement,
       collateralSymbol,
       expirationTimestamp,

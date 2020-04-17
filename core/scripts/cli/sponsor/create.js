@@ -36,7 +36,8 @@ const create = async (web3, artifacts, emp) => {
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
   const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
   const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
-  console.log("You'll need", fromWei(collateralNeeded), isWeth ? "ETH" : collateralSymbol, "to mint tokens");
+  const requiredCollateralSymbol = isWeth ? "ETH" : collateralSymbol;
+  console.log(`You'll need ${fromWei(collateralNeeded)} ${requiredCollateralSymbol} to mint tokens`);
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
@@ -54,7 +55,7 @@ const create = async (web3, artifacts, emp) => {
     await submitTransaction(
       web3,
       async () => await collateralCurrency.approve(emp.address, collateralNeeded),
-      "Approving " + collateralSymbol + " transfer",
+      `Approving ${collateralSymbol} transfer`,
       transactionNum,
       totalTransactions
     );
@@ -66,6 +67,7 @@ const create = async (web3, artifacts, emp) => {
       transactionNum,
       totalTransactions
     );
+    // TODO: Add link to uniswap and bolded messaging.
   }
 };
 

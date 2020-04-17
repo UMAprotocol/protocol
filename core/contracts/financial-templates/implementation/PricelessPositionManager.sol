@@ -7,9 +7,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
+
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
+import "../../oracle/implementation/Constants.sol";
+
 import "./TokenFactory.sol";
 import "./FeePayer.sol";
 
@@ -576,23 +579,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
-        bytes32 identifierWhitelistInterface = "IdentifierWhitelist";
-        return IdentifierWhitelistInterface(finder.getImplementationAddress(identifierWhitelistInterface));
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
     function _getOracle() internal view returns (OracleInterface) {
-        bytes32 oracleInterface = "Oracle";
-        return OracleInterface(finder.getImplementationAddress(oracleInterface));
+        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function _getStoreAddress() internal view returns (address) {
-        bytes32 storeInterface = "Store";
-        return finder.getImplementationAddress(storeInterface);
+        return finder.getImplementationAddress(OracleInterfaces.Store);
     }
 
     function _getFinancialContractsAdminAddress() internal view returns (address) {
-        bytes32 financialContractsAdminInterface = "FinancialContractsAdmin";
-        return finder.getImplementationAddress(financialContractsAdminInterface);
+        return finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 
     function _requestOraclePrice(uint256 requestedTime) internal {

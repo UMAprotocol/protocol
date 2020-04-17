@@ -8,11 +8,11 @@ import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "./EncryptedStore.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
 import "./VotingToken.sol";
+import "./Constants.sol";
 
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
@@ -22,7 +22,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is Testable, Ownable, OracleInterface, VotingInterface, EncryptedStore {
+contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint;
     using VoteTiming for VoteTiming.Data;
@@ -99,8 +99,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     VoteTiming.Data public voteTiming;
 
-    IdentifierWhitelistInterface public identifierWhitelist;
-
     // Percentage of the total token supply that must be used in a vote to
     // create a valid price resolution. 1 == 100%.
     FixedPoint.Unsigned public gatPercentage;
@@ -133,6 +131,14 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
 
     event VoteCommitted(address indexed voter, uint256 indexed roundId, bytes32 indexed identifier, uint256 time);
 
+    event EncryptedVote(
+        address indexed voter,
+        uint indexed roundId,
+        bytes32 indexed identifier,
+        uint time,
+        bytes encryptedVote
+    );
+
     event VoteRevealed(
         address indexed voter,
         uint256 indexed roundId,
@@ -161,7 +167,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
      * @param _inflationRate percentage inflation per round used to increase token supply of correct voters.
      * @param _rewardsExpirationTimeout timeout, in seconds, within which rewards must be claimed.
      * @param _votingToken address of the UMA token contract used to commit votes.
-     * @param _identifierWhitelist defines the identifiers that can have have synthetics created against.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
@@ -172,7 +177,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         FixedPoint.Unsigned memory _inflationRate,
         uint256 _rewardsExpirationTimeout,
         address _votingToken,
-        address _identifierWhitelist,
         address _finder,
         address _timerAddress
     ) public Testable(_timerAddress) {
@@ -181,7 +185,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
         votingToken = VotingToken(_votingToken);
-        identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
         finder = FinderInterface(_finder);
         rewardsExpirationTimeout = _rewardsExpirationTimeout;
     }
@@ -194,7 +197,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         if (migratedAddress != address(0)) {
             require(msg.sender == migratedAddress);
         } else {
-            Registry registry = Registry(finder.getImplementationAddress("Registry"));
+            Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
             require(registry.isContractRegistered(msg.sender));
         }
         _;
@@ -220,7 +223,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function requestPrice(bytes32 identifier, uint256 time) external override onlyRegisteredContract() {
         uint256 blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
-        require(identifierWhitelist.isIdentifierSupported(identifier), "Unsupported identifier request");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier request");
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
@@ -337,9 +340,24 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     }
 
     /**
+     * @notice Snapshot the current round's token balances and lock in the inflation rate and GAT.
+     * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
+     * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
+     */
+    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
+    // prettier-ignore
+    function snapshotCurrentRound() external override onlyIfNotMigrated() {
+        uint blockTime = getCurrentTime();
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Can only snapshot in reveal phase");
+
+        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
+        _freezeRoundVariables(roundId);
+    }
+
+    /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash` that `commitVote()` was called with.
-     * Only the committer can reveal their vote.
+     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * that `commitVote()` was called with. Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
@@ -350,8 +368,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
     function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) public override onlyIfNotMigrated() {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
-        // Note: computing the current round is required to disallow people from revealing an old commit after the
-        // round is over.
+        // Note: computing the current round is required to disallow people from
+        // revealing an old commit after the round is over.
         uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
@@ -371,7 +389,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         )) == voteSubmission.commit, "Revealed data != commit hash");
         delete voteSubmission.commit;
 
-        // Lock in round variables including snapshotId and inflation rate
+        // Lock in round variables including snapshotId and inflation rate. Not that this will only execute a snapshot
+        // if the `snapshotCurrentRound` function was not already called for this round.
         _freezeRoundVariables(roundId);
 
         // Get the frozen snapshotId
@@ -387,35 +406,30 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        // Remove the stored message for this price request, if it exists.
-        bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        removeMessage(topicHash);
-
         emit VoteRevealed(msg.sender, roundId, identifier, time, price, balance.rawValue);
     }
 
     /**
-     * @notice commits a vote and stores an encrypted version which can be later decrypted
-     * to recover the voter's price & salt.
-     * @dev The encryption mechanism uses encrypt from a signature from a users price key. See `EncryptedStore.sol`
+     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
+     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
+     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
      * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
      * @param time unix timestamp of for the price request.
      * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
-    function commitAndPersistEncryptedVote(bytes32 identifier, uint256 time, bytes32 hash, bytes memory encryptedVote)
+    function commitAndEmitEncryptedVote(bytes32 identifier, uint256 time, bytes32 hash, bytes memory encryptedVote)
         public
     {
         commitVote(identifier, time, hash);
 
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        bytes32 topicHash = keccak256(abi.encode(identifier, time, roundId));
-        storeMessage(topicHash, encryptedVote);
+        emit EncryptedVote(msg.sender, roundId, identifier, time, encryptedVote);
     }
 
     /**
      * @notice Submit a batch of commits in a single transaction.
-     * @dev Using `encryptedVote` is optional. If included then commitment is stored on chain.
+     * @dev Using `encryptedVote` is optional. If included then commitment is emitted in an event.
      * Look at `project-root/common/Constants.js` for the tested maximum number of
      * commitments that can fit in one transaction.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
@@ -427,7 +441,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             if (commits[i].encryptedVote.length == 0) {
                 commitVote(commits[i].identifier, commits[i].time, commits[i].hash);
             } else {
-                commitAndPersistEncryptedVote(
+                commitAndEmitEncryptedVote(
                     commits[i].identifier,
                     commits[i].time,
                     commits[i].hash,
@@ -742,5 +756,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface, Encrypte
             // Means than priceRequest.lastVotingRound > currentRoundId
             return RequestStatus.Future;
         }
+    }
+
+    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }
