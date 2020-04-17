@@ -16,6 +16,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("ContractMonitor.js", function(accounts) {
   const tokenSponsor = accounts[0];
@@ -28,6 +29,7 @@ contract("ContractMonitor.js", function(accounts) {
 
   // Contracts
   let collateralToken;
+  let collateralTokenSymbol;
   let emp;
   let syntheticToken;
   let mockOracle;
@@ -42,29 +44,20 @@ contract("ContractMonitor.js", function(accounts) {
 
   const spy = sinon.spy();
 
+  const spyLogIncludesValue = (spy, value) => {
+    // sinon's getCall(n) function returns the values sent in in the nth call the the spy
+    const lastReturnedArg = spy.getCall(-1).lastArg.mrkdwn.toString();
+    return lastReturnedArg.indexOf(value) != -1;
+  };
+
   before(async function() {
     collateralToken = await Token.new({ from: tokenSponsor });
-    await collateralToken.addMember(1, tokenSponsor, {
-      from: tokenSponsor
-    });
-    for (let i = 1; i < 5; i++) {
-      // For each of the first 5 accounts used
-      await collateralToken.mint(accounts[i], toWei("100000"), {
-        from: tokenSponsor
-      });
-      await collateralToken.mint(accounts[i], toWei("100000"), {
-        from: tokenSponsor
-      });
-      await collateralToken.mint(accounts[i], toWei("100000"), {
-        from: tokenSponsor
-      });
-    }
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
+    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
@@ -81,6 +74,7 @@ contract("ContractMonitor.js", function(accounts) {
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
+      timerAddress: Timer.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
@@ -102,12 +96,19 @@ contract("ContractMonitor.js", function(accounts) {
 
     emp = await ExpiringMultiParty.new(constructorParams);
     eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, accounts[0], accounts[1]);
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, [accounts[0]], [accounts[1]]);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
-    //   Bulk approve for all wallets
+    await collateralToken.addMember(1, tokenSponsor, {
+      from: tokenSponsor
+    });
+
+    //   Bulk mint and approve for all wallets
     for (let i = 1; i < 5; i++) {
+      await collateralToken.mint(accounts[i], toWei("100000000"), {
+        from: tokenSponsor
+      });
       await collateralToken.approve(emp.address, toWei("100000000"), {
         from: accounts[i]
       });
@@ -116,15 +117,14 @@ contract("ContractMonitor.js", function(accounts) {
       });
     }
 
-    // Create two positions for the sponsors
-    await emp.create({ rawValue: toWei("10") }, { rawValue: toWei("50") }, { from: sponsor1 });
-    await emp.create({ rawValue: toWei("100") }, { rawValue: toWei("45") }, { from: sponsor2 });
-
-    // Create one position for the liquidator
-    await emp.create({ rawValue: toWei("500") }, { rawValue: toWei("200") }, { from: liquidator });
+    // Create positions for the sponsors, liquidator and disputer
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("50") }, { from: sponsor1 });
+    await emp.create({ rawValue: toWei("175") }, { rawValue: toWei("45") }, { from: sponsor2 });
+    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("400") }, { from: liquidator });
+    await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("399") }, { from: disputer });
   });
 
-  it.only("Return Liquidation Events", async function() {
+  it("Winston correctly emits liquidation message", async function() {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(
       sponsor1,
@@ -134,132 +134,109 @@ contract("ContractMonitor.js", function(accounts) {
     );
 
     // Update the eventClient and check it has the liquidation event stored correctly
+    await eventClient._update();
+
+    // Check for liquidation events
+    await contractMonitor.checkForNewLiquidations(() => toWei("1"));
+
+    // Ensure that the spy correctly captured the liquidation events key information.
+    // Should contain etherscan addresses for the liquidator, sponsor and transaction
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${liquidator}`));
+    assert.isTrue(spyLogIncludesValue(spy, "(Monitored liquidator bot)")); // The address that initiated the liquidation is a monitored address
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor1}`));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject1.tx}`));
+
+    // should contain the correct position information. Collateralization ratio for sponsor with 150 collateral and 50
+    // debt with a price feed of 1 should give 150/(50 * 1) = 300%
+    assert.isTrue(spyLogIncludesValue(spy, "300.00%")); // expected collateralization ratio of 300%
+    assert.isTrue(spyLogIncludesValue(spy, "150.00")); // liquidated collateral amount of 150
+
+    // Liquidate another position and ensure the Contract monitor emits the correct params
+    const txObject2 = await emp.createLiquidation(
+      sponsor2,
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      { from: sponsor1 } // not the monitored liquidator address
+    );
+
+    await eventClient._update();
+
+    // check for new liquidations and check the winston messages sent to the spy
+    await contractMonitor.checkForNewLiquidations(() => toWei("1"));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor1}`)); // liquidator in txObject2
+    assert.isFalse(spyLogIncludesValue(spy, "(Monitored liquidator bot)")); // not called from a monitored address
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor2}`)); // token sponsor
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject2.tx}`));
+    assert.isTrue(spyLogIncludesValue(spy, "388.88%")); // expected collateralization ratio: 175 / (45 * 1) = 388.88%
+    assert.isTrue(spyLogIncludesValue(spy, "175.00")); // liquidated collateral: 175
+  });
+  it("Winston correctly emits dispute events", async function() {
+    // Create liquidation to dispute
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
+
+    const txObject = await emp.dispute("0", sponsor1, {
+      from: disputer
+    });
+
+    // Update the eventClient and check it has the dispute event stored correctly
     await eventClient.clearState();
     await eventClient._update();
 
-    console.log("calling");
-    await contractMonitor.checkForNewLiquidations(time => toWei("1"));
-    console.log("called");
+    await contractMonitor.checkForNewDisputeEvents(() => toWei("1"));
 
-    // console.log(
-    //   "CALLED WITH",
-    //   spy.calledWith({
-    //     level: "info",
-    //     at: "ContractMonitor",
-    //     message: "Liquidation Alert 🧙‍♂️!",
-    //     mrkdwn:
-    //       "<https://etherscan.io/address/0x6e4400769c2Cf2296b7071768d8769eBE06DAa92|0x6e4...6DAa9> (UMA liquidator bot) initiated liquidation for 10.00 DAI of sponsor <https://etherscan.io/address/0x34D7b4d6C38db204b19Fe040F4Ae4246417Dd718|0x34D...7Dd71> collateral backing 50.00 UMATEST tokens. Sponsor collateralization was 20.00%. tx: <https://etherscan.io/tx/0x26fd295691795e24590980bafd4cde2259b26a1c957a8c10af70fedc79ba02e6|0x26f...ba02e>",
-    //   })
-    // );
-
-    console.log("spygett", spy.getCall(-1).lastArg);
-
-    // Compare with expected processed event object
-    // assert.deepStrictEqual(
-    //   [
-    //     {
-    //       transactionHash: txObject1.tx,
-    //       blockNumber: txObject1.receipt.blockNumber,
-    //       sponsor: sponsor1,
-    //       liquidator: liquidator,
-    //       liquidationId: "0",
-    //       tokensOutstanding: toWei("50"),
-    //       lockedCollateral: toWei("10"),
-    //       liquidatedCollateral: toWei("10")
-    //     }
-    //   ],
-    //   eventClient.getAllLiquidationEvents()
-    // );
-
-    // // Correctly adds a second event after creating a new liquidation
-    // const txObject2 = await emp.createLiquidation(
-    //   sponsor2,
-    //   { rawValue: toWei("99999") },
-    //   { rawValue: toWei("100") },
-    //   { from: liquidator }
-    // );
-    // await eventClient.clearState();
-    // await eventClient._update();
-    // console.log()
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${disputer}`));
+    assert.isTrue(spyLogIncludesValue(spy, "(Monitored dispute bot)"));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${liquidator}`));
+    assert.isTrue(spyLogIncludesValue(spy, "(Monitored liquidator bot)"));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor2}`));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject2.tx}`));
+    assert.isTrue(spyLogIncludesValue(spy, "388.88%")); // collateralization ratio: 175 / (45 * 1) = 388.88%
+    assert.isTrue(spyLogIncludesValue(spy, "15.00")); // dispute bond of 10% of sponsor 1's 150 collateral = 15
   });
+  it("Return Dispute Settlement Events", async function() {
+    // Create liquidation to liquidate sponsor2 from sponsor1
+    const liquidationTime = (await emp.getCurrentTime()).toNumber();
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      { from: liquidator }
+    );
 
-  //   it("Return Dispute Events", async function() {
-  //     // Create liquidation to liquidate sponsor2 from sponsor1
-  //     await emp.createLiquidation(
-  //       sponsor1,
-  //       { rawValue: toWei("99999") },
-  //       { rawValue: toWei("100") },
-  //       { from: liquidator }
-  //     );
+    // Dispute the position from the second sponsor
+    await emp.dispute("0", sponsor1, {
+      from: disputer
+    });
 
-  //     const txObject = await emp.dispute("0", sponsor1, { from: sponsor2 });
+    // Advance time and settle
+    const timeAfterLiquidationLiveness = liquidationTime + 10;
+    await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
+    await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
 
-  //     // Update the eventClient and check it has the dispute event stored correctly
-  //     await eventClient.clearState();
-  //     await eventClient._update();
+    // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
+    // disputed liquidation.
+    const disputePrice = toWei("1.6");
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
 
-  //     // Compare with expected processed event object
-  //     assert.deepStrictEqual(
-  //       [
-  //         {
-  //           transactionHash: txObject.tx,
-  //           blockNumber: txObject.receipt.blockNumber,
-  //           sponsor: sponsor1,
-  //           liquidator: liquidator,
-  //           disputer: sponsor2,
-  //           liquidationId: "0",
-  //           disputeBondAmount: toWei("1") // 10% of the liquidated position's collateral.
-  //         }
-  //       ],
-  //       eventClient.getAllDisputeEvents()
-  //     );
-  //   });
-  //   it("Return Dispute Settlement Events", async function() {
-  //     // Create liquidation to liquidate sponsor2 from sponsor1
-  //     const liquidationTime = (await emp.getCurrentTime()).toNumber();
-  //     await emp.createLiquidation(
-  //       sponsor1,
-  //       { rawValue: toWei("99999") },
-  //       { rawValue: toWei("100") },
-  //       { from: liquidator }
-  //     );
+    const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+    await eventClient.clearState();
 
-  //     // Dispute the position from the second sponsor
-  //     await emp.dispute("0", sponsor1, {
-  //       from: sponsor2
-  //     });
+    // Update the eventClient and check it has the dispute event stored correctly
+    await eventClient._update();
 
-  //     // Advance time and settle
-  //     const timeAfterLiquidationLiveness = liquidationTime + 10;
-  //     await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-  //     await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
+    await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei("1"));
 
-  //     // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
-  //     // disputed liquidation.
-  //     const disputePrice = toWei("1.6");
-  //     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
-
-  //     const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
-  //     await eventClient.clearState();
-
-  //     // Update the eventClient and check it has the dispute event stored correctly
-  //     await eventClient._update();
-
-  //     // Compare with expected processed event object
-  //     assert.deepStrictEqual(
-  //       [
-  //         {
-  //           transactionHash: txObject.tx,
-  //           blockNumber: txObject.receipt.blockNumber,
-  //           caller: liquidator,
-  //           sponsor: sponsor1,
-  //           liquidator: liquidator,
-  //           disputer: sponsor2,
-  //           liquidationId: "0",
-  //           disputeSucceeded: false // Settlement price makes liquidation valid
-  //         }
-  //       ],
-  //       eventClient.getAllDisputeSettlementEvents()
-  //     );
-  //   });
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${disputer}`));
+    assert.isTrue(spyLogIncludesValue(spy, "(Monitored dispute bot)"));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${liquidator}`));
+    assert.isTrue(spyLogIncludesValue(spy, "(Monitored liquidator bot)"));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor2}`));
+    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject2.tx}`));
+    assert.isTrue(spyLogIncludesValue(spy, "failed")); // the disputed was not successful based on settlement price
+  });
 });

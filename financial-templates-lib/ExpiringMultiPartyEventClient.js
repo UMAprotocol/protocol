@@ -1,6 +1,4 @@
 const { delay } = require("./delay");
-const { Logger } = require("./logger/Logger");
-const { LiquidationStatesEnum } = require("../common/Enums");
 
 // A thick client for getting information about an ExpiringMultiParty events.
 // This client is kept separate from the main ExpiringMultiPartyClient to keep
@@ -15,7 +13,7 @@ class ExpiringMultiPartyEventClient {
     this.logger = logger;
 
     // EMP contract
-    this.emp = new web3.eth.Contract(abi, empAddress);
+    this.emp = new this.web3.eth.Contract(abi, empAddress);
     this.empAddress = empAddress;
 
     // EMP Events
