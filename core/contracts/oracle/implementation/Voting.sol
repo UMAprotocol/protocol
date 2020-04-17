@@ -256,8 +256,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function hasPrice(bytes32 identifier, uint256 time) external override view onlyRegisteredContract() returns (bool _hasPrice) {
-        (_hasPrice, , ) = _getPriceOrError(identifier, time);
+    function hasPrice(bytes32 identifier, uint256 time) external override view onlyRegisteredContract() returns (bool) {
+        (bool _hasPrice, , ) = _getPriceOrError(identifier, time);
+        return _hasPrice;
     }
 
     /**
@@ -283,12 +284,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param requests array of type PendingRequest which includes an identifier and timestamp for each request.
      * @return requestStates A list, in the same order as the input list, giving the status of each of the specified price requests.
      */
-    function getPriceRequestStatuses(PendingRequest[] memory requests)
-        public
-        view
-        returns (RequestState[] memory requestStates)
-    {
-        requestStates = new RequestState[](requests.length);
+    function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
+        RequestState[] memory requestStates = new RequestState[](requests.length);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         for (uint256 i = 0; i < requests.length; i++) {
             PriceRequest storage priceRequest = _getPriceRequest(requests[i].identifier, requests[i].time);
@@ -301,9 +298,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             } else {
                 requestStates[i].lastVotingRound = priceRequest.lastVotingRound;
             }
-
             requestStates[i].status = status;
         }
+        return requestStates;
     }
 
     /****************************************
@@ -482,7 +479,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     // prettier-ignore
     function retrieveRewards(address voterAddress, uint256 roundId, PendingRequest[] memory toRetrieve)
         public
-        override 
+        override
         returns (FixedPoint.Unsigned memory totalRewardToIssue)
     {
         if (migratedAddress != address(0)) {
@@ -564,7 +561,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function getPendingRequests() external override view returns (PendingRequest[] memory pendingRequests) {
+    function getPendingRequests() external override view returns (PendingRequest[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -584,10 +581,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
             }
         }
 
-        pendingRequests = new PendingRequest[](numUnresolved);
+        PendingRequest[] memory pendingRequests = new PendingRequest[](numUnresolved);
         for (uint256 i = 0; i < numUnresolved; i++) {
             pendingRequests[i] = unresolved[i];
         }
+        return pendingRequests;
     }
 
     /**
@@ -654,11 +652,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
-    function _getPriceOrError(bytes32 identifier, uint256 time)
-        private
-        view
-        returns (bool _hasPrice, int256 price, string memory err)
-    {
+    // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
+    // the respolved price and a string which is filled with an error message, if there was an error or "".
+    function _getPriceOrError(bytes32 identifier, uint256 time) private view returns (bool, int, string memory) {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
 

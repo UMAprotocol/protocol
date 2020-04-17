@@ -115,8 +115,6 @@ contract Store is StoreInterface, Withdrawable, Testable {
 
         // Apply the penaltyPercentagePerSecond to the payment period.
         latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
-
-        return (regularFee, latePenalty);
     }
 
     /**
@@ -126,8 +124,8 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory finalFee) {
-        finalFee = finalFees[currency];
+    function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory) {
+        return finalFees[currency];
     }
 
     /****************************************

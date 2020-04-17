@@ -164,7 +164,7 @@ contract Governor is MultiRole, Testable {
      * @param id uniquely identify the identity of the proposal.
      * @return proposal struct containing transactions[] and requestTime.
      */
-    function getProposal(uint256 id) external view returns (Proposal memory proposal) {
+    function getProposal(uint256 id) external view returns (Proposal memory) {
         return proposals[id];
     }
 
@@ -172,20 +172,22 @@ contract Governor is MultiRole, Testable {
      *      PRIVATE GETTERS AND FUNCTIONS   *
      ****************************************/
 
-    function _executeCall(address to, uint256 value, bytes memory data) private returns (bool success) {
+    function _executeCall(address to, uint256 value, bytes memory data) private returns (bool) {
         // Mostly copied from:
         // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
         // solhint-disable-next-line no-inline-assembly
 
+        bool success;
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)
             success := call(gas(), to, value, inputData, inputDataSize, 0, 0)
         }
+        return success;
     }
 
-    function _getOracle() private view returns (OracleInterface oracle) {
+    function _getOracle() private view returns (OracleInterface) {
         return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
@@ -195,7 +197,7 @@ contract Governor is MultiRole, Testable {
 
     // Returns a UTF-8 identifier representing a particular admin proposal.
     // The identifier is of the form "Admin n", where n is the proposal id provided.
-    function _constructIdentifier(uint256 id) internal pure returns (bytes32 identifier) {
+    function _constructIdentifier(uint256 id) internal pure returns (bytes32) {
         bytes32 bytesId = _uintToUtf8(id);
         return _addPrefix(bytesId, "Admin ", 6);
     }
@@ -203,7 +205,8 @@ contract Governor is MultiRole, Testable {
     // This method converts the integer `v` into a base-10, UTF-8 representation stored in a `bytes32` type.
     // If the input cannot be represented by 32 base-10 digits, it returns only the highest 32 digits.
     // This method is based off of this code: https://ethereum.stackexchange.com/a/6613/47801.
-    function _uintToUtf8(uint256 v) internal pure returns (bytes32 ret) {
+    function _uintToUtf8(uint256 v) internal pure returns (bytes32) {
+        bytes32 ret;
         if (v == 0) {
             // Handle 0 case explicitly.
             ret = "0";
@@ -242,7 +245,7 @@ contract Governor is MultiRole, Testable {
     // 1. If the resulting UTF-8 is larger than 32 characters, then only the first 32 characters will be represented
     //    by the bytes32 output.
     // 2. If `prefix` has more characters than `prefixLength`, the function will produce an invalid result.
-    function _addPrefix(bytes32 input, bytes32 prefix, uint256 prefixLength) internal pure returns (bytes32 output) {
+    function _addPrefix(bytes32 input, bytes32 prefix, uint256 prefixLength) internal pure returns (bytes32) {
         // Downshift `input` to open space at the "front" of the bytes32
         bytes32 shiftedInput = input >> (prefixLength * 8);
         return shiftedInput | prefix;
