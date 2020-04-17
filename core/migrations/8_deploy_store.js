@@ -9,8 +9,10 @@ module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
+  // Initialize both fees to 0.
   const initialFixedOracleFeePerSecondPerPfc = { rawValue: "0" };
   const initialWeeklyDelayFeePerSecondPerPfc = { rawValue: "0" };
+
   const { contract: store } = await deploy(
     deployer,
     network,
