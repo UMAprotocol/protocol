@@ -55,7 +55,6 @@ async function createTestEnvironment() {
   let identifierWhitelist;
   let mockOracle;
   let finder;
-  let timer;
 
   // Initial constant values
   const syntheticName = "UMA test Token";
@@ -81,13 +80,11 @@ async function createTestEnvironment() {
   identifierWhitelist = await IdentifierWhitelist.deployed();
   await identifierWhitelist.addSupportedIdentifier(priceTrackingIdentifier, { from: contractDeployer });
 
-  timer = await Timer.new();
-
   // Change oracle to the mock oracle for two reasons:
   // (1) we can manually set settlement prices
   // (2) we don't need to register the contract with the Registry to request prices
-  mockOracle = await MockOracle.new(identifierWhitelist.address, timer.address);
   finder = await Finder.deployed();
+  mockOracle = await MockOracle.new(finder.address, Timer.address);
   const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
   await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
@@ -108,7 +105,7 @@ async function createTestEnvironment() {
     sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct },
     disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct },
     minSponsorTokens: { rawValue: "0" },
-    timerAddress: timer.address
+    timerAddress: Timer.address
   };
   emp = await ExpiringMultiParty.new(constructorParams, { from: contractDeployer });
   synthetic = await SyntheticToken.at(await emp.tokenCurrency());

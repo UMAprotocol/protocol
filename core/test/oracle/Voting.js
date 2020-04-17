@@ -65,10 +65,17 @@ contract("Voting", function(accounts) {
   it("Constructor", async function() {
     // GAT must be <= 1.0 (100%)
     const invalidGat = { rawValue: web3.utils.toWei("1.000001") };
-    const finder = await Finder.deployed();
     assert(
       await didContractThrow(
-        Voting.new(5, invalidGat, { rawValue: web3.utils.toWei("1") }, 1, votingToken.address, finder.address, true)
+        Voting.new(
+          5,
+          invalidGat,
+          { rawValue: web3.utils.toWei("1") },
+          1,
+          votingToken.address,
+          Finder.address,
+          Timer.address
+        )
       )
     );
   });
@@ -1645,7 +1652,6 @@ contract("Voting", function(accounts) {
       { rawValue: "0" },
       "86400",
       votingToken.address,
-      supportedIdentifiers.address,
       (await Finder.deployed()).address,
       Timer.address
     );
@@ -1692,7 +1698,6 @@ contract("Voting", function(accounts) {
       { rawValue: "0" }, // No inflation
       "1209600", // 2 week reward expiration
       votingToken.address,
-      supportedIdentifiers.address,
       Finder.address,
       Timer.address
     );

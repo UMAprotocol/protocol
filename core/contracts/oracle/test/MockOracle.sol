@@ -5,6 +5,8 @@ pragma experimental ABIEncoderV2;
 import "../../common/implementation/Testable.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
+import "../interfaces/FinderInterface.sol";
+import "../implementation/Constants.sol";
 
 
 // A mock oracle used for testing.
@@ -30,7 +32,8 @@ contract MockOracle is OracleInterface, Testable {
         uint256 time;
     }
 
-    IdentifierWhitelistInterface public identifierWhitelist;
+    // Reference to the Finder.
+    FinderInterface private finder;
 
     // Conceptually we want a (time, identifier) -> price map.
     mapping(bytes32 => mapping(uint256 => Price)) private verifiedPrices;
@@ -40,8 +43,8 @@ contract MockOracle is OracleInterface, Testable {
     mapping(bytes32 => mapping(uint256 => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    constructor(address _identifierWhitelist, address _timerAddress) public Testable(_timerAddress) {
-        identifierWhitelist = IdentifierWhitelistInterface(_identifierWhitelist);
+    constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
+        finder = FinderInterface(_finderAddress);
     }
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
@@ -49,7 +52,7 @@ contract MockOracle is OracleInterface, Testable {
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function requestPrice(bytes32 identifier, uint256 time) external override {
-        require(identifierWhitelist.isIdentifierSupported(identifier));
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
             // New query, enqueue it for review.
@@ -80,7 +83,7 @@ contract MockOracle is OracleInterface, Testable {
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function hasPrice(bytes32 identifier, uint256 time) external override view returns (bool hasPriceAvailable) {
-        require(identifierWhitelist.isIdentifierSupported(identifier));
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
     }
@@ -89,7 +92,7 @@ contract MockOracle is OracleInterface, Testable {
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function getPrice(bytes32 identifier, uint256 time) external override view returns (int256 price) {
-        require(identifierWhitelist.isIdentifierSupported(identifier));
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);
         return lookup.price;
@@ -98,5 +101,9 @@ contract MockOracle is OracleInterface, Testable {
     // Gets the queries that still need verified prices.
     function getPendingQueries() external view returns (QueryPoint[] memory queryPoints) {
         return requestedPrices;
+    }
+
+    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }

@@ -99,11 +99,12 @@ contract("IntegrationTest", function(accounts) {
       from: contractCreator
     });
 
+    finder = await Finder.deployed();
+
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address, {
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractCreator
     });
-    finder = await Finder.deployed();
 
     store = await Store.deployed();
 
