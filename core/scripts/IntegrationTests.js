@@ -58,7 +58,7 @@ contract("IntegrationTest", function(accounts) {
   const timeOffsetBetweenTests = toBN(60 * 60); // timestep advance between loop iterations (1 hour)
 
   beforeEach(async () => {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });

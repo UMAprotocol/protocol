@@ -72,7 +72,7 @@ contract("TokenizedDerivative", function(accounts) {
     await deployedFinder.changeImplementationAddress(oracleInterfaceName, mockOracle.address);
 
     // Create an arbitrary ERC20 margin token.
-    marginToken = await Token.new({ from: sponsor });
+    marginToken = await Token.new("UMA", "UMA", 18, { from: sponsor });
     await marginToken.addMember(1, sponsor, { from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     await marginToken.mint(apDelegate, web3.utils.toWei("100", "ether"), { from: sponsor });
@@ -2595,7 +2595,7 @@ contract("TokenizedDerivative", function(accounts) {
       );
 
       // Unapproved margin currency.
-      const unapprovedCurrency = await Token.new({ from: sponsor });
+      const unapprovedCurrency = await Token.new("UMA", "UMA", 18, { from: sponsor });
       const unapprovedCurrencyParams = { ...defaultConstructorParams, marginCurrency: unapprovedCurrency.address };
       assert(
         await didContractThrow(

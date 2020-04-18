@@ -138,8 +138,8 @@ contract("Store", function(accounts) {
   });
 
   it("Pay fees in ERC20 token", async function() {
-    const firstMarginToken = await Token.new({ from: erc20TokenOwner });
-    const secondMarginToken = await Token.new({ from: erc20TokenOwner });
+    const firstMarginToken = await Token.new("UMA", "UMA", 18, { from: erc20TokenOwner });
+    const secondMarginToken = await Token.new("UMA2", "UMA2", 18, { from: erc20TokenOwner });
 
     // Mint 100 tokens of each to the contract and verify balances.
     await firstMarginToken.addMember(1, erc20TokenOwner, { from: erc20TokenOwner });

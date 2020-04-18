@@ -14,7 +14,7 @@ import "./VoteTiming.sol";
 import "./VotingToken.sol";
 import "./Constants.sol";
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 

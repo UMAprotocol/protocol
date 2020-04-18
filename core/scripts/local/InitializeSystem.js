@@ -51,7 +51,7 @@ const initializeSystem = async function(callback) {
     }
 
     // Create and register a margin currency.
-    const marginToken = await Token.new({ from: sponsor });
+    const marginToken = await Token.new("UMA", "UMA", 18, { from: sponsor });
     await marginToken.addMember(1, sponsor, { from: sponsor });
     await marginToken.mint(sponsor, web3.utils.toWei("100", "ether"), { from: sponsor });
     const marginCurrencyWhitelist = await AddressWhitelist.at(
