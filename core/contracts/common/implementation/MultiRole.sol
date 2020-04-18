@@ -151,6 +151,15 @@ abstract contract MultiRole {
     }
 
     /**
+     * @notice Removes caller from the role, `roleId`. For exclusive roles, resets the member to the zero address.
+     * @dev Reverts if the caller is not a member of the role for `roleId` or if `roleId` is not an
+     * initialized, shared role.
+     */
+    function renounceMembership(uint256 roleId) public onlyShared(roleId) onlyRoleHolder(roleId) {
+        roles[roleId].sharedRoleMembership.removeMember(msg.sender);
+    }
+
+    /**
      * @notice Reverts if `roleId` is not initialized.
      */
     modifier onlyValidRole(uint256 roleId) {
