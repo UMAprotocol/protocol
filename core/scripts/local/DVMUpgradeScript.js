@@ -3,6 +3,9 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const Store = artifacts.require("Store");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const Governor = artifacts.require("Governor");
+const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
 const VotingToken = artifacts.require("VotingToken");
 const VotingTest = artifacts.require("VotingTest");
 
@@ -11,6 +14,8 @@ const { RegistryRolesEnum, VotePhasesEnum } = require("../../../common/Enums.js"
 const { interfaceName } = require("../../utils/Constants.js");
 
 const truffleAssert = require("truffle-assertions");
+
+const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function runExport() {
   console.log("Running DVM upgrade script🔥");
@@ -23,6 +28,7 @@ async function runExport() {
 
   const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
   const finder = new web3.eth.Contract(Finder.abi, Finder.address);
+  const governor = new web3.eth.Contract(Governor.abi, Governor.address);
 
   /** ***********************
    * 1) upgrade Voting.sol *
@@ -73,7 +79,7 @@ async function runExport() {
 
   /** **********************
    * 3) upgrade Store.sol *
-   *************************/
+   ************************/
 
   const store = await Store.new("0x0000000000000000000000000000000000000000", { from: accounts[0] });
 
@@ -82,6 +88,71 @@ async function runExport() {
     .encodeABI();
 
   console.log("upgradeStoreTx", upgradeStoreTx);
+
+  /** ****************************************
+   * 4) upgrade FinancialContractsAdmin.sol *
+   ******************************************/
+
+  const financialContractsAdmin = await FinancialContractsAdmin.new({
+    from: accounts[0]
+  });
+
+  const upgradeFinancialContractsAdminTx = finder.methods
+    .changeImplementationAddress(
+      web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin),
+      financialContractsAdmin.address
+    )
+    .encodeABI();
+
+  console.log("upgradeFinancialContractsAdminTx", upgradeFinancialContractsAdminTx);
+
+  /** ****************************************
+   * 5) upgrade IdentifierWhitelist.sol *
+   ******************************************/
+
+  const identifierWhitelist = await IdentifierWhitelist.new(Finder.address, {
+    from: accounts[0]
+  });
+
+  const upgradeIdentifierWhitelistTx = finder.methods
+    .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address)
+    .encodeABI();
+
+  console.log("upgradeIdentifierWhitelistTx", upgradeIdentifierWhitelistTx);
+
+  /** *********************************
+   * 5) Propose upgrades to governor *
+   ***********************************/
+
+  await governor.methods
+    .propose([
+      {
+        to: Finder.address,
+        value: 0,
+        data: upgradeVotingTx
+      },
+      {
+        to: Finder.address,
+        value: 0,
+        data: upgradeRegistryTx
+      },
+      {
+        to: Finder.address,
+        value: 0,
+        data: upgradeStoreTx
+      },
+      {
+        to: Finder.address,
+        value: 0,
+        data: upgradeFinancialContractsAdminTx
+      },
+      {
+        to: Finder.address,
+        value: 0,
+        data: upgradeIdentifierWhitelistTx
+      }
+    ])
+    .send({ from: proposerWallet });
 }
 
 run = async function(callback) {
