@@ -104,8 +104,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     FixedPoint.Unsigned public gatPercentage;
 
     // Global setting for the rate of inflation per vote. This is the percentage of the snapshotted total supply that
-    // should be split among the correct voters. Note: this value is used to set per-round inflation at the beginning
-    // of each round. 1 = 100%
+    // should be split among the correct voters.
+    // Note: this value is used to set per-round inflation at the beginning of each round. 1 = 100%
     FixedPoint.Unsigned public inflationRate;
 
     // Time in seconds from the end of the round in which a price request is
@@ -282,7 +282,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of type PendingRequest which includes an identifier and timestamp for each request.
-     * @return requestStates A list, in the same order as the input list, giving the status of each of the specified price requests.
+     * @return requestStates a list, in the same order as the input list, giving the status of each of the specified price requests.
      */
     function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
         RequestState[] memory requestStates = new RequestState[](requests.length);
