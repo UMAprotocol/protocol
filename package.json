@@ -17,12 +17,13 @@
   "devDependencies": {
     "eslint": "^5.16.0",
     "eslint-config-prettier": "^6.10.1",
+    "eslint-plugin-mocha": "^6.3.0",
     "eslint-plugin-prettier": "^3.1.2",
     "husky": "^4.2.3",
     "lint-staged": "^10.1.3",
-    "pretty-quick": "^2.0.1",
     "prettier": "1.19.1",
     "prettier-plugin-solidity": "1.0.0-alpha.46",
+    "pretty-quick": "^2.0.1",
     "solidity-coverage": "^0.7.2",
     "truffle-deploy-registry": "^0.5.1"
   },
@@ -32,7 +33,7 @@
     "@awaitjs/express": "^0.3.0",
     "@google-cloud/kms": "^0.3.0",
     "@google-cloud/storage": "^2.4.2",
-    "@openzeppelin/contracts": "^3.0.0-rc.1",
+    "@openzeppelin/contracts": "3.0.0-rc.1",
     "@sendgrid/mail": "^6.4.0",
     "@truffle/contract": "^4.1.0",
     "@truffle/hdwallet-provider": "^1.0.25",
