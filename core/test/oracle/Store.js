@@ -3,6 +3,7 @@ const truffleAssert = require("truffle-assertions");
 
 const Token = artifacts.require("ExpandedERC20");
 const Store = artifacts.require("Store");
+const Timer = artifacts.require("Timer");
 
 contract("Store", function(accounts) {
   // A deployed instance of the Store contract, ready for testing.
@@ -280,5 +281,31 @@ contract("Store", function(accounts) {
     // Payment is 1 week late, but the penalty is 10% per second of the period. Since the period is only 1 second,
     // we should see a 10% late fee.
     assert.equal(latePenalty.rawValue, web3.utils.toWei("0.1"));
+  });
+
+  it("Constructor checks", async function() {
+    const highFee = { rawValue: web3.utils.toWei("1.1", "ether") };
+    const normalFee = { rawValue: web3.utils.toWei("0.1", "ether") };
+
+    // Regular fee cannot be set above 1.
+    assert(await didContractThrow(Store.new(highFee, normalFee, Timer.address, { from: rando })));
+
+    // Late fee cannot be set above 1.
+    assert(await didContractThrow(Store.new(normalFee, highFee, Timer.address, { from: rando })));
+  });
+
+  it("Initialization", async function() {
+    const regularFee = { rawValue: web3.utils.toWei("0.2", "ether") };
+    const lateFee = { rawValue: web3.utils.toWei("0.1", "ether") };
+
+    const newStore = await Store.new(regularFee, lateFee, Timer.address, { from: rando });
+
+    // Fees should be set as they were initialized.
+    assert.equal((await newStore.fixedOracleFeePerSecondPerPfc()).toString(), regularFee.rawValue.toString());
+    assert.equal((await newStore.weeklyDelayFeePerSecondPerPfc()).toString(), lateFee.rawValue.toString());
+
+    // rando should hold both the owner and withdrawer roles.
+    assert.equal(await newStore.getMember(0), rando);
+    assert.equal(await newStore.getMember(1), rando);
   });
 });
