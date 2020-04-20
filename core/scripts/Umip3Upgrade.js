@@ -7,7 +7,7 @@ const Governor = artifacts.require("Governor");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const VotingToken = artifacts.require("VotingToken");
 
-const { RegistryRolesEnum, VotePhasesEnum } = require("../../common/Enums.js");
+const { RegistryRolesEnum } = require("../../common/Enums.js");
 const { interfaceName } = require("../utils/Constants.js");
 
 const truffleAssert = require("truffle-assertions");
@@ -231,16 +231,17 @@ async function runExport() {
     { from: proposerWallet }
   );
 
-  console.log(
-    `New Addresses
-      Voting:                  ${voting.address}
-      Registry:                ${registry.address}
-      Store:                   ${store.address}
-      FinancialContractsAdmin: ${financialContractsAdmin.address}
-      IdentifierWhitelist:     ${identifierWhitelist.address}
-      Governor:                ${newGovernor.address}
-      `
-  );
+  console.log(`
+
+Newly Proposed DVM Addresses
+
+Voting:                  ${voting.address}
+Registry:                ${registry.address}
+Store:                   ${store.address}
+FinancialContractsAdmin: ${financialContractsAdmin.address}
+IdentifierWhitelist:     ${identifierWhitelist.address}
+Governor:                ${newGovernor.address}
+`);
 }
 
 run = async function(callback) {
