@@ -1,4 +1,5 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const truffleAssert = require("truffle-assertions");
 
 const DesignatedVoting = artifacts.require("DesignatedVoting");
 const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
@@ -15,10 +16,15 @@ contract("DesignatedVotingFactory", function(accounts) {
     factory = await DesignatedVotingFactory.deployed();
   });
 
-  it("Deploy new", async function() {
+  it("Deploy new contract and then assign to new voter", async function() {
     const designatedVotingAddress = await factory.newDesignatedVoting.call(owner, { from: voter });
-    await factory.newDesignatedVoting(owner, { from: voter });
+    const newDesignatedVotingResult = await factory.newDesignatedVoting(owner, { from: voter });
     assert(await didContractThrow(factory.newDesignatedVoting(owner, { from: voter })));
+
+    // Check event was emitted.
+    truffleAssert.eventEmitted(newDesignatedVotingResult, "ChangedDesignatedVotingMapping", ev => {
+      return ev.voterAddress == voter && ev.contractAddress == designatedVotingAddress;
+    });
 
     assert.equal(designatedVotingAddress.toString(), (await factory.designatedVotingContracts(voter)).toString());
     const designatedVoting = await DesignatedVoting.at(designatedVotingAddress);
@@ -30,7 +36,12 @@ contract("DesignatedVotingFactory", function(accounts) {
     // Reassign.
     await designatedVoting.resetMember(voterRole, voter2, { from: owner });
     assert(await didContractThrow(factory.setDesignatedVoting(designatedVotingAddress, { from: voter })));
-    await factory.setDesignatedVoting(designatedVotingAddress, { from: voter2 });
+    const setDesignatedVotingResult = await factory.setDesignatedVoting(designatedVotingAddress, { from: voter2 });
     assert.equal(designatedVotingAddress.toString(), (await factory.designatedVotingContracts(voter2)).toString());
+
+    // Check event was emitted.
+    truffleAssert.eventEmitted(setDesignatedVotingResult, "ChangedDesignatedVotingMapping", ev => {
+      return ev.voterAddress == voter2 && ev.contractAddress == designatedVotingAddress;
+    });
   });
 });

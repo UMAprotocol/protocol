@@ -22,6 +22,8 @@ contract DesignatedVotingFactory is Withdrawable {
     address private finder;
     mapping(address => DesignatedVoting) public designatedVotingContracts;
 
+    event ChangedDesignatedVotingMapping(address indexed voterAddress, address indexed contractAddress);
+
     /**
      * @notice Construct the DesignatedVotingFactory contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
@@ -42,6 +44,7 @@ contract DesignatedVotingFactory is Withdrawable {
 
         DesignatedVoting designatedVoting = new DesignatedVoting(finder, ownerAddress, msg.sender);
         designatedVotingContracts[msg.sender] = designatedVoting;
+        emit ChangedDesignatedVotingMapping(msg.sender, address(designatedVoting));
         return designatedVoting;
     }
 
@@ -54,5 +57,6 @@ contract DesignatedVotingFactory is Withdrawable {
     function setDesignatedVoting(address designatedVotingAddress) external {
         require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
         designatedVotingContracts[msg.sender] = DesignatedVoting(designatedVotingAddress);
+        emit ChangedDesignatedVotingMapping(msg.sender, designatedVotingAddress);
     }
 }
