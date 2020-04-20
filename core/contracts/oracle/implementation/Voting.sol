@@ -709,7 +709,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         (bool isResolved, int256 resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
             _computeGat(priceRequest.lastVotingRound)
         );
-        require(isResolved, "Cant resolve unresolved request");
+        require(isResolved, "Can't resolve unresolved request");
 
         // Delete the resolved price request from pendingPriceRequests.
         uint256 lastIndex = pendingPriceRequests.length - 1;
