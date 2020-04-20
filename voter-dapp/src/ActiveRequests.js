@@ -69,6 +69,15 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     ])
   );
 
+    const encryptedVoteEvents = useCacheEvents(
+        "Voting",
+        "EncryptedVote",
+    useMemo(() => ({ filter: { voter: votingAccount, roundId: currentRoundId }, fromBlock: 0 }), [
+      votingAccount,
+      currentRoundId
+    ])
+  );
+
   const closedDialogIndex = -1;
   const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
   const handleClickExplain = index => {
@@ -103,19 +112,31 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     return output;
   };
 
-  const voteStatuses = useCacheCall(["Voting"], call => {
-    if (!initialFetchComplete) {
-      return null;
+    const [voteStatuses, setVoteStatuses] = useState([]);
+    useEffect(() => {
+    if (!initialFetchComplete || !encryptedVoteEvents) {
+        return;
     }
-    return pendingRequests.map(request => ({
-      committedValue: call(
-        "Voting",
-        "getMessage",
-        votingAccount,
-        computeTopicHash({ identifier: request.identifier, time: request.time }, currentRoundId)
-      )
-    }));
-  });
+        console.log("EVENTS:", encryptedVoteEvents);
+        const blah = pendingRequests.map(request => ({
+            committedValue: "",
+        }));
+        setVoteStatuses(blah);
+    }, [pendingRequests, encryptedVoteEvents, currentRoundId, initialFetchComplete]);
+
+ //  const voteStatuses = useCacheCall(["Voting"], call => {
+ //    if (!initialFetchComplete) {
+ //      return null;
+ //    }
+ //    return pendingRequests.map(request => ({
+ //      committedValue: call(
+ //        "Voting",
+ //        "getMessage",
+ //        votingAccount,
+ //        computeTopicHash({ identifier: request.identifier, time: request.time }, currentRoundId)
+ //      )
+ //    }));
+ //  });
   const subsequentFetchComplete =
     voteStatuses &&
     // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
@@ -245,6 +266,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     if (commits.length < 1) {
       return;
     }
+      console.log("CALLING:", batchCommitFunction, commits);
     batchCommitFunction(commits, { from: account });
     setCheckboxesChecked({});
     dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
