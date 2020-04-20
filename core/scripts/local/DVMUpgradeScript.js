@@ -26,9 +26,9 @@ async function runExport() {
   console.log("VotingToken.address", VotingToken.address);
   console.log("Finder.address", Finder.address);
 
-  const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
-  const finder = new web3.eth.Contract(Finder.abi, Finder.address);
-  const governor = new web3.eth.Contract(Governor.abi, Governor.address);
+  const votingToken = await VotingToken.deployed();
+  const finder = await Finder.deployed();
+  const governor = await Governor.deployed();
 
   /** ***********************
    * 1) upgrade Voting.sol *
@@ -59,7 +59,7 @@ async function runExport() {
 
   console.log("voting upgraded @", voting.address);
 
-  const upgradeVotingTx = finder.methods
+  const upgradeVotingTx = finder.contract.methods
     .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), voting.address)
     .encodeABI();
 
@@ -71,7 +71,7 @@ async function runExport() {
 
   const registry = await Registry.new({ from: accounts[0] });
 
-  const upgradeRegistryTx = finder.methods
+  const upgradeRegistryTx = finder.contract.methods
     .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry), registry.address)
     .encodeABI();
 
@@ -83,7 +83,7 @@ async function runExport() {
 
   const store = await Store.new("0x0000000000000000000000000000000000000000", { from: accounts[0] });
 
-  const upgradeStoreTx = finder.methods
+  const upgradeStoreTx = finder.contract.methods
     .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Store), store.address)
     .encodeABI();
 
@@ -97,7 +97,7 @@ async function runExport() {
     from: accounts[0]
   });
 
-  const upgradeFinancialContractsAdminTx = finder.methods
+  const upgradeFinancialContractsAdminTx = finder.contract.methods
     .changeImplementationAddress(
       web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin),
       financialContractsAdmin.address
@@ -114,7 +114,7 @@ async function runExport() {
     from: accounts[0]
   });
 
-  const upgradeIdentifierWhitelistTx = finder.methods
+  const upgradeIdentifierWhitelistTx = finder.contract.methods
     .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address)
     .encodeABI();
 
@@ -124,33 +124,33 @@ async function runExport() {
    * 5) Propose upgrades to governor *
    ***********************************/
 
-  await governor.methods
+  await governor.contract.methods
     .propose([
       {
         to: Finder.address,
         value: 0,
         data: upgradeVotingTx
-      },
-      {
-        to: Finder.address,
-        value: 0,
-        data: upgradeRegistryTx
-      },
-      {
-        to: Finder.address,
-        value: 0,
-        data: upgradeStoreTx
-      },
-      {
-        to: Finder.address,
-        value: 0,
-        data: upgradeFinancialContractsAdminTx
-      },
-      {
-        to: Finder.address,
-        value: 0,
-        data: upgradeIdentifierWhitelistTx
       }
+      // {
+      //   to: Finder.address,
+      //   value: 0,
+      //   data: upgradeRegistryTx
+      // },
+      // {
+      //   to: Finder.address,
+      //   value: 0,
+      //   data: upgradeStoreTx
+      // },
+      // {
+      //   to: Finder.address,
+      //   value: 0,
+      //   data: upgradeFinancialContractsAdminTx
+      // },
+      // {
+      //   to: Finder.address,
+      //   value: 0,
+      //   data: upgradeIdentifierWhitelistTx
+      // }
     ])
     .send({ from: proposerWallet });
 }
