@@ -172,11 +172,7 @@ contract Governor is MultiRole, Testable {
      *      PRIVATE GETTERS AND FUNCTIONS   *
      ****************************************/
 
-    function _executeCall(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) private returns (bool) {
+    function _executeCall(address to, uint256 value, bytes memory data) private returns (bool) {
         // Mostly copied from:
         // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
@@ -249,11 +245,7 @@ contract Governor is MultiRole, Testable {
     // 1. If the resulting UTF-8 is larger than 32 characters, then only the first 32 characters will be represented
     //    by the bytes32 output.
     // 2. If `prefix` has more characters than `prefixLength`, the function will produce an invalid result.
-    function _addPrefix(
-        bytes32 input,
-        bytes32 prefix,
-        uint256 prefixLength
-    ) internal pure returns (bytes32) {
+    function _addPrefix(bytes32 input, bytes32 prefix, uint256 prefixLength) internal pure returns (bytes32) {
         // Downshift `input` to open space at the "front" of the bytes32
         bytes32 shiftedInput = input >> (prefixLength * 8);
         return shiftedInput | prefix;
