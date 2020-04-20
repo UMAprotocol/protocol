@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../interfaces/FinderInterface.sol";
@@ -38,8 +38,9 @@ contract Finder is FinderInterface, Ownable {
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
-    function getImplementationAddress(bytes32 interfaceName) external override view returns (address implementationAddress) {
-        implementationAddress = interfacesImplemented[interfaceName];
+    function getImplementationAddress(bytes32 interfaceName) external override view returns (address) {
+        address implementationAddress = interfacesImplemented[interfaceName];
         require(implementationAddress != address(0x0), "No implementation for interface found");
+        return implementationAddress;
     }
 }

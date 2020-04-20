@@ -12,7 +12,7 @@ const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiParty", function(accounts) {
   it("Can deploy", async function() {
-    const collateralToken = await Token.new({ from: accounts[0] });
+    const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
       expirationTimestamp: "1234567890",

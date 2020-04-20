@@ -103,7 +103,7 @@ abstract contract FeePayer is Testable {
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
-            store.payOracleFeesErc20(address(collateralCurrency));
+            store.payOracleFeesErc20(address(collateralCurrency), regularFee);
         }
 
         if (latePenalty.isGreaterThan(0)) {
@@ -147,7 +147,7 @@ abstract contract FeePayer is Testable {
 
         StoreInterface store = _getStore();
         collateralCurrency.safeIncreaseAllowance(address(store), amount.rawValue);
-        store.payOracleFeesErc20(address(collateralCurrency));
+        store.payOracleFeesErc20(address(collateralCurrency), amount);
     }
 
     /**

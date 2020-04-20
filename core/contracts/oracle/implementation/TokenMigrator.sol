@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
-import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
+import "./VotingToken.sol";
 
 
 /**
@@ -18,7 +18,7 @@ contract TokenMigrator {
      *    INTERNAL VARIABLES AND STORAGE    *
      ****************************************/
 
-    ERC20Snapshot public oldToken;
+    VotingToken public oldToken;
     ExpandedIERC20 public newToken;
 
     uint256 public snapshotId;
@@ -39,7 +39,7 @@ contract TokenMigrator {
         require(_rate.isGreaterThan(0));
         rate = _rate;
         newToken = ExpandedIERC20(_newToken);
-        oldToken = ERC20Snapshot(_oldToken);
+        oldToken = VotingToken(_oldToken);
         snapshotId = oldToken.snapshot();
     }
 

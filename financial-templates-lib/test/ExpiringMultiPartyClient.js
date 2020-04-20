@@ -34,7 +34,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   };
 
   before(async function() {
-    collateralToken = await Token.new({ from: sponsor1 });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: sponsor1 });
     await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
     await collateralToken.mint(sponsor1, toWei("100000"), { from: sponsor1 });
     await collateralToken.mint(sponsor2, toWei("100000"), { from: sponsor1 });

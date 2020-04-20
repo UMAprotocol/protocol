@@ -18,5 +18,5 @@ interface FinderInterface {
      * @param interfaceName queried interface.
      * @return implementationAddress address of the deployed contract that implements the interface.
      */
-    function getImplementationAddress(bytes32 interfaceName) external view returns (address implementationAddress);
+    function getImplementationAddress(bytes32 interfaceName) external view returns (address);
 }

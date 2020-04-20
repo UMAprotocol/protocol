@@ -36,7 +36,7 @@ contract("Disputer.js", function(accounts) {
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   before(async function() {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });

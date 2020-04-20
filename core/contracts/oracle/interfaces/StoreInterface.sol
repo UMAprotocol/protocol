@@ -18,10 +18,10 @@ interface StoreInterface {
     /**
      * @notice Pays oracle fees in the margin currency, erc20Address, to the store.
      * @dev To be used if the margin currency is an ERC20 token rather than ETH.
-     * All approved tokens are transferred.
      * @param erc20Address address of the ERC20 token used to pay the fee.
+     * @param amount number of tokens to transfer. An approval for at least this amount must exist.
      */
-    function payOracleFeesErc20(address erc20Address) external;
+    function payOracleFeesErc20(address erc20Address, FixedPoint.Unsigned calldata amount) external;
 
     /**
      * @notice Computes the regular oracle fees that a contract should pay for a period.
@@ -42,5 +42,5 @@ interface StoreInterface {
      * @param currency token used to pay the final fee.
      * @return finalFee amount due.
      */
-    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory finalFee);
+    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory);
 }
