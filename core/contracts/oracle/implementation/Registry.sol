@@ -125,6 +125,7 @@ contract Registry is RegistryInterface, MultiRole {
         address contractAddress = msg.sender;
         Party storage party = partyMap[partyAddress];
         uint256 numberOfContracts = party.contracts.length;
+        
         require(numberOfContracts != 0, "Party has no contracts");
         require(contractMap[contractAddress].valid == Validity.Valid, "Remove only from valid contract");
         require(isPartyMemberOfContract(partyAddress, contractAddress), "Can only remove existing party");

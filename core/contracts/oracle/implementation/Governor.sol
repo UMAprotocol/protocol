@@ -140,6 +140,7 @@ contract Governor is MultiRole, Testable {
 
         // Delete the transaction before execution to avoid any potential re-entrancy issues.
         delete proposal.transactions[transactionIndex];
+
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
 
         emit ProposalExecuted(id, transactionIndex);
