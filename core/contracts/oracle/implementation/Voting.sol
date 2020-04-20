@@ -348,7 +348,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     // prettier-ignore
     function snapshotCurrentRound() external override onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Can only snapshot in reveal phase");
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
 
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
@@ -418,9 +418,12 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
-    function commitAndEmitEncryptedVote(bytes32 identifier, uint256 time, bytes32 hash, bytes memory encryptedVote)
-        public
-    {
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public {
         commitVote(identifier, time, hash);
 
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
@@ -654,7 +657,15 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
     // the respolved price and a string which is filled with an error message, if there was an error or "".
-    function _getPriceOrError(bytes32 identifier, uint256 time) private view returns (bool, int, string memory) {
+    function _getPriceOrError(bytes32 identifier, uint256 time)
+        private
+        view
+        returns (
+            bool,
+            int,
+            string memory
+        )
+    {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
 
@@ -709,7 +720,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         (bool isResolved, int256 resolvedPrice) = voteInstance.resultComputation.getResolvedPrice(
             _computeGat(priceRequest.lastVotingRound)
         );
-        require(isResolved, "Can't resolve unresolved request");
+        require(isResolved, "Cant resolve unresolved request");
 
         // Delete the resolved price request from pendingPriceRequests.
         uint256 lastIndex = pendingPriceRequests.length - 1;
