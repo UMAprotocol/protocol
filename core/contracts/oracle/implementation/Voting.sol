@@ -195,16 +195,16 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     modifier onlyRegisteredContract() {
         if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress);
+            require(msg.sender == migratedAddress, "Caller must be migrated address");
         } else {
             Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
-            require(registry.isContractRegistered(msg.sender));
+            require(registry.isContractRegistered(msg.sender), "Called must be registered");
         }
         _;
     }
 
     modifier onlyIfNotMigrated() {
-        require(migratedAddress == address(0));
+        require(migratedAddress == address(0), "Only call this if not migrated");
         _;
     }
 
