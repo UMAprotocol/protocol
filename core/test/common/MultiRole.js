@@ -1,4 +1,5 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
+const truffleAssert = require("truffle-assertions");
 
 const MultiRoleTest = artifacts.require("MultiRoleTest");
 
@@ -190,5 +191,35 @@ contract("MultiRole", function(accounts) {
     await multiRole.renounceMembership("2", { from: account3 });
     assert.isFalse(await multiRole.holdsRole("2", account3));
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account3 })));
+  });
+
+  it("Events are emitted", async function() {
+    const multiRole = await MultiRoleTest.new();
+    await multiRole.createExclusiveRole("1", "1", account1);
+    await multiRole.createSharedRole("2", "1", [account2, account3]);
+
+    // Add shared member.
+    const addSharedResult = await multiRole.addMember("2", account4, { from: account1 });
+    truffleAssert.eventEmitted(addSharedResult, "AddedSharedMember", ev => {
+      return ev.roleId.toString() == "2", ev.newMember == account4, ev.manager == account1;
+    });
+
+    // Remove shared member.
+    const removeSharedResult = await multiRole.removeMember("2", account4, { from: account1 });
+    truffleAssert.eventEmitted(removeSharedResult, "RemovedSharedMember", ev => {
+      return ev.roleId.toString() == "2", ev.oldMember == account4, ev.manager == account1;
+    });
+
+    // Renounce shared member.
+    const renounceSharedResult = await multiRole.renounceMembership("2", { from: account2 });
+    truffleAssert.eventEmitted(renounceSharedResult, "RemovedSharedMember", ev => {
+      return ev.roleId.toString() == "2", ev.oldMember == account2, ev.manager == account2;
+    });
+
+    // Reset exclusive member.
+    const resetMemberResult = await multiRole.resetMember("1", account2, { from: account1 });
+    truffleAssert.eventEmitted(resetMemberResult, "ResetExclusiveMember", ev => {
+      return ev.roleId.toString() == "1", ev.newMember == account2, ev.manager == account1;
+    });
   });
 });
