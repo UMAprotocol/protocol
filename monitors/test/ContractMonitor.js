@@ -1,12 +1,15 @@
 const { toWei } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
+const { interfaceName } = require("../../core/utils/Constants.js");
 
 // Script to test
 const { ContractMonitor } = require("../ContractMonitor");
 
 // Helper client script
 const { ExpiringMultiPartyEventClient } = require("../../financial-templates-lib/ExpiringMultiPartyEventClient");
+
+// Custom winston transport module to monitor winston log outputs
 const SpyTransport = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Truffle artifacts
@@ -44,27 +47,31 @@ contract("ContractMonitor.js", function(accounts) {
 
   const spy = sinon.spy();
 
-  const spyLogIncludesValue = (spy, value) => {
+  const lastSpyLogIncludes = (spy, value) => {
     // sinon's getCall(n) function returns the values sent in in the nth call the the spy
     const lastReturnedArg = spy.getCall(-1).lastArg.mrkdwn.toString();
+    console.log("LAST");
+    console.log(lastReturnedArg);
     return lastReturnedArg.indexOf(value) != -1;
   };
 
   before(async function() {
-    collateralToken = await Token.new({ from: tokenSponsor });
+    collateralToken = await Token.new("Dai Stable coin", "Dai", 18, { from: tokenSponsor });
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    mockOracle = await MockOracle.new(finder.address, Timer.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 
   beforeEach(async function() {
     const currentTime = await mockOracle.getCurrentTime.call();
+    const timer = await Timer.deployed();
+    await timer.setCurrentTime(currentTime.toString());
     expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
 
     constructorParams = {
@@ -96,7 +103,8 @@ contract("ContractMonitor.js", function(accounts) {
 
     emp = await ExpiringMultiParty.new(constructorParams);
     eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, [accounts[0]], [accounts[1]]);
+    // accounts[1] is liquidator bot to monitor and accounts[2] is dispute bot to monitor.
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, [accounts[1]], [accounts[2]]);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -141,15 +149,15 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Ensure that the spy correctly captured the liquidation events key information.
     // Should contain etherscan addresses for the liquidator, sponsor and transaction
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${liquidator}`));
-    assert.isTrue(spyLogIncludesValue(spy, "(Monitored liquidator bot)")); // The address that initiated the liquidation is a monitored address
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor1}`));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject1.tx}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidator}`));
+    assert.isTrue(lastSpyLogIncludes(spy, "(Monitored liquidator bot)")); // The address that initiated the liquidation is a monitored address
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor1}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject1.tx}`));
 
     // should contain the correct position information. Collateralization ratio for sponsor with 150 collateral and 50
     // debt with a price feed of 1 should give 150/(50 * 1) = 300%
-    assert.isTrue(spyLogIncludesValue(spy, "300.00%")); // expected collateralization ratio of 300%
-    assert.isTrue(spyLogIncludesValue(spy, "150.00")); // liquidated collateral amount of 150
+    assert.isTrue(lastSpyLogIncludes(spy, "300.00%")); // expected collateralization ratio of 300%
+    assert.isTrue(lastSpyLogIncludes(spy, "150.00")); // liquidated collateral amount of 150
 
     // Liquidate another position and ensure the Contract monitor emits the correct params
     const txObject2 = await emp.createLiquidation(
@@ -163,15 +171,15 @@ contract("ContractMonitor.js", function(accounts) {
 
     // check for new liquidations and check the winston messages sent to the spy
     await contractMonitor.checkForNewLiquidations(() => toWei("1"));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor1}`)); // liquidator in txObject2
-    assert.isFalse(spyLogIncludesValue(spy, "(Monitored liquidator bot)")); // not called from a monitored address
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor2}`)); // token sponsor
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject2.tx}`));
-    assert.isTrue(spyLogIncludesValue(spy, "388.88%")); // expected collateralization ratio: 175 / (45 * 1) = 388.88%
-    assert.isTrue(spyLogIncludesValue(spy, "175.00")); // liquidated collateral: 175
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor1}`)); // liquidator in txObject2
+    assert.isFalse(lastSpyLogIncludes(spy, "(Monitored liquidator bot)")); // not called from a monitored address
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor2}`)); // token sponsor
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
+    assert.isTrue(lastSpyLogIncludes(spy, "388.88%")); // expected collateralization ratio: 175 / (45 * 1) = 388.88%
+    assert.isTrue(lastSpyLogIncludes(spy, "175.00")); // liquidated collateral: 175
   });
   it("Winston correctly emits dispute events", async function() {
-    // Create liquidation to dispute
+    // Create liquidation to dispute.
     await emp.createLiquidation(
       sponsor1,
       { rawValue: toWei("99999") },
@@ -179,7 +187,7 @@ contract("ContractMonitor.js", function(accounts) {
       { from: liquidator }
     );
 
-    const txObject = await emp.dispute("0", sponsor1, {
+    const txObject1 = await emp.dispute("0", sponsor1, {
       from: disputer
     });
 
@@ -189,14 +197,12 @@ contract("ContractMonitor.js", function(accounts) {
 
     await contractMonitor.checkForNewDisputeEvents(() => toWei("1"));
 
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${disputer}`));
-    assert.isTrue(spyLogIncludesValue(spy, "(Monitored dispute bot)"));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${liquidator}`));
-    assert.isTrue(spyLogIncludesValue(spy, "(Monitored liquidator bot)"));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor2}`));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject2.tx}`));
-    assert.isTrue(spyLogIncludesValue(spy, "388.88%")); // collateralization ratio: 175 / (45 * 1) = 388.88%
-    assert.isTrue(spyLogIncludesValue(spy, "15.00")); // dispute bond of 10% of sponsor 1's 150 collateral = 15
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`)); // disputer address
+    assert.isTrue(lastSpyLogIncludes(spy, "(Monitored dispute bot)")); // disputer is monitored
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidator}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, "(Monitored liquidator bot)")); // liquidator is monitored
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject1.tx}`));
+    assert.isTrue(lastSpyLogIncludes(spy, "15.00")); // dispute bond of 10% of sponsor 1's 150 collateral => 15
   });
   it("Return Dispute Settlement Events", async function() {
     // Create liquidation to liquidate sponsor2 from sponsor1
@@ -218,12 +224,12 @@ contract("ContractMonitor.js", function(accounts) {
     await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
     await emp.setCurrentTime(timeAfterLiquidationLiveness.toString());
 
-    // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
-    // disputed liquidation.
-    const disputePrice = toWei("1.6");
+    // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
+    // debt and 150 units of collateral. price of 2.5 collateralization is: 150 / (50 * 2.5) = 120% => undercollateralized
+    const disputePrice = toWei("2.5");
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
 
-    const txObject = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
+    const txObject1 = await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
     await eventClient.clearState();
 
     // Update the eventClient and check it has the dispute event stored correctly
@@ -231,12 +237,11 @@ contract("ContractMonitor.js", function(accounts) {
 
     await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei("1"));
 
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${disputer}`));
-    assert.isTrue(spyLogIncludesValue(spy, "(Monitored dispute bot)"));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${liquidator}`));
-    assert.isTrue(spyLogIncludesValue(spy, "(Monitored liquidator bot)"));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/address/${sponsor2}`));
-    assert.isTrue(spyLogIncludesValue(spy, `https://etherscan.io/tx/${txObject2.tx}`));
-    assert.isTrue(spyLogIncludesValue(spy, "failed")); // the disputed was not successful based on settlement price
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidator}`));
+    assert.isTrue(lastSpyLogIncludes(spy, "(Monitored liquidator bot)"));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`));
+    assert.isTrue(lastSpyLogIncludes(spy, "(Monitored dispute bot)"));
+    assert.isTrue(lastSpyLogIncludes(spy, "failed")); // the disputed was not successful based on settlement price
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject1.tx}`));
   });
 });
