@@ -20,6 +20,7 @@ async function runExport() {
    * 0) Initial setup                *
    ***********************************/
 
+  console.log("0. SETUP");
   const votingToken = await VotingToken.deployed();
   const voting = await Voting.deployed();
   const governor = await Governor.deployed();
@@ -41,12 +42,13 @@ async function runExport() {
     "CurrentRoundId",
     (await voting.getCurrentRoundId()).toString()
   );
-  console.log("Advancing time by one phase to enable voting by the DVM");
+  console.log("⏱ Advancing time by one phase to enable voting by the DVM");
 
   /******************************************************
    * 1) Advance Ganache block time to move voting round *
    ******************************************************/
 
+  console.log("1. TIME ADVANCE FOR VOTING");
   await advanceBlockAndSetTime(currentTime + secondsPerDay);
   console.log(
     "New timestamp",
@@ -73,7 +75,7 @@ async function runExport() {
   // Main net DVM uses the old commit reveal scheme of hashed concatenation of price and salt
   const voteHash = web3.utils.soliditySha3(price, salt);
 
-  console.log("committing vote:");
+  console.log("2. COMMIT VOTE");
   console.table({
     price: price,
     salt: salt.toString(),
@@ -92,16 +94,17 @@ async function runExport() {
   await web3.eth.sendTransaction({ from: accounts[0], to: foundationWallet, value: web3.utils.toWei("1") });
 
   const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet });
+  console.log("Voting Tx done!", VoteTx.tx);
 
   /*******************************************************
    * 4) Advance to the next phase & reveal the vote      *
    *******************************************************/
-
+  console.log("3. REVEAL VOTE");
   currentTime = (await voting.getCurrentTime()).toNumber();
   await advanceBlockAndSetTime(currentTime + secondsPerDay);
 
   console.log(
-    "Advancing time to move to next voting round to enable reveal\nNew timestamp:",
+    "⏱ Advancing time to move to next voting round to enable reveal\nNew timestamp:",
     (await voting.getCurrentTime()).toString(),
     "voting phase",
     (await voting.getVotePhase()).toNumber(),
@@ -110,12 +113,13 @@ async function runExport() {
   );
 
   const revealTx = await voting.revealVote(identifier, time, price, salt, { from: foundationWallet });
+  console.log("Reveal Tx done!", revealTx.tx);
 
   currentTime = (await voting.getCurrentTime()).toNumber();
   await advanceBlockAndSetTime(currentTime + secondsPerDay);
 
   console.log(
-    "Advancing time to move to next voting round to enable reveal\nNew timestamp:",
+    "⏱ Advancing time to move to next voting round to conclude vote\nNew timestamp:",
     (await voting.getCurrentTime()).toString(),
     "voting phase",
     (await voting.getVotePhase()).toNumber(),
@@ -124,6 +128,22 @@ async function runExport() {
   );
 
   assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
+
+  /*********************************************************************
+   * 4) Execute proposal submitted to governor now that voting is done *
+   **********************************************************************/
+
+  console.log("4. EXECUTING GOVERNOR PROPOSALS");
+  const proposalId = 0; // first and only proposal in voting.sol
+  const proposal = await governor.getProposal(proposalId);
+  console.log("proposal", proposal);
+
+  // for every transactions within the proposal
+  for (let i = 0; i < proposal.length; i++) {
+    console.log("Submitting tx", i, "...");
+    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), { from: accounts[0] });
+    console.log("transaction", i, "submitted! tx", tx.tx);
+  }
 
   console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
   await revertToSnapshot(snapshotId);
