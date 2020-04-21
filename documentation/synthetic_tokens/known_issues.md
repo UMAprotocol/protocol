@@ -40,7 +40,7 @@ However, this makes the role of token sponsor capital inefficient for 2 reasons:
 This could happen due to legitimate usage of the platform wherein two users interact at the same time and one user is blocked from creating. Alternatively, this could a result of a malicious user front running the creation of positions with the explicit intent of blocking their position creation. 
 In either case, the user never has funds at risk, as the worst case scenario is a reverted transaction and this front running acts as an annoyance for sponsors who then need to re-submit their transaction with a higher CR.
 However, this front running attack could be used to block liquidators attempting to create positions in order to liquidate others.
-* Conclusion: In most cases this does not pose anything more than a UX annoyance for users in that they would need to re-submit their create transactions with a higher CR. Sponsors should ideally create positions with a CR sufficiently higher than the GCR to make the front running expensive in liquid markets.
+* Conclusion: In most cases, this does not pose anything more than a UX annoyance for users because they would need to re-submit their create transactions with a higher CR. Sponsors should ideally create positions with a CR sufficiently higher than the GCR to make the front running expensive in liquid markets.
 
 ### Whale griefing attack
 * Scenario: A griefing sponsor can add a proportionally large amount of collateral relative to the rest of the contract while creating a very small debt position. 
