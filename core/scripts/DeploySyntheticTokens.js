@@ -93,6 +93,7 @@ const actualDeploy = async inputCsv => {
       minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
       timerAddress: params.timerAddress
     };
+    console.log("PARAM:", constructorParams);
     const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, {
       from: deployer
     });
