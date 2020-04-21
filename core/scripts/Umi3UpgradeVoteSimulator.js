@@ -42,7 +42,7 @@ async function runExport() {
     "CurrentRoundId",
     (await voting.getCurrentRoundId()).toString()
   );
-  console.log("⏱ Advancing time by one phase to enable voting by the DVM");
+  console.log("⏱  Advancing time by one phase to enable voting by the DVM");
 
   /******************************************************
    * 1) Advance Ganache block time to move voting round *
@@ -104,7 +104,7 @@ async function runExport() {
   await advanceBlockAndSetTime(currentTime + secondsPerDay);
 
   console.log(
-    "⏱ Advancing time to move to next voting round to enable reveal\nNew timestamp:",
+    "⏱  Advancing time to move to next voting round to enable reveal\nNew timestamp:",
     (await voting.getCurrentTime()).toString(),
     "voting phase",
     (await voting.getVotePhase()).toNumber(),
@@ -119,7 +119,7 @@ async function runExport() {
   await advanceBlockAndSetTime(currentTime + secondsPerDay);
 
   console.log(
-    "⏱ Advancing time to move to next voting round to conclude vote\nNew timestamp:",
+    "⏱  Advancing time to move to next voting round to conclude vote\nNew timestamp:",
     (await voting.getCurrentTime()).toString(),
     "voting phase",
     (await voting.getVotePhase()).toNumber(),
@@ -136,7 +136,6 @@ async function runExport() {
   console.log("4. EXECUTING GOVERNOR PROPOSALS");
   const proposalId = 0; // first and only proposal in voting.sol
   const proposal = await governor.getProposal(proposalId);
-  console.log("proposal", proposal);
 
   // for every transactions within the proposal
   for (let i = 0; i < proposal.length; i++) {
