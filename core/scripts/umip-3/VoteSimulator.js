@@ -1,14 +1,15 @@
 const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 
-const { getRandomUnsignedInt } = require("../../common/Random.js");
-const { computeVoteHash } = require("../../common/EncryptionHelper.js");
+const { getRandomUnsignedInt } = require("../../../common/Random.js");
+const { computeVoteHash } = require("../../../common/EncryptionHelper.js");
 
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
+const BulkGovernorExecutor = artifacts.require("BulkGovernorExecutor");
 
 async function runExport() {
   console.log("Starting Upgrade simulator Script 🔥");
@@ -24,6 +25,8 @@ async function runExport() {
   const votingToken = await VotingToken.deployed();
   const voting = await Voting.deployed();
   const governor = await Governor.deployed();
+
+  const bulkGovernorExecutor = await BulkGovernorExecutor.new();
 
   let currentTime = (await voting.getCurrentTime()).toNumber();
   let votingPhase = (await voting.getVotePhase()).toNumber();
@@ -138,9 +141,9 @@ async function runExport() {
   const proposal = await governor.getProposal(proposalId);
 
   // for every transactions within the proposal
-  for (let i = 0; i < proposal.length; i++) {
+  for (let i = 0; i < 8; i++) {
     console.log("Submitting tx", i, "...");
-    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), { from: accounts[0] });
+    let tx = await governor.executeProposal(proposalId.toString(), i.toString(), { from: foundationWallet });
     console.log("transaction", i, "submitted! tx", tx.tx);
   }
 
