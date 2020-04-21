@@ -90,13 +90,11 @@ const actualDeploy = async inputCsv => {
       disputeBondPct: percentToFixedPoint(params.disputeBond),
       sponsorDisputeRewardPct: percentToFixedPoint(params.sponsorDisputeReward),
       disputerDisputeRewardPct: percentToFixedPoint(params.disputeReward),
-      minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
-      timerAddress: params.timerAddress
+      // minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
+      // timerAddress: params.timerAddress
     };
     console.log("PARAM:", constructorParams);
-    const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, {
-      from: deployer
-    });
+    const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
     console.log(params.tokenSymbol, address);
   }
