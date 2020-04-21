@@ -109,7 +109,6 @@ contract Registry is RegistryInterface, MultiRole {
     // prettier-ignore
     function addPartyToContract(address party) external override {
         address contractAddress = msg.sender;
-
         require(contractMap[contractAddress].valid == Validity.Valid, "Can only add to valid contract");
 
         _addPartyToContract(party, contractAddress);
@@ -126,10 +125,10 @@ contract Registry is RegistryInterface, MultiRole {
         address contractAddress = msg.sender;
         Party storage party = partyMap[partyAddress];
         uint256 numberOfContracts = party.contracts.length;
-
-        require(numberOfContracts != 0, "Can't remove if party has no contracts");
+        
+        require(numberOfContracts != 0, "Party has no contracts");
         require(contractMap[contractAddress].valid == Validity.Valid, "Remove only from valid contract");
-        require(isPartyMemberOfContract(partyAddress, contractAddress), "Can only remove an existing party");
+        require(isPartyMemberOfContract(partyAddress, contractAddress), "Can only remove existing party");
 
         // Index of the current location of the contract to remove.
         uint256 deleteIndex = party.contractIndex[contractAddress];
