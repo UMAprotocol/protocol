@@ -7,8 +7,8 @@ const Governor = artifacts.require("Governor");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const VotingToken = artifacts.require("VotingToken");
 
-const { RegistryRolesEnum } = require("../../common/Enums.js");
-const { interfaceName } = require("../utils/Constants.js");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { interfaceName } = require("../../utils/Constants.js");
 
 const truffleAssert = require("truffle-assertions");
 
