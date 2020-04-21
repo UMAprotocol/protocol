@@ -6,6 +6,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const VotingToken = artifacts.require("VotingToken");
+const Umip3Upgrader = artifacts.require("Umip3Upgrader");
 
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { interfaceName } = require("../../utils/Constants.js");
@@ -44,6 +45,8 @@ async function runExport() {
   // Set phase length to one day.
   const secondsPerDay = "86400";
 
+  console.log("Deploying new Voting contract.");
+
   const voting = await Voting.new(
     secondsPerDay,
     gatPercentage,
@@ -55,72 +58,47 @@ async function runExport() {
     { from: proposerWallet }
   );
 
-  console.log("voting upgraded @", voting.address);
-
-  const upgradeVotingTx = finder.contract.methods
-    .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), voting.address)
-    .encodeABI();
-
-  console.log("upgradeVotingTx", upgradeVotingTx);
-
   /** **************************
    * 2) upgrade Registry.sol *
    ***************************/
 
+  console.log("Deploying new Registry contract.");
+
   const registry = await Registry.new({ from: proposerWallet });
-
-  const upgradeRegistryTx = finder.contract.methods
-    .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Registry), registry.address)
-    .encodeABI();
-
-  console.log("upgradeRegistryTx", upgradeRegistryTx);
 
   /** ***********************
    * 3) upgrade Store.sol *
    ************************/
 
+  console.log("Deploying new Store contract.");
+
   const store = await Store.new(zeroAddress, { from: proposerWallet });
-
-  const upgradeStoreTx = finder.contract.methods
-    .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Store), store.address)
-    .encodeABI();
-
-  console.log("upgradeStoreTx", upgradeStoreTx);
 
   /** *****************************************
    * 4) upgrade FinancialContractsAdmin.sol *
    ******************************************/
 
+  console.log("Deploying new FinancialContractsAdmin contract.");
+
   const financialContractsAdmin = await FinancialContractsAdmin.new({
     from: proposerWallet
   });
-
-  const upgradeFinancialContractsAdminTx = finder.contract.methods
-    .changeImplementationAddress(
-      web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin),
-      financialContractsAdmin.address
-    )
-    .encodeABI();
-
-  console.log("upgradeFinancialContractsAdminTx", upgradeFinancialContractsAdminTx);
 
   /** *****************************************
    * 5) upgrade IdentifierWhitelist.sol *
    ******************************************/
 
+  console.log("Deploying new IdentifierWhitelist contract.");
+
   const identifierWhitelist = await IdentifierWhitelist.new({
     from: proposerWallet
   });
 
-  const upgradeIdentifierWhitelistTx = finder.contract.methods
-    .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address)
-    .encodeABI();
-
-  console.log("upgradeIdentifierWhitelistTx", upgradeIdentifierWhitelistTx);
-
   /** *****************************************
    * 6) deploy Governor.sol *
    ******************************************/
+
+  console.log("Deploying new Governor contract.");
 
   const newGovernor = await Governor.new(finder.address, zeroAddress, { from: proposerWallet });
 
@@ -163,6 +141,33 @@ async function runExport() {
 
   console.log("Preparing proposal transactions related to permissioning on existing contracts.");
 
+  // Because the transaction ordering prevents the Finder permissioning changes from being executed by the Governor
+  // direcly, an upgrader contract is used to temporarily hold the Finder ownership permissions and synchronously
+  // move them.
+  console.log("Deploying the Umip3Upgrader contract.");
+
+  const umip3Upgrader = await Umip3Upgrader.new(
+    governor.address,
+    finder.address,
+    voting.address,
+    identifierWhitelist.address,
+    store.address,
+    financialContractsAdmin.address,
+    registry.address,
+    newGovernor.address,
+    { from: proposerWallet }
+  );
+
+  // The Umip3Upgrader need to be given ownership of the finder for it to execute the upgrade.
+  const setUmip3UpgraderFinderOwnerTx = finder.contract.methods.transferOwnership(umip3Upgrader.address).encodeABI();
+
+  console.log("setUmip3UpgraderFinderOwnerTx", setUmip3UpgraderFinderOwnerTx);
+
+  // After it's given ownership, the upgrade transaction needs to be executed.
+  const executeUmip3UpgraderTx = umip3Upgrader.contract.methods.upgrade().encodeABI();
+
+  console.log("executeUmip3UpgraderTx", executeUmip3UpgraderTx);
+
   // Add Voting contract as a minter, so rewards can be minted in the existing token.
   // Note: this transaction must come before the owner is moved to the new Governor.
   const minter = "1";
@@ -175,11 +180,12 @@ async function runExport() {
 
   console.log("changeVotingTokenOwnerTx", changeVotingTokenOwnerTx);
 
-  // Finder should be owned by the new governor. Note: this transaction should be one of the last so the old governor
-  // doesn't lose its upgrade permissions before finishing other updates.
-  const changeFinderOwnerTx = finder.contract.methods.transferOwnership(newGovernor.address).encodeABI();
+  // Old voting contract must be told about the new voting contract. This immediately stops price requests and allows
+  // the new voting contract to forward requests backwards.
+  const oldVoting = await Voting.deployed();
+  const setMigratedOnVotingTx = oldVoting.contract.methods.setMigrated(voting.address).encodeABI();
 
-  console.log("changeFinderOwnerTx", changeFinderOwnerTx);
+  console.log("setMigratedOnVotingTx", setMigratedOnVotingTx);
 
   /** *********************************
    * 9) Propose upgrades to governor *
@@ -190,42 +196,27 @@ async function runExport() {
       {
         to: finder.address,
         value: 0,
-        data: upgradeVotingTx
+        data: setUmip3UpgraderFinderOwnerTx
       },
       {
-        to: finder.address,
+        to: umip3Upgrader.address,
         value: 0,
-        data: upgradeRegistryTx
+        data: executeUmip3UpgraderTx
       },
       {
-        to: finder.address,
-        value: 0,
-        data: upgradeStoreTx
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: upgradeFinancialContractsAdminTx
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: upgradeIdentifierWhitelistTx
-      },
-      {
-        to: finder.address,
+        to: votingToken.address,
         value: 0,
         data: addVotingAsTokenMinterTx
       },
       {
-        to: finder.address,
+        to: votingToken.address,
         value: 0,
         data: changeVotingTokenOwnerTx
       },
       {
-        to: finder.address,
+        to: oldVoting.address,
         value: 0,
-        data: changeFinderOwnerTx
+        data: setMigratedOnVotingTx
       }
     ],
     { from: proposerWallet }
