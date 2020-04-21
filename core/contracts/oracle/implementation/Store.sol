@@ -59,7 +59,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
     // prettier-ignore
     function payOracleFees() external override payable {
-        require(msg.value > 0);
+        require(msg.value > 0, "Value sent can't be zero");
     }
 
     /**
@@ -72,7 +72,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
     // prettier-ignore
     function payOracleFeesErc20(address erc20Address, FixedPoint.Unsigned calldata amount) external override {
         IERC20 erc20 = IERC20(erc20Address);
-        require(amount.isGreaterThan(0));
+        require(amount.isGreaterThan(0), "Amount sent can't be zero");
         erc20.safeTransferFrom(msg.sender, address(this), amount.rawValue);
     }
 
@@ -140,7 +140,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
         onlyRoleHolder(uint(Roles.Owner))
     {
         // Oracle fees at or over 100% don't make sense.
-        require(newFixedOracleFeePerSecondPerPfc.isLessThan(1));
+        require(newFixedOracleFeePerSecondPerPfc.isLessThan(1), "Fee must be < 100% per second.");
         fixedOracleFeePerSecondPerPfc = newFixedOracleFeePerSecondPerPfc;
         emit NewFixedOracleFeePerSecondPerPfc(newFixedOracleFeePerSecondPerPfc);
     }

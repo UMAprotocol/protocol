@@ -97,10 +97,10 @@ contract Governor is MultiRole, Testable {
 
         // Initialize the transaction array.
         for (uint256 i = 0; i < transactions.length; i++) {
-            require(transactions[i].to != address(0), "The to address cannot be 0x0");
+            require(transactions[i].to != address(0), "The `to` address cannot be 0x0");
             // If the transaction has any data with it the recipient must be a contract, not an EOA.
             if (transactions[i].data.length > 0) {
-                require(transactions[i].to.isContract(), "Only propose transactions on a contract");
+                require(transactions[i].to.isContract(), "EOA can't accept tx with data");
             }
             proposal.transactions.push(transactions[i]);
         }
@@ -132,16 +132,16 @@ contract Governor is MultiRole, Testable {
 
         require(
             transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
-            "Previous transaction has not been executed"
+            "Previous tx not yet executed"
         );
-        require(transaction.to != address(0), "Transaction has already been executed");
-        require(price != 0, "Cannot execute, proposal was voted down");
-        require(msg.value == transaction.value, "Must send the exact amount of ETH to execute transaction");
+        require(transaction.to != address(0), "Tx already executed");
+        require(price != 0, "Proposal was rejected");
+        require(msg.value == transaction.value, "Must send exact amount of ETH");
 
         // Delete the transaction before execution to avoid any potential re-entrancy issues.
         delete proposal.transactions[transactionIndex];
 
-        require(_executeCall(transaction.to, transaction.value, transaction.data), "Transaction execution failed");
+        require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
 
         emit ProposalExecuted(id, transactionIndex);
     }

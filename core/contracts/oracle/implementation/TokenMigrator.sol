@@ -36,7 +36,7 @@ contract TokenMigrator {
     constructor(FixedPoint.Unsigned memory _rate, address _oldToken, address _newToken) public {
         // Prevents division by 0 in migrateTokens().
         // Also it doesn’t make sense to have “0 old tokens equate to 1 new token”.
-        require(_rate.isGreaterThan(0));
+        require(_rate.isGreaterThan(0), "Rate can't be 0");
         rate = _rate;
         newToken = ExpandedIERC20(_newToken);
         oldToken = VotingToken(_oldToken);
