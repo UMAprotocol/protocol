@@ -39,6 +39,8 @@ const editStateReducer = (state, action) => {
   }
 };
 
+const toPriceRequestKey = (identifier, time) => time + "," + identifier;
+
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
@@ -69,9 +71,9 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     ])
   );
 
-    const encryptedVoteEvents = useCacheEvents(
-        "Voting",
-        "EncryptedVote",
+  const encryptedVoteEvents = useCacheEvents(
+    "Voting",
+    "EncryptedVote",
     useMemo(() => ({ filter: { voter: votingAccount, roundId: currentRoundId }, fromBlock: 0 }), [
       votingAccount,
       currentRoundId
@@ -112,36 +114,35 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     return output;
   };
 
-    const [voteStatuses, setVoteStatuses] = useState([]);
-    useEffect(() => {
-    if (!initialFetchComplete || !encryptedVoteEvents) {
-        return;
-    }
-        console.log("EVENTS:", encryptedVoteEvents);
-        const blah = pendingRequests.map(request => ({
-            committedValue: "",
-        }));
-        setVoteStatuses(blah);
-    }, [pendingRequests, encryptedVoteEvents, currentRoundId, initialFetchComplete]);
+  const voteStatuses = [];
+  if (initialFetchComplete && encryptedVoteEvents !== undefined) {
+    // Sort ascending by time.
+    encryptedVoteEvents.sort((a, b) => {
+      if (a.blockNumber !== b.blockNumber) {
+        return a.blockNumber - b.blockNumber;
+      }
 
- //  const voteStatuses = useCacheCall(["Voting"], call => {
- //    if (!initialFetchComplete) {
- //      return null;
- //    }
- //    return pendingRequests.map(request => ({
- //      committedValue: call(
- //        "Voting",
- //        "getMessage",
- //        votingAccount,
- //        computeTopicHash({ identifier: request.identifier, time: request.time }, currentRoundId)
- //      )
- //    }));
- //  });
+      if (a.transactionIndex !== b.transactionIndex) {
+        return a.transactionIndex - b.transactionIndex;
+      }
+
+      return a.logIndex - b.logIndex;
+    });
+    // Get the latest `encryptedVote` for each (identifier, time).
+    const encryptedVoteMap = {};
+    for (const ev of encryptedVoteEvents) {
+      encryptedVoteMap[toPriceRequestKey(ev.returnValues.identifier, ev.returnValues.time)] =
+        ev.returnValues.encryptedVote;
+    }
+    for (const request of pendingRequests) {
+      voteStatuses.push({ committedValue: encryptedVoteMap[toPriceRequestKey(request.identifier, request.time)] });
+    }
+  }
+
   const subsequentFetchComplete =
-    voteStatuses &&
-    // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
-    // but the fetched value was null, e.g., no `comittedValue` existed.
-    voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined) &&
+    initialFetchComplete &&
+    encryptedVoteEvents &&
+    voteStatuses.length === pendingRequests.length &&
     proposals &&
     proposals.every(prop => prop.proposal !== undefined);
   // Future hook calls that depend on `voteStatuses` should use `voteStatusesStringified` in their dependencies array
@@ -266,7 +267,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     if (commits.length < 1) {
       return;
     }
-      console.log("CALLING:", batchCommitFunction, commits);
     batchCommitFunction(commits, { from: account });
     setCheckboxesChecked({});
     dispatchEditState({ type: "SUBMIT_COMMIT", indicesCommitted });
@@ -283,7 +283,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     return <div>Looking up requests</div>;
   }
 
-  const toPriceRequestKey = (identifier, time) => time + "," + identifier;
   const eventsMap = {};
   for (const reveal of revealEvents) {
     eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatWei(
