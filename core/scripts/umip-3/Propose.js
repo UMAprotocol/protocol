@@ -28,6 +28,7 @@ async function runExport() {
   const votingToken = await VotingToken.deployed();
   const finder = await Finder.deployed();
   const governor = await Governor.deployed();
+  const existingVoting = await Voting.deployed();
 
   /** ***********************
    * 1) upgrade Voting.sol *
@@ -141,6 +142,18 @@ async function runExport() {
 
   console.log("Preparing proposal transactions related to permissioning on existing contracts.");
 
+  // Add Voting contract as a minter, so rewards can be minted in the existing token.
+  // Note: this transaction must come before the owner is moved to the new Governor.
+  const minter = "1";
+  const addVotingAsTokenMinterTx = votingToken.contract.methods.addMember(minter, voting.address).encodeABI();
+
+  console.log("addVotingAsTokenMinterTx", addVotingAsTokenMinterTx);
+
+  // New Governor should own the token.
+  const changeVotingTokenOwnerTx = votingToken.contract.methods.resetMember(ownerRole, newGovernor.address).encodeABI();
+
+  console.log("changeVotingTokenOwnerTx", changeVotingTokenOwnerTx);
+
   // Because the transaction ordering prevents the Finder permissioning changes from being executed by the Governor
   // direcly, an upgrader contract is used to temporarily hold the Finder ownership permissions and synchronously
   // move them.
@@ -148,6 +161,7 @@ async function runExport() {
 
   const umip3Upgrader = await Umip3Upgrader.new(
     governor.address,
+    existingVoting.address,
     finder.address,
     voting.address,
     identifierWhitelist.address,
@@ -163,29 +177,17 @@ async function runExport() {
 
   console.log("setUmip3UpgraderFinderOwnerTx", setUmip3UpgraderFinderOwnerTx);
 
+  // The Umip3Upgrader need to be given ownership of the existing voting contract for it to set the migrated address.
+  const setUmip3UpgraderVotingOwnerTx = existingVoting.contract.methods
+    .transferOwnership(umip3Upgrader.address)
+    .encodeABI();
+
+  console.log("setUmip3UpgraderVotingOwnerTx", setUmip3UpgraderVotingOwnerTx);
+
   // After it's given ownership, the upgrade transaction needs to be executed.
   const executeUmip3UpgraderTx = umip3Upgrader.contract.methods.upgrade().encodeABI();
 
   console.log("executeUmip3UpgraderTx", executeUmip3UpgraderTx);
-
-  // Add Voting contract as a minter, so rewards can be minted in the existing token.
-  // Note: this transaction must come before the owner is moved to the new Governor.
-  const minter = "1";
-  const addVotingAsTokenMinterTx = votingToken.contract.methods.addMember(minter, voting.address).encodeABI();
-
-  console.log("addVotingAsTokenMinterTx", addVotingAsTokenMinterTx);
-
-  // New Governor should own the token.
-  const changeVotingTokenOwnerTx = votingToken.contract.methods.resetMember(ownerRole, newGovernor.address).encodeABI();
-
-  console.log("changeVotingTokenOwnerTx", changeVotingTokenOwnerTx);
-
-  // Old voting contract must be told about the new voting contract. This immediately stops price requests and allows
-  // the new voting contract to forward requests backwards.
-  const oldVoting = await Voting.deployed();
-  const setMigratedOnVotingTx = oldVoting.contract.methods.setMigrated(voting.address).encodeABI();
-
-  console.log("setMigratedOnVotingTx", setMigratedOnVotingTx);
 
   /** *********************************
    * 9) Propose upgrades to governor *
@@ -193,16 +195,6 @@ async function runExport() {
 
   await governor.propose(
     [
-      {
-        to: finder.address,
-        value: 0,
-        data: setUmip3UpgraderFinderOwnerTx
-      },
-      {
-        to: umip3Upgrader.address,
-        value: 0,
-        data: executeUmip3UpgraderTx
-      },
       {
         to: votingToken.address,
         value: 0,
@@ -214,9 +206,19 @@ async function runExport() {
         data: changeVotingTokenOwnerTx
       },
       {
-        to: oldVoting.address,
+        to: finder.address,
         value: 0,
-        data: setMigratedOnVotingTx
+        data: setUmip3UpgraderFinderOwnerTx
+      },
+      {
+        to: existingVoting.address,
+        value: 0,
+        data: setUmip3UpgraderVotingOwnerTx
+      },
+      {
+        to: umip3Upgrader.address,
+        value: 0,
+        data: executeUmip3UpgraderTx
       }
     ],
     { from: proposerWallet }
