@@ -38,7 +38,7 @@ However, this makes the role of token sponsor capital inefficient for 2 reasons:
 ### Blocking new token sponsors by front running the GCR
 * Scenario: If two callers create positions in the same block it’s possible that one caller's `create` function will revert if the other caller creates a position with enough collateral to push the GCR above the first caller's CR. This occurs because all new positions' CR must be greater than or equal to the GCR. 
 This could happen due to legitimate usage of the platform wherein two users interact at the same time and one user is blocked from creating. Alternatively, this could be as a result of a malicious user front running the creation of positions with the explicit intent of blocking their position creation. 
-In either case the user never has funds at risk as the worst case scenario is a reverted transaction and this front running acts as an annoyance for sponsors who then need to re-submit their transaction with a higher CR.
+In either case, the user never has funds at risk, as the worst case scenario is a reverted transaction and this front running acts as an annoyance for sponsors who then need to re-submit their transaction with a higher CR.
 However, this front running attack could be used to block liquidators attempting to create positions in order to liquidate others.
 * Conclusion: In most cases this does not pose anything more than a UX annoyance for users in that they would need to re-submit their create transactions with a higher CR. Sponsors should ideally create positions with a CR sufficiently higher than the GCR to make the front running expensive in liquid markets.
 
