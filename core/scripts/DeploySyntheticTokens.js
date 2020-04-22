@@ -13,7 +13,6 @@ const Registry = artifacts.require("Registry");
 
 const collateral = {
   "Kovan DAI": "0x08ae34860fbfe73e223596e65663683973c72dd3"
-  // "Kovan DAI": "0x4c4231AB3829BaF0B5ce474e446BC8df46216edD"
 };
 
 const expiration = {
@@ -28,6 +27,16 @@ const expiration = {
 };
 
 const parseLine = line => {
+  // This script hardcodes the order of the fields:
+  // 0. tokenName, "UMA GOLD"
+  // 1. tokenSymbol, "UMA_GLD"
+  // 2. expirationTimestamp: "8/1/2020"
+  // 3. identifier: "GOLD_NOV20" (key in `expiration` map)
+  // 4. collateralCurrency: "Kovan DAI" (key in `collateral` map)
+  // 5. collateralRequirement: "110"
+  // 6. disputeBond: "10"
+  // 7. sponsorDisputeReward: "10"
+  // 8. disputeReward: "10"
   const fields = line.split(",");
   return {
     tokenName: fields[0],
@@ -39,22 +48,11 @@ const parseLine = line => {
     disputeBond: fields[6],
     sponsorDisputeReward: fields[7],
     disputeReward: fields[8],
+    // Hardcode min sponsor tokens. Most users of this script aren't interested in configuring this value.
     minSponsorTokens: "0.01",
+    // Use actual block time.
     timerAddress: "0x0000000000000000000000000000000000000000"
   };
-  // return {
-  //   tokenName: "UMA Gold",
-  //   tokenSymbol: "UMAG",
-  //   expirationTimestamp: expiration["8/1/2020"],
-  //   identifier: web3.utils.utf8ToHex("GOLD_APR20"),
-  //   collateralCurrency: collateral["Kovan DAI"],
-  //   collateralRequirement: "110",
-  //   disputeBond: "10",
-  //   sponsorDisputeReward: "10",
-  //   disputeReward: "10",
-  //   minSponsorTokens: "0.01",
-  //   timerAddress: "0x0000000000000000000000000000000000000000"
-  // };
 };
 
 const percentToFixedPoint = percent => {
@@ -86,7 +84,7 @@ const actualDeploy = async inputCsv => {
     const priceFeedIdentifier = web3.utils.utf8ToHex(params.identifier);
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
 
-    // Registry the collateral currency.
+    // Register the collateral currency.
     const collateralTokenWhitelist = await AddressWhitelist.at(
       await expiringMultiPartyCreator.collateralTokenWhitelist()
     );
@@ -106,7 +104,6 @@ const actualDeploy = async inputCsv => {
       minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
       timerAddress: params.timerAddress
     };
-    console.log("PARAM:", constructorParams);
     const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams);
     console.log(params.tokenSymbol, address);
