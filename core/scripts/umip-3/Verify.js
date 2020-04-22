@@ -39,7 +39,7 @@ finderMatchesDeployment = async (contract, interfaceName) => {
   const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName);
   const finderImplementationAddress = await finder.getImplementationAddress(interfaceNameBytes32);
   const upgradeDeployedAddress = upgradeAddresses[contract.contractName];
-  assert.equal(finderImplementationAddress, upgradeDeployedAddress);
+  assert.equal(finderImplementationAddress.toLowerCase(), upgradeDeployedAddress.toLowerCase());
 };
 
 async function runExport() {
@@ -53,7 +53,7 @@ async function runExport() {
    * 1) Validating new contract bytecode *
    ***************************************/
 
-  console.log("1. Validating deployed bytecode at new addresses...");
+  console.log(" 1. Validating deployed bytecode at new addresses...");
 
   // The deployed bytecode should match the expected bytecode for all new contracts deployed
   await compiledByteCodeMatchesDeployed(Voting);
@@ -69,11 +69,7 @@ async function runExport() {
    * 2) Validating registry contract addresses *
    *********************************************/
 
-  console.log(finder.address);
-
-  console.log(await finder.getPastEvents("OwnershipTransferred"));
-
-  console.log("2. Validating finder registration addresses...");
+  console.log(" 2. Validating finder registration addresses...");
 
   // The finder should correctly match the addresses of all new contracts
   await finderMatchesDeployment(Voting, interfaceName.Oracle);
@@ -81,7 +77,7 @@ async function runExport() {
   await finderMatchesDeployment(Store, interfaceName.Store);
   await finderMatchesDeployment(FinancialContractsAdmin, interfaceName.FinancialContractsAdmin);
   await finderMatchesDeployment(IdentifierWhitelist, interfaceName.IdentifierWhitelist);
-  await finderMatchesDeployment(Governor, interfaceName.Governor);
+  await finderMatchesDeployment(Registry, interfaceName.Registry);
 
   console.log("✅ All registered interfaces match!");
 

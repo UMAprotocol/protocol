@@ -6,6 +6,9 @@ const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("../.
 // Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
+// Set this flag based on if you want the script to revert all state changes at the end of execution.
+const revertStateAfterRun = false;
+
 const Voting = artifacts.require("Voting");
 const Governor = artifacts.require("Governor");
 
@@ -153,8 +156,12 @@ async function runExport() {
 
   console.log("5. GOVERNOR TRANSACTIONS SUCCESSFULLY EXECUTED🎉!");
 
-  console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
-  await revertToSnapshot(web3, snapshotId);
+  if (revertStateAfterRun) {
+    console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
+    await revertToSnapshot(web3, snapshotId);
+  } else {
+    console.log("SCRIPT DONE...NOT REVERTING STATE...");
+  }
 }
 
 run = async function(callback) {
