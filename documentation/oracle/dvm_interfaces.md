@@ -137,8 +137,8 @@ It also takes the `hash` that the voter wishes to commit to. The `hash` is creat
 `keccak256(price, salt, time, address, roundId, identifier)`, where price is the `int256` price value that they wish to submit, `time` is the unix timestamp of the request being voted on, `address` is the voter's address (technically, the same one that will reveal the vote), `roundId` is the current voting round, `identifier` is the pricefeed identifier relevant to the price request, and `salt` is a random `int256` value. The voter must remember the inputs to the vote `hash` that they submitted so they can reveal their commit later - otherwise, the commit cannot be revealed and the vote won't be counted.
 
 Since transaction data is public, the salt will be revealed along with the vote. While this is the system’s expected behavior,
-voters should never reuse salts. If someone else is able to predict the voted price or knows that a price will be reused, then
-they can easily reveal the vote.
+voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
+they can determine the vote pre-reveal.
 
 A few notes:
 
