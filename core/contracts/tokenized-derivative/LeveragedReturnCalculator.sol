@@ -26,7 +26,7 @@ contract LeveragedReturnCalculator is ReturnCalculatorInterface, Withdrawable {
         require(_leverageMultiplier != 0);
         leverageMultiplier = _leverageMultiplier;
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
+        _createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword

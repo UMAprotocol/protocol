@@ -7,27 +7,20 @@ const truffleAssert = require("truffle-assertions");
 contract("Finder", function(accounts) {
   const owner = accounts[0];
   const user = accounts[1];
-  const rando = accounts[3];
 
   it("General methods", async function() {
     const finder = await Finder.deployed();
 
     const interfaceName1 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface1"));
     const interfaceName2 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface2"));
-
-    // Create three contracts to use as dummy implementations to register in the finder.
-    // It does not matter what contracts these are as long as they are not EOAs.
-    const implementationAddress1 = (await Finder.new({ from: owner })).address;
-    const implementationAddress2 = (await Finder.new({ from: owner })).address;
-    const implementationAddress3 = (await Finder.new({ from: owner })).address;
+    const implementationAddress1 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+    const implementationAddress2 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+    const implementationAddress3 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 
     // Random users cannot change the implementation address.
     assert(
       await didContractThrow(finder.changeImplementationAddress(interfaceName1, implementationAddress1, { from: user }))
     );
-
-    // Cant set the implementation address to an EOA; only contracts addresses can be registered in the finder
-    assert(await didContractThrow(finder.changeImplementationAddress(interfaceName1, rando, { from: owner })));
 
     // Looking up unknown interfaces fails.
     assert(await didContractThrow(finder.getImplementationAddress(interfaceName1)));

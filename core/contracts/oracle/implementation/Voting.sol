@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
@@ -104,8 +103,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     FixedPoint.Unsigned public gatPercentage;
 
     // Global setting for the rate of inflation per vote. This is the percentage of the snapshotted total supply that
-    // should be split among the correct voters. Note: this value is used to set per-round inflation at the beginning
-    // of each round. 1 = 100%
+    // should be split among the correct voters.
+    // Note: this value is used to set per-round inflation at the beginning of each round. 1 = 100%.
     FixedPoint.Unsigned public inflationRate;
 
     // Time in seconds from the end of the round in which a price request is
@@ -156,9 +155,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         uint256 numTokens
     );
 
-    event PriceRequestAdded(uint256 indexed votingRoundId, bytes32 indexed identifier, uint256 time);
+    event PriceRequestAdded(uint256 indexed roundId, bytes32 indexed identifier, uint256 time);
 
-    event PriceResolved(uint256 indexed resolutionRoundId, bytes32 indexed identifier, uint256 time, int256 price);
+    event PriceResolved(uint256 indexed roundId, bytes32 indexed identifier, uint256 time, int256 price);
 
     /**
      * @notice Construct the Voting contract.
@@ -282,7 +281,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of type PendingRequest which includes an identifier and timestamp for each request.
-     * @return requestStates A list, in the same order as the input list, giving the status of each of the specified price requests.
+     * @return requestStates a list, in the same order as the input list, giving the status of each of the specified price requests.
      */
     function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
         RequestState[] memory requestStates = new RequestState[](requests.length);
@@ -311,6 +310,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Commit a vote for a price request for `identifier` at `time`.
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
+     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
+     * voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
+     * they can determine the vote pre-reveal.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
@@ -556,7 +558,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     /**
      * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests `PendingRequest` array containing identifiers
+     * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
@@ -615,6 +617,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     /**
      * @notice Disables this Voting contract in favor of the migrated one.
      * @dev Can only be called by the contract owner.
+     * @param newVotingAddress the newly migrated contract address.
      */
     function setMigrated(address newVotingAddress) external onlyOwner {
         migratedAddress = newVotingAddress;
@@ -653,7 +656,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      ****************************************/
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
-    // the respolved price and a string which is filled with an error message, if there was an error or "".
+    // the resolved price and a string which is filled with an error message, if there was an error or "".
     function _getPriceOrError(bytes32 identifier, uint256 time) private view returns (bool, int, string memory) {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());

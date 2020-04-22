@@ -25,8 +25,10 @@ library VoteTiming {
 
     /**
      * @notice Computes the roundID based off the current time as floor(timestamp/phaseLength).
+     * @dev The round ID depends on the global timestamp but not on the lifetime of the system.
+     * The consequence is that the initial round ID starts at an arbitrary number (that increments, as expected, for subsequent rounds) instead of zero or one.
      * @param data input data object.
-     * @param currentTime input unix timeStamp used to compute the current roundId.
+     * @param currentTime input unix timestamp used to compute the current roundId.
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
@@ -47,6 +49,9 @@ library VoteTiming {
 
     /**
      * @notice Computes the current phase based only on the current time.
+     * @param data input data object.
+     * @param currentTime input unix timestamp used to compute the current roundId.
+     * @return current voting phase based on current time and vote phases configuration.
      */
     function computeCurrentPhase(Data storage data, uint256 currentTime) internal view returns (VotingInterface.Phase) {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.

@@ -9,7 +9,7 @@ async function didContractThrow(promise) {
   return false;
 }
 
-async function minePendingTransactions(web3, time) {
+async function advanceBlockAndSetTime(web3, time) {
   return new Promise((resolve, reject) => {
     web3.currentProvider.send(
       {
@@ -69,6 +69,43 @@ async function startMining(web3) {
   });
 }
 
+async function takeSnapshot(web3) {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send(
+      {
+        jsonrpc: "2.0",
+        method: "evm_snapshot",
+        id: new Date().getTime()
+      },
+      (err, snapshotId) => {
+        if (err) {
+          return reject(err);
+        }
+        return resolve(snapshotId);
+      }
+    );
+  });
+}
+
+async function revertToSnapshot(web3, id) {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send(
+      {
+        jsonrpc: "2.0",
+        method: "evm_revert",
+        params: [id],
+        id: new Date().getTime()
+      },
+      (err, result) => {
+        if (err) {
+          return reject(err);
+        }
+        return resolve(result);
+      }
+    );
+  });
+}
+
 // This function will mine all transactions in `transactions` in the same block with block timestamp `time`.
 // The return value is an array of receipts corresponding to the transactions.
 // Each transaction in transactions should be a web3 transaction generated like:
@@ -93,7 +130,7 @@ async function mineTransactionsAtTime(web3, transactions, time, sender) {
     receiptPromises.push(result);
   }
 
-  await minePendingTransactions(web3, time);
+  await advanceBlockAndSetTime(web3, time);
   const receipts = await Promise.all(receiptPromises);
   await startMining(web3);
 
@@ -102,5 +139,8 @@ async function mineTransactionsAtTime(web3, transactions, time, sender) {
 
 module.exports = {
   didContractThrow,
-  mineTransactionsAtTime
+  mineTransactionsAtTime,
+  advanceBlockAndSetTime,
+  takeSnapshot,
+  revertToSnapshot
 };

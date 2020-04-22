@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";
@@ -37,7 +36,7 @@ contract DesignatedVoting is Withdrawable {
     constructor(address finderAddress, address ownerAddress, address voterAddress) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), voterAddress);
-        setWithdrawRole(uint(Roles.Owner));
+        _setWithdrawRole(uint(Roles.Owner));
 
         finder = FinderInterface(finderAddress);
     }
@@ -88,9 +87,10 @@ contract DesignatedVoting is Withdrawable {
 
     /**
      * @notice Forwards a reward retrieval to Voting.
-     * @dev rewards are added to the tokens already held by this contract.
+     * @dev Rewards are added to the tokens already held by this contract.
      * @param roundId defines the round from which voting rewards will be retrieved from.
      * @param toRetrieve an array of PendingRequests which rewards are retrieved from.
+     * @return amount of rewards that the user should receive.
      */
     function retrieveRewards(uint256 roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public
