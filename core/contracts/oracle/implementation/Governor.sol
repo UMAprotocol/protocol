@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";
@@ -84,7 +83,7 @@ contract Governor is MultiRole, Testable {
 
     /**
      * @notice Proposes a new governance action. Can only be called by the holder of the Proposer role.
-     * @param transactions the list of transactions that are being proposed.
+     * @param transactions list of transactions that are being proposed.
      * @dev You can create the data portion of each transaction by doing the following:
      * ```
      * const truffleContractInstance = await TruffleContract.deployed()

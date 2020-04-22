@@ -34,7 +34,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
     constructor(address _timerAddress) public Testable(_timerAddress) {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
         _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
-        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
+        _createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
     /**

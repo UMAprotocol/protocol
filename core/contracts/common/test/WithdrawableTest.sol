@@ -10,7 +10,7 @@ contract WithdrawableTest is Withdrawable {
     // solhint-disable-next-line no-empty-blocks
     constructor() public {
         _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
+        _createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
     }
 
     function pay() external payable {
@@ -18,6 +18,6 @@ contract WithdrawableTest is Withdrawable {
     }
 
     function setInternalWithdrawRole(uint roleId) public {
-        setWithdrawRole(roleId);
+        _setWithdrawRole(roleId);
     }
 }

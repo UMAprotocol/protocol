@@ -21,15 +21,15 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
 
     /**
      * @notice Constructs the ExpandedERC20.
-     * @param tokenName The name which describes the new token.
-     * @param tokenSymbol The ticker abbreviation of the name. Ideally < 5 chars.
-     * @param tokenDecimals The number of decimals to define token precision.
+     * @param _tokenName The name which describes the new token.
+     * @param _tokenSymbol The ticker abbreviation of the name. Ideally < 5 chars.
+     * @param _tokenDecimals The number of decimals to define token precision.
      */
-    constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
+    constructor(string memory _tokenName, string memory _tokenSymbol, uint8 _tokenDecimals)
         public
-        ERC20(tokenName, tokenSymbol)
+        ERC20(_tokenName, _tokenSymbol)
     {
-        _setupDecimals(tokenDecimals);
+        _setupDecimals(_tokenDecimals);
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), new address[](0));
         _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), new address[](0));

@@ -49,7 +49,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
         address _timerAddress
     ) public Testable(_timerAddress) {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
+        _createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
         setFixedOracleFeePerSecondPerPfc(_fixedOracleFeePerSecondPerPfc);
         setWeeklyDelayFeePerSecondPerPfc(_weeklyDelayFeePerSecondPerPfc);
     }
