@@ -60,10 +60,20 @@ contract Governor is MultiRole, Testable {
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
+    constructor(address _finderAddress, uint startingId, address _timerAddress) public Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createExclusiveRole(uint(Roles.Proposer), uint(Roles.Owner), msg.sender);
+
+        // Ensure the startingId is not set unreasonably high to avoid overwriting other storage slots.
+        uint maxStartingId = 10**18;
+        require(startingId <= maxStartingId, "Cannot set startingId larger than 10^18");
+
+        // This just sets the initial length of the array to the startingId since modifying length directly has been
+        // disallowed in solidity 0.6.
+        assembly {
+            sstore(proposals_slot, startingId)
+        }
     }
 
     /****************************************
