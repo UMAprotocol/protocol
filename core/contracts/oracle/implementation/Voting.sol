@@ -156,9 +156,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         uint256 numTokens
     );
 
-    event PriceRequestAdded(uint256 indexed votingRoundId, bytes32 indexed identifier, uint256 time);
+    event PriceRequestAdded(uint256 indexed roundId, bytes32 indexed identifier, uint256 time);
 
-    event PriceResolved(uint256 indexed resolutionRoundId, bytes32 indexed identifier, uint256 time, int256 price);
+    event PriceResolved(uint256 indexed roundId, bytes32 indexed identifier, uint256 time, int256 price);
 
     /**
      * @notice Construct the Voting contract.
