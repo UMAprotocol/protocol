@@ -28,7 +28,8 @@ const upgradeAddresses = {
   Store: "0x74d367e2207e52f05963479e8395cf44909f075b",
   FinancialContractsAdmin: "0x3b99859be43d543960803c09a0247106e82e74ee",
   IdentifierWhitelist: "0x9e39424eab9161cc3399d886b1428cba71586cb8",
-  Governor: "0x878cfedb234c226ddefd33657937af74c17628bf"
+  Governor: "0x878cfedb234c226ddefd33657937af74c17628bf",
+  Finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3" // Finder was no upgraded in UMIP3
 };
 
 async function runExport() {
@@ -44,7 +45,7 @@ async function runExport() {
 
   console.log(" 1. Validating deployed bytecode at new addresses...");
 
-  // The deployed bytecode should match the expected bytecode for all new contracts deployed
+  // The deployed bytecode should match the expected bytecode for all new contracts deployed.
   await compiledByteCodeMatchesDeployed(Voting);
   await compiledByteCodeMatchesDeployed(Registry);
   await compiledByteCodeMatchesDeployed(Store);
@@ -76,11 +77,15 @@ async function runExport() {
 
   console.log(" 3. Validating deployed contracts are owned by new governor...");
 
-  // the Financial Contracts Admin, identifierWhiteList and Voting are all
+  // The Financial Contracts Admin, identifierWhiteList and Voting are all
   // ownable and should be owned by the the new governor
   await contractOwnedByNewGovernor(FinancialContractsAdmin);
   await contractOwnedByNewGovernor(IdentifierWhitelist);
   await contractOwnedByNewGovernor(Voting);
+
+  // The finder's ownership is transfered to the UMIP3Upgrader during the upgrade. This should
+  // be transferred back to the newGovernor at conclusion of the upgrade.
+  await contractOwnedByNewGovernor(Finder);
 
   console.log("✅ All contract correctly transferred ownership!");
 
@@ -96,17 +101,23 @@ async function runExport() {
   await newGovernorHasOwnerRole(Store);
 
   // The Governor is multiRole and should only be owned by the foundation wallet.
-  await contractOwnedByFoundation(Governor);
+  await contractOwnerRoleByFoundation(Governor);
 
   console.log("✅ All contract correctly transferred roles!");
 }
 
+// Ensure that the contract specified has the latest contract code deployed at the `upgradeAddresses`
 compiledByteCodeMatchesDeployed = async contract => {
+  // `getCode` returns the bytecode of the actual contract deployed on chain
   const onChainByteCode = await web3.eth.getCode(upgradeAddresses[contract.contractName]);
+  // `deployedBytecode` returns the bytecode that would be deployed had the truffle artifact been migrated on-chain.
+  // This corresponds to the latest versions of the code and as such the assertion validates that the new
+  // contract code has been deployed.
   const compiledByteCode = contract.toJSON().deployedBytecode;
   assert.equal(onChainByteCode, compiledByteCode);
 };
 
+// Ensure that the finder has the correct contract address for a given interface name
 finderMatchesDeployment = async (contract, interfaceName) => {
   const finder = await Finder.deployed();
   const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName);
@@ -115,19 +126,22 @@ finderMatchesDeployment = async (contract, interfaceName) => {
   assert.equal(finderImplementationAddress.toLowerCase(), upgradeDeployedAddress.toLowerCase());
 };
 
+// Ensure that a given contract is owned by the NewGovernor
 contractOwnedByNewGovernor = async contract => {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const currentOwner = await contractInstance.owner();
   assert.equal(currentOwner.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
 };
 
+// Ensure that a given contract's multirole for `owner` is set to the new GovGovernor
 newGovernorHasOwnerRole = async contract => {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
   assert.equal(exclusiveRoleHolder.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
 };
 
-contractOwnedByFoundation = async contract => {
+// Ensure that a given contract's multirole for `owner` is set to the foundation multisig wallet
+contractOwnerRoleByFoundation = async contract => {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
   assert.equal(exclusiveRoleHolder.toLowerCase(), foundationWallet.toLowerCase());
