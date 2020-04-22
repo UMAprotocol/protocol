@@ -189,16 +189,16 @@ abstract contract MultiRole {
      * @dev Should be called by derived contracts, usually at construction time. Will revert if the role is already
      * initialized.
      */
-    function _createSharedRole(uint256 _roleId, uint256 _managingRoleId, address[] memory initialMembers)
+    function _createSharedRole(uint256 roleId, uint256 managingRoleId, address[] memory initialMembers)
         internal
-        onlyInvalidRole(_roleId)
+        onlyInvalidRole(roleId)
     {
-        Role storage role = roles[_roleId];
+        Role storage role = roles[roleId];
         role.roleType = RoleType.Shared;
-        role.managingRole = _managingRoleId;
+        role.managingRole = managingRoleId;
         role.sharedRoleMembership.init(initialMembers);
         require(
-            roles[_managingRoleId].roleType != RoleType.Invalid,
+            roles[managingRoleId].roleType != RoleType.Invalid,
             "Attempted to use an invalid role to manage a shared role"
         );
     }
