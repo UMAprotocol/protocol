@@ -17,6 +17,9 @@ const truffleAssert = require("truffle-assertions");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
+const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
+
+const ownerRole = "0";
 
 // New addresses of ecosystem components after porting from `Propose.js`
 const upgradeAddresses = {
@@ -46,6 +49,18 @@ contractOwnedByNewGovernor = async contract => {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const currentOwner = await contractInstance.owner();
   assert.equal(currentOwner.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
+};
+
+newGovernorHasOwnerRole = async contract => {
+  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
+  const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
+  assert.equal(exclusiveRoleHolder.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
+};
+
+contractOwnedByFoundation = async contract => {
+  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
+  const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
+  assert.equal(exclusiveRoleHolder.toLowerCase(), foundationWallet.toLowerCase());
 };
 
 async function runExport() {
@@ -93,11 +108,29 @@ async function runExport() {
 
   console.log(" 3. Validating deployed contracts are owned by new governor...");
 
+  // the Financial Contracts Admin, identifierWhiteList and Voting are all
+  // ownable and should be owned by the the new governor
   await contractOwnedByNewGovernor(FinancialContractsAdmin);
   await contractOwnedByNewGovernor(IdentifierWhitelist);
   await contractOwnedByNewGovernor(Voting);
 
   console.log("✅ All contract correctly transferred ownership!");
+
+  /** ***************************************
+   * 3) Validating migrated contracts roles *
+   ******************************************/
+
+  console.log(" 4. Validating deployed contract roles...");
+
+  // Registry and Store are both multiRole and should have the exclusive owner role
+  // set as the new governor only
+  await newGovernorHasOwnerRole(Registry);
+  await newGovernorHasOwnerRole(Store);
+
+  // The Governor is multiRole and should only be owned by the foundation wallet.
+  await contractOwnedByFoundation(Governor);
+
+  console.log("✅ All contract correctly transferred roles!");
 }
 
 run = async function(callback) {
