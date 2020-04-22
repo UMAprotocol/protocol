@@ -134,9 +134,11 @@ price request for that `identifier` and `time` is returned from `getPendingReque
 `Commit`.
 
 It also takes the `hash` that the voter wishes to commit to. The `hash` is created by computing
-`keccak256(price, salt)`, where price is the `int256` price value that they wish to submit and `salt` is a random
-`int256` value. The voter must remember the `price` and `salt` that they submitted so they can reveal their commit
-later - otherwise, the commit cannot be revealed and the vote won't be counted.
+`keccak256(price, salt, time, address, roundId, identifier)`, where price is the `int256` price value that they wish to submit, `time` is the unix timestamp of the request being voted on, `address` is the voter's address (technically, the same one that will reveal the vote), `roundId` is the current voting round, `identifier` is the pricefeed identifier relevant to the price request, and `salt` is a random `int256` value. The voter must remember the inputs to the vote `hash` that they submitted so they can reveal their commit later - otherwise, the commit cannot be revealed and the vote won't be counted.
+
+Since transaction data is public, the salt will be revealed along with the vote. While this is the system’s expected behavior,
+voters should never reuse salts. If someone else is able to predict the voted price or knows that a price will be reused, then
+they can easily reveal the vote.
 
 A few notes:
 
@@ -153,8 +155,7 @@ Reveals a vote that the voter committed to during the commit period.
 This method takes the `identifier` and `time` to identify the price request.
 
 So the reveal can be verified on-chain, the voter must also provide the `price` and `salt` that they used to compute
-the `hash` that they passed to `commitVote`. Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
-it assumes that voters will never reuse the same pair of salt and price. Voters should never reuse pairs of salt and price or their commits can be disclosed in advance, and to be safe voters should avoid reusing salts in general.
+the `hash` that they passed to `commitVote`.
 
 Note: the voter's token balance is important for computing how much their vote impacts the outcome and how many newly
 minted tokens they receive as a reward for voting correctly. For that purpose, all voters' balances are snapshotted

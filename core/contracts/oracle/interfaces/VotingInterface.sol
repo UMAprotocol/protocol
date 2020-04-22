@@ -69,7 +69,8 @@ abstract contract VotingInterface {
      * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
      * that `commitVote()` was called with. Only the committer can reveal their vote.
      * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
-     * it assumes that voters will never reuse the same pair of salt and price. Otherwise their commits could be easily disclosed in advance.
+     * voters should never reuse salts. If someone else is able to predict the voted price or knows that a price will be reused, then
+     * they can easily reveal the vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price is being voted on.
      * @param price voted on during the commit phase.
