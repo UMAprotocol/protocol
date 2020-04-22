@@ -43,9 +43,15 @@ contract Store is StoreInterface, Withdrawable, Testable {
     /**
      * @notice Construct the Store contract.
      */
-    constructor(address _timerAddress) public Testable(_timerAddress) {
+    constructor(
+        FixedPoint.Unsigned memory _fixedOracleFeePerSecondPerPfc,
+        FixedPoint.Unsigned memory _weeklyDelayFeePerSecondPerPfc,
+        address _timerAddress
+    ) public Testable(_timerAddress) {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
+        setFixedOracleFeePerSecondPerPfc(_fixedOracleFeePerSecondPerPfc);
+        setWeeklyDelayFeePerSecondPerPfc(_weeklyDelayFeePerSecondPerPfc);
     }
 
     /****************************************
