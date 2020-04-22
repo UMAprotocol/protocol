@@ -73,7 +73,10 @@ async function runExport() {
 
   console.log("Deploying new Store contract.");
 
-  const store = await Store.new(zeroAddress, { from: proposerWallet });
+  const regularFee = { rawValue: web3.utils.toWei("0.2", "ether") };
+  const lateFee = { rawValue: web3.utils.toWei("0.1", "ether") };
+
+  const store = await Store.new(regularFee, lateFee, zeroAddress, { from: proposerWallet });
 
   /** *****************************************
    * 4) upgrade FinancialContractsAdmin.sol *

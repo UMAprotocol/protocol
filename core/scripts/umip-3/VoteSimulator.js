@@ -12,16 +12,16 @@ const Governor = artifacts.require("Governor");
 const BulkGovernorExecutor = artifacts.require("BulkGovernorExecutor");
 
 async function runExport() {
-  console.log("Starting Upgrade simulator Script 🔥");
+  console.log("Running UMIP-3 Upgrade vote simulator🔥");
   let snapshot = await takeSnapshot();
   snapshotId = snapshot["result"];
   console.log("Snapshotting starting state...", snapshotId);
 
-  /***********************************
+  /** *********************************
    * 0) Initial setup                *
    ***********************************/
 
-  console.log("0. SETUP");
+  console.log("0. SETUP PHASE");
   const votingToken = await VotingToken.deployed();
   const voting = await Voting.deployed();
   const governor = await Governor.deployed();
@@ -34,9 +34,11 @@ async function runExport() {
   const secondsPerDay = 86400;
   const accounts = await web3.eth.getAccounts();
 
+  // These two assertions must be true for the script to be starting in the right state. This assumes the script
+  // is run within the same round and phase as running the `Propose.js` script.
   assert.equal((await governor.numProposals()).toNumber(), 1); // there should be 1 proposal
-
   assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests
+
   console.log(
     "1 pending proposal. No pending requests.\nCurrent timestamp:",
     currentTime,
@@ -45,16 +47,23 @@ async function runExport() {
     "CurrentRoundId",
     (await voting.getCurrentRoundId()).toString()
   );
-  console.log("⏱  Advancing time by one phase to enable voting by the DVM");
 
-  /******************************************************
+  /** ****************************************************
    * 1) Advance Ganache block time to move voting round *
    ******************************************************/
 
   console.log("1. TIME ADVANCE FOR VOTING");
-  await advanceBlockAndSetTime(currentTime + secondsPerDay);
+
+  // If the DVM is currently in the commit phase (0) then we need to advance into the next round by advancing
+  // forward by 2 days. Else if we are in the reveal phase (1) then we need to advance into the next round by
+  // advancing by one day to take us into the next round.
+  if (votingPhase == 0) {
+    await advanceBlockAndSetTime(currentTime + secondsPerDay * 2);
+  } else {
+    await advanceBlockAndSetTime(currentTime + secondsPerDay);
+  }
   console.log(
-    "New timestamp",
+    "⏱  Advancing time by one phase to enable voting by the DVM\nNew timestamp",
     (await voting.getCurrentTime()).toString(),
     "voting phase",
     (await voting.getVotePhase()).toNumber(),
@@ -64,7 +73,7 @@ async function runExport() {
   let pendingRequests = await voting.getPendingRequests();
   assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
 
-  /*******************************************************
+  /** *****************************************************
    * 2) Build vote tx from the foundation wallet         *
    *******************************************************/
 
@@ -78,7 +87,7 @@ async function runExport() {
   // Main net DVM uses the old commit reveal scheme of hashed concatenation of price and salt
   const voteHash = web3.utils.soliditySha3(price, salt);
 
-  console.log("2. COMMIT VOTE");
+  console.log("2. COMMIT VOTE FROM FOUNDATION WALLET\nVote information:");
   console.table({
     price: price,
     salt: salt.toString(),
@@ -89,7 +98,7 @@ async function runExport() {
     voteHash: voteHash
   });
 
-  /*******************************************************
+  /** *****************************************************
    * 3) Vote on the proposal and validate the commitment *
    *******************************************************/
 
@@ -99,10 +108,10 @@ async function runExport() {
   const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet });
   console.log("Voting Tx done!", VoteTx.tx);
 
-  /*******************************************************
+  /** *****************************************************
    * 4) Advance to the next phase & reveal the vote      *
    *******************************************************/
-  console.log("3. REVEAL VOTE");
+  console.log("3. REVEALING FOUNDATION VOTE");
   currentTime = (await voting.getCurrentTime()).toNumber();
   await advanceBlockAndSetTime(currentTime + secondsPerDay);
 
@@ -132,7 +141,7 @@ async function runExport() {
 
   assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
 
-  /*********************************************************************
+  /** *******************************************************************
    * 4) Execute proposal submitted to governor now that voting is done *
    **********************************************************************/
 
@@ -141,11 +150,13 @@ async function runExport() {
   const proposal = await governor.getProposal(proposalId);
 
   // for every transactions within the proposal
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < proposal.transactions.length; i++) {
     console.log("Submitting tx", i, "...");
     let tx = await governor.executeProposal(proposalId.toString(), i.toString(), { from: foundationWallet });
-    console.log("transaction", i, "submitted! tx", tx.tx);
+    console.log("Transaction", i, "submitted! tx", tx.tx);
   }
+
+  console.log("5. GOVERNOR TRANSACTIONS SUCCESSFULLY EXECUTED🎉!");
 
   console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
   await revertToSnapshot(snapshotId);
@@ -183,7 +194,7 @@ advanceBlockAndSetTime = time => {
 };
 
 advanceTimeAndBlock = async time => {
-  //capture current time
+  // capture current time
   let block = await web3.eth.getBlock("latest");
   let forwardTime = block["timestamp"] + time;
 
