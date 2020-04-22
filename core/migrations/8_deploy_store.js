@@ -9,7 +9,19 @@ module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
-  const { contract: store } = await deploy(deployer, network, Store, Timer.address, { from: keys.deployer });
+  // Initialize both fees to 0.
+  const initialFixedOracleFeePerSecondPerPfc = { rawValue: "0" };
+  const initialWeeklyDelayFeePerSecondPerPfc = { rawValue: "0" };
+
+  const { contract: store } = await deploy(
+    deployer,
+    network,
+    Store,
+    initialFixedOracleFeePerSecondPerPfc,
+    initialWeeklyDelayFeePerSecondPerPfc,
+    Timer.address,
+    { from: keys.deployer }
+  );
 
   const finder = await Finder.deployed();
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Store), store.address, {

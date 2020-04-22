@@ -3,7 +3,7 @@ module.exports = {
     browser: true
   },
   extends: ["plugin:prettier/recommended"],
-  plugins: ["prettier"],
+  plugins: ["prettier", "mocha"],
   parserOptions: {
     ecmaFeatures: {
       jsx: true,
@@ -17,6 +17,10 @@ module.exports = {
     "linebreak-style": ["error", "unix"],
     quotes: ["error", "double", { avoidEscape: true }],
     semi: ["error", "always"],
-    "spaced-comment": ["error", "always", { exceptions: ["-", "+"] }]
+    "spaced-comment": ["error", "always", { exceptions: ["-", "+"] }],
+    "mocha/no-exclusive-tests": "error"
+  },
+  settings: {
+    "mocha/additionalTestFunctions": ["describeModule"]
   }
 };

@@ -69,6 +69,10 @@ abstract contract MultiRole {
 
     mapping(uint256 => Role) private roles;
 
+    event ResetExclusiveMember(uint256 indexed roleId, address indexed newMember, address indexed manager);
+    event AddedSharedMember(uint256 indexed roleId, address indexed newMember, address indexed manager);
+    event RemovedSharedMember(uint256 indexed roleId, address indexed oldMember, address indexed manager);
+
     /**
      * @notice Reverts unless the caller is a member of the specified roleId.
      */
@@ -122,6 +126,7 @@ abstract contract MultiRole {
      */
     function resetMember(uint256 roleId, address newMember) public onlyExclusive(roleId) onlyRoleManager(roleId) {
         roles[roleId].exclusiveRoleMembership.resetMember(newMember);
+        emit ResetExclusiveMember(roleId, newMember, msg.sender);
     }
 
     /**
@@ -139,6 +144,7 @@ abstract contract MultiRole {
      */
     function addMember(uint256 roleId, address newMember) public onlyShared(roleId) onlyRoleManager(roleId) {
         roles[roleId].sharedRoleMembership.addMember(newMember);
+        emit AddedSharedMember(roleId, newMember, msg.sender);
     }
 
     /**
@@ -148,6 +154,17 @@ abstract contract MultiRole {
      */
     function removeMember(uint256 roleId, address memberToRemove) public onlyShared(roleId) onlyRoleManager(roleId) {
         roles[roleId].sharedRoleMembership.removeMember(memberToRemove);
+        emit RemovedSharedMember(roleId, memberToRemove, msg.sender);
+    }
+
+    /**
+     * @notice Removes caller from the role, `roleId`. For exclusive roles, resets the member to the zero address.
+     * @dev Reverts if the caller is not a member of the role for `roleId` or if `roleId` is not an
+     * initialized, shared role.
+     */
+    function renounceMembership(uint256 roleId) public onlyShared(roleId) onlyRoleHolder(roleId) {
+        roles[roleId].sharedRoleMembership.removeMember(msg.sender);
+        emit RemovedSharedMember(roleId, msg.sender, msg.sender);
     }
 
     /**

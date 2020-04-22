@@ -55,5 +55,6 @@ If a disputer disputes the liquidation, all collateral is frozen until the UMA D
 
 ### Global collateralization ratio (GCR)
 
-This is the average collateralization ratio across all token sponsors of a synthetic token, excluding those that have been liquidated or have outstanding withdrawal requests.
+This is the average collateralization ratio across all token sponsors of a synthetic token, excluding those that have been liquidated.
+It is calculated by dividing the total collateral deposited by all token sponsors in the contract by the total number of outstanding synthetic tokens.  
 The GCR is used to set collateralization requirements for new synthetic token issuance and to enable “fast” withdrawals.

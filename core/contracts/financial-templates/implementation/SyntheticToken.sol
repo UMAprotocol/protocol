@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "../../common/implementation/ExpandedERC20.sol";
 
 
@@ -9,7 +8,7 @@ import "../../common/implementation/ExpandedERC20.sol";
  * is capable of adding new roles.
  */
 
-contract SyntheticToken is ExpandedERC20, ERC20Detailed {
+contract SyntheticToken is ExpandedERC20 {
     /**
      * @notice Constructs the SyntheticToken.
      * @param tokenName The name which describes the new token.
@@ -18,7 +17,7 @@ contract SyntheticToken is ExpandedERC20, ERC20Detailed {
      */
     constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
         public
-        ERC20Detailed(tokenName, tokenSymbol, tokenDecimals)
+        ExpandedERC20(tokenName, tokenSymbol, tokenDecimals)
     {}
 
     /**

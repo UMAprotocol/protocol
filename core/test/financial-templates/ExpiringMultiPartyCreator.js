@@ -28,7 +28,7 @@ contract("ExpiringMultiParty", function(accounts) {
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
@@ -106,7 +106,7 @@ contract("ExpiringMultiParty", function(accounts) {
 
   it("Collateral token must be whitelisted", async function() {
     // Change only the collateral token address
-    constructorParams.collateralAddress = await Token.new({ from: contractCreator }).address;
+    constructorParams.collateralAddress = await Token.new("UMA", "UMA", 18, { from: contractCreator }).address;
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {

@@ -6,7 +6,7 @@ const { submitTransaction } = require("./transactionUtils");
 
 const viewLiquidationDetails = async (web3, artifacts, emp, liquidation, id) => {
   const sponsorAddress = await getDefaultAccount(web3);
-  const display = "Liquidated at epoch time " + liquidation.liquidationTime + " by " + liquidation.liquidator;
+  const display = `Liquidated at epoch time ${liquidation.liquidationTime} by ${liquidation.liquidator}`;
   const backChoice = "Back";
   const withdrawAction = "Withdraw";
   choices = [{ name: backChoice }];

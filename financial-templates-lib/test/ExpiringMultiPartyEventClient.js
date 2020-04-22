@@ -36,7 +36,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   let constructorParams;
 
   before(async function() {
-    collateralToken = await Token.new({ from: tokenSponsor });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: tokenSponsor });
     await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
     await collateralToken.mint(liquidator, toWei("100000"), { from: tokenSponsor });
     await collateralToken.mint(sponsor1, toWei("100000"), { from: tokenSponsor });
@@ -46,8 +46,8 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, Timer.address);
     finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address);
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });

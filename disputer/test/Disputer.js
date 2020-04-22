@@ -36,7 +36,7 @@ contract("Disputer.js", function(accounts) {
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
   before(async function() {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
@@ -49,10 +49,10 @@ contract("Disputer.js", function(accounts) {
     await collateralToken.mint(disputeBot, toWei("100000"), { from: contractCreator });
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(IdentifierWhitelist.address, Timer.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractCreator
     });
-    finder = await Finder.deployed();
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });

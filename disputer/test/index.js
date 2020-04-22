@@ -18,7 +18,7 @@ contract("index.js", function(accounts) {
   let collateralToken;
 
   before(async function() {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -26,7 +26,7 @@ contract("index.js", function(accounts) {
   });
 
   beforeEach(async function() {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
 
     const constructorParams = {
       expirationTimestamp: "12345678900",
