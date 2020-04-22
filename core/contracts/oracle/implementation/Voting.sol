@@ -358,6 +358,8 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
      * that `commitVote()` was called with. Only the committer can reveal their vote.
+     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
+     * it assumes that voters will never reuse the same pair of salt and price. Otherwise their commits could be easily disclosed in advance.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
