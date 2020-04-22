@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";
@@ -57,7 +56,7 @@ contract Governor is MultiRole, Testable {
     /**
      * @notice Construct the Governor contract.
      * @param _finderAddress keeps track of all contracts within the system based on their interfaceName.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * @param _timerAddress contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
@@ -72,7 +71,7 @@ contract Governor is MultiRole, Testable {
 
     /**
      * @notice Proposes a new governance action. Can only be called by the holder of the Proposer role.
-     * @param transactions the list of transactions that are being proposed.
+     * @param transactions list of transactions that are being proposed.
      * @dev You can create the data portion of each transaction by doing the following:
      * ```
      * const truffleContractInstance = await TruffleContract.deployed()

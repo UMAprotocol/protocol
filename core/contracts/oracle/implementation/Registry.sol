@@ -24,7 +24,8 @@ contract Registry is RegistryInterface, MultiRole {
         ContractCreator // Can register financial contracts.
     }
 
-    // This enum is required because a WasValid state is required to ensure that financial contracts cannot be re-registered.
+    // This enum is required because a `WasValid` state is required
+    // to ensure that financial contracts cannot be re-registered.
     enum Validity { Invalid, Valid }
 
     // Local information about a contract.
@@ -72,7 +73,7 @@ contract Registry is RegistryInterface, MultiRole {
     /**
      * @notice Registers a new financial contract.
      * @dev Only authorized contract creators can call this method.
-     * @param parties an array of addresses who become parties in the contract.
+     * @param parties array of addresses who become parties in the contract.
      * @param contractAddress address of the contract against which the parties are registered.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword

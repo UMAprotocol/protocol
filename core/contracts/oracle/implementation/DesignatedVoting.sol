@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";

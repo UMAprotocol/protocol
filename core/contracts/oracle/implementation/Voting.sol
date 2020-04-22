@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
@@ -105,7 +104,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     // Global setting for the rate of inflation per vote. This is the percentage of the snapshotted total supply that
     // should be split among the correct voters.
-    // Note: this value is used to set per-round inflation at the beginning of each round. 1 = 100%
+    // Note: this value is used to set per-round inflation at the beginning of each round. 1 = 100%.
     FixedPoint.Unsigned public inflationRate;
 
     // Time in seconds from the end of the round in which a price request is
@@ -556,7 +555,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     /**
      * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests `PendingRequest` array containing identifiers
+     * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
@@ -653,7 +652,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      ****************************************/
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
-    // the respolved price and a string which is filled with an error message, if there was an error or "".
+    // the resolved price and a string which is filled with an error message, if there was an error or "".
     function _getPriceOrError(bytes32 identifier, uint256 time) private view returns (bool, int, string memory) {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
