@@ -9,6 +9,9 @@ const VotingToken = artifacts.require("VotingToken");
 const Umip3Upgrader = artifacts.require("Umip3Upgrader");
 
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { interfaceName } = require("../../utils/Constants.js");
+
+const truffleAssert = require("truffle-assertions");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -70,10 +73,7 @@ async function runExport() {
 
   console.log("Deploying new Store contract.");
 
-  const regularFee = { rawValue: web3.utils.toWei("0.2", "ether") };
-  const lateFee = { rawValue: web3.utils.toWei("0.1", "ether") };
-
-  const store = await Store.new(regularFee, lateFee, zeroAddress, { from: proposerWallet });
+  const store = await Store.new(zeroAddress, { from: proposerWallet });
 
   /** *****************************************
    * 4) upgrade FinancialContractsAdmin.sol *
@@ -157,6 +157,7 @@ async function runExport() {
   // Because the transaction ordering prevents the Finder permissioning changes from being executed by the Governor
   // direcly, an upgrader contract is used to temporarily hold the Finder ownership permissions and synchronously
   // move them.
+  console.log("Deploying the Umip3Upgrader contract.");
 
   const umip3Upgrader = await Umip3Upgrader.new(
     governor.address,
