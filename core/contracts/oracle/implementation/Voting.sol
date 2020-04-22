@@ -311,6 +311,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Commit a vote for a price request for `identifier` at `time`.
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
+     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
+     * voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
+     * they can determine the vote pre-reveal.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
@@ -358,9 +361,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
      * that `commitVote()` was called with. Only the committer can reveal their vote.
-     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
-     * voters should never reuse salts. If someone else is able to predict the voted price or knows that a price will be reused, then
-     * they can easily reveal the vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
