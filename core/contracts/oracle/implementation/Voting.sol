@@ -615,6 +615,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     /**
      * @notice Disables this Voting contract in favor of the migrated one.
      * @dev Can only be called by the contract owner.
+     * @param newVotingAddress the newly migrated contract address.
      */
     function setMigrated(address newVotingAddress) external onlyOwner {
         migratedAddress = newVotingAddress;

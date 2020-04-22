@@ -108,6 +108,9 @@ abstract contract MultiRole {
     /**
      * @notice Whether `memberToCheck` is a member of roleId.
      * @dev Reverts if roleId does not correspond to an initialized role.
+     * @param roleId the Role to check.
+     * @param memberToCheck the address to check.
+     * @return True if `memberToCheck` is a member of `roleId`.
      */
     function holdsRole(uint256 roleId, address memberToCheck) public view returns (bool) {
         Role storage role = roles[roleId];
@@ -122,7 +125,9 @@ abstract contract MultiRole {
     /**
      * @notice Changes the exclusive role holder of `roleId` to `newMember`.
      * @dev Reverts if the caller is not a member of the managing role for `roleId` or if `roleId` is not an
-     * initialized, exclusive role.
+     * initialized, ExclusiveRole.
+     * @param roleId the ExclusiveRole membership to modify.
+     * @param newMember the new ExclusiveRole member.
      */
     function resetMember(uint256 roleId, address newMember) public onlyExclusive(roleId) onlyRoleManager(roleId) {
         roles[roleId].exclusiveRoleMembership.resetMember(newMember);
@@ -132,6 +137,8 @@ abstract contract MultiRole {
     /**
      * @notice Gets the current holder of the exclusive role, `roleId`.
      * @dev Reverts if `roleId` does not represent an initialized, exclusive role.
+     * @param roleId the ExclusiveRole membership to check.
+     * @return the address of the current ExclusiveRole member.
      */
     function getMember(uint256 roleId) public view onlyExclusive(roleId) returns (address) {
         return roles[roleId].exclusiveRoleMembership.getMember();
@@ -139,8 +146,10 @@ abstract contract MultiRole {
 
     /**
      * @notice Adds `newMember` to the shared role, `roleId`.
-     * @dev Reverts if `roleId` does not represent an initialized, shared role or if the caller is not a member of the
+     * @dev Reverts if `roleId` does not represent an initialized, SharedRole or if the caller is not a member of the
      * managing role for `roleId`.
+     * @param roleId the SharedRole membership to modify.
+     * @param newMember the new SharedRole member.
      */
     function addMember(uint256 roleId, address newMember) public onlyShared(roleId) onlyRoleManager(roleId) {
         roles[roleId].sharedRoleMembership.addMember(newMember);
@@ -149,8 +158,10 @@ abstract contract MultiRole {
 
     /**
      * @notice Removes `memberToRemove` from the shared role, `roleId`.
-     * @dev Reverts if `roleId` does not represent an initialized, shared role or if the caller is not a member of the
+     * @dev Reverts if `roleId` does not represent an initialized, SharedRole or if the caller is not a member of the
      * managing role for `roleId`.
+     * @param roleId the SharedRole membership to modify.
+     * @param memberToRemove the current SharedRole member to remove.
      */
     function removeMember(uint256 roleId, address memberToRemove) public onlyShared(roleId) onlyRoleManager(roleId) {
         roles[roleId].sharedRoleMembership.removeMember(memberToRemove);
@@ -158,9 +169,10 @@ abstract contract MultiRole {
     }
 
     /**
-     * @notice Removes caller from the role, `roleId`. For exclusive roles, resets the member to the zero address.
+     * @notice Removes caller from the role, `roleId`.
      * @dev Reverts if the caller is not a member of the role for `roleId` or if `roleId` is not an
-     * initialized, shared role.
+     * initialized, SharedRole.
+     * @param roleId the SharedRole membership to modify.
      */
     function renounceMembership(uint256 roleId) public onlyShared(roleId) onlyRoleHolder(roleId) {
         roles[roleId].sharedRoleMembership.removeMember(msg.sender);

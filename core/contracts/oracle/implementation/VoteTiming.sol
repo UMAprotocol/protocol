@@ -26,7 +26,7 @@ library VoteTiming {
     /**
      * @notice Computes the roundID based off the current time as floor(timestamp/phaseLength).
      * @param data input data object.
-     * @param currentTime input unix timeStamp used to compute the current roundId.
+     * @param currentTime input unix timestamp used to compute the current roundId.
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
@@ -47,6 +47,9 @@ library VoteTiming {
 
     /**
      * @notice Computes the current phase based only on the current time.
+     * @param data input data object.
+     * @param currentTime input unix timestamp used to compute the current roundId.
+     * @return current voting phase based on current time and vote phases configuration.
      */
     function computeCurrentPhase(Data storage data, uint256 currentTime) internal view returns (VotingInterface.Phase) {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.

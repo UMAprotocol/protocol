@@ -17,117 +17,232 @@ library FixedPoint {
         uint256 rawValue;
     }
 
-    /** @dev Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`. */
+    /**
+     * @notice Constructs an `Unsigned` from an unscaled uint, e.g., `b=5` gets stored internally as `5**18`.
+     * @param a uint to convert into a FixedPoint.
+     * @return the converted FixedPoint.
+     */
     function fromUnscaledUint(uint256 a) internal pure returns (Unsigned memory) {
         return Unsigned(a.mul(FP_SCALING_FACTOR));
     }
 
-    /** @dev Whether `a` is equal to `b`. */
+    /**
+     * @notice Whether `a` is equal to `b`.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return True if equal, or False.
+     */
     function isEqual(Unsigned memory a, uint256 b) internal pure returns (bool) {
         return a.rawValue == fromUnscaledUint(b).rawValue;
     }
 
-    /** @dev Whether `a` is equal to `b`. */
+    /**
+     * @notice Whether `a` is equal to `b`.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return True if equal, or False.
+     */
     function isEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue == b.rawValue;
     }
 
-    /** @dev Whether `a` is greater than `b`. */
+    /**
+     * @notice Whether `a` is greater than `b`.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return True if `a > b`, or False.
+     */
     function isGreaterThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue > b.rawValue;
     }
 
-    /** @dev Whether `a` is greater than `b`. */
+    /**
+     * @notice Whether `a` is greater than `b`.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return True if `a > b`, or False.
+     */
     function isGreaterThan(Unsigned memory a, uint256 b) internal pure returns (bool) {
         return a.rawValue > fromUnscaledUint(b).rawValue;
     }
 
-    /** @dev Whether `a` is greater than `b`. */
+    /**
+     * @notice Whether `a` is greater than `b`.
+     * @param a a uint256.
+     * @param b a FixedPoint.
+     * @return True if `a > b`, or False.
+     */
     function isGreaterThan(uint256 a, Unsigned memory b) internal pure returns (bool) {
         return fromUnscaledUint(a).rawValue > b.rawValue;
     }
 
-    /** @dev Whether `a` is greater than or equal to `b`. */
+    /**
+     * @notice Whether `a` is greater than or equal to `b`.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return True if `a >= b`, or False.
+     */
     function isGreaterThanOrEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue >= b.rawValue;
     }
 
-    /** @dev Whether `a` is greater than or equal to `b`. */
+    /**
+     * @notice Whether `a` is greater than or equal to `b`.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return True if `a >= b`, or False.
+     */
     function isGreaterThanOrEqual(Unsigned memory a, uint256 b) internal pure returns (bool) {
         return a.rawValue >= fromUnscaledUint(b).rawValue;
     }
 
-    /** @dev Whether `a` is greater than or equal to `b`. */
+    /**
+     * @notice Whether `a` is greater than or equal to `b`.
+     * @param a a uint256.
+     * @param b a FixedPoint.
+     * @return True if `a >= b`, or False.
+     */
     function isGreaterThanOrEqual(uint256 a, Unsigned memory b) internal pure returns (bool) {
         return fromUnscaledUint(a).rawValue >= b.rawValue;
     }
 
-    /** @dev Whether `a` is less than `b`. */
+    /**
+     * @notice Whether `a` is less than `b`.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return True if `a < b`, or False.
+     */
     function isLessThan(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue < b.rawValue;
     }
 
-    /** @dev Whether `a` is less than `b`. */
+    /**
+     * @notice Whether `a` is less than `b`.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return True if `a < b`, or False.
+     */
     function isLessThan(Unsigned memory a, uint256 b) internal pure returns (bool) {
         return a.rawValue < fromUnscaledUint(b).rawValue;
     }
 
-    /** @dev Whether `a` is less than `b`. */
+    /**
+     * @notice Whether `a` is less than `b`.
+     * @param a a uint256.
+     * @param b a FixedPoint.
+     * @return True if `a < b`, or False.
+     */
     function isLessThan(uint256 a, Unsigned memory b) internal pure returns (bool) {
         return fromUnscaledUint(a).rawValue < b.rawValue;
     }
 
-    /** @dev Whether `a` is less than or equal to `b`. */
+    /**
+     * @notice Whether `a` is less than or equal to `b`.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return True if `a <= b`, or False.
+     */
     function isLessThanOrEqual(Unsigned memory a, Unsigned memory b) internal pure returns (bool) {
         return a.rawValue <= b.rawValue;
     }
 
-    /** @dev Whether `a` is less than or equal to `b`. */
+    /**
+     * @notice Whether `a` is less than or equal to `b`.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return True if `a <= b`, or False.
+     */
     function isLessThanOrEqual(Unsigned memory a, uint256 b) internal pure returns (bool) {
         return a.rawValue <= fromUnscaledUint(b).rawValue;
     }
 
-    /** @dev Whether `a` is less than or equal to `b`. */
+    /**
+     * @notice Whether `a` is less than or equal to `b`.
+     * @param a a uint256.
+     * @param b a FixedPoint.
+     * @return True if `a <= b`, or False.
+     */
     function isLessThanOrEqual(uint256 a, Unsigned memory b) internal pure returns (bool) {
         return fromUnscaledUint(a).rawValue <= b.rawValue;
     }
 
-    /** @dev Returns the min of `a` and `b`. */
+    /**
+     * @notice The minimum of `a` and `b`.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return the minimum of `a` and `b`.
+     */
     function min(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return a.rawValue < b.rawValue ? a : b;
     }
 
-    /** @dev Returns the max of `a` and `b`. */
+    /**
+     * @notice The maximum of `a` and `b`.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return the maximum of `a` and `b`.
+     */
     function max(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return a.rawValue > b.rawValue ? a : b;
     }
 
-    /** @dev Adds two `Unsigned`s, reverting on overflow. */
+    /**
+     * @notice Adds two `Unsigned`s, reverting on overflow.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return the sum of `a` and `b`.
+     */
     function add(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return Unsigned(a.rawValue.add(b.rawValue));
     }
 
-    /** @dev Adds an `Unsigned` to an unscaled uint, reverting on overflow. */
+    /**
+     * @notice Adds an `Unsigned` to an unscaled uint, reverting on overflow.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return the sum of `a` and `b`.
+     */
     function add(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory) {
         return add(a, fromUnscaledUint(b));
     }
 
-    /** @dev Subtracts two `Unsigned`s, reverting on underflow. */
+    /**
+     * @notice Subtracts two `Unsigned`s, reverting on overflow.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return the difference of `a` and `b`.
+     */
     function sub(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return Unsigned(a.rawValue.sub(b.rawValue));
     }
 
-    /** @dev Subtracts an unscaled uint256 from an `Unsigned`, reverting on underflow. */
+    /**
+     * @notice Subtracts an unscaled uint256 from an `Unsigned`, reverting on overflow.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return the difference of `a` and `b`.
+     */
     function sub(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory) {
         return sub(a, fromUnscaledUint(b));
     }
 
-    /** @dev Subtracts an `Unsigned` from an unscaled uint, reverting on underflow. */
+    /**
+     * @notice Subtracts an `Unsigned` from an unscaled uint256, reverting on overflow.
+     * @param a a uint256.
+     * @param b a FixedPoint.
+     * @return the difference of `a` and `b`.
+     */
     function sub(uint256 a, Unsigned memory b) internal pure returns (Unsigned memory) {
         return sub(fromUnscaledUint(a), b);
     }
 
-    /** @dev Multiplies two `Unsigned`s, reverting on overflow. */
+    /**
+     * @notice Multiplies two `Unsigned`s, reverting on overflow.
+     * @dev This will "floor" the product.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return the product of `a` and `b`.
+     */
     function mul(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
         // 1. Max output for the represented number is ~10^41, otherwise an intermediate value overflows. 10^41 is
@@ -138,12 +253,23 @@ library FixedPoint {
         return Unsigned(a.rawValue.mul(b.rawValue) / FP_SCALING_FACTOR);
     }
 
-    /** @dev Multiplies an `Unsigned` by an unscaled uint, reverting on overflow. */
+    /**
+     * @notice Multiplies an `Unsigned` and an unscaled uint256, reverting on overflow.
+     * @dev This will "floor" the product.
+     * @param a a FixedPoint.
+     * @param b a uint256.
+     * @return the product of `a` and `b`.
+     */
     function mul(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory) {
         return Unsigned(a.rawValue.mul(b));
     }
 
-    /** @dev Multiplies two `Unsigned`s, reverting on overflow, and ceil's the resultant product rather than the default floor behavior. */
+    /**
+     * @notice Multiplies two `Unsigned`s and "ceil's" the product, reverting on overflow.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return the product of `a` and `b`.
+     */
     function mulCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         uint256 mulRaw = a.rawValue.mul(b.rawValue);
         uint256 mulFloor = mulRaw / FP_SCALING_FACTOR;
@@ -155,12 +281,24 @@ library FixedPoint {
         }
     }
 
+    /**
+     * @notice Multiplies an `Unsigned` and an unscaled uint256 and "ceil's" the product, reverting on overflow.
+     * @param a a FixedPoint.
+     * @param b a FixedPoint.
+     * @return the product of `a` and `b`.
+     */
     function mulCeil(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory) {
         // Since b is an int, there is no risk of truncation and we can just mul it normally
         return Unsigned(a.rawValue.mul(b));
     }
 
-    /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0. */
+    /**
+     * @notice Divides one `Unsigned` by an `Unsigned`, reverting on overflow or division by 0.
+     * @dev This will "floor" the quotient.
+     * @param a a FixedPoint numerator.
+     * @param b a FixedPoint denominator.
+     * @return the quotient of `a` divided by `b`.
+     */
     function div(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         // There are two caveats with this computation:
         // 1. Max value for the number dividend `a` represents is ~10^41, otherwise an intermediate value overflows.
@@ -170,12 +308,34 @@ library FixedPoint {
         return Unsigned(a.rawValue.mul(FP_SCALING_FACTOR).div(b.rawValue));
     }
 
-    /** @dev Divides with truncation an `Unsigned` by an unscaled uint, reverting on division by 0. */
+    /**
+     * @notice Divides one `Unsigned` by an unscaled uint256, reverting on overflow or division by 0.
+     * @dev This will "floor" the quotient.
+     * @param a a FixedPoint numerator.
+     * @param b a uint256 denominator.
+     * @return the quotient of `a` divided by `b`.
+     */
     function div(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory) {
         return Unsigned(a.rawValue.div(b));
     }
 
-    /** @dev Divides with truncation two `Unsigned`s, reverting on overflow or division by 0, and ceil's the resultant product rather than the default floor behavior. */
+    /**
+     * @notice Divides one unscaled uint256 by an `Unsigned`, reverting on overflow or division by 0.
+     * @dev This will "floor" the quotient.
+     * @param a a uint256 numerator.
+     * @param b a FixedPoint denominator.
+     * @return the quotient of `a` divided by `b`.
+     */
+    function div(uint256 a, Unsigned memory b) internal pure returns (Unsigned memory) {
+        return div(fromUnscaledUint(a), b);
+    }
+
+    /**
+     * @notice Divides one `Unsigned` by an `Unsigned` and "ceil's" the quotient, reverting on overflow or division by 0.
+     * @param a a FixedPoint numerator.
+     * @param b a FixedPoint denominator.
+     * @return the quotient of `a` divided by `b`.
+     */
     function divCeil(Unsigned memory a, Unsigned memory b) internal pure returns (Unsigned memory) {
         uint256 aScaled = a.rawValue.mul(FP_SCALING_FACTOR);
         uint256 divFloor = aScaled.div(b.rawValue);
@@ -187,6 +347,12 @@ library FixedPoint {
         }
     }
 
+    /**
+     * @notice Divides one `Unsigned` by an unscaled uint256 and "ceil's" the quotient, reverting on overflow or division by 0.
+     * @param a a FixedPoint numerator.
+     * @param b a uint256 denominator.
+     * @return the quotient of `a` divided by `b`.
+     */
     function divCeil(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory) {
         // Because it is possible that a quotient gets truncated, we can't just call "Unsigned(a.rawValue.div(b))"
         // similarly to mulCeil with a uint256 as the second parameter. Therefore we need to convert b into an Unsigned.
@@ -194,12 +360,13 @@ library FixedPoint {
         return divCeil(a, fromUnscaledUint(b));
     }
 
-    /** @dev Divides with truncation an unscaled uint256 by an `Unsigned`, reverting on overflow or division by 0. */
-    function div(uint256 a, Unsigned memory b) internal pure returns (Unsigned memory) {
-        return div(fromUnscaledUint(a), b);
-    }
-
-    /** @dev Raises an `Unsigned` to the power of an unscaled uint, reverting on overflow. E.g., `b=2` squares `a`. */
+    /**
+     * @notice Raises an `Unsigned` to the power of an unscaled uint, reverting on overflow. E.g., `b=2` squares `a`.
+     * @dev This will "floor" the result.
+     * @param a a FixedPoint numerator.
+     * @param b a uint256 denominator.
+     * @return `a` to the power of `b`.
+     */
     function pow(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory output) {
         output = fromUnscaledUint(1);
         for (uint256 i = 0; i < b; i = i.add(1)) {
