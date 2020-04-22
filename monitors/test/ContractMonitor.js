@@ -86,7 +86,7 @@ contract("ContractMonitor.js", function(accounts) {
     };
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
-    // logs the correct text based on interactions with the emp.
+    // logs the correct text based on interactions with the emp. Note that only `info` level messages are captured.
 
     const spyLogger = winston.createLogger({
       level: "info",
