@@ -195,16 +195,16 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     modifier onlyRegisteredContract() {
         if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress);
+            require(msg.sender == migratedAddress, "Caller must be migrated address");
         } else {
             Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
-            require(registry.isContractRegistered(msg.sender));
+            require(registry.isContractRegistered(msg.sender), "Called must be registered");
         }
         _;
     }
 
     modifier onlyIfNotMigrated() {
-        require(migratedAddress == address(0));
+        require(migratedAddress == address(0), "Only call this if not migrated");
         _;
     }
 
@@ -348,7 +348,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     // prettier-ignore
     function snapshotCurrentRound() external override onlyIfNotMigrated() {
         uint blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Can only snapshot in reveal phase");
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
 
         uint roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
