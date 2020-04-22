@@ -3,17 +3,17 @@ const truffleAssert = require("truffle-assertions");
 
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
 const { computeVoteHash } = require("../../../common/EncryptionHelper.js");
+const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("../../../common/SolidityTestUtils.js");
 
+// Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
-const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
-const BulkGovernorExecutor = artifacts.require("BulkGovernorExecutor");
 
 async function runExport() {
   console.log("Running UMIP-3 Upgrade vote simulator🔥");
-  let snapshot = await takeSnapshot();
+  let snapshot = await takeSnapshot(web3);
   snapshotId = snapshot["result"];
   console.log("Snapshotting starting state...", snapshotId);
 
@@ -22,11 +22,8 @@ async function runExport() {
    ***********************************/
 
   console.log("0. SETUP PHASE");
-  const votingToken = await VotingToken.deployed();
   const voting = await Voting.deployed();
   const governor = await Governor.deployed();
-
-  const bulkGovernorExecutor = await BulkGovernorExecutor.new();
 
   let currentTime = (await voting.getCurrentTime()).toNumber();
   let votingPhase = (await voting.getVotePhase()).toNumber();
@@ -58,9 +55,9 @@ async function runExport() {
   // forward by 2 days. Else if we are in the reveal phase (1) then we need to advance into the next round by
   // advancing by one day to take us into the next round.
   if (votingPhase == 0) {
-    await advanceBlockAndSetTime(currentTime + secondsPerDay * 2);
+    await advanceBlockAndSetTime(web3, currentTime + secondsPerDay * 2);
   } else {
-    await advanceBlockAndSetTime(currentTime + secondsPerDay);
+    await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
   }
   console.log(
     "⏱  Advancing time by one phase to enable voting by the DVM\nNew timestamp",
@@ -113,7 +110,7 @@ async function runExport() {
    *******************************************************/
   console.log("3. REVEALING FOUNDATION VOTE");
   currentTime = (await voting.getCurrentTime()).toNumber();
-  await advanceBlockAndSetTime(currentTime + secondsPerDay);
+  await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
 
   console.log(
     "⏱  Advancing time to move to next voting round to enable reveal\nNew timestamp:",
@@ -128,7 +125,7 @@ async function runExport() {
   console.log("Reveal Tx done!", revealTx.tx);
 
   currentTime = (await voting.getCurrentTime()).toNumber();
-  await advanceBlockAndSetTime(currentTime + secondsPerDay);
+  await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
 
   console.log(
     "⏱  Advancing time to move to next voting round to conclude vote\nNew timestamp:",
@@ -159,7 +156,7 @@ async function runExport() {
   console.log("5. GOVERNOR TRANSACTIONS SUCCESSFULLY EXECUTED🎉!");
 
   console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
-  await revertToSnapshot(snapshotId);
+  await revertToSnapshot(web3, snapshotId);
 }
 
 run = async function(callback) {
@@ -169,88 +166,9 @@ run = async function(callback) {
     console.error(err);
     // If the script crashes revert the state to the snapshotted state
     console.log("SCRIPT CRASHED...REVERTING STATE...", snapshotId);
-    await revertToSnapshot(snapshotId);
+    await revertToSnapshot(web3, snapshotId);
   }
   callback();
-};
-
-advanceBlockAndSetTime = time => {
-  return new Promise((resolve, reject) => {
-    web3.currentProvider.send(
-      {
-        jsonrpc: "2.0",
-        method: "evm_mine",
-        params: [time],
-        id: new Date().getTime()
-      },
-      (err, result) => {
-        if (err) {
-          return reject(err);
-        }
-        return resolve(result);
-      }
-    );
-  });
-};
-
-advanceTimeAndBlock = async time => {
-  // capture current time
-  let block = await web3.eth.getBlock("latest");
-  let forwardTime = block["timestamp"] + time;
-
-  return new Promise((resolve, reject) => {
-    web3.currentProvider.send(
-      {
-        jsonrpc: "2.0",
-        method: "evm_mine",
-        params: [forwardTime],
-        id: new Date().getTime()
-      },
-      (err, result) => {
-        if (err) {
-          return reject(err);
-        }
-        return resolve(result);
-      }
-    );
-  });
-};
-
-takeSnapshot = () => {
-  return new Promise((resolve, reject) => {
-    web3.currentProvider.send(
-      {
-        jsonrpc: "2.0",
-        method: "evm_snapshot",
-        id: new Date().getTime()
-      },
-      (err, snapshotId) => {
-        if (err) {
-          return reject(err);
-        }
-        return resolve(snapshotId);
-      }
-    );
-  });
-};
-
-revertToSnapshot = id => {
-  return new Promise((resolve, reject) => {
-    web3.currentProvider.send(
-      {
-        jsonrpc: "2.0",
-        method: "evm_revert",
-        params: [id],
-        id: new Date().getTime()
-      },
-      (err, result) => {
-        if (err) {
-          return reject(err);
-        }
-        return resolve(result);
-      }
-    );
-  });
 };
 
 run.runExport = runExport;
