@@ -40,7 +40,7 @@ abstract contract Withdrawable is MultiRole {
      * @notice Internal method that allows derived contracts to create a role for withdrawal.
      * @dev Either this method or `_setWithdrawRole` must be called by the derived class for this contract to function
      * properly.
-     * @param roleId ID corresponding to role whose members can withdraw.
+     * @param newRoleId ID corresponding to role whose members can withdraw.
      * @param managingRoleId ID corresponding to managing role who can modify the withdrawable role's membership.
      * @param withdrawerAddress new manager of withdrawable role.
      */
@@ -53,7 +53,7 @@ abstract contract Withdrawable is MultiRole {
      * @notice Internal method that allows derived contracts to choose the role for withdrawal.
      * @dev The role `setRoleId` must exist. Either this method or `_createWithdrawRole` must be
      * called by the derived class for this contract to function properly.
-     * @param roleId ID corresponding to role whose members can withdraw.
+     * @param setRoleId ID corresponding to role whose members can withdraw.
      */
     function _setWithdrawRole(uint256 setRoleId) internal onlyValidRole(setRoleId) {
         roleId = setRoleId;
