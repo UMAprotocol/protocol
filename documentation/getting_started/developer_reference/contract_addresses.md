@@ -19,6 +19,4 @@ These contracts are used by the DVM to keep track of which financial contracts d
 You can also find a list of supported deployments of the priceless synthetic token contract template on various networks. 
 
 ## Kovan (network id: 42)
-
-* Synthetic gold tokens expiring Friday, May 1, 2020 12:00:00 AM GMT: [0x16a4979e29c5cd4d92168d8e88c69ffa3eb11fbf](https://kovan.etherscan.io/token/0x16a4979e29c5cd4d92168d8e88c69ffa3eb11fbf)
-* Synthetic gold tokens expiring Monday, June 1, 2020 12:00:00 AM GMT: [0xce7bc313c38f0f79e4df43cb5500c22134e139c5](https://kovan.etherscan.io/token/0xce7bc313c38f0f79e4df43cb5500c22134e139c5)
+* [Kovan Synthetic Tokens](https://docs.google.com/spreadsheets/d/1gLjt58hFh-l5SDhoRyz4t8oQCYx74tYRypMmIuYwJ1c/edit?usp=sharing)
