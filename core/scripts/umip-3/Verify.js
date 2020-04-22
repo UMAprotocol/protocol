@@ -7,16 +7,9 @@ const Store = artifacts.require("Store");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
-const VotingToken = artifacts.require("VotingToken");
-const Umip3Upgrader = artifacts.require("Umip3Upgrader");
 
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { interfaceName } = require("../../utils/Constants.js");
 
-const truffleAssert = require("truffle-assertions");
-
-const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
-const zeroAddress = "0x0000000000000000000000000000000000000000";
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const ownerRole = "0";
@@ -33,10 +26,6 @@ const upgradeAddresses = {
 };
 
 async function runExport() {
-  const finder = await Finder.deployed();
-  const oldVoting = await Voting.deployed();
-  console.log(oldVoting.address);
-
   console.log("Running UMIP-3 Upgrade Verifier🔥");
 
   /** ************************************
@@ -121,30 +110,30 @@ compiledByteCodeMatchesDeployed = async contract => {
 finderMatchesDeployment = async (contract, interfaceName) => {
   const finder = await Finder.deployed();
   const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName);
-  const finderImplementationAddress = await finder.getImplementationAddress(interfaceNameBytes32);
-  const upgradeDeployedAddress = upgradeAddresses[contract.contractName];
-  assert.equal(finderImplementationAddress.toLowerCase(), upgradeDeployedAddress.toLowerCase());
+  const finderSetAddress = await finder.getImplementationAddress(interfaceNameBytes32);
+  const deployedAddress = upgradeAddresses[contract.contractName];
+  assert.equal(web3.utils.toChecksumAddress(finderSetAddress), web3.utils.toChecksumAddress(deployedAddress));
 };
 
 // Ensure that a given contract is owned by the NewGovernor
 contractOwnedByNewGovernor = async contract => {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const currentOwner = await contractInstance.owner();
-  assert.equal(currentOwner.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
+  assert.equal(web3.utils.toChecksumAddress(currentOwner), web3.utils.toChecksumAddress(upgradeAddresses.Governor));
 };
 
 // Ensure that a given contract's multirole for `owner` is set to the new GovGovernor
 newGovernorHasOwnerRole = async contract => {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
-  const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
-  assert.equal(exclusiveRoleHolder.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
+  const roleHolder = await contractInstance.getMember(ownerRole);
+  assert.equal(web3.utils.toChecksumAddress(roleHolder), web3.utils.toChecksumAddress(upgradeAddresses.Governor));
 };
 
 // Ensure that a given contract's multirole for `owner` is set to the foundation multisig wallet
 contractOwnerRoleByFoundation = async contract => {
   const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
   const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
-  assert.equal(exclusiveRoleHolder.toLowerCase(), foundationWallet.toLowerCase());
+  assert.equal(web3.utils.toChecksumAddress(exclusiveRoleHolder), web3.utils.toChecksumAddress(foundationWallet));
 };
 
 run = async function(callback) {
