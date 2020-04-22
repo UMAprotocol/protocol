@@ -1,8 +1,6 @@
 const assert = require("assert").strict;
-const truffleAssert = require("truffle-assertions");
 
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
-const { computeVoteHash } = require("../../../common/EncryptionHelper.js");
 const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("../../../common/SolidityTestUtils.js");
 
 // Address which holds a lot of UMA tokens to mock a majority vote

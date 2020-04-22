@@ -9,9 +9,6 @@ const VotingToken = artifacts.require("VotingToken");
 const Umip3Upgrader = artifacts.require("Umip3Upgrader");
 
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
-const { interfaceName } = require("../../utils/Constants.js");
-
-const truffleAssert = require("truffle-assertions");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
