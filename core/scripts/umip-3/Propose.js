@@ -157,7 +157,6 @@ async function runExport() {
   // Because the transaction ordering prevents the Finder permissioning changes from being executed by the Governor
   // direcly, an upgrader contract is used to temporarily hold the Finder ownership permissions and synchronously
   // move them.
-  console.log("Deploying the Umip3Upgrader contract.");
 
   const umip3Upgrader = await Umip3Upgrader.new(
     governor.address,
