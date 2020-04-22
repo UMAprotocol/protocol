@@ -42,6 +42,12 @@ finderMatchesDeployment = async (contract, interfaceName) => {
   assert.equal(finderImplementationAddress.toLowerCase(), upgradeDeployedAddress.toLowerCase());
 };
 
+contractOwnedByNewGovernor = async contract => {
+  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
+  const currentOwner = await contractInstance.owner();
+  assert.equal(currentOwner.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
+};
+
 async function runExport() {
   const finder = await Finder.deployed();
   const oldVoting = await Voting.deployed();
@@ -81,9 +87,17 @@ async function runExport() {
 
   console.log("✅ All registered interfaces match!");
 
-  /** ********************************************
-   * 2) Validating migrated contract permissions *
-   ***********************************************/
+  /** ******************************************
+   * 3) Validating migrated contract ownership *
+   *********************************************/
+
+  console.log(" 3. Validating deployed contracts are owned by new governor...");
+
+  await contractOwnedByNewGovernor(FinancialContractsAdmin);
+  await contractOwnedByNewGovernor(IdentifierWhitelist);
+  await contractOwnedByNewGovernor(Voting);
+
+  console.log("✅ All contract correctly transferred ownership!");
 }
 
 run = async function(callback) {
