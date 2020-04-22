@@ -90,7 +90,7 @@ contract DesignatedVoting is Withdrawable {
      * @dev Rewards are added to the tokens already held by this contract.
      * @param roundId defines the round from which voting rewards will be retrieved from.
      * @param toRetrieve an array of PendingRequests which rewards are retrieved from.
-     * @return totalRewardToIssue total amount of rewards returned to the voter.
+     * @return amount of rewards that the user should receive.
      */
     function retrieveRewards(uint256 roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public

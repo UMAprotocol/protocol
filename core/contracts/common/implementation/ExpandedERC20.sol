@@ -37,6 +37,9 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
 
     /**
      * @dev Mints `value` tokens to `recipient`, returning true on success.
+     * @param recipient address to mint to.
+     * @param value amount of tokens to mint.
+     * @return True if the mint succeeded, or False.
      */
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
@@ -48,6 +51,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
 
     /**
      * @dev Burns `value` tokens owned by `msg.sender`.
+     * @param value amount of tokens to burn.
      */
 
     // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword

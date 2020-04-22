@@ -1,7 +1,9 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { interfaceName } = require("../../utils/Constants.js");
 const { computeVoteHash } = require("../../../common/EncryptionHelper");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
@@ -12,6 +14,8 @@ const TestnetERC20 = artifacts.require("TestnetERC20");
 const ReentrancyChecker = artifacts.require("ReentrancyChecker");
 const GovernorTest = artifacts.require("GovernorTest");
 const Timer = artifacts.require("Timer");
+const Registry = artifacts.require("Registry");
+const Finder = artifacts.require("Finder");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, randomHex, utf8ToHex } = web3.utils;
@@ -702,6 +706,103 @@ contract("Governor", function(accounts) {
 
     // Since we're using the reentrancy checker, this transaction should FAIL if the reentrancy is successful.
     await governor.executeProposal(id, 0);
+  });
+
+  it("Starting id > 0", async function() {
+    // Set arbitrary starting id.
+    const startingId = 910284;
+
+    // Create new governor contract.
+    const newGovernor = await Governor.new(Finder.address, startingId, Timer.address, { from: proposer });
+
+    // Approve the new governor in the Registry.
+    const registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, accounts[0]);
+    await registry.registerContract([], newGovernor.address);
+    await registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, accounts[0]);
+    const identifierWhitelist = await IdentifierWhitelist.new();
+    await identifierWhitelist.transferOwnership(newGovernor.address);
+
+    const finder = await Finder.deployed();
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+
+    // The number of proposals should be equal to the starting id.
+    assert.equal((await newGovernor.numProposals()).toString(), startingId.toString());
+
+    const proposal0 = await newGovernor.getProposal(0);
+    const proposalRandom = await newGovernor.getProposal(123456);
+    const proposalLast = await newGovernor.getProposal(startingId - 1);
+
+    // Ensure that all previous proposals have no transaction data.
+    assert.equal(proposal0.transactions.length, 0);
+    assert.equal(proposalRandom.transactions.length, 0);
+    assert.equal(proposalLast.transactions.length, 0);
+
+    // Check that all roles are filled by the deployer.
+    assert.equal(await newGovernor.getMember(0), proposer);
+    assert.equal(await newGovernor.getMember(1), proposer);
+
+    // Issue some test tokens to the governor address.
+    await testToken.allocateTo(newGovernor.address, toWei("1"));
+
+    // Construct the transaction data to send the newly minted tokens to proposer.
+    const txnData = constructTransferTransaction(proposer, toWei("1"));
+
+    await newGovernor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
+
+    // Check that the proposal is correct.
+    const proposal = await newGovernor.getProposal(startingId);
+    assert.equal(proposal.transactions.length, 1);
+    assert.equal(proposal.transactions[0].to, testToken.address);
+    assert.equal(proposal.transactions[0].value.toString(), "0");
+    assert.equal(proposal.transactions[0].data, txnData);
+    assert.equal(proposal.requestTime.toString(), (await newGovernor.getCurrentTime()).toString());
+
+    await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Check to make sure that the tokens get transferred at the time of execution.
+    const startingBalance = await testToken.balanceOf(proposer);
+    await newGovernor.executeProposal(startingId, 0);
+    assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
+
+    // Reset IdentifierWhitelist implementation as to not interfere with other tests.
+    await finder.changeImplementationAddress(
+      utf8ToHex(interfaceName.IdentifierWhitelist),
+      supportedIdentifiers.address
+    );
+  });
+
+  it("startingId size", async function() {
+    // Starting id of 10^18 is the upper limit -- that should be the largest that will work.
+    await Governor.new(Finder.address, toWei("1"), Timer.address, { from: proposer });
+
+    // Anything above 10^18 is rejected.
+    assert(await didContractThrow(Governor.new(Finder.address, toWei("1.1"), Timer.address, { from: proposer })));
   });
 
   // _uintToUtf8() tests.
