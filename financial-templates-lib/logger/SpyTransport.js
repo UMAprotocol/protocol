@@ -1,4 +1,4 @@
-// This transport enables unit tests to validate values passed to the winston using a Sinon Spy.
+// This transport enables unit tests to validate values passed Winston using a Sinon Spy.
 
 const Transport = require("winston-transport");
 
