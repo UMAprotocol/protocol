@@ -31,38 +31,6 @@ const upgradeAddresses = {
   Governor: "0x878cfedb234c226ddefd33657937af74c17628bf"
 };
 
-compiledByteCodeMatchesDeployed = async contract => {
-  const onChainByteCode = await web3.eth.getCode(upgradeAddresses[contract.contractName]);
-  const compiledByteCode = contract.toJSON().deployedBytecode;
-  assert.equal(onChainByteCode, compiledByteCode);
-};
-
-finderMatchesDeployment = async (contract, interfaceName) => {
-  const finder = await Finder.deployed();
-  const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName);
-  const finderImplementationAddress = await finder.getImplementationAddress(interfaceNameBytes32);
-  const upgradeDeployedAddress = upgradeAddresses[contract.contractName];
-  assert.equal(finderImplementationAddress.toLowerCase(), upgradeDeployedAddress.toLowerCase());
-};
-
-contractOwnedByNewGovernor = async contract => {
-  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
-  const currentOwner = await contractInstance.owner();
-  assert.equal(currentOwner.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
-};
-
-newGovernorHasOwnerRole = async contract => {
-  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
-  const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
-  assert.equal(exclusiveRoleHolder.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
-};
-
-contractOwnedByFoundation = async contract => {
-  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
-  const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
-  assert.equal(exclusiveRoleHolder.toLowerCase(), foundationWallet.toLowerCase());
-};
-
 async function runExport() {
   const finder = await Finder.deployed();
   const oldVoting = await Voting.deployed();
@@ -132,6 +100,38 @@ async function runExport() {
 
   console.log("✅ All contract correctly transferred roles!");
 }
+
+compiledByteCodeMatchesDeployed = async contract => {
+  const onChainByteCode = await web3.eth.getCode(upgradeAddresses[contract.contractName]);
+  const compiledByteCode = contract.toJSON().deployedBytecode;
+  assert.equal(onChainByteCode, compiledByteCode);
+};
+
+finderMatchesDeployment = async (contract, interfaceName) => {
+  const finder = await Finder.deployed();
+  const interfaceNameBytes32 = web3.utils.utf8ToHex(interfaceName);
+  const finderImplementationAddress = await finder.getImplementationAddress(interfaceNameBytes32);
+  const upgradeDeployedAddress = upgradeAddresses[contract.contractName];
+  assert.equal(finderImplementationAddress.toLowerCase(), upgradeDeployedAddress.toLowerCase());
+};
+
+contractOwnedByNewGovernor = async contract => {
+  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
+  const currentOwner = await contractInstance.owner();
+  assert.equal(currentOwner.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
+};
+
+newGovernorHasOwnerRole = async contract => {
+  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
+  const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
+  assert.equal(exclusiveRoleHolder.toLowerCase(), upgradeAddresses.Governor.toLowerCase());
+};
+
+contractOwnedByFoundation = async contract => {
+  const contractInstance = await contract.at(upgradeAddresses[contract.contractName]);
+  const exclusiveRoleHolder = await contractInstance.getMember(ownerRole);
+  assert.equal(exclusiveRoleHolder.toLowerCase(), foundationWallet.toLowerCase());
+};
 
 run = async function(callback) {
   try {
