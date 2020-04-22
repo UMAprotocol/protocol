@@ -19,7 +19,7 @@ module.exports = async function(deployer, network, accounts) {
     Store,
     initialFixedOracleFeePerSecondPerPfc,
     initialWeeklyDelayFeePerSecondPerPfc,
-    Timer.address,
+    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 
