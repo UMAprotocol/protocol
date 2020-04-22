@@ -23,7 +23,7 @@ contract TestnetERC20 is ERC20 {
 
     /**
      * @notice Mints value tokens to the owner address.
-     * @param owner the address to mint to.
+     * @param ownerAddress the address to mint to.
      * @param value the amount of tokens to mint.
      */
     function allocateTo(address ownerAddress, uint256 value) external {
