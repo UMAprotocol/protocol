@@ -66,7 +66,8 @@ contract Governor is MultiRole, Testable {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
         _createExclusiveRole(uint(Roles.Proposer), uint(Roles.Owner), msg.sender);
 
-        // Ensure the startingId is not set unreasonably high to avoid overwriting other storage slots.
+        // Ensure the startingId is not set unreasonably high to avoid it being set such that new proposals overwrite
+        // other storage slots in the contract.
         uint maxStartingId = 10**18;
         require(_startingId <= maxStartingId, "Cannot set startingId larger than 10^18");
 
