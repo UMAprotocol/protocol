@@ -1,4 +1,6 @@
 * getting_started
+* developer_reference
+** contract_addresses.md
 ** bug_bounty.md
 * synthetic_tokens
 ** explainer.md
