@@ -44,7 +44,7 @@ abstract contract VotingInterface {
      * Commits can be changed.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
-     * @param hash keccak256 hash of the price you want to vote for and your random salt.
+     * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
     function commitVote(bytes32 identifier, uint256 time, bytes32 hash) external virtual;
 
@@ -66,8 +66,11 @@ abstract contract VotingInterface {
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price` and `salt` must match the latest `hash` that `commitVote()` was called with.
-     * Only the committer can reveal their vote.
+     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * that `commitVote()` was called with. Only the committer can reveal their vote.
+     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
+     * voters should never reuse salts. If someone else is able to predict the voted price or knows that a price will be reused, then
+     * they can easily reveal the vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price is being voted on.
      * @param price voted on during the commit phase.
