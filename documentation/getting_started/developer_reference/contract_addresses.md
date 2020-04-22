@@ -2,10 +2,8 @@
 Below is where you can find smart contract addresses for UMA-supported mainnet and testnet deployments of the DVM. 
 
 ## UMA Token Holders
-If you are a UMA token holder, you will probably only interact with `Voting`, `Finder`, and `DesignatedVotingFactory`. 
+If you are a UMA token holder, you will probably only interact with `Voting`, `Finder`, `DesignatedVotingFactory`, and `Governor`. 
 These are the relevant contracts used to vote on price requests and UMIPs. 
-
-You may also be interested in the Governor contract to read proposals to upgrade the UMA oracle. 
 
 ## Financial Contract Developers
 
