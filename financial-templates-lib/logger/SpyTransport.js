@@ -9,7 +9,7 @@ class SpyTransport extends Transport {
   }
 
   async log(info, callback) {
-    // add the info sent to the winston transport to the spy. this enables unit tests to validate what is passed to winston
+    // Add info sent to the winston transport to the spy. This enables unit tests to validate what is passed to winston.
     this.spy(info);
     callback();
   }
