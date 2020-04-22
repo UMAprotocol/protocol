@@ -28,6 +28,8 @@ abstract contract Withdrawable is MultiRole {
 
     /**
      * @notice Withdraws ERC20 tokens from the contract.
+     * @param erc20Address ERC20 token to withdraw.
+     * @param amount amount of tokens to withdraw.
      */
     function withdrawErc20(address erc20Address, uint256 amount) external onlyRoleHolder(_roleId) {
         IERC20 erc20 = IERC20(erc20Address);
@@ -38,6 +40,9 @@ abstract contract Withdrawable is MultiRole {
      * @notice Internal method that allows derived contracts to create a role for withdrawal.
      * @dev Either this method or `setWithdrawRole` must be called by the derived class for this contract to function
      * properly.
+     * @param roleId ID corresponding to role whose members can withdraw.
+     * @param managingRoleId ID corresponding to managing role who can modify the withdrawable role's membership.
+     * @param withdrawerAddress new manager of withdrawable role.
      */
     function createWithdrawRole(uint256 roleId, uint256 managingRoleId, address withdrawerAddress) internal {
         _roleId = roleId;
@@ -48,6 +53,7 @@ abstract contract Withdrawable is MultiRole {
      * @notice Internal method that allows derived contracts to choose the role for withdrawal.
      * @dev The role `roleId` must exist. Either this method or `createWithdrawRole` must be
      * called by the derived class for this contract to function properly.
+     * @param roleId ID corresponding to role whose members can withdraw.
      */
     function setWithdrawRole(uint256 roleId) internal onlyValidRole(roleId) {
         _roleId = roleId;
