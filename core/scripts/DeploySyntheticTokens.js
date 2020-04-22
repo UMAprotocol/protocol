@@ -6,11 +6,14 @@ const fs = require("fs");
 const { toBN, toWei } = web3.utils;
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const Registry = artifacts.require("Registry");
 
 const collateral = {
   "Kovan DAI": "0x08ae34860fbfe73e223596e65663683973c72dd3"
+  // "Kovan DAI": "0x4c4231AB3829BaF0B5ce474e446BC8df46216edD"
 };
 
 const expiration = {
@@ -67,6 +70,10 @@ const actualDeploy = async inputCsv => {
   const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
   const identifierWhitelist = await IdentifierWhitelist.deployed();
 
+  // Add EMP as a registered financial contract template factory.
+  const registry = await Registry.deployed();
+  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address);
+
   const data = fs.readFileSync(inputCsv).toString();
   const lines = data.split("\n");
   for (const line of lines) {
@@ -79,6 +86,12 @@ const actualDeploy = async inputCsv => {
     const priceFeedIdentifier = web3.utils.utf8ToHex(params.identifier);
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
 
+    // Registry the collateral currency.
+    const collateralTokenWhitelist = await AddressWhitelist.at(
+      await expiringMultiPartyCreator.collateralTokenWhitelist()
+    );
+    await collateralTokenWhitelist.addToWhitelist(params.collateralCurrency);
+
     // Create a new EMP.
     const constructorParams = {
       expirationTimestamp: params.expirationTimestamp,
@@ -90,12 +103,12 @@ const actualDeploy = async inputCsv => {
       disputeBondPct: percentToFixedPoint(params.disputeBond),
       sponsorDisputeRewardPct: percentToFixedPoint(params.sponsorDisputeReward),
       disputerDisputeRewardPct: percentToFixedPoint(params.disputeReward),
-      // minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
-      // timerAddress: params.timerAddress
+      minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
+      timerAddress: params.timerAddress
     };
     console.log("PARAM:", constructorParams);
     const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
-    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
+    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams);
     console.log(params.tokenSymbol, address);
   }
 };
