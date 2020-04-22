@@ -361,11 +361,11 @@ library FixedPoint {
     }
 
     /**
-     * @notice Raises an `Unsigned` to the power of an unscaled uint, reverting on overflow. E.g., `b=2` squares `a`.
+     * @notice Raises an `Unsigned` to the power of an unscaled uint256, reverting on overflow. E.g., `b=2` squares `a`.
      * @dev This will "floor" the result.
      * @param a a FixedPoint numerator.
      * @param b a uint256 denominator.
-     * @return `a` to the power of `b`.
+     * @return output is `a` to the power of `b`.
      */
     function pow(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory output) {
         output = fromUnscaledUint(1);
