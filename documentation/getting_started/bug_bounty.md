@@ -32,9 +32,8 @@ Our [documentation site](https://docs.umaproject.org/uma/index.html) has an exte
 ### In scope:
 
 - DVM contracts [link](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/oracle/implementation)
-  <!-- TODO: add token contracts when ready
-- Multi-sponsor token contracts [link](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/financial-templates/implementation)
-  -->
+
+<!-- TODO: ADD WHEN READY - Multi-sponsor token contracts [link](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/financial-templates/implementation) -->
 
 ### Examples of what’s in scope:
 
