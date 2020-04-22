@@ -14,10 +14,10 @@ contract Timer {
     /**
      * @notice Sets the current time.
      * @dev Will revert if not running in test mode.
-     * @param _time timestamp to set current Tesable time to.
+     * @param time timestamp to set current Tesable time to.
      */
-    function setCurrentTime(uint _time) external {
-        currentTime = _time;
+    function setCurrentTime(uint time) external {
+        currentTime = time;
     }
 
     /**

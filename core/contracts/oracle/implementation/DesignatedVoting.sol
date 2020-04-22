@@ -36,7 +36,7 @@ contract DesignatedVoting is Withdrawable {
     constructor(address finderAddress, address ownerAddress, address voterAddress) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), voterAddress);
-        setWithdrawRole(uint(Roles.Owner));
+        _setWithdrawRole(uint(Roles.Owner));
 
         finder = FinderInterface(finderAddress);
     }
