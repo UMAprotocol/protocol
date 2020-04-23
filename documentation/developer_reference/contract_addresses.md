@@ -1,4 +1,5 @@
 # Deployed DVM Contracts
+
 Below is where you can find smart contract addresses for UMA-supported mainnet and testnet deployments of the DVM. 
 
 ## UMA Token Holders
@@ -16,6 +17,7 @@ These contracts are used by the DVM to keep track of which financial contracts d
 * [Kovan (network id: 42)](https://github.com/UMAprotocol/protocol/blob/master/core/networks/42.json)
 
 # Deployed Synthetic Tokens
+
 You can also find a list of supported deployments of the priceless synthetic token contract template on various networks. 
 
 ## Kovan (network id: 42)
