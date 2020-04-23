@@ -19,6 +19,7 @@ const Governor = artifacts.require("Governor");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const TokenFactory = artifacts.require("TokenFactory");
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
+const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 
 const { interfaceName } = require("../../utils/Constants.js");
 
@@ -51,7 +52,9 @@ async function runExport() {
   const secondsPerDay = 86400;
   const accounts = await web3.eth.getAccounts();
 
-  // 1. Load contract infrastructure
+  /** ********************************
+   * 1. Load contract infrastructure *
+   ***********************************/
   console.log("1. LOADING DEPLOYED CONTRACTS");
 
   collateralToken = await Token.at(publicNetworks[1].daiAddress);
@@ -66,12 +69,14 @@ async function runExport() {
   const voting = await Voting.at(upgradeAddresses.Voting);
   console.log("voting loaded \t\t\t", voting.address);
 
-  const identiferWhitelist = await IdentifierWhitelist.at(upgradeAddresses.IdentifierWhitelist);
-  console.log("identiferWhitelist loaded \t", identiferWhitelist.address);
+  const identifierWhitelist = await IdentifierWhitelist.at(upgradeAddresses.IdentifierWhitelist);
+  console.log("identifierWhitelist loaded \t", identifierWhitelist.address);
 
   const governor = await Governor.at(upgradeAddresses.Governor);
 
-  // 2. Deploy EMP infrastructure
+  /** *****************************
+   * 2. Deploy EMP infrastructure *
+   ********************************/
   console.log("2. DEPLOYING EMP INFRASTRUCTURE");
 
   const tokenFactory = await TokenFactory.new();
@@ -88,15 +93,27 @@ async function runExport() {
   );
   console.log("emp creator deployed \t\t", expiringMultiPartyCreator.address);
 
-  // 3. Create vote to register the EMP creator within the registry
+  /** ***************************************************************
+   * 3. Create vote to register the EMP creator within the registry *
+   ******************************************************************/
   console.log("3. CREATING DVM REGISTRATION PROPOSAL");
 
+  // Transaction to give the EMP creator appropriate roles to create new contracts
   const empCreatorRegistrationTx = registry.contract.methods
     .addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address)
     .encodeABI();
 
+  // Register the EMP's identifer within the identifer whitelist
+  const identiferRegistrationTx = identifierWhitelist.contract.methods
+    .addSupportedIdentifier(web3.utils.utf8ToHex("ETHBTC"))
+    .encodeABI();
+
+  // We can include both transactions at the same time so the DVM only needs to vote once
   const additionProposalTx = await governor.propose(
-    [{ to: registry.address, value: 0, data: empCreatorRegistrationTx }],
+    [
+      { to: registry.address, value: 0, data: empCreatorRegistrationTx },
+      { to: identifierWhitelist.address, value: 0, data: identiferRegistrationTx }
+    ],
     {
       from: proposerWallet
     }
@@ -104,7 +121,9 @@ async function runExport() {
 
   console.log("Adding EMP factory to registry tx:", additionProposalTx.tx);
 
-  // 4. There should now be a vote within the DVM that can be voted on
+  /** ******************************************************************
+   * 4. There should now be a vote within the DVM that can be voted on *
+   *********************************************************************/
   console.log("4. VALIDATING PROPOSAL");
 
   assert.equal((await governor.numProposals()).toNumber(), 1); // there should be 1 proposal
@@ -123,7 +142,7 @@ async function runExport() {
   );
 
   /** ****************************************************
-   * 1) Advance Ganache block time to move voting round *
+   * 5. Advance Ganache block time to move voting round *
    ******************************************************/
   console.log("5. ADVANCING TIME TO VOTE ON PROPOSAL");
 
@@ -165,6 +184,9 @@ async function runExport() {
     identifier
   });
 
+  /** *******************************************************************************
+   * 6) Submit a commitment to register the emp factory and identifer with the DVM  *
+   **********************************************************************************/
   console.log("6. COMMIT VOTE FROM FOUNDATION WALLET\nVote information:");
   console.table({
     price: price,
@@ -181,6 +203,9 @@ async function runExport() {
   const VoteTx = await voting.commitVote(identifier, time, voteHash, { from: foundationWallet });
   console.log("Voting Tx done!", VoteTx.tx);
 
+  /** *****************************
+   * 7) Revealing foundation vote *
+   ********************************/
   console.log("7. REVEALING FOUNDATION VOTE");
   currentTime = (await voting.getCurrentTime()).toNumber();
   await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
@@ -211,10 +236,9 @@ async function runExport() {
 
   assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
 
-  /** *******************************************************************
-   * 4) Execute proposal submitted to governor now that voting is done *
-   **********************************************************************/
-
+  /** ******************************************************************
+   * 8) Execute proposal submitted to governor now that voting is done *
+   *********************************************************************/
   console.log("8. EXECUTING GOVERNOR PROPOSALS");
   console.log((await governor.numProposals()).toNumber());
   const proposalId = 0; // first and only proposal in voting.sol
@@ -227,39 +251,56 @@ async function runExport() {
     console.log("Transaction", i, "submitted! tx", tx.tx);
   }
 
-  console.log("9. GOVERNOR TRANSACTION SUCCESSFULLY EXECUTED...EMP FACTORY REGISTERED🎉!");
+  console.log("GOVERNOR TRANSACTION SUCCESSFULLY EXECUTED🔥EMP FACTORY REGISTERED!");
 
-  //   expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
-  //   await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
-  //     from: contractCreator
-  //   });
+  /** ***************************************
+   * 9) Deploy the EMP from the EMP factory *
+   ******************************************/
+  console.log("9. DEPLOYING NEW EMP FROM FACTORY");
 
-  //   // Whitelist collateral currency
-  //   collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
-  //   await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
+  await addressWhitelist.addToWhitelist(collateralToken.address);
 
-  //   constructorParams = {
-  //     expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toString(),
-  //     collateralAddress: collateralToken.address,
-  //     priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
-  //     syntheticName: "Test UMA Token",
-  //     syntheticSymbol: "UMATEST",
-  //     collateralRequirement: { rawValue: toWei("1.5") },
-  //     disputeBondPct: { rawValue: toWei("0.1") },
-  //     sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-  //     disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-  //     minSponsorTokens: { rawValue: toWei("1") },
-  //     timerAddress: Timer.address
-  //   };
+  constructorParams = {
+    expirationTimestamp: "1588291200", // one week contract
+    collateralAddress: collateralToken.address,
+    priceFeedIdentifier: web3.utils.utf8ToHex("ETHBTC"),
+    syntheticName: "Test UMA Token",
+    syntheticSymbol: "ETHBTCSynth",
+    collateralRequirement: { rawValue: web3.utils.toWei("1.5") },
+    disputeBondPct: { rawValue: web3.utils.toWei("0.1") },
+    sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") },
+    disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") },
+    minSponsorTokens: { rawValue: web3.utils.toWei("1") },
+    timerAddress: zeroAddress
+  };
 
-  //   identifierWhitelist = await IdentifierWhitelist.deployed();
-  //   await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-  //     from: contractCreator
-  //   });
+  const empAddress = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
+  await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams);
 
-  //   await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-  //     from: contractCreator
-  //   });
+  console.log("EMP DEPLOYED🔥\t", empAddress);
+
+  /** ******************************
+   * 10) Validating EMP deployment *
+   *********************************/
+  console.log("10. VALIDATING EMP DEPLOYMENT");
+
+  // Instantiate an instance of the expiringMultiParty and check a few constants that should hold true.
+  let expiringMultiParty = await ExpiringMultiParty.at(empAddress);
+
+  assert.equal((await expiringMultiParty.expirationTimestamp()).toString(), constructorParams.expirationTimestamp);
+  // Liquidation liveness should be strictly set by EMP creator.
+  const enforcedLiquidationLiveness = await expiringMultiPartyCreator.STRICT_LIQUIDATION_LIVENESS();
+  assert.equal((await expiringMultiParty.liquidationLiveness()).toString(), enforcedLiquidationLiveness.toString());
+  // Withdrawal liveness should be strictly set by EMP creator.
+  const enforcedWithdrawalLiveness = await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS();
+  assert.equal((await expiringMultiParty.withdrawalLiveness()).toString(), enforcedWithdrawalLiveness.toString());
+  assert.equal(
+    web3.utils.hexToUtf8(await expiringMultiParty.priceIdentifer()),
+    web3.utils.hexToUtf8(constructorParams.priceFeedIdentifier)
+  );
+
+  console.log("EMP create tx done!", empAddress);
+
   console.log("...REVERTING STATE...", snapshotId);
   await revertToSnapshot(web3, snapshotId);
 }
