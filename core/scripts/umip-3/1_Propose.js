@@ -72,8 +72,8 @@ async function runExport() {
 
   console.log("Deploying new Store contract.");
 
-  const regularFee = { rawValue: web3.utils.toWei("0.2", "ether") };
-  const lateFee = { rawValue: web3.utils.toWei("0.1", "ether") };
+  const regularFee = { rawValue: "0" };
+  const lateFee = { rawValue: "0" };
 
   const store = await Store.new(regularFee, lateFee, zeroAddress, { from: proposerWallet });
 
