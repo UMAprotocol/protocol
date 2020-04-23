@@ -10,6 +10,8 @@ const Umip3Upgrader = artifacts.require("Umip3Upgrader");
 
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 
+const tdr = require("truffle-deploy-registry");
+
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -101,7 +103,9 @@ async function runExport() {
 
   console.log("Deploying new Governor contract.");
 
-  const newGovernor = await Governor.new(finder.address, zeroAddress, { from: proposerWallet });
+  const startingId = 0;
+
+  const newGovernor = await Governor.new(finder.address, startingId, zeroAddress, { from: proposerWallet });
 
   /** ********************************************
    * 7) update permissions on all new contracts *
@@ -223,6 +227,15 @@ async function runExport() {
     ],
     { from: proposerWallet }
   );
+
+  console.log("Adding new contracts to the Registry");
+
+  await tdr.appendInstance(voting);
+  await tdr.appendInstance(registry);
+  await tdr.appendInstance(store);
+  await tdr.appendInstance(financialContractsAdmin);
+  await tdr.appendInstance(identifierWhitelist);
+  await tdr.appendInstance(newGovernor);
 
   console.log(`
 
