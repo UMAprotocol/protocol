@@ -57,7 +57,7 @@ async function runExport() {
    ***********************************/
   console.log("1. LOADING DEPLOYED CONTRACTS");
 
-  collateralToken = await Token.at(publicNetworks[1].daiAddress);
+  const collateralToken = await Token.at(publicNetworks[1].daiAddress);
   console.log("collateralToken loaded \t\t", collateralToken.address);
 
   const registry = await Registry.at(upgradeAddresses.Registry);
@@ -299,7 +299,64 @@ async function runExport() {
     web3.utils.hexToUtf8(constructorParams.priceFeedIdentifier)
   );
 
-  console.log("EMP create tx done!", empAddress);
+  /** *********************************
+   * 11) Simulate a position creation *
+   ************************************/
+  console.log("11. CREATING A POSITION FROM A SPONSOR");
+
+  // Instance of the synthetic token
+  const syntheticToken = await Token.at(await expiringMultiParty.tokenCurrency());
+
+  // Accounts to execute logic
+  const sponsor = accounts[1];
+  const liquidator = accounts[2];
+  const disputer = accounts[3];
+
+  // approve tokens and send dai from whale
+  for (let i = 1; i < 4; i++) {
+    console.log("collateral and synthetic approval and seeding account", accounts[i]);
+    await collateralToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), {
+      from: accounts[i]
+    });
+    await syntheticToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), {
+      from: accounts[i]
+    });
+    await collateralToken.transfer(accounts[i], web3.utils.toWei("1000000"), { from: largeDaiTokenHolder });
+  }
+
+  const sponsorPositionSize = web3.utils.toWei("100"); // Let the sponsor make 100 units of synthetic
+
+  // create a position from the sponsor with 200 units of collateral and 100 units of synthetics
+  await expiringMultiParty.create(
+    { rawValue: web3.utils.toWei("200") },
+    { rawValue: sponsorPositionSize },
+    { from: sponsor }
+  );
+  console.log("sponsor position created! sponsor balance", (await syntheticToken.balanceOf(sponsor)).toString());
+
+  // Transfer tokens from sponsor to liquidator
+  await syntheticToken.transfer(liquidator, sponsorPositionSize, { from: sponsor });
+  console.log(
+    "liquidator tokens transferred! liquidator balance",
+    (await syntheticToken.balanceOf(liquidator)).toString()
+  );
+
+  /** *************************************************************
+   * 11) Liquidate the position from the liquidator, then dispute *
+   ****************************************************************/
+  console.log("12. LIQUIDATE SPONSOR POSITION");
+
+  // The liquidator thinks the price is 1.5e18. This means that each unit of debt is redeemable for 1.5 units of
+  // underlying collateral. At this price the position has a collateralization of 133%, which is below the 150%
+  // specified by the collateral requirement of the expiring multiparty contract
+  const liquidatiorObservedPrice = web3.utils.toWei("1.5");
+
+  await expiringMultiParty.createLiquidation(
+    sponsor,
+    { rawValue: liquidatiorObservedPrice },
+    { rawValue: sponsorPositionSize },
+    { from: liquidator }
+  );
 
   console.log("...REVERTING STATE...", snapshotId);
   await revertToSnapshot(web3, snapshotId);
