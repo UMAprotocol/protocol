@@ -1,6 +1,8 @@
 // This script verify that the UMPIP-3 upgrade was executed correctly by checking deployed bytecodes,
 // assigned ownerships and roles. It can be run on the main net after the upgrade is completed
 // or on the local Ganache mainnet fork to validate the execution of the previous  two scripts.
+// This script does not need any wallets unlocked and does not make any on-chain state changes. It can be run as:
+// truffle exec ./scripts/umip-3/3_Verify.js --network mainnet-fork
 
 const assert = require("assert").strict;
 

@@ -1,5 +1,8 @@
 // This script generates and submits UMIP-3 upgrade transactions to the DVM. It can be run on a local ganache
 // fork of the main net or can be run directly on the main net to execute the upgrade transactions.
+// To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
+// ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
+// Then execute the script as: truffle exec ./scripts/umip-3/1_Propose.js --network mainnet-fork from core
 
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");

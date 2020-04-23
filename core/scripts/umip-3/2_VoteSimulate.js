@@ -1,5 +1,8 @@
 // This script simulates a vote from a large token holder to ratify the proposal from script 1_Propose.js.
-// It is intended to be run on a main-net Ganache fork.
+// It is intended to be run on a main-net Ganache fork with the foundation wallet unlocked. Leading on
+// from the previous script run a ganache cli instance as:
+// ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc
+// then run the script as: truffle exec ./scripts/umip-3/2_VoteSimulate.js --network mainnet-fork
 
 const assert = require("assert").strict;
 

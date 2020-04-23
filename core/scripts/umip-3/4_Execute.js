@@ -17,6 +17,7 @@ const { interfaceName } = require("../../utils/Constants.js");
 const publicNetworks = require("../../../common/PublicNetworks.js");
 
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
+const largeDaiTokenHolder = "0xdcc983d7539f6ce596946d2a09a0ba74a36b4822";
 
 const ownerRole = "0";
 
