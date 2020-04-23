@@ -335,7 +335,11 @@ async function runExport() {
   console.log("sponsor position created! sponsor balance", (await syntheticToken.balanceOf(sponsor)).toString());
 
   // Transfer tokens from sponsor to liquidator
-  await syntheticToken.transfer(liquidator, sponsorPositionSize, { from: sponsor });
+  await expiringMultiParty.create(
+    { rawValue: web3.utils.toWei("1000") },
+    { rawValue: sponsorPositionSize },
+    { from: liquidator }
+  );
   console.log(
     "liquidator tokens transferred! liquidator balance",
     (await syntheticToken.balanceOf(liquidator)).toString()
