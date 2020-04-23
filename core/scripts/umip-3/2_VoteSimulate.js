@@ -2,6 +2,8 @@ const assert = require("assert").strict;
 
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
 const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("../../../common/SolidityTestUtils.js");
+const { computeVoteHash } = require("../../../common/EncryptionHelper");
+const argv = require("minimist")(process.argv.slice(), { boolean: ["repeated"] });
 
 // Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
@@ -31,7 +33,11 @@ async function runExport() {
 
   // These two assertions must be true for the script to be starting in the right state. This assumes the script
   // is run within the same round and phase as running the `Propose.js` script.
-  assert.equal((await governor.numProposals()).toNumber(), 1); // there should be 1 proposal
+  if (argv.repeated) {
+    assert((await governor.numProposals()).toNumber() > 1);
+  } else {
+    assert.equal((await governor.numProposals()).toNumber(), 1); // there should be 1 proposal on the first run.
+  }
   assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests
 
   console.log(
@@ -76,11 +82,24 @@ async function runExport() {
 
   const identifier = pendingRequests[0].identifier.toString();
   const time = pendingRequests[0].time.toString();
-  const price = "1"; // a "yes" vote
+  const price = web3.utils.toWei("1"); // a "yes" vote
 
   const salt = getRandomUnsignedInt();
   // Main net DVM uses the old commit reveal scheme of hashed concatenation of price and salt
-  const voteHash = web3.utils.soliditySha3(price, salt);
+  let voteHash;
+  if (argv.repeated) {
+    const request = pendingRequests[0];
+    voteHash = computeVoteHash({
+      price,
+      salt,
+      account: foundationWallet,
+      time: request.time,
+      roundId: currentRoundId,
+      identifier: request.identifier
+    });
+  } else {
+    voteHash = web3.utils.soliditySha3(price, salt);
+  }
 
   console.log("2. COMMIT VOTE FROM FOUNDATION WALLET\nVote information:");
   console.table({
@@ -141,7 +160,7 @@ async function runExport() {
    **********************************************************************/
 
   console.log("4. EXECUTING GOVERNOR PROPOSALS");
-  const proposalId = 0; // first and only proposal in voting.sol
+  const proposalId = (await governor.numProposals()).subn(1).toString(); // most recent proposal in voting.sol
   const proposal = await governor.getProposal(proposalId);
 
   // for every transactions within the proposal
