@@ -3,7 +3,7 @@ const assert = require("assert").strict;
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
 const { advanceBlockAndSetTime, takeSnapshot, revertToSnapshot } = require("../../../common/SolidityTestUtils.js");
 const { computeVoteHash } = require("../../../common/EncryptionHelper");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["repeated"] });
+const argv = require("minimist")(process.argv.slice(), { boolean: ["repeated", "revert"] });
 
 // Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
@@ -172,8 +172,10 @@ async function runExport() {
 
   console.log("5. GOVERNOR TRANSACTIONS SUCCESSFULLY EXECUTED🎉!");
 
-  console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
-  await revertToSnapshot(web3, snapshotId);
+  if (argv.revert) {
+    console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
+    await revertToSnapshot(web3, snapshotId);
+  }
 }
 
 run = async function(callback) {
