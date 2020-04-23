@@ -22,7 +22,7 @@ const upgradeAddresses = {
   FinancialContractsAdmin: FinancialContractsAdmin.address,
   IdentifierWhitelist: IdentifierWhitelist.address,
   Governor: Governor.address,
-  Finder: Finder.address // Finder was no upgraded in UMIP3
+  Finder: Finder.address // Finder was not upgraded in UMIP3
 };
 
 async function runExport() {
