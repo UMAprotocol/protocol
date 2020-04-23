@@ -34,12 +34,12 @@ const ownerRole = "0";
 
 // New addresses of ecosystem components after porting from `Propose.js`
 const upgradeAddresses = {
-  Voting: "0x7492cdbc126ffc05c32249a470982173870e95b0",
-  Registry: "0x46209e15a14f602897e6d72da858a6ad806403f1",
-  Store: "0x74d367e2207e52f05963479e8395cf44909f075b",
-  FinancialContractsAdmin: "0x3b99859be43d543960803c09a0247106e82e74ee",
-  IdentifierWhitelist: "0x9e39424eab9161cc3399d886b1428cba71586cb8",
-  Governor: "0x878cFeDb234C226ddefd33657937aF74c17628BF",
+  Voting: "0x7f4Eef331348b99850F25dd4f2ab8336A7276311",
+  Registry: "0x0e808507e1692876Ae6BebC35da3e13801E63bfa",
+  Store: "0x841416642293f075d3A1708e7aFEB258b18e2dD4",
+  FinancialContractsAdmin: "0x7FCB73882c95b7e2cB2943d3d7463eEe9ecA6d6D",
+  IdentifierWhitelist: "0x93cc07C7e1b2512cB5bAE2752fC0c73bec98dC6d",
+  Governor: "0x74fbea590E0c5334Ba26d7E6751609F105568e5d",
   Finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3" // Finder was no upgraded in UMIP3
 };
 
@@ -212,7 +212,7 @@ async function runExport() {
 
   console.log(
     "⏱  Advancing time to move to next voting round to enable reveal\nNew timestamp:",
-    (await voting.getCurrentTime()).toString(),
+    currentTime,
     "voting phase",
     (await voting.getVotePhase()).toNumber(),
     "currentRoundId",
@@ -227,7 +227,7 @@ async function runExport() {
 
   console.log(
     "⏱  Advancing time to move to next voting round to conclude vote\nNew timestamp:",
-    (await voting.getCurrentTime()).toString(),
+    currentTime,
     "voting phase",
     (await voting.getVotePhase()).toNumber(),
     "currentRoundId",
@@ -332,35 +332,125 @@ async function runExport() {
     { rawValue: sponsorPositionSize },
     { from: sponsor }
   );
+
   console.log("sponsor position created! sponsor balance", (await syntheticToken.balanceOf(sponsor)).toString());
 
-  // Transfer tokens from sponsor to liquidator
+  // Create a position for the liquidator
   await expiringMultiParty.create(
-    { rawValue: web3.utils.toWei("1000") },
+    { rawValue: web3.utils.toWei("300") },
     { rawValue: sponsorPositionSize },
     { from: liquidator }
   );
   console.log(
-    "liquidator tokens transferred! liquidator balance",
+    "liquidator position created! liquidator balance",
     (await syntheticToken.balanceOf(liquidator)).toString()
   );
 
   /** *************************************************************
-   * 11) Liquidate the position from the liquidator, then dispute *
+   * 12) Liquidate the position from the liquidator, then dispute *
    ****************************************************************/
   console.log("12. LIQUIDATE SPONSOR POSITION");
 
   // The liquidator thinks the price is 1.5e18. This means that each unit of debt is redeemable for 1.5 units of
   // underlying collateral. At this price the position has a collateralization of 133%, which is below the 150%
   // specified by the collateral requirement of the expiring multiparty contract
-  const liquidatiorObservedPrice = web3.utils.toWei("1.5");
 
   await expiringMultiParty.createLiquidation(
     sponsor,
-    { rawValue: liquidatiorObservedPrice },
+    { rawValue: web3.utils.toWei("999999") },
     { rawValue: sponsorPositionSize },
     { from: liquidator }
   );
+
+  // Create the dispute
+  await expiringMultiParty.dispute("0", sponsor, { from: disputer });
+
+  /** **************************************
+   * 13) Settle the dispute via a DVM vote *
+   *****************************************/
+  console.log("13. Vote on outcome of DVM execution");
+  currentRoundId = (await voting.getCurrentRoundId()).toString();
+  currentTime = (await voting.getCurrentTime()).toNumber();
+
+  await advanceBlockAndSetTime(web3, currentTime + secondsPerDay * 2);
+
+  console.log(
+    "⏱  Advancing time to move to next voting round to enable reveal\nNew timestamp:",
+    (await voting.getCurrentTime()).toNumber(),
+    "voting phase",
+    (await voting.getVotePhase()).toNumber(),
+    "currentRoundId",
+    (await voting.getCurrentRoundId()).toString()
+  );
+
+  pendingRequests = await voting.getPendingRequests();
+  console.log("pendingRequests", pendingRequests);
+
+  const liquidatorObservedPrice = web3.utils.toWei("1.5");
+  const identifier2 = pendingRequests[0].identifier.toString();
+  const time2 = pendingRequests[0].time.toString();
+
+  const salt2 = getRandomUnsignedInt();
+
+  // We can now use the new create vote hash function
+  const voteHash2 = computeVoteHash({
+    price: liquidatorObservedPrice,
+    salt: salt2,
+    account: foundationWallet,
+    time: time2,
+    roundId: currentRoundId,
+    identifer: identifier2
+  });
+
+  console.table({
+    price: liquidatorObservedPrice,
+    salt: salt2.toString(),
+    account: foundationWallet,
+    time: time2,
+    roundId: currentRoundId,
+    identifier: identifier2,
+    voteHash: voteHash2
+  });
+
+  const VoteTx2 = await voting.commitVote(identifier2, time2, voteHash2, { from: foundationWallet });
+  console.log("Vote committed", VoteTx2.tx);
+
+  // console.log("7. REVEALING FOUNDATION VOTE");
+  currentTime = (await voting.getCurrentTime()).toNumber();
+  await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
+
+  console.log(
+    "⏱  Advancing time to move to next voting round to enable reveal\nNew timestamp:",
+    currentTime,
+    "voting phase",
+    (await voting.getVotePhase()).toNumber(),
+    "currentRoundId",
+    (await voting.getCurrentRoundId()).toString()
+  );
+
+  const revealTx2 = await voting.revealVote(identifier2, time2, liquidatorObservedPrice, salt2, {
+    from: foundationWallet
+  });
+  console.log("Reveal Tx done!", revealTx2.tx);
+
+  currentTime = (await voting.getCurrentTime()).toNumber();
+  await advanceBlockAndSetTime(web3, currentTime + secondsPerDay);
+
+  console.log(
+    "⏱  Advancing time to move to next voting round to conclude vote\nNew timestamp:",
+    currentTime,
+    "voting phase",
+    (await voting.getVotePhase()).toNumber(),
+    "currentRoundId",
+    (await voting.getCurrentRoundId()).toString()
+  );
+
+  assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
+
+  /** ****************************
+   * 14) Retrieving rewards from voting *
+   *********************************/
+  console.log("14. RETRIEVING DVM VOTING REWARDS");
 
   console.log("...REVERTING STATE...", snapshotId);
   await revertToSnapshot(web3, snapshotId);
