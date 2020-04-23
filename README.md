@@ -15,7 +15,7 @@ documentation. If you'd like to view these docs on github instead, check out the
 
 ## Security and Bug Bounty
 
-Please see [here](./documentation/getting_started/bug_bounty.md) for details on our bug bounty. 
+Please see [here](./documentation/developer_reference/bug_bounty.md) for details on our bug bounty. 
 
 ## Developer Information and Tools
 
