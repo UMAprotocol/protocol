@@ -103,7 +103,8 @@ async function runExport() {
 
   console.log("Deploying new Governor contract.");
 
-  const startingId = 0;
+  // Add 1 to the existing proposal count to take into account the proposal that we're about to send.
+  const startingId = (await governor.numProposals()).addn(1).toString();
 
   const newGovernor = await Governor.new(finder.address, startingId, zeroAddress, { from: proposerWallet });
 
