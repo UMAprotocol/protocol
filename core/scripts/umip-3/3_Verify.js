@@ -16,13 +16,13 @@ const ownerRole = "0";
 
 // New addresses of ecosystem components after porting from `Propose.js`
 const upgradeAddresses = {
-  Voting: "0x7492cdbc126ffc05c32249a470982173870e95b0",
-  Registry: "0x46209e15a14f602897e6d72da858a6ad806403f1",
-  Store: "0x74d367e2207e52f05963479e8395cf44909f075b",
-  FinancialContractsAdmin: "0x3b99859be43d543960803c09a0247106e82e74ee",
-  IdentifierWhitelist: "0x9e39424eab9161cc3399d886b1428cba71586cb8",
-  Governor: "0x878cfedb234c226ddefd33657937af74c17628bf",
-  Finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3" // Finder was no upgraded in UMIP3
+  Voting: Voting.address,
+  Registry: Registry.address,
+  Store: Store.address,
+  FinancialContractsAdmin: FinancialContractsAdmin.address,
+  IdentifierWhitelist: IdentifierWhitelist.address,
+  Governor: Governor.address,
+  Finder: Finder.address // Finder was not upgraded in UMIP3
 };
 
 async function runExport() {
