@@ -44,6 +44,19 @@ rules:
 3. Sort each group of functions (e.g. external abstract, external abstract view...) alphabetically.
 4. If two functions share a name, alphabetically order by the arguments (both type and name).
 
+### Naming
+
+#### Interval versus External Functions
+
+In all contracts (abstract included), private and internal methods are preceded by underscores (i.e. `_functionNameHere()`). This does not apply to libraries or test contracts. As a general rule, if the function is able to be called in a downstream script or client, then it is not an internal method.
+
+#### Variables
+
+Private variables are not preceded by underscores.
+
+#### Function Parameters
+
+Function parameters are not preceded by underscores unless they are constructor parameters. This is because constructors often initialize contract variables for the first and only time.
 
 ## Javascript
 
