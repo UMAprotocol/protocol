@@ -1,3 +1,7 @@
+// This script verify that the UMPIP-3 upgrade was executed correctly by checking deployed bytecodes,
+// assigned ownerships and roles. It can be run on the main net after the upgrade is completed
+// or on the local Ganache mainnet fork to validate the execution of the previous  two scripts.
+
 const assert = require("assert").strict;
 
 const Finder = artifacts.require("Finder");

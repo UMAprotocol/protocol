@@ -1,3 +1,6 @@
+// This script simulates a vote from a large token holder to ratify the proposal from script 1_Propose.js.
+// It is intended to be run on a main-net Ganache fork.
+
 const assert = require("assert").strict;
 
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
@@ -8,6 +11,8 @@ const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
 const Governor = artifacts.require("Governor");
+
+const resetStateAfterSimulation = false;
 
 async function runExport() {
   console.log("Running UMIP-3 Upgrade vote simulator🔥");
@@ -153,8 +158,11 @@ async function runExport() {
 
   console.log("5. GOVERNOR TRANSACTIONS SUCCESSFULLY EXECUTED🎉!");
 
-  console.log("SCRIPT DONE...REVERTING STATE...", snapshotId);
-  await revertToSnapshot(web3, snapshotId);
+  console.log("SCRIPT DONE");
+  if (resetStateAfterSimulation) {
+    console.log("...REVERTING STATE...", snapshotId);
+    await revertToSnapshot(web3, snapshotId);
+  }
 }
 
 run = async function(callback) {

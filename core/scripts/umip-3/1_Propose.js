@@ -1,3 +1,6 @@
+// This script generates and submits UMIP-3 upgrade transactions to the DVM. It can be run on a local ganache
+// fork of the main net or can be run directly on the main net to execute the upgrade transactions.
+
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
@@ -101,7 +104,9 @@ async function runExport() {
 
   console.log("Deploying new Governor contract.");
 
-  const newGovernor = await Governor.new(finder.address, zeroAddress, { from: proposerWallet });
+  const startingId = 0;
+
+  const newGovernor = await Governor.new(finder.address, startingId, zeroAddress, { from: proposerWallet });
 
   /** ********************************************
    * 7) update permissions on all new contracts *
