@@ -63,7 +63,9 @@ contract Umip3Upgrader {
         // Transfer the ownership of the Finder to the new Governor now that all the addresses have been updated.
         finder.transferOwnership(newGovernor);
 
-        // Inform the existing Voting contract of the address of the new Voting contract.
+        // Inform the existing Voting contract of the address of the new Voting contract and transfer its
+        // ownership to the new governor to allow for any future changes to the migrated contract.
         existingVoting.setMigrated(voting);
+        existingVoting.transferOwnership(newGovernor);
     }
 }
