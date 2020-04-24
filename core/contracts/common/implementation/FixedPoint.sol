@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * @title Library for fixed point arithmetic on uints
  */
 library FixedPoint {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     // Supports 18 decimals. E.g., 1e18 represents "1", 5e17 represents "0.5".
     // Can represent a value up to (2^256 - 1)/10^18 = ~10^59. 10^59 will be stored internally as uint256 10^77.

@@ -23,7 +23,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  */
 contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     using FixedPoint for FixedPoint.Unsigned;
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using VoteTiming for VoteTiming.Data;
     using ResultComputation for ResultComputation.Data;
 
@@ -122,7 +122,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     address public migratedAddress;
 
     // Max value of an unsigned integer.
-    uint256 private constant UINT_MAX = ~uint(0);
+    uint256 private constant UINT_MAX = ~uint256(0);
 
     /***************************************
      *                EVENTS                *
@@ -132,9 +132,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     event EncryptedVote(
         address indexed voter,
-        uint indexed roundId,
+        uint256 indexed roundId,
         bytes32 indexed identifier,
-        uint time,
+        uint256 time,
         bytes encryptedVote
     );
 
@@ -217,8 +217,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function requestPrice(bytes32 identifier, uint256 time) external override onlyRegisteredContract() {
         uint256 blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
@@ -253,8 +251,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param time unix timestamp of for the price request.
      * @return _hasPrice bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function hasPrice(bytes32 identifier, uint256 time) external override view onlyRegisteredContract() returns (bool) {
         (bool _hasPrice, , ) = _getPriceOrError(identifier, time);
         return _hasPrice;
@@ -267,9 +263,13 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param time unix timestamp of for the price request.
      * @return int256 representing the resolved price for the given identifier and timestamp.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function getPrice(bytes32 identifier, uint256 time) external override view onlyRegisteredContract() returns (int256) {
+    function getPrice(bytes32 identifier, uint256 time)
+        external
+        override
+        view
+        onlyRegisteredContract()
+        returns (int256)
+    {
         (bool _hasPrice, int256 price, string memory message) = _getPriceOrError(identifier, time);
 
         // If the price wasn't available, revert with the provided message.
@@ -317,9 +317,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param time unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function commitVote(bytes32 identifier, uint256 time, bytes32 hash) public override onlyIfNotMigrated() {
+    function commitVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash
+    ) public override onlyIfNotMigrated() {
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
         uint256 blockTime = getCurrentTime();
@@ -346,13 +348,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
      * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function snapshotCurrentRound() external override onlyIfNotMigrated() {
-        uint blockTime = getCurrentTime();
+        uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
 
-        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
+        uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
     }
 
@@ -365,9 +365,12 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) public override onlyIfNotMigrated() {
+    function revealVote(
+        bytes32 identifier,
+        uint256 time,
+        int256 price,
+        int256 salt
+    ) public override onlyIfNotMigrated() {
         uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from
@@ -381,14 +384,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         // 0 hashes are disallowed in the commit phase, so they indicate a different error.
         // Cannot reveal an uncommitted or previously revealed hash
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
-        require(keccak256(abi.encodePacked(
-            price,
-            salt,
-            msg.sender,
-            time,
-            roundId,
-            identifier
-        )) == voteSubmission.commit, "Revealed data != commit hash");
+        require(
+            keccak256(abi.encodePacked(price, salt, msg.sender, time, roundId, identifier)) == voteSubmission.commit,
+            "Revealed data != commit hash"
+        );
         delete voteSubmission.commit;
 
         // Lock in round variables including snapshotId and inflation rate. Not that this will only execute a snapshot
@@ -420,9 +419,12 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
-    function commitAndEmitEncryptedVote(bytes32 identifier, uint256 time, bytes32 hash, bytes memory encryptedVote)
-        public
-    {
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public {
         commitVote(identifier, time, hash);
 
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
@@ -436,8 +438,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * commitments that can fit in one transaction.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function batchCommit(Commitment[] calldata commits) external override {
         for (uint256 i = 0; i < commits.length; i++) {
             if (commits[i].encryptedVote.length == 0) {
@@ -460,8 +460,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @dev For more information on reveals, review the comment for `revealVote`.
      * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function batchReveal(Reveal[] calldata reveals) external override {
         for (uint256 i = 0; i < reveals.length; i++) {
             revealVote(reveals[i].identifier, reveals[i].time, reveals[i].price, reveals[i].salt);
@@ -477,13 +475,11 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
      * @return totalRewardToIssue total amount of rewards returned to the voter.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function retrieveRewards(address voterAddress, uint256 roundId, PendingRequest[] memory toRetrieve)
-        public
-        override
-        returns (FixedPoint.Unsigned memory totalRewardToIssue)
-    {
+    function retrieveRewards(
+        address voterAddress,
+        uint256 roundId,
+        PendingRequest[] memory toRetrieve
+    ) public override returns (FixedPoint.Unsigned memory totalRewardToIssue) {
         if (migratedAddress != address(0)) {
             require(msg.sender == migratedAddress, "Can only call from migrated");
         }
@@ -561,8 +557,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function getPendingRequests() external override view returns (PendingRequest[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
@@ -594,8 +588,6 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function getVotePhase() external override view returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
@@ -604,9 +596,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function getCurrentRoundId() external override view returns (uint) {
+    function getCurrentRoundId() external override view returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -657,7 +647,15 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
-    function _getPriceOrError(bytes32 identifier, uint256 time) private view returns (bool, int, string memory) {
+    function _getPriceOrError(bytes32 identifier, uint256 time)
+        private
+        view
+        returns (
+            bool,
+            int256,
+            string memory
+        )
+    {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
 
