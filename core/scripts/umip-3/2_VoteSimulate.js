@@ -44,9 +44,9 @@ async function runExport() {
   if (argv.repeated) {
     assert((await governor.numProposals()).toNumber() > 1);
   } else {
-    assert.equal((await governor.numProposals()).toNumber(), 1); // there should be 1 proposal on the first run.
+    assert.equal((await governor.numProposals()).toNumber(), 2); // there should be 1 proposal on the first run.
   }
-  assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests
+  assert.equal((await voting.getPendingRequests()).length, 1); // There should be no pending requests
 
   console.log(
     "1 pending proposal. No pending requests.\nCurrent timestamp:",
@@ -80,7 +80,7 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
   let pendingRequests = await voting.getPendingRequests();
-  assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
+  assert.equal(pendingRequests.length, 2); // the one proposal should have advanced to a request
 
   /** *****************************************************
    * 2) Build vote tx from the foundation wallet         *
@@ -161,14 +161,14 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
 
-  assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
+  assert.equal((await voting.getPendingRequests()).length, 1); // There should be no pending requests as vote is concluded
 
   /** *******************************************************************
    * 4) Execute proposal submitted to governor now that voting is done *
    **********************************************************************/
 
   console.log("4. EXECUTING GOVERNOR PROPOSALS");
-  const proposalId = (await governor.numProposals()).subn(1).toString(); // most recent proposal in voting.sol
+  const proposalId = (await governor.numProposals()).subn(2).toString(); // most recent proposal in voting.sol
   const proposal = await governor.getProposal(proposalId);
 
   // for every transactions within the proposal
