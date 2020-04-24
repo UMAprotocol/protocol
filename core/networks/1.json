@@ -38,35 +38,5 @@
   {
     "contractName": "WETH9",
     "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-  },
-  {
-    "contractName": "Voting",
-    "address": "0x592349F7DeDB2b75f9d4F194d4b7C16D82E507Dc",
-    "transactionHash": "0x54422ae8704a2900a081d366c1ac7875e91be58a4a331bb91b5152fd49e95096"
-  },
-  {
-    "contractName": "Registry",
-    "address": "0x54f44eA3D2e7aA0ac089c4d8F7C93C27844057BF",
-    "transactionHash": "0xaaf496f0fb79644b85c8ea88aa9dc27aecd752d95871e635e6797798df4cbdd3"
-  },
-  {
-    "contractName": "Store",
-    "address": "0x9921810C710E7c3f7A7C6831e30929f19537a545",
-    "transactionHash": "0x4ffeeffafb0173e4748a0cbf2919bd6ec750225b1a78c1c3ce0ca319aa8e5db3"
-  },
-  {
-    "contractName": "FinancialContractsAdmin",
-    "address": "0x3e532e6222afe9Bcf02DCB87216802c75D5113aE",
-    "transactionHash": "0xb668043863b46c037cc5c0a425650ea39f624d2a4d441f8577cfed4c010e8309"
-  },
-  {
-    "contractName": "IdentifierWhitelist",
-    "address": "0x4E6CCB1dA3C7844887F9A5aF4e8450d9fd90317A",
-    "transactionHash": "0x97c568ad3e0aaedf0e0eb9e1a6e3310d4ba63dfdc59a9acd0d51ce327a43a2af"
-  },
-  {
-    "contractName": "Governor",
-    "address": "0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570",
-    "transactionHash": "0x0de8243081d8595a33a76badf8a3225e6b75ae0d97606f96870d316e6afaedb7"
   }
 ]
