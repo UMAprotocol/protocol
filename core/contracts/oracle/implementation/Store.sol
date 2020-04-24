@@ -62,8 +62,6 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @notice Pays Oracle fees in ETH to the store.
      * @dev To be used by contracts whose margin currency is ETH.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function payOracleFees() external override payable {
         require(msg.value > 0, "Value sent can't be zero");
     }
@@ -74,8 +72,6 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @param erc20Address address of the ERC20 token used to pay the fee.
      * @param amount number of tokens to transfer. An approval for at least this amount must exist.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function payOracleFeesErc20(address erc20Address, FixedPoint.Unsigned calldata amount) external override {
         IERC20 erc20 = IERC20(erc20Address);
         require(amount.isGreaterThan(0), "Amount sent can't be zero");
@@ -97,14 +93,11 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @return regularFee amount owed for the duration from start to end time for the given pfc.
      * @return latePenalty penalty percentage, if any, for paying the fee after the deadline.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function computeRegularFee(uint256 startTime, uint256 endTime, FixedPoint.Unsigned calldata pfc)
-        external
-        override
-        view
-        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
-    {
+    function computeRegularFee(
+        uint256 startTime,
+        uint256 endTime,
+        FixedPoint.Unsigned calldata pfc
+    ) external override view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) {
         uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
@@ -116,7 +109,9 @@ contract Store is StoreInterface, Withdrawable, Testable {
         // Compute the additional percentage (per second) that will be charged because of the penalty.
         // Note: if less than a week has gone by since the startTime, paymentDelay / SECONDS_PER_WEEK will truncate to
         // 0, causing no penalty to be charged.
-        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFeePerSecondPerPfc.mul(paymentDelay.div(SECONDS_PER_WEEK));
+        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFeePerSecondPerPfc.mul(
+            paymentDelay.div(SECONDS_PER_WEEK)
+        );
 
         // Apply the penaltyPercentagePerSecond to the payment period.
         latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
@@ -127,8 +122,6 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @param currency token used to pay the final fee.
      * @return finalFee amount due denominated in units of `currency`.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory) {
         return finalFees[currency];
     }
