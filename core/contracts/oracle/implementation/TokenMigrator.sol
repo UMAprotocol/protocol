@@ -33,7 +33,11 @@ contract TokenMigrator {
      * @param _oldToken address of the token being migrated from.
      * @param _newToken address of the token being migrated to.
      */
-    constructor(FixedPoint.Unsigned memory _rate, address _oldToken, address _newToken) public {
+    constructor(
+        FixedPoint.Unsigned memory _rate,
+        address _oldToken,
+        address _newToken
+    ) public {
         // Prevents division by 0 in migrateTokens().
         // Also it doesn’t make sense to have “0 old tokens equate to 1 new token”.
         require(_rate.isGreaterThan(0), "Rate can't be 0");

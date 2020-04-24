@@ -9,7 +9,11 @@ import "../Governor.sol";
 contract GovernorTest is Governor {
     constructor(address _timerAddress) public Governor(address(0), 0, _timerAddress) {}
 
-    function addPrefix(bytes32 input, bytes32 prefix, uint256 prefixLength) external pure returns (bytes32) {
+    function addPrefix(
+        bytes32 input,
+        bytes32 prefix,
+        uint256 prefixLength
+    ) external pure returns (bytes32) {
         return _addPrefix(input, prefix, prefixLength);
     }
 

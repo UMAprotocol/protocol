@@ -15,10 +15,11 @@ contract SyntheticToken is ExpandedERC20 {
      * @param tokenSymbol The ticker abbreviation of the name. Ideally < 5 chars.
      * @param tokenDecimals The number of decimals to define token precision.
      */
-    constructor(string memory tokenName, string memory tokenSymbol, uint8 tokenDecimals)
-        public
-        ExpandedERC20(tokenName, tokenSymbol, tokenDecimals)
-    {}
+    constructor(
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint8 tokenDecimals
+    ) public ExpandedERC20(tokenName, tokenSymbol, tokenDecimals) {}
 
     /**
      * @notice Add Minter role to account.

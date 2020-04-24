@@ -67,7 +67,11 @@ abstract contract FeePayer is Testable {
      * @param timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(address collateralAddress, address finderAddress, address timerAddress) public Testable(timerAddress) {
+    constructor(
+        address collateralAddress,
+        address finderAddress,
+        address timerAddress
+    ) public Testable(timerAddress) {
         collateralCurrency = IERC20(collateralAddress);
         finder = FinderInterface(finderAddress);
         lastPaymentTime = getCurrentTime();

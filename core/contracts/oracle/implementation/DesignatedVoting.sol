@@ -33,7 +33,11 @@ contract DesignatedVoting is Withdrawable {
      * @param ownerAddress address of the owner of the DesignatedVoting contract.
      * @param voterAddress address to which the owner has delegated their voting power.
      */
-    constructor(address finderAddress, address ownerAddress, address voterAddress) public {
+    constructor(
+        address finderAddress,
+        address ownerAddress,
+        address voterAddress
+    ) public {
         _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), voterAddress);
         _setWithdrawRole(uint(Roles.Owner));
@@ -51,7 +55,11 @@ contract DesignatedVoting is Withdrawable {
      * @param time specifies the unix timestamp of the price being voted on.
      * @param hash the keccak256 hash of the price you want to vote for and a random integer salt value.
      */
-    function commitVote(bytes32 identifier, uint256 time, bytes32 hash) external onlyRoleHolder(uint(Roles.Voter)) {
+    function commitVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash
+    ) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().commitVote(identifier, time, hash);
     }
 
@@ -70,10 +78,12 @@ contract DesignatedVoting is Withdrawable {
      * @param price used along with the `salt` to produce the `hash` during the commit phase.
      * @param salt used along with the `price` to produce the `hash` during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt)
-        external
-        onlyRoleHolder(uint(Roles.Voter))
-    {
+    function revealVote(
+        bytes32 identifier,
+        uint256 time,
+        int256 price,
+        int256 salt
+    ) external onlyRoleHolder(uint(Roles.Voter)) {
         _getVotingAddress().revealVote(identifier, time, price, salt);
     }
 

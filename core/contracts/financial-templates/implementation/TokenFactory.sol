@@ -16,10 +16,11 @@ contract TokenFactory {
      * @param tokenDecimals used to define the precision used in the tokens numerical representation.
      * @return newToken an instance of the newly created token interface.
      */
-    function createToken(string calldata tokenName, string calldata tokenSymbol, uint8 tokenDecimals)
-        external
-        returns (ExpandedIERC20 newToken)
-    {
+    function createToken(
+        string calldata tokenName,
+        string calldata tokenSymbol,
+        uint8 tokenDecimals
+    ) external returns (ExpandedIERC20 newToken) {
         SyntheticToken mintableToken = new SyntheticToken(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addMinter(msg.sender);
         mintableToken.addBurner(msg.sender);

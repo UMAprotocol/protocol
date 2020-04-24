@@ -201,10 +201,11 @@ abstract contract MultiRole {
      * @dev Should be called by derived contracts, usually at construction time. Will revert if the role is already
      * initialized.
      */
-    function _createSharedRole(uint256 roleId, uint256 managingRoleId, address[] memory initialMembers)
-        internal
-        onlyInvalidRole(roleId)
-    {
+    function _createSharedRole(
+        uint256 roleId,
+        uint256 managingRoleId,
+        address[] memory initialMembers
+    ) internal onlyInvalidRole(roleId) {
         Role storage role = roles[roleId];
         role.roleType = RoleType.Shared;
         role.managingRole = managingRoleId;
@@ -221,10 +222,11 @@ abstract contract MultiRole {
      * @dev Should be called by derived contracts, usually at construction time. Will revert if the role is already
      * initialized.
      */
-    function _createExclusiveRole(uint256 roleId, uint256 managingRoleId, address initialMember)
-        internal
-        onlyInvalidRole(roleId)
-    {
+    function _createExclusiveRole(
+        uint256 roleId,
+        uint256 managingRoleId,
+        address initialMember
+    ) internal onlyInvalidRole(roleId) {
         Role storage role = roles[roleId];
         role.roleType = RoleType.Exclusive;
         role.managingRole = managingRoleId;

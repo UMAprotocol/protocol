@@ -49,7 +49,11 @@ abstract contract VotingInterface {
      * @param time unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
-    function commitVote(bytes32 identifier, uint256 time, bytes32 hash) external virtual;
+    function commitVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash
+    ) external virtual;
 
     /**
      * @notice Submit a batch of commits in a single transaction.
@@ -76,7 +80,12 @@ abstract contract VotingInterface {
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) external virtual;
+    function revealVote(
+        bytes32 identifier,
+        uint256 time,
+        int256 price,
+        int256 salt
+    ) external virtual;
 
     /**
      * @notice Reveal multiple votes in a single transaction.
@@ -115,8 +124,9 @@ abstract contract VotingInterface {
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
      * @return total amount of rewards returned to the voter.
      */
-    function retrieveRewards(address voterAddress, uint256 roundId, PendingRequest[] memory toRetrieve)
-        public
-        virtual
-        returns (FixedPoint.Unsigned memory);
+    function retrieveRewards(
+        address voterAddress,
+        uint256 roundId,
+        PendingRequest[] memory toRetrieve
+    ) public virtual returns (FixedPoint.Unsigned memory);
 }
