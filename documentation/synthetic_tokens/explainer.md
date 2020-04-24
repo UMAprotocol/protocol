@@ -109,3 +109,10 @@ After the expiration timestamp for the synthetic tokens, anyone may settle the c
 After this value is returned to the contract and the contract is settled, any token holder can redeem the tokens against the contract. Redemption of the tokens returns the token holder collateral equal to the [price identifier](glossary.md#price-identifier) value returned by the UMA DVM. 
 
 ![](st_expiration.png)
+
+## Additional Resources
+
+Here are some additional resources to better understand how the priceless synthetic token contract works:
+* [Blog post](https://medium.com/uma-project/priceless-synthetic-tokens-f28e6452c18b)
+* [Twitter thread](https://twitter.com/UMAprotocol/status/1242891550872535042?s=20)
+* [Github implementation](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/financial-templates/implementation)
