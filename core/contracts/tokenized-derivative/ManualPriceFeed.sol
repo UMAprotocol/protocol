@@ -11,7 +11,7 @@ import "./PriceFeedInterface.sol";
  * @title Implementation of PriceFeedInterface with the ability to manually push prices.
  */
 contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     // A single price update.
     struct PriceTick {
@@ -32,9 +32,9 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
     enum Roles { Governance, Writer, Withdraw }
 
     constructor(address _timerAddress) public Testable(_timerAddress) {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        _createExclusiveRole(uint(Roles.Writer), uint(Roles.Governance), msg.sender);
-        _createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint256(Roles.Governance), uint256(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint256(Roles.Writer), uint256(Roles.Governance), msg.sender);
+        _createWithdrawRole(uint256(Roles.Withdraw), uint256(Roles.Governance), msg.sender);
     }
 
     /**
@@ -45,7 +45,7 @@ contract ManualPriceFeed is PriceFeedInterface, Withdrawable, Testable {
         bytes32 identifier,
         uint256 publishTime,
         int256 newPrice
-    ) external onlyRoleHolder(uint(Roles.Writer)) {
+    ) external onlyRoleHolder(uint256(Roles.Writer)) {
         require(publishTime <= getCurrentTime().add(BLOCK_TIMESTAMP_TOLERANCE));
         require(publishTime > prices[identifier].timestamp);
         prices[identifier] = PriceTick(publishTime, newPrice);

@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  * to register new financial contracts and stores party members of a financial contract.
  */
 contract Registry is RegistryInterface, MultiRole {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     /****************************************
      *    INTERNAL VARIABLES AND STORAGE    *
@@ -37,7 +37,7 @@ contract Registry is RegistryInterface, MultiRole {
     struct Party {
         address[] contracts; // Each financial contract address is stored in this array.
         // The address of each financial contract is mapped to its index for constant time look up and deletion.
-        mapping(address => uint) contractIndex;
+        mapping(address => uint256) contractIndex;
     }
 
     // Array of all contracts that are approved to use the UMA Oracle.
@@ -61,9 +61,9 @@ contract Registry is RegistryInterface, MultiRole {
      * @notice Construct the Registry contract.
      */
     constructor() public {
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         // Start with no contract creators registered.
-        _createSharedRole(uint(Roles.ContractCreator), uint(Roles.Owner), new address[](0));
+        _createSharedRole(uint256(Roles.ContractCreator), uint256(Roles.Owner), new address[](0));
     }
 
     /****************************************
@@ -79,7 +79,7 @@ contract Registry is RegistryInterface, MultiRole {
     function registerContract(address[] calldata parties, address contractAddress)
         external
         override
-        onlyRoleHolder(uint(Roles.ContractCreator))
+        onlyRoleHolder(uint256(Roles.ContractCreator))
     {
         FinancialContract storage financialContract = contractMap[contractAddress];
         require(contractMap[contractAddress].valid == Validity.Invalid, "Can only register once");

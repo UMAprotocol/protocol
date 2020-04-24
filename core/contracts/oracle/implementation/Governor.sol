@@ -17,7 +17,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
 contract Governor is MultiRole, Testable {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using Address for address;
 
     /****************************************
@@ -62,16 +62,16 @@ contract Governor is MultiRole, Testable {
      */
     constructor(
         address _finderAddress,
-        uint _startingId,
+        uint256 _startingId,
         address _timerAddress
     ) public Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        _createExclusiveRole(uint(Roles.Proposer), uint(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);
 
         // Ensure the startingId is not set unreasonably high to avoid it being set such that new proposals overwrite
         // other storage slots in the contract.
-        uint maxStartingId = 10**18;
+        uint256 maxStartingId = 10**18;
         require(_startingId <= maxStartingId, "Cannot set startingId larger than 10^18");
 
         // This just sets the initial length of the array to the startingId since modifying length directly has been
@@ -96,7 +96,7 @@ contract Governor is MultiRole, Testable {
      * Note: this method must be public because of a solidity limitation that
      * disallows structs arrays to be passed to external functions.
      */
-    function propose(Transaction[] memory transactions) public onlyRoleHolder(uint(Roles.Proposer)) {
+    function propose(Transaction[] memory transactions) public onlyRoleHolder(uint256(Roles.Proposer)) {
         uint256 id = proposals.length;
         uint256 time = getCurrentTime();
 
@@ -169,7 +169,7 @@ contract Governor is MultiRole, Testable {
      * @notice Gets the total number of proposals (includes executed and non-executed).
      * @return uint256 representing the current number of proposals.
      */
-    function numProposals() external view returns (uint) {
+    function numProposals() external view returns (uint256) {
         return proposals.length;
     }
 

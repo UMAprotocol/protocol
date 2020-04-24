@@ -28,7 +28,7 @@ contract DesignatedVotingFactory is Withdrawable {
     constructor(address finderAddress) public {
         finder = finderAddress;
 
-        _createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Withdrawer), msg.sender);
+        _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Withdrawer), msg.sender);
     }
 
     /**

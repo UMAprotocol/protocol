@@ -33,7 +33,7 @@ abstract contract Testable {
      * @dev Will revert if not running in test mode.
      * @param time timestamp to set current Tesable time to.
      */
-    function setCurrentTime(uint time) external onlyIfTest {
+    function setCurrentTime(uint256 time) external onlyIfTest {
         Timer(timerAddress).setCurrentTime(time);
     }
 
@@ -42,7 +42,7 @@ abstract contract Testable {
      * Otherwise, it will return the block timestamp.
      * @return uint for the current Testable timestamp.
      */
-    function getCurrentTime() public view returns (uint) {
+    function getCurrentTime() public view returns (uint256) {
         if (timerAddress != address(0x0)) {
             return Timer(timerAddress).getCurrentTime();
         } else {

@@ -23,7 +23,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
  */
 contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     using FixedPoint for FixedPoint.Unsigned;
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using VoteTiming for VoteTiming.Data;
     using ResultComputation for ResultComputation.Data;
 
@@ -122,7 +122,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
     address public migratedAddress;
 
     // Max value of an unsigned integer.
-    uint256 private constant UINT_MAX = ~uint(0);
+    uint256 private constant UINT_MAX = ~uint256(0);
 
     /***************************************
      *                EVENTS                *
@@ -132,9 +132,9 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     event EncryptedVote(
         address indexed voter,
-        uint indexed roundId,
+        uint256 indexed roundId,
         bytes32 indexed identifier,
-        uint time,
+        uint256 time,
         bytes encryptedVote
     );
 
@@ -349,10 +349,10 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
      */
     function snapshotCurrentRound() external override onlyIfNotMigrated() {
-        uint blockTime = getCurrentTime();
+        uint256 blockTime = getCurrentTime();
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
 
-        uint roundId = voteTiming.computeCurrentRoundId(blockTime);
+        uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
         _freezeRoundVariables(roundId);
     }
 
@@ -596,7 +596,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external override view returns (uint) {
+    function getCurrentRoundId() external override view returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -652,7 +652,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         view
         returns (
             bool,
-            int,
+            int256,
             string memory
         )
     {

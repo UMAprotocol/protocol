@@ -22,7 +22,7 @@ bond that they can lose in the case of an unsuccessful dispute.
 */
 contract Liquidatable is PricelessPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     /****************************************
@@ -57,8 +57,8 @@ contract Liquidatable is PricelessPositionManager {
     // This is required to enable more params, over and above Solidity's limits.
     struct ConstructorParams {
         // Params for PricelessPositionManager only.
-        uint expirationTimestamp;
-        uint withdrawalLiveness;
+        uint256 expirationTimestamp;
+        uint256 withdrawalLiveness;
         address collateralAddress;
         address finderAddress;
         address tokenFactoryAddress;
@@ -492,7 +492,7 @@ contract Liquidatable is PricelessPositionManager {
         return liquidationArray[liquidationId];
     }
 
-    function _getLiquidationExpiry(LiquidationData storage liquidation) internal view returns (uint) {
+    function _getLiquidationExpiry(LiquidationData storage liquidation) internal view returns (uint256) {
         return liquidation.liquidationTime.add(liquidationLiveness);
     }
 

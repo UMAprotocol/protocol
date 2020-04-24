@@ -113,7 +113,7 @@ abstract contract VotingInterface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external virtual view returns (uint);
+    function getCurrentRoundId() external virtual view returns (uint256);
 
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.

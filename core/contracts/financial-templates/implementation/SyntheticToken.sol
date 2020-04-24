@@ -27,7 +27,7 @@ contract SyntheticToken is ExpandedERC20 {
      * @param account The address to which the Minter role is added.
      */
     function addMinter(address account) external {
-        addMember(uint(Roles.Minter), account);
+        addMember(uint256(Roles.Minter), account);
     }
 
     /**
@@ -36,7 +36,7 @@ contract SyntheticToken is ExpandedERC20 {
      * @param account The address from which the Minter role is removed.
      */
     function removeMinter(address account) external {
-        removeMember(uint(Roles.Minter), account);
+        removeMember(uint256(Roles.Minter), account);
     }
 
     /**
@@ -45,7 +45,7 @@ contract SyntheticToken is ExpandedERC20 {
      * @param account The address to which the Burner role is added.
      */
     function addBurner(address account) external {
-        addMember(uint(Roles.Burner), account);
+        addMember(uint256(Roles.Burner), account);
     }
 
     /**
@@ -54,7 +54,7 @@ contract SyntheticToken is ExpandedERC20 {
      * @param account The address from which the Burner role is removed.
      */
     function removeBurner(address account) external {
-        removeMember(uint(Roles.Burner), account);
+        removeMember(uint256(Roles.Burner), account);
     }
 
     /**
@@ -63,7 +63,7 @@ contract SyntheticToken is ExpandedERC20 {
      * @param account The new holder of the Owner role.
      */
     function resetOwner(address account) external {
-        resetMember(uint(Roles.Owner), account);
+        resetMember(uint256(Roles.Owner), account);
     }
 
     /**
@@ -72,7 +72,7 @@ contract SyntheticToken is ExpandedERC20 {
      * @return bool True if the provided account is a Minter.
      */
     function isMinter(address account) public view returns (bool) {
-        return holdsRole(uint(Roles.Minter), account);
+        return holdsRole(uint256(Roles.Minter), account);
     }
 
     /**
@@ -81,6 +81,6 @@ contract SyntheticToken is ExpandedERC20 {
      * @return bool True if the provided account is a Burner.
      */
     function isBurner(address account) public view returns (bool) {
-        return holdsRole(uint(Roles.Burner), account);
+        return holdsRole(uint256(Roles.Burner), account);
     }
 }

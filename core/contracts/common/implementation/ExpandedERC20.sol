@@ -31,9 +31,9 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
         uint8 _tokenDecimals
     ) public ERC20(_tokenName, _tokenSymbol) {
         _setupDecimals(_tokenDecimals);
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        _createSharedRole(uint(Roles.Minter), uint(Roles.Owner), new address[](0));
-        _createSharedRole(uint(Roles.Burner), uint(Roles.Owner), new address[](0));
+        _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
+        _createSharedRole(uint256(Roles.Minter), uint256(Roles.Owner), new address[](0));
+        _createSharedRole(uint256(Roles.Burner), uint256(Roles.Owner), new address[](0));
     }
 
     /**
@@ -45,7 +45,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     function mint(address recipient, uint256 value)
         external
         override
-        onlyRoleHolder(uint(Roles.Minter))
+        onlyRoleHolder(uint256(Roles.Minter))
         returns (bool)
     {
         _mint(recipient, value);
@@ -56,7 +56,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
      * @dev Burns `value` tokens owned by `msg.sender`.
      * @param value amount of tokens to burn.
      */
-    function burn(uint256 value) external override onlyRoleHolder(uint(Roles.Burner)) {
+    function burn(uint256 value) external override onlyRoleHolder(uint256(Roles.Burner)) {
         _burn(msg.sender, value);
     }
 }

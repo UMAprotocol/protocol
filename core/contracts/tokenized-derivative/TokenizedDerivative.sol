@@ -149,7 +149,7 @@ library TDS {
  */
 library TokenizedDerivativeUtils {
     using TokenizedDerivativeUtils for TDS.Storage;
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using SignedSafeMath for int256;
     using FixedPoint for FixedPoint.Unsigned;
 
@@ -518,7 +518,7 @@ library TokenizedDerivativeUtils {
 
         // Set end time to max value of uint256 to implement no expiry.
         if (params.expiry == 0) {
-            s.endTime = ~uint(0);
+            s.endTime = ~uint256(0);
         } else {
             require(params.expiry >= latestTime);
             s.endTime = params.expiry;
@@ -1142,7 +1142,7 @@ library TokenizedDerivativeUtils {
 
     function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0);
-        return uint(value);
+        return uint256(value);
     }
 }
 

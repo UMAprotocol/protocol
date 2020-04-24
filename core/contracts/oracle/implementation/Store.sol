@@ -15,9 +15,9 @@ import "../interfaces/StoreInterface.sol";
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
 contract Store is StoreInterface, Withdrawable, Testable {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
-    using FixedPoint for uint;
+    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
     /****************************************
@@ -48,8 +48,8 @@ contract Store is StoreInterface, Withdrawable, Testable {
         FixedPoint.Unsigned memory _weeklyDelayFeePerSecondPerPfc,
         address _timerAddress
     ) public Testable(_timerAddress) {
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        _createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
+        _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Owner), msg.sender);
         setFixedOracleFeePerSecondPerPfc(_fixedOracleFeePerSecondPerPfc);
         setWeeklyDelayFeePerSecondPerPfc(_weeklyDelayFeePerSecondPerPfc);
     }
@@ -104,7 +104,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
         regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecondPerPfc);
 
         // Compute how long ago the start time was to compute the delay penalty.
-        uint paymentDelay = getCurrentTime().sub(startTime);
+        uint256 paymentDelay = getCurrentTime().sub(startTime);
 
         // Compute the additional percentage (per second) that will be charged because of the penalty.
         // Note: if less than a week has gone by since the startTime, paymentDelay / SECONDS_PER_WEEK will truncate to
@@ -136,7 +136,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newFixedOracleFeePerSecondPerPfc)
         public
-        onlyRoleHolder(uint(Roles.Owner))
+        onlyRoleHolder(uint256(Roles.Owner))
     {
         // Oracle fees at or over 100% don't make sense.
         require(newFixedOracleFeePerSecondPerPfc.isLessThan(1), "Fee must be < 100% per second.");
@@ -150,7 +150,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     function setWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerSecondPerPfc)
         public
-        onlyRoleHolder(uint(Roles.Owner))
+        onlyRoleHolder(uint256(Roles.Owner))
     {
         require(newWeeklyDelayFeePerSecondPerPfc.isLessThan(1), "weekly delay fee must be < 100%");
         weeklyDelayFeePerSecondPerPfc = newWeeklyDelayFeePerSecondPerPfc;
@@ -164,7 +164,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     function setFinalFee(address currency, FixedPoint.Unsigned memory newFinalFee)
         public
-        onlyRoleHolder(uint(Roles.Owner))
+        onlyRoleHolder(uint256(Roles.Owner))
     {
         finalFees[currency] = newFinalFee;
         emit NewFinalFee(newFinalFee);

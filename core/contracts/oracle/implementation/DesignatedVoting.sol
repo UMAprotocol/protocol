@@ -38,9 +38,9 @@ contract DesignatedVoting is Withdrawable {
         address ownerAddress,
         address voterAddress
     ) public {
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), ownerAddress);
-        _createExclusiveRole(uint(Roles.Voter), uint(Roles.Owner), voterAddress);
-        _setWithdrawRole(uint(Roles.Owner));
+        _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), ownerAddress);
+        _createExclusiveRole(uint256(Roles.Voter), uint256(Roles.Owner), voterAddress);
+        _setWithdrawRole(uint256(Roles.Owner));
 
         finder = FinderInterface(finderAddress);
     }
@@ -59,7 +59,7 @@ contract DesignatedVoting is Withdrawable {
         bytes32 identifier,
         uint256 time,
         bytes32 hash
-    ) external onlyRoleHolder(uint(Roles.Voter)) {
+    ) external onlyRoleHolder(uint256(Roles.Voter)) {
         _getVotingAddress().commitVote(identifier, time, hash);
     }
 
@@ -67,7 +67,7 @@ contract DesignatedVoting is Withdrawable {
      * @notice Forwards a batch commit to Voting.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(VotingInterface.Commitment[] calldata commits) external onlyRoleHolder(uint(Roles.Voter)) {
+    function batchCommit(VotingInterface.Commitment[] calldata commits) external onlyRoleHolder(uint256(Roles.Voter)) {
         _getVotingAddress().batchCommit(commits);
     }
 
@@ -83,7 +83,7 @@ contract DesignatedVoting is Withdrawable {
         uint256 time,
         int256 price,
         int256 salt
-    ) external onlyRoleHolder(uint(Roles.Voter)) {
+    ) external onlyRoleHolder(uint256(Roles.Voter)) {
         _getVotingAddress().revealVote(identifier, time, price, salt);
     }
 
@@ -91,7 +91,7 @@ contract DesignatedVoting is Withdrawable {
      * @notice Forwards a batch reveal to Voting.
      * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(VotingInterface.Reveal[] calldata reveals) external onlyRoleHolder(uint(Roles.Voter)) {
+    function batchReveal(VotingInterface.Reveal[] calldata reveals) external onlyRoleHolder(uint256(Roles.Voter)) {
         _getVotingAddress().batchReveal(reveals);
     }
 
@@ -104,7 +104,7 @@ contract DesignatedVoting is Withdrawable {
      */
     function retrieveRewards(uint256 roundId, VotingInterface.PendingRequest[] memory toRetrieve)
         public
-        onlyRoleHolder(uint(Roles.Voter))
+        onlyRoleHolder(uint256(Roles.Voter))
         returns (FixedPoint.Unsigned memory)
     {
         return _getVotingAddress().retrieveRewards(address(this), roundId, toRetrieve);

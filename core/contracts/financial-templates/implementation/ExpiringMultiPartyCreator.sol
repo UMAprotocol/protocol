@@ -52,7 +52,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
     // - Discretize expirations such that they must expire on the first of each month.
-    uint[17] public VALID_EXPIRATION_TIMESTAMPS = [
+    uint256[17] public VALID_EXPIRATION_TIMESTAMPS = [
         1585699200, // 2020-04-01T00:00:00.000Z
         1588291200, // 2020-05-01T00:00:00.000Z
         1590969600, // 2020-06-01T00:00:00.000Z

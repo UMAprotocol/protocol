@@ -24,7 +24,7 @@ import "./FeePayer.sol";
  */
 
 contract PricelessPositionManager is FeePayer, AdministrateeInterface {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
@@ -138,8 +138,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
-        uint _expirationTimestamp,
-        uint _withdrawalLiveness,
+        uint256 _expirationTimestamp,
+        uint256 _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
@@ -637,7 +637,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0, "uint256 underflow");
-        return uint(value);
+        return uint256(value);
     }
 
     /**

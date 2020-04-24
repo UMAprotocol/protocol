@@ -17,7 +17,7 @@ import "../../oracle/implementation/Constants.sol";
  */
 
 abstract contract FeePayer is Testable {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
 
