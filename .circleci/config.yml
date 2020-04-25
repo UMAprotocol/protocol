@@ -74,8 +74,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v666666-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v666666-sec-toolbox-deps-
+            - v6-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v6-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -92,7 +92,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v666666-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v6-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
@@ -159,7 +159,7 @@ jobs:
           working_directory: ~/protocol/core
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
-          keys: 
+          keys:
             - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
             - v6-dapp-dep-cache-
       - run:
