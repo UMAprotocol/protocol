@@ -368,7 +368,7 @@ contract Liquidatable is PricelessPositionManager {
         // Based on the state, different parties of a liquidation can withdraw different amounts.
         // Once a caller has been paid their address deleted from the struct.
         // This prevents them from being paid multiple from times the same liquidation.
-        FixedPoint.Unsigned memory withdrawalAmount;
+        FixedPoint.Unsigned memory withdrawalAmount = FixedPoint.fromUnscaledUint(0);
         if (liquidation.state == Status.DisputeSucceeded) {
             // If the dispute is successful then all three users can withdraw from the contract.
             if (msg.sender == liquidation.disputer) {
