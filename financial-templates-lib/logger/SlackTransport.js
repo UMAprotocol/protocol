@@ -1,4 +1,4 @@
-// This transport enables slack messages to be sent from twillio logging. To configure this
+// This transport enables slack messages to be sent from Winston logging. To configure this
 // create a slack webhook and add this to your .env file. a sample in .env_sample shows this.
 // see https://slack.com/intl/en-za/help/articles/115005265063-Incoming-Webhooks-for-Slack for more.
 
@@ -13,7 +13,7 @@ const slackFormatter = info => {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*incorrectly formatted winston message!*`
+            text: "*incorrectly formatted winston message!*"
           }
         }
       ]
@@ -28,14 +28,14 @@ const slackFormatter = info => {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*${info.level}: ${info.at}* --> ${info.message}`
+          text: `*${info.level}: ${info.at}* ⭢ ${info.message}`
         }
       }
     ]
   };
 
   // All messages from winston come in as a Json object. The loop below expands this object
-  //and adds mrkdwn sections for each key value pair with a bullet point. If the section is
+  // and adds mrkdwn sections for each key value pair with a bullet point. If the section is
   // an object then it was passed containing multiple sub points. This is also expanded as a
   // sub indented section. If the key is `tx` then it is encoded as a etherscan URL.
   for (const key in info) {
@@ -67,14 +67,33 @@ const slackFormatter = info => {
         }
       }
     } else {
-      // If the value in the message object is an string or a integer then show it as _key: value
-      formattedResponse.blocks.push({
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: ` • _${key}_: ${info[key]}`
-        }
-      });
+      // if the key is a transaction object, generate a transaction link
+      if (key == "tx") {
+        formattedResponse.blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: ` • _tx_: <https://etherscan.io/tx/${info[key]}|${info[key]}> \n`
+          }
+        });
+      } else if (key == "mrkdwn") {
+        formattedResponse.blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: ` ${info[key]}`
+          }
+        });
+      } else {
+        // If the value in the message object is an string or a integer then show it as key: value
+        formattedResponse.blocks.push({
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: ` • _${key}_: ${info[key]}`
+          }
+        });
+      }
     }
   }
   return formattedResponse;

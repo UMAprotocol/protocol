@@ -9,11 +9,15 @@ contract WithdrawableTest is Withdrawable {
 
     // solhint-disable-next-line no-empty-blocks
     constructor() public {
-        _createExclusiveRole(uint(Roles.Governance), uint(Roles.Governance), msg.sender);
-        createWithdrawRole(uint(Roles.Withdraw), uint(Roles.Governance), msg.sender);
+        _createExclusiveRole(uint256(Roles.Governance), uint256(Roles.Governance), msg.sender);
+        _createWithdrawRole(uint256(Roles.Withdraw), uint256(Roles.Governance), msg.sender);
     }
 
     function pay() external payable {
         require(msg.value > 0);
+    }
+
+    function setInternalWithdrawRole(uint256 roleId) public {
+        _setWithdrawRole(roleId);
     }
 }

@@ -7,11 +7,32 @@ const deposit = require("./deposit");
 const transfer = require("./transfer");
 const viewLiquidationDetails = require("./viewLiquidationDetails");
 const { LiquidationStatesEnum } = require("../../../../common/Enums.js");
+const { getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 
 const showMarketDetails = async (web3, artifacts, emp) => {
+  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();
+
+  const printSponsorSummary = async sponsorAddress => {
+    const collateral = (await emp.getCollateral(sponsorAddress)).toString();
+    if (collateral === "0") {
+      console.log("You are not currently a sponsor");
+    } else {
+      const position = await emp.positions(sponsorAddress);
+      const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+      const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
+      const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+
+      console.table({
+        "Tokens you've minted": fromWei(position.tokensOutstanding.toString()),
+        "Deposited collateral": fromWei(collateral) + (isWeth ? " ETH" : " " + collateralSymbol),
+        "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString())
+      });
+    }
+  };
+
   const liquidations = await emp.getLiquidations(sponsorAddress);
   const liquidationStateToDisplay = state => {
     switch (state) {
@@ -28,13 +49,9 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     const choices = [{ name: backChoice }];
     for (let i = 0; i < liquidations.length; i++) {
       const liquidation = liquidations[i];
-      const display =
-        "Borrowed: " +
-        fromWei(liquidation.tokensOutstanding) +
-        " Collateral: " +
-        fromWei(liquidation.lockedCollateral) +
-        " Status: " +
-        liquidationStateToDisplay(liquidation.state);
+      const display = `Minted: ${fromWei(liquidation.tokensOutstanding)} Collateral: ${fromWei(
+        liquidation.lockedCollateral
+      )} Status: ${liquidationStateToDisplay(liquidation.state)}`;
       choices.push({ name: display, value: i });
     }
     const input = await inquirer.prompt({
@@ -58,37 +75,43 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       viewLiquidations: "View your liquidations"
     };
   }
+  let message = "What would you like to do?";
   if (collateral === "0") {
     // Sponsor doesn't have a position.
-    console.log("You are not currently a sponsor");
     actions = {
       ...actions,
       create: "Sponsor new position"
     };
+    message = "You are not currently a sponsor. What would you like to do?";
   } else {
+    console.log("Summary of your position:");
+    await printSponsorSummary(sponsorAddress);
     const position = await emp.positions(sponsorAddress);
-    console.log("You have:");
-    console.log(
-      "Position: " +
-        fromWei(collateral) +
-        " WETH backing " +
-        fromWei(position.tokensOutstanding.toString()) +
-        " synthetic tokens"
-    );
 
-    actions = {
-      ...actions,
-      create: "Borrow more tokens",
-      redeem: "Repay tokens",
-      withdraw: "Withdraw collateral",
-      deposit: "Deposit collateral",
-      transfer: "Transfer position to new owner"
-    };
+    const hasPendingWithdrawal = position.requestPassTimestamp.toString() !== "0";
+    if (hasPendingWithdrawal) {
+      console.log(
+        "Because you have a pending withdrawal, other contract functions are blocked. Either execute or cancel your withdrawal."
+      );
+      actions = {
+        ...actions,
+        withdraw: "Manage your withdrawals"
+      };
+    } else {
+      actions = {
+        ...actions,
+        create: "Mint more tokens",
+        redeem: "Repay tokens",
+        withdraw: "Withdraw collateral",
+        deposit: "Deposit collateral",
+        transfer: "Transfer position to new owner"
+      };
+    }
   }
   const prompt = {
     type: "list",
     name: "choice",
-    message: "What would you like to do?",
+    message,
     choices: Object.values(actions)
   };
   const input = (await inquirer.prompt(prompt))["choice"];
@@ -116,6 +139,8 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     default:
       console.log("unimplemented state");
   }
+  console.log("\nYour updated position:");
+  await printSponsorSummary(sponsorAddress);
 };
 
 module.exports = showMarketDetails;

@@ -1,8 +1,10 @@
 const inquirer = require("inquirer");
 const listMarkets = require("./sponsor/listMarkets");
+const listExpiredMarkets = require("./sponsor/listExpiredMarkets");
 
 const ACTIONS = {
-  listMarkets: "Show all Markets",
+  listMarkets: "List live markets",
+  listExpiredMarkets: "List expired markets",
   back: "Back"
 };
 
@@ -19,19 +21,18 @@ const sponsor = async () => {
 };
 
 const sponsorMenu = async (web3, artifacts) => {
-  try {
-    const inputs = (await sponsor())["sponsorTopMenu"];
-    switch (inputs) {
-      case ACTIONS.listMarkets:
-        await listMarkets(web3, artifacts);
-        break;
-      case ACTIONS.back:
-        return;
-      default:
-        console.log("unimplemented state");
-    }
-  } catch (err) {
-    console.log(err);
+  const inputs = (await sponsor())["sponsorTopMenu"];
+  switch (inputs) {
+    case ACTIONS.listMarkets:
+      await listMarkets(web3, artifacts);
+      break;
+    case ACTIONS.listExpiredMarkets:
+      await listExpiredMarkets(web3, artifacts);
+      break;
+    case ACTIONS.back:
+      return;
+    default:
+      console.log("unimplemented state");
   }
 };
 

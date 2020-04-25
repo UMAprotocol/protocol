@@ -1,13 +1,18 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
-const { unwrapToEth } = require("./currencyUtils.js");
+const { unwrapToEth, getIsWeth, getCurrencySymbol } = require("./currencyUtils.js");
 const { submitTransaction } = require("./transactionUtils");
 
 const withdraw = async (web3, artifacts, emp) => {
+  const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei, toWei, toBN } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const position = await emp.positions(sponsorAddress);
+  const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+  const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
+  const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+  const requiredCollateralSymbol = isWeth ? "ETH" : collateralSymbol;
 
   const scalingFactor = toBN(toWei("1"));
 
@@ -25,15 +30,29 @@ const withdraw = async (web3, artifacts, emp) => {
   };
 
   // Execute pending withdrawal.
-  const executeWithdrawal = async withdrawRequestAmount => {
+  const executeWithdrawal = async () => {
     const confirmation = await inquirer.prompt({
       type: "confirm",
       message: "Would you like to excecute this withdrawal?",
       name: "confirm"
     });
     if (confirmation["confirm"]) {
-      await submitTransaction(web3, async () => await emp.withdrawPassedRequest(), "Withdrawing WETH");
-      await unwrapToEth(web3, artifacts, emp, withdrawRequestAmount);
+      let totalTransactions = isWeth ? 2 : 1;
+      let transactionNum = 1;
+
+      // Simulate withdrawal to confirm exactly how much collateral you will receive back.
+      const exactCollateral = await emp.withdrawPassedRequest.call();
+      await submitTransaction(
+        web3,
+        async () => await emp.withdrawPassedRequest(),
+        `Withdrawing ${collateralSymbol}`,
+        transactionNum,
+        totalTransactions
+      );
+      transactionNum++;
+      if (isWeth) {
+        await unwrapToEth(web3, artifacts, emp, exactCollateral, transactionNum, totalTransactions);
+      }
     }
   };
 
@@ -47,24 +66,26 @@ const withdraw = async (web3, artifacts, emp) => {
     const collateralPerToken = toBN(collateral)
       .sub(toBN(withdrawRequestAmount))
       .mul(scalingFactor)
-      .div(toBN(position.tokensOutstanding.toString()));
+      .div(toBN(position.tokensOutstanding.toString()))
+      // Express as a percent.
+      .muln(100);
 
     // Get current contract time and withdrawal request expiration time.
     const currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
-    // Withdrawal request expires AFTER the withdraw request time, so add one second to the expiration time displayed.
-    const expirationTimeReadable = new Date(Number(withdrawalRequestPassedTimestamp.toString()) * 1000 + 1);
+    const expirationTimeReadable = new Date(Number(withdrawalRequestPassedTimestamp.toString()) * 1000);
 
     // Withdraw request is still pending. User can cancel withdraw.
-    if (toBN(withdrawalRequestPassedTimestamp.toString()).gte(toBN(currentTime.toString()))) {
+    if (toBN(withdrawalRequestPassedTimestamp.toString()).gt(toBN(currentTime.toString()))) {
       console.log(
-        `You have a withdrawal request for ${fromWei(
+        `You have a withdrawal request for approximately ${fromWei(
           withdrawRequestAmount
-        )} ETH that is pending until ${expirationTimeReadable}.`
+        )} ${requiredCollateralSymbol} that is pending until ${expirationTimeReadable}.`
       );
       console.log(`The current contract time is ${currentTimeReadable}.`);
       console.log(
-        "Hypothetical collateralization ratio if the withdrawal request were to go through: " +
+        `Hypothetical collateralization ratio if the withdrawal request were to go through: ${Number(
           fromWei(collateralPerToken)
+        ).toFixed(2)}%`
       );
       const prompt = {
         type: "list",
@@ -86,13 +107,15 @@ const withdraw = async (web3, artifacts, emp) => {
     // Withdraw request has passed, user can withdraw or cancel.
     else {
       console.log(
-        `Your withdrawal request for ${fromWei(
+        `Your withdrawal request for approximately ${fromWei(
           withdrawRequestAmount
-        )} ETH has been ready since ${expirationTimeReadable}.`
+        )} ${requiredCollateralSymbol} has been ready since ${expirationTimeReadable}.`
       );
       console.log(`The current contract time is ${currentTimeReadable}.`);
       console.log(
-        "Hypothetical collateralization ratio once the withdrawal request executes: " + fromWei(collateralPerToken)
+        `Hypothetical collateralization ratio once the withdrawal request executes: ${Number(
+          fromWei(collateralPerToken)
+        ).toFixed(2)}%`
       );
       const prompt = {
         type: "list",
@@ -103,7 +126,7 @@ const withdraw = async (web3, artifacts, emp) => {
       const input = (await inquirer.prompt(prompt))["choice"];
       switch (input) {
         case "Execute Pending Withdrawal":
-          await executeWithdrawal(withdrawRequestAmount);
+          await executeWithdrawal();
           break;
         case "Cancel Pending Withdrawal":
           await cancelWithdrawal();
@@ -115,20 +138,16 @@ const withdraw = async (web3, artifacts, emp) => {
       }
     }
   } else {
-    console.log("You have:");
-    console.log(
-      "Position: " +
-        fromWei(collateral) +
-        " WETH backing " +
-        fromWei(position.tokensOutstanding.toString()) +
-        " synthetic tokens"
-    );
-
+    const withdrawalLiveness = await emp.withdrawalLiveness();
+    const withdrawalLivenessInMinutes = toBN(withdrawalLiveness.toString())
+      .div(toBN(60))
+      .toString();
     // Calculate current collateralization ratio.
     const collateralPerToken = toBN(collateral)
       .mul(scalingFactor)
-      .div(toBN(position.tokensOutstanding.toString()));
-    console.log("Current collateralization ratio: " + fromWei(collateralPerToken));
+      .div(toBN(position.tokensOutstanding.toString()))
+      .muln(100);
+    console.log(`Current collateralization ratio: ${Number(fromWei(collateralPerToken)).toFixed(2)}%`);
 
     // Calculate GCR.
     const totalPositionCollateral = toBN((await emp.totalPositionCollateral()).rawValue.toString());
@@ -142,47 +161,59 @@ const withdraw = async (web3, artifacts, emp) => {
       .divRound(scalingFactor);
     const excessCollateral = toBN(collateral).sub(minCollateralAboveGcr);
     const maxInstantWithdrawal = excessCollateral.gt(toBN(0)) ? excessCollateral : toBN(0);
-    console.log("Maximum amount you can withdraw instantly: ", fromWei(maxInstantWithdrawal));
+    console.log(
+      `You must request an amount to withdraw. The request takes ${withdrawalLivenessInMinutes} minutes to process.`
+    );
+    // TODO: Use price feed to calculate what's the maximum withdrawal amount that'll meet the collateralization
+    // requirement. Display that to the user here.
 
     // Prompt user to enter withdrawal amount
     const input = await inquirer.prompt({
       name: "numCollateral",
-      message: "How much ETH to withdraw?",
+      message: `How much ${requiredCollateralSymbol} to withdraw?`,
       validate: value =>
         (value > 0 && toBN(toWei(value)).lte(toBN(collateral))) ||
-        "Number of ETH must be positive and up to your current locked collateral"
+        `You can only withdraw up to ${fromWei(collateral)} ${requiredCollateralSymbol}`
     });
     const tokensToWithdraw = toBN(toWei(input["numCollateral"]));
 
     // Requested withdrawal amount can be processed instantly, call `withdraw()`
     if (tokensToWithdraw.lte(maxInstantWithdrawal)) {
-      console.log("Your withdrawal of ", fromWei(tokensToWithdraw), "ETH will process instantly");
+      console.log(
+        `Your withdrawal of approximately ${fromWei(
+          tokensToWithdraw
+        )} ${requiredCollateralSymbol} will process instantly`
+      );
       const confirmation = await inquirer.prompt({
         type: "confirm",
         message: "Continue?",
         name: "confirm"
       });
       if (confirmation["confirm"]) {
+        let totalTransactions = isWeth ? 2 : 1;
+        let transactionNum = 1;
+
+        // Simulate withdrawal to confirm exactly how much collateral you will receive back.
+        const exactCollateral = await emp.withdraw.call({ rawValue: tokensToWithdraw.toString() });
         await submitTransaction(
           web3,
           async () => await emp.withdraw({ rawValue: tokensToWithdraw.toString() }),
-          "Withdrawing WETH"
+          `Withdrawing ${collateralSymbol}`,
+          transactionNum,
+          totalTransactions
         );
-        await unwrapToEth(web3, artifacts, emp, tokensToWithdraw.toString());
+        transactionNum++;
+        if (isWeth) {
+          await unwrapToEth(web3, artifacts, emp, exactCollateral, transactionNum, totalTransactions);
+        }
       }
     }
     // Requested withdrawal amount cannot be processed instantly, call `requestWithdrawal()`
     else {
-      const withdrawalLiveness = await emp.withdrawalLiveness();
-      const withdrawalLivenessInMinutes = toBN(withdrawalLiveness.toString())
-        .div(toBN(60))
-        .toString();
       console.log(
-        "Your requested withdrawal of ",
-        fromWei(tokensToWithdraw),
-        "ETH will process after ",
-        withdrawalLivenessInMinutes,
-        " minutes"
+        `Come back in ${withdrawalLivenessInMinutes} minutes to execute your withdrawal of ${fromWei(
+          tokensToWithdraw
+        )} ${requiredCollateralSymbol}`
       );
       const confirmation = await inquirer.prompt({
         type: "confirm",
@@ -194,6 +225,11 @@ const withdraw = async (web3, artifacts, emp) => {
           web3,
           async () => await emp.requestWithdrawal({ rawValue: tokensToWithdraw.toString() }),
           "Requesting withdrawal"
+        );
+        console.log(
+          `Withdrawal requested. Come back in ${withdrawalLivenessInMinutes} minutes to execute your withdrawal of ${fromWei(
+            tokensToWithdraw.toString()
+          )} ${requiredCollateralSymbol}`
         );
       }
     }

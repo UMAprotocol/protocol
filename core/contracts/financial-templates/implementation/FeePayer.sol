@@ -7,6 +7,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
+import "../../oracle/implementation/Constants.sol";
 
 
 /**
@@ -16,7 +17,7 @@ import "../../oracle/interfaces/FinderInterface.sol";
  */
 
 abstract contract FeePayer is Testable {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
 
@@ -31,7 +32,7 @@ abstract contract FeePayer is Testable {
     FinderInterface public finder;
 
     // Tracks the last block time when the fees were paid.
-    uint public lastPaymentTime;
+    uint256 public lastPaymentTime;
 
     // Tracks the cumulative fees that have been paid by the contract for use by derived contracts.
     // The multiplier starts at 1, and is updated by computing cumulativeFeeMultiplier * (1 - effectiveFee).
@@ -41,6 +42,13 @@ abstract contract FeePayer is Testable {
     // If a 1% fee is charged, the multiplier should update to .99.
     // If another 1% fee is charged, the multiplier should be 0.99^2 (0.9801).
     FixedPoint.Unsigned public cumulativeFeeMultiplier;
+
+    /****************************************
+     *                EVENTS                *
+     ****************************************/
+
+    event RegularFeesPaid(uint256 indexed regularFee, uint256 indexed lateFee);
+    event FinalFeesPaid(uint256 indexed amount);
 
     /****************************************
      *              MODIFIERS               *
@@ -56,9 +64,14 @@ abstract contract FeePayer is Testable {
      * @notice Constructs the FeePayer contract. Called by child contracts.
      * @param collateralAddress ERC20 token that is used as the underlying collateral for the synthetic.
      * @param finderAddress UMA protocol Finder used to discover other protocol contracts.
-     * @param isTest whether this contract is being constructed for the purpose of running tests.
+     * @param timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(address collateralAddress, address finderAddress, bool isTest) public Testable(isTest) {
+    constructor(
+        address collateralAddress,
+        address finderAddress,
+        address timerAddress
+    ) public Testable(timerAddress) {
         collateralCurrency = IERC20(collateralAddress);
         finder = FinderInterface(finderAddress);
         lastPaymentTime = getCurrentTime();
@@ -77,7 +90,7 @@ abstract contract FeePayer is Testable {
      */
     function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
-        uint time = getCurrentTime();
+        uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory _pfc = pfc();
 
         // Exit early if there is no pfc (thus, no fees to be paid).
@@ -94,12 +107,14 @@ abstract contract FeePayer is Testable {
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
-            store.payOracleFeesErc20(address(collateralCurrency));
+            store.payOracleFeesErc20(address(collateralCurrency), regularFee);
         }
 
         if (latePenalty.isGreaterThan(0)) {
             collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
+
+        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         totalPaid = regularFee.add(latePenalty);
         FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
@@ -110,33 +125,33 @@ abstract contract FeePayer is Testable {
      * @notice Pays UMA DVM final fees to the Store contract.
      * @dev This is a flat fee charged for each price request.
      * @param payer address of who is paying the fees.
-     * @return totalPaid The amount of collateral that was paid to the Store.
+     * @param amount the amount of collateral to send as the final fee.
      */
-    function _payFinalFees(address payer) internal returns (FixedPoint.Unsigned memory totalPaid) {
-        StoreInterface store = _getStore();
-        totalPaid = store.computeFinalFee(address(collateralCurrency));
-
-        if (totalPaid.isEqual(0)) {
-            return totalPaid;
+    function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
+        if (amount.isEqual(0)) {
+            return;
         }
 
         if (payer != address(this)) {
             // If the payer is not the contract pull the collateral from the payer.
-            collateralCurrency.safeTransferFrom(payer, address(this), totalPaid.rawValue);
+            collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
         } else {
             // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
             FixedPoint.Unsigned memory _pfc = pfc();
 
             // The final fee must be < pfc or the fee will be larger than 100%.
-            require(_pfc.isGreaterThan(totalPaid));
+            require(_pfc.isGreaterThan(amount));
 
             // Add the adjustment.
-            FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(pfc());
+            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(pfc());
             cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
         }
 
-        collateralCurrency.safeIncreaseAllowance(address(store), totalPaid.rawValue);
-        store.payOracleFeesErc20(address(collateralCurrency));
+        emit FinalFeesPaid(amount.rawValue);
+
+        StoreInterface store = _getStore();
+        collateralCurrency.safeIncreaseAllowance(address(store), amount.rawValue);
+        store.payOracleFeesErc20(address(collateralCurrency), amount);
     }
 
     /**
@@ -151,8 +166,12 @@ abstract contract FeePayer is Testable {
      ****************************************/
 
     function _getStore() internal view returns (StoreInterface) {
-        bytes32 storeInterface = "Store";
-        return StoreInterface(finder.getImplementationAddress(storeInterface));
+        return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+    }
+
+    function _computeFinalFees() internal returns (FixedPoint.Unsigned memory finalFees) {
+        StoreInterface store = _getStore();
+        return store.computeFinalFee(address(collateralCurrency));
     }
 
     // Returns the user's collateral minus any fees that have been subtracted since it was originally
@@ -177,17 +196,35 @@ abstract contract FeePayer is Testable {
         return collateral.div(cumulativeFeeMultiplier);
     }
 
+    // Decrease rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // by dividing it by cumulativeFeeMutliplier. There is potential for this quotient to be floored, therefore rawCollateral
+    // is decreased by less than expected. Because this method is usually called in conjunction with an actual removal of collateral
+    // from this contract, return the fee-adjusted amount that the rawCollateral is decreased by so that the caller can
+    // minimize error between collateral removed and rawCollateral debited.
     function _removeCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToRemove)
         internal
+        returns (FixedPoint.Unsigned memory removedCollateral)
     {
+        FixedPoint.Unsigned memory initialBalance = _getCollateral(rawCollateral);
         FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToRemove);
         rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
+        removedCollateral = initialBalance.sub(_getCollateral(rawCollateral));
     }
 
+    // Increase rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // by dividing it by cumulativeFeeMutliplier. There is potential for this quotient to be floored, therefore rawCollateral
+    // is increased by less than expected. Because this method is usually called in conjunction with an actual addition of collateral
+    // to this contract, return the fee-adjusted amount that the rawCollateral is increased by so that the caller can
+    // minimize error between collateral removed and rawCollateral credited.
+    // @dev: This return value exists only for the sake of symmetry with `_removeCollateral`. We don't actually use it because
+    // we are OK if more collateral is stored in the contract than is represented by `totalPositionCollateral`.
     function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
         internal
+        returns (FixedPoint.Unsigned memory addedCollateral)
     {
+        FixedPoint.Unsigned memory initialBalance = _getCollateral(rawCollateral);
         FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
+        addedCollateral = _getCollateral(rawCollateral).sub(initialBalance);
     }
 }

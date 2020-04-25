@@ -1,5 +1,7 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
+
 const { LiquidationStatesEnum } = require("../../common/Enums");
+const { interfaceName } = require("../../core/utils/Constants.js");
 
 // Script to test
 const { Liquidator } = require("../liquidator.js");
@@ -15,6 +17,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("Liquidator.js", function(accounts) {
   // implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0]
@@ -31,7 +34,7 @@ contract("Liquidator.js", function(accounts) {
   let mockOracle;
 
   before(async function() {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
@@ -47,19 +50,18 @@ contract("Liquidator.js", function(accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
-
-    // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
-      from: contractCreator
-    });
-    finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
-    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 
   beforeEach(async function() {
+    // Create a mockOracle and finder. Register the mockMoracle with the finder.
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
+      from: contractCreator
+    });
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
+    await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+
     const constructorParams = {
-      isTest: true,
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -72,7 +74,9 @@ contract("Liquidator.js", function(accounts) {
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     // Deploy a new expiring multi party
@@ -112,7 +116,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Start with a mocked price of 1 usd per token.
     // This puts both sponsors over collateralized so no liquidations should occur.
-    await liquidator.queryAndLiquidate(toWei("1"));
+    await liquidator.queryAndLiquidate(time => toWei("1"));
 
     // There should be no liquidations created from any sponsor account
     assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
@@ -131,7 +135,7 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor2: 100 * 1.3 * 1.2 > 150 [undercollateralized]
     // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
 
-    await liquidator.queryAndLiquidate(toWei("1.3"));
+    await liquidator.queryAndLiquidate(time => toWei("1.3"));
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
@@ -166,12 +170,13 @@ contract("Liquidator.js", function(accounts) {
     // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
-    await liquidator.queryAndLiquidate(toWei("1.3"));
+    await liquidator.queryAndLiquidate(time => toWei("1.3"));
 
     // Advance the timer to the liquidation expiry.
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     const liquidationLiveness = 1000;
     await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+    await empClient.forceUpdate();
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -201,12 +206,11 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     const liquidationPrice = toWei("1.3");
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
-    // Update the EMP client to detect new liquidations, and then
-    // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update();
+    // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
+    await empClient.forceUpdate();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
@@ -247,12 +251,11 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     const liquidationPrice = toWei("1.3");
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
-    // Update the EMP client to detect new liquidations, and then
-    // dispute the liquidation, which requires staking a dispute bond.
-    await empClient._update();
+    // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
+    await empClient.forceUpdate();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
@@ -289,16 +292,18 @@ contract("Liquidator.js", function(accounts) {
     const liquidationPrice = toWei("1.3");
 
     // No transaction should be sent, so this should not throw.
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
     // No liquidations should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
 
     // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
     await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+    // No need to force update the `empClient` here since we are not interested in detecting the `liquidatorBot`'s new position,
+    // but now when we try to liquidate the position the liquidation will go through because the bot will have the requisite balance.
 
-    // No transaction should be sent, so this should not throw.
-    await liquidator.queryAndLiquidate(liquidationPrice);
+    // Can now liquidate the position.
+    await liquidator.queryAndLiquidate(time => liquidationPrice);
 
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);

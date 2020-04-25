@@ -13,6 +13,7 @@ const Registry = artifacts.require("Registry");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
+const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiParty", function(accounts) {
   let contractCreator = accounts[0];
@@ -27,7 +28,7 @@ contract("ExpiringMultiParty", function(accounts) {
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
@@ -47,7 +48,9 @@ contract("ExpiringMultiParty", function(accounts) {
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -68,18 +71,6 @@ contract("ExpiringMultiParty", function(accounts) {
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
     // Set to an invalid expiry.
     constructorParams.expirationTimestamp = validExpiration.add(toBN("1")).toString();
-    assert(
-      await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator
-        })
-      )
-    );
-  });
-
-  it("Cannot set dispute bond percentage below limit set by EMP creator", async function() {
-    // Change only dispute bond %.
-    constructorParams.disputeBondPct = { rawValue: toWei("0") };
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
@@ -115,7 +106,7 @@ contract("ExpiringMultiParty", function(accounts) {
 
   it("Collateral token must be whitelisted", async function() {
     // Change only the collateral token address
-    constructorParams.collateralAddress = await Token.new({ from: contractCreator }).address;
+    constructorParams.collateralAddress = await Token.new("UMA", "UMA", 18, { from: contractCreator }).address;
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {

@@ -126,14 +126,20 @@ addLocalNetwork(networks, "coverage", { port: 8545, network_id: 1234 });
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
 addLocalNetwork(networks, "metamask", { provider: new MetaMaskTruffleProvider(), networkCheckTimeout: 500000 });
 
+addLocalNetwork(networks, "mainnet-fork", { port: 8545, network_id: 1 });
+
 module.exports = {
   // See <http://truffleframework.com/docs/advanced/configuration>
   // for more about customizing your Truffle configuration!
   networks: networks,
   plugins: ["solidity-coverage"],
+  mocha: {
+    enableTimeouts: false,
+    before_timeout: 1800000
+  },
   compilers: {
     solc: {
-      version: "0.6.4",
+      version: "0.6.6",
       settings: {
         optimizer: {
           enabled: true,

@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/Withdrawable.sol";
@@ -29,7 +28,7 @@ contract DesignatedVotingFactory is Withdrawable {
     constructor(address finderAddress) public {
         finder = finderAddress;
 
-        createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Withdrawer), msg.sender);
+        _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Withdrawer), msg.sender);
     }
 
     /**
@@ -37,18 +36,19 @@ contract DesignatedVotingFactory is Withdrawable {
      * @param ownerAddress defines who will own the deployed instance of the designatedVoting contract.
      * @return designatedVoting a new DesignatedVoting contract.
      */
-    function newDesignatedVoting(address ownerAddress) external returns (DesignatedVoting designatedVoting) {
+    function newDesignatedVoting(address ownerAddress) external returns (DesignatedVoting) {
         require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
 
-        designatedVoting = new DesignatedVoting(finder, ownerAddress, msg.sender);
+        DesignatedVoting designatedVoting = new DesignatedVoting(finder, ownerAddress, msg.sender);
         designatedVotingContracts[msg.sender] = designatedVoting;
+        return designatedVoting;
     }
 
     /**
      * @notice Associates a `DesignatedVoting` instance with `msg.sender`.
      * @param designatedVotingAddress address to designate voting to.
-     * @dev This is generally only used if the owner of a `DesignatedVoting` contract changes their `voter` address and
-     * wants that reflected here.
+     * @dev This is generally only used if the owner of a `DesignatedVoting` contract changes their `voter`
+     * address and wants that reflected here.
      */
     function setDesignatedVoting(address designatedVotingAddress) external {
         require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");

@@ -4,7 +4,7 @@ const {
   deriveKeyPairFromSignatureTruffle,
   deriveKeyPairFromSignatureMetamask
 } = require("./Crypto");
-const { getKeyGenMessage, computeTopicHash } = require("./EncryptionHelper");
+const { getKeyGenMessage, computeTopicHash, computeVoteHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
 
 const argv = require("minimist")(process.argv.slice());
@@ -21,7 +21,14 @@ const argv = require("minimist")(process.argv.slice());
 const constructCommitment = async (request, roundId, web3, price, account) => {
   const priceWei = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
-  const hash = web3.utils.soliditySha3(priceWei, salt);
+  const hash = computeVoteHash({
+    price: priceWei,
+    salt,
+    account,
+    time: request.time,
+    roundId,
+    identifier: request.identifier
+  });
 
   const vote = { price: priceWei, salt };
   let publicKey;
@@ -51,8 +58,8 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
  * @param {* Object} votingContract deployed Voting.sol instance
  */
 const constructReveal = async (request, roundId, web3, account, votingContract) => {
-  const topicHash = computeTopicHash(request, roundId);
-  const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
+  const encryptedCommit = (await getLatestEvent("EncryptedVote", request, roundId, account, votingContract))
+    .encryptedVote;
 
   let privateKey;
   if (argv.network === "metamask") {
@@ -170,7 +177,35 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, account) 
   };
 };
 
+// Get the latest event matching the provided parameters. Assumes that all events from Voting.sol have indexed
+// parameters for identifier, roundId, and voter.
+const getLatestEvent = async (eventName, request, roundId, account, votingContract) => {
+  const events = await votingContract.getPastEvents(eventName, {
+    fromBlock: 0,
+    filter: { identifier: request.identifier, roundId: roundId.toString(), voter: account.toString() }
+  });
+  // Sort descending. Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
+  events.sort((a, b) => {
+    if (a.blockNumber !== b.blockNumber) {
+      return b.blockNumber - a.blockNumber;
+    }
+
+    if (a.transactionIndex !== b.transactionIndex) {
+      return b.transactionIndex - a.transactionIndex;
+    }
+
+    return b.logIndex - a.logIndex;
+  });
+  for (const ev of events) {
+    if (ev.returnValues.time.toString() === request.time.toString()) {
+      return ev.returnValues;
+    }
+  }
+  return null;
+};
+
 module.exports = {
+  getLatestEvent,
   constructCommitment,
   constructReveal,
   batchCommitVotes,

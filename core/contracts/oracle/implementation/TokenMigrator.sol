@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
-import "@openzeppelin/contracts/drafts/ERC20Snapshot.sol";
+import "./VotingToken.sol";
 
 
 /**
@@ -18,10 +18,10 @@ contract TokenMigrator {
      *    INTERNAL VARIABLES AND STORAGE    *
      ****************************************/
 
-    ERC20Snapshot public oldToken;
+    VotingToken public oldToken;
     ExpandedIERC20 public newToken;
 
-    uint public snapshotId;
+    uint256 public snapshotId;
     FixedPoint.Unsigned public rate;
 
     mapping(address => bool) public hasMigrated;
@@ -33,13 +33,17 @@ contract TokenMigrator {
      * @param _oldToken address of the token being migrated from.
      * @param _newToken address of the token being migrated to.
      */
-    constructor(FixedPoint.Unsigned memory _rate, address _oldToken, address _newToken) public {
+    constructor(
+        FixedPoint.Unsigned memory _rate,
+        address _oldToken,
+        address _newToken
+    ) public {
         // Prevents division by 0 in migrateTokens().
         // Also it doesn’t make sense to have “0 old tokens equate to 1 new token”.
-        require(_rate.isGreaterThan(0));
+        require(_rate.isGreaterThan(0), "Rate can't be 0");
         rate = _rate;
         newToken = ExpandedIERC20(_newToken);
-        oldToken = ERC20Snapshot(_oldToken);
+        oldToken = VotingToken(_oldToken);
         snapshotId = oldToken.snapshot();
     }
 
