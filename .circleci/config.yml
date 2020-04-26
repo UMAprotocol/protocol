@@ -160,7 +160,7 @@ jobs:
           working_directory: ~/protocol/core
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
-          keys: 
+          keys:
             - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
             - v6-dapp-dep-cache-
       - run:
@@ -202,13 +202,6 @@ jobs:
       - store_artifacts:
           path: ~/protocol/voter-dapp/build
           destination: voter-dapp-build
-      - run:
-          name: Build Sponsor dApp V2
-          working_directory: ~/protocol/sponsor-dapp-v2
-          command: npm run build
-      - store_artifacts:
-          path: ~/protocol/sponsor-dapp-v2/build
-          destination: sponsor-dapp-v2-build
   deploy_to_staging:
     docker:
       - image: circleci/node:lts
