@@ -161,7 +161,7 @@ jobs:
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
           keys:
-            - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
+            - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
             - v6-dapp-dep-cache-
       - run:
           name: Install Voter dApp Dependencies
@@ -172,7 +172,7 @@ jobs:
           working_directory: ~/protocol/sponsor-dapp-v2
           command: npm install
       - save_cache:
-          key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
+          key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
           paths:
             - voter-dapp/node_modules
             - sponsor-dapp-v2/node_modules

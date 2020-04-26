@@ -16,4 +16,3 @@ run_test() {
 PROTOCOL_DIR=$(pwd)
 
 run_test $PROTOCOL_DIR/voter-dapp
-run_test $PROTOCOL_DIR/sponsor-dapp-v2
