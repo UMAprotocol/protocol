@@ -10,7 +10,7 @@ contract("scripts/EmergencyShutdown.js", function(accounts) {
     const administratee = await MockAdministratee.new();
 
     // Call emergency shutdown
-    await EmergencyShutdown.run(deployer, administratee.address);
+    await EmergencyShutdown.run(owner, administratee.address);
 
     // Emergency shutdown called.
     assert.equal((await administratee.timesEmergencyShutdown()).toString(), "1");
