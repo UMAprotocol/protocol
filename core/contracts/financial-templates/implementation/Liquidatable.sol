@@ -364,7 +364,7 @@ contract Liquidatable is PricelessPositionManager {
         // There are three main outcome states: either the dispute succeeded, failed or was not updated.
         // Based on the state, different parties of a liquidation can withdraw different amounts.
         // Once a caller has been paid their address is deleted from the struct.
-        // This prevents them from being paid multiple times from the same liquidation.
+        // This prevents paying the caller multiple times from the same liquidation.
         FixedPoint.Unsigned memory withdrawalAmount;
         if (liquidation.state == Status.DisputeSucceeded) {
             // If the dispute is successful then all three users can withdraw from the contract.
