@@ -1,6 +1,7 @@
 # Previous and Upcoming Events
 
 ## Upcoming Events
+- April 24, 2020: Crypto Tonight Ep. 4 “When Defi is not Fine”
 - May 1-2, 2020: DeFi Full-Stack [Agenda](https://defi-fullstack.dystopialabs.com/)
 
 ## Past Events

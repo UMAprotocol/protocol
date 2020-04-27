@@ -15,9 +15,9 @@ import "../interfaces/StoreInterface.sol";
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.
  */
 contract Store is StoreInterface, Withdrawable, Testable {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
-    using FixedPoint for uint;
+    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
     /****************************************
@@ -43,9 +43,15 @@ contract Store is StoreInterface, Withdrawable, Testable {
     /**
      * @notice Construct the Store contract.
      */
-    constructor(address _timerAddress) public Testable(_timerAddress) {
-        _createExclusiveRole(uint(Roles.Owner), uint(Roles.Owner), msg.sender);
-        createWithdrawRole(uint(Roles.Withdrawer), uint(Roles.Owner), msg.sender);
+    constructor(
+        FixedPoint.Unsigned memory _fixedOracleFeePerSecondPerPfc,
+        FixedPoint.Unsigned memory _weeklyDelayFeePerSecondPerPfc,
+        address _timerAddress
+    ) public Testable(_timerAddress) {
+        _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
+        _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Owner), msg.sender);
+        setFixedOracleFeePerSecondPerPfc(_fixedOracleFeePerSecondPerPfc);
+        setWeeklyDelayFeePerSecondPerPfc(_weeklyDelayFeePerSecondPerPfc);
     }
 
     /****************************************
@@ -56,10 +62,8 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @notice Pays Oracle fees in ETH to the store.
      * @dev To be used by contracts whose margin currency is ETH.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function payOracleFees() external override payable {
-        require(msg.value > 0);
+        require(msg.value > 0, "Value sent can't be zero");
     }
 
     /**
@@ -68,11 +72,9 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @param erc20Address address of the ERC20 token used to pay the fee.
      * @param amount number of tokens to transfer. An approval for at least this amount must exist.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function payOracleFeesErc20(address erc20Address, FixedPoint.Unsigned calldata amount) external override {
         IERC20 erc20 = IERC20(erc20Address);
-        require(amount.isGreaterThan(0));
+        require(amount.isGreaterThan(0), "Amount sent can't be zero");
         erc20.safeTransferFrom(msg.sender, address(this), amount.rawValue);
     }
 
@@ -91,26 +93,25 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @return regularFee amount owed for the duration from start to end time for the given pfc.
      * @return latePenalty penalty percentage, if any, for paying the fee after the deadline.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function computeRegularFee(uint256 startTime, uint256 endTime, FixedPoint.Unsigned calldata pfc)
-        external
-        override
-        view
-        returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty)
-    {
+    function computeRegularFee(
+        uint256 startTime,
+        uint256 endTime,
+        FixedPoint.Unsigned calldata pfc
+    ) external override view returns (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) {
         uint256 timeDiff = endTime.sub(startTime);
 
         // Multiply by the unscaled `timeDiff` first, to get more accurate results.
         regularFee = pfc.mul(timeDiff).mul(fixedOracleFeePerSecondPerPfc);
 
         // Compute how long ago the start time was to compute the delay penalty.
-        uint paymentDelay = getCurrentTime().sub(startTime);
+        uint256 paymentDelay = getCurrentTime().sub(startTime);
 
         // Compute the additional percentage (per second) that will be charged because of the penalty.
         // Note: if less than a week has gone by since the startTime, paymentDelay / SECONDS_PER_WEEK will truncate to
         // 0, causing no penalty to be charged.
-        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFeePerSecondPerPfc.mul(paymentDelay.div(SECONDS_PER_WEEK));
+        FixedPoint.Unsigned memory penaltyPercentagePerSecond = weeklyDelayFeePerSecondPerPfc.mul(
+            paymentDelay.div(SECONDS_PER_WEEK)
+        );
 
         // Apply the penaltyPercentagePerSecond to the payment period.
         latePenalty = pfc.mul(timeDiff).mul(penaltyPercentagePerSecond);
@@ -121,8 +122,6 @@ contract Store is StoreInterface, Withdrawable, Testable {
      * @param currency token used to pay the final fee.
      * @return finalFee amount due denominated in units of `currency`.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function computeFinalFee(address currency) external override view returns (FixedPoint.Unsigned memory) {
         return finalFees[currency];
     }
@@ -137,10 +136,10 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     function setFixedOracleFeePerSecondPerPfc(FixedPoint.Unsigned memory newFixedOracleFeePerSecondPerPfc)
         public
-        onlyRoleHolder(uint(Roles.Owner))
+        onlyRoleHolder(uint256(Roles.Owner))
     {
         // Oracle fees at or over 100% don't make sense.
-        require(newFixedOracleFeePerSecondPerPfc.isLessThan(1));
+        require(newFixedOracleFeePerSecondPerPfc.isLessThan(1), "Fee must be < 100% per second.");
         fixedOracleFeePerSecondPerPfc = newFixedOracleFeePerSecondPerPfc;
         emit NewFixedOracleFeePerSecondPerPfc(newFixedOracleFeePerSecondPerPfc);
     }
@@ -151,7 +150,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     function setWeeklyDelayFeePerSecondPerPfc(FixedPoint.Unsigned memory newWeeklyDelayFeePerSecondPerPfc)
         public
-        onlyRoleHolder(uint(Roles.Owner))
+        onlyRoleHolder(uint256(Roles.Owner))
     {
         require(newWeeklyDelayFeePerSecondPerPfc.isLessThan(1), "weekly delay fee must be < 100%");
         weeklyDelayFeePerSecondPerPfc = newWeeklyDelayFeePerSecondPerPfc;
@@ -165,7 +164,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
      */
     function setFinalFee(address currency, FixedPoint.Unsigned memory newFinalFee)
         public
-        onlyRoleHolder(uint(Roles.Owner))
+        onlyRoleHolder(uint256(Roles.Owner))
     {
         finalFees[currency] = newFinalFee;
         emit NewFinalFee(newFinalFee);

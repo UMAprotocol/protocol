@@ -1,8 +1,6 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-
 import "../interfaces/FinderInterface.sol";
 
 
@@ -11,8 +9,6 @@ import "../interfaces/FinderInterface.sol";
  * @dev Examples of interfaces with implementations that Finder locates are the Oracle and Store interfaces.
  */
 contract Finder is FinderInterface, Ownable {
-    using Address for address;
-
     mapping(bytes32 => address) public interfacesImplemented;
 
     event InterfaceImplementationChanged(bytes32 indexed interfaceName, address indexed newImplementationAddress);
@@ -22,10 +18,11 @@ contract Finder is FinderInterface, Ownable {
      * @param interfaceName bytes32 of the interface name that is either changed or registered.
      * @param implementationAddress address of the implementation contract.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
-    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external override onlyOwner {
-        require(implementationAddress.isContract(),"Can only change implementation to a contract");
+    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress)
+        external
+        override
+        onlyOwner
+    {
         interfacesImplemented[interfaceName] = implementationAddress;
 
         emit InterfaceImplementationChanged(interfaceName, implementationAddress);
@@ -36,11 +33,9 @@ contract Finder is FinderInterface, Ownable {
      * @param interfaceName queried interface.
      * @return implementationAddress address of the defined interface.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function getImplementationAddress(bytes32 interfaceName) external override view returns (address) {
         address implementationAddress = interfacesImplemented[interfaceName];
-        require(implementationAddress != address(0x0), "No implementation for interface found");
+        require(implementationAddress != address(0x0), "Implementation not found");
         return implementationAddress;
     }
 }

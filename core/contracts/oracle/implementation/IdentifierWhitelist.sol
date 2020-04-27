@@ -30,8 +30,6 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @dev Price requests using this identifier will succeed after this call.
      * @param identifier unique UTF-8 representation for the feed being added. Eg: BTC/USD.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function addSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (!supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = true;
@@ -44,8 +42,6 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @dev Price requests using this identifier will no longer succeed after this call.
      * @param identifier unique UTF-8 representation for the feed being removed. Eg: BTC/USD.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function removeSupportedIdentifier(bytes32 identifier) external override onlyOwner {
         if (supportedIdentifiers[identifier]) {
             supportedIdentifiers[identifier] = false;
@@ -62,8 +58,6 @@ contract IdentifierWhitelist is IdentifierWhitelistInterface, Ownable {
      * @param identifier unique UTF-8 representation for the feed being queried. Eg: BTC/USD.
      * @return bool if the identifier is supported (or not).
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function isIdentifierSupported(bytes32 identifier) external override view returns (bool) {
         return supportedIdentifiers[identifier];
     }

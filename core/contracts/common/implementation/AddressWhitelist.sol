@@ -17,6 +17,7 @@ contract AddressWhitelist is Ownable {
 
     /**
      * @notice Adds an address to the whitelist.
+     * @param newElement the new address to add.
      */
     function addToWhitelist(address newElement) external onlyOwner {
         // Ignore if address is already included
@@ -36,6 +37,7 @@ contract AddressWhitelist is Ownable {
 
     /**
      * @notice Removes an address from the whitelist.
+     * @param elementToRemove the existing address to remove.
      */
     function removeFromWhitelist(address elementToRemove) external onlyOwner {
         if (whitelist[elementToRemove] != Status.Out) {
@@ -46,6 +48,8 @@ contract AddressWhitelist is Ownable {
 
     /**
      * @notice Checks whether an address is on the whitelist.
+     * @param elementToCheck the address to check.
+     * @return True if `elementToCheck` is on the whitelist, or False.
      */
     function isOnWhitelist(address elementToCheck) external view returns (bool) {
         return whitelist[elementToCheck] == Status.In;
@@ -57,6 +61,7 @@ contract AddressWhitelist is Ownable {
      * of gas if a large number of addresses have been removed. To reduce the likelihood of this unlikely scenario, we
      * can modify the implementation so that when addresses are removed, the last addresses in the array is moved to
      * the empty index.
+     * @return activeWhitelist the list of addresses on the whitelist.
      */
     function getWhitelist() external view returns (address[] memory activeWhitelist) {
         // Determine size of whitelist first

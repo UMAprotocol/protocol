@@ -149,7 +149,7 @@ library TDS {
  */
 library TokenizedDerivativeUtils {
     using TokenizedDerivativeUtils for TDS.Storage;
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using SignedSafeMath for int256;
     using FixedPoint for FixedPoint.Unsigned;
 
@@ -202,10 +202,11 @@ library TokenizedDerivativeUtils {
         _;
     }
 
-    function _depositAndCreateTokens(TDS.Storage storage s, uint256 marginForPurchase, uint256 tokensToPurchase)
-        external
-        onlySponsorOrApDelegate(s)
-    {
+    function _depositAndCreateTokens(
+        TDS.Storage storage s,
+        uint256 marginForPurchase,
+        uint256 tokensToPurchase
+    ) external onlySponsorOrApDelegate(s) {
         s._remarginInternal();
 
         int256 newTokenNav = _computeNavForTokens(s.currentTokenState.tokenPrice, tokensToPurchase);
@@ -372,10 +373,11 @@ library TokenizedDerivativeUtils {
         s._settleInternal();
     }
 
-    function _createTokens(TDS.Storage storage s, uint256 marginForPurchase, uint256 tokensToPurchase)
-        external
-        onlySponsorOrApDelegate(s)
-    {
+    function _createTokens(
+        TDS.Storage storage s,
+        uint256 marginForPurchase,
+        uint256 tokensToPurchase
+    ) external onlySponsorOrApDelegate(s) {
         // Returns any refund due to sending more margin than the argument indicated (should only be able to happen in
         // the ETH case).
         uint256 refund = s._pullSentMargin(marginForPurchase);
@@ -402,10 +404,11 @@ library TokenizedDerivativeUtils {
         s._remarginInternal();
     }
 
-    function _withdrawUnexpectedErc20(TDS.Storage storage s, address erc20Address, uint256 amount)
-        external
-        onlySponsor(s)
-    {
+    function _withdrawUnexpectedErc20(
+        TDS.Storage storage s,
+        address erc20Address,
+        uint256 amount
+    ) external onlySponsor(s) {
         if (address(s.externalAddresses.marginCurrency) == erc20Address) {
             uint256 currentBalance = s.externalAddresses.marginCurrency.balanceOf(address(this));
             int256 totalBalances = s.shortBalance.add(s.longBalance);
@@ -515,7 +518,7 @@ library TokenizedDerivativeUtils {
 
         // Set end time to max value of uint256 to implement no expiry.
         if (params.expiry == 0) {
-            s.endTime = ~uint(0);
+            s.endTime = ~uint256(0);
         } else {
             require(params.expiry >= latestTime);
             s.endTime = params.expiry;
@@ -746,10 +749,11 @@ library TokenizedDerivativeUtils {
         s._payOracleFees(feeAmount);
     }
 
-    function _createTokensInternal(TDS.Storage storage s, uint256 tokensToPurchase, uint256 navSent)
-        internal
-        returns (uint256 refund)
-    {
+    function _createTokensInternal(
+        TDS.Storage storage s,
+        uint256 tokensToPurchase,
+        uint256 navSent
+    ) internal returns (uint256 refund) {
         s._remarginInternal();
 
         // Verify that remargining didn't push the contract into expiry or default.
@@ -804,10 +808,11 @@ library TokenizedDerivativeUtils {
     }
 
     // Deducts the fees from the margin account.
-    function _deductOracleFees(TDS.Storage storage s, uint256 lastTimeOracleFeesPaid, uint256 currentTime)
-        internal
-        returns (uint256 feeAmount)
-    {
+    function _deductOracleFees(
+        TDS.Storage storage s,
+        uint256 lastTimeOracleFeesPaid,
+        uint256 currentTime
+    ) internal returns (uint256 feeAmount) {
         feeAmount = s._computeExpectedOracleFees(lastTimeOracleFeesPaid, currentTime);
         s.shortBalance = s.shortBalance.sub(_safeIntCast(feeAmount));
         // If paying the Oracle fee reduces the held margin below requirements, the rest of remargin() will default the
@@ -829,11 +834,11 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeExpectedOracleFees(TDS.Storage storage s, uint256 lastTimeOracleFeesPaid, uint256 currentTime)
-        internal
-        view
-        returns (uint256 feeAmount)
-    {
+    function _computeExpectedOracleFees(
+        TDS.Storage storage s,
+        uint256 lastTimeOracleFeesPaid,
+        uint256 currentTime
+    ) internal view returns (uint256 feeAmount) {
         StoreInterface store = StoreInterface(_getStoreAddress(s));
         // The profit from corruption is set as the max(longBalance, shortBalance).
         int256 pfc = s.shortBalance < s.longBalance ? s.longBalance : s.shortBalance;
@@ -874,11 +879,11 @@ library TokenizedDerivativeUtils {
         newTokenState = TDS.TokenState(latestUnderlyingPrice, newTokenPrice, recomputeTime);
     }
 
-    function _satisfiesMarginRequirement(TDS.Storage storage s, int256 balance, TDS.TokenState memory tokenState)
-        internal
-        view
-        returns (bool doesSatisfyRequirement)
-    {
+    function _satisfiesMarginRequirement(
+        TDS.Storage storage s,
+        int256 balance,
+        TDS.TokenState memory tokenState
+    ) internal view returns (bool doesSatisfyRequirement) {
         return s._getRequiredMargin(tokenState) <= balance;
     }
 
@@ -919,10 +924,11 @@ library TokenizedDerivativeUtils {
         require(latestTime != 0);
     }
 
-    function _computeNav(TDS.Storage storage s, int256 latestUnderlyingPrice, uint256 latestTime)
-        internal
-        returns (int256 navNew)
-    {
+    function _computeNav(
+        TDS.Storage storage s,
+        int256 latestUnderlyingPrice,
+        uint256 latestTime
+    ) internal returns (int256 navNew) {
         if (s.fixedParameters.returnType == TokenizedDerivativeParams.ReturnType.Compound) {
             navNew = s._computeCompoundNav(latestUnderlyingPrice, latestTime);
         } else {
@@ -931,20 +937,22 @@ library TokenizedDerivativeUtils {
         }
     }
 
-    function _computeCompoundNav(TDS.Storage storage s, int256 latestUnderlyingPrice, uint256 latestTime)
-        internal
-        returns (int256 navNew)
-    {
+    function _computeCompoundNav(
+        TDS.Storage storage s,
+        int256 latestUnderlyingPrice,
+        uint256 latestTime
+    ) internal returns (int256 navNew) {
         s.referenceTokenState = s.currentTokenState;
         s.currentTokenState = s._computeNewTokenState(s.currentTokenState, latestUnderlyingPrice, latestTime);
         navNew = _computeNavForTokens(s.currentTokenState.tokenPrice, _totalSupply());
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
-    function _computeLinearNav(TDS.Storage storage s, int256 latestUnderlyingPrice, uint256 latestTime)
-        internal
-        returns (int256 navNew)
-    {
+    function _computeLinearNav(
+        TDS.Storage storage s,
+        int256 latestUnderlyingPrice,
+        uint256 latestTime
+    ) internal returns (int256 navNew) {
         // Only update the time - don't update the prices becuase all price changes are relative to the initial price.
         s.referenceTokenState.time = s.currentTokenState.time;
         s.currentTokenState = s._computeNewTokenState(s.referenceTokenState, latestUnderlyingPrice, latestTime);
@@ -952,10 +960,11 @@ library TokenizedDerivativeUtils {
         emit NavUpdated(s.fixedParameters.symbol, navNew, s.currentTokenState.tokenPrice);
     }
 
-    function _recomputeNav(TDS.Storage storage s, int256 oraclePrice, uint256 recomputeTime)
-        internal
-        returns (int256 navNew)
-    {
+    function _recomputeNav(
+        TDS.Storage storage s,
+        int256 oraclePrice,
+        uint256 recomputeTime
+    ) internal returns (int256 navNew) {
         // We're updating `last` based on what the Oracle has told us.
         assert(s.endTime == recomputeTime);
         s.currentTokenState = s._computeNewTokenState(s.referenceTokenState, oraclePrice, recomputeTime);
@@ -1074,11 +1083,11 @@ library TokenizedDerivativeUtils {
 
     // Gets the change in balance for the long side.
     // Note: there's a function for this because signage is tricky here, and it must be done the same everywhere.
-    function _getLongDiff(int256 navNew, int256 longBalance, int256 shortBalance)
-        private
-        pure
-        returns (int256 longDiff)
-    {
+    function _getLongDiff(
+        int256 navNew,
+        int256 longBalance,
+        int256 shortBalance
+    ) private pure returns (int256 longDiff) {
         int256 newLongBalance = navNew;
 
         // Long balance cannot go below zero.
@@ -1133,7 +1142,7 @@ library TokenizedDerivativeUtils {
 
     function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0);
-        return uint(value);
+        return uint256(value);
     }
 }
 
@@ -1159,10 +1168,11 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
     event Deposited(string symbol, uint256 amount);
     event Withdrawal(string symbol, uint256 amount);
 
-    constructor(TokenizedDerivativeParams.ConstructorParams memory params, string memory _name, string memory _symbol)
-        public
-        ERC20(_name, _symbol)
-    {
+    constructor(
+        TokenizedDerivativeParams.ConstructorParams memory params,
+        string memory _name,
+        string memory _symbol
+    ) public ERC20(_name, _symbol) {
         // Initialize the contract.
         derivativeStorage._initialize(params, _symbol);
     }
@@ -1211,8 +1221,6 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Pays (Oracle and service) fees for the previous period, updates the contract NAV, moves margin between
      * long and short accounts to reflect the new NAV, and checks if both accounts meet minimum requirements.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function remargin() external override {
         derivativeStorage._remargin();
     }
@@ -1238,8 +1246,6 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Moves the contract into the Emergency state, where it waits on an Oracle price for the most recent
      * remargin time.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function emergencyShutdown() external override {
         derivativeStorage._emergencyShutdown();
     }
@@ -1278,8 +1284,6 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Destroys `value` tokens from the caller.
      * @dev Only this contract or its libraries are allowed to burn tokens.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function burn(uint256 value) external override onlyThis {
         _burn(msg.sender, value);
     }
@@ -1288,8 +1292,6 @@ contract TokenizedDerivative is ERC20, AdministrateeInterface, ExpandedIERC20 {
      * @notice Creates `value` tokens and assigns them to `to`, increasing the total supply.
      * @dev Only this contract or its libraries are allowed to mint tokens.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function mint(address to, uint256 value) external override onlyThis returns (bool) {
         _mint(to, value);
         return true;

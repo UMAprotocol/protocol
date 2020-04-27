@@ -1123,7 +1123,7 @@ contract("Voting", function(accounts) {
     const result = await voting.retrieveRewards(account1, roundId, req);
     truffleAssert.eventEmitted(result, "PriceResolved", ev => {
       return (
-        ev.resolutionRoundId.toString() == roundId.toString() &&
+        ev.roundId.toString() == roundId.toString() &&
         web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
         ev.time == time &&
         ev.price.toString() == winningPrice.toString()
@@ -1291,7 +1291,7 @@ contract("Voting", function(accounts) {
     truffleAssert.eventEmitted(result, "PriceRequestAdded", ev => {
       return (
         // The vote is added to the next round, so we have to add 1 to the current round id.
-        ev.votingRoundId.toString() == currentRoundId.addn(1).toString() &&
+        ev.roundId.toString() == currentRoundId.addn(1).toString() &&
         web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
         ev.time.toString() == time.toString()
       );
@@ -1375,7 +1375,7 @@ contract("Voting", function(accounts) {
     result = await voting.retrieveRewards(account1, roundId, [{ identifier, time }]);
     truffleAssert.eventEmitted(result, "PriceResolved", ev => {
       return (
-        ev.resolutionRoundId.toString() == currentRoundId.toString() &&
+        ev.roundId.toString() == currentRoundId.toString() &&
         web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
         ev.time == time &&
         ev.price.toString() == price.toString()
