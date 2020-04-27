@@ -118,8 +118,8 @@ abstract contract FeePayer is Testable {
 
         totalPaid = regularFee.add(latePenalty);
 
-        // Add the adjustment to the cumulative fee multiplier by the fee paid and the current PFC.
-        adjustCumulativeFeeMultiplier(totalPaid, _pfc);
+        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
     }
 
     /**
@@ -143,8 +143,8 @@ abstract contract FeePayer is Testable {
             // The final fee must be < pfc or the fee will be larger than 100%.
             require(_pfc.isGreaterThan(amount));
 
-            // Add the adjustment to the cumulative fee multiplier by the final fee paid and the current PFC.
-            adjustCumulativeFeeMultiplier(amount, pfc());
+            // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+            _adjustCumulativeFeeMultiplier(amount, pfc());
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -228,8 +228,8 @@ abstract contract FeePayer is Testable {
         addedCollateral = _getCollateral(rawCollateral).sub(initialBalance);
     }
 
-    // Scale the CumulativeFeeMultiplier by a given amount based on the current PFC value.
-    function adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
+    // Scale down the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption
+    function _adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
         internal
     {
         FixedPoint.Unsigned memory effectiveFee = amount.divCeil(currentPfc);
