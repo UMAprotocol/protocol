@@ -74,8 +74,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v67777-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v67777-sec-toolbox-deps-
+            - v7-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v7-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -92,7 +92,7 @@ jobs:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v67777-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v7-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
       - run:
