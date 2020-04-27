@@ -241,7 +241,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(positionData.requestPassTimestamp == 0);
 
         // Make sure the proposed expiration of this request is not post-expiry.
-        uint256 requestPassTime = getCurrentTime() + withdrawalLiveness;
+        uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
         require(requestPassTime <= expirationTimestamp);
 
         // Update the position object for the user.
