@@ -149,7 +149,7 @@ class ExpiringMultiPartyEventClient {
         liquidator: event.returnValues.liquidator,
         disputer: event.returnValues.disputer,
         liquidationId: event.returnValues.liquidationId,
-        disputeSucceeded: event.returnValues.DisputeSucceeded
+        disputeSucceeded: event.returnValues.disputeSucceeded
       });
     }
     this.lastBlockNumberSeen = currentBlockNumber;
