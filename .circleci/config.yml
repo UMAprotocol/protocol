@@ -167,15 +167,10 @@ jobs:
           name: Install Voter dApp Dependencies
           working_directory: ~/protocol/voter-dapp
           command: npm install
-      - run:
-          name: Install Sponsor V2 dApp Dependencies
-          working_directory: ~/protocol/sponsor-dapp-v2
-          command: npm install
       - save_cache:
           key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
           paths:
             - voter-dapp/node_modules
-            - sponsor-dapp-v2/node_modules
       - save_cache:
           key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
           paths:
