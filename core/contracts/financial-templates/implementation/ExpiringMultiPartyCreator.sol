@@ -148,12 +148,12 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.tokenFactoryAddress = tokenFactoryAddress;
 
         // Enforce configuration constrainments.
-        require(_isValidTimestamp(params.expirationTimestamp));
-        require(bytes(params.syntheticName).length != 0);
-        require(bytes(params.syntheticSymbol).length != 0);
+        require(_isValidTimestamp(params.expirationTimestamp), "Invalid expiration timestamp");
+        require(bytes(params.syntheticName).length != 0, "Synthetic name can't be empty");
+        require(bytes(params.syntheticSymbol).length != 0, "Synthetic symbol can't be empty");
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
         constructorParams.liquidationLiveness = STRICT_LIQUIDATION_LIVENESS;
-        require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress));
+        require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress), "Collateral token not whitelisted");
 
         // Input from function call.
         constructorParams.expirationTimestamp = params.expirationTimestamp;

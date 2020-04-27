@@ -160,8 +160,11 @@ contract Liquidatable is PricelessPositionManager {
             params.timerAddress
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1));
-        require(params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1));
+        require(params.collateralRequirement.isGreaterThan(1), "CR must be larger than 100%");
+        require(
+            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
+            "Dispute rewards cant exceed 100%"
+        );
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
@@ -217,10 +220,13 @@ contract Liquidatable is PricelessPositionManager {
         {
             FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
-            // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
-            // what the liquidator was willing to liquidate at.
+            // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased
+            // beyond what the liquidator was willing to liquidate at.
             // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-            require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
+            require(
+                collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
+                "Price exceeds provided threshold"
+            );
         }
 
         // The actual amount of collateral that gets moved to the liquidation.
@@ -344,7 +350,8 @@ contract Liquidatable is PricelessPositionManager {
         require(
             (msg.sender == liquidation.disputer) ||
                 (msg.sender == liquidation.liquidator) ||
-                (msg.sender == liquidation.sponsor)
+                (msg.sender == liquidation.sponsor),
+            "Caller not member of liquidation"
         );
 
         // Settles the liquidation if necessary.
@@ -418,7 +425,7 @@ contract Liquidatable is PricelessPositionManager {
             delete liquidations[sponsor][liquidationId];
         }
 
-        require(withdrawalAmount.isGreaterThan(0));
+        require(withdrawalAmount.isGreaterThan(0), "Nothing to withdraw");
         amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
@@ -487,7 +494,8 @@ contract Liquidatable is PricelessPositionManager {
         // Revert if the caller is attempting to access an invalid liquidation (one that has never been created or one
         // has never been initialized).
         require(
-            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized
+            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized,
+            "No data on invalid liquidation"
         );
         return liquidationArray[liquidationId];
     }
@@ -503,7 +511,10 @@ contract Liquidatable is PricelessPositionManager {
      */
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
-        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
+        require(
+            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute),
+            "Liquidation not disputable"
+        );
     }
 
     function _withdrawable(uint256 liquidationId, address sponsor) internal view {
@@ -513,7 +524,8 @@ contract Liquidatable is PricelessPositionManager {
         // Must be disputed or the liquidation has passed expiry.
         require(
             (state > Status.PreDispute) ||
-                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
+            "Liquidation not withdrawable"
         );
     }
 }
