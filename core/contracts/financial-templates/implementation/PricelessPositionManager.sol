@@ -537,7 +537,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // Decrease the sponsor's collateral, tokens, and withdrawal request.
         _removeCollateral(positionData.rawCollateral, collateralToRemove);
         FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(tokensToRemove);
-        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Cant reduce position below min");
+        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Can't reduce position below min");
         positionData.tokensOutstanding = newTokenCount;
 
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
