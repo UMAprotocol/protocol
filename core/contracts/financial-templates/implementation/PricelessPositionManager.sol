@@ -280,7 +280,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
 
         // Reset withdrawal request by setting withdrawl amount and withdrawl timestamp to 0.
-        resetWithdrawalRequest(positionData);
+        _resetWithdrawalRequest(positionData);
     }
 
     /**
@@ -293,7 +293,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
         // Reset withdrawal request
-        resetWithdrawalRequest(positionData);
+        _resetWithdrawalRequest(positionData);
     }
 
     /**
@@ -609,7 +609,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     // Reset withdrawal request by setting the withdrawl request and withdrawl timestamp to 0.
-    function resetWithdrawalRequest(PositionData storage positionData) internal {
+    function _resetWithdrawalRequest(PositionData storage positionData) internal {
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
         positionData.requestPassTimestamp = 0;
     }
