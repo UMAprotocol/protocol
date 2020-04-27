@@ -117,8 +117,9 @@ abstract contract FeePayer is Testable {
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         totalPaid = regularFee.add(latePenalty);
-        FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
-        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+
+        // Add the adjustment to the cumulative fee multiplier by the fee paid and the current PFC.
+        adjustCumulativeFeeMultiplier(totalPaid, _pfc);
     }
 
     /**
@@ -142,9 +143,8 @@ abstract contract FeePayer is Testable {
             // The final fee must be < pfc or the fee will be larger than 100%.
             require(_pfc.isGreaterThan(amount));
 
-            // Add the adjustment.
-            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(pfc());
-            cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+            // Add the adjustment to the cumulative fee multiplier by the final fee paid and the current PFC.
+            adjustCumulativeFeeMultiplier(amount, pfc());
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -226,5 +226,13 @@ abstract contract FeePayer is Testable {
         FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
         addedCollateral = _getCollateral(rawCollateral).sub(initialBalance);
+    }
+
+    // Scale the CumulativeFeeMultiplier by a given amount based on the current PFC value.
+    function adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
+        internal
+    {
+        FixedPoint.Unsigned memory effectiveFee = amount.divCeil(currentPfc);
+        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
     }
 }

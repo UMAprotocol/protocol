@@ -188,8 +188,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
-        _addCollateral(positionData.rawCollateral, collateralAmount);
-        _addCollateral(rawTotalPositionCollateral, collateralAmount);
+
+        // Increase the position and global collateral balance by collateral amount.
+        incrementCollateralBalances(positionData, collateralAmount);
 
         // Move collateral currency from sender to contract.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
@@ -214,12 +215,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
-        _removeCollateral(positionData.rawCollateral, collateralAmount);
-        require(_checkPositionCollateralization(positionData));
+        // Decrement the caller's collateral and global collateral amounts.
+        amountWithdrawn = decrementCollateralBalances(positionData, collateralAmount);
+
         // We elect to withdraw the amount that the global collateral is decreased by,
         // rather than the individual position's collateral, because we need to maintain the invariant that
         // the global collateral is always <= the collateral owned by the contract to avoid reverts on withdrawals.
-        amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralAmount);
+        require(_checkPositionCollateralization(positionData));
 
         // Move collateral currency from contract to sender.
         // Note that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
@@ -273,17 +275,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             amountToWithdraw = _getCollateral(positionData.rawCollateral);
         }
 
-        _removeCollateral(positionData.rawCollateral, amountToWithdraw);
-        amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
+        // Decrement the caller's collateral and global collateral amounts.
+        amountWithdrawn = decrementCollateralBalances(positionData, amountWithdrawn);
 
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
 
-        // Reset withdrawal request
-        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
-        positionData.requestPassTimestamp = 0;
+        // Reset withdrawal request by setting withdrawl amount and withdrawl timestamp to 0.
+        resetWithdrawalRequest(positionData);
     }
 
     /**
@@ -296,8 +297,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
         // Reset withdrawal request
-        positionData.requestPassTimestamp = 0;
-        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
+        resetWithdrawalRequest(positionData);
     }
 
     /**
@@ -320,10 +320,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens));
             emit NewSponsor(msg.sender);
         }
-        _addCollateral(positionData.rawCollateral, collateralAmount);
+
+        // Increase the position and global collateral balance by collateral amount.
+        incrementCollateralBalances(positionData, collateralAmount);
+
+        // Add the number of tokens created to the position's outstanding tokens.
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
 
-        _addCollateral(rawTotalPositionCollateral, collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
         // Transfer tokens into the contract from caller and mint the caller synthetic tokens.
@@ -359,14 +362,15 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
             amountWithdrawn = _deleteSponsorPosition(msg.sender);
         } else {
-            // Decrease the sponsors position size of collateral and tokens.
-            _removeCollateral(positionData.rawCollateral, collateralRedeemed);
+            // Decrement the caller's collateral and global collateral amounts.
+            amountWithdrawn = decrementCollateralBalances(positionData, collateralRedeemed);
+
+            // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
             FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
             require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
             positionData.tokensOutstanding = newTokenCount;
 
-            // Decrease the contract's collateral and tokens.
-            amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralRedeemed);
+            // Update the totalTokensOutstanding after redemption.
             totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
         }
 
@@ -511,7 +515,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /****************************************
-     *          INTERNAL FUNCTIONS         *
+     *     INTERNAL & PRIVATE FUNCTIONS     *
      ****************************************/
 
     function _reduceSponsorPosition(
@@ -533,14 +537,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         // Decrease the sponsor's collateral, tokens, and withdrawal request.
         _removeCollateral(positionData.rawCollateral, collateralToRemove);
+
+        // Decrement the caller's collateral and global collateral amounts.
+        decrementCollateralBalances(positionData, collateralToRemove);
+
+        // Ensure that the sponsor will meet the min position size after the reduction.
         FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(tokensToRemove);
         require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
         positionData.tokensOutstanding = newTokenCount;
 
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
 
-        // Decrease the contract's global counters of collateral and tokens.
-        _removeCollateral(rawTotalPositionCollateral, collateralToRemove);
+        // Decrease the contract's global token counter.
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
 
@@ -606,6 +614,51 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return FixedPoint.Unsigned(_safeUintCast(oraclePrice));
     }
 
+    // Reset withdrawal request by setting the withdrawl request and withdrawl timestamp to 0.
+    function resetWithdrawalRequest(PositionData storage positionData) internal {
+        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
+        positionData.requestPassTimestamp = 0;
+    }
+
+    // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
+    function incrementCollateralBalances(PositionData storage positionData, FixedPoint.Unsigned memory collateralAmount)
+        internal
+        returns (FixedPoint.Unsigned memory)
+    {
+        _addCollateral(rawTotalPositionCollateral, collateralAmount);
+        return _addCollateral(positionData.rawCollateral, collateralAmount);
+    }
+
+    // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position.
+    function decrementCollateralBalances(PositionData storage positionData, FixedPoint.Unsigned memory collateralAmount)
+        internal
+        returns (FixedPoint.Unsigned memory)
+    {
+        _removeCollateral(rawTotalPositionCollateral, collateralAmount);
+        return _removeCollateral(positionData.rawCollateral, collateralAmount);
+    }
+
+    /**
+     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
+     * unnecessarily increase contract bytecode size.
+     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
+     */
+    function _onlyOpenState() internal view {
+        require(contractState == ContractState.Open);
+    }
+
+    function _onlyPreExpiration() internal view {
+        require(getCurrentTime() < expirationTimestamp);
+    }
+
+    function _onlyPostExpiration() internal view {
+        require(getCurrentTime() >= expirationTimestamp);
+    }
+
+    function _onlyCollateralizedPosition(address sponsor) internal view {
+        require(_getCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
+    }
+
     function _checkPositionCollateralization(PositionData storage positionData) private view returns (bool) {
         return _checkCollateralization(_getCollateral(positionData.rawCollateral), positionData.tokensOutstanding);
     }
@@ -638,26 +691,5 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0, "uint256 underflow");
         return uint256(value);
-    }
-
-    /**
-     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
-     * unnecessarily increase contract bytecode size.
-     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
-     */
-    function _onlyOpenState() internal view {
-        require(contractState == ContractState.Open);
-    }
-
-    function _onlyPreExpiration() internal view {
-        require(getCurrentTime() < expirationTimestamp);
-    }
-
-    function _onlyPostExpiration() internal view {
-        require(getCurrentTime() >= expirationTimestamp);
-    }
-
-    function _onlyCollateralizedPosition(address sponsor) internal view {
-        require(_getCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
     }
 }
