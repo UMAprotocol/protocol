@@ -449,7 +449,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Locks contract state in expired and requests oracle price.
-     * @dev this function can only be called once the contract is expired and can't be re-called
+     * @dev This function can only be called once the contract is expired and can't be re-called
      * due to the state modifiers applied on it.
      */
     function expire() external onlyPostExpiration() onlyOpenState() fees() {
