@@ -538,11 +538,15 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // Decrement the sponsor's collateral and global collateral amounts.
         _decrementCollateralBalances(positionData, collateralToRemove);
 
+        // Decrement the total outstanding tokens.
+        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
+
         // Ensure that the sponsor will meet the min position size after the reduction.
         FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(tokensToRemove);
         require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
         positionData.tokensOutstanding = newTokenCount;
 
+        // Update the position's withdrawl amount.
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
     }
 
