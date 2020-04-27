@@ -386,7 +386,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
         require(
             keccak256(abi.encodePacked(price, salt, msg.sender, time, roundId, identifier)) == voteSubmission.commit,
-            "Revealed data does not match commit hash"
+            "Revealed data does not match commit hash contents"
         );
         delete voteSubmission.commit;
 
