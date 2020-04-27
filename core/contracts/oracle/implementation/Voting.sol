@@ -358,7 +358,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * @dev The revealed `price`, `salt`, `address`, `time`, `roundId`, and `identifier`, must hash to the latest `hash`
      * that `commitVote()` was called with. Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
@@ -386,7 +386,7 @@ contract Voting is Testable, Ownable, OracleInterface, VotingInterface {
         require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
         require(
             keccak256(abi.encodePacked(price, salt, msg.sender, time, roundId, identifier)) == voteSubmission.commit,
-            "Revealed data != commit hash"
+            "Revealed data does not match commit hash"
         );
         delete voteSubmission.commit;
 
