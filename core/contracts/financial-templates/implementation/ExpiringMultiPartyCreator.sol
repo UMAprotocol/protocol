@@ -52,24 +52,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
     // - Discretize expirations such that they must expire on the first of each month.
-    uint256[17] public VALID_EXPIRATION_TIMESTAMPS = [
-        1585699200, // 2020-04-01T00:00:00.000Z
-        1588291200, // 2020-05-01T00:00:00.000Z
-        1590969600, // 2020-06-01T00:00:00.000Z
-        1593561600, // 2020-07-01T00:00:00.000Z
-        1596240000, // 2020-08-01T00:00:00.000Z
-        1598918400, // 2020-09-01T00:00:00.000Z
-        1601510400, // 2020-10-01T00:00:00.000Z
-        1604188800, // 2020-11-01T00:00:00.000Z
-        1606780800, // 2020-12-01T00:00:00.000Z
-        1609459200, // 2021-01-01T00:00:00.000Z
-        1612137600, // 2021-02-01T00:00:00.000Z
-        1614556800, // 2021-03-01T00:00:00.000Z
-        1617235200, // 2021-04-01T00:00:00.000Z
-        1619827200, // 2021-05-01T00:00:00.000Z
-        1622505600, // 2021-06-01T00:00:00.000Z
-        1625097600 // 2021-07-01T00:00:00.000Z
-    ];
+    mapping(uint256 => bool) public validExpirationTimestamps;
     // - Time for pending withdrawal to be disputed: 60 minutes. Lower liveness increases sponsor usability.
     // However, this parameter is a reflection of how long we expect it to take for liquidators to identify
     // that a sponsor is undercollateralized and acquire the tokens needed to liquidate them. This is also a
@@ -102,6 +85,27 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     ) public ContractCreator(_finderAddress) Testable(_timerAddress) {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
+        uint32[16] memory timestamps = [
+            1585699200, // 2020-04-01T00:00:00.000Z
+            1588291200, // 2020-05-01T00:00:00.000Z
+            1590969600, // 2020-06-01T00:00:00.000Z
+            1593561600, // 2020-07-01T00:00:00.000Z
+            1596240000, // 2020-08-01T00:00:00.000Z
+            1598918400, // 2020-09-01T00:00:00.000Z
+            1601510400, // 2020-10-01T00:00:00.000Z
+            1604188800, // 2020-11-01T00:00:00.000Z
+            1606780800, // 2020-12-01T00:00:00.000Z
+            1609459200, // 2021-01-01T00:00:00.000Z
+            1612137600, // 2021-02-01T00:00:00.000Z
+            1614556800, // 2021-03-01T00:00:00.000Z
+            1617235200, // 2021-04-01T00:00:00.000Z
+            1619827200, // 2021-05-01T00:00:00.000Z
+            1622505600, // 2021-06-01T00:00:00.000Z
+            1625097600 // 2021-07-01T00:00:00.000Z
+        ];
+        for (uint256 i = 0; i < timestamps.length; i++) {
+            validExpirationTimestamps[timestamps[i]] = true;
+        }
     }
 
     /**
@@ -129,12 +133,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     //  Returns if expiration timestamp is on hardcoded list.
     function _isValidTimestamp(uint256 timestamp) private view returns (bool) {
-        for (uint256 i = 0; i < VALID_EXPIRATION_TIMESTAMPS.length; i++) {
-            if (VALID_EXPIRATION_TIMESTAMPS[i] == timestamp) {
-                return true;
-            }
-        }
-        return false;
+        return validExpirationTimestamps[timestamp];
     }
 
     // Converts createExpiringMultiParty params to ExpiringMultiParty constructor params.
