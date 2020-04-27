@@ -1,14 +1,14 @@
 # UMA Token Holder Responsibilities
 
 Owners of UMA tokens have 2 major categories of responsibilities: 
-1. Voting on price requests from financial contracts depending on the DVM 
+1. Voting on price requests from financial contracts using the DVM 
 1. Governing the UMA ecosystem by voting on parameter changes and approving system upgrades
 
-A tutorial on how to vote on price requests is [here](../tutorials/voting_with_uma_tokens.md).
+A tutorial on how to vote on price requests from CLI is [here](../tutorials/voting_with_uma_tokens.md). Voters can also use the [Voting dApp](https://vote.umaproject.org/).
 
 ## Voting on price requests
 
-Owners of UMA tokens will occasionally be asked to vote on price requests from financial contracts in a 2-stage (commit and reveal) process. 
+Owners of UMA tokens will occasionally be asked to vote on price requests from financial contracts in a 2-stage (commit and reveal) voting period. Each stage is open for 24 hours, so each voting period is 48 hours.
 They will have the opportunity to discuss their votes in the #voting channel of the UMA Slack before voting. 
 
 ## Governing the UMA ecosystem
