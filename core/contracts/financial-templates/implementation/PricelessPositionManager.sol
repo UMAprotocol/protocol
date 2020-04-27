@@ -190,7 +190,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(positionData.requestPassTimestamp == 0);
 
         // Increase the position and global collateral balance by collateral amount.
-        incrementCollateralBalances(positionData, collateralAmount);
+        _incrementCollateralBalances(positionData, collateralAmount);
 
         // Move collateral currency from sender to contract.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
@@ -215,8 +215,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
 
-        // Decrement the caller's collateral and global collateral amounts.
-        amountWithdrawn = decrementCollateralBalances(positionData, collateralAmount);
+        // Decrement the sponsor's collateral and global collateral amounts.
+        amountWithdrawn = _decrementCollateralBalances(positionData, collateralAmount);
 
         // We elect to withdraw the amount that the global collateral is decreased by,
         // rather than the individual position's collateral, because we need to maintain the invariant that
@@ -275,8 +275,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             amountToWithdraw = _getCollateral(positionData.rawCollateral);
         }
 
-        // Decrement the caller's collateral and global collateral amounts.
-        amountWithdrawn = decrementCollateralBalances(positionData, amountWithdrawn);
+        // Decrement the sponsor's collateral and global collateral amounts.
+        amountWithdrawn = _decrementCollateralBalances(positionData, amountWithdrawn);
 
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
@@ -322,7 +322,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
 
         // Increase the position and global collateral balance by collateral amount.
-        incrementCollateralBalances(positionData, collateralAmount);
+        _incrementCollateralBalances(positionData, collateralAmount);
 
         // Add the number of tokens created to the position's outstanding tokens.
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
@@ -362,8 +362,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
             amountWithdrawn = _deleteSponsorPosition(msg.sender);
         } else {
-            // Decrement the caller's collateral and global collateral amounts.
-            amountWithdrawn = decrementCollateralBalances(positionData, collateralRedeemed);
+            // Decrement the sponsor's collateral and global collateral amounts.
+            amountWithdrawn = _decrementCollateralBalances(positionData, collateralRedeemed);
 
             // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
             FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
@@ -535,11 +535,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             return;
         }
 
-        // Decrease the sponsor's collateral, tokens, and withdrawal request.
-        _removeCollateral(positionData.rawCollateral, collateralToRemove);
-
-        // Decrement the caller's collateral and global collateral amounts.
-        decrementCollateralBalances(positionData, collateralToRemove);
+        // Decrement the sponsor's collateral and global collateral amounts.
+        _decrementCollateralBalances(positionData, collateralToRemove);
 
         // Ensure that the sponsor will meet the min position size after the reduction.
         FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(tokensToRemove);
@@ -547,9 +544,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         positionData.tokensOutstanding = newTokenCount;
 
         positionData.withdrawalRequestAmount = positionData.withdrawalRequestAmount.sub(withdrawalAmountToRemove);
-
-        // Decrease the contract's global token counter.
-        totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
 
     function _deleteSponsorPosition(address sponsor) internal returns (FixedPoint.Unsigned memory) {
@@ -621,19 +615,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
-    function incrementCollateralBalances(PositionData storage positionData, FixedPoint.Unsigned memory collateralAmount)
-        internal
-        returns (FixedPoint.Unsigned memory)
-    {
+    function _incrementCollateralBalances(
+        PositionData storage positionData,
+        FixedPoint.Unsigned memory collateralAmount
+    ) internal returns (FixedPoint.Unsigned memory) {
         _addCollateral(rawTotalPositionCollateral, collateralAmount);
         return _addCollateral(positionData.rawCollateral, collateralAmount);
     }
 
     // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position.
-    function decrementCollateralBalances(PositionData storage positionData, FixedPoint.Unsigned memory collateralAmount)
-        internal
-        returns (FixedPoint.Unsigned memory)
-    {
+    function _decrementCollateralBalances(
+        PositionData storage positionData,
+        FixedPoint.Unsigned memory collateralAmount
+    ) internal returns (FixedPoint.Unsigned memory) {
         _removeCollateral(rawTotalPositionCollateral, collateralAmount);
         return _removeCollateral(positionData.rawCollateral, collateralAmount);
     }
