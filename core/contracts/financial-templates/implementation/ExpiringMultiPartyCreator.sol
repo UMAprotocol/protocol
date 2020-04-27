@@ -37,9 +37,9 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      * @notice Deployment Configuration Constraints.
      * @dev: These constraints can evolve over time and are initially constrained to conservative values
      * in this first iteration of an EMP creator. Technically there is nothing in the ExpiringMultiParty
-     * contract requiring these constraints. However, because "createExpiringMultiParty()" is intended to
+     * contract requiring these constraints. However, because `createExpiringMultiParty()` is intended to
      * be the only way to create valid financial contracts that are **registered** with the
-     * DVM (via "_registerContract()"), we can enforce deployment configurations here.
+     * DVM (via `_registerContract()`), we can enforce deployment configurations here.
      **/
 
     // - Whitelist allowed collateral currencies.
@@ -147,7 +147,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         constructorParams.finderAddress = finderAddress;
         constructorParams.tokenFactoryAddress = tokenFactoryAddress;
 
-        // Enforce configuration constrainments.
+        // Enforce configuration constraints.
         require(_isValidTimestamp(params.expirationTimestamp));
         require(bytes(params.syntheticName).length != 0);
         require(bytes(params.syntheticSymbol).length != 0);

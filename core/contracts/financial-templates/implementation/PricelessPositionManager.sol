@@ -38,7 +38,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     ContractState public contractState;
 
     // Represents a single sponsor's position. All collateral is held by this contract.
-    // This struct acts is bookkeeping for how much of that collateral is allocated to each sponsor.
+    // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
         FixedPoint.Unsigned tokensOutstanding;
         // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
@@ -65,7 +65,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
-    // Time that this contract expires. Should not change post-construction unless a emergency shutdown occurs.
+    // Time that this contract expires. Should not change post-construction unless an emergency shutdown occurs.
     uint256 public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint256 public withdrawalLiveness;
@@ -200,7 +200,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` from the sponsor's position to the sponsor.
      * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global
-     * collateralization ratio. In that case, use `requestWithdrawawal`. Might not withdraw the full requested
+     * collateralization ratio. In that case, use `requestWithdrawal`. Might not withdraw the full requested
      * amount in order to account for precision loss.
      * @param collateralAmount is the amount of collateral to withdraw.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
@@ -302,7 +302,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
-     * @dev Reverts if the minting these tokens would put the position's collateralization ratio below the
+     * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
      * @param numTokens is the number of tokens to mint from the position.
@@ -326,7 +326,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _addCollateral(rawTotalPositionCollateral, collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
-        // Transfer tokens into the contract from caller and mint the caller synthetic tokens.
+        // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
         require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
 
@@ -381,7 +381,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice After a contract has passed expiry all token holders can redeem their tokens for
      * underlying at the prevailing price defined by the DVM from the `expire` function.
-     * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional
+     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional
      * amount of `collateralCurrency`. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
