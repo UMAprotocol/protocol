@@ -1,13 +1,11 @@
-const { Logger } = require("../financial-templates-lib/logger/Logger");
-
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
-  constructor(expiringMultiPartyEventClient, account, liquidators, umaDisputers) {
-    // Bot and ecosystem accounts.
-    this.account = account;
-    this.liquidators = liquidators;
-    this.umaDisputers = umaDisputers;
+  constructor(logger, expiringMultiPartyEventClient, monitoredLiquidators, monitoredDisputers) {
+    this.logger = logger;
+    // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
+    this.monitoredLiquidators = monitoredLiquidators;
+    this.monitoredDisputers = monitoredDisputers;
 
     // Previous contract state used to check for new entries between calls
     this.lastLiquidationBlockNumber = 0;
@@ -51,7 +49,7 @@ class ContractMonitor {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime);
 
-    Logger.debug({
+    this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
       price: priceFeed,
@@ -71,7 +69,7 @@ class ContractMonitor {
       // backing[n] tokens - sponsor collateralization was[y] %.  [etherscan link to txn]
       const mrkdwn =
         createEtherscanLinkMarkdown(this.web3, event.liquidator) +
-        (this.liquidators.indexOf(event.liquidator) != -1 ? " (UMA liquidator bot)" : "") +
+        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " initiated liquidation for " +
         this.formatDecimalString(event.liquidatedCollateral) +
         " " +
@@ -89,20 +87,20 @@ class ContractMonitor {
         "%. tx: " +
         createEtherscanLinkMarkdown(this.web3, event.transactionHash);
 
-      Logger.info({
+      this.logger.info({
         at: "ContractMonitor",
         message: "Liquidation Alert 🧙‍♂️!",
         mrkdwn: mrkdwn
       });
     }
-    this.lastLiquidationBlockNumber = getLastSeenBlockNumber(latestLiquidationEvents);
+    this.lastLiquidationBlockNumber = this.getLastSeenBlockNumber(latestLiquidationEvents);
   };
 
   checkForNewDisputeEvents = async priceFunction => {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime);
 
-    Logger.debug({
+    this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute events",
       price: priceFeed,
@@ -120,10 +118,10 @@ class ContractMonitor {
       // initiated dispute [etherscan link to txn]
       const mrkdwn =
         createEtherscanLinkMarkdown(this.web3, event.disputer) +
-        (this.umaDisputers.indexOf(event.disputer) != -1 ? " (UMA dispute bot)" : "") +
+        (this.monitoredDisputers.indexOf(event.disputer) != -1 ? " (Monitored dispute bot)" : "") +
         " initiated dispute against liquidator " +
         createEtherscanLinkMarkdown(this.web3, event.liquidator) +
-        (this.liquidators.indexOf(event.liquidator) != -1 ? " (UMA liquidator bot)" : "") +
+        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? " (Monitored liquidator bot)" : "") +
         " with a dispute bond of " +
         this.formatDecimalString(event.disputeBondAmount) +
         " " +
@@ -131,20 +129,20 @@ class ContractMonitor {
         ". tx: " +
         createEtherscanLinkMarkdown(this.web3, event.transactionHash);
 
-      Logger.info({
+      this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Alert 👻!",
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeBlockNumber = getLastSeenBlockNumber(latestDisputeEvents);
+    this.lastDisputeBlockNumber = this.getLastSeenBlockNumber(latestDisputeEvents);
   };
 
   checkForNewDisputeSettlementEvents = async priceFunction => {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime);
 
-    Logger.debug({
+    this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute settlement events",
       price: priceFeed,
@@ -166,21 +164,21 @@ class ContractMonitor {
       const mrkdwn =
         "Dispute between liquidator " +
         createEtherscanLinkMarkdown(this.web3, event.liquidator) +
-        (this.liquidators.indexOf(event.liquidator) != -1 ? "(UMA liquidator bot)" : "") +
+        (this.monitoredLiquidators.indexOf(event.liquidator) != -1 ? "(Monitored liquidator bot)" : "") +
         " and disputer " +
         createEtherscanLinkMarkdown(this.web3, event.disputer) +
-        (this.umaDisputers.indexOf(event.disputer) != -1 ? "(UMA dispute bot)" : "") +
+        (this.monitoredDisputers.indexOf(event.disputer) != -1 ? "(Monitored dispute bot)" : "") +
         " has been resolved as " +
         (event.disputeSucceeded == true ? "success" : "failed") +
         ". tx: " +
         createEtherscanLinkMarkdown(this.web3, event.transactionHash);
-      Logger.info({
+      this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
         mrkdwn: mrkdwn
       });
     }
-    this.lastDisputeSettlementBlockNumber = getLastSeenBlockNumber(latestDisputeSettlementEvents);
+    this.lastDisputeSettlementBlockNumber = this.getLastSeenBlockNumber(latestDisputeSettlementEvents);
   };
 }
 
