@@ -47,6 +47,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // Raw collateral value. This value should never be accessed directly -- always use _getCollateral().
         // To add or remove collateral, use _addCollateral() and _removeCollateral().
         FixedPoint.Unsigned rawCollateral;
+        // Tracks pending transfer requests. A transfer request is pending if `transferRequestPastTimestamp != 0`.
+        uint256 transferRequestPassTimestamp;
     }
 
     // Maps sponsor addresses to their positions. Each sponsor can have only one position.
@@ -173,14 +175,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function requestTransfer() public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.transferRequestPassTimestamp == 0);
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
         require(requestPassTime <= expirationTimestamp);
 
         // Update the position object for the user.
-        positionData.requestPassTimestamp = requestPassTime;
+        positionData.transferRequestPassTimestamp = requestPassTime;
 
         emit RequestTransfer(msg.sender);
     }
@@ -194,10 +196,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function transferPassedRequest(address newSponsorAddress) public onlyPreExpiration() {
         require(_getCollateral(positions[newSponsorAddress].rawCollateral).isEqual(FixedPoint.fromUnscaledUint(0)));
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp != 0 && positionData.requestPassTimestamp <= getCurrentTime());
+        require(positionData.requestPassTimestamp == 0);
+        require(
+            positionData.transferRequestPassTimestamp != 0 &&
+                positionData.transferRequestPassTimestamp <= getCurrentTime()
+        );
 
         // Reset transfer request.
-        positionData.requestPassTimestamp = 0;
+        positionData.transferRequestPassTimestamp = 0;
 
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
@@ -211,12 +217,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function cancelTransfer() external onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp != 0);
+        require(positionData.transferRequestPassTimestamp != 0);
 
         emit RequestTransferCanceled(msg.sender);
 
         // Reset withdrawal request.
-        positionData.requestPassTimestamp = 0;
+        positionData.transferRequestPassTimestamp = 0;
     }
 
     /**

@@ -377,7 +377,6 @@ contract("PricelessPositionManager", function(accounts) {
     assert(
       await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor }))
     );
-    assert(await didContractThrow(pricelessPositionManager.requestTransfer({ from: sponsor })));
 
     // Can't withdraw before time is up.
     await pricelessPositionManager.setCurrentTime(startTime.toNumber() + withdrawalLiveness - 1);
@@ -538,24 +537,13 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.transferPassedRequest(other, { from: sponsor })));
     assert(await didContractThrow(pricelessPositionManager.cancelTransfer({ from: sponsor })));
 
-    // Request transfer. Check event is emitted
+    // Request transfer. Check event is emitted.
     const resultRequest = await pricelessPositionManager.requestTransfer({ from: sponsor });
     truffleAssert.eventEmitted(resultRequest, "RequestTransfer", ev => {
       return ev.oldSponsor == sponsor;
     });
 
-    // All other actions are locked.
-    assert(await didContractThrow(pricelessPositionManager.deposit({ rawValue: toWei("1") }, { from: sponsor })));
-    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("1") }, { from: sponsor })));
-    assert(
-      await didContractThrow(
-        pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor })
-      )
-    );
-    assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: toWei("1") }, { from: sponsor })));
-    assert(
-      await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor }))
-    );
+    // Cannot request another transfer while one is pending.
     assert(await didContractThrow(pricelessPositionManager.requestTransfer({ from: sponsor })));
 
     // Can't transfer before time is up.
@@ -579,6 +567,11 @@ contract("PricelessPositionManager", function(accounts) {
     // Can't transfer if the target already has a pricelessPositionManager.
     assert(await didContractThrow(pricelessPositionManager.transferPassedRequest(other, { from: sponsor })));
 
+    // Can't transfer if there is a pending withdrawal request.
+    await pricelessPositionManager.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor });
+    assert(await didContractThrow(pricelessPositionManager.transferPassedRequest(other, { from: sponsor })));
+    await pricelessPositionManager.cancelWithdrawal({ from: sponsor });
+
     // Execute transfer to new sponsor. Check event is emitted.
     const result = await pricelessPositionManager.transferPassedRequest(tokenHolder, { from: sponsor });
     truffleAssert.eventEmitted(result, "RequestTransferExecuted", ev => {
@@ -587,9 +580,12 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(result, "NewSponsor", ev => {
       return ev.sponsor == tokenHolder;
     });
-
     assert.equal((await pricelessPositionManager.positions(sponsor)).rawCollateral.toString(), toWei("0"));
     assert.equal((await pricelessPositionManager.getCollateral(tokenHolder)).toString(), amountCollateral);
+
+    // Check that transfer-request related parameters in pricelessPositionManager are reset.
+    const positionData = await pricelessPositionManager.positions(sponsor);
+    assert.equal(positionData.transferRequestPassTimestamp.toString(), 0);
 
     // Contract state should not have changed.
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
@@ -751,6 +747,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
     assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.transferRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
   });
 
@@ -956,6 +953,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
     assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.transferRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
@@ -1099,6 +1097,7 @@ contract("PricelessPositionManager", function(accounts) {
       assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
       assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
       assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+      assert.equal(sponsorsPosition.transferRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
     });
     it("withdraw() returns the same amount of collateral that totalPositionCollateral is decreased by", async () => {
@@ -1608,6 +1607,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
     assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.transferRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
   });
 });
