@@ -24,6 +24,14 @@ async function claimRewards() {
   }
 
   for (const [voter, priceRequests] of Object.entries(votersToPriceRequests)) {
+    try {
+      await voting.retrieveRewards.call(voter, argv.round, priceRequests);
+    } catch (err) {
+      console.log("Could not reveal for voter", voter);
+      console.log(err);
+      continue;
+    }
+
     await voting.retrieveRewards(voter, argv.round, priceRequests);
   }
 }
