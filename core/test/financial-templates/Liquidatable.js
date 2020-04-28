@@ -702,7 +702,7 @@ contract("Liquidatable", function(accounts) {
 
         // Events should show that the dispute failed.
         truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
-          return !ev.DisputeSucceeded;
+          return !ev.disputeSucceeded;
         });
         const expectedPayout = disputeBond.add(liquidationParams.liquidatedCollateral).add(finalFeeAmount);
         // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
@@ -740,7 +740,7 @@ contract("Liquidatable", function(accounts) {
             ev.liquidator == liquidator &&
             ev.disputer == disputer &&
             ev.liquidationId == 0 &&
-            ev.DisputeSucceeded
+            ev.disputeSucceeded
           );
         });
 
