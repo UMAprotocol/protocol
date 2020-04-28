@@ -27,9 +27,22 @@ class BalanceMonitor {
     // ...];
     this.walletsToMonitor = walletsToMonitor;
 
+    this.walletsAlerted = {};
+
+    for (let bot of botsToMonitor) {
+      this.walletsAlerted[bot.address] = {
+        collateralThreshold: false,
+        syntheticThreshold: false,
+        etherThreshold: false
+      };
+    }
+
+    for (let wallet of walletsToMonitor) {
+      this.walletsAlerted[wallet.address] = { crAlert: false };
+    }
+
     // Instance of the tokenBalanceClient to read account balances from last change update.
     this.client = tokenBalanceClient;
-
     this.web3 = this.client.web3;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2);
@@ -40,12 +53,24 @@ class BalanceMonitor {
     this.syntheticCurrencySymbol = "UMATEST";
   }
 
+  // Checks if an addresses balance is below a given threshold
   ltThreshold(balance, threshold) {
     // If the price has not resolved yet then return false
     if (balance == null) {
       return false;
     }
     return this.web3.utils.toBN(balance).lt(this.web3.utils.toBN(threshold));
+  }
+
+  // A notification should only be pushed if the bot's threshold balance is below the threshold and a notification
+  // for for that given threshold has not already been sent out
+  shouldPushNotification(bot, thresholdKey) {
+    let shouldPushNotification = false;
+    if (this.ltThreshold(this.client.getCollateralBalance(bot.address), bot[thresholdKey])) {
+      if (!this.walletsAlerted[bot.address][thresholdKey]) shouldPushNotification = true;
+      this.walletsAlerted[bot.address] = true;
+    } else this.walletsAlerted[bot.address] = false;
+    return shouldPushNotification;
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
@@ -56,7 +81,7 @@ class BalanceMonitor {
     });
 
     for (let bot of this.botsToMonitor) {
-      if (this.ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
+      if (this.shouldPushNotification(bot, "collateralThreshold")) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
@@ -69,7 +94,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.ltThreshold(this.client.getSyntheticBalance(bot.address), bot.syntheticThreshold)) {
+      if (this.shouldPushNotification(bot, "syntheticThreshold")) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
@@ -82,7 +107,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.ltThreshold(this.client.getEtherBalance(bot.address), bot.etherThreshold)) {
+      if (this.shouldPushNotification(bot, "etherThreshold")) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",

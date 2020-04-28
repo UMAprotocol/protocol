@@ -19,9 +19,11 @@ class SpyTransport extends Transport {
 // Helper function used by unit tests to check if the last message sent to winston contains a particular string value.
 // Caller feeds in the spy instance and the value to check.
 const lastSpyLogIncludes = (spy, value) => {
-  // Sinon's getCall(n) function returns the values sent in in the nth call the the spy
-  const lastReturnedArg = spy.getCall(-1).lastArg.mrkdwn.toString();
-  return lastReturnedArg.indexOf(value) != -1;
+  // Sinon's getCall(n) function returns the values sent in in the nth call the the spy. We want to check both the mrkdown
+  // sent and the message sent to the bot.
+  const lastReturnedArgMrkdwn = spy.getCall(-1).lastArg.mrkdwn.toString();
+  const lastReturnedArgMessage = spy.getCall(-1).lastArg.message.toString();
+  return lastReturnedArgMrkdwn.indexOf(value) != -1 || lastReturnedArgMessage.indexOf(value) != -1;
 };
 
 module.exports = { SpyTransport, lastSpyLogIncludes };

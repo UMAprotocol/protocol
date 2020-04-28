@@ -126,10 +126,11 @@ contract("BalanceMonitor.js", function(accounts) {
 
     // The spy should be called exactly once. The most recent message should inform of the correct monitored position,
     // it's expected balance and and it's actual balance.
+    assert.equal(spy.callCount, 1);
+    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidatorBot}`)); // liquidator address
     assert.isTrue(lastSpyLogIncludes(spy, "collateral balance warning")); // we moved collateral. should emit accordingly.
     assert.isFalse(lastSpyLogIncludes(spy, "synthetic balance warning")); // Synthetic was not moved. should not emit.
-    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
     assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // the correctly formatted number of threshold collateral
     assert.isTrue(lastSpyLogIncludes(spy, "9,000.00")); // the correctly formatted number of actual collateral
 
