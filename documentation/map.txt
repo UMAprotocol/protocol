@@ -1,5 +1,7 @@
 * getting_started
 ** architecture_overview.md
+** priceless_defi_contracts.md
+** uma_oracle_design.md
 * synthetic_tokens
 ** explainer.md
 ** tutorials
