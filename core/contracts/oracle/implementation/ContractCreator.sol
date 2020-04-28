@@ -17,9 +17,7 @@ abstract contract ContractCreator {
 
     function _registerContract(address[] memory parties, address contractToRegister) internal {
         FinderInterface finder = FinderInterface(finderAddress);
-        Registry registry = Registry(
-            finder.getImplementationAddress(finder.getImplementationAddress(OracleInterfaces.Registry))
-        );
+        Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
         registry.registerContract(parties, contractToRegister);
     }
 }
