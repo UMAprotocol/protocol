@@ -34,6 +34,7 @@ contract("PricelessPositionManager", function(accounts) {
   let identifierWhitelist;
   let mockOracle;
   let financialContractsAdmin;
+  let timer;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -80,7 +81,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   beforeEach(async function() {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
-    const timer = await Timer.deployed();
+    timer = await Timer.deployed();
     await timer.setCurrentTime(startTimestamp);
 
     // Create identifier whitelist and register the price tracking ticker with it.
@@ -115,6 +116,46 @@ contract("PricelessPositionManager", function(accounts) {
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+  });
+
+  it("Valid constructor params", async function() {
+    // Expiration timestamp must be greater than contract current time.
+    assert(
+      await didContractThrow(
+        PricelessPositionManager.new(
+          startTimestamp, // _expirationTimestamp
+          withdrawalLiveness, // _withdrawalLiveness
+          collateral.address, // _collateralAddress
+          Finder.address, // _finderAddress
+          priceFeedIdentifier, // _priceFeedIdentifier
+          syntheticName, // _syntheticName
+          syntheticSymbol, // _syntheticSymbol
+          TokenFactory.address, // _tokenFactoryAddress
+          { rawValue: minSponsorTokens }, // _minSponsorTokens
+          Timer.address, // _timerAddress
+          { from: contractDeployer }
+        )
+      )
+    );
+
+    // Pricefeed identifier must be whitelisted.
+    assert(
+      await didContractThrow(
+        PricelessPositionManager.new(
+          expirationTimestamp, // _expirationTimestamp
+          withdrawalLiveness, // _withdrawalLiveness
+          collateral.address, // _collateralAddress
+          Finder.address, // _finderAddress
+          web3.utils.utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
+          syntheticName, // _syntheticName
+          syntheticSymbol, // _syntheticSymbol
+          TokenFactory.address, // _tokenFactoryAddress
+          { rawValue: minSponsorTokens }, // _minSponsorTokens
+          Timer.address, // _timerAddress
+          { from: contractDeployer }
+        )
+      )
+    );
   });
 
   it("Correct deployment and variable assignment", async function() {

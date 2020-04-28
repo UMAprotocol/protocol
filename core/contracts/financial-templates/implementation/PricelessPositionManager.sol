@@ -149,14 +149,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+        require(_expirationTimestamp > getCurrentTime());
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
+
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         minSponsorTokens = _minSponsorTokens;
-
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
-
         priceIdentifer = _priceIdentifier;
     }
 
