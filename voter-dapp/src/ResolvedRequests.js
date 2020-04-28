@@ -28,7 +28,7 @@ function ResolvedRequests({ votingAccount }) {
       useMemo(() => {
         const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
         // If all resolved requests are being shown, don't filter by round id.
-        return { filter: { resolutionRoundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
+        return { filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
       }, [currentRoundId, showAllResolvedRequests])
     ) || [];
 
@@ -40,7 +40,7 @@ function ResolvedRequests({ votingAccount }) {
         const indexRoundId = currentRoundId == null ? MAX_UINT_VAL : currentRoundId - 1;
         // If all resolved requests are being shown, don't filter by round id.
         return {
-          filter: { resolutionRoundId: showAllResolvedRequests ? undefined : indexRoundId, voter: votingAccount },
+          filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId, voter: votingAccount },
           fromBlock: 0
         };
       }, [currentRoundId, votingAccount, showAllResolvedRequests])
@@ -57,8 +57,8 @@ function ResolvedRequests({ votingAccount }) {
   // TODO: add a resolved timestamp to the table so the sorting makes more sense to the user.
   // Sort the resolved requests such that they are organized from most recent to least recent round.
   const resolvedEventsSorted = resolvedEvents.sort((a, b) => {
-    const aRoundId = web3.utils.toBN(a.returnValues.resolutionRoundId);
-    const bRoundId = web3.utils.toBN(b.returnValues.resolutionRoundId);
+    const aRoundId = web3.utils.toBN(a.returnValues.roundId);
+    const bRoundId = web3.utils.toBN(b.returnValues.roundId);
     return bRoundId.cmp(aRoundId);
   });
 

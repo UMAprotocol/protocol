@@ -17,7 +17,7 @@ contract WithdrawableTest is Withdrawable {
         require(msg.value > 0);
     }
 
-    function setInternalWithdrawRole(uint256 roleId) public {
-        _setWithdrawRole(roleId);
+    function setInternalWithdrawRole(uint256 setRoleId) public {
+        _setWithdrawRole(setRoleId);
     }
 }
