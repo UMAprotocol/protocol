@@ -1,3 +1,5 @@
+// Usage: $(npm bin)/truffle exec ./scripts/ClaimAllRewards.js --round <round_id> --network mainnet_mnemonic
+
 const Voting = artifacts.require("Voting");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["round"] });
