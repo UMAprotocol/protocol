@@ -186,6 +186,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
+        require(collateralAmount.isGreaterThan(0));
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         _addCollateral(positionData.rawCollateral, collateralAmount);
@@ -213,6 +214,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
+        require(
+            collateralAmount.isGreaterThan(0) &&
+                collateralAmount.isLessThanOrEqual(_getCollateral(positionData.rawCollateral))
+        );
 
         _removeCollateral(positionData.rawCollateral, collateralAmount);
         require(_checkPositionCollateralization(positionData));
@@ -239,6 +244,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
+        require(
+            collateralAmount.isGreaterThan(0) &&
+                collateralAmount.isLessThanOrEqual(_getCollateral(positionData.rawCollateral))
+        );
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
@@ -265,9 +274,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp <= getCurrentTime());
+        require(positionData.requestPassTimestamp != 0 && positionData.requestPassTimestamp <= getCurrentTime());
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
+        // This situation is possible due to fees charged since the withdrawal was originally requested.
         FixedPoint.Unsigned memory amountToWithdraw = positionData.withdrawalRequestAmount;
         if (positionData.withdrawalRequestAmount.isGreaterThan(_getCollateral(positionData.rawCollateral))) {
             amountToWithdraw = _getCollateral(positionData.rawCollateral);
