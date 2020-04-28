@@ -99,7 +99,7 @@ abstract contract FeePayer is Testable {
         }
 
         // Exit early if fees were already paid during this block.
-        if (lastPaymentTime == getCurrentTime()) {
+        if (lastPaymentTime == time) {
             return totalPaid;
         }
 
