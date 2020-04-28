@@ -117,9 +117,8 @@ class TokenBalanceClient {
   };
 
   _update = async () => {
-    // loop over all account addresses in the monitor list and for each check the
-    // balances of the respective tokens and there balances.Store these for
-    // synchronous retrieval by bots.
+    // loop over all account addresses in the monitor list and for each check the balances of the respective tokens and
+    // there balances. Store these for synchronous retrieval by bots.
     for (let account of this.accountMonitorList) {
       // TODO: refactor this to create an array of promises for all accounts to monitor and resolve them all at once.
       this.tokenBalances.collateralBalances[account] = await this.collateralToken.methods.balanceOf(account).call();
