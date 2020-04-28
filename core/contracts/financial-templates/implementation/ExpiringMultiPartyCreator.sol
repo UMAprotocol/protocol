@@ -67,7 +67,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
     uint256 public constant STRICT_LIQUIDATION_LIVENESS = 3600;
 
-    event CreatedExpiringMultiParty(address expiringMultiPartyAddress, address partyMemberAddress);
+    event CreatedExpiringMultiParty(address indexed expiringMultiPartyAddress, address indexed partyMemberAddress);
 
     /**
      * @notice Constructs the ExpiringMultiPartyCreator contract.

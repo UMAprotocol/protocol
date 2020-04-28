@@ -121,7 +121,7 @@ contract Liquidatable is PricelessPositionManager {
         uint256 liquidationId,
         bool disputeSucceeded
     );
-    event LiquidationWithdrawn(address caller, uint256 withdrawalAmount, Status liquidationStatus);
+    event LiquidationWithdrawn(address indexed caller, uint256 withdrawalAmount, Status indexed liquidationStatus);
 
     /****************************************
      *              MODIFIERS               *
