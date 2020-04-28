@@ -1,7 +1,6 @@
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
-const networkUtils = require("../common/PublicNetworks");
 
 const { calculatePositionCRPercent } = require("./utils/PositionCRCalculator");
 
@@ -46,7 +45,6 @@ class BalanceMonitor {
     if (balance == null) {
       return false;
     }
-    console.log("comapring balance & throedhold as", balance.toString(), threshold.toString());
     return this.web3.utils.toBN(balance).lt(this.web3.utils.toBN(threshold));
   }
 
@@ -58,16 +56,14 @@ class BalanceMonitor {
     });
 
     for (let bot of this.botsToMonitor) {
-      const botCollateralBalance = this.client.getCollateralBalance(bot.address);
-      console.log("botCollateralBalance", botCollateralBalance);
-      if (this.ltThreshold(botCollateralBalance, bot.collateralThreshold)) {
+      if (this.ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this.createLowBalanceMrkdwn(
             bot,
             bot.collateralThreshold,
-            botCollateralBalance,
+            this.client.getCollateralBalance(bot.address),
             this.collateralCurrencySymbol,
             "collateral"
           )
@@ -87,7 +83,6 @@ class BalanceMonitor {
         });
       }
       if (this.ltThreshold(this.client.getEtherBalance(bot.address), bot.etherThreshold)) {
-        console.log("below threshold for ether");
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
@@ -108,7 +103,7 @@ class BalanceMonitor {
       "*" +
       bot.name +
       "* (" +
-      createEtherscanLinkMarkdown(this.web3, networkUtils, bot.address) +
+      createEtherscanLinkMarkdown(this.web3, bot.address) +
       ") " +
       tokenName +
       " balance is less than " +
