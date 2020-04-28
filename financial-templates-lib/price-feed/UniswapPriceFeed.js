@@ -1,11 +1,14 @@
-const { delay } = require("./delay");
-const { Logger } = require("./logger/Logger");
-const { LiquidationStatesEnum } = require("../common/Enums");
-const { MAX_SAFE_JS_INT } = require("../common/Constants");
+const { PriceFeedInterface } = require("./PriceFeedInterface");
 
-// A client for getting price information from a uniswap market.
-class UniswapPriceFeed {
+const { delay } = require("../delay");
+const { Logger } = require("../logger/Logger");
+const { LiquidationStatesEnum } = require("../../common/Enums");
+const { MAX_SAFE_JS_INT } = require("../../common/Constants");
+
+// An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
+class UniswapPriceFeed extends PriceFeedInterface {
   constructor(abi, web3, uniswapAddress, twapLength, historicalLookback, getTime) {
+    super();
     this.web3 = web3;
     this.uniswap = new web3.eth.Contract(abi, uniswapAddress);
     this.twapLength = twapLength;
@@ -13,25 +16,36 @@ class UniswapPriceFeed {
     this.historicalLookback = historicalLookback;
   }
 
-  getCurrentPrice = () => this.currentPrice;
-  getCurrentTwap = () => this.currentTwap;
-  getHistoricalTwap = time => {
+  getCurrentPrice() {
+    return this.currentTwap;
+  }
+
+  getHistoricalPrice(time) {
     if (time < this.lastUpdateTime - this.historicalLookback) {
       // Requesting an historical TWAP earlier than the lookback.
       return null;
     }
 
     return this._computeTwap(this.events, time - this.twapLength, time);
-  };
+  }
 
-  _update = async () => {
+  getLastUpdateTime() {
+    return this.lastUpdateTime;
+  }
+
+  // Not part of the price feed interface. Can be used to pull the uniswap price at the most recent block.
+  getLastBlockPrice() {
+    return this.lastBlockPrice;
+  }
+
+  async update() {
     // TODO: optimize this call. This may be very slow or break if there are many transactions.
     const events = await this.uniswap.getPastEvents("Sync", { fromBlock: 0 });
 
     // If there are no prices, return null to allow the user to handle the absense of data.
     if (events.length === 0) {
-      this.currentPrice = null;
       this.currentTwap = null;
+      this.lastBlockPrice = null;
       this.events = [];
       return;
     }
@@ -65,14 +79,14 @@ class UniswapPriceFeed {
     // Cut off all the events that were before the time we care about.
     this.events = events.slice(i);
 
-    // Current price
-    this.currentPrice = this.events[this.events.length - 1].price;
+    // Price at the end of the most recent block.
+    this.lastBlockPrice = this.events[this.events.length - 1].price;
 
     // Compute TWAP up to the current time.
     this.currentTwap = this._computeTwap(this.events, currentTime - this.twapLength, currentTime);
 
     this.lastUpdateTime = currentTime;
-  };
+  }
 
   _getPriceFromSyncEvent(event) {
     const { toWei, toBN } = this.web3.utils;

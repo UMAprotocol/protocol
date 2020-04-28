@@ -1,9 +1,9 @@
 const { toWei, toBN } = web3.utils;
 
-const { UniswapPriceFeed } = require("../UniswapPriceFeed");
-const { mineTransactionsAtTime } = require("../../common/SolidityTestUtils.js");
-const { delay } = require("../delay.js");
-const { MAX_SAFE_JS_INT } = require("../../common/Constants");
+const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
+const { mineTransactionsAtTime } = require("../../../common/SolidityTestUtils.js");
+const { delay } = require("../../delay.js");
+const { MAX_SAFE_JS_INT } = require("../../../common/Constants");
 
 const UniswapMock = artifacts.require("UniswapMock");
 const Uniswap = artifacts.require("Uniswap");
@@ -22,18 +22,18 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
   it("Basic current price", async function() {
     await uniswapMock.setPrice(toWei("2"), toWei("1"));
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
-    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.5"));
+    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.5"));
   });
 
   it("Correctly selects most recent price", async function() {
     await uniswapMock.setPrice(toWei("1"), toWei("1"));
     await uniswapMock.setPrice(toWei("2"), toWei("1"));
     await uniswapMock.setPrice(toWei("4"), toWei("1"));
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
-    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
+    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.25"));
   });
 
   it("Selects most recent price in same block", async function() {
@@ -52,15 +52,15 @@ contract("UniswapPriceFeed.js", function(accounts) {
     assert.equal(receipt3.blockNumber, receipt1.blockNumber);
 
     // Update the PF and ensure the price it gives is the last price in the block.
-    await uniswapPriceFeed._update();
-    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
+    await uniswapPriceFeed.update();
+    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.25"));
   });
 
   it("No price", async function() {
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
+    assert.equal(uniswapPriceFeed.getLastBlockPrice(), null);
     assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
-    assert.equal(uniswapPriceFeed.getCurrentTwap(), null);
   });
 
   // Basic test to verify TWAP (non simulated time).
@@ -80,7 +80,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
     mockTime = time2 + 1;
 
     // Allow the library to compute the TWAP.
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
     const totalTime = mockTime - time1;
     const weightedPrice1 = toBN(toWei("1")).muln(time2 - time1);
@@ -88,7 +88,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
     // Compare the TWAPs.
     assert.equal(
-      uniswapPriceFeed.getCurrentTwap().toString(),
+      uniswapPriceFeed.getCurrentPrice().toString(),
       weightedPrice1
         .add(weightedPrice2)
         .divn(totalTime)
@@ -104,10 +104,10 @@ contract("UniswapPriceFeed.js", function(accounts) {
     // Set the mock time to very far in the future.
     mockTime = MAX_SAFE_JS_INT;
 
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
     // Expect that the TWAP is just the most recent price, since that was the price throughout the current window.
-    assert.equal(uniswapPriceFeed.getCurrentTwap().toString(), toWei("0.25"));
+    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
   it("All events after window", async function() {
@@ -118,10 +118,10 @@ contract("UniswapPriceFeed.js", function(accounts) {
     // Set the mock time to very far in the past.
     mockTime = 5000;
 
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
     // Since all the events are past our window, there is no valid price, and the TWAP should return null.
-    assert.equal(uniswapPriceFeed.getCurrentTwap(), null);
+    assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
   });
 
   it("Basic historical TWAP", async function() {
@@ -162,31 +162,31 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
     mockTime = currentTime;
 
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
     // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
-    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 3600).toString(), toWei("95"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3600).toString(), toWei("95"));
 
     // The historical TWAP for 45 mins ago should be 100 for the first quarter, 90 for the middle half, and 80 for the last quarter -> 90.
-    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 2700).toString(), toWei("90"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 2700).toString(), toWei("90"));
 
     // The historical TWAP for 30 minutes ago should be 90 for the first half and then 80 for the second half -> 85.
-    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 1800).toString(), toWei("85"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 1800).toString(), toWei("85"));
 
     // The historical TWAP for 15 minutes ago should be 90 for the first quarter, 80 for the middle half, and 70 for the last quarter -> 80.
-    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 900).toString(), toWei("80"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 900).toString(), toWei("80"));
 
     // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
-    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime).toString(), toWei("75"));
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime).toString(), toWei("75"));
   });
 
   it("Historical TWAP too far back", async function() {
     const currentTime = Math.round(new Date().getTime() / 1000);
     mockTime = currentTime;
-    await uniswapPriceFeed._update();
+    await uniswapPriceFeed.update();
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
-    assert.equal(uniswapPriceFeed.getHistoricalTwap(currentTime - 3601), null);
+    assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3601), null);
   });
   // TODO: add the following TWAP tests using simulated block times:
   // - Some events pre TWAP window, some inside window.
