@@ -163,7 +163,7 @@ contract Liquidatable is PricelessPositionManager {
         require(params.collateralRequirement.isGreaterThan(1), "CR must be larger than 100%");
         require(
             params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
-            "Dispute rewards can't exceed 100%"
+            "Dispute reward can't exceed 100%"
         );
 
         // Set liquidatable specific variables.
@@ -487,7 +487,7 @@ contract Liquidatable is PricelessPositionManager {
     function _getLiquidationData(address sponsor, uint256 liquidationId)
         internal
         view
-        returns (LiquidationData storage liquidation)
+        returns (LiquidationData storage)
     {
         LiquidationData[] storage liquidationArray = liquidations[sponsor];
 

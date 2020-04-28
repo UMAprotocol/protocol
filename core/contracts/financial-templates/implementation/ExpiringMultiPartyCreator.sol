@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
-import "../../common/implementation/AddressWhitelist.sol";
+import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "./ExpiringMultiParty.sol";
 
 
@@ -48,7 +48,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // frozen). One could also set the owner to the address of the Governor contract, but voters may find that option
     // less preferable since it would force them to take a more active role in managing this financial contract
     // template.
-    AddressWhitelist public collateralTokenWhitelist;
+    AddressWhitelistInterface public collateralTokenWhitelist;
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
     // - Discretize expirations such that they must expire on the first of each month.
@@ -100,7 +100,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         address _tokenFactoryAddress,
         address _timerAddress
     ) public ContractCreator(_finderAddress) Testable(_timerAddress) {
-        collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
+        collateralTokenWhitelist = AddressWhitelistInterface(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
     }
 
@@ -149,8 +149,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
         // Enforce configuration constrainments.
         require(_isValidTimestamp(params.expirationTimestamp), "Invalid expiration timestamp");
-        require(bytes(params.syntheticName).length != 0, "Synthetic name can't be empty");
-        require(bytes(params.syntheticSymbol).length != 0, "Synthetic symbol can't be empty");
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
         constructorParams.liquidationLiveness = STRICT_LIQUIDATION_LIVENESS;
         require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress), "Collateral token not whitelisted");

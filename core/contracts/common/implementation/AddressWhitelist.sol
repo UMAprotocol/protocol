@@ -1,12 +1,12 @@
 pragma solidity ^0.6.0;
-
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../interfaces/AddressWhitelistInterface.sol";
 
 
 /**
  * @title A contract to track a whitelist of addresses.
  */
-contract AddressWhitelist is Ownable {
+contract AddressWhitelist is AddressWhitelistInterface, Ownable {
     enum Status { None, In, Out }
     mapping(address => Status) public whitelist;
 
@@ -19,7 +19,7 @@ contract AddressWhitelist is Ownable {
      * @notice Adds an address to the whitelist.
      * @param newElement the new address to add.
      */
-    function addToWhitelist(address newElement) external onlyOwner {
+    function addToWhitelist(address newElement) external override onlyOwner {
         // Ignore if address is already included
         if (whitelist[newElement] == Status.In) {
             return;
@@ -39,7 +39,7 @@ contract AddressWhitelist is Ownable {
      * @notice Removes an address from the whitelist.
      * @param elementToRemove the existing address to remove.
      */
-    function removeFromWhitelist(address elementToRemove) external onlyOwner {
+    function removeFromWhitelist(address elementToRemove) external override onlyOwner {
         if (whitelist[elementToRemove] != Status.Out) {
             whitelist[elementToRemove] = Status.Out;
             emit RemovedFromWhitelist(elementToRemove);
@@ -51,7 +51,7 @@ contract AddressWhitelist is Ownable {
      * @param elementToCheck the address to check.
      * @return True if `elementToCheck` is on the whitelist, or False.
      */
-    function isOnWhitelist(address elementToCheck) external view returns (bool) {
+    function isOnWhitelist(address elementToCheck) external override view returns (bool) {
         return whitelist[elementToCheck] == Status.In;
     }
 
@@ -63,7 +63,7 @@ contract AddressWhitelist is Ownable {
      * the empty index.
      * @return activeWhitelist the list of addresses on the whitelist.
      */
-    function getWhitelist() external view returns (address[] memory activeWhitelist) {
+    function getWhitelist() external override view returns (address[] memory activeWhitelist) {
         // Determine size of whitelist first
         uint256 activeCount = 0;
         for (uint256 i = 0; i < whitelistIndices.length; i++) {
