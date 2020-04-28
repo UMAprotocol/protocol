@@ -80,7 +80,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      *                EVENTS                *
      ****************************************/
 
-    event Transfer(address indexed oldSponsor, address indexed newSponsor);
+    event RequestTransfer(address indexed oldSponsor);
+    event RequestTransferExecuted(address indexed oldSponsor, address indexed newSponsor);
+    event RequestTransferCanceled(address indexed oldSponsor);
     event Deposit(address indexed sponsor, uint256 indexed collateralAmount);
     event Withdrawal(address indexed sponsor, uint256 indexed collateralAmount);
     event RequestWithdrawal(address indexed sponsor, uint256 indexed collateralAmount);
@@ -165,19 +167,56 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      ****************************************/
 
     /**
-     * @notice Transfers ownership of the caller's current position to `newSponsorAddress`.
+     * @notice Requests to transfer ownership of the caller's current position to `newSponsorAddress`. Once the request liveness is passed,
+     * the sponsor can execute the transfer.
+     * @dev The liveness length is the same as the withdrawal liveness.
+     */
+    function requestTransfer() public onlyPreExpiration() {
+        PositionData storage positionData = _getPositionData(msg.sender);
+        require(positionData.requestPassTimestamp == 0);
+
+        // Make sure the proposed expiration of this request is not post-expiry.
+        uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
+        require(requestPassTime <= expirationTimestamp);
+
+        // Update the position object for the user.
+        positionData.requestPassTimestamp = requestPassTime;
+
+        emit RequestTransfer(msg.sender);
+    }
+
+    /**
+     * @notice After a passed transfer request (i.e., by a call to `requestTransfer` and waiting
+     * `withdrawalLiveness`), transfers ownership of the caller's current position to `newSponsorAddress`.
      * @dev Transferring positions can only occur if the recipient does not already have a position.
      * @param newSponsorAddress is the address to which the position will be transferred.
      */
-    function transfer(address newSponsorAddress) public onlyPreExpiration() {
+    function transferPassedRequest(address newSponsorAddress) public onlyPreExpiration() {
         require(_getCollateral(positions[newSponsorAddress].rawCollateral).isEqual(FixedPoint.fromUnscaledUint(0)));
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp != 0 && positionData.requestPassTimestamp <= getCurrentTime());
+
+        // Reset transfer request.
+        positionData.requestPassTimestamp = 0;
+
         positions[newSponsorAddress] = positionData;
         delete positions[msg.sender];
 
-        emit Transfer(msg.sender, newSponsorAddress);
+        emit RequestTransferExecuted(msg.sender, newSponsorAddress);
         emit NewSponsor(newSponsorAddress);
+    }
+
+    /**
+     * @notice Cancels a pending transfer request.
+     */
+    function cancelTransfer() external onlyPreExpiration() {
+        PositionData storage positionData = _getPositionData(msg.sender);
+        require(positionData.requestPassTimestamp != 0);
+
+        emit RequestTransferCanceled(msg.sender);
+
+        // Reset withdrawal request.
+        positionData.requestPassTimestamp = 0;
     }
 
     /**
@@ -276,7 +315,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _removeCollateral(positionData.rawCollateral, amountToWithdraw);
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
 
-        // Reset withdrawal request
+        // Reset withdrawal request.
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
         positionData.requestPassTimestamp = 0;
 
@@ -295,7 +334,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
-        // Reset withdrawal request
+        // Reset withdrawal request.
         positionData.requestPassTimestamp = 0;
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
     }
