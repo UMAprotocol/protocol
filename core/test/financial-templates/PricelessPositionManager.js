@@ -149,6 +149,42 @@ contract("PricelessPositionManager", function(accounts) {
     );
   });
 
+  it("Withdrawal liveness overflow", async function() {
+    // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
+    const largeLiveness = toBN(2)
+      .pow(toBN(256))
+      .subn(10)
+      .toString();
+    pricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      largeLiveness.toString(), // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      Finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      syntheticName, // _syntheticName
+      syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      Timer.address, // _timerAddress
+      { from: contractDeployer }
+    );
+
+    const initialSponsorTokens = toWei("100");
+    const initialSponsorCollateral = toWei("150");
+    await collateral.approve(pricelessPositionManager.address, initialSponsorCollateral, { from: sponsor });
+    await pricelessPositionManager.create(
+      { rawValue: initialSponsorCollateral },
+      { rawValue: initialSponsorTokens },
+      { from: sponsor }
+    );
+    // Withdrawal requests should fail due to overflow.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.requestWithdrawal({ rawValue: initialSponsorCollateral }, { from: sponsor })
+      )
+    );
+  });
+
   it("Lifecycle", async function() {
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
