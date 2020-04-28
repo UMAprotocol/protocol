@@ -103,7 +103,7 @@ jobs:
     docker:
       - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 6720000
+        command: ganache-cli -i 1234 -l 9000000
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -160,7 +160,7 @@ jobs:
           working_directory: ~/protocol/core
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
-          keys: 
+          keys:
             - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
             - v6-dapp-dep-cache-
       - run:
