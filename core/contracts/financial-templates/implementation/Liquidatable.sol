@@ -176,7 +176,7 @@ contract Liquidatable is PricelessPositionManager {
      * @notice Liquidates the sponsor's position if the caller has enough
      * synthetic tokens to retire the position's outstanding tokens.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
-     * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFee` of `collateralCurrency`.
+     * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
      * @param sponsor address to liquidate.
      * @param collateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
