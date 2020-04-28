@@ -216,8 +216,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(positionData.requestPassTimestamp == 0);
 
         // Decrement the sponsor's collateral and global collateral amounts.
-        amountWithdrawn = _decrementCollateralBalances(positionData, collateralAmount);
-        require(_checkPositionCollateralization(positionData));
+        amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralAmount);
 
         // Move collateral currency from contract to sender.
         // Note that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
@@ -359,7 +358,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             amountWithdrawn = _deleteSponsorPosition(msg.sender);
         } else {
             // Decrement the sponsor's collateral and global collateral amounts.
-            amountWithdrawn = _decrementCollateralBalances(positionData, collateralRedeemed);
+            amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralRedeemed);
 
             // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
             FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
@@ -624,15 +623,27 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position.
-    // Note: We elect to withdraw the amount that the global collateral is decreased by,
-    // rather than the individual position's collateral, because we need to maintain the invariant that
-    // the global collateral is always <= the collateral owned by the contract to avoid reverts on withdrawals.
     function _decrementCollateralBalances(
         PositionData storage positionData,
         FixedPoint.Unsigned memory collateralAmount
     ) internal returns (FixedPoint.Unsigned memory) {
         _removeCollateral(rawTotalPositionCollateral, collateralAmount);
         return _removeCollateral(positionData.rawCollateral, collateralAmount);
+    }
+
+    // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position.
+    // This function is similar to the _decrementCollateralBalances function except this function also checks position
+    // GCR inbetween the decrement action. This ensures that the decrement will not remove collateral such that the position
+    // ends up undercollateralized. We elect to return the amount that the global collateral is decreased by, rather than
+    // the individual position's collateral, because we need to maintain the invariant that the global collateral is
+    // always <= the collateral owned by the contract to avoid reverts on withdrawals. The amount returned = amount withdrawn.
+    function _decrementCollateralBalancesCheckGCR(
+        PositionData storage positionData,
+        FixedPoint.Unsigned memory collateralAmount
+    ) internal returns (FixedPoint.Unsigned memory) {
+        _removeCollateral(positionData.rawCollateral, collateralAmount);
+        require(_checkPositionCollateralization(positionData));
+        return _removeCollateral(rawTotalPositionCollateral, collateralAmount);
     }
 
     /**
