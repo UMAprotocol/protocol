@@ -1,4 +1,5 @@
 # UMA Oracle Design
+
 Many use-cases for blockchains and smart contracts require trustless access to off-chain information. 
 Decentralized financial contracts, for example, require accurate price data for valuation, margining and settlement. 
 
