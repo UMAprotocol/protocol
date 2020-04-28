@@ -98,6 +98,11 @@ abstract contract FeePayer is Testable {
             return totalPaid;
         }
 
+        // Exit early if fees were already paid during this block.
+        if (lastPaymentTime == getCurrentTime()) {
+            return totalPaid;
+        }
+
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
             lastPaymentTime,
             time,

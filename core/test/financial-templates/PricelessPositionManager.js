@@ -833,6 +833,12 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
 
+    // Calling `payFees()` more than once in the same block does not emit a RegularFeesPaid event.
+    const feesPaidRepeat = await payFees.call();
+    assert.equal(feesPaidRepeat.toString(), "0");
+    const payFeesRepeatResult = await payFees();
+    truffleAssert.eventNotEmitted(payFeesRepeatResult, "RegularFeesPaid");
+
     // Ensure that fees are not applied to new collateral.
     // TODO: value chosen specifically to avoid rounding errors -- see #873.
     await pricelessPositionManager.deposit({ rawValue: toWei("99") }, { from: sponsor });
