@@ -6,6 +6,8 @@ Owners of UMA tokens have 2 major categories of responsibilities:
 
 A tutorial on how to vote on price requests from CLI is [here](../tutorials/voting_with_uma_tokens.md). Voters can also use the [Voting dApp](https://vote.umaproject.org/).
 
+Voters who participate and vote correctly earn an inflationary reward (currently 0.05% of total network token supply), distributed pro-rata by stake. 
+
 ## Voting on price requests
 
 Owners of UMA tokens will occasionally be asked to vote on price requests from financial contracts in a 2-stage (commit and reveal) voting period. Each stage is open for 24 hours, so each voting period is 48 hours.
