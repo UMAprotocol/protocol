@@ -7,6 +7,7 @@
  */
 const { toWei } = web3.utils;
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
+const { interfaceName } = require("../../utils/Constants.js");
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -17,6 +18,7 @@ const MockOracle = artifacts.require("MockOracle");
 const Token = artifacts.require("ExpandedERC20");
 const Registry = artifacts.require("Registry");
 const WETH9 = artifacts.require("WETH9");
+const Timer = artifacts.require("Timer");
 
 // Contracts we need to interact with.
 let collateralToken;
@@ -47,9 +49,9 @@ const deployEMP = async callback => {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
     finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    mockOracle = await MockOracle.new(finder.address, Timer.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
 
     // Grant EMP the right to register new financial templates.
@@ -69,7 +71,8 @@ const deployEMP = async callback => {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("0.01") }
+      minSponsorTokens: { rawValue: toWei("0.01") },
+      timerAddress: Timer.address
     };
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
@@ -89,7 +92,8 @@ const deployEMP = async callback => {
     await emp.create({ rawValue: toWei("1.5") }, { rawValue: toWei("1") }, { from: firstSponsor });
 
     // Done!
-    console.log(`Created a new EMP @${emp.address} with the configuration:`);
+    console.log(`Using Mock Oracle @ ${mockOracle.address}`);
+    console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
     console.table(constructorParams);
   } catch (err) {
     console.error(err);

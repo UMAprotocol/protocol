@@ -17,7 +17,7 @@ import { formatDate, formatWei } from "./common/FormattingUtils.js";
 import { VotePhasesEnum } from "./common/Enums.js";
 import { decryptMessage, deriveKeyPairFromSignatureMetamask, encryptMessage } from "./common/Crypto.js";
 import { useTableStyles } from "./Styles.js";
-import { getKeyGenMessage } from "./common/EncryptionHelper.js";
+import { getKeyGenMessage, computeVoteHash, computeTopicHash } from "./common/EncryptionHelper.js";
 import { getRandomUnsignedInt } from "./common/Random.js";
 import { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } from "./common/Constants.js";
 import { getAdminRequestId, isAdminRequest, decodeTransaction } from "./common/AdminUtils.js";
@@ -38,6 +38,8 @@ const editStateReducer = (state, action) => {
       throw new Error();
   }
 };
+
+const toPriceRequestKey = (identifier, time) => time + "," + identifier;
 
 function ActiveRequests({ votingAccount, votingGateway }) {
   const { drizzle, useCacheCall, useCacheEvents, useCacheSend } = drizzleReactHooks.useDrizzle();
@@ -63,6 +65,15 @@ function ActiveRequests({ votingAccount, votingGateway }) {
   const revealEvents = useCacheEvents(
     "Voting",
     "VoteRevealed",
+    useMemo(() => ({ filter: { voter: votingAccount, roundId: currentRoundId }, fromBlock: 0 }), [
+      votingAccount,
+      currentRoundId
+    ])
+  );
+
+  const encryptedVoteEvents = useCacheEvents(
+    "Voting",
+    "EncryptedVote",
     useMemo(() => ({ filter: { voter: votingAccount, roundId: currentRoundId }, fromBlock: 0 }), [
       votingAccount,
       currentRoundId
@@ -103,24 +114,35 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     return output;
   };
 
-  const voteStatuses = useCacheCall(["Voting"], call => {
-    if (!initialFetchComplete) {
-      return null;
+  const voteStatuses = [];
+  if (initialFetchComplete && encryptedVoteEvents !== undefined) {
+    // Sort ascending by time.
+    encryptedVoteEvents.sort((a, b) => {
+      if (a.blockNumber !== b.blockNumber) {
+        return a.blockNumber - b.blockNumber;
+      }
+
+      if (a.transactionIndex !== b.transactionIndex) {
+        return a.transactionIndex - b.transactionIndex;
+      }
+
+      return a.logIndex - b.logIndex;
+    });
+    // Get the latest `encryptedVote` for each (identifier, time).
+    const encryptedVoteMap = {};
+    for (const ev of encryptedVoteEvents) {
+      encryptedVoteMap[toPriceRequestKey(ev.returnValues.identifier, ev.returnValues.time)] =
+        ev.returnValues.encryptedVote;
     }
-    return pendingRequests.map(request => ({
-      committedValue: call(
-        "Voting",
-        "getMessage",
-        votingAccount,
-        web3.utils.soliditySha3(request.identifier, request.time, currentRoundId)
-      )
-    }));
-  });
+    for (const request of pendingRequests) {
+      voteStatuses.push({ committedValue: encryptedVoteMap[toPriceRequestKey(request.identifier, request.time)] });
+    }
+  }
+
   const subsequentFetchComplete =
-    voteStatuses &&
-    // Each of the subfetches has to complete. In drizzle, `undefined` means incomplete, while `null` means complete
-    // but the fetched value was null, e.g., no `comittedValue` existed.
-    voteStatuses.every(voteStatus => voteStatus.committedValue !== undefined) &&
+    initialFetchComplete &&
+    encryptedVoteEvents &&
+    voteStatuses.length === pendingRequests.length &&
     proposals &&
     proposals.every(prop => prop.proposal !== undefined);
   // Future hook calls that depend on `voteStatuses` should use `voteStatusesStringified` in their dependencies array
@@ -230,7 +252,14 @@ function ActiveRequests({ votingAccount, votingGateway }) {
       commits.push({
         identifier: pendingRequests[index].identifier,
         time: pendingRequests[index].time,
-        hash: web3.utils.soliditySha3(price, salt),
+        hash: computeVoteHash({
+          price,
+          salt,
+          account,
+          time: pendingRequests[index].time,
+          roundId: currentRoundId,
+          identifier: pendingRequests[index].identifier
+        }),
         encryptedVote
       });
       indicesCommitted.push(index);
@@ -254,7 +283,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     return <div>Looking up requests</div>;
   }
 
-  const toPriceRequestKey = (identifier, time) => time + "," + identifier;
   const eventsMap = {};
   for (const reveal of revealEvents) {
     eventsMap[toPriceRequestKey(reveal.returnValues.identifier, reveal.returnValues.time)] = formatWei(

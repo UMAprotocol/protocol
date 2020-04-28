@@ -12,7 +12,7 @@ interface OracleInterface {
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      */
-    function requestPrice(bytes32 identifier, uint time) external;
+    function requestPrice(bytes32 identifier, uint256 time) external;
 
     /**
      * @notice Whether the price for `identifier` and `time` is available.
@@ -21,14 +21,14 @@ interface OracleInterface {
      * @param time unix timestamp for the price request.
      * @return bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
-    function hasPrice(bytes32 identifier, uint time) external view returns (bool);
+    function hasPrice(bytes32 identifier, uint256 time) external view returns (bool);
 
     /**
      * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
-     * @return int representing the resolved price for the given identifier and timestamp.
+     * @return int256 representing the resolved price for the given identifier and timestamp.
      */
-    function getPrice(bytes32 identifier, uint time) external view returns (int);
+    function getPrice(bytes32 identifier, uint256 time) external view returns (int256);
 }

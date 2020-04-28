@@ -10,7 +10,7 @@
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("../../../common/Random.js");
 const { encryptMessage, deriveKeyPairFromSignatureTruffle } = require("../../../common/Crypto.js");
-const { getKeyGenMessage } = require("../../../common/EncryptionHelper");
+const { getKeyGenMessage, computeVoteHash } = require("../../../common/EncryptionHelper");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
 const Registry = artifacts.require("Registry");
@@ -118,6 +118,7 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredContr
 
   // Advance to commit phase
   await moveToNextRound(voting);
+  const roundId = await voting.getCurrentRoundId();
 
   const salts = [];
   const price = getRandomSignedInt();
@@ -126,12 +127,18 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredContr
   // Create the batch of commitments.
   for (var i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    const hash = computeVoteHash({
+      price,
+      salt,
+      account: voter,
+      time: time + i,
+      roundId,
+      identifier
+    });
     salts[i] = salt;
 
     // Generate encrypted vote to store on chain.
     const vote = { price, salt };
-    const roundId = await voting.getCurrentRoundId();
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), voter);
     const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
 
@@ -151,6 +158,7 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredContr
   await generatePriceRequests(requestNum, voting, identifier, time, registeredContract);
 
   await moveToNextRound(voting);
+  const roundId = await voting.getCurrentRoundId();
 
   const salts = [];
   const price = getRandomSignedInt();
@@ -158,7 +166,14 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredContr
   // Generate Commitments. We will use single commit so no upper bound from the previous test
   for (var i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    const hash = computeVoteHash({
+      price,
+      salt,
+      account: voter,
+      time: time + i,
+      roundId,
+      identifier
+    });
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
   }
@@ -183,13 +198,21 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
   await generatePriceRequests(requestNum, voting, identifier, time, registeredContract);
 
   await moveToNextRound(voting);
+  let roundId = await voting.getCurrentRoundId();
 
   const salts = [];
   const price = getRandomSignedInt();
 
   for (var i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(price, salt);
+    const hash = computeVoteHash({
+      price,
+      salt,
+      account: voter,
+      time: time + i,
+      roundId,
+      identifier
+    });
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
   }
@@ -202,7 +225,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
   }
 
   // Finally generate the batch rewards to retrieve
-  const roundId = await voting.getCurrentRoundId();
+  roundId = await voting.getCurrentRoundId();
 
   await moveToNextRound(voting);
 

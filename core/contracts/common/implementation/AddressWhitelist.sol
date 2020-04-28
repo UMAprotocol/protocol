@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 
 /**
@@ -17,6 +17,7 @@ contract AddressWhitelist is Ownable {
 
     /**
      * @notice Adds an address to the whitelist.
+     * @param newElement the new address to add.
      */
     function addToWhitelist(address newElement) external onlyOwner {
         // Ignore if address is already included
@@ -36,6 +37,7 @@ contract AddressWhitelist is Ownable {
 
     /**
      * @notice Removes an address from the whitelist.
+     * @param elementToRemove the existing address to remove.
      */
     function removeFromWhitelist(address elementToRemove) external onlyOwner {
         if (whitelist[elementToRemove] != Status.Out) {
@@ -46,6 +48,8 @@ contract AddressWhitelist is Ownable {
 
     /**
      * @notice Checks whether an address is on the whitelist.
+     * @param elementToCheck the address to check.
+     * @return True if `elementToCheck` is on the whitelist, or False.
      */
     function isOnWhitelist(address elementToCheck) external view returns (bool) {
         return whitelist[elementToCheck] == Status.In;
@@ -57,11 +61,12 @@ contract AddressWhitelist is Ownable {
      * of gas if a large number of addresses have been removed. To reduce the likelihood of this unlikely scenario, we
      * can modify the implementation so that when addresses are removed, the last addresses in the array is moved to
      * the empty index.
+     * @return activeWhitelist the list of addresses on the whitelist.
      */
     function getWhitelist() external view returns (address[] memory activeWhitelist) {
         // Determine size of whitelist first
-        uint activeCount = 0;
-        for (uint i = 0; i < whitelistIndices.length; i++) {
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < whitelistIndices.length; i++) {
             if (whitelist[whitelistIndices[i]] == Status.In) {
                 activeCount++;
             }
@@ -70,7 +75,7 @@ contract AddressWhitelist is Ownable {
         // Populate whitelist
         activeWhitelist = new address[](activeCount);
         activeCount = 0;
-        for (uint i = 0; i < whitelistIndices.length; i++) {
+        for (uint256 i = 0; i < whitelistIndices.length; i++) {
             address addr = whitelistIndices[i];
             if (whitelist[addr] == Status.In) {
                 activeWhitelist[activeCount] = addr;

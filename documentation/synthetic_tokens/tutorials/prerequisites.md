@@ -2,6 +2,8 @@
 
 After completing these set up steps, we'll be ready to start developing with the UMA system locally. 
 
+The following steps require the `git` CLI to be installed. If you are on Windows, you can install via Git Bash Shell ([link](https://gitforwindows.org/)). 
+
 ## Core
 
 Clone the UMA [repo](https://github.com/UMAprotocol/protocol). Start in the top-level directory in this repository, `protocol/`.

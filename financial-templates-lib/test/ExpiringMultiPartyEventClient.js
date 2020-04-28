@@ -1,4 +1,7 @@
 const { toWei } = web3.utils;
+const winston = require("winston");
+
+const { interfaceName } = require("../../core/utils/Constants.js");
 
 const { ExpiringMultiPartyEventClient } = require("../ExpiringMultiPartyEventClient");
 const { delay } = require("../delay");
@@ -9,6 +12,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
+const Timer = artifacts.require("Timer");
 
 contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const tokenSponsor = accounts[0];
@@ -33,7 +37,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   let constructorParams;
 
   before(async function() {
-    collateralToken = await Token.new({ from: tokenSponsor });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: tokenSponsor });
     await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
     await collateralToken.mint(liquidator, toWei("100000"), { from: tokenSponsor });
     await collateralToken.mint(sponsor1, toWei("100000"), { from: tokenSponsor });
@@ -43,9 +47,9 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(web3.utils.utf8ToHex("UMATEST"));
 
     // Create a mockOracle and finder. Register the mockOracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address);
     finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    mockOracle = await MockOracle.new(finder.address, Timer.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   });
 
@@ -54,7 +58,6 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
 
     constructorParams = {
-      isTest: true,
       expirationTimestamp: expirationTime.toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
@@ -68,11 +71,19 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") }
+      minSponsorTokens: { rawValue: toWei("1") },
+      timerAddress: Timer.address
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
-    client = new ExpiringMultiPartyEventClient(ExpiringMultiParty.abi, web3, emp.address);
+
+    // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: []
+    });
+
+    client = new ExpiringMultiPartyEventClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
 

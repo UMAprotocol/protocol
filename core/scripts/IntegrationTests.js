@@ -16,6 +16,7 @@
 // Helpers
 const { toWei, toBN } = web3.utils;
 const { RegistryRolesEnum } = require("../../common/Enums.js");
+const { interfaceName } = require("../utils/Constants.js");
 
 // Contract to test
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -30,6 +31,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const Store = artifacts.require("Store");
+const Timer = artifacts.require("Timer");
 
 contract("IntegrationTest", function(accounts) {
   let contractCreator = accounts[0];
@@ -56,7 +58,7 @@ contract("IntegrationTest", function(accounts) {
   const timeOffsetBetweenTests = toBN(60 * 60); // timestep advance between loop iterations (1 hour)
 
   beforeEach(async () => {
-    collateralToken = await Token.new({ from: contractCreator });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
@@ -74,12 +76,12 @@ contract("IntegrationTest", function(accounts) {
     startingTime = await expiringMultiPartyCreator.getCurrentTime();
     expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30 * 3)); // Three month in the future
     constructorParams = {
-      isTest: true,
       expirationTimestamp: expirationTime.toString(),
       withdrawalLiveness: "3600",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
+      timerAddress: Timer.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
       syntheticSymbol: "UMATEST",
@@ -87,7 +89,8 @@ contract("IntegrationTest", function(accounts) {
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") }
+      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      minSponsorTokens: { rawValue: toWei("0") }
     };
 
     // register the price identifer within the identifer whitelist
@@ -96,15 +99,16 @@ contract("IntegrationTest", function(accounts) {
       from: contractCreator
     });
 
+    finder = await Finder.deployed();
+
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractCreator
     });
-    finder = await Finder.deployed();
 
     store = await Store.deployed();
 
-    await finder.changeImplementationAddress(web3.utils.utf8ToHex("Oracle"), mockOracle.address, {
+    await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), mockOracle.address, {
       from: contractCreator
     });
 
@@ -174,7 +178,7 @@ contract("IntegrationTest", function(accounts) {
     let liquidationsObject = [];
 
     // STEP: 0.a) set the oracle fee
-    await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
 
     // STEP: 0.b: seed liquidator
     console.log("Seeding liquidator");
@@ -373,7 +377,7 @@ contract("IntegrationTest", function(accounts) {
     let maxCollateralLocked = 0;
 
     // STEP: 0.a) set the oracle fee
-    await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
 
     // STEP: 0.b): seed one over sized position
     console.log("Seeding liquidator");
@@ -586,7 +590,7 @@ contract("IntegrationTest", function(accounts) {
     let maxCollateralLocked = 0;
 
     // STEP: 0.a) set the oracle fee
-    await store.setFixedOracleFeePerSecond({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: dvmRegularFee.toString() }, { from: contractCreator });
 
     let sponsor;
     let tokenHolder;

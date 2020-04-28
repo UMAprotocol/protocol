@@ -7,7 +7,7 @@ const createMarginToken = async function(callback) {
     const deployer = (await web3.eth.getAccounts())[0];
 
     // Deploy the token.
-    const marginToken = await Token.new({ from: deployer });
+    const marginToken = await Token.new("UMA", "UMA", 18, { from: deployer });
 
     // Mint deployer 1 million tokens.
     await marginToken.addMember(1, deployer, { from: deployer });

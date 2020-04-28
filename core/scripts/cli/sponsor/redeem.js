@@ -5,11 +5,12 @@ const { submitTransaction } = require("./transactionUtils");
 
 const redeem = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
-  const { fromWei, toWei, toBN } = web3.utils;
+  const { BN, fromWei, toWei, toBN } = web3.utils;
   const SyntheticToken = artifacts.require("SyntheticToken");
   const sponsorAddress = await getDefaultAccount(web3);
   const collateral = (await emp.getCollateral(sponsorAddress)).toString();
   const position = await emp.positions(sponsorAddress);
+  const minSponsorTokens = toBN((await emp.minSponsorTokens()).toString());
 
   const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
   const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
@@ -18,25 +19,29 @@ const redeem = async (web3, artifacts, emp) => {
 
   const tokenAddress = await emp.tokenCurrency();
   const token = await SyntheticToken.at(tokenAddress);
-  const walletTokens = await token.balanceOf(sponsorAddress);
-
-  console.log("Your wallet has: " + fromWei(walletTokens) + " synthetic tokens");
+  const walletTokens = toBN((await token.balanceOf(sponsorAddress)).toString());
+  const positionTokens = toBN(position.tokensOutstanding.toString());
 
   const scalingFactor = toBN(toWei("1"));
   const collateralPerToken = toBN(collateral)
     .mul(scalingFactor)
-    .div(toBN(position.tokensOutstanding.toString()));
+    .div(positionTokens);
+  // A partial redemption must leave minSponsorTokens still in the Position. A full redemption of the position is also
+  // allowed.
+  const maxTokens = BN.min(walletTokens, positionTokens.sub(minSponsorTokens));
   const input = await inquirer.prompt({
     name: "numTokens",
-    message: "How many tokens to repay, at " + fromWei(collateralPerToken) + " " + requiredCollateralSymbol + " each?",
+    message: `Your wallet has ${fromWei(walletTokens)} synthetic tokens. How many tokens to repay, at ${fromWei(
+      collateralPerToken
+    )} ${requiredCollateralSymbol} each?`,
     validate: value =>
-      (value > 0 && toBN(toWei(value)).lte(toBN(walletTokens))) ||
-      "Number of tokens must be positive and up to your current balance"
+      (value > 0 && (toBN(toWei(value)).lte(maxTokens) || toBN(toWei(value)).eq(positionTokens))) ||
+      `Number of tokens must be between 0 and ${fromWei(maxTokens)}, or exactly ${fromWei(positionTokens)}`
   });
 
   const tokensToRedeem = toBN(toWei(input["numTokens"]));
   const expectedCollateral = collateralPerToken.mul(toBN(tokensToRedeem)).div(scalingFactor);
-  console.log("You'll receive approximately", fromWei(expectedCollateral), requiredCollateralSymbol);
+  console.log(`You'll receive approximately ${fromWei(expectedCollateral)} ${requiredCollateralSymbol}`);
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",

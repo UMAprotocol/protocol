@@ -4,6 +4,7 @@
 - May 1-2, 2020: DeFi Full-Stack [Agenda](https://defi-fullstack.dystopialabs.com/)
 
 ## Past Events
+- April 24, 2020: Crypto Tonight Ep. 4 [“When Defi is not Fine”](https://youtu.be/efW-MHdA_ws)
 - April 8, 2020: Priceless Synthetic Tokens on Liquid Staking Working Group Call [Video](https://youtu.be/hua-qhA28Vc)
 - March 30, 2020: Monolith Digital #DeFi [Meetup](https://www.meetup.com/monolith/events/269605712)
 - Feb 7, 2020 in SF: Tokenizing Traditional Assets Panel at 0xpo [Agenda](https://www.0xpo.com/)

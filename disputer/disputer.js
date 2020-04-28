@@ -87,7 +87,7 @@ class Disputer {
       } catch (error) {
         Logger.error({
           at: "Disputer",
-          message: `Failed to dispute liquidation`,
+          message: "Failed to dispute liquidation",
           error: error
         });
         continue;
@@ -171,7 +171,7 @@ class Disputer {
       } catch (error) {
         Logger.error({
           at: "Disputer",
-          message: `Failed to withdraw dispute rewards`,
+          message: "Failed to withdraw dispute rewards",
           error: error
         });
         continue;

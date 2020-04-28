@@ -3,6 +3,7 @@ const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator")
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
+const Timer = artifacts.require("Timer");
 
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
@@ -20,10 +21,10 @@ module.exports = async function(deployer, network, accounts) {
     deployer,
     network,
     ExpiringMultiPartyCreator,
-    controllableTiming,
     finder.address,
     collateralCurrencyWhitelist.address,
     tokenFactory.address,
+    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 };

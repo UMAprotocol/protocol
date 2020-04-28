@@ -82,13 +82,18 @@ contract("UniswapPriceFeed.js", function(accounts) {
     // Allow the library to compute the TWAP.
     await uniswapPriceFeed._update();
 
-
     const totalTime = mockTime - time1;
     const weightedPrice1 = toBN(toWei("1")).muln(time2 - time1);
     const weightedPrice2 = toBN(toWei("0.5")); // 0.5 * 1 second since the mockTime is one second past time2.
 
     // Compare the TWAPs.
-    assert.equal(uniswapPriceFeed.getCurrentTwap().toString(), weightedPrice1.add(weightedPrice2).divn(totalTime).toString());
+    assert.equal(
+      uniswapPriceFeed.getCurrentTwap().toString(),
+      weightedPrice1
+        .add(weightedPrice2)
+        .divn(totalTime)
+        .toString()
+    );
   });
 
   it("All events before window", async function() {
@@ -120,20 +125,40 @@ contract("UniswapPriceFeed.js", function(accounts) {
   });
 
   it("Basic historical TWAP", async function() {
-    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly. 
+    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
     const currentTime = Math.round(new Date().getTime() / 1000);
 
     // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
-    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("100"))],
+      currentTime - 7200,
+      owner
+    );
 
     // At an hour and a half ago, set the price to 90.
-    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("90"))],
+      currentTime - 5400,
+      owner
+    );
 
     // At an hour ago, set the price to 80.
-    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("80"))],
+      currentTime - 3600,
+      owner
+    );
 
     // At half an hour ago, set the price to 70.
-    await mineTransactionsAtTime(web3, [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("70"))], currentTime - 1800, owner);
+    await mineTransactionsAtTime(
+      web3,
+      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("70"))],
+      currentTime - 1800,
+      owner
+    );
 
     mockTime = currentTime;
 

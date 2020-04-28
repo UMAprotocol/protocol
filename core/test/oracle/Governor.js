@@ -1,6 +1,9 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { interfaceName } = require("../../utils/Constants.js");
+const { computeVoteHash } = require("../../../common/EncryptionHelper");
+const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const truffleAssert = require("truffle-assertions");
 
 const Governor = artifacts.require("Governor");
@@ -10,6 +13,9 @@ const VotingToken = artifacts.require("VotingToken");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const ReentrancyChecker = artifacts.require("ReentrancyChecker");
 const GovernorTest = artifacts.require("GovernorTest");
+const Timer = artifacts.require("Timer");
+const Registry = artifacts.require("Registry");
+const Finder = artifacts.require("Finder");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, randomHex, utf8ToHex } = web3.utils;
@@ -114,6 +120,22 @@ contract("Governor", function(accounts) {
     );
   });
 
+  it("Cannot send transaction with data to EOA", async function() {
+    const txnData = constructTransferTransaction(proposer, "0");
+    // A proposal with data should not be able to be sent to an EOA as only a contract can process data in a tx.
+    assert(
+      await didContractThrow(
+        governor.propose([
+          {
+            to: account2,
+            value: 0,
+            data: txnData
+          }
+        ])
+      )
+    );
+  });
+
   it("Identifier construction", async function() {
     // Construct the transaction to send 0 tokens.
     const txnData = constructTransferTransaction(proposer, "0");
@@ -142,6 +164,7 @@ contract("Governor", function(accounts) {
 
     // The proposals should show up in the pending requests in the *next* round.
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
 
     // Check that the proposals shows up and that the identifiers are constructed correctly.
@@ -154,9 +177,24 @@ contract("Governor", function(accounts) {
     // Execute the proposals to clean up.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
-    await voting.commitVote(request1.identifier, request1.time, hash);
-    await voting.commitVote(request2.identifier, request2.time, hash);
+    const hash1 = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request1.time,
+      roundId,
+      identifier: request1.identifier
+    });
+    const hash2 = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request2.time,
+      roundId,
+      identifier: request2.identifier
+    });
+    await voting.commitVote(request1.identifier, request1.time, hash1);
+    await voting.commitVote(request2.identifier, request2.time, hash2);
     await moveToNextPhase(voting);
     await voting.revealVote(request1.identifier, request1.time, vote, salt);
     await voting.revealVote(request2.identifier, request2.time, vote, salt);
@@ -182,13 +220,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -212,18 +258,26 @@ contract("Governor", function(accounts) {
       {
         to: account2,
         value: amountToDeposit,
-        data: web3.utils.hexToBytes("0x0")
+        data: web3.utils.hexToBytes("0x") // "0x" is an empty bytes array to indicate no data tx.
       }
     ]);
 
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -250,18 +304,26 @@ contract("Governor", function(accounts) {
       {
         to: account2,
         value: amountToDeposit,
-        data: web3.utils.hexToBytes("0x0")
+        data: web3.utils.hexToBytes("0x")
       }
     ]);
 
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -299,13 +361,21 @@ contract("Governor", function(accounts) {
     ]);
 
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -333,13 +403,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -369,13 +447,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -406,13 +492,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote down the proposal.
     const vote = "0";
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -441,14 +535,22 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    let roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote on the proposal, but don't reach the GAT.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
-    await voting.commitVote(request.identifier, request.time, hash, { from: account2 });
+    const hash2 = computeVoteHash({
+      price: vote,
+      salt,
+      account: account2,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
+    await voting.commitVote(request.identifier, request.time, hash2, { from: account2 });
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt, { from: account2 });
     await moveToNextRound(voting);
@@ -459,7 +561,16 @@ contract("Governor", function(accounts) {
     assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.toString());
 
     // Resolve the vote to clean up.
-    await voting.commitVote(request.identifier, request.time, hash);
+    roundId = await voting.getCurrentRoundId();
+    const hash1 = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
+    await voting.commitVote(request.identifier, request.time, hash1);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
     await moveToNextRound(voting);
@@ -479,13 +590,21 @@ contract("Governor", function(accounts) {
       }
     ]);
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
 
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -522,11 +641,19 @@ contract("Governor", function(accounts) {
 
     // Vote the proposal through.
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -559,11 +686,19 @@ contract("Governor", function(accounts) {
 
     // Vote the proposal through.
     await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
     const request = pendingRequests[0];
     const vote = toWei("1");
     const salt = getRandomUnsignedInt();
-    const hash = web3.utils.soliditySha3(vote, salt);
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
     await voting.commitVote(request.identifier, request.time, hash);
     await moveToNextPhase(voting);
     await voting.revealVote(request.identifier, request.time, vote, salt);
@@ -573,9 +708,106 @@ contract("Governor", function(accounts) {
     await governor.executeProposal(id, 0);
   });
 
+  it("Starting id > 0", async function() {
+    // Set arbitrary starting id.
+    const startingId = 910284;
+
+    // Create new governor contract.
+    const newGovernor = await Governor.new(Finder.address, startingId, Timer.address, { from: proposer });
+
+    // Approve the new governor in the Registry.
+    const registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, accounts[0]);
+    await registry.registerContract([], newGovernor.address);
+    await registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, accounts[0]);
+    const identifierWhitelist = await IdentifierWhitelist.new();
+    await identifierWhitelist.transferOwnership(newGovernor.address);
+
+    const finder = await Finder.deployed();
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+
+    // The number of proposals should be equal to the starting id.
+    assert.equal((await newGovernor.numProposals()).toString(), startingId.toString());
+
+    const proposal0 = await newGovernor.getProposal(0);
+    const proposalRandom = await newGovernor.getProposal(123456);
+    const proposalLast = await newGovernor.getProposal(startingId - 1);
+
+    // Ensure that all previous proposals have no transaction data.
+    assert.equal(proposal0.transactions.length, 0);
+    assert.equal(proposalRandom.transactions.length, 0);
+    assert.equal(proposalLast.transactions.length, 0);
+
+    // Check that all roles are filled by the deployer.
+    assert.equal(await newGovernor.getMember(0), proposer);
+    assert.equal(await newGovernor.getMember(1), proposer);
+
+    // Issue some test tokens to the governor address.
+    await testToken.allocateTo(newGovernor.address, toWei("1"));
+
+    // Construct the transaction data to send the newly minted tokens to proposer.
+    const txnData = constructTransferTransaction(proposer, toWei("1"));
+
+    await newGovernor.propose([
+      {
+        to: testToken.address,
+        value: 0,
+        data: txnData
+      }
+    ]);
+
+    // Check that the proposal is correct.
+    const proposal = await newGovernor.getProposal(startingId);
+    assert.equal(proposal.transactions.length, 1);
+    assert.equal(proposal.transactions[0].to, testToken.address);
+    assert.equal(proposal.transactions[0].value.toString(), "0");
+    assert.equal(proposal.transactions[0].data, txnData);
+    assert.equal(proposal.requestTime.toString(), (await newGovernor.getCurrentTime()).toString());
+
+    await moveToNextRound(voting);
+    const roundId = await voting.getCurrentRoundId();
+    const pendingRequests = await voting.getPendingRequests();
+    const request = pendingRequests[0];
+
+    // Vote the proposal through.
+    const vote = toWei("1");
+    const salt = getRandomUnsignedInt();
+    const hash = computeVoteHash({
+      price: vote,
+      salt,
+      account: proposer,
+      time: request.time,
+      roundId,
+      identifier: request.identifier
+    });
+    await voting.commitVote(request.identifier, request.time, hash);
+    await moveToNextPhase(voting);
+    await voting.revealVote(request.identifier, request.time, vote, salt);
+    await moveToNextRound(voting);
+
+    // Check to make sure that the tokens get transferred at the time of execution.
+    const startingBalance = await testToken.balanceOf(proposer);
+    await newGovernor.executeProposal(startingId, 0);
+    assert.equal((await testToken.balanceOf(proposer)).toString(), startingBalance.add(toBN(toWei("1"))).toString());
+
+    // Reset IdentifierWhitelist implementation as to not interfere with other tests.
+    await finder.changeImplementationAddress(
+      utf8ToHex(interfaceName.IdentifierWhitelist),
+      supportedIdentifiers.address
+    );
+  });
+
+  it("startingId size", async function() {
+    // Starting id of 10^18 is the upper limit -- that should be the largest that will work.
+    await Governor.new(Finder.address, toWei("1"), Timer.address, { from: proposer });
+
+    // Anything above 10^18 is rejected.
+    assert(await didContractThrow(Governor.new(Finder.address, toWei("1.1"), Timer.address, { from: proposer })));
+  });
+
   // _uintToUtf8() tests.
   it("Low-level _uintToUtf8(): 0 input", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     const input = "0";
     const output = await governorTest.uintToUtf8(input);
@@ -584,7 +816,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): nonzero input", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Arbitrary nonzero input.
     const input = "177203972462008655";
@@ -594,7 +826,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): largest input before truncation", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // The largest representable number in 32 digits is 32 9s.
     const input = "9".repeat(32);
@@ -604,7 +836,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _uintToUtf8(): truncates at least significant digit", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // The smallest number to be truncated is 1 followed by 32 0s.
     const input = "1" + "0".repeat(32);
@@ -619,7 +851,7 @@ contract("Governor", function(accounts) {
 
   // _addPrefix() tests.
   it("Low-level _addPrefix(): no truncation", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     const input = utf8ToHex("input");
     const prefix = utf8ToHex("prefix ");
@@ -630,7 +862,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _addPrefix(): output truncation", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Prefix output cannot be longer than 32 characters or the function will truncate.
     const input = utf8ToHex(" truncated");
@@ -646,7 +878,7 @@ contract("Governor", function(accounts) {
 
   // _constructIdentifier() tests.
   it("Low-level _constructIdentifier(): normal proposal id", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Construct an arbitrary identifier.
     const proposalId = "1234567890";
@@ -656,7 +888,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _constructIdentifier(): correctly identifier for 26 characters", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Identifiers can be 32 digits long.
     // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.
@@ -668,7 +900,7 @@ contract("Governor", function(accounts) {
   });
 
   it("Low-level _constructIdentifier(): proposal id truncates after 26 characters", async function() {
-    const governorTest = await GovernorTest.new();
+    const governorTest = await GovernorTest.new(Timer.address);
 
     // Identifiers can be 32 digits long.
     // Since the identifier must start with "Admin " (6 characters), the number can only be 26 digits or fewer.

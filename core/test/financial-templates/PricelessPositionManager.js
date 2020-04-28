@@ -2,6 +2,7 @@
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
 const { PositionStatesEnum } = require("../../../common/Enums");
+const { interfaceName } = require("../../utils/Constants.js");
 
 // Contracts to test
 const PricelessPositionManager = artifacts.require("PricelessPositionManager");
@@ -16,6 +17,7 @@ const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Timer = artifacts.require("Timer");
 
 contract("PricelessPositionManager", function(accounts) {
   const { toWei, hexToUtf8, toBN } = web3.utils;
@@ -39,7 +41,8 @@ contract("PricelessPositionManager", function(accounts) {
   const syntheticName = "UMA test Token";
   const syntheticSymbol = "UMATEST";
   const withdrawalLiveness = 1000;
-  const expirationTimestamp = Math.floor(Date.now() / 1000) + 10000;
+  const startTimestamp = Math.floor(Date.now() / 1000);
+  const expirationTimestamp = startTimestamp + 10000;
   const priceFeedIdentifier = web3.utils.utf8ToHex("UMATEST");
   const minSponsorTokens = "5";
 
@@ -67,7 +70,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   before(async function() {
     // Represents DAI or some other token that the sponsor and contracts don't control.
-    collateral = await MarginToken.new({ from: collateralOwner });
+    collateral = await MarginToken.new("UMA", "UMA", 18, { from: collateralOwner });
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });
     await collateral.mint(sponsor, toWei("1000000"), { from: collateralOwner });
     await collateral.mint(other, toWei("1000000"), { from: collateralOwner });
@@ -76,6 +79,10 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   beforeEach(async function() {
+    // Force each test to start with a simulated time that's synced to the startTimestamp.
+    const timer = await Timer.deployed();
+    await timer.setCurrentTime(startTimestamp);
+
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
@@ -83,11 +90,11 @@ contract("PricelessPositionManager", function(accounts) {
     });
 
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractDeployer
     });
-    finder = await Finder.deployed();
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractDeployer });
 
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
@@ -95,7 +102,6 @@ contract("PricelessPositionManager", function(accounts) {
     // Create the instance of the PricelessPositionManager to test against.
     // The contract expires 10k seconds in the future -> will not expire during this test case.
     pricelessPositionManager = await PricelessPositionManager.new(
-      true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       collateral.address, // _collateralAddress
@@ -105,6 +111,7 @@ contract("PricelessPositionManager", function(accounts) {
       syntheticSymbol, // _syntheticSymbol
       TokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
+      Timer.address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
@@ -138,6 +145,42 @@ contract("PricelessPositionManager", function(accounts) {
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
           { from: contractDeployer }
         )
+      )
+    );
+  });
+
+  it("Withdrawal liveness overflow", async function() {
+    // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
+    const largeLiveness = toBN(2)
+      .pow(toBN(256))
+      .subn(10)
+      .toString();
+    pricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      largeLiveness.toString(), // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      Finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      syntheticName, // _syntheticName
+      syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      Timer.address, // _timerAddress
+      { from: contractDeployer }
+    );
+
+    const initialSponsorTokens = toWei("100");
+    const initialSponsorCollateral = toWei("150");
+    await collateral.approve(pricelessPositionManager.address, initialSponsorCollateral, { from: sponsor });
+    await pricelessPositionManager.create(
+      { rawValue: initialSponsorCollateral },
+      { rawValue: initialSponsorTokens },
+      { from: sponsor }
+    );
+    // Withdrawal requests should fail due to overflow.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.requestWithdrawal({ rawValue: initialSponsorCollateral }, { from: sponsor })
       )
     );
   });
@@ -708,7 +751,7 @@ contract("PricelessPositionManager", function(accounts) {
     await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }, { from: sponsor });
 
     // Set store fees to 1% per second.
-    await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.01") });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
 
     // Move time in the contract forward by 1 second to capture a 1% fee.
     const startTime = await pricelessPositionManager.getCurrentTime();
@@ -743,7 +786,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
     // Set the store fees back to 0 to prevent it from affecting other tests.
-    await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
 
   it("Final fees", async function() {
@@ -880,7 +923,7 @@ contract("PricelessPositionManager", function(accounts) {
       // = 0.033... repeating, which cannot be represented precisely by a fixed point.
       // --> 0.04 * 30 wei = 1.2 wei, which gets truncated to 1 wei, so 1 wei of fees are paid
       const regularFee = toWei("0.04");
-      await store.setFixedOracleFeePerSecond({ rawValue: regularFee });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFee });
 
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = await pricelessPositionManager.getCurrentTime();
@@ -888,7 +931,7 @@ contract("PricelessPositionManager", function(accounts) {
       await pricelessPositionManager.payFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
-      await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
     });
     it("Fee multiplier is set properly with precision loss, and fees are paid as expected", async () => {
       // Absent any rounding errors, `getCollateral` should return (initial-collateral - final-fees) = 30 wei - 1 wei = 29 wei.
@@ -1113,8 +1156,8 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(collateralPaid, toWei("120"));
 
     // Create new oracle, replace it in the finder, and push a different price to it.
-    const newMockOracle = await MockOracle.new(identifierWhitelist.address);
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const newMockOracle = await MockOracle.new(finder.address, Timer.address);
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, newMockOracle.address, {
       from: contractDeployer
     });
@@ -1344,7 +1387,6 @@ contract("PricelessPositionManager", function(accounts) {
     await USDCToken.allocateTo(sponsor, toWei("100"));
 
     let customPricelessPositionManager = await PricelessPositionManager.new(
-      true, // _isTest
       expirationTimestamp, // _expirationTimestamp
       withdrawalLiveness, // _withdrawalLiveness
       USDCToken.address, // _collateralAddress
@@ -1354,6 +1396,7 @@ contract("PricelessPositionManager", function(accounts) {
       syntheticSymbol, // _syntheticSymbol
       TokenFactory.address, // _tokenFactoryAddress
       { rawValue: minSponsorTokens }, // _minSponsorTokens
+      Timer.address, // _timerAddress
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());

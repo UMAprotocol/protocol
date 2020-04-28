@@ -49,13 +49,9 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     const choices = [{ name: backChoice }];
     for (let i = 0; i < liquidations.length; i++) {
       const liquidation = liquidations[i];
-      const display =
-        "Minted: " +
-        fromWei(liquidation.tokensOutstanding) +
-        " Collateral: " +
-        fromWei(liquidation.lockedCollateral) +
-        " Status: " +
-        liquidationStateToDisplay(liquidation.state);
+      const display = `Minted: ${fromWei(liquidation.tokensOutstanding)} Collateral: ${fromWei(
+        liquidation.lockedCollateral
+      )} Status: ${liquidationStateToDisplay(liquidation.state)}`;
       choices.push({ name: display, value: i });
     }
     const input = await inquirer.prompt({
@@ -79,15 +75,17 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       viewLiquidations: "View your liquidations"
     };
   }
-  console.log("Summary of your position:");
-  await printSponsorSummary(sponsorAddress);
+  let message = "What would you like to do?";
   if (collateral === "0") {
     // Sponsor doesn't have a position.
     actions = {
       ...actions,
       create: "Sponsor new position"
     };
+    message = "You are not currently a sponsor. What would you like to do?";
   } else {
+    console.log("Summary of your position:");
+    await printSponsorSummary(sponsorAddress);
     const position = await emp.positions(sponsorAddress);
 
     const hasPendingWithdrawal = position.requestPassTimestamp.toString() !== "0";
@@ -113,7 +111,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const prompt = {
     type: "list",
     name: "choice",
-    message: "What would you like to do?",
+    message,
     choices: Object.values(actions)
   };
   const input = (await inquirer.prompt(prompt))["choice"];

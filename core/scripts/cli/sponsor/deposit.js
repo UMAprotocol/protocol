@@ -13,12 +13,12 @@ const deposit = async (web3, artifacts, emp) => {
 
   const input = await inquirer.prompt({
     name: "depositCollateral",
-    message: "How much " + requiredCollateralSymbol + " would you like to deposit as collateral?",
-    validate: value => value > 0 || "Amount of " + requiredCollateralSymbol + " must be positive"
+    message: `How much ${requiredCollateralSymbol} would you like to deposit as collateral?`,
+    validate: value => value > 0 || `Amount of ${requiredCollateralSymbol} must be positive`
   });
   const confirmation = await inquirer.prompt({
     type: "confirm",
-    message: "Depositing " + input["depositCollateral"] + " " + requiredCollateralSymbol + ". Continue?",
+    message: `Depositing ${input["depositCollateral"]} ${requiredCollateralSymbol}. Continue?`,
     name: "confirm"
   });
   if (confirmation["confirm"]) {
@@ -35,7 +35,7 @@ const deposit = async (web3, artifacts, emp) => {
     await submitTransaction(
       web3,
       async () => await collateralCurrency.approve(emp.address, collateral),
-      "Approving " + collateralSymbol + " transfer",
+      `Approving ${collateralSymbol} transfer`,
       transactionNum,
       totalTransactions
     );

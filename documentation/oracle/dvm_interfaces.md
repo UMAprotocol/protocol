@@ -4,7 +4,7 @@ This document explains how various participants interact with the DVM. There are
 different participants interact with the DVM:
 
 - The _Oracle Interface_ is used by financial contracts that need a price to request it and then retrieve it once it's
-available.
+  available.
 
 - The _Store Interface_ is used by financial contracts to compute and pay the required DVM fees.
 
@@ -74,8 +74,8 @@ This function returns two values:
 - The amount of margin currency that the contract should pay the Store Interface as the normal fee.
 
 - The amount of margin currency charged as a late penalty. This amount should generally be paid to a keeper as a reward
-for calling a public fee-payment method. If that isn't possible in the context of a particular financial contract, then
-it should be paid to the Store Interface in addition to the normal fee.
+  for calling a public fee-payment method. If that isn't possible in the context of a particular financial contract, then
+  it should be paid to the Store Interface in addition to the normal fee.
 
 ### `computeFinalFee`
 
@@ -134,17 +134,19 @@ price request for that `identifier` and `time` is returned from `getPendingReque
 `Commit`.
 
 It also takes the `hash` that the voter wishes to commit to. The `hash` is created by computing
-`keccak256(price, salt)`, where price is the `int256` price value that they wish to submit and `salt` is a random
-`int256` value. The voter must remember the `price` and `salt` that they submitted so they can reveal their commit
-later - otherwise, the commit cannot be revealed and the vote won't be counted.
+`keccak256(price, salt, time, address, roundId, identifier)`, where price is the `int256` price value that they wish to submit, `time` is the unix timestamp of the request being voted on, `address` is the voter's address (technically, the same one that will reveal the vote), `roundId` is the current voting round, `identifier` is the pricefeed identifier relevant to the price request, and `salt` is a random `int256` value. The voter must remember the inputs to the vote `hash` that they submitted so they can reveal their commit later - otherwise, the commit cannot be revealed and the vote won't be counted.
+
+Since transaction data is public, the salt will be revealed along with the vote. While this is the system’s expected behavior,
+voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
+they can determine the vote pre-reveal.
 
 A few notes:
 
 - A voter can call this method multiple times during the commit period if they wish to change their commitment.
-It becomes locked in once the commit period ends.
+  It becomes locked in once the commit period ends.
 
 - There are other commit methods that allow voters to batch and/or store encrypted salts/prices on chain. Those are
-not detailed here because they are unnecessary to understand the core Voting Interface.
+  not detailed here because they are unnecessary to understand the core Voting Interface.
 
 ### `revealVote`
 

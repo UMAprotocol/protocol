@@ -15,9 +15,7 @@ documentation. If you'd like to view these docs on github instead, check out the
 
 ## Security and Bug Bounty
 
-Please report all security vulnerabilities through our [HackerOne bug bounty page](https://hackerone.com/uma_project).
-Please run all security tests against the testnet deployment or a local Ganache to preserve the integrity of the
-mainnet deployment.
+Please see [here](./documentation/developer_reference/bug_bounty.md) for details on our bug bounty. 
 
 ## Developer Information and Tools
 

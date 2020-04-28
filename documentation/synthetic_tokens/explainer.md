@@ -39,7 +39,7 @@ After the contract is deployed, anyone can interact with the contract to create 
 
 Token sponsors deposit collateral into the contract to collateralize synthetic tokens, which they can then withdraw and trade with others. The first token sponsor to create synthetic tokens is able to immediately withdraw synthetic tokens from the contract. Any following token sponsors who wish to create synthetic tokens can do so, but must collateralize their positions by at least as much as the system’s [global collateralization ratio](glossary.md#global-collateralization-ratio-gcr). This ensures that all newly created tokens sponsor positions are correctly collateralized upon initialization. 
 
-The global collateralization ratio (GCR) is the average collateralization ratio among all token sponsor positions that have not yet been liquidated nor have any outstanding withdrawal requests. Requiring new token sponsors to collateralize their positions by as much as the GCR provides some assurances that so long as those token sponsors collateralized below the GCR have not yet been liquidated, those above the GCR need not be at risk of liquidation.
+The global collateralization ratio (GCR) is the average collateralization ratio among all token sponsor positions that have not been liquidated. Requiring new token sponsors to collateralize their positions by as much as the GCR provides some assurances that so long as those token sponsors collateralized below the GCR have not yet been liquidated, those above the GCR need not be at risk of liquidation.
 
 This [tutorial](tutorials/creating_from_truffle.md#create-new-tokens-from-an-existing-contract) will show you how to mint tokens from the command line after having parameterized and deployed the synthetic token’s smart contract. 
 
@@ -109,3 +109,10 @@ After the expiration timestamp for the synthetic tokens, anyone may settle the c
 After this value is returned to the contract and the contract is settled, any token holder can redeem the tokens against the contract. Redemption of the tokens returns the token holder collateral equal to the [price identifier](glossary.md#price-identifier) value returned by the UMA DVM. 
 
 ![](st_expiration.png)
+
+## Additional Resources
+
+Here are some additional resources to better understand how the priceless synthetic token contract works:
+* [Blog post](https://medium.com/uma-project/priceless-synthetic-tokens-f28e6452c18b)
+* [Twitter thread](https://twitter.com/UMAprotocol/status/1242891550872535042?s=20)
+* [Github implementation](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/financial-templates/implementation)

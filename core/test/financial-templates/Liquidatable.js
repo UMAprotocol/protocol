@@ -1,6 +1,7 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const { LiquidationStatesEnum } = require("../../../common/Enums");
+const { interfaceName } = require("../../utils/Constants.js");
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
 
@@ -18,6 +19,7 @@ const MockOracle = artifacts.require("MockOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
+const Timer = artifacts.require("Timer");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -89,8 +91,12 @@ contract("Liquidatable", function(accounts) {
   };
 
   beforeEach(async () => {
+    // Force each test to start with a simulated time that's synced to the startTimestamp.
+    const timer = await Timer.deployed();
+    await timer.setCurrentTime(startTime);
+
     // Create Collateral and Synthetic ERC20's
-    collateralToken = await Token.new({ from: contractDeployer });
+    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -100,18 +106,17 @@ contract("Liquidatable", function(accounts) {
     });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(identifierWhitelist.address, {
+    finder = await Finder.deployed();
+    mockOracle = await MockOracle.new(finder.address, Timer.address, {
       from: contractDeployer
     });
-    finder = await Finder.deployed();
 
-    const mockOracleInterfaceName = web3.utils.utf8ToHex("Oracle");
+    const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
       from: contractDeployer
     });
 
     liquidatableParameters = {
-      isTest: true,
       expirationTimestamp: expirationTimestamp,
       withdrawalLiveness: withdrawalLiveness.toString(),
       collateralAddress: collateralToken.address,
@@ -125,7 +130,8 @@ contract("Liquidatable", function(accounts) {
       disputeBondPct: { rawValue: disputeBondPct.toString() },
       sponsorDisputeRewardPct: { rawValue: sponsorDisputeRewardPct.toString() },
       disputerDisputeRewardPct: { rawValue: disputerDisputeRewardPct.toString() },
-      minSponsorTokens: { rawValue: minSponsorTokens.toString() }
+      minSponsorTokens: { rawValue: minSponsorTokens.toString() },
+      timerAddress: Timer.address
     };
 
     // Deploy liquidation contract and set global params
@@ -696,7 +702,7 @@ contract("Liquidatable", function(accounts) {
 
         // Events should show that the dispute failed.
         truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
-          return !ev.DisputeSucceeded;
+          return !ev.disputeSucceeded;
         });
         const expectedPayout = disputeBond.add(liquidationParams.liquidatedCollateral).add(finalFeeAmount);
         // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
@@ -734,7 +740,7 @@ contract("Liquidatable", function(accounts) {
             ev.liquidator == liquidator &&
             ev.disputer == disputer &&
             ev.liquidationId == 0 &&
-            ev.DisputeSucceeded
+            ev.disputeSucceeded
           );
         });
 
@@ -986,7 +992,7 @@ contract("Liquidatable", function(accounts) {
         });
         it("Fees on liquidation", async () => {
           // Charge a 10% fee per second.
-          await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
+          await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.1") });
 
           // Advance time to charge fee.
           let currentTime = await liquidationContract.getCurrentTime();
@@ -1046,7 +1052,7 @@ contract("Liquidatable", function(accounts) {
           );
 
           // Clean up store fees.
-          await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+          await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
         });
       });
       describe("Dispute failed", () => {
@@ -1475,7 +1481,7 @@ contract("Liquidatable", function(accounts) {
       });
       it("Fees on liquidation", async () => {
         // Charge a 10% fee per second.
-        await store.setFixedOracleFeePerSecond({ rawValue: toWei("0.1") });
+        await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.1") });
 
         // Advance time to charge fee.
         let currentTime = await USDCLiquidationContract.getCurrentTime();
@@ -1555,7 +1561,7 @@ contract("Liquidatable", function(accounts) {
         );
 
         // Clean up store fees.
-        await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+        await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
       });
     });
     describe("Dispute failed", () => {
@@ -1607,7 +1613,7 @@ contract("Liquidatable", function(accounts) {
       // = 0.033... repeating, which cannot be represented precisely by a fixed point.
       // --> 0.04 * 30 wei = 1.2 wei, which gets truncated to 1 wei, so 1 wei of fees are paid
       const regularFee = toWei("0.04");
-      await store.setFixedOracleFeePerSecond({ rawValue: regularFee });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFee });
 
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = await _liquidationContract.getCurrentTime();
@@ -1615,7 +1621,7 @@ contract("Liquidatable", function(accounts) {
       await _liquidationContract.payFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
-      await store.setFixedOracleFeePerSecond({ rawValue: "0" });
+      await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
 
       // Set allowance for contract to pull synthetic tokens from liquidator
       await syntheticToken.increaseAllowance(_liquidationContract.address, numTokens, { from: liquidator });

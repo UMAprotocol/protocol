@@ -3,6 +3,7 @@ const TokenizedDerivativeCreator = artifacts.require("TokenizedDerivativeCreator
 const TokenizedDerivativeUtils = artifacts.require("TokenizedDerivativeUtils");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const { getKeysForNetwork, deploy, enableControllableTiming } = require("../../common/MigrationUtils.js");
+const Timer = artifacts.require("Timer");
 
 const ethAddress = "0x0000000000000000000000000000000000000000";
 
@@ -29,7 +30,7 @@ module.exports = async function(deployer, network, accounts) {
     finder.address,
     returnCalculatorWhitelist.address,
     marginCurrencyWhitelist.address,
-    controllableTiming,
+    controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
     { from: keys.deployer }
   );
 
