@@ -1,11 +1,10 @@
 const { delay } = require("./delay");
-const { Logger } = require("./logger/Logger");
-const { LiquidationStatesEnum } = require("../common/Enums");
 
 // A thick client for getting information about an tokenBalances from the chain.
 // This client is kept separate from the other clients to only store token balances for a given EMP.
 class TokenBalanceClient {
-  constructor(ERC20abi, web3, collateralTokenAddress, syntheticTokenAddress, updateThreshold = 60) {
+  constructor(logger, ERC20abi, web3, collateralTokenAddress, syntheticTokenAddress, updateThreshold = 60) {
+    this.logger = logger;
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
 
@@ -25,7 +24,7 @@ class TokenBalanceClient {
   update = async () => {
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
-      Logger.debug({
+      this.logger.debug({
         at: "TokenBalanceClient",
         message: "Token Balances update skipped",
         currentTime: currentTime,
@@ -36,7 +35,7 @@ class TokenBalanceClient {
     } else {
       await this._update();
       this.lastUpdateTimestamp = currentTime;
-      Logger.debug({
+      this.logger.debug({
         at: "TokenBalanceClient",
         message: "Token Balances updated",
         lastUpdateTimestamp: this.lastUpdateTimestamp
@@ -49,7 +48,7 @@ class TokenBalanceClient {
     const currentTime = Math.floor(Date.now() / 1000);
     await this._update();
     this.lastUpdateTimestamp = currentTime;
-    Logger.debug({
+    this.logger.debug({
       at: "TokenBalanceClient",
       message: "Token Balances force updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp
@@ -89,7 +88,7 @@ class TokenBalanceClient {
       this.tokenBalances.syntheticBalances[address] = null;
       this.tokenBalances.etherBalances[address] = null;
 
-      Logger.debug({
+      this.logger.debug({
         at: "TokenBalanceClient",
         message: "New address requested, adding address to monitor list.",
         address: address
@@ -106,7 +105,7 @@ class TokenBalanceClient {
       try {
         await this._update();
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "TokenBalanceClient",
           message: "client polling error",
           error: error

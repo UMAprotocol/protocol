@@ -6,7 +6,7 @@ const networkUtils = require("../common/PublicNetworks");
 const { calculatePositionCRPercent } = require("./utils/PositionCRCalculator");
 
 class BalanceMonitor {
-  constructor(logger, balanceMonitorClient, account, botsToMonitor, walletsToMonitor) {
+  constructor(logger, tokenBalanceClient, account, botsToMonitor, walletsToMonitor) {
     this.logger = logger;
     this.account = account;
 
@@ -28,8 +28,8 @@ class BalanceMonitor {
     // ...];
     this.walletsToMonitor = walletsToMonitor;
 
-    // Instance of the balanceMonitorClient to read account balances from last change update.
-    this.client = balanceMonitorClient;
+    // Instance of the tokenBalanceClient to read account balances from last change update.
+    this.client = tokenBalanceClient;
 
     this.web3 = this.client.web3;
 
@@ -42,6 +42,10 @@ class BalanceMonitor {
   }
 
   ltThreshold(balance, threshold) {
+    // If the price has not resolved yet then return false
+    if (balance == null) {
+      return false;
+    }
     console.log("comapring balance & throedhold as", balance.toString(), threshold.toString());
     return this.web3.utils.toBN(balance).lt(this.web3.utils.toBN(threshold));
   }
@@ -54,14 +58,16 @@ class BalanceMonitor {
     });
 
     for (let bot of this.botsToMonitor) {
-      if (this.ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
+      const botCollateralBalance = this.client.getCollateralBalance(bot.address);
+      console.log("botCollateralBalance", botCollateralBalance);
+      if (this.ltThreshold(botCollateralBalance, bot.collateralThreshold)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this.createLowBalanceMrkdwn(
             bot,
             bot.collateralThreshold,
-            this.client.getCollateralBalance(bot.address),
+            botCollateralBalance,
             this.collateralCurrencySymbol,
             "collateral"
           )
