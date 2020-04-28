@@ -1,3 +1,5 @@
+* getting_started
+** architecture_overview.md
 * synthetic_tokens
 ** explainer.md
 ** tutorials
