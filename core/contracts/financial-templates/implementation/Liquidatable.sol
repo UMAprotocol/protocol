@@ -419,10 +419,10 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         require(withdrawalAmount.isGreaterThan(0));
+        amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
 
-        amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
     }
 

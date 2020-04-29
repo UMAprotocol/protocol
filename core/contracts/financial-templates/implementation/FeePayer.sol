@@ -110,11 +110,11 @@ abstract contract FeePayer is Testable {
         );
         lastPaymentTime = time;
 
+        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
+
         totalPaid = regularFee.add(latePenalty);
         FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
         cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
-
-        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
