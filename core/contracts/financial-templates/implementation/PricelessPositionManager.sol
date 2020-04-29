@@ -182,7 +182,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` into the sponsor's position.
-     * @dev Increases the collateralization level of a position after creation.
+     * @dev Increases the collateralization level of a position after creation. This contract must be approved to spend
+     * at least `collateralAmount` of `collateralCurrency`.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
@@ -303,7 +304,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
-     * global collateralization ratio.
+     * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
+     * `collateralCurrency`.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
      * @param numTokens is the number of tokens to mint from the position.
      */
@@ -336,7 +338,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Burns `numTokens` of `tokenCurrency` and sends back the proportional amount of `collateralCurrency`.
      * @dev Can only be called by a token sponsor. Might not redeem the full proportional amount of collateral
-     * in order to account for precision loss.
+     * in order to account for precision loss. This contract must be approved to spend at least `numTokens` of
+     * `tokenCurrency`.
      * @param numTokens is the number of tokens to be burnt for a commensurate amount of collateral.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -383,7 +386,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * underlying at the prevailing price defined by the DVM from the `expire` function.
      * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional
      * amount of `collateralCurrency`. Might not redeem the full proportional amount of collateral
-     * in order to account for precision loss.
+     * in order to account for precision loss. This contract must be approved to spend `tokenCurrency` at least up to the
+     * caller's full balance.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function settleExpired() external onlyPostExpiration() fees() returns (FixedPoint.Unsigned memory amountWithdrawn) {
