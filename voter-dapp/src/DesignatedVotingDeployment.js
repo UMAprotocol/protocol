@@ -48,6 +48,12 @@ function DesignatedVotingDeployment({ votingAccount }) {
         Two key voting
       </Typography>
       You are not currently using a 2 key voting system. To deploy one, provide your cold key address.
+      <br />
+      To learn more about the 2 key voting system see this our{" "}
+      <a href="https://docs.umaproject.org/uma/oracle/voting_with_UMA_2-key_contract.html" target="_blank">
+        docs
+      </a>
+      .
       <div>
         <TextField
           helperText={errorText}
