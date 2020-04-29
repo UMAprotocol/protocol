@@ -20,7 +20,7 @@ The DVM is powered by voters. Each price request from a financial contract must 
 of votes is determined by how many VoteTokens each participant holds.
 
 The Voting contract maintains a whitelist of identifiers (price feeds) that financial contracts can request prices for.
-This list is currently controlled by the contract admin, but will eventually be voter-controlled.
+This list is currently controlled by voters.
 
 After a request is received, a voting period begins. Voters follow a typical commit-reveal cycle to provide their votes
 to the Voting contract.
@@ -38,7 +38,7 @@ fees and methods that allow contracts to compute the required payment. There are
 
 - Regular Fee: a periodic fee that's based on the amount of money the contract is holding.
 
-- Final Fee: a fee that's paid on every price request.
+- Final Fee: a flat fee that's paid on every price request.
 
 Contracts are expected to honestly pay their fees. To enforce this, the Voting contract only accepts price requests
 from approved contract types.
