@@ -214,10 +214,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
-        require(
-            collateralAmount.isGreaterThan(0) &&
-                collateralAmount.isLessThanOrEqual(_getCollateral(positionData.rawCollateral))
-        );
+        require(collateralAmount.isGreaterThan(0));
 
         _removeCollateral(positionData.rawCollateral, collateralAmount);
         require(_checkPositionCollateralization(positionData));
