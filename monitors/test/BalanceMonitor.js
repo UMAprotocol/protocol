@@ -213,10 +213,49 @@ contract("BalanceMonitor.js", function(accounts) {
     });
   });
   it("Correctly emit messages if balance moves above and below thresholds", async function() {
-    // Update the client.
+    // Update the client. No messages should be sent as above threshold values on all fronts.
     await tokenBalanceClient._update();
     await tokenBalanceClient._update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 0);
+
+    // Transfer tokens away from the liquidator below the threshold should emit a message
+    await collateralToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
+    assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("9999"));
+    await tokenBalanceClient._update();
+    await balanceMonitor.checkBotBalances();
+    assert.equal(spy.callCount, 1);
+    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidatorBot}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, "collateral balance warning")); // Tx moved collateral. should emit accordingly
+    assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
+    assert.isTrue(lastSpyLogIncludes(spy, "9,999.00")); // Correctly formatted number of actual collateral
+    assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
+
+    // No new message if update below threshold (message already sent)
+    await tokenBalanceClient._update();
+    await balanceMonitor.checkBotBalances();
+    assert.equal(spy.callCount, 1);
+
+    // Transferring tokens back to the bot such that it's balance is above the threshold, updating the client and
+    // transferring tokens away again should initiate a new message.
+    await collateralToken.transfer(liquidatorBot, toWei("11"), { from: tokenCreator });
+    assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("10010")); // balance above threshold
+    await tokenBalanceClient._update();
+    await balanceMonitor.checkBotBalances();
+    assert.equal(spy.callCount, 1); // No new event as balance above threshold
+
+    await collateralToken.transfer(tokenCreator, toWei("15"), { from: liquidatorBot });
+    assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("9995")); // balance below threshold
+
+    await tokenBalanceClient._update();
+    await balanceMonitor.checkBotBalances();
+    assert.equal(spy.callCount, 2); // 1 new event as balance below threshold
+    assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidatorBot}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, "collateral balance warning")); // Tx moved collateral. should emit accordingly
+    assert.isTrue(lastSpyLogIncludes(spy, "10,000.00")); // Correctly formatted number of threshold collateral
+    assert.isTrue(lastSpyLogIncludes(spy, "9,995.00")); // Correctly formatted number of actual collateral
+    assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
   });
 });

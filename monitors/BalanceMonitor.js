@@ -78,7 +78,7 @@ class BalanceMonitor {
     return shouldPushNotification;
   }
 
-  // Queries disputable liquidations and disputes any that were incorrectly liquidated.
+  // Queries all bot ballance for collateral, synthetic and ether against specified thresholds
   checkBotBalances = async () => {
     this.logger.debug({
       at: "BalanceMonitor",
@@ -127,6 +127,9 @@ class BalanceMonitor {
       }
     }
   };
+
+  // TODO: fill out this stub (next PR)
+  checkWalletCrRatio = async priceFunction => {};
 
   createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
