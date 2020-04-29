@@ -25,7 +25,8 @@ contract("BalanceMonitor.js", function(accounts) {
   });
 
   beforeEach(async function() {
-    // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
+    // The BalanceMonitor does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({
       level: "info",
       transports: [new winston.transports.Console()]
@@ -45,7 +46,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.equal(client.getSyntheticBalance(sponsor1), 0);
     assert.isTrue(client.resolvedAddressBalance(sponsor1));
 
-    // After sending tokens to a wallet the client should update accordingly
+    // After sending tokens to a wallet the client should update accordingly.
     await collateralToken.mint(sponsor1, toWei("1234"), { from: tokenCreator });
     await client._update();
     assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));

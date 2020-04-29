@@ -2,6 +2,9 @@ const { delay } = require("./delay");
 
 // A thick client for getting information about an tokenBalances from the chain.
 // This client is kept separate from the other clients to only store token balances for a given EMP.
+// After a balance is requested for a given wallet address that wallet is registered within a local
+// array of addresses that the client monitors. This lets bots that use this client retrieve the latest
+// available data from the last update time synchronously.
 class TokenBalanceClient {
   constructor(logger, ERC20abi, web3, collateralTokenAddress, syntheticTokenAddress, updateThreshold = 60) {
     this.logger = logger;
@@ -17,6 +20,7 @@ class TokenBalanceClient {
     // Token balances to enable synchronous return of the latest token ballance cashed in the client.
     this.tokenBalances = { collateralBalances: {}, syntheticBalances: {}, etherBalances: {} };
 
+    // Array of balances to monitor. Updated when a new addresses balance is requested
     this.accountMonitorList = [];
   }
 
@@ -55,11 +59,10 @@ class TokenBalanceClient {
     });
   };
 
-  // Delete all events within the client
+  // Delete all data within the client
   clearState = async () => {
-    this.liquidationEvents = [];
-    this.disputeEvents = [];
-    this.disputeSettlementEvents = [];
+    this.tokenBalances = { collateralBalances: {}, syntheticBalances: {}, etherBalances: {} };
+    this.accountMonitorList = [];
   };
 
   getCollateralBalance = address => {
@@ -116,8 +119,8 @@ class TokenBalanceClient {
   };
 
   _update = async () => {
-    // loop over all account addresses in the monitor list and for each check the balances of the respective tokens and
-    // there balances. Store these for synchronous retrieval by bots.
+    // loop over all account addresses in the monitor list and for each check the balances of the
+    // respective tokens and Eth balance. Store these for synchronous retrieval.
     for (let account of this.accountMonitorList) {
       // TODO: refactor this to create an array of promises for all accounts to monitor and resolve them all at once.
       this.tokenBalances.collateralBalances[account] = await this.collateralToken.methods.balanceOf(account).call();
