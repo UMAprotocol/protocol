@@ -358,7 +358,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             amountWithdrawn = _deleteSponsorPosition(msg.sender);
         } else {
             // Decrement the sponsor's collateral and global collateral amounts.
-            amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralRedeemed);
+            amountWithdrawn = _decrementCollateralBalances(positionData, collateralRedeemed);
 
             // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
             FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
