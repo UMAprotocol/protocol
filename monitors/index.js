@@ -5,17 +5,12 @@ const { toWei } = web3.utils;
 const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
-// Clients to retrieve on-chain data
-const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
-const { TokenBalanceClient } = require("../financial-templates-lib/TokenBalanceClient");
-
-// Monitor modules to report on client state changes
+// JS libs
 const { ContractMonitor } = require("./ContractMonitor");
-const { BalanceMonitor } = require("./BalanceMonitor");
+const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 // TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
 // Currently, you can run it with `truffle exec ../liquidator/index.js --address=<address> --price=<price>` *from the core
@@ -39,64 +34,21 @@ async function run(price, address, shouldPoll) {
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(address);
 
-  // Contract state monitor
-  const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+  // Client and liquidator bot
+  const empEventClient = new ExpiringMultiPartyEventClient(ExpiringMultiParty.abi, web3, emp.address, 10);
   const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]]);
-
-  // Balance monitor
-  const collateralTokenAddress = await emp.collateralCurrency();
-  const syntheticTokenAddress = await emp.tokenCurrency();
-
-  const tokenBalanceClient = new TokenBalanceClient(
-    ExpandedERC20.abi,
-    web3,
-    collateralTokenAddress,
-    syntheticTokenAddress,
-    10
-  );
-
-  // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
-  // TODO: refactor this to pull state from env variables
-  const botMonitorObject = [
-    {
-      name: "UMA liquidator Bot",
-      address: accounts[1],
-      collateralThreshold: toWei("10000000"),
-      syntheticThreshold: toWei("10000000"),
-      etherThreshold: toWei("10000000")
-    }
-  ];
-
-  // Wallet objects to monitor. For each wallet spesify a name,
-  const walletMonitorObject = [
-    {
-      name: "UMA sponsor wallet",
-      address: accounts[2],
-      crAlert: 150
-    }
-  ];
-
-  const balanceMonitor = new BalanceMonitor(tokenBalanceClient, accounts[0], botMonitorObject, walletMonitorObject);
 
   while (true) {
     try {
-      // 1.  Contract monitor
-      // 1.a Update the client
+      // Steps:
+      // 1. Update the client
+      // 2. Check For new liquidation events
+      // 3. Check for new disputes
+      // 4. Check for new disputeSettlements
       await empEventClient._update();
-      // 1.b Check For new liquidation events
       await contractMonitor.checkForNewLiquidations(() => toWei(price.toString()));
-      // 1.c Check for new disputes
       await contractMonitor.checkForNewDisputeEvents(() => toWei(price.toString()));
-      // 1.d Check for new disputeSettlements
       await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei(price.toString()));
-
-      // 2.  Wallet Balance monitor
-      // 2.a Update the client
-      await tokenBalanceClient._update();
-      // 2.b Check for monitored bot balance changes
-      balanceMonitor.checkBotBalances();
-      // 2.c Check for wallet threshold changes
-      // balanceMonitor.checkWalletCrRatio();
     } catch (error) {
       Logger.error({
         at: "Monitors#index",
