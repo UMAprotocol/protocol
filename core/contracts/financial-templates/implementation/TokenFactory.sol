@@ -1,4 +1,6 @@
 pragma solidity ^0.6.0;
+
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 
@@ -7,7 +9,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
  * @title Factory for creating new mintable and burnable tokens.
  */
 
-contract TokenFactory {
+contract TokenFactory is ReentrancyGuard {
     /**
      * @notice Create a new token and return it to the caller.
      * @dev The caller will become the only minter and burner and the new owner capable of assigning the roles.
@@ -20,7 +22,7 @@ contract TokenFactory {
         string calldata tokenName,
         string calldata tokenSymbol,
         uint8 tokenDecimals
-    ) external returns (ExpandedIERC20 newToken) {
+    ) external nonReentrant() returns (ExpandedIERC20 newToken) {
         SyntheticToken mintableToken = new SyntheticToken(tokenName, tokenSymbol, tokenDecimals);
         mintableToken.addMinter(msg.sender);
         mintableToken.addBurner(msg.sender);

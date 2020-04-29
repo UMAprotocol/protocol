@@ -139,7 +139,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // Converts createExpiringMultiParty params to ExpiringMultiParty constructor params.
     function _convertParams(Params memory params)
         private
-        view
+        nonReentrant()
         returns (ExpiringMultiParty.ConstructorParams memory constructorParams)
     {
         // Known from creator deployment.

@@ -133,7 +133,7 @@ abstract contract FeePayer is Testable, ReentrancyGuard {
      * @param payer address of who is paying the fees.
      * @param amount the amount of collateral to send as the final fee.
      */
-    function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal nonReentrant() {
+    function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
         if (amount.isEqual(0)) {
             return;
         }

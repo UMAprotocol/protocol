@@ -152,7 +152,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime());
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
@@ -231,7 +231,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * at least `collateralAmount` of `collateralCurrency`.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
-    function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
+    function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() nonReentrant() {
         require(collateralAmount.isGreaterThan(0));
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
@@ -256,6 +256,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         public
         onlyPreExpiration()
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -313,6 +314,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         external
         onlyPreExpiration()
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -364,6 +366,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         public
         onlyPreExpiration()
         fees()
+        nonReentrant()
     {
         require(_checkCollateralization(collateralAmount, numTokens));
 
@@ -398,6 +401,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         public
         onlyPreExpiration()
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -441,7 +445,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * caller's full balance.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function settleExpired() external onlyPostExpiration() fees() returns (FixedPoint.Unsigned memory amountWithdrawn) {
+    function settleExpired()
+        external
+        onlyPostExpiration()
+        fees()
+        nonReentrant()
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
+    {
         // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
         require(contractState != ContractState.Open);
 

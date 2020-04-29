@@ -190,6 +190,7 @@ contract Liquidatable is PricelessPositionManager {
         external
         fees()
         onlyPreExpiration()
+        nonReentrant()
         returns (
             uint256 liquidationId,
             FixedPoint.Unsigned memory tokensLiquidated,
@@ -289,6 +290,7 @@ contract Liquidatable is PricelessPositionManager {
         external
         disputable(liquidationId, sponsor)
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory totalPaid)
     {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, liquidationId);
@@ -337,6 +339,7 @@ contract Liquidatable is PricelessPositionManager {
         public
         withdrawable(liquidationId, sponsor)
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
