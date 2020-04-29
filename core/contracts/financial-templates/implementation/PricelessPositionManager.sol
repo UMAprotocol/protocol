@@ -149,14 +149,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+        require(_expirationTimestamp > getCurrentTime());
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
+
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
         TokenFactory tf = TokenFactory(_tokenFactoryAddress);
         tokenCurrency = tf.createToken(_syntheticName, _syntheticSymbol, 18);
         minSponsorTokens = _minSponsorTokens;
-
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
-
         priceIdentifer = _priceIdentifier;
     }
 
@@ -187,6 +187,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
+        require(collateralAmount.isGreaterThan(0));
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         _addCollateral(positionData.rawCollateral, collateralAmount);
@@ -214,6 +215,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
+        require(collateralAmount.isGreaterThan(0));
 
         _removeCollateral(positionData.rawCollateral, collateralAmount);
         require(_checkPositionCollateralization(positionData));
@@ -240,6 +242,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
+        require(
+            collateralAmount.isGreaterThan(0) &&
+                collateralAmount.isLessThanOrEqual(_getCollateral(positionData.rawCollateral))
+        );
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
@@ -266,9 +272,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp <= getCurrentTime());
+        require(positionData.requestPassTimestamp != 0 && positionData.requestPassTimestamp <= getCurrentTime());
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
+        // This situation is possible due to fees charged since the withdrawal was originally requested.
         FixedPoint.Unsigned memory amountToWithdraw = positionData.withdrawalRequestAmount;
         if (positionData.withdrawalRequestAmount.isGreaterThan(_getCollateral(positionData.rawCollateral))) {
             amountToWithdraw = _getCollateral(positionData.rawCollateral);
