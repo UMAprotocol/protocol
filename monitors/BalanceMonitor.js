@@ -79,7 +79,7 @@ class BalanceMonitor {
   checkBotBalances = async () => {
     this.logger.debug({
       at: "BalanceMonitor",
-      message: "Checking for Balances"
+      message: "Checking bot balances"
     });
 
     for (let bot of this.botsToMonitor) {
@@ -126,7 +126,15 @@ class BalanceMonitor {
   };
 
   // TODO: fill out this stub (next PR)
-  checkWalletCrRatio = async priceFunction => {};
+  checkWalletCrRatio = async priceFunction => {
+    this.logger.debug({
+      at: "BalanceMonitor",
+      message: "Checking wallet collateralization radios"
+    });
+
+    for (let bot of this.botsToMonitor) {
+    }
+  };
 
   createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
@@ -145,6 +153,17 @@ class BalanceMonitor {
       " " +
       tokenSymbol
     );
+  };
+
+  // Calculate the collateralization Ratio from the collateral, token amount and token price
+  // This is cr = [collateral / (tokensOutstanding * price)] * 100
+  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
+    return this.web3.utils
+      .toBN(collateral)
+      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
+      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
+      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice.toString())))
+      .muln(100);
   };
 }
 
