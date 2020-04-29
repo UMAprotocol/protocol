@@ -40,7 +40,6 @@ fees and methods that allow contracts to compute the required payment. There are
 
 - Final Fee: a fee that's paid on every price request.
 
-
 Contracts are expected to honestly pay their fees. To enforce this, the Voting contract only accepts price requests
 from approved contract types.
 
@@ -63,7 +62,7 @@ The Registry maintains two lists:
 - Approved contract creators: these contracts have permission to register new financial contracts in the Registry.
 
 - Approved financial contracts: these contracts have been registered by an approved contract creator and are allowed to
-make price requests to the Voting contract.
+  make price requests to the Voting contract.
 
 ## Store
 

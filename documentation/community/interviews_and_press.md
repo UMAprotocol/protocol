@@ -1,4 +1,5 @@
 # Interviews, podcasts, and press
+
 - Nov 18, 2019: [Potential of MCD Conf Call](https://www.youtube.com/watch?v=BcQKQGB13s4#action=share)
 - Nov 12, 2019: [DeFi Rate on BitDEX](https://defirate.com/bitdex/)
 - Nov 11, 2019: [The DeFi Podcast #5](https://medium.com/defi-school/developing-standards-for-universal-market-access-featuring-allison-lu-of-monolith-%EF%B8%8F-6ab171cd157a)

@@ -1197,7 +1197,7 @@ contract("Liquidatable", function(accounts) {
       const expectedPaymentSponsor = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
-    it("Requested withdrawal amount is greater than total position collateral, liquidated collateral should be 0", async () => {
+    it("Requested withdrawal amount is equal to the total position collateral, liquidated collateral should be 0", async () => {
       // Create position.
       await liquidationContract.create(
         { rawValue: amountOfCollateral.toString() },
@@ -1205,10 +1205,7 @@ contract("Liquidatable", function(accounts) {
         { from: sponsor }
       );
       // Request withdrawal amount > collateral
-      await liquidationContract.requestWithdrawal(
-        { rawValue: amountOfCollateral.add(toBN("1")).toString() },
-        { from: sponsor }
-      );
+      await liquidationContract.requestWithdrawal({ rawValue: amountOfCollateral.toString() }, { from: sponsor });
       // Transfer synthetic tokens to a liquidator
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
       // Liquidator believes the price of collateral per synthetic to be 1.5 and is liquidating the full token outstanding amount.

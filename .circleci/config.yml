@@ -74,8 +74,8 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v5-sec-toolbox-deps-{{ checksum "package.json" }}
-            - v5-sec-toolbox-deps-
+            - v7-sec-toolbox-deps-{{ checksum "package.json" }}
+            - v7-sec-toolbox-deps-
       - run:
           name: Install node and NPM
           command: ./ci/install_node_npm.sh
@@ -87,18 +87,17 @@ jobs:
           command: sudo chown -R $(whoami) ~/.npm ~/.config
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev python-dev
       - run:
           name: Install Dependencies
           command: npm install --quiet
       - save_cache:
-          key: v5-sec-toolbox-deps-{{ checksum "package.json" }}
+          key: v7-sec-toolbox-deps-{{ checksum "package.json" }}
           paths:
             - node_modules
-      # TODO(#976) Solc 0.6 not supported, skipping this test
       - run:
           name: Slither
-          command: ./ci/false_positive.sh
+          command: ./ci/run_slither.sh
   test:
     docker:
       - image: circleci/node:lts
@@ -160,22 +159,17 @@ jobs:
           working_directory: ~/protocol/core
           command: $(npm bin)/truffle migrate --reset --network test
       - restore_cache:
-          keys: 
-            - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
+          keys:
+            - v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
             - v6-dapp-dep-cache-
       - run:
           name: Install Voter dApp Dependencies
           working_directory: ~/protocol/voter-dapp
           command: npm install
-      - run:
-          name: Install Sponsor V2 dApp Dependencies
-          working_directory: ~/protocol/sponsor-dapp-v2
-          command: npm install
       - save_cache:
-          key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}-{{ checksum "sponsor-dapp-v2/package.json" }}
+          key: v6-dapp-dep-cache-{{ checksum "voter-dapp/package.json" }}
           paths:
             - voter-dapp/node_modules
-            - sponsor-dapp-v2/node_modules
       - save_cache:
           key: dapp-env-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -202,13 +196,6 @@ jobs:
       - store_artifacts:
           path: ~/protocol/voter-dapp/build
           destination: voter-dapp-build
-      - run:
-          name: Build Sponsor dApp V2
-          working_directory: ~/protocol/sponsor-dapp-v2
-          command: npm run build
-      - store_artifacts:
-          path: ~/protocol/sponsor-dapp-v2/build
-          destination: sponsor-dapp-v2-build
   deploy_to_staging:
     docker:
       - image: circleci/node:lts
