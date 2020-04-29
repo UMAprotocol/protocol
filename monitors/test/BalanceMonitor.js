@@ -213,6 +213,10 @@ contract("BalanceMonitor.js", function(accounts) {
     });
   });
   it("Correctly emit messages if balance moves above and below thresholds", async function() {
+    // Update the client.
+    await tokenBalanceClient._update();
+    await tokenBalanceClient._update();
+    await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 0);
   });
 });
