@@ -1,8 +1,8 @@
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
+import "../../common/implementation/ReentrancyGuard.sol";
 
 
 /**

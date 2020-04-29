@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../../common/implementation/ReentrancyGuard.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";

@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../../common/implementation/ReentrancyGuard.sol";
 import "../interfaces/FinderInterface.sol";
 import "./Registry.sol";
 import "./Constants.sol";
