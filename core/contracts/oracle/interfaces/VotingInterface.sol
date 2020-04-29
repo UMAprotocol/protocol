@@ -65,7 +65,7 @@ abstract contract VotingInterface {
     function batchCommit(Commitment[] calldata commits) external virtual;
 
     /**
-     * @notice snapshot the current round's token ballances and lock in the inflation rate and GAT.
+     * @notice snapshot the current round's token balances and lock in the inflation rate and GAT.
      * @dev This function can be called multiple times but each round will only every have one snapshot at the
      * time of calling `_freezeRoundVariables`.
      */

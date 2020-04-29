@@ -245,7 +245,7 @@ contract Governor is MultiRole, Testable {
                 // Digits 0-9 are represented by 48-57 in UTF-8, so an offset must be added to create the character.
                 bytes32 utf8Digit = bytes32(leastSignificantDigit + utf8NumberOffset);
 
-                // The top bit of ret has already been cleared to make room for the new digit.
+                // The top byte of ret has already been cleared to make room for the new digit.
                 // Upshift by 31 bytes to put it in position, and OR it with ret to leave the other characters untouched.
                 ret |= utf8Digit << (31 * bitsPerByte);
 
