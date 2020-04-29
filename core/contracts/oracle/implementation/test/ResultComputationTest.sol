@@ -24,7 +24,7 @@ contract ResultComputationTest {
         return data.wasVoteCorrect(revealHash);
     }
 
-    function wrapGetTotalCorrectlyVotedTokens() external view returns (uint) {
+    function wrapGetTotalCorrectlyVotedTokens() external view returns (uint256) {
         return data.getTotalCorrectlyVotedTokens().rawValue;
     }
 }

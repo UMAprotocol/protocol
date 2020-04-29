@@ -24,7 +24,7 @@ import "./FeePayer.sol";
  */
 
 contract PricelessPositionManager is FeePayer, AdministrateeInterface {
-    using SafeMath for uint;
+    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
@@ -38,7 +38,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     ContractState public contractState;
 
     // Represents a single sponsor's position. All collateral is held by this contract.
-    // This struct acts is bookkeeping for how much of that collateral is allocated to each sponsor.
+    // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
         FixedPoint.Unsigned tokensOutstanding;
         // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
@@ -65,7 +65,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // Unique identifier for DVM price feed ticker.
     bytes32 public priceIdentifer;
-    // Time that this contract expires. Should not change post-construction unless a emergency shutdown occurs.
+    // Time that this contract expires. Should not change post-construction unless an emergency shutdown occurs.
     uint256 public expirationTimestamp;
     // Time that has to elapse for a withdrawal request to be considered passed, if no liquidations occur.
     uint256 public withdrawalLiveness;
@@ -138,8 +138,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
-        uint _expirationTimestamp,
-        uint _withdrawalLiveness,
+        uint256 _expirationTimestamp,
+        uint256 _withdrawalLiveness,
         address _collateralAddress,
         address _finderAddress,
         bytes32 _priceIdentifier,
@@ -200,7 +200,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` from the sponsor's position to the sponsor.
      * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global
-     * collateralization ratio. In that case, use `requestWithdrawawal`. Might not withdraw the full requested
+     * collateralization ratio. In that case, use `requestWithdrawal`. Might not withdraw the full requested
      * amount in order to account for precision loss.
      * @param collateralAmount is the amount of collateral to withdraw.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
@@ -241,7 +241,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(positionData.requestPassTimestamp == 0);
 
         // Make sure the proposed expiration of this request is not post-expiry.
-        uint256 requestPassTime = getCurrentTime() + withdrawalLiveness;
+        uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
         require(requestPassTime <= expirationTimestamp);
 
         // Update the position object for the user.
@@ -276,14 +276,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _removeCollateral(positionData.rawCollateral, amountToWithdraw);
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, amountToWithdraw);
 
+        // Reset withdrawal request
+        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
+        positionData.requestPassTimestamp = 0;
+
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
-
-        // Reset withdrawal request
-        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
-        positionData.requestPassTimestamp = 0;
     }
 
     /**
@@ -302,7 +302,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
-     * @dev Reverts if the minting these tokens would put the position's collateralization ratio below the
+     * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
      * @param numTokens is the number of tokens to mint from the position.
@@ -326,7 +326,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _addCollateral(rawTotalPositionCollateral, collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
-        // Transfer tokens into the contract from caller and mint the caller synthetic tokens.
+        // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
         require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
 
@@ -381,7 +381,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice After a contract has passed expiry all token holders can redeem their tokens for
      * underlying at the prevailing price defined by the DVM from the `expire` function.
-     * @dev This Burns all tokens from the caller of `tokenCurrency` and sends back the proportional
+     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional
      * amount of `collateralCurrency`. Might not redeem the full proportional amount of collateral
      * in order to account for precision loss.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
@@ -467,8 +467,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() {
         require(msg.sender == _getFinancialContractsAdminAddress());
 
@@ -483,8 +481,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     // TODO is this how we want this function to be implemented?
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function remargin() external override onlyPreExpiration() {
         return;
     }
@@ -510,8 +506,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
      */
-    // TODO(#969) Remove once prettier-plugin-solidity can handle the "override" keyword
-    // prettier-ignore
     function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
         return _getCollateral(rawTotalPositionCollateral);
     }
@@ -586,10 +580,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
-    function _getStoreAddress() internal view returns (address) {
-        return finder.getImplementationAddress(OracleInterfaces.Store);
-    }
-
     function _getFinancialContractsAdminAddress() internal view returns (address) {
         return finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
@@ -643,7 +633,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0, "uint256 underflow");
-        return uint(value);
+        return uint256(value);
     }
 
     /**

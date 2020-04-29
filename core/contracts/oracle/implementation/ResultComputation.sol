@@ -33,7 +33,11 @@ library ResultComputation {
      * @param votePrice value specified in the vote for the given `numberTokens`.
      * @param numberTokens number of tokens that voted on the `votePrice`.
      */
-    function addVote(Data storage data, int256 votePrice, FixedPoint.Unsigned memory numberTokens) internal {
+    function addVote(
+        Data storage data,
+        int256 votePrice,
+        FixedPoint.Unsigned memory numberTokens
+    ) internal {
         data.totalVotes = data.totalVotes.add(numberTokens);
         data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
         if (

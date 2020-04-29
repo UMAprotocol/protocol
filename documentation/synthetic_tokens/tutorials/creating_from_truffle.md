@@ -52,7 +52,9 @@ const constructorParams = {
   collateralRequirement: { rawValue: web3.utils.toWei("1.5") },
   disputeBondPct: { rawValue: web3.utils.toWei("0.1") },
   sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") },
-  disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }
+  disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") },
+  minSponsorTokens: { rawValue: "100000000000000" },
+  timerAddress: "0x0000000000000000000000000000000000000000"
 };
 ```
 

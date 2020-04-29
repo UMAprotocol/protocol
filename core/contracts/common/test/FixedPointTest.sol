@@ -6,10 +6,10 @@ import "../implementation/FixedPoint.sol";
 // Wraps the FixedPoint library for testing purposes.
 contract FixedPointTest {
     using FixedPoint for FixedPoint.Unsigned;
-    using FixedPoint for uint;
-    using SafeMath for uint;
+    using FixedPoint for uint256;
+    using SafeMath for uint256;
 
-    function wrapFromUnscaledUint(uint256 a) external pure returns (uint) {
+    function wrapFromUnscaledUint(uint256 a) external pure returns (uint256) {
         return FixedPoint.fromUnscaledUint(a).rawValue;
     }
 
@@ -69,78 +69,78 @@ contract FixedPointTest {
         return a.isLessThanOrEqual(FixedPoint.Unsigned(b));
     }
 
-    function wrapMin(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMin(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).min(FixedPoint.Unsigned(b)).rawValue;
     }
 
-    function wrapMax(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMax(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).max(FixedPoint.Unsigned(b)).rawValue;
     }
 
-    function wrapAdd(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapAdd(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).add(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint256 is interpreted with a scaling factor and is converted to an `Unsigned` directly.
-    function wrapMixedAdd(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedAdd(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).add(b).rawValue;
     }
 
-    function wrapSub(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapSub(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).sub(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint256 is interpreted with a scaling factor and is converted to an `Unsigned` directly.
-    function wrapMixedSub(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedSub(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).sub(b).rawValue;
     }
 
     // The second uint256 is interpreted with a scaling factor and is converted to an `Unsigned` directly.
-    function wrapMixedSubOpposite(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedSubOpposite(uint256 a, uint256 b) external pure returns (uint256) {
         return a.sub(FixedPoint.Unsigned(b)).rawValue;
     }
 
-    function wrapMul(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMul(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).mul(FixedPoint.Unsigned(b)).rawValue;
     }
 
-    function wrapMulCeil(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMulCeil(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).mulCeil(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint256 is interpreted with a scaling factor and is converted to an `Unsigned` directly.
-    function wrapMixedMul(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedMul(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).mul(b).rawValue;
     }
 
-    function wrapMixedMulCeil(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedMulCeil(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).mulCeil(b).rawValue;
     }
 
-    function wrapDiv(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapDiv(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).div(FixedPoint.Unsigned(b)).rawValue;
     }
 
-    function wrapDivCeil(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapDivCeil(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).divCeil(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint256 is interpreted with a scaling factor and is converted to an `Unsigned` directly.
-    function wrapMixedDiv(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedDiv(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).div(b).rawValue;
     }
 
-    function wrapMixedDivCeil(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedDivCeil(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).divCeil(b).rawValue;
     }
 
     // The second uint256 is interpreted with a scaling factor and is converted to an `Unsigned` directly.
-    function wrapMixedDivOpposite(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapMixedDivOpposite(uint256 a, uint256 b) external pure returns (uint256) {
         return a.div(FixedPoint.Unsigned(b)).rawValue;
     }
 
     // The first uint256 is interpreted with a scaling factor and is converted to an `Unsigned` directly.
-    function wrapPow(uint256 a, uint256 b) external pure returns (uint) {
+    function wrapPow(uint256 a, uint256 b) external pure returns (uint256) {
         return FixedPoint.Unsigned(a).pow(b).rawValue;
     }
 }

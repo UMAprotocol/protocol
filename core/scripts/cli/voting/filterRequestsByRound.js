@@ -1,5 +1,6 @@
 const { computeTopicHash } = require("../../../../common/EncryptionHelper");
 const { VotePhasesEnum } = require("../../../../common/Enums");
+const { getLatestEvent } = require("../../../../common/VotingUtils");
 
 /**
  * First, sorts all price requests chronologically from earliest to latest.
@@ -30,12 +31,11 @@ const filterRequestsByRound = async (pendingRequests, account, roundId, roundPha
       filteredRequests = chronologicalPriceRequests;
     } else {
       // Only display committed votes during the reveal phase (i.e.
-      // if an encrypted message exists for the identifier-timestamp)
+      // if an EncryptedVote event exists for the identifier-timestamp)
       for (let i = 0; i < chronologicalPriceRequests.length; i++) {
         const request = chronologicalPriceRequests[i];
-        const topicHash = computeTopicHash(request, roundId);
-        const encryptedCommit = await votingContract.getMessage(account, topicHash, { from: account });
-        if (encryptedCommit) {
+        const ev = await getLatestEvent("EncryptedVote", request, roundId, account, votingContract);
+        if (ev !== null) {
           filteredRequests.push(request);
         }
       }

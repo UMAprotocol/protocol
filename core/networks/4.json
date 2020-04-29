@@ -40,38 +40,6 @@
     "address": "0xad7c5516b25661e0A204646b08024cD82ffe6C48"
   },
   {
-    "contractName": "ManualPriceFeed",
-    "address": "0xC660C7e1b35998Fdf895404746d3bD5D8ed5A6C1"
-  },
-  {
-    "contractName": "TokenizedDerivativeUtils",
-    "address": "0x9328Ce3B1FBCD0FCca9Dc9F1eB6a0a0Ed2aF0bDF"
-  },
-  {
-    "contractName": "AddressWhitelist",
-    "address": "0xC3956eb1FC4Da1fD2400cC4682a5a62a1F31806D"
-  },
-  {
-    "contractName": "AddressWhitelist",
-    "address": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b"
-  },
-  {
-    "contractName": "TokenizedDerivativeCreator",
-    "address": "0xF962E0e485A5B9f8aDa9a438cEecc35c0020B6e7"
-  },
-  {
-    "contractName": "TestnetERC20",
-    "address": "0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa"
-  },
-  {
-    "contractName": "LeveragedReturnCalculator",
-    "address": "0xa5eA165AfAc780807DE19aefa2B8a21079B8A627"
-  },
-  {
-    "contractName": "LeveragedReturnCalculator",
-    "address": "0xAcDE84590A2ba1aCfEbB220997Eb41B7A01f271f"
-  },
-  {
     "contractName": "WETH9",
     "address": "0xc778417E063141139Fce010982780140Aa0cD5Ab"
   }

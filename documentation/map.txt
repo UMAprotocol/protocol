@@ -1,5 +1,3 @@
-* getting_started
-** bug_bounty.md
 * synthetic_tokens
 ** explainer.md
 ** tutorials
@@ -12,10 +10,14 @@
 ** dvm_interfaces.md
 ** tutorials
 *** voting_with_uma_tokens.md
+*** voting_with_UMA_2-key_contract.md
 ** governance
 *** UMA_token_holder_responsibilities.md
 *** UMIPs.md
 *** adding_a_price_identifier.md
+* developer_reference
+** contract_addresses.md
+** bug_bounty.md
 * community
 ** previous_and_upcoming_events.md
 ** interviews_and_press.md

@@ -8,12 +8,14 @@ const { RegistryRolesEnum } = require("../../common/Enums.js");
 module.exports = async function(deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
+  const startingId = "0";
 
   const { contract: governor } = await deploy(
     deployer,
     network,
     Governor,
     Finder.address,
+    startingId,
     controllableTiming ? Timer.address : "0x0000000000000000000000000000000000000000",
     {
       from: keys.deployer
