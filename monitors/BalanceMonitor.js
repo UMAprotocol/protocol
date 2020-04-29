@@ -62,14 +62,19 @@ class BalanceMonitor {
     return this.web3.utils.toBN(balance).lt(this.web3.utils.toBN(threshold));
   }
 
-  // A notification should only be pushed if the bot's threshold balance is below the threshold and a notification
-  // for for that given threshold has not already been sent out
-  shouldPushNotification(bot, thresholdKey) {
+  // A notification should only be pushed if the bot's balance is below the threshold and a notification
+  // for for that given threshold has not already been sent out.
+  shouldPushNotification(bot, thresholdKey, balanceQueryFunction) {
     let shouldPushNotification = false;
-    if (this.ltThreshold(this.client.getCollateralBalance(bot.address), bot[thresholdKey])) {
-      if (!this.walletsAlerted[bot.address][thresholdKey]) shouldPushNotification = true;
-      this.walletsAlerted[bot.address] = true;
-    } else this.walletsAlerted[bot.address] = false;
+    if (this.ltThreshold(balanceQueryFunction(bot.address), bot[thresholdKey])) {
+      if (!this.walletsAlerted[bot.address][thresholdKey]) {
+        shouldPushNotification = true;
+      }
+      this.walletsAlerted[bot.address][thresholdKey] = true;
+    } else {
+      this.walletsAlerted[bot.address][thresholdKey] = false;
+    }
+
     return shouldPushNotification;
   }
 
@@ -81,7 +86,7 @@ class BalanceMonitor {
     });
 
     for (let bot of this.botsToMonitor) {
-      if (this.shouldPushNotification(bot, "collateralThreshold")) {
+      if (this.shouldPushNotification(bot, "collateralThreshold", this.client.getCollateralBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
@@ -94,7 +99,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.shouldPushNotification(bot, "syntheticThreshold")) {
+      if (this.shouldPushNotification(bot, "syntheticThreshold", this.client.getSyntheticBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
@@ -107,7 +112,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.shouldPushNotification(bot, "etherThreshold")) {
+      if (this.shouldPushNotification(bot, "etherThreshold", this.client.getEtherBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",

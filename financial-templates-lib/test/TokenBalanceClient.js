@@ -28,24 +28,21 @@ contract("BalanceMonitor.js", function(accounts) {
     // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: []
+      transports: [new winston.transports.Console()]
     });
     client = new TokenBalanceClient(dummyLogger, Token.abi, web3, collateralToken.address, syntheticToken.address, 10);
   });
 
-  it("Returning balances", async function() {
+  it("Returning token balances", async function() {
     // Should start at empty state (null) and the address should not be resolved.
-    await client._update();
     assert.equal(client.getCollateralBalance(sponsor1), null);
     assert.equal(client.getSyntheticBalance(sponsor1), null);
-    assert.equal(client.getEtherBalance(sponsor1), null);
     assert.isFalse(client.resolvedAddressBalance(sponsor1));
 
     // After the second update the balances should update accordingly and should be resolved.
     await client._update();
     assert.equal(client.getCollateralBalance(sponsor1), 0);
     assert.equal(client.getSyntheticBalance(sponsor1), 0);
-    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
     assert.isTrue(client.resolvedAddressBalance(sponsor1));
 
     // After sending tokens to a wallet the client should update accordingly
@@ -53,14 +50,6 @@ contract("BalanceMonitor.js", function(accounts) {
     await client._update();
     assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
     assert.equal(client.getSyntheticBalance(sponsor1), 0);
-    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
-
-    // After Sending ether the balance should update accordingly.
-    await web3.eth.sendTransaction({ from: tokenCreator, to: sponsor1, value: toWei("1") });
-    await client._update();
-    assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
-    assert.equal(client.getSyntheticBalance(sponsor1), 0);
-    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
 
     // Sending tokens to a wallet before they are search in the client should not load until queried.
     await syntheticToken.mint(sponsor2, toWei("5678"), { from: tokenCreator });
@@ -84,7 +73,6 @@ contract("BalanceMonitor.js", function(accounts) {
     await client._update();
     assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
     assert.equal(client.getSyntheticBalance(sponsor1), 0);
-    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
     assert.isTrue(client.resolvedAddressBalance(sponsor2));
     assert.equal(client.getCollateralBalance(sponsor2), 0);
     assert.equal(client.getSyntheticBalance(sponsor2), toWei("5678"));
@@ -93,5 +81,19 @@ contract("BalanceMonitor.js", function(accounts) {
 
     // After all testing rando should not be monitored address.
     assert.isFalse(client.resolvedAddressBalance(rando));
+  });
+
+  it("Returning ETH balances", async function() {
+    assert.equal(client.getEtherBalance(sponsor1), null);
+
+    await client._update();
+    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
+
+    // After Sending ether the balance should update accordingly.
+    await web3.eth.sendTransaction({ from: tokenCreator, to: sponsor1, value: toWei("1") });
+    await client._update();
+    assert.equal(client.getCollateralBalance(sponsor1), toWei("1234"));
+    assert.equal(client.getSyntheticBalance(sponsor1), 0);
+    assert.equal(client.getEtherBalance(sponsor1), await web3.eth.getBalance(sponsor1));
   });
 });
