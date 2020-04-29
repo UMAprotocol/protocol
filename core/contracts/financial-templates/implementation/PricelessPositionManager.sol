@@ -258,7 +258,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev Might not withdraw the full requested amount in order to account for precision loss.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    // TODO: Decide whether to fold this functionality into withdraw() method above.
     function withdrawPassedRequest()
         external
         onlyPreExpiration()
@@ -484,7 +483,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
-    // TODO is this how we want this function to be implemented?
     function remargin() external override onlyPreExpiration() {
         return;
     }
