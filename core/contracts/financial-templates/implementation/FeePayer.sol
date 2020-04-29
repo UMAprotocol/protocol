@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
@@ -16,7 +17,7 @@ import "../../oracle/implementation/Constants.sol";
  * contract is abstract as each derived contract that inherits `FeePayer` must implement `pfc()`.
  */
 
-abstract contract FeePayer is Testable {
+abstract contract FeePayer is Testable, ReentrancyGuard {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -88,7 +89,7 @@ abstract contract FeePayer is Testable {
      * regular fee in a week or more then a late penalty is applied which is sent to the caller.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
      */
-    function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
+    function payFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory _pfc = pfc();
@@ -132,7 +133,7 @@ abstract contract FeePayer is Testable {
      * @param payer address of who is paying the fees.
      * @param amount the amount of collateral to send as the final fee.
      */
-    function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
+    function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal nonReentrant() {
         if (amount.isEqual(0)) {
             return;
         }
