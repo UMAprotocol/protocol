@@ -259,13 +259,6 @@ contract Liquidatable is PricelessPositionManager {
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
 
-        // Destroy tokens
-        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
-        tokenCurrency.burn(tokensLiquidated.rawValue);
-
-        // Pull final fee from liquidator.
-        collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
-
         emit LiquidationCreated(
             sponsor,
             msg.sender,
@@ -274,6 +267,13 @@ contract Liquidatable is PricelessPositionManager {
             lockedCollateral.rawValue,
             liquidatedCollateral.rawValue
         );
+
+        // Destroy tokens
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
+        tokenCurrency.burn(tokensLiquidated.rawValue);
+
+        // Pull final fee from liquidator.
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
     }
 
     /**
@@ -297,8 +297,6 @@ contract Liquidatable is PricelessPositionManager {
         );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
-        collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
-
         // Request a price from DVM,
         // Liquidation is pending dispute until DVM returns a price
         disputedLiquidation.state = Status.PendingDispute;
@@ -306,9 +304,6 @@ contract Liquidatable is PricelessPositionManager {
 
         // Enqueue a request with the DVM.
         _requestOraclePrice(disputedLiquidation.liquidationTime);
-
-        // Pay a final fee.
-        _payFinalFees(msg.sender, disputedLiquidation.finalFee);
 
         emit LiquidationDisputed(
             sponsor,
@@ -318,7 +313,12 @@ contract Liquidatable is PricelessPositionManager {
             disputeBondAmount.rawValue
         );
 
-        return disputeBondAmount.add(disputedLiquidation.finalFee);
+        totalPaid = disputeBondAmount.add(disputedLiquidation.finalFee);
+
+        // Pay a final fee.
+        _payFinalFees(msg.sender, disputedLiquidation.finalFee);
+
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
     }
 
     /**
@@ -416,10 +416,11 @@ contract Liquidatable is PricelessPositionManager {
         }
 
         require(withdrawalAmount.isGreaterThan(0));
-        amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
-        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
+
+        amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
     }
 
     /**
