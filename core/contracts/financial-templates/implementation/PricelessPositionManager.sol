@@ -169,8 +169,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      ****************************************/
 
     /**
-     * @notice Requests to transfer ownership of the caller's current position to `newSponsorAddress`. Once the request liveness is passed,
-     * the sponsor can execute the transfer.
+     * @notice Requests to transfer ownership of the caller's current position to `newSponsorAddress`. 
+     * Once the request liveness is passed, the sponsor can execute the transfer.
      * @dev The liveness length is the same as the withdrawal liveness.
      */
     function requestTransfer() public onlyPreExpiration() {
