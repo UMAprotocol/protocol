@@ -238,10 +238,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _addCollateral(positionData.rawCollateral, collateralAmount);
         _addCollateral(rawTotalPositionCollateral, collateralAmount);
 
+        emit Deposit(msg.sender, collateralAmount.rawValue);
+
         // Move collateral currency from sender to contract.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
-
-        emit Deposit(msg.sender, collateralAmount.rawValue);
     }
 
     /**
@@ -269,13 +269,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // the global collateral is always <= the collateral owned by the contract to avoid reverts on withdrawals.
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, collateralAmount);
 
+        emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
+
         // Move collateral currency from contract to sender.
         // Note that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
         // instead of the user requested amount. This eliminates precision loss that could occur
         // where the user withdraws more collateral than rawCollateral is decremented by.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
-
-        emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
     }
 
     /**
@@ -332,10 +332,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
         positionData.requestPassTimestamp = 0;
 
+        emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
+
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
-
-        emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
     }
 
     /**
@@ -379,11 +379,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         _addCollateral(rawTotalPositionCollateral, collateralAmount);
         totalTokensOutstanding = totalTokensOutstanding.add(numTokens);
 
+        emit PositionCreated(msg.sender, collateralAmount.rawValue, numTokens.rawValue);
+
         // Transfer tokens into the contract from caller and mint corresponding synthetic tokens to the caller's address.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
         require(tokenCurrency.mint(msg.sender, numTokens.rawValue), "Minting synthetic tokens failed");
-
-        emit PositionCreated(msg.sender, collateralAmount.rawValue, numTokens.rawValue);
     }
 
     /**
@@ -424,12 +424,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             totalTokensOutstanding = totalTokensOutstanding.sub(numTokens);
         }
 
+        emit Redeem(msg.sender, amountWithdrawn.rawValue, numTokens.rawValue);
+
         // Transfer collateral from contract to caller and burn callers synthetic tokens.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
         tokenCurrency.burn(numTokens.rawValue);
-
-        emit Redeem(msg.sender, amountWithdrawn.rawValue, numTokens.rawValue);
     }
 
     /**
@@ -487,12 +487,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
+        emit SettleExpiredPosition(msg.sender, amountWithdrawn.rawValue, tokensToRedeem.rawValue);
+
         // Transfer tokens & collateral and burn the redeemed tokens.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
-
-        emit SettleExpiredPosition(msg.sender, amountWithdrawn.rawValue, tokensToRedeem.rawValue);
     }
 
     /****************************************
