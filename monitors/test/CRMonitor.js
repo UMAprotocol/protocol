@@ -104,7 +104,7 @@ contract("CRMonitor.js", function(accounts) {
       }
     ];
 
-    crMonitor = new CRMonitor(spyLogger, empClient, accounts[0], walletMonitorObject);
+    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -126,7 +126,7 @@ contract("CRMonitor.js", function(accounts) {
     }
 
     // Create positions for the monitoredTrader and monitoredSponsor accounts
-    await emp.create({ rawValue: toWei("200") }, { rawValue: toWei("100") }, { from: monitoredTrader });
+    await emp.create({ rawValue: toWei("250") }, { rawValue: toWei("100") }, { from: monitoredTrader });
     await emp.create({ rawValue: toWei("300") }, { rawValue: toWei("100") }, { from: monitoredSponsor });
   });
 
@@ -136,11 +136,11 @@ contract("CRMonitor.js", function(accounts) {
     await crMonitor.checkWalletCrRatio(time => toWei("1"));
     assert.equal(spy.callCount, 0);
 
-    // Emits a message if below the CR threshold. At a price of 1.25 only the monitoredTrader should be undercollateralized
-    // with a CR of 200 / (100 * 1.5) =1.66. this is below this addresses threshold of 200 and should emit an event.
+    // Emits a message if below the CR threshold. At a price of 1.3 only the monitoredTrader should be undercollateralized
+    // with a CR of 250 / (100 * 1.3) =1.923 which is below this addresses threshold of 200 and should emit an event.
 
     await empClient._update();
-    await crMonitor.checkWalletCrRatio(time => toWei("1.25"));
+    await crMonitor.checkWalletCrRatio(time => toWei("1.3"));
     assert.equal(spy.callCount, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
     assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `walletMonitorObject`

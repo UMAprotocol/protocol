@@ -31,6 +31,8 @@ class CRMonitor {
   }
 
   checkWalletCrRatio = async priceFunction => {
+    console.log("CALLING");
+
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime);
     this.logger.debug({
@@ -38,9 +40,11 @@ class CRMonitor {
       message: "Checking wallet collateralization radios",
       price: priceFeed
     });
+    console.log("AFTER CALLING LOGGER");
 
     for (let wallet of this.walletsToMonitor) {
-      if (this.shouldPushWalletNotification(wallet, priceFeed)) {
+      const [shouldPush, crRatio] = this.shouldPushWalletNotification(wallet, priceFeed);
+      if (shouldPush) {
         // Sample message:
         // Risk alert: [Tracked wallet name] has fallen below [threshold]%.
         // Current [name of identifier] value: [current identifier value].
@@ -48,11 +52,13 @@ class CRMonitor {
           wallet.name +
           " (" +
           createEtherscanLinkMarkdown(this.web3, wallet.address) +
-          ") has fallen below " +
+          ") collateralization ratio has dropped to " +
+          this.formatDecimalString(crRatio) +
+          "% which is below the " +
           wallet.crAlert +
-          "%. Current value of" +
+          "% threshold. Current value of " +
           this.syntheticCurrencySymbol +
-          " : " +
+          " is " +
           this.formatDecimalString(priceFeed);
 
         this.logger.info({
@@ -74,19 +80,23 @@ class CRMonitor {
 
   shouldPushWalletNotification(wallet, priceFeed) {
     const positionInformation = this.getPositionInformation(wallet.address);
+    if (positionInformation == null) {
+      // There is no position information for the given wallet.
+      return [false, 0];
+    }
 
     const collateral = positionInformation.amountCollateral;
     const tokensOutstanding = positionInformation.numTokens;
 
     // If the values for collateral or price have yet to resolve, dont push a notification
     if (collateral == null || tokensOutstanding == null) {
-      return false;
+      return [false, 0];
     }
 
     // If CR = null then there are no tokens outstanding and so dont push a notification
     const positionCR = this.calculatePositionCRPercent(collateral, tokensOutstanding, priceFeed);
     if (positionCR == null) {
-      return false;
+      return [false, 0];
     }
 
     let shouldPushWalletNotification = false;
@@ -98,7 +108,7 @@ class CRMonitor {
     } else {
       this.walletsAlerted[wallet.address].crAlert = false;
     }
-    return shouldPushWalletNotification;
+    return [shouldPushWalletNotification, positionCR];
   }
 
   createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
