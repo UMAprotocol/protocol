@@ -18,8 +18,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 // TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
-// Currently, you can run it with `truffle exec ../liquidator/index.js --address=<address> --price=<price>` *from the core
-// directory*.
+// Currently, you can run it with `truffle exec ../monitor/index.js --price=<price>` *from the core  directory*.
 
 /**
  * @notice Continuously attempts to monitor contract positions listening for newly emmited events.
@@ -48,6 +47,7 @@ async function run(price, address, shouldPoll) {
   const syntheticTokenAddress = await emp.tokenCurrency();
 
   const tokenBalanceClient = new TokenBalanceClient(
+    Logger,
     ExpandedERC20.abi,
     web3,
     collateralTokenAddress,
@@ -76,7 +76,13 @@ async function run(price, address, shouldPoll) {
     }
   ];
 
-  const balanceMonitor = new BalanceMonitor(tokenBalanceClient, accounts[0], botMonitorObject, walletMonitorObject);
+  const balanceMonitor = new BalanceMonitor(
+    Logger,
+    tokenBalanceClient,
+    accounts[0],
+    botMonitorObject,
+    walletMonitorObject
+  );
 
   while (true) {
     try {

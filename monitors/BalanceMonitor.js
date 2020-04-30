@@ -1,7 +1,7 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class BalanceMonitor {
-  constructor(logger, tokenBalanceClient, account, botsToMonitor, walletsToMonitor) {
+  constructor(logger, tokenBalanceClient, account, botsToMonitor) {
     this.logger = logger;
     this.account = account;
 
@@ -15,14 +15,6 @@ class BalanceMonitor {
     // ...]
     this.botsToMonitor = botsToMonitor;
 
-    // An array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert`
-    // must be given. Example:
-    // [{ name: "Market Making bot",
-    //    address: "0x12345",
-    //    crAlert: 150 },
-    // ...];
-    this.walletsToMonitor = walletsToMonitor;
-
     // Structure to monitor if a wallet address have been alerted yet for each alert type.
     this.walletsAlerted = {};
 
@@ -33,10 +25,6 @@ class BalanceMonitor {
         syntheticThreshold: false,
         etherThreshold: false
       };
-    }
-
-    for (let wallet of walletsToMonitor) {
-      this.walletsAlerted[wallet.address] = { crAlert: false };
     }
 
     // Instance of the tokenBalanceClient to read account balances from last change update.
@@ -50,31 +38,6 @@ class BalanceMonitor {
     this.syntheticCurrencySymbol = "UMATEST";
   }
 
-  // Checks if a big number balance is below a given threshold.
-  ltThreshold(balance, threshold) {
-    // If the price has not resolved yet then return false.
-    if (balance == null) {
-      return false;
-    }
-    return this.web3.utils.toBN(balance).lt(this.web3.utils.toBN(threshold));
-  }
-
-  // A notification should only be pushed if the bot's balance is below the threshold and a notification
-  // for for that threshold has not already been sent out.
-  shouldPushNotification(bot, thresholdKey, balanceQueryFunction) {
-    let shouldPushNotification = false;
-    if (this.ltThreshold(balanceQueryFunction(bot.address), bot[thresholdKey])) {
-      if (!this.walletsAlerted[bot.address][thresholdKey]) {
-        shouldPushNotification = true;
-      }
-      this.walletsAlerted[bot.address][thresholdKey] = true;
-    } else {
-      this.walletsAlerted[bot.address][thresholdKey] = false;
-    }
-
-    return shouldPushNotification;
-  }
-
   // Queries all bot ballance for collateral, synthetic and ether against specified thresholds
   checkBotBalances = async () => {
     this.logger.debug({
@@ -83,7 +46,7 @@ class BalanceMonitor {
     });
 
     for (let bot of this.botsToMonitor) {
-      if (this.shouldPushNotification(bot, "collateralThreshold", this.client.getCollateralBalance)) {
+      if (this.shouldPushBotNotification(bot, "collateralThreshold", this.client.getCollateralBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
@@ -96,7 +59,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.shouldPushNotification(bot, "syntheticThreshold", this.client.getSyntheticBalance)) {
+      if (this.shouldPushBotNotification(bot, "syntheticThreshold", this.client.getSyntheticBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
@@ -109,7 +72,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.shouldPushNotification(bot, "etherThreshold", this.client.getEtherBalance)) {
+      if (this.shouldPushBotNotification(bot, "etherThreshold", this.client.getEtherBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
@@ -125,16 +88,21 @@ class BalanceMonitor {
     }
   };
 
-  // TODO: fill out this stub (next PR)
-  checkWalletCrRatio = async priceFunction => {
-    this.logger.debug({
-      at: "BalanceMonitor",
-      message: "Checking wallet collateralization radios"
-    });
-
-    for (let bot of this.botsToMonitor) {
+  // A notification should only be pushed if the bot's balance is below the threshold and a notification
+  // for for that threshold has not already been sent out.
+  shouldPushBotNotification(bot, thresholdKey, balanceQueryFunction) {
+    let shouldPushBotNotification = false;
+    if (this.ltThreshold(balanceQueryFunction(bot.address), bot[thresholdKey])) {
+      if (!this.walletsAlerted[bot.address][thresholdKey]) {
+        shouldPushBotNotification = true;
+      }
+      this.walletsAlerted[bot.address][thresholdKey] = true;
+    } else {
+      this.walletsAlerted[bot.address][thresholdKey] = false;
     }
-  };
+
+    return shouldPushBotNotification;
+  }
 
   createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
@@ -155,16 +123,14 @@ class BalanceMonitor {
     );
   };
 
-  // Calculate the collateralization Ratio from the collateral, token amount and token price
-  // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
-    return this.web3.utils
-      .toBN(collateral)
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
-      .div(this.web3.utils.toBN(tokensOutstanding).mul(this.web3.utils.toBN(tokenPrice.toString())))
-      .muln(100);
-  };
+  // Checks if a big number value is below a given threshold.
+  ltThreshold(value, threshold) {
+    // If the price has not resolved yet then return false.
+    if (value == null) {
+      return false;
+    }
+    return this.web3.utils.toBN(value).lt(this.web3.utils.toBN(threshold));
+  }
 }
 
 module.exports = {
