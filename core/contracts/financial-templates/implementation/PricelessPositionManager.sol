@@ -751,25 +751,4 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(value >= 0, "uint256 underflow");
         return uint256(value);
     }
-
-    /**
-     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
-     * unnecessarily increase contract bytecode size.
-     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
-     */
-    function _onlyOpenState() internal view {
-        require(contractState == ContractState.Open);
-    }
-
-    function _onlyPreExpiration() internal view {
-        require(getCurrentTime() < expirationTimestamp);
-    }
-
-    function _onlyPostExpiration() internal view {
-        require(getCurrentTime() >= expirationTimestamp);
-    }
-
-    function _onlyCollateralizedPosition(address sponsor) internal view {
-        require(_getCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
-    }
 }
