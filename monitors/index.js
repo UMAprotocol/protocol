@@ -6,12 +6,14 @@ const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // Clients to retrieve on-chain data
+const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
 const { TokenBalanceClient } = require("../financial-templates-lib/TokenBalanceClient");
 
 // Monitor modules to report on client state changes
 const { ContractMonitor } = require("./ContractMonitor");
 const { BalanceMonitor } = require("./BalanceMonitor");
+const { CRMonitor } = require("./CRMonitor");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -38,11 +40,11 @@ async function run(price, address, shouldPoll) {
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(address);
 
-  // Contract state monitor
+  // 1. Contract state monitor
   const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
   const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]]);
 
-  // Balance monitor
+  // 2. Balance monitor
   const collateralTokenAddress = await emp.collateralCurrency();
   const syntheticTokenAddress = await emp.tokenCurrency();
 
@@ -67,6 +69,12 @@ async function run(price, address, shouldPoll) {
     }
   ];
 
+  const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, accounts[0], botMonitorObject);
+
+  // 3. Collateralization Ratio monitor
+  // TODO: refactor this to dependency injection the logger like with the other monitors
+  const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address, 10);
+
   // Wallet objects to monitor. For each wallet spesify a name,
   const walletMonitorObject = [
     {
@@ -76,13 +84,7 @@ async function run(price, address, shouldPoll) {
     }
   ];
 
-  const balanceMonitor = new BalanceMonitor(
-    Logger,
-    tokenBalanceClient,
-    accounts[0],
-    botMonitorObject,
-    walletMonitorObject
-  );
+  const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject);
 
   while (true) {
     try {

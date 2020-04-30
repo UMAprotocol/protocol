@@ -149,7 +149,6 @@ contract("BalanceMonitor.js", function(accounts) {
 
     // Lastly, test the ETH balance thresholding. Transfer enough Eth away from liquidatorBot should result in alert.
     const startLiquidatorBotETH = await web3.eth.getBalance(liquidatorBot);
-    console.log("startLiquidatorBotETH", startLiquidatorBotETH);
 
     // Transfer the liquidator bot's eth balance - 5Eth such that irrespective of the value it ends with ~5 Eth (excluding gas cost).
     const amountToTransfer = toBN(startLiquidatorBotETH).sub(toBN(toWei("5")));
