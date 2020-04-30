@@ -263,7 +263,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(positionData.requestPassTimestamp == 0);
         require(collateralAmount.isGreaterThan(0));
 
-        // Decrement the sponsor's collateral and global collateral amounts.
+        // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
+        // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
         amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralAmount);
 
         emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
@@ -325,16 +326,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // Decrement the sponsor's collateral and global collateral amounts.
         amountWithdrawn = _decrementCollateralBalances(positionData, amountToWithdraw);
 
-        // Reset withdrawal request.
-        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
-        positionData.requestPassTimestamp = 0;
-
         // Reset withdrawal request by setting withdrawal amount and withdrawal timestamp to 0.
         _resetWithdrawalRequest(positionData);
-        emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
 
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
+
+        emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
     }
 
     /**
@@ -346,11 +344,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
-        // Reset withdrawal request
+        // Reset withdrawal request by setting withdrawal amount and withdrawal timestamp to 0.
         _resetWithdrawalRequest(positionData);
-        // Reset withdrawal request.
-        positionData.requestPassTimestamp = 0;
-        positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
     }
 
     /**
@@ -754,5 +749,26 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _safeUintCast(int256 value) private pure returns (uint256 result) {
         require(value >= 0, "uint256 underflow");
         return uint256(value);
+    }
+
+    /**
+     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
+     * unnecessarily increase contract bytecode size.
+     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
+     */
+    function _onlyOpenState() internal view {
+        require(contractState == ContractState.Open);
+    }
+
+    function _onlyPreExpiration() internal view {
+        require(getCurrentTime() < expirationTimestamp);
+    }
+
+    function _onlyPostExpiration() internal view {
+        require(getCurrentTime() >= expirationTimestamp);
+    }
+
+    function _onlyCollateralizedPosition(address sponsor) internal view {
+        require(_getCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
     }
 }

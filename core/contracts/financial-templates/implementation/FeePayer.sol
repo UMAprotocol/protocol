@@ -113,8 +113,9 @@ abstract contract FeePayer is Testable {
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         totalPaid = regularFee.add(latePenalty);
-        FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
-        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+
+        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -124,13 +125,6 @@ abstract contract FeePayer is Testable {
         if (latePenalty.isGreaterThan(0)) {
             collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
-
-        totalPaid = regularFee.add(latePenalty);
-
-        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
-        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
-
-        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
     }
 
     /**
@@ -239,7 +233,7 @@ abstract contract FeePayer is Testable {
         addedCollateral = _getCollateral(rawCollateral).sub(initialBalance);
     }
 
-    // Scale down the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption
+    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption.
     function _adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
         internal
     {
