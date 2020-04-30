@@ -1,18 +1,25 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
+// This module is used to monitor a list of addresses and their associated collateral, synthetic and ether balances.
 class BalanceMonitor {
-  constructor(logger, tokenBalanceClient, account, botsToMonitor) {
+  // @param logger an instance of a winston logger used to emit messages, logs and errors.
+  // @param tokenBalanceClient is an instance of the TokenBalanceClient from the `financial-templates lib
+  // which provides synchronous access to address balances for a given expiring multi party contract.
+  // @param botsToMonitor is array of bot objects to monitor. Each bot's `botName` `address`,
+  // `CollateralThreshold` and`syntheticThreshold` must be given. Example:
+  // [{ name: "Liquidator Bot",
+  //   address: "0x12345"
+  //   collateralThreshold: x1,
+  //   syntheticThreshold: x2,
+  //   etherThreshold: x3 },
+  // ...]
+  constructor(logger, tokenBalanceClient, botsToMonitor) {
     this.logger = logger;
-    this.account = account;
 
-    // An array of bot objects to monitor. Each bot's `botName` `address`,
-    // `CollateralThreshold` and`syntheticThreshold` must be given. Example:
-    // [{ name: "Liquidator Bot",
-    //   address: "0x12345"
-    //   collateralThreshold: x1,
-    //   syntheticThreshold: x2,
-    //   etherThreshold: x3 },
-    // ...]
+    // Instance of the tokenBalanceClient to read account balances from last change update.
+    this.client = tokenBalanceClient;
+    this.web3 = this.client.web3;
+
     this.botsToMonitor = botsToMonitor;
 
     // Structure to monitor if a wallet address have been alerted yet for each alert type.
@@ -26,10 +33,6 @@ class BalanceMonitor {
         etherThreshold: false
       };
     }
-
-    // Instance of the tokenBalanceClient to read account balances from last change update.
-    this.client = tokenBalanceClient;
-    this.web3 = this.client.web3;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2);
 
@@ -45,12 +48,15 @@ class BalanceMonitor {
       message: "Checking bot balances"
     });
 
+    // Loop over all the bot objects specified to monitor in the this.botsToMonitor object and for each bot
+    // check if their collateral, synthetic or ether balance is below a given threshold. If it is, then
+    // send a winston event. The message structure is defined with the `_createLowBalanceMrkdwn` formatter.
     for (let bot of this.botsToMonitor) {
-      if (this.shouldPushBotNotification(bot, "collateralThreshold", this.client.getCollateralBalance)) {
+      if (this._shouldPushBotNotification(bot, "collateralThreshold", this.client.getCollateralBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
-          mrkdwn: this.createLowBalanceMrkdwn(
+          mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.collateralThreshold,
             this.client.getCollateralBalance(bot.address),
@@ -59,11 +65,11 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.shouldPushBotNotification(bot, "syntheticThreshold", this.client.getSyntheticBalance)) {
+      if (this._shouldPushBotNotification(bot, "syntheticThreshold", this.client.getSyntheticBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
-          mrkdwn: this.createLowBalanceMrkdwn(
+          mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.syntheticThreshold,
             this.client.getSyntheticBalance(bot.address),
@@ -72,11 +78,11 @@ class BalanceMonitor {
           )
         });
       }
-      if (this.shouldPushBotNotification(bot, "etherThreshold", this.client.getEtherBalance)) {
+      if (this._shouldPushBotNotification(bot, "etherThreshold", this.client.getEtherBalance)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
-          mrkdwn: this.createLowBalanceMrkdwn(
+          mrkdwn: this._createLowBalanceMrkdwn(
             bot,
             bot.etherThreshold,
             this.client.getEtherBalance(bot.address),
@@ -90,9 +96,9 @@ class BalanceMonitor {
 
   // A notification should only be pushed if the bot's balance is below the threshold and a notification
   // for for that threshold has not already been sent out.
-  shouldPushBotNotification(bot, thresholdKey, balanceQueryFunction) {
+  _shouldPushBotNotification(bot, thresholdKey, balanceQueryFunction) {
     let shouldPushBotNotification = false;
-    if (this.ltThreshold(balanceQueryFunction(bot.address), bot[thresholdKey])) {
+    if (this._ltThreshold(balanceQueryFunction(bot.address), bot[thresholdKey])) {
       if (!this.walletsAlerted[bot.address][thresholdKey]) {
         shouldPushBotNotification = true;
       }
@@ -104,7 +110,7 @@ class BalanceMonitor {
     return shouldPushBotNotification;
   }
 
-  createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
+  _createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
       "*" +
       bot.name +
@@ -124,7 +130,7 @@ class BalanceMonitor {
   };
 
   // Checks if a big number value is below a given threshold.
-  ltThreshold(value, threshold) {
+  _ltThreshold(value, threshold) {
     // If the price has not resolved yet then return false.
     if (value == null) {
       return false;
