@@ -150,7 +150,7 @@ contract("ExpiringMultiParty", function(accounts) {
     const enforcedWithdrawalLiveness = await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS();
     assert.equal(await expiringMultiParty.withdrawalLiveness(), enforcedWithdrawalLiveness.toString());
     assert.equal(
-      hexToUtf8(await expiringMultiParty.priceIdentifer()),
+      hexToUtf8(await expiringMultiParty.priceIdentifier()),
       hexToUtf8(constructorParams.priceFeedIdentifier)
     );
   });
