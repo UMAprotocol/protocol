@@ -572,6 +572,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      *          INTERNAL FUNCTIONS         *
      ****************************************/
 
+    // Reduces a sponsor's position and global counters by the specified parameters. Handles deleting the entire
+    // position if the entire position is being removed. Does not make any external transfers.
     function _reduceSponsorPosition(
         address sponsor,
         FixedPoint.Unsigned memory tokensToRemove,
@@ -602,6 +604,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRemove);
     }
 
+    // Deletes a sponsor's position and updates global counters. Does not make any external transfers.
     function _deleteSponsorPosition(address sponsor) internal returns (FixedPoint.Unsigned memory) {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
@@ -642,11 +645,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return finder.getImplementationAddress(OracleInterfaces.FinancialContractsAdmin);
     }
 
+    // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
         OracleInterface oracle = _getOracle();
         oracle.requestPrice(priceIdentifier, requestedTime);
     }
 
+    // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
@@ -660,6 +665,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return FixedPoint.Unsigned(_safeUintCast(oraclePrice));
     }
 
+    // Checks whether the position's collateralization is above the global collateralization ratio (GCR).
     function _checkPositionCollateralization(PositionData storage positionData) private view returns (bool) {
         return
             _checkCollateralization(
@@ -668,6 +674,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
             );
     }
 
+    // Checks whether the provided `collateral` and `numTokens` have a collateralization ratio above the global
+    // collateralization ratio.
     function _checkCollateralization(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
         private
         view
