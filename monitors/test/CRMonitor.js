@@ -145,10 +145,23 @@ contract("CRMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
     assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `walletMonitorObject`
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${monitoredTrader}`)); // liquidator address
 
-    // The event should be sent exactly once if there is no crossing of the threshold line.
+    // The event should be sent exactly once if there is no crossing of the threshold line. At a price of 1.2
+    // monitoredTrader's CR = 250/(100*1.2) = 2.083 and monitoredSponsor's CR = 300/(100*1.2) = 2.5
     await empClient._update();
-    await crMonitor.checkWalletCrRatio(time => toWei("1.25"));
+    await crMonitor.checkWalletCrRatio(time => toWei("1.2"));
     assert.equal(spy.callCount, 1);
+
+    // Crossing the price threshold for both sponsors should emit exactly 2 new messages. At a price of 2.1
+    // monitoredTrader's CR = 250/(100*2.1) = 1.1904 and monitoredSponsor's CR = 300/(100*2.1) = 1.42857
+    await empClient._update();
+    await crMonitor.checkWalletCrRatio(time => toWei("2.1"));
+    assert.equal(spy.callCount, 3);
+
+    // A second check below this threshold should not trigger any new events
+    await empClient._update();
+    await crMonitor.checkWalletCrRatio(time => toWei("2.1"));
+    assert.equal(spy.callCount, 3);
   });
 });
