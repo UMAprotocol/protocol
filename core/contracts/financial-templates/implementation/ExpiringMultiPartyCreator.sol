@@ -114,7 +114,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      * @param params is a `ConstructorParams` object from ExpiringMultiParty.
      * @return address of the deployed ExpiringMultiParty contract
      */
-    function createExpiringMultiParty(Params memory params) public returns (address) {
+    function createExpiringMultiParty(Params memory params) public nonReentrant() returns (address) {
         ExpiringMultiParty derivative = new ExpiringMultiParty(_convertParams(params));
 
         address[] memory parties = new address[](1);
@@ -139,7 +139,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // Converts createExpiringMultiParty params to ExpiringMultiParty constructor params.
     function _convertParams(Params memory params)
         private
-        nonReentrant()
         returns (ExpiringMultiParty.ConstructorParams memory constructorParams)
     {
         // Known from creator deployment.
