@@ -1,7 +1,7 @@
 // Libraries and helpers
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
 const truffleAssert = require("truffle-assertions");
-const { PositionStatesEnum } = require("../../../common/Enums");
+const { PositionStatesEnum, RegistryRolesEnum } = require("../../../common/Enums");
 const { interfaceName } = require("../../utils/Constants.js");
 
 // Contracts to test
@@ -16,6 +16,7 @@ const MarginToken = artifacts.require("ExpandedERC20");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
+const Registry = artifacts.require("Registry");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
 
@@ -35,6 +36,7 @@ contract("PricelessPositionManager", function(accounts) {
   let mockOracle;
   let financialContractsAdmin;
   let timer;
+  let registry;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -116,6 +118,15 @@ contract("PricelessPositionManager", function(accounts) {
       { from: contractDeployer }
     );
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
+
+    // Need to register the contract so that it can add/remove party members, even though
+    // registration is not required to make price requests specifically to the MockOracle
+    // (n.b. it is required to be registered to make price requests to the production Oracle).
+    registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractDeployer, {
+      from: contractDeployer
+    });
+    await registry.registerContract([contractDeployer], pricelessPositionManager.address, { from: contractDeployer });
   });
 
   it("Valid constructor params", async function() {
@@ -209,6 +220,7 @@ contract("PricelessPositionManager", function(accounts) {
       Timer.address, // _timerAddress
       { from: contractDeployer }
     );
+    await registry.registerContract([contractDeployer], pricelessPositionManager.address, { from: contractDeployer });
 
     const initialSponsorTokens = toWei("100");
     const initialSponsorCollateral = toWei("150");
@@ -228,6 +240,10 @@ contract("PricelessPositionManager", function(accounts) {
   });
 
   it("Lifecycle", async function() {
+    // Non-sponsors begin unregistered as participants of the EMP.
+    assert.isFalse(await registry.isPartyMemberOfContract(other, pricelessPositionManager.address));
+    assert.isFalse(await registry.isPartyMemberOfContract(sponsor, pricelessPositionManager.address));
+
     // Create an initial large and lowly collateralized pricelessPositionManager.
     await collateral.approve(pricelessPositionManager.address, initialPositionCollateral, { from: other });
     await pricelessPositionManager.create(
@@ -235,6 +251,7 @@ contract("PricelessPositionManager", function(accounts) {
       { rawValue: initialPositionTokens.toString() },
       { from: other }
     );
+    assert.isTrue(await registry.isPartyMemberOfContract(other, pricelessPositionManager.address));
 
     // Create the initial pricelessPositionManager.
     const createTokens = toWei("100");
@@ -263,6 +280,7 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(createResult, "NewSponsor", ev => {
       return ev.sponsor == sponsor;
     });
+    assert.isTrue(await registry.isPartyMemberOfContract(sponsor, pricelessPositionManager.address));
 
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
@@ -346,6 +364,7 @@ contract("PricelessPositionManager", function(accounts) {
     truffleAssert.eventEmitted(redemptionResult, "EndedSponsor", ev => {
       return ev.sponsor == sponsor;
     });
+    assert.isFalse(await registry.isPartyMemberOfContract(sponsor, pricelessPositionManager.address));
 
     sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
@@ -592,6 +611,7 @@ contract("PricelessPositionManager", function(accounts) {
       initialPositionCollateral.toString()
     );
     assert.equal((await pricelessPositionManager.positions(tokenHolder)).rawCollateral.toString(), "0");
+    assert.isTrue(await registry.isPartyMemberOfContract(sponsor, pricelessPositionManager.address));
 
     // Cannot execute or cancel a transfer before requesting one.
     assert(await didContractThrow(pricelessPositionManager.transferPassedRequest(other, { from: sponsor })));
@@ -642,6 +662,8 @@ contract("PricelessPositionManager", function(accounts) {
     });
     assert.equal((await pricelessPositionManager.positions(sponsor)).rawCollateral.toString(), toWei("0"));
     assert.equal((await pricelessPositionManager.getCollateral(tokenHolder)).toString(), amountCollateral);
+    assert.isTrue(await registry.isPartyMemberOfContract(tokenHolder, pricelessPositionManager.address));
+    assert.isFalse(await registry.isPartyMemberOfContract(sponsor, pricelessPositionManager.address));
 
     // Check that transfer-request related parameters in pricelessPositionManager are reset.
     const positionData = await pricelessPositionManager.positions(sponsor);
@@ -698,6 +720,7 @@ contract("PricelessPositionManager", function(accounts) {
     const numTokens = toWei("100");
     const amountCollateral = toWei("150");
     await pricelessPositionManager.create({ rawValue: amountCollateral }, { rawValue: numTokens }, { from: sponsor });
+    assert.isTrue(await registry.isPartyMemberOfContract(sponsor, pricelessPositionManager.address));
 
     // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
     const tokenHolderTokens = toWei("50");
@@ -803,6 +826,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(sponsorFinalSynthetic, 0);
 
     // Last check is that after redemption the position in the positions mapping has been removed.
+    assert.isFalse(await registry.isPartyMemberOfContract(sponsor, pricelessPositionManager.address));
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
@@ -1519,6 +1543,9 @@ contract("PricelessPositionManager", function(accounts) {
       Timer.address, // _timerAddress
       { from: contractDeployer }
     );
+    await registry.registerContract([contractDeployer], customPricelessPositionManager.address, {
+      from: contractDeployer
+    });
     tokenCurrency = await SyntheticToken.at(await customPricelessPositionManager.tokenCurrency());
     // Create the initial customPricelessPositionManager position. 100 synthetics backed by 150 collat
     const createTokens = toWei("100"); // the tokens we want to create are still delimited by 1e18

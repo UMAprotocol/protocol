@@ -191,6 +191,8 @@ contract Registry is RegistryInterface, MultiRole {
      ****************************************/
 
     function _addPartyToContract(address party, address contractAddress) internal {
+        // TODO: Instead of reverting, this method just return early if the `party` is already a member of the contract.
+        // Because of the revert, calling contracts need to perform an extra check that the `party` is not already registered.
         require(!isPartyMemberOfContract(party, contractAddress), "Can only register a party once");
         uint256 contractIndex = partyMap[party].contracts.length;
         partyMap[party].contracts.push(contractAddress);

@@ -2,9 +2,9 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { RegistryRolesEnum } = require("../../common/Enums.js");
 
 const { ExpiringMultiPartyEventClient } = require("../ExpiringMultiPartyEventClient");
-const { delay } = require("../delay");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -13,6 +13,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Registry = artifacts.require("Registry");
 
 contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const tokenSponsor = accounts[0];
@@ -20,14 +21,13 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const sponsor1 = accounts[2];
   const sponsor2 = accounts[3];
 
-  const zeroAddress = "0x0000000000000000000000000000000000000000";
-
   // Contracts
   let collateralToken;
   let emp;
   let syntheticToken;
   let mockOracle;
   let identifierWhitelist;
+  let registry;
 
   // Test object for EMP event client
   let client;
@@ -76,6 +76,13 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
+
+    // Need to register the contract so that it can add/remove party members, even though
+    // registration is not required to make price requests specifically to the MockOracle
+    // (n.b. it is required to be registered to make price requests to the production Oracle).
+    registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, tokenSponsor);
+    await registry.registerContract([tokenSponsor], emp.address);
 
     // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
     const dummyLogger = winston.createLogger({

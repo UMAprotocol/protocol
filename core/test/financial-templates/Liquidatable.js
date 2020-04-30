@@ -1,6 +1,6 @@
 // Helper scripts
 const { didContractThrow } = require("../../../common/SolidityTestUtils.js");
-const { LiquidationStatesEnum } = require("../../../common/Enums");
+const { LiquidationStatesEnum, RegistryRolesEnum } = require("../../../common/Enums");
 const { interfaceName } = require("../../utils/Constants.js");
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, hexToUtf8, toBN } = web3.utils;
@@ -20,6 +20,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Timer = artifacts.require("Timer");
+const Registry = artifacts.require("Registry");
 
 contract("Liquidatable", function(accounts) {
   // Roles
@@ -80,6 +81,7 @@ contract("Liquidatable", function(accounts) {
   let liquidatableParameters;
   let store;
   let financialContractsAdmin;
+  let registry;
 
   // Basic liquidation params
   const liquidationParams = {
@@ -169,6 +171,15 @@ contract("Liquidatable", function(accounts) {
 
     // Get financialContractsAdmin
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
+
+    // Need to register the contract so that it can add/remove party members, even though
+    // registration is not required to make price requests specifically to the MockOracle
+    // (n.b. it is required to be registered to make price requests to the production Oracle).
+    registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractDeployer, {
+      from: contractDeployer
+    });
+    await registry.registerContract([contractDeployer], liquidationContract.address, { from: contractDeployer });
   });
 
   describe("Attempting to liquidate a position that does not exist", () => {
@@ -385,6 +396,9 @@ contract("Liquidatable", function(accounts) {
       assert.equal(expectedLockedCollateral.toString(), liquidation.lockedCollateral.toString());
       assert.equal(expectedLiquidatedTokens.toString(), tokensLiquidated.toString());
 
+      // Because this is only a partial liquidation, the sponsor is still registered as a financial contract participant.
+      assert.isTrue(await registry.isPartyMemberOfContract(sponsor, liquidationContract.address));
+
       // A independent and identical liquidation can be created.
       await liquidationContract.createLiquidation(
         sponsor,
@@ -433,7 +447,7 @@ contract("Liquidatable", function(accounts) {
     });
   });
 
-  describe("Liquidation has been created", () => {
+  describe("Full liquidation has been created", () => {
     beforeEach(async () => {
       // Create position
       await liquidationContract.create(
@@ -485,6 +499,9 @@ contract("Liquidatable", function(accounts) {
         assert.equal(newLiquidation.disputer, zeroAddress);
         assert.equal(newLiquidation.liquidationTime.toString(), liquidationTime.toString());
         assert.equal(newLiquidation.settlementPrice.toString(), "0");
+
+        // The position is fully liquidated so the sponsor is unregistered.
+        assert.isFalse(await registry.isPartyMemberOfContract(sponsor, liquidationContract.address));
       });
       it("Liquidation does not exist", async () => {
         assert(await didContractThrow(liquidationContract.liquidations(sponsor, liquidationParams.falseLiquidationId)));
@@ -1148,6 +1165,7 @@ contract("Liquidatable", function(accounts) {
 
       // Create  Liquidation
       const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+      await registry.registerContract([contractDeployer], edgeLiquidationContract.address, { from: contractDeployer });
       // Get newly created synthetic token
       const edgeSyntheticToken = await Token.at(await edgeLiquidationContract.tokenCurrency());
       // Reset start time signifying the beginning of the first liquidation
@@ -1369,6 +1387,7 @@ contract("Liquidatable", function(accounts) {
       USDCLiquidationContract = await Liquidatable.new(USDCLiquidatableParameters, {
         from: contractDeployer
       });
+      await registry.registerContract([contractDeployer], USDCLiquidationContract.address, { from: contractDeployer });
 
       // Get newly created synthetic token and set it as the global synthetic token.
       syntheticToken = await Token.at(await USDCLiquidationContract.tokenCurrency());
@@ -1594,6 +1613,7 @@ contract("Liquidatable", function(accounts) {
       // Deploy a new Liquidation contract with no minimum sponsor token size.
       liquidatableParameters.minSponsorTokens = { rawValue: "0" };
       _liquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
+      await registry.registerContract([contractDeployer], _liquidationContract.address, { from: contractDeployer });
       syntheticToken = await Token.at(await _liquidationContract.tokenCurrency());
 
       // Create a new position with:

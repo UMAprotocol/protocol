@@ -9,6 +9,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
+import "../../oracle/interfaces/RegistryInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
@@ -191,6 +192,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice After a passed transfer request (i.e., by a call to `requestTransfer` and waiting
      * `withdrawalLiveness`), transfers ownership of the caller's current position to `newSponsorAddress`.
      * @dev Transferring positions can only occur if the recipient does not already have a position.
+     * Registers the new sponsor as a party member of this financial contract and unregisters the old sponsor.
      * @param newSponsorAddress is the address to which the position will be transferred.
      */
     function transferPassedRequest(address newSponsorAddress) public onlyPreExpiration() {
@@ -210,6 +212,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         emit RequestTransferExecuted(msg.sender, newSponsorAddress);
         emit NewSponsor(newSponsorAddress);
+
+        _removePartyFromContract(msg.sender);
+        _addPartyToContract(newSponsorAddress);
     }
 
     /**
@@ -356,7 +361,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @notice Pulls `collateralAmount` into the sponsor's position and mints `numTokens` of `tokenCurrency`.
      * @dev Reverts if minting these tokens would put the position's collateralization ratio below the
      * global collateralization ratio. This contract must be approved to spend at least `collateralAmount` of
-     * `collateralCurrency`.
+     * `collateralCurrency`. Registers any new sponsor as a party member of this financial contract.
      * @param collateralAmount is the number of collateral tokens to collateralize the position with
      * @param numTokens is the number of tokens to mint from the position.
      */
@@ -372,6 +377,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         if (positionData.tokensOutstanding.isEqual(0)) {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens));
             emit NewSponsor(msg.sender);
+            _addPartyToContract(msg.sender);
         }
         _addCollateral(positionData.rawCollateral, collateralAmount);
         positionData.tokensOutstanding = positionData.tokensOutstanding.add(numTokens);
@@ -474,6 +480,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
             // Reset the position state as all the value has been removed after settlement.
             delete positions[msg.sender];
+            _removePartyFromContract(msg.sender);
         }
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
@@ -608,13 +615,25 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         rawTotalPositionCollateral = rawTotalPositionCollateral.sub(remainingRawCollateral);
         totalTokensOutstanding = totalTokensOutstanding.sub(positionToLiquidate.tokensOutstanding);
 
-        // Reset the sponsors position to have zero outstanding and collateral.
+        // Reset the sponsors position to have zero outstanding and collateral,
+        // and unregister the sponsor as a party member of the financial template.
         delete positions[sponsor];
+        _removePartyFromContract(sponsor);
 
         emit EndedSponsor(sponsor);
 
         // Return fee-adjusted amount of collateral deleted from position.
         return startingGlobalCollateral.sub(_getCollateral(rawTotalPositionCollateral));
+    }
+
+    function _addPartyToContract(address party) internal {
+        if (!_getRegistry().isPartyMemberOfContract(party, address(this))) {
+            _getRegistry().addPartyToContract(party);
+        }
+    }
+
+    function _removePartyFromContract(address party) internal {
+        _getRegistry().removePartyFromContract(party);
     }
 
     function _getPositionData(address sponsor)
@@ -632,6 +651,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     function _getOracle() internal view returns (OracleInterface) {
         return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    }
+
+    function _getRegistry() internal view returns (RegistryInterface) {
+        return RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
     }
 
     function _getFinancialContractsAdminAddress() internal view returns (address) {

@@ -15,6 +15,7 @@ const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
 const { interfaceName } = require("../utils/Constants.js");
+const { RegistryRolesEnum } = require("../../common/Enums");
 
 // Contracts to test
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -28,6 +29,7 @@ const SyntheticToken = artifacts.require("SyntheticToken");
 const TokenFactory = artifacts.require("TokenFactory");
 const MockOracle = artifacts.require("MockOracle");
 const Timer = artifacts.require("Timer");
+const Registry = artifacts.require("Registry");
 
 /**
  * @notice Deploys a brand new ExpiringMultiParty contract so that each experiment can run in isolation.
@@ -55,6 +57,7 @@ async function createTestEnvironment() {
   let identifierWhitelist;
   let mockOracle;
   let finder;
+  let registry;
 
   // Initial constant values
   const syntheticName = "UMA test Token";
@@ -109,6 +112,15 @@ async function createTestEnvironment() {
   };
   emp = await ExpiringMultiParty.new(constructorParams, { from: contractDeployer });
   synthetic = await SyntheticToken.at(await emp.tokenCurrency());
+
+  // Need to register the contract so that it can add/remove party members, even though
+  // registration is not required to make price requests specifically to the MockOracle
+  // (n.b. it is required to be registered to make price requests to the production Oracle).
+  registry = await Registry.deployed();
+  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractDeployer, {
+    from: contractDeployer
+  });
+  await registry.registerContract([contractDeployer], emp.address, { from: contractDeployer });
 
   return {
     collateral,

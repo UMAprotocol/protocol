@@ -1,6 +1,7 @@
 const { toWei } = web3.utils;
 
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { RegistryRolesEnum } = require("../../common/Enums.js");
 
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
 const { delay } = require("../delay");
@@ -12,6 +13,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Registry = artifacts.require("Registry");
 
 contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor1 = accounts[0];
@@ -25,6 +27,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   let syntheticToken;
   let mockOracle;
   let identifierWhitelist;
+  let registry;
 
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
     await client.forceUpdate();
@@ -69,6 +72,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     };
 
     emp = await ExpiringMultiParty.new(constructorParams);
+
+    // Need to register the contract so that it can add/remove party members, even though
+    // registration is not required to make price requests specifically to the MockOracle
+    // (n.b. it is required to be registered to make price requests to the production Oracle).
+    registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, sponsor1);
+    await registry.registerContract([sponsor1], emp.address);
+
     client = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });

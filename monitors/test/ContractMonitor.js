@@ -2,6 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { RegistryRolesEnum } = require("../../common/Enums.js");
 
 // Script to test
 const { ContractMonitor } = require("../ContractMonitor");
@@ -20,6 +21,7 @@ const MockOracle = artifacts.require("MockOracle");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const Registry = artifacts.require("Registry");
 
 contract("ContractMonitor.js", function(accounts) {
   const tokenSponsor = accounts[0];
@@ -28,15 +30,13 @@ contract("ContractMonitor.js", function(accounts) {
   const sponsor1 = accounts[3];
   const sponsor2 = accounts[4];
 
-  const zeroAddress = "0x0000000000000000000000000000000000000000";
-
   // Contracts
   let collateralToken;
-  let collateralTokenSymbol;
   let emp;
   let syntheticToken;
   let mockOracle;
   let identifierWhitelist;
+  let registry;
 
   // Test object for EMP event client
   let eventClient;
@@ -93,6 +93,14 @@ contract("ContractMonitor.js", function(accounts) {
     });
 
     emp = await ExpiringMultiParty.new(constructorParams);
+
+    // Need to register the contract so that it can add/remove party members, even though
+    // registration is not required to make price requests specifically to the MockOracle
+    // (n.b. it is required to be registered to make price requests to the production Oracle).
+    registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, tokenSponsor);
+    await registry.registerContract([tokenSponsor], emp.address);
+
     eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
     // accounts[1] is liquidator bot to monitor and accounts[2] is dispute bot to monitor.
     contractMonitor = new ContractMonitor(spyLogger, eventClient, [accounts[1]], [accounts[2]]);

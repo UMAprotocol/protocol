@@ -18,9 +18,6 @@ const { toWei, toBN } = web3.utils;
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 const { interfaceName } = require("../utils/Constants.js");
 
-// Contract to test
-const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
-
 // Other UMA related contracts and mocks
 const Token = artifacts.require("ExpandedERC20");
 const Finder = artifacts.require("Finder");
@@ -28,7 +25,6 @@ const Registry = artifacts.require("Registry");
 const TokenFactory = artifacts.require("TokenFactory");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
 const MockOracle = artifacts.require("MockOracle");
 const Store = artifacts.require("Store");
 const Timer = artifacts.require("Timer");
@@ -43,10 +39,8 @@ contract("IntegrationTest", function(accounts) {
   // Contract variables
   let collateralToken;
   let syntheticToken;
-  let expiringMultiPartyCreator;
   let registry;
   let mockOracle;
-  let collateralTokenWhitelist;
   let expiringMultiParty;
 
   // Re-used variables
@@ -62,18 +56,8 @@ contract("IntegrationTest", function(accounts) {
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
-    registry = await Registry.deployed();
-    expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
-      from: contractCreator
-    });
 
-    collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, {
-      from: contractCreator
-    });
-
-    startingTime = await expiringMultiPartyCreator.getCurrentTime();
+    startingTime = await (await Timer.deployed()).getCurrentTime();
     expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30 * 3)); // Three month in the future
     constructorParams = {
       expirationTimestamp: expirationTime.toString(),
@@ -113,6 +97,14 @@ contract("IntegrationTest", function(accounts) {
     });
 
     expiringMultiParty = await ExpiringMultiParty.new(constructorParams);
+    // Need to register the contract so that it can add/remove party members, even though
+    // registration is not required to make price requests specifically to the MockOracle
+    // (n.b. it is required to be registered to make price requests to the production Oracle).
+    registry = await Registry.deployed();
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractCreator, {
+      from: contractCreator
+    });
+    await registry.registerContract([contractCreator], expiringMultiParty.address, { from: contractCreator });
 
     syntheticToken = await Token.at(await expiringMultiParty.tokenCurrency());
 
