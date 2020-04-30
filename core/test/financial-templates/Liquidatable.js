@@ -702,7 +702,7 @@ contract("Liquidatable", function(accounts) {
 
         // Events should show that the dispute failed.
         truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
-          return !ev.DisputeSucceeded;
+          return !ev.disputeSucceeded;
         });
         const expectedPayout = disputeBond.add(liquidationParams.liquidatedCollateral).add(finalFeeAmount);
         // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
@@ -740,7 +740,7 @@ contract("Liquidatable", function(accounts) {
             ev.liquidator == liquidator &&
             ev.disputer == disputer &&
             ev.liquidationId == 0 &&
-            ev.DisputeSucceeded
+            ev.disputeSucceeded
           );
         });
 
@@ -1197,7 +1197,7 @@ contract("Liquidatable", function(accounts) {
       const expectedPaymentSponsor = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
-    it("Requested withdrawal amount is greater than total position collateral, liquidated collateral should be 0", async () => {
+    it("Requested withdrawal amount is equal to the total position collateral, liquidated collateral should be 0", async () => {
       // Create position.
       await liquidationContract.create(
         { rawValue: amountOfCollateral.toString() },
@@ -1205,10 +1205,7 @@ contract("Liquidatable", function(accounts) {
         { from: sponsor }
       );
       // Request withdrawal amount > collateral
-      await liquidationContract.requestWithdrawal(
-        { rawValue: amountOfCollateral.add(toBN("1")).toString() },
-        { from: sponsor }
-      );
+      await liquidationContract.requestWithdrawal({ rawValue: amountOfCollateral.toString() }, { from: sponsor });
       // Transfer synthetic tokens to a liquidator
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
       // Liquidator believes the price of collateral per synthetic to be 1.5 and is liquidating the full token outstanding amount.
