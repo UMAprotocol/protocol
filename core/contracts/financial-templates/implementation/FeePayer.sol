@@ -3,7 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "../../common/implementation/ReentrancyGuard.sol";
+import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
@@ -17,7 +17,7 @@ import "../../oracle/implementation/Constants.sol";
  * contract is abstract as each derived contract that inherits `FeePayer` must implement `pfc()`.
  */
 
-abstract contract FeePayer is Testable, ReentrancyGuard {
+abstract contract FeePayer is Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;

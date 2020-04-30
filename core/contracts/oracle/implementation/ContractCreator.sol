@@ -1,6 +1,6 @@
 pragma solidity ^0.6.0;
 
-import "../../common/implementation/ReentrancyGuard.sol";
+import "../../common/implementation/Lockable.sol";
 import "../interfaces/FinderInterface.sol";
 import "./Registry.sol";
 import "./Constants.sol";
@@ -9,7 +9,7 @@ import "./Constants.sol";
 /**
  * @title Base contract for all financial contract creators
  */
-abstract contract ContractCreator is ReentrancyGuard {
+abstract contract ContractCreator is Lockable {
     address internal finderAddress;
 
     constructor(address _finderAddress) public {

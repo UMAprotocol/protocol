@@ -2,14 +2,14 @@ pragma solidity ^0.6.0;
 
 import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
-import "../../common/implementation/ReentrancyGuard.sol";
+import "../../common/implementation/Lockable.sol";
 
 
 /**
  * @title Factory for creating new mintable and burnable tokens.
  */
 
-contract TokenFactory is ReentrancyGuard {
+contract TokenFactory is Lockable {
     /**
      * @notice Create a new token and return it to the caller.
      * @dev The caller will become the only minter and burner and the new owner capable of assigning the roles.
