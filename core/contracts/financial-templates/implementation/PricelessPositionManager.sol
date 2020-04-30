@@ -686,7 +686,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position.
-    // This function is similar to the _decrementCollateralBalances function except this function checks position GCR between the decrements. This ensures that collateral removal will not leave the position undercollateralized.
+    // This function is similar to the _decrementCollateralBalances function except this function checks position GCR
+    // between the decrements. This ensures that collateral removal will not leave the position undercollateralized.
     function _decrementCollateralBalancesCheckGCR(
         PositionData storage positionData,
         FixedPoint.Unsigned memory collateralAmount
