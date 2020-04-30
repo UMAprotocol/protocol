@@ -52,7 +52,7 @@ class CRMonitor {
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
     // If it is, then send an alert of formatted markdown text.
     for (let wallet of this.walletsToMonitor) {
-      const [shouldPush, crRatio] = this.shouldPushWalletNotification(wallet, priceFeed);
+      const [shouldPush, crRatio] = this._shouldPushWalletNotification(wallet, priceFeed);
       if (shouldPush) {
         // Sample message:
         // Risk alert: [Tracked wallet name] has fallen below [threshold]%.
@@ -79,7 +79,7 @@ class CRMonitor {
     }
   };
 
-  getPositionInformation = address => {
+  _getPositionInformation = address => {
     const positionInfo = this.empClient.getAllPositions().filter(position => position.sponsor == address);
     if (positionInfo.length == 0) {
       return null;
@@ -87,8 +87,8 @@ class CRMonitor {
     } else return positionInfo[0];
   };
 
-  shouldPushWalletNotification(wallet, priceFeed) {
-    const positionInformation = this.getPositionInformation(wallet.address);
+  _shouldPushWalletNotification(wallet, priceFeed) {
+    const positionInformation = this._getPositionInformation(wallet.address);
     if (positionInformation == null) {
       // There is no position information for the given wallet.
       return [false, 0];
@@ -103,13 +103,13 @@ class CRMonitor {
     }
 
     // If CR = null then there are no tokens outstanding and so dont push a notification
-    const positionCR = this.calculatePositionCRPercent(collateral, tokensOutstanding, priceFeed);
+    const positionCR = this._calculatePositionCRPercent(collateral, tokensOutstanding, priceFeed);
     if (positionCR == null) {
       return [false, 0];
     }
 
     let shouldPushWalletNotification = false;
-    if (this.ltThreshold(positionCR, this.web3.utils.toWei(wallet.crAlert.toString()))) {
+    if (this._ltThreshold(positionCR, this.web3.utils.toWei(wallet.crAlert.toString()))) {
       if (!this.walletsAlerted[wallet.address].crAlert) {
         shouldPushWalletNotification = true;
       }
@@ -120,27 +120,8 @@ class CRMonitor {
     return [shouldPushWalletNotification, positionCR];
   }
 
-  createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
-    return (
-      "*" +
-      bot.name +
-      "* (" +
-      createEtherscanLinkMarkdown(this.web3, bot.address) +
-      ") " +
-      tokenName +
-      " balance is less than " +
-      this.formatDecimalString(threshold) +
-      " " +
-      tokenSymbol +
-      ". Current balance is " +
-      this.formatDecimalString(tokenBalance) +
-      " " +
-      tokenSymbol
-    );
-  };
-
   // Checks if a big number value is below a given threshold.
-  ltThreshold(value, threshold) {
+  _ltThreshold(value, threshold) {
     // If the price has not resolved yet then return false.
     if (value == null) {
       return false;
@@ -151,7 +132,7 @@ class CRMonitor {
   // TODO: refactor this out into a selerate utility function
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
+  _calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
     if (collateral == 0) {
       return 0;
     }
