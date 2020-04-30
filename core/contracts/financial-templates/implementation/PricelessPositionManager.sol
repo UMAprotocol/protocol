@@ -618,13 +618,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         PositionData storage positionData,
         FixedPoint.Unsigned memory collateralAmount
     ) internal returns (FixedPoint.Unsigned memory) {
-        _addCollateral(rawTotalPositionCollateral, collateralAmount);
-        return _addCollateral(positionData.rawCollateral, collateralAmount);
+        _addCollateral(positionData.rawCollateral, collateralAmount);
+        return _addCollateral(rawTotalPositionCollateral, collateralAmount);
     }
 
-    // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position. We elect to return the amount that the global collateral is decreased by, rather than
-    // the individual position's collateral, because we need to maintain the invariant that the global collateral is
-    // always <= the collateral owned by the contract to avoid reverts on withdrawals. The amount returned = amount withdrawn.
+    // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the
+    // position. We elect to return the amount that the global collateral is decreased by, rather than the individual
+    // position's collateral, because we need to maintain the invariant that the global collateral is always
+    // <= the collateral owned by the contract to avoid reverts on withdrawals. The amount returned = amount withdrawn.
     function _decrementCollateralBalances(
         PositionData storage positionData,
         FixedPoint.Unsigned memory collateralAmount
