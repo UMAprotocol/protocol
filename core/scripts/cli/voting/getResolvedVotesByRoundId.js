@@ -37,12 +37,12 @@ const getResolvedVotesByRound = async (web3, votingContract, account) => {
   // Now filter resolved prices by the voter participation
   if (Object.keys(roundIds).length > 0) {
     const resolvedPrices = await votingContract.getPastEvents("PriceResolved", {
-      filter: { resolutionRoundId: Object.keys(roundIds) },
+      filter: { roundId: Object.keys(roundIds) },
       fromBlock: 0
     });
 
     resolvedPrices.forEach(price => {
-      const roundId = price.args.resolutionRoundId;
+      const roundId = price.args.roundId;
       const resolvedPrice = {
         roundId: roundId.toString(),
         identifier: web3.utils.hexToUtf8(price.args.identifier),

@@ -46,7 +46,7 @@ function useRetrieveRewardsTxn(retrievedRewardsEvents, revealedVoteEvents, price
     for (const event of priceResolvedEvents) {
       const voteState = getVoteState(event.returnValues.identifier, event.returnValues.time);
 
-      voteState.priceResolutionRound = event.returnValues.resolutionRoundId.toString();
+      voteState.priceResolutionRound = event.returnValues.roundId.toString();
     }
 
     // Since this loop is the last one, we can use the state to determine if this identifer, time, roundId combo
@@ -142,7 +142,7 @@ function RetrieveRewards({ votingAccount }) {
     "Voting",
     "PriceResolved",
     useMemo(() => {
-      return { filter: { resolutionRoundId: roundIds }, fromBlock: 0 };
+      return { filter: { roundId: roundIds }, fromBlock: 0 };
     }, [roundIds])
   );
 

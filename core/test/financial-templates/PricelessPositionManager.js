@@ -34,6 +34,7 @@ contract("PricelessPositionManager", function(accounts) {
   let identifierWhitelist;
   let mockOracle;
   let financialContractsAdmin;
+  let timer;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -80,7 +81,7 @@ contract("PricelessPositionManager", function(accounts) {
 
   beforeEach(async function() {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
-    const timer = await Timer.deployed();
+    timer = await Timer.deployed();
     await timer.setCurrentTime(startTimestamp);
 
     // Create identifier whitelist and register the price tracking ticker with it.
@@ -117,6 +118,46 @@ contract("PricelessPositionManager", function(accounts) {
     tokenCurrency = await SyntheticToken.at(await pricelessPositionManager.tokenCurrency());
   });
 
+  it("Valid constructor params", async function() {
+    // Expiration timestamp must be greater than contract current time.
+    assert(
+      await didContractThrow(
+        PricelessPositionManager.new(
+          startTimestamp, // _expirationTimestamp
+          withdrawalLiveness, // _withdrawalLiveness
+          collateral.address, // _collateralAddress
+          Finder.address, // _finderAddress
+          priceFeedIdentifier, // _priceFeedIdentifier
+          syntheticName, // _syntheticName
+          syntheticSymbol, // _syntheticSymbol
+          TokenFactory.address, // _tokenFactoryAddress
+          { rawValue: minSponsorTokens }, // _minSponsorTokens
+          Timer.address, // _timerAddress
+          { from: contractDeployer }
+        )
+      )
+    );
+
+    // Pricefeed identifier must be whitelisted.
+    assert(
+      await didContractThrow(
+        PricelessPositionManager.new(
+          expirationTimestamp, // _expirationTimestamp
+          withdrawalLiveness, // _withdrawalLiveness
+          collateral.address, // _collateralAddress
+          Finder.address, // _finderAddress
+          web3.utils.utf8ToHex("UNREGISTERED"), // _priceFeedIdentifier
+          syntheticName, // _syntheticName
+          syntheticSymbol, // _syntheticSymbol
+          TokenFactory.address, // _tokenFactoryAddress
+          { rawValue: minSponsorTokens }, // _minSponsorTokens
+          Timer.address, // _timerAddress
+          { from: contractDeployer }
+        )
+      )
+    );
+  });
+
   it("Correct deployment and variable assignment", async function() {
     // PricelessPosition variables
     assert.equal(await pricelessPositionManager.expirationTimestamp(), expirationTimestamp);
@@ -145,6 +186,42 @@ contract("PricelessPositionManager", function(accounts) {
           { rawValue: minSponsorTokens }, // _minSponsorTokens (unchanged)
           { from: contractDeployer }
         )
+      )
+    );
+  });
+
+  it("Withdrawal liveness overflow", async function() {
+    // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
+    const largeLiveness = toBN(2)
+      .pow(toBN(256))
+      .subn(10)
+      .toString();
+    pricelessPositionManager = await PricelessPositionManager.new(
+      expirationTimestamp, // _expirationTimestamp
+      largeLiveness.toString(), // _withdrawalLiveness
+      collateral.address, // _collateralAddress
+      Finder.address, // _finderAddress
+      priceFeedIdentifier, // _priceFeedIdentifier
+      syntheticName, // _syntheticName
+      syntheticSymbol, // _syntheticSymbol
+      TokenFactory.address, // _tokenFactoryAddress
+      { rawValue: minSponsorTokens }, // _minSponsorTokens
+      Timer.address, // _timerAddress
+      { from: contractDeployer }
+    );
+
+    const initialSponsorTokens = toWei("100");
+    const initialSponsorCollateral = toWei("150");
+    await collateral.approve(pricelessPositionManager.address, initialSponsorCollateral, { from: sponsor });
+    await pricelessPositionManager.create(
+      { rawValue: initialSponsorCollateral },
+      { rawValue: initialSponsorTokens },
+      { from: sponsor }
+    );
+    // Withdrawal requests should fail due to overflow.
+    assert(
+      await didContractThrow(
+        pricelessPositionManager.requestWithdrawal({ rawValue: initialSponsorCollateral }, { from: sponsor })
       )
     );
   });
@@ -196,6 +273,8 @@ contract("PricelessPositionManager", function(accounts) {
       await didContractThrow(pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor }))
     );
     await collateral.approve(pricelessPositionManager.address, depositCollateral, { from: sponsor });
+    // Cannot deposit 0 collateral.
+    assert(await didContractThrow(pricelessPositionManager.deposit({ rawValue: "0" }, { from: sponsor })));
     await pricelessPositionManager.deposit({ rawValue: depositCollateral }, { from: sponsor });
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
@@ -203,6 +282,10 @@ contract("PricelessPositionManager", function(accounts) {
     const withdrawCollateral = toWei("20");
     expectedSponsorCollateral = expectedSponsorCollateral.sub(toBN(withdrawCollateral));
     let sponsorInitialBalance = await collateral.balanceOf(sponsor);
+    // Cannot withdraw 0 collateral.
+    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: "0" }, { from: sponsor })));
+    // Cannot withdraw more than balance. (The position currently has 150 + 50 collateral).
+    assert(await didContractThrow(pricelessPositionManager.withdraw({ rawValue: toWei("201") }, { from: sponsor })));
     await pricelessPositionManager.withdraw({ rawValue: withdrawCollateral }, { from: sponsor });
     let sponsorFinalBalance = await collateral.balanceOf(sponsor);
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), withdrawCollateral);
@@ -319,6 +402,15 @@ contract("PricelessPositionManager", function(accounts) {
       { from: sponsor }
     );
 
+    // Must request greater than 0 and less than full position's collateral.
+    assert(await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: "0" }, { from: sponsor })));
+    assert(
+      await didContractThrow(pricelessPositionManager.requestWithdrawal({ rawValue: toWei("151") }, { from: sponsor }))
+    );
+
+    // Cannot execute withdrawal request before a request is made.
+    assert(await didContractThrow(pricelessPositionManager.withdrawPassedRequest({ from: sponsor })));
+
     // Request withdrawal. Check event is emitted
     const resultRequestWithdrawal = await pricelessPositionManager.requestWithdrawal(
       { rawValue: toWei("100") },
@@ -402,26 +494,30 @@ contract("PricelessPositionManager", function(accounts) {
     // Can't cancel if no withdrawals pending.
     assert(await didContractThrow(pricelessPositionManager.cancelWithdrawal({ from: sponsor })));
 
-    // Request to withdraw more than remaining collateral should result in the amount getting capped to the remaining collateral.
+    // Request to withdraw remaining collateral. Post-fees, this amount should get reduced to the remaining collateral.
     await pricelessPositionManager.requestWithdrawal(
       {
-        rawValue: toBN(toWei("125"))
-          .add(toBN("1"))
-          .toString()
+        rawValue: toWei("125")
       },
       { from: sponsor }
     );
+    // Setting fees to 0.00001 per second will charge (0.00001 * 1000) = 0.01 or 1 % of the collateral.
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.00001") });
     await pricelessPositionManager.setCurrentTime(
       (await pricelessPositionManager.getCurrentTime()).toNumber() + withdrawalLiveness
     );
     resultWithdrawPassedRequest = await pricelessPositionManager.withdrawPassedRequest({ from: sponsor });
     truffleAssert.eventEmitted(resultWithdrawPassedRequest, "RequestWithdrawalExecuted", ev => {
-      return ev.sponsor == sponsor && ev.collateralAmount == toWei("125").toString();
+      return ev.sponsor == sponsor && ev.collateralAmount == toWei("123.75").toString();
     });
-    await checkBalances(toBN(initialSponsorTokens), toBN("0"));
+    // @dev: Can't easily call `checkBalances(initialSponsorTokens, 0)` here because of the fee charged, which is also
+    // charged on the lowly-collateralized collateral (whose sponsor is `other`).
 
     // Contract state should not have changed.
     assert.equal(await pricelessPositionManager.contractState(), PositionStatesEnum.OPEN);
+
+    // Reset store state.
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
   });
 
   it("Global collateralization ratio checks", async function() {
@@ -736,6 +832,12 @@ contract("PricelessPositionManager", function(accounts) {
     let collateralAmount = await pricelessPositionManager.getCollateral(sponsor);
     assert.equal(collateralAmount.rawValue.toString(), toWei("0.99"));
     assert.equal((await collateral.balanceOf(store.address)).toString(), expectedStoreBalance.toString());
+
+    // Calling `payFees()` more than once in the same block does not emit a RegularFeesPaid event.
+    const feesPaidRepeat = await payFees.call();
+    assert.equal(feesPaidRepeat.toString(), "0");
+    const payFeesRepeatResult = await payFees();
+    truffleAssert.eventNotEmitted(payFeesRepeatResult, "RegularFeesPaid");
 
     // Ensure that fees are not applied to new collateral.
     // TODO: value chosen specifically to avoid rounding errors -- see #873.

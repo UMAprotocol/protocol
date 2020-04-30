@@ -47,9 +47,11 @@ run_tests $PROTOCOL_DIR/core
 
 # Hacky way of running truffle tests outside of core.
 cd $PROTOCOL_DIR/core
-$(npm bin)/truffle test ../financial-templates-lib/test/*.js --network ci
-$(npm bin)/truffle test ../liquidator/test/*.js --network ci
-$(npm bin)/truffle test ../disputer/test/*.js --network ci
+
+$(npm bin)/truffle test $(find ../financial-templates-lib/test -name '*.js') --network ci
+$(npm bin)/truffle test $(find ../liquidator/test -name '*.js') --network ci
+$(npm bin)/truffle test $(find ../disputer/test -name '*.js') --network ci
+$(npm bin)/truffle test $(find ../monitors/test -name '*.js') --network ci
 
 # Check the Kovan deployment.
 check_deployment $PROTOCOL_DIR/core 4 rinkeby_mnemonic

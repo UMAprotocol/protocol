@@ -15,7 +15,7 @@ contract("ExpiringMultiParty", function(accounts) {
     const collateralToken = await Token.new("UMA", "UMA", 18, { from: accounts[0] });
 
     const constructorParams = {
-      expirationTimestamp: "1234567890",
+      expirationTimestamp: (Math.round(Date.now() / 1000) + 1000).toString(),
       withdrawalLiveness: "1000",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,

@@ -13,7 +13,9 @@ We assume that you have followed the [Prerequisites](../../synthetic_tokens/tuto
 ```sh
 npm link
 ```
+
 OR
+
 ```sh
 npm install -g ./
 ```
@@ -27,14 +29,19 @@ uma --network <provider>
 # Providers
 
 We strongly recommend using a non-Metamask provider and prefer the "NETWORK_privatekey" option. For more on the specific issues that using a Metamask provider opens, see [Known Bugs](#known-bugs). Storing a private key in an environment variable is a safe compromise between convenience and security provided your local machine is not compromised. To set an environment variable, run:
+
 ```sh
 export ENV_VARIABLE_NAME="VALUE"
 ```
+
 To unset an environment variable, run:
+
 ```sh
 unset ENV_VARIABLE_NAME
 ```
+
 And to print out your environment variables, run:
+
 ```sh
 printenv
 ```
@@ -73,14 +80,15 @@ uma --network metamask
 
 # Features
 
-After starting the CLI tool, a menu will appear. There will always be options "help" (to print out a list of commands) and "exit/back" (quit the tool or go back to the previous menu). 
+After starting the CLI tool, a menu will appear. There will always be options "help" (to print out a list of commands) and "exit/back" (quit the tool or go back to the previous menu).
 
 ## Modules
 
 Selecting these lead to further menus with relevant actions:
-- *Wallet*: View token balances for default account, from which you can vote
-- *Vote*: Commit and reveal votes, retrieve rewards, and view results of previous votes.
-- *Admin*: Vote on system administrator proposals
+
+- _Wallet_: View token balances for default account, from which you can vote
+- _Vote_: Commit and reveal votes, retrieve rewards, and view results of previous votes.
+- _Admin_: Vote on system administrator proposals
 
 # Known Bugs:
 

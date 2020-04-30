@@ -36,7 +36,7 @@ async function run(price, address, shouldPoll) {
 
   // Client and liquidator bot
   const empEventClient = new ExpiringMultiPartyEventClient(ExpiringMultiParty.abi, web3, emp.address, 10);
-  const contractMonitor = new ContractMonitor(empEventClient, [accounts[0]], [accounts[0]]);
+  const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]]);
 
   while (true) {
     try {
