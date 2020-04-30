@@ -16,7 +16,7 @@ const transfer = async (web3, emp) => {
       name: "confirm"
     });
     if (confirmation["confirm"]) {
-      await submitTransaction(web3, async () => await emp.cancelTransfer(), "Cancelling pending transfer");
+      await submitTransaction(web3, async () => await emp.cancelTransferPosition(), "Cancelling pending transfer");
     }
   };
 
@@ -42,21 +42,21 @@ const transfer = async (web3, emp) => {
       name: "confirm"
     });
     if (confirmation["confirm"]) {
-      await emp.transferPassedRequest(input["address"]);
+      await emp.transferPositionPassedRequest(input["address"]);
     }
   };
 
   // First check if user has a transfer request pending.
-  const transferRequestPassedTimestamp = position.transferRequestPassTimestamp;
-  if (transferRequestPassedTimestamp.toString() !== "0") {
+  const transferPositionRequestPassedTimestamp = position.transferPositionRequestPassTimestamp;
+  if (transferPositionRequestPassedTimestamp.toString() !== "0") {
     const currentTime = await emp.getCurrentTime();
 
     // Get current contract time and transfer request expiration time.
     const currentTimeReadable = new Date(Number(currentTime.toString()) * 1000);
-    const expirationTimeReadable = new Date(Number(transferRequestPassedTimestamp.toString()) * 1000);
+    const expirationTimeReadable = new Date(Number(transferPositionRequestPassedTimestamp.toString()) * 1000);
 
     // Transfer request is still pending. User can cancel transfer.
-    if (toBN(transferRequestPassedTimestamp.toString()).gt(toBN(currentTime.toString()))) {
+    if (toBN(transferPositionRequestPassedTimestamp.toString()).gt(toBN(currentTime.toString()))) {
       console.log(`You have a transfer request that is pending until ${expirationTimeReadable}.`);
       console.log(`The current contract time is ${currentTimeReadable}.`);
       const prompt = {
@@ -125,14 +125,14 @@ const transfer = async (web3, emp) => {
       `You must request a transfer to change the sponsor address of the position. The request takes ${transferLivenessInMinutes} minutes to process. Once the request is processed, you can specify the new sponsor address. You can also cancel your transfer at any time.`
     );
 
-    // No transfers can be processed instantly, call `requestTransfer()`
+    // No transfers can be processed instantly, call `requestTransferPosition()`
     const confirmation = await inquirer.prompt({
       type: "confirm",
       message: "Continue?",
       name: "confirm"
     });
     if (confirmation["confirm"]) {
-      await submitTransaction(web3, async () => await emp.requestTransfer(), "Requesting transfer");
+      await submitTransaction(web3, async () => await emp.requestTransferPosition(), "Requesting transfer");
       console.log(
         `Transfer requested. Come back in ${transferLivenessInMinutes} minutes to execute your transfer to another sponsor address.`
       );

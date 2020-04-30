@@ -29,7 +29,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
         "Tokens you've minted": fromWei(position.tokensOutstanding.toString()),
         "Deposited collateral": fromWei(collateral) + (isWeth ? " ETH" : " " + collateralSymbol),
         "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString()),
-        "Pending transfer request": position.transferRequestPassTimestamp.toString() !== "0" ? "Yes" : "No"
+        "Pending transfer request": position.transferPositionRequestPassTimestamp.toString() !== "0" ? "Yes" : "No"
       });
     }
   };
