@@ -13,17 +13,11 @@ class CRMonitor {
   constructor(logger, expiringMultiPartyClient, walletsToMonitor) {
     this.logger = logger;
 
-    // An array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert`
-    // must be given. Example:
-    // [{ name: "Market Making bot",
-    //    address: "0x12345",
-    //    crAlert: 150 },
-    // ...];
-    this.walletsToMonitor = walletsToMonitor;
-
     this.empClient = expiringMultiPartyClient;
     this.empContract = this.empClient.emp;
     this.web3 = this.empClient.web3;
+
+    this.walletsToMonitor = walletsToMonitor;
 
     // Structure to monitor if a wallet address have been alerted yet for each alert type.
     this.walletsAlerted = {};
