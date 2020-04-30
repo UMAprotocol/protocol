@@ -148,7 +148,7 @@ abstract contract FeePayer is Testable {
             require(_pfc.isGreaterThan(amount));
 
             // Add the adjustment.
-            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(pfc());
+            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(_pfc);
             cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
         }
 
