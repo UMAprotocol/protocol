@@ -62,7 +62,7 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     const constructorParams = {
-      expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(6)).toString(),
+      expirationTimestamp: "1601510400", // 2020-09-01T00:00:00.000Z
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "BTCUSD",

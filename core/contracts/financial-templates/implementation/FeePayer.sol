@@ -110,6 +110,12 @@ abstract contract FeePayer is Testable {
         );
         lastPaymentTime = time;
 
+        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
+
+        totalPaid = regularFee.add(latePenalty);
+        FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
+        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
             store.payOracleFeesErc20(address(collateralCurrency), regularFee);
@@ -119,12 +125,12 @@ abstract contract FeePayer is Testable {
             collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
 
-        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
-
         totalPaid = regularFee.add(latePenalty);
 
         // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
         _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
+
+        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
     }
 
     /**
