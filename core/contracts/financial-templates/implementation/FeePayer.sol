@@ -110,9 +110,15 @@ abstract contract FeePayer is Testable {
         );
         lastPaymentTime = time;
 
+        totalPaid = regularFee.add(latePenalty);
+        if (totalPaid.isEqual(0)) {
+            return totalPaid;
+        }
+        // The amount of fees paid must be < pfc or the fee will be larger than 100%.
+        require(_pfc.isGreaterThan(totalPaid));
+
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
-        totalPaid = regularFee.add(latePenalty);
         FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
         cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
 
