@@ -7,7 +7,7 @@ Owners of UMA tokens have 2 major categories of responsibilities:
 
 A tutorial on how to vote on price requests from CLI is [here](../tutorials/voting_with_uma_tokens.md). Voters can also use the [Voting dApp](https://vote.umaproject.org/).
 
-Voters who participate and vote correctly earn an inflationary reward (currently 0.05% of total network token supply), distributed pro-rata by stake. 
+Voters who participate and vote correctly earn an inflationary reward (currently 0.05% of total network token supply), distributed pro-rata by stake.
 
 ## Voting on price requests
 
