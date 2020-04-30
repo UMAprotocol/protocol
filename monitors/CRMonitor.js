@@ -1,6 +1,15 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
+// This module is used to monitor a list of addresses and their associated Collateralization ratio.
 class CRMonitor {
+  // @param logger an instance of a winston logger used to emit messages, logs and errors.
+  // @param expiringMultiPartyClient is an instance of the expiringMultiPartyClient from the `financial-templates lib
+  // which provides synchronous access to positions opened against an expiring multiparty
+  // @param walletsToMonitor  An array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert` must be given.
+  //  [{ name: "Market Making bot",
+  //    address: "0x12345",
+  //    crAlert: 150 },
+  // ...];
   constructor(logger, expiringMultiPartyClient, walletsToMonitor) {
     this.logger = logger;
 
@@ -30,9 +39,9 @@ class CRMonitor {
     this.syntheticCurrencySymbol = "UMATEST";
   }
 
+  // Queries all monitored wallet ballance for collateralization ratio against a given threshold
   checkWalletCrRatio = async priceFunction => {
-    console.log("CALLING");
-
+    // yield the price feed at the current time.
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime);
     this.logger.debug({
@@ -40,8 +49,8 @@ class CRMonitor {
       message: "Checking wallet collateralization radios",
       price: priceFeed
     });
-    console.log("AFTER CALLING LOGGER");
-
+    // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
+    // If it is, then send an alert of formatted markdown text.
     for (let wallet of this.walletsToMonitor) {
       const [shouldPush, crRatio] = this.shouldPushWalletNotification(wallet, priceFeed);
       if (shouldPush) {

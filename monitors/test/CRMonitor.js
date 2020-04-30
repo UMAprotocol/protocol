@@ -40,6 +40,7 @@ contract("CRMonitor.js", function(accounts) {
   // re-used variables
   let expirationTime;
   let constructorParams;
+  let currentTime;
 
   const spy = sinon.spy();
 
@@ -57,15 +58,15 @@ contract("CRMonitor.js", function(accounts) {
   });
 
   beforeEach(async function() {
-    const currentTime = await mockOracle.getCurrentTime.call();
-    const timer = await Timer.deployed();
+    currentTime = await mockOracle.getCurrentTime.call();
+    timer = await Timer.deployed();
     await timer.setCurrentTime(currentTime.toString());
     expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
 
     constructorParams = {
       isTest: true,
       expirationTimestamp: expirationTime.toString(),
-      withdrawalLiveness: "1000",
+      withdrawalLiveness: "10",
       collateralAddress: collateralToken.address,
       finderAddress: Finder.address,
       tokenFactoryAddress: TokenFactory.address,
@@ -113,7 +114,7 @@ contract("CRMonitor.js", function(accounts) {
     });
 
     //   Bulk mint and approve for all wallets
-    for (let i = 1; i < 5; i++) {
+    for (let i = 1; i < 3; i++) {
       await collateralToken.mint(accounts[i], toWei("100000000"), {
         from: tokenSponsor
       });
@@ -138,7 +139,6 @@ contract("CRMonitor.js", function(accounts) {
 
     // Emits a message if below the CR threshold. At a price of 1.3 only the monitoredTrader should be undercollateralized
     // with a CR of 250 / (100 * 1.3) =1.923 which is below this addresses threshold of 200 and should emit an event.
-
     await empClient._update();
     await crMonitor.checkWalletCrRatio(time => toWei("1.3"));
     assert.equal(spy.callCount, 1);
@@ -163,5 +163,28 @@ contract("CRMonitor.js", function(accounts) {
     await empClient._update();
     await crMonitor.checkWalletCrRatio(time => toWei("2.1"));
     assert.equal(spy.callCount, 3);
+
+    // Reset the price to over collateralized state for both accounts by moving the price into the lower value. This should
+    // not emit any events as both correctly collateralized.
+    await empClient._update();
+    await crMonitor.checkWalletCrRatio(time => toWei("1"));
+    assert.equal(spy.callCount, 3);
+
+    // In addition to the price moving of the synthetic, adding/removing collateral or creating/redeeming debt can also impact
+    // a positions collateralization ratio. If monitoredTrader was to withdraw some collateral after waiting the withdrawal liveness
+    // they can place their position's collateralization under the threshold. Say monitoredTrader withdraws 75 units of collateral.
+    // given price is 1 unit of synthetic for each unit of debt. This would place their position at a collateralization ratio of
+    // 175/(100*1)=1.75. monitoredSponsor is at 300/(100*1)=3.00 which is well over collateralized.
+    await emp.requestWithdrawal({ rawValue: toWei("75") }, { from: monitoredTrader });
+
+    currentTime = await timer.getCurrentTime.call();
+    // advance time after withdrawal liveness
+    await timer.setCurrentTime(currentTime.toNumber() + 11);
+
+    await emp.withdrawPassedRequest({ from: monitoredTrader });
+
+    await empClient._update();
+    await crMonitor.checkWalletCrRatio(time => toWei("1"));
+    assert.equal(spy.callCount, 4);
   });
 });
