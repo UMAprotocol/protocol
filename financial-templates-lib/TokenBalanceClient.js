@@ -1,10 +1,10 @@
 const { delay } = require("./delay");
 
-// A thick client for getting information about an tokenBalances from the chain.
+// A thick client for getting information about an different token Balance from the chain.
 // This client is kept separate from the other clients to only store token balances for a given EMP.
 // After a balance is requested for a given wallet address that wallet is registered within a local
-// array of addresses that the client monitors. This lets bots that use this client retrieve the latest
-// available data from the last update time synchronously.
+// array of addresses that the client monitors. This lets bots that implement the client retrieve the
+// latest available data from the last update synchronously.
 class TokenBalanceClient {
   constructor(logger, ERC20abi, web3, collateralTokenAddress, syntheticTokenAddress, updateThreshold = 60) {
     this.logger = logger;

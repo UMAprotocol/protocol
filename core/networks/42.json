@@ -40,30 +40,6 @@
     "address": "0x957fA30B5c9C5991b62FF71a85C83EDE53Cd50aA"
   },
   {
-    "contractName": "ManualPriceFeed",
-    "address": "0x718549c57a9bca0c94eF7679af2C096B9cE61F67"
-  },
-  {
-    "contractName": "TokenizedDerivativeUtils",
-    "address": "0x384df6EA1a6379418Dc979c1f6546349D32d8CA6"
-  },
-  {
-    "contractName": "AddressWhitelist",
-    "address": "0xf677C4c938FEB42cE0dA50d701F2b2F973bBc42b"
-  },
-  {
-    "contractName": "TokenizedDerivativeCreator",
-    "address": "0xE268Bb04b4903f59c38B7cF024960FB878ed1DE8"
-  },
-  {
-    "contractName": "TestnetERC20",
-    "address": "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99"
-  },
-  {
-    "contractName": "LeveragedReturnCalculator",
-    "address": "0x8D228bcF644af6e5958F8DF0a61Ef66a069D734D"
-  },
-  {
     "contractName": "TokenFactory",
     "address": "0x478049C316035a3Cf0e1d73fdeD5BC45D1CeFde4"
   },

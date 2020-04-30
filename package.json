@@ -6,7 +6,7 @@
     "lint": "npm run eslint && npm run prettier -- --list-different",
     "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
     "eslint": "eslint './**/*.js'",
-    "prettier": "prettier './**/*.js' './**/*.sol'"
+    "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md'"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",

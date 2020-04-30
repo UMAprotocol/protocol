@@ -2,6 +2,7 @@ pragma solidity ^0.6.0;
 
 import "../interfaces/FinderInterface.sol";
 import "./Registry.sol";
+import "./Constants.sol";
 
 
 /**
@@ -16,8 +17,7 @@ abstract contract ContractCreator {
 
     function _registerContract(address[] memory parties, address contractToRegister) internal {
         FinderInterface finder = FinderInterface(finderAddress);
-        bytes32 registryInterface = "Registry";
-        Registry registry = Registry(finder.getImplementationAddress(registryInterface));
+        Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
         registry.registerContract(parties, contractToRegister);
     }
 }

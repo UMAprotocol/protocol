@@ -121,7 +121,7 @@ contract Liquidatable is PricelessPositionManager {
         uint256 liquidationId,
         bool disputeSucceeded
     );
-    event LiquidationWithdrawn(address caller, uint256 withdrawalAmount, Status liquidationStatus);
+    event LiquidationWithdrawn(address indexed caller, uint256 withdrawalAmount, Status indexed liquidationStatus);
 
     /****************************************
      *              MODIFIERS               *
@@ -175,7 +175,8 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * @notice Liquidates the sponsor's position if the caller has enough
      * synthetic tokens to retire the position's outstanding tokens.
-     * @dev This method generates an ID that will uniquely identify liquidation for the sponsor.
+     * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
+     * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
      * @param sponsor address to liquidate.
      * @param collateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
@@ -199,7 +200,6 @@ contract Liquidatable is PricelessPositionManager {
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         tokensLiquidated = FixedPoint.min(maxTokensToLiquidate, positionToLiquidate.tokensOutstanding);
-        // TODO: Limit liquidations from being too small or very close to 100% without being exactly 100%.
         FixedPoint.Unsigned memory ratio = tokensLiquidated.div(positionToLiquidate.tokensOutstanding);
 
         // Starting values for the Position being liquidated.
@@ -259,13 +259,6 @@ contract Liquidatable is PricelessPositionManager {
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
 
-        // Destroy tokens
-        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
-        tokenCurrency.burn(tokensLiquidated.rawValue);
-
-        // Pull final fee from liquidator.
-        collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
-
         emit LiquidationCreated(
             sponsor,
             msg.sender,
@@ -274,12 +267,21 @@ contract Liquidatable is PricelessPositionManager {
             lockedCollateral.rawValue,
             liquidatedCollateral.rawValue
         );
+
+        // Destroy tokens
+        tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensLiquidated.rawValue);
+        tokenCurrency.burn(tokensLiquidated.rawValue);
+
+        // Pull final fee from liquidator.
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), finalFeeBond.rawValue);
     }
 
     /**
      * @notice Disputes a liquidation, if the caller has enough collateral to post a dispute bond
      * and pay a fixed final fee charged on each price request.
      * @dev Can only dispute a liquidation before the liquidation expires and if there are no other pending disputes.
+     * This contract must be approved to spend at least the dispute bond amount of `collateralCurrency`. This dispute
+     * bond amount is calculated from `disputeBondPct` times the collateral in the liquidation.
      * @param liquidationId of the disputed liquidation.
      * @param sponsor the address of the sponsor whose liquidation is being disputed.
      */
@@ -297,8 +299,6 @@ contract Liquidatable is PricelessPositionManager {
         );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
-        collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
-
         // Request a price from DVM,
         // Liquidation is pending dispute until DVM returns a price
         disputedLiquidation.state = Status.PendingDispute;
@@ -306,9 +306,6 @@ contract Liquidatable is PricelessPositionManager {
 
         // Enqueue a request with the DVM.
         _requestOraclePrice(disputedLiquidation.liquidationTime);
-
-        // Pay a final fee.
-        _payFinalFees(msg.sender, disputedLiquidation.finalFee);
 
         emit LiquidationDisputed(
             sponsor,
@@ -318,7 +315,12 @@ contract Liquidatable is PricelessPositionManager {
             disputeBondAmount.rawValue
         );
 
-        return disputeBondAmount.add(disputedLiquidation.finalFee);
+        totalPaid = disputeBondAmount.add(disputedLiquidation.finalFee);
+
+        // Pay a final fee.
+        _payFinalFees(msg.sender, disputedLiquidation.finalFee);
+
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
     }
 
     /**
@@ -363,9 +365,9 @@ contract Liquidatable is PricelessPositionManager {
 
         // There are three main outcome states: either the dispute succeeded, failed or was not updated.
         // Based on the state, different parties of a liquidation can withdraw different amounts.
-        // Once a caller has been paid their address is deleted from the struct.
-        // This prevents paying the caller multiple times from the same liquidation.
-        FixedPoint.Unsigned memory withdrawalAmount;
+        // Once a caller has been paid their address deleted from the struct.
+        // This prevents them from being paid multiple from times the same liquidation.
+        FixedPoint.Unsigned memory withdrawalAmount = FixedPoint.fromUnscaledUint(0);
         if (liquidation.state == Status.DisputeSucceeded) {
             // If the dispute is successful then all three users can withdraw from the contract.
             if (msg.sender == liquidation.disputer) {
@@ -417,9 +419,10 @@ contract Liquidatable is PricelessPositionManager {
 
         require(withdrawalAmount.isGreaterThan(0));
         amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
-        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
+
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
     }
 
     /**
