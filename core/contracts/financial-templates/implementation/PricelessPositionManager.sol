@@ -622,21 +622,19 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return _addCollateral(positionData.rawCollateral, collateralAmount);
     }
 
-    // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position.
+    // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position. We elect to return the amount that the global collateral is decreased by, rather than
+    // the individual position's collateral, because we need to maintain the invariant that the global collateral is
+    // always <= the collateral owned by the contract to avoid reverts on withdrawals. The amount returned = amount withdrawn.
     function _decrementCollateralBalances(
         PositionData storage positionData,
         FixedPoint.Unsigned memory collateralAmount
     ) internal returns (FixedPoint.Unsigned memory) {
-        _removeCollateral(rawTotalPositionCollateral, collateralAmount);
-        return _removeCollateral(positionData.rawCollateral, collateralAmount);
+        _removeCollateral(positionData.rawCollateral, collateralAmount);
+        return _removeCollateral(rawTotalPositionCollateral, collateralAmount);
     }
 
     // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the position.
-    // This function is similar to the _decrementCollateralBalances function except this function also checks position
-    // GCR inbetween the decrement action. This ensures that the decrement will not remove collateral such that the position
-    // ends up undercollateralized. We elect to return the amount that the global collateral is decreased by, rather than
-    // the individual position's collateral, because we need to maintain the invariant that the global collateral is
-    // always <= the collateral owned by the contract to avoid reverts on withdrawals. The amount returned = amount withdrawn.
+    // This function is similar to the _decrementCollateralBalances function except this function checks position GCR between the decrements. This ensures that collateral removal will not leave the position undercollateralized.
     function _decrementCollateralBalancesCheckGCR(
         PositionData storage positionData,
         FixedPoint.Unsigned memory collateralAmount
