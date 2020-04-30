@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
+import "../../common/implementation/Lockable.sol";
 import "./ExpiringMultiParty.sol";
 
 
@@ -12,7 +13,7 @@ import "./ExpiringMultiParty.sol";
  * @notice Factory contract to create and register new instances of expiring multiparty contracts.
  * Responsible for constraining the parameters used to construct a new EMP.
  */
-contract ExpiringMultiPartyCreator is ContractCreator, Testable {
+contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
 
     /****************************************
@@ -139,6 +140,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // Converts createExpiringMultiParty params to ExpiringMultiParty constructor params.
     function _convertParams(Params memory params)
         private
+        view
         returns (ExpiringMultiParty.ConstructorParams memory constructorParams)
     {
         // Known from creator deployment.
