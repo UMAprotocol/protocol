@@ -126,12 +126,9 @@ abstract contract FeePayer is Testable {
         }
     }
 
-    /**
-     * @notice Pays UMA DVM final fees to the Store contract.
-     * @dev This is a flat fee charged for each price request.
-     * @param payer address of who is paying the fees.
-     * @param amount the amount of collateral to send as the final fee.
-     */
+    // Pays UMA Oracle final fees of `amount` in `collateralCurrency` to the Store contract. Final fee is a flat fee charged for each price request.
+    // If payer is the contract, adjusts internal bookkeeping variables. If payer is not the contract, pulls in `amount`
+    // of collateral currency.
     function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
         if (amount.isEqual(0)) {
             return;

@@ -706,11 +706,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return uint256(value);
     }
 
-    /**
-     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
-     * unnecessarily increase contract bytecode size.
-     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
-     */
+    // These internal functions are supposed to act identically to modifiers, but re-used modifiers
+    // unnecessarily increase contract bytecode size.
+    // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _onlyOpenState() internal view {
         require(contractState == ContractState.Open);
     }
