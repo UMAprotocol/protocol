@@ -116,8 +116,17 @@ abstract contract FeePayer is Testable {
         if (totalPaid.isEqual(0)) {
             return totalPaid;
         }
-        // The amount of fees paid must be < pfc or the fee will be larger than 100%.
-        require(_pfc.isGreaterThan(totalPaid));
+        // If the effective fees paid as a % of the pfc is > 100%, then reduce it to 100%. The amount that `totalPaid` is greater than `_pfc` is
+        // reduced from the greater component of (regularFees, latePenalty).
+        if (totalPaid.isGreaterThan(_pfc)) {
+            if (regularFee.isGreaterThan(latePenalty)) {
+                regularFee = regularFee.sub((totalPaid.sub(_pfc)));
+            } else {
+                latePenalty = latePenalty.sub((totalPaid.sub(_pfc)));
+            }
+
+            totalPaid = regularFee.add(latePenalty);
+        }
 
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
