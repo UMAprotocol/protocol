@@ -65,7 +65,7 @@ contract("BalanceMonitor.js", function(accounts) {
       }
     ];
 
-    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, accounts[0], botMonitorObject);
+    balanceMonitor = new BalanceMonitor(spyLogger, tokenBalanceClient, botMonitorObject);
 
     // setup the positions to the initial happy state.
     // Liquidator threshold is 10000 for both collateral and synthetic so mint a bit more to start above this
