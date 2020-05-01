@@ -204,7 +204,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // Starting values for the Position being liquidated.
         // If withdrawal request amount is > position's collateral, then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
-        FixedPoint.Unsigned memory startCollateral = _getCollateral(positionToLiquidate.rawCollateral);
+        FixedPoint.Unsigned memory startCollateral = _getFeeAdjustedCollateral(positionToLiquidate.rawCollateral);
         FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = FixedPoint.fromUnscaledUint(0);
         if (positionToLiquidate.withdrawalRequestAmount.isLessThanOrEqual(startCollateral)) {
             startCollateralNetOfWithdrawal = startCollateral.sub(positionToLiquidate.withdrawalRequestAmount);
@@ -246,7 +246,7 @@ contract Liquidatable is PricelessPositionManager {
                 tokensOutstanding: tokensLiquidated,
                 lockedCollateral: lockedCollateral,
                 liquidatedCollateral: liquidatedCollateral,
-                rawUnitCollateral: _convertCollateral(FixedPoint.fromUnscaledUint(1)),
+                rawUnitCollateral: _convertToRawCollateral(FixedPoint.fromUnscaledUint(1)),
                 disputer: address(0),
                 settlementPrice: FixedPoint.fromUnscaledUint(0),
                 finalFee: finalFeeBond
@@ -295,7 +295,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // Multiply by the unit collateral so the dispute bond is a percentage of the locked collateral after fees.
         FixedPoint.Unsigned memory disputeBondAmount = disputedLiquidation.lockedCollateral.mul(disputeBondPct).mul(
-            _getCollateral(disputedLiquidation.rawUnitCollateral)
+            _getFeeAdjustedCollateral(disputedLiquidation.rawUnitCollateral)
         );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
@@ -352,7 +352,7 @@ contract Liquidatable is PricelessPositionManager {
 
         // Calculate rewards as a function of the TRV. Note: all payouts are scaled by the unit collateral value so
         // all payouts are charged the fees pro rata.
-        FixedPoint.Unsigned memory feeAttenuation = _getCollateral(liquidation.rawUnitCollateral);
+        FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation
             .tokensOutstanding
             .mul(liquidation.settlementPrice)
@@ -429,7 +429,7 @@ contract Liquidatable is PricelessPositionManager {
      * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
      */
     function pfc() public override view returns (FixedPoint.Unsigned memory) {
-        return super.pfc().add(_getCollateral(rawLiquidationCollateral));
+        return super.pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
     }
 
     function getLiquidations(address sponsor) external view returns (LiquidationData[] memory) {
@@ -496,11 +496,9 @@ contract Liquidatable is PricelessPositionManager {
         return liquidation.liquidationTime.add(liquidationLiveness);
     }
 
-    /**
-     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
-     * unnecessarily increase contract bytecode size.
-     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
-     */
+    // These internal functions are supposed to act identically to modifiers, but re-used modifiers
+    // unnecessarily increase contract bytecode size.
+    // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
