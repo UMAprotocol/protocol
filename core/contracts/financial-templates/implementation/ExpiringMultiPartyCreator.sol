@@ -83,7 +83,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         address _collateralTokenWhitelist,
         address _tokenFactoryAddress,
         address _timerAddress
-    ) public ContractCreator(_finderAddress) Testable(_timerAddress) {
+    ) public ContractCreator(_finderAddress) Testable(_timerAddress) nonReentrant() {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
         uint32[16] memory timestamps = [

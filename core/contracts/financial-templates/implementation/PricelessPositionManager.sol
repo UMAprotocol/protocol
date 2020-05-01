@@ -152,7 +152,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
         require(_expirationTimestamp > getCurrentTime());
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
@@ -173,7 +173,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * Once the request liveness is passed, the sponsor can execute the transfer.
      * @dev The liveness length is the same as the withdrawal liveness.
      */
-    function requestTransferPosition() public onlyPreExpiration() {
+    function requestTransferPosition() public onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp == 0);
 
@@ -193,7 +193,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev Transferring positions can only occur if the recipient does not already have a position.
      * @param newSponsorAddress is the address to which the position will be transferred.
      */
-    function transferPositionPassedRequest(address newSponsorAddress) public onlyPreExpiration() {
+    function transferPositionPassedRequest(address newSponsorAddress) public onlyPreExpiration() nonReentrant() {
         require(
             _getFeeAdjustedCollateral(positions[newSponsorAddress].rawCollateral).isEqual(
                 FixedPoint.fromUnscaledUint(0)
@@ -219,7 +219,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending transfer position request.
      */
-    function cancelTransferPosition() external onlyPreExpiration() {
+    function cancelTransferPosition() external onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp != 0);
 
@@ -289,7 +289,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
      * @param collateralAmount the amount of collateral requested to withdraw
      */
-    function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
+    function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp == 0);
         require(
@@ -347,7 +347,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external onlyPreExpiration() {
+    function cancelWithdrawal() external onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp != 0);
 
@@ -518,7 +518,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev this function can only be called once the contract is expired and cant be re-called
      * due to the state modifiers applied on it.
      */
-    function expire() external onlyPostExpiration() onlyOpenState() fees() {
+    function expire() external onlyPostExpiration() onlyOpenState() fees() nonReentrant() {
         contractState = ContractState.ExpiredPriceRequested;
 
         // The final fee for this request is paid out of the contract rather than by the caller.
@@ -536,7 +536,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
-    function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() {
+    function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() nonReentrant() {
         require(msg.sender == _getFinancialContractsAdminAddress());
 
         contractState = ContractState.ExpiredPriceRequested;
@@ -549,7 +549,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
-    function remargin() external override onlyPreExpiration() {
+    function remargin() external override onlyPreExpiration() nonReentrant() {
         return;
     }
 
