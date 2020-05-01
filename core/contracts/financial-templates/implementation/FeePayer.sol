@@ -116,16 +116,16 @@ abstract contract FeePayer is Testable {
         if (totalPaid.isEqual(0)) {
             return totalPaid;
         }
-        // If the effective fees paid as a % of the pfc is > 100%, then reduce it to 100%. The amount that `totalPaid` is greater than `_pfc` is
-        // reduced from the greater component of (regularFees, latePenalty).
+        // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay as much of the fee
+        // that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the regular fee, which has the effect of paying
+        // the store first, followed by the caller if there is any fee remaining.
         if (totalPaid.isGreaterThan(_pfc)) {
-            if (regularFee.isGreaterThan(latePenalty)) {
-                regularFee = regularFee.sub((totalPaid.sub(_pfc)));
-            } else {
-                latePenalty = latePenalty.sub((totalPaid.sub(_pfc)));
-            }
-
-            totalPaid = regularFee.add(latePenalty);
+            FixedPoint.Unsigned memory deficit = totalPaid.sub(_pfc);
+            FixedPoint.Unsigned memory latePenaltyReduction = FixedPoint.min(latePenalty, deficit);
+            latePenalty = latePenalty.sub(latePenaltyReduction);
+            deficit = deficit.sub(latePenaltyReduction);
+            regularFee = regularFee.sub(FixedPoint.min(regularFee, deficit));
+            totalPaid = _pfc;
         }
 
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
