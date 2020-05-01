@@ -297,7 +297,7 @@ contract("Liquidatable", function(accounts) {
           ev.liquidatedCollateral == amountOfCollateral.toString()
         );
       });
-      truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsor", ev => {
+      truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsorPosition", ev => {
         return ev.sponsor == sponsor;
       });
     });
@@ -702,7 +702,7 @@ contract("Liquidatable", function(accounts) {
 
         // Events should show that the dispute failed.
         truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
-          return !ev.DisputeSucceeded;
+          return !ev.disputeSucceeded;
         });
         const expectedPayout = disputeBond.add(liquidationParams.liquidatedCollateral).add(finalFeeAmount);
         // We want to test that the liquidation status is set to "DISPUTE_FAILED", however
@@ -740,7 +740,7 @@ contract("Liquidatable", function(accounts) {
             ev.liquidator == liquidator &&
             ev.disputer == disputer &&
             ev.liquidationId == 0 &&
-            ev.DisputeSucceeded
+            ev.disputeSucceeded
           );
         });
 
@@ -1197,7 +1197,7 @@ contract("Liquidatable", function(accounts) {
       const expectedPaymentSponsor = amountOfCollateral.sub(settlementTRV).add(sponsorDisputeReward);
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), expectedPaymentSponsor.toString());
     });
-    it("Requested withdrawal amount is greater than total position collateral, liquidated collateral should be 0", async () => {
+    it("Requested withdrawal amount is equal to the total position collateral, liquidated collateral should be 0", async () => {
       // Create position.
       await liquidationContract.create(
         { rawValue: amountOfCollateral.toString() },
@@ -1205,10 +1205,7 @@ contract("Liquidatable", function(accounts) {
         { from: sponsor }
       );
       // Request withdrawal amount > collateral
-      await liquidationContract.requestWithdrawal(
-        { rawValue: amountOfCollateral.add(toBN("1")).toString() },
-        { from: sponsor }
-      );
+      await liquidationContract.requestWithdrawal({ rawValue: amountOfCollateral.toString() }, { from: sponsor });
       // Transfer synthetic tokens to a liquidator
       await syntheticToken.transfer(liquidator, amountOfSynthetic, { from: sponsor });
       // Liquidator believes the price of collateral per synthetic to be 1.5 and is liquidating the full token outstanding amount.
@@ -1609,7 +1606,7 @@ contract("Liquidatable", function(accounts) {
       await syntheticToken.approve(_liquidationContract.address, numTokens, { from: sponsor });
 
       // Setting the regular fee to 4 % per second will result in a miscalculated cumulativeFeeMultiplier after 1 second
-      // because of the intermediate calculation in `payFees()` for calculating the `feeAdjustment`: ( fees paid ) / (total collateral)
+      // because of the intermediate calculation in `payRegularFees()` for calculating the `feeAdjustment`: ( fees paid ) / (total collateral)
       // = 0.033... repeating, which cannot be represented precisely by a fixed point.
       // --> 0.04 * 30 wei = 1.2 wei, which gets truncated to 1 wei, so 1 wei of fees are paid
       const regularFee = toWei("0.04");
@@ -1618,7 +1615,7 @@ contract("Liquidatable", function(accounts) {
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = await _liquidationContract.getCurrentTime();
       await _liquidationContract.setCurrentTime(startTime.addn(1));
-      await _liquidationContract.payFees();
+      await _liquidationContract.payRegularFees();
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
       await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
@@ -1637,7 +1634,7 @@ contract("Liquidatable", function(accounts) {
     });
     it("Fee multiplier is set properly with precision loss, and fees are paid as expected.", async () => {
       // Absent any rounding errors, `getCollateral` should return (initial-collateral - final-fees) = 30 wei - 1 wei = 29 wei.
-      // But, because of the use of mul and div in _payFees(), getCollateral() will return slightly less
+      // But, because of the use of mul and div in payRegularFees(), getCollateral() will return slightly less
       // collateral than expected. When calculating the new `feeAdjustment`, we need to calculate the %: (fees paid / pfc), which is
       // 1/30. However, 1/30 = 0.03333... repeating, which cannot be represented in FixedPoint. Normally div() would floor
       // this value to 0.033....33, but divCeil sets this to 0.033...34. A higher `feeAdjustment` causes a lower `adjustment` and ultimately

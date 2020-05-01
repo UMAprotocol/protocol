@@ -15,7 +15,11 @@ contract TestnetERC20 is ERC20 {
      * @param _symbol The ticker abbreviation of the name. Ideally < 5 chars.
      * @param _decimals The number of decimals to define token precision.
      */
-    constructor(string memory _name, string memory _symbol, uint8 _decimals) public ERC20(_name, _symbol) {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals
+    ) public ERC20(_name, _symbol) {
         _setupDecimals(_decimals);
     }
 

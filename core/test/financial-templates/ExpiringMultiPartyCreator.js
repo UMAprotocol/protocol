@@ -40,7 +40,7 @@ contract("ExpiringMultiParty", function(accounts) {
     await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     constructorParams = {
-      expirationTimestamp: (await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(0)).toString(),
+      expirationTimestamp: "1625097600",
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"),
       syntheticName: "Test UMA Token",
@@ -65,12 +65,14 @@ contract("ExpiringMultiParty", function(accounts) {
 
   it("Expiration timestamp must be one of the allowed timestamps", async function() {
     // Change only expiration timestamp.
-    const validExpiration = await expiringMultiPartyCreator.VALID_EXPIRATION_TIMESTAMPS(5);
+    const validExpiration = "1598918400";
     // Set to a valid expiry.
     constructorParams.expirationTimestamp = validExpiration.toString();
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: contractCreator });
     // Set to an invalid expiry.
-    constructorParams.expirationTimestamp = validExpiration.add(toBN("1")).toString();
+    constructorParams.expirationTimestamp = toBN(validExpiration)
+      .add(toBN("1"))
+      .toString();
     assert(
       await didContractThrow(
         expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
@@ -148,7 +150,7 @@ contract("ExpiringMultiParty", function(accounts) {
     const enforcedWithdrawalLiveness = await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS();
     assert.equal(await expiringMultiParty.withdrawalLiveness(), enforcedWithdrawalLiveness.toString());
     assert.equal(
-      hexToUtf8(await expiringMultiParty.priceIdentifer()),
+      hexToUtf8(await expiringMultiParty.priceIdentifier()),
       hexToUtf8(constructorParams.priceFeedIdentifier)
     );
   });

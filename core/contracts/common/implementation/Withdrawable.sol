@@ -44,7 +44,11 @@ abstract contract Withdrawable is MultiRole {
      * @param managingRoleId ID corresponding to managing role who can modify the withdrawable role's membership.
      * @param withdrawerAddress new manager of withdrawable role.
      */
-    function _createWithdrawRole(uint256 newRoleId, uint256 managingRoleId, address withdrawerAddress) internal {
+    function _createWithdrawRole(
+        uint256 newRoleId,
+        uint256 managingRoleId,
+        address withdrawerAddress
+    ) internal {
         roleId = newRoleId;
         _createExclusiveRole(newRoleId, managingRoleId, withdrawerAddress);
     }

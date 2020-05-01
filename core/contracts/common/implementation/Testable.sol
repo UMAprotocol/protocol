@@ -7,7 +7,7 @@ import "./Timer.sol";
  * @title Base class that provides time overrides, but only if being run in test mode.
  */
 abstract contract Testable {
-    // If the contract is being run on the test network, then `timerAddress` will be the 0x0.
+    // If the contract is being run on the test network, then `timerAddress` will be the 0x0 address.
     // Note: this variable should be set on construction and never modified.
     address public timerAddress;
 
@@ -31,9 +31,9 @@ abstract contract Testable {
     /**
      * @notice Sets the current time.
      * @dev Will revert if not running in test mode.
-     * @param time timestamp to set current Tesable time to.
+     * @param time timestamp to set current Testable time to.
      */
-    function setCurrentTime(uint time) external onlyIfTest {
+    function setCurrentTime(uint256 time) external onlyIfTest {
         Timer(timerAddress).setCurrentTime(time);
     }
 
@@ -42,7 +42,7 @@ abstract contract Testable {
      * Otherwise, it will return the block timestamp.
      * @return uint for the current Testable timestamp.
      */
-    function getCurrentTime() public view returns (uint) {
+    function getCurrentTime() public view returns (uint256) {
         if (timerAddress != address(0x0)) {
             return Timer(timerAddress).getCurrentTime();
         } else {

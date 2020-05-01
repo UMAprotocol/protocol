@@ -29,7 +29,11 @@ contract ReentrancyChecker {
         txnData = _txnData;
     }
 
-    function _executeCall(address to, uint256 value, bytes memory data) private returns (bool success) {
+    function _executeCall(
+        address to,
+        uint256 value,
+        bytes memory data
+    ) private returns (bool success) {
         // Mostly copied from:
         // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31

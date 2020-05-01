@@ -49,7 +49,11 @@ abstract contract VotingInterface {
      * @param time unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
-    function commitVote(bytes32 identifier, uint256 time, bytes32 hash) external virtual;
+    function commitVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes32 hash
+    ) external virtual;
 
     /**
      * @notice Submit a batch of commits in a single transaction.
@@ -61,7 +65,7 @@ abstract contract VotingInterface {
     function batchCommit(Commitment[] calldata commits) external virtual;
 
     /**
-     * @notice snapshot the current round's token ballances and lock in the inflation rate and GAT.
+     * @notice snapshot the current round's token balances and lock in the inflation rate and GAT.
      * @dev This function can be called multiple times but each round will only every have one snapshot at the
      * time of calling `_freezeRoundVariables`.
      */
@@ -69,14 +73,19 @@ abstract contract VotingInterface {
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price`, `salt`, `time`, `address`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * @dev The revealed `price`, `salt`, `address`, `time`, `roundId`, and `identifier`, must hash to the latest `hash`
      * that `commitVote()` was called with. Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price is being voted on.
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
      */
-    function revealVote(bytes32 identifier, uint256 time, int256 price, int256 salt) external virtual;
+    function revealVote(
+        bytes32 identifier,
+        uint256 time,
+        int256 price,
+        int256 salt
+    ) external virtual;
 
     /**
      * @notice Reveal multiple votes in a single transaction.
@@ -104,7 +113,7 @@ abstract contract VotingInterface {
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external virtual view returns (uint);
+    function getCurrentRoundId() external virtual view returns (uint256);
 
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
@@ -115,8 +124,9 @@ abstract contract VotingInterface {
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
      * @return total amount of rewards returned to the voter.
      */
-    function retrieveRewards(address voterAddress, uint256 roundId, PendingRequest[] memory toRetrieve)
-        public
-        virtual
-        returns (FixedPoint.Unsigned memory);
+    function retrieveRewards(
+        address voterAddress,
+        uint256 roundId,
+        PendingRequest[] memory toRetrieve
+    ) public virtual returns (FixedPoint.Unsigned memory);
 }

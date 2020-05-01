@@ -28,7 +28,8 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       console.table({
         "Tokens you've minted": fromWei(position.tokensOutstanding.toString()),
         "Deposited collateral": fromWei(collateral) + (isWeth ? " ETH" : " " + collateralSymbol),
-        "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString())
+        "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString()),
+        "Pending transfer request": position.transferPositionRequestPassTimestamp.toString() !== "0" ? "Yes" : "No"
       });
     }
   };
@@ -91,11 +92,12 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     const hasPendingWithdrawal = position.requestPassTimestamp.toString() !== "0";
     if (hasPendingWithdrawal) {
       console.log(
-        "Because you have a pending withdrawal, other contract functions are blocked. Either execute or cancel your withdrawal."
+        "Because you have a pending withdrawal, other contract functions are blocked. Either execute or cancel your withdrawal. You can still request to transfer your position to a new sponsor address and cancel this request, but you cannot execute the transfer until the withdrawal request is processed."
       );
       actions = {
         ...actions,
-        withdraw: "Manage your withdrawals"
+        withdraw: "Manage your withdrawal request",
+        transfer: "Manage your transfer request"
       };
     } else {
       actions = {
@@ -132,7 +134,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       await deposit(web3, artifacts, emp);
       break;
     case actions.transfer:
-      await transfer(web3, artifacts, emp);
+      await transfer(web3, emp);
       break;
     case actions.back:
       return;
