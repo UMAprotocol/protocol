@@ -34,13 +34,13 @@ const ownerRole = "0";
 
 // New addresses of ecosystem components after porting from `Propose.js`
 const upgradeAddresses = {
-  Voting: "0x7f4Eef331348b99850F25dd4f2ab8336A7276311",
-  Registry: "0x0e808507e1692876Ae6BebC35da3e13801E63bfa",
-  Store: "0x841416642293f075d3A1708e7aFEB258b18e2dD4",
-  FinancialContractsAdmin: "0x7FCB73882c95b7e2cB2943d3d7463eEe9ecA6d6D",
-  IdentifierWhitelist: "0x93cc07C7e1b2512cB5bAE2752fC0c73bec98dC6d",
-  Governor: "0x74fbea590E0c5334Ba26d7E6751609F105568e5d",
-  Finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3" // Finder was no upgraded in UMIP3
+  Voting: Voting.address,
+  Registry: Registry.address,
+  Store: Store.address,
+  FinancialContractsAdmin: FinancialContractsAdmin.address,
+  IdentifierWhitelist: IdentifierWhitelist.address,
+  Governor: Governor.address,
+  Finder: Finder.address // Finder was not upgraded in UMIP3
 };
 
 async function runExport() {
@@ -73,6 +73,7 @@ async function runExport() {
   console.log("identifierWhitelist loaded \t", identifierWhitelist.address);
 
   const governor = await Governor.at(upgradeAddresses.Governor);
+  console.log("governor loaded \t\t", governor.address);
 
   /** *****************************
    * 2. Deploy EMP infrastructure *
@@ -126,14 +127,17 @@ async function runExport() {
    *********************************************************************/
   console.log("4. VALIDATING PROPOSAL");
 
-  assert.equal((await governor.numProposals()).toNumber(), 1); // there should be 1 proposal
-  assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests
+  let numProposals = (await governor.numProposals()).toNumber();
+  let pendingRequests = (await voting.getPendingRequests()).length;
 
   let currentTime = (await voting.getCurrentTime()).toNumber();
   let votingPhase = (await voting.getVotePhase()).toNumber();
 
   console.log(
-    "1 pending proposal. No pending requests.\nCurrent timestamp:",
+    numProposals,
+    "pending proposal.",
+    pendingRequests,
+    "pending requests.\nCurrent timestamp:",
     currentTime,
     "Voting phase:",
     votingPhase,
@@ -163,7 +167,7 @@ async function runExport() {
     "CurrentRoundId",
     (await voting.getCurrentRoundId()).toString()
   );
-  let pendingRequests = await voting.getPendingRequests();
+  pendingRequests = await voting.getPendingRequests();
   assert.equal(pendingRequests.length, 1); // the one proposal should have advanced to a request
 
   let currentRoundId = (await voting.getCurrentRoundId()).toString();
@@ -261,7 +265,7 @@ async function runExport() {
   await addressWhitelist.addToWhitelist(collateralToken.address);
 
   constructorParams = {
-    expirationTimestamp: "1588291200", // one week contract
+    expirationTimestamp: "1590969600", // one week contract
     collateralAddress: collateralToken.address,
     priceFeedIdentifier: web3.utils.utf8ToHex("ETHBTC"),
     syntheticName: "Test UMA Token",
@@ -273,6 +277,11 @@ async function runExport() {
     minSponsorTokens: { rawValue: web3.utils.toWei("1") },
     timerAddress: zeroAddress
   };
+
+  console.log(
+    "Is identifer registered",
+    await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex("ETHBTC"))
+  );
 
   const empAddress = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
   await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams);
