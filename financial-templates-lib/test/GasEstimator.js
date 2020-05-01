@@ -10,7 +10,7 @@ contract("GasEstimator.js", function() {
     beforeEach(() => {
       const dummyLogger = winston.createLogger({
         level: "info",
-        transports: []
+        transports: [new winston.transports.Console()]
       });
       gasEstimator = new GasEstimator(dummyLogger);
     });

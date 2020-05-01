@@ -1,5 +1,7 @@
 const { LiquidationStatesEnum } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
+const winston = require("winston");
+const sinon = require("sinon");
 
 const { toWei, toBN, utf8ToHex } = web3.utils;
 
@@ -9,6 +11,9 @@ const { Disputer } = require("../disputer.js");
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
 const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
+
+// Custom winston transport module to monitor winston log outputs
+const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -32,6 +37,8 @@ contract("Disputer.js", function(accounts) {
   let emp;
   let syntheticToken;
   let mockOracle;
+
+  let spy;
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -97,12 +104,19 @@ contract("Disputer.js", function(accounts) {
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidator });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: disputeBot });
 
+    spy = sinon.spy();
+
+    const spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
     // Create a new instance of the ExpiringMultiPartyClient & GasEstimator to construct the disputer
-    empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-    gasEstimator = new GasEstimator();
+    empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
+    gasEstimator = new GasEstimator(spyLogger);
 
     // Create a new instance of the disputer to test
-    disputer = new Disputer(empClient, gasEstimator, accounts[0]);
+    disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0]);
   });
 
   it("Detect disputable positions and send dipsutes", async function() {

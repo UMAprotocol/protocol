@@ -69,9 +69,11 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       timerAddress: Timer.address
     };
 
+    // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: []
+      transports: [new winston.transports.Console()]
     });
 
     emp = await ExpiringMultiParty.new(constructorParams);

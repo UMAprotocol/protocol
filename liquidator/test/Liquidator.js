@@ -37,6 +37,8 @@ contract("Liquidator.js", function(accounts) {
   let syntheticToken;
   let mockOracle;
 
+  let spy;
+
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
@@ -96,6 +98,8 @@ contract("Liquidator.js", function(accounts) {
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor2 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
+
+    spy = sinon.spy();
 
     const spyLogger = winston.createLogger({
       level: "info",
