@@ -30,24 +30,37 @@ contract Lockable {
      * `private` function that does the actual work.
      */
     modifier nonReentrant() {
-        // On the first call to nonReentrant, _notEntered will be true
-        require(_notEntered, "ReentrancyGuard: reentrant call");
-
-        // Any calls to nonReentrant after this point will fail
-        _notEntered = false;
-
+        _preEntranceCheck();
+        _postEntranceSet();
         _;
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        _notEntered = true;
+        _postEntranceReset();
     }
 
     /**
      * @dev Designed to prevent a view-only method from being re-entered during a call to a `nonReentrant()` state-changing method.
      */
     modifier nonReentrantView() {
-        require(_notEntered, "ReentrancyGuard: reentrant call");
+        _preEntranceCheck();
         _;
+    }
+
+    // Internal methods are used to avoid copying the require statement's bytecode to every `nonReentrant()` method.
+    // On entry into a function, `_preEntranceCheck()` should always be called to check if the function is being re-entered.
+    // Then, if the function modifies state, it should call `_postEntranceSet()`, perform its logic, and then call `_postEntranceReset()`.
+    // View-only methods can simply call `_preEntranceCheck()` to make sure that it is not being re-entered.
+    function _preEntranceCheck() internal view {
+        // On the first call to nonReentrant, _notEntered will be true
+        require(_notEntered, "ReentrancyGuard: reentrant call");
+    }
+
+    function _postEntranceSet() internal {
+        // Any calls to nonReentrant after this point will fail
+        _notEntered = false;
+    }
+
+    function _postEntranceReset() internal {
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _notEntered = true;
     }
 }

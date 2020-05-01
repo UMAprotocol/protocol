@@ -156,6 +156,7 @@ contract Liquidatable is PricelessPositionManager {
             params.minSponsorTokens,
             params.timerAddress
         )
+    // nonReentrant() This modifier is already applied on the FeePayer constructor.
     {
         require(params.collateralRequirement.isGreaterThan(1));
         require(params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1));
@@ -431,11 +432,22 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
      */
-    function pfc() public override view returns (FixedPoint.Unsigned memory) {
-        return super.pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
+    function pfc()
+        public
+        override
+        view
+        returns (
+            // nonReentrantView() This modifier is applied to `payRegularFees()` which will call `pfc()`.
+            FixedPoint.Unsigned memory
+        )
+    {
+        return
+            _getFeeAdjustedCollateral(rawTotalPositionCollateral).add(
+                _getFeeAdjustedCollateral(rawLiquidationCollateral)
+            );
     }
 
-    function getLiquidations(address sponsor) external view returns (LiquidationData[] memory) {
+    function getLiquidations(address sponsor) external view nonReentrantView() returns (LiquidationData[] memory) {
         return liquidations[sponsor];
     }
 

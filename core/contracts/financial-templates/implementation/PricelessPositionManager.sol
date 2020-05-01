@@ -152,7 +152,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+    )
+        public
+        FeePayer(_collateralAddress, _finderAddress, _timerAddress)
+    // nonReentrant() This modifier is already applied on the FeePayer constructor.
+    {
         require(_expirationTimestamp > getCurrentTime());
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 
@@ -559,7 +563,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * rawCollateral, which isn't a user-readable value.
      * @param sponsor address whose collateral amount is retrieved.
      */
-    function getCollateral(address sponsor) external view returns (FixedPoint.Unsigned memory) {
+    function getCollateral(address sponsor) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
         return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
     }
@@ -567,14 +571,23 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
      */
-    function totalPositionCollateral() external view returns (FixedPoint.Unsigned memory) {
+    function totalPositionCollateral() external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
     /**
      * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
      */
-    function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
+    function pfc()
+        public
+        virtual
+        override
+        view
+        returns (
+            // nonReentrantView() This modifier is applied to `payRegularFees()` which will call `pfc()`.
+            FixedPoint.Unsigned memory
+        )
+    {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
