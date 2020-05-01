@@ -63,7 +63,7 @@ class GasEstimator {
         throw "bad json response";
       }
     } catch (error) {
-      Logger.error({
+      this.logger.error({
         at: "GasEstimator",
         message: "client polling error",
         error: error
