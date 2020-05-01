@@ -431,16 +431,9 @@ contract Liquidatable is PricelessPositionManager {
 
     /**
      * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
+     * Cannot apply the nonReentrantView() modifier because it is applied to `payRegularFees()` which will call `pfc()`.
      */
-    function pfc()
-        public
-        override
-        view
-        returns (
-            // nonReentrantView() This modifier is applied to `payRegularFees()` which will call `pfc()`.
-            FixedPoint.Unsigned memory
-        )
-    {
+    function pfc() public override view returns (FixedPoint.Unsigned memory) {
         return super.pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
     }
 
