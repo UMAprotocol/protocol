@@ -1,4 +1,5 @@
 const { toWei } = web3.utils;
+const winston = require("winston");
 
 const { interfaceName } = require("../../core/utils/Constants.js");
 
@@ -68,8 +69,13 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       timerAddress: Timer.address
     };
 
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: []
+    });
+
     emp = await ExpiringMultiParty.new(constructorParams);
-    client = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+    client = new ExpiringMultiPartyClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
 

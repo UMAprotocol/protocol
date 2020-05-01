@@ -3,11 +3,11 @@
 
 const fetch = require("node-fetch");
 const url = "https://ethgasstation.info/json/ethgasAPI.json";
-const { Logger } = require("./logger/Logger");
 
 // If no updateThreshold is specified then default to updating every 60 seconds.
 class GasEstimator {
-  constructor(updateThreshold = 60, defaultFastPriceGwei = 40) {
+  constructor(logger, updateThreshold = 60, defaultFastPriceGwei = 40) {
+    this.logger = logger;
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
     this.lastFastPriceGwei;
@@ -21,7 +21,7 @@ class GasEstimator {
   update = async () => {
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
-      Logger.debug({
+      this.logger.debug({
         at: "GasEstimator",
         message: "Gas estimator update skipped",
         currentTime: currentTime,
@@ -33,7 +33,7 @@ class GasEstimator {
     } else {
       await this._update();
       this.lastUpdateTimestamp = currentTime;
-      Logger.debug({
+      this.logger.debug({
         at: "GasEstimator",
         message: "Gas estimator updated",
         lastUpdateTimestamp: this.lastUpdateTimestamp,
