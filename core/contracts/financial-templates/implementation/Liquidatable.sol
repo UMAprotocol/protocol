@@ -441,10 +441,7 @@ contract Liquidatable is PricelessPositionManager {
             FixedPoint.Unsigned memory
         )
     {
-        return
-            _getFeeAdjustedCollateral(rawTotalPositionCollateral).add(
-                _getFeeAdjustedCollateral(rawLiquidationCollateral)
-            );
+        return super.pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
     }
 
     function getLiquidations(address sponsor) external view nonReentrantView() returns (LiquidationData[] memory) {
