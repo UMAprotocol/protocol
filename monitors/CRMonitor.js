@@ -40,7 +40,7 @@ class CRMonitor {
     const priceFeed = priceFunction(contractTime);
     this.logger.debug({
       at: "CRMonitor",
-      message: "Checking wallet collateralization radios",
+      message: "Checking wallet collateralization ratios",
       price: priceFeed
     });
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
