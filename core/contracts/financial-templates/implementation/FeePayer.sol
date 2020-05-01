@@ -113,8 +113,9 @@ abstract contract FeePayer is Testable {
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         totalPaid = regularFee.add(latePenalty);
-        FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
-        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+
+        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -144,9 +145,8 @@ abstract contract FeePayer is Testable {
             // The final fee must be < pfc or the fee will be larger than 100%.
             require(_pfc.isGreaterThan(amount));
 
-            // Add the adjustment.
-            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(_pfc);
-            cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+            // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+            _adjustCumulativeFeeMultiplier(amount, _pfc);
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -228,5 +228,13 @@ abstract contract FeePayer is Testable {
         FixedPoint.Unsigned memory adjustedCollateral = _convertToRawCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
         addedCollateral = _getFeeAdjustedCollateral(rawCollateral).sub(initialBalance);
+    }
+
+    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption.
+    function _adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
+        internal
+    {
+        FixedPoint.Unsigned memory effectiveFee = amount.divCeil(currentPfc);
+        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
     }
 }
