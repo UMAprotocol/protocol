@@ -905,14 +905,15 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await collateral.balanceOf(sponsor)).toString(), expectedSponsorBalance.toString());
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("98.99"));
 
-    // Ensure that the maximum fee % of pfc charged is 100%. Advance 100 seconds from the last payment time to attempt to
-    // pay > 100% fees on the PfC.
+    // Ensure that the maximum fee % of pfc charged is 100%. Advance > 100 seconds from the last payment time to attempt to
+    // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
     const pfc = await pricelessPositionManager.pfc();
     const feesOwed = (
       await store.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
     ).regularFee;
     assert(Number(pfc.toString()) < Number(feesOwed.toString()));
-    await pricelessPositionManager.setCurrentTime(startTime.addn(102));
+    const farIntoTheFutureSeconds = 502;
+    await pricelessPositionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds));
     const payTooManyFeesResult = await pricelessPositionManager.payRegularFees();
     truffleAssert.eventEmitted(payTooManyFeesResult, "RegularFeesPaid", ev => {
       // There should be 98.99 + 0.99 = 99.98 collateral remaining in the contract.
@@ -920,11 +921,13 @@ contract("PricelessPositionManager", function(accounts) {
     });
     assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), "0");
 
+    // TODO: Add unit tests for when the latePenalty > 0 but (latePenalty + regularFee > pfc). The component fees need to be reduced properly.
+
     // Set the store fees back to 0 to prevent it from affecting other tests.
     await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
 
     // Check that no event is fired if the fees owed are 0.
-    await pricelessPositionManager.setCurrentTime(startTime.addn(103));
+    await pricelessPositionManager.setCurrentTime(startTime.addn(farIntoTheFutureSeconds + 1));
     const payZeroFeesResult = await payRegularFees();
     truffleAssert.eventNotEmitted(payZeroFeesResult, "RegularFeesPaid");
   });
