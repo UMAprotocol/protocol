@@ -114,8 +114,9 @@ abstract contract FeePayer is Testable, Lockable {
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         totalPaid = regularFee.add(latePenalty);
-        FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
-        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+
+        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -127,12 +128,9 @@ abstract contract FeePayer is Testable, Lockable {
         }
     }
 
-    /**
-     * @notice Pays UMA DVM final fees to the Store contract.
-     * @dev This is a flat fee charged for each price request.
-     * @param payer address of who is paying the fees.
-     * @param amount the amount of collateral to send as the final fee.
-     */
+    // Pays UMA Oracle final fees of `amount` in `collateralCurrency` to the Store contract. Final fee is a flat fee charged for each price request.
+    // If payer is the contract, adjusts internal bookkeeping variables. If payer is not the contract, pulls in `amount`
+    // of collateral currency.
     function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
         if (amount.isEqual(0)) {
             return;
@@ -148,9 +146,8 @@ abstract contract FeePayer is Testable, Lockable {
             // The final fee must be < pfc or the fee will be larger than 100%.
             require(_pfc.isGreaterThan(amount));
 
-            // Add the adjustment.
-            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(_pfc);
-            cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+            // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+            _adjustCumulativeFeeMultiplier(amount, _pfc);
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -232,5 +229,13 @@ abstract contract FeePayer is Testable, Lockable {
         FixedPoint.Unsigned memory adjustedCollateral = _convertToRawCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
         addedCollateral = _getFeeAdjustedCollateral(rawCollateral).sub(initialBalance);
+    }
+
+    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption.
+    function _adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
+        internal
+    {
+        FixedPoint.Unsigned memory effectiveFee = amount.divCeil(currentPfc);
+        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
     }
 }

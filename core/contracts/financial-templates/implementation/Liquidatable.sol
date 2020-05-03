@@ -503,11 +503,9 @@ contract Liquidatable is PricelessPositionManager {
         return liquidation.liquidationTime.add(liquidationLiveness);
     }
 
-    /**
-     * @dev These internal functions are supposed to act identically to modifiers, but re-used modifiers
-     * unnecessarily increase contract bytecode size.
-     * source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
-     */
+    // These internal functions are supposed to act identically to modifiers, but re-used modifiers
+    // unnecessarily increase contract bytecode size.
+    // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
