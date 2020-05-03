@@ -577,7 +577,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
-     * Cannot apply the nonReentrantView() modifier because it is applied to `payRegularFees()` which will call `pfc()`.
+     * Note: We do not apply the nonReentrantView() modifier here because it is applied to `payRegularFees()` which will call `pfc()`.
+     * We could have replaced added an internal `_pfc()` method to be called by `payRegularFees()` in order to make this `nonReentrantView()`,
+     * but decided not to in order to save bytecode.
      */
     function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
