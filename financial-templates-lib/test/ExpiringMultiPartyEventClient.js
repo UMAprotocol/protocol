@@ -105,6 +105,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -134,6 +135,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // Correctly adds a second event after creating a new liquidation
     const txObject2 = await emp.createLiquidation(
       sponsor2,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -171,6 +173,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // Create liquidation to liquidate sponsor2 from sponsor1
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -203,6 +206,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     const liquidationTime = (await emp.getCurrentTime()).toNumber();
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
       { from: liquidator }
