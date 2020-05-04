@@ -6,7 +6,7 @@ import "./ExpiringMultiParty.sol";
 
 /**
  * @title Provides convenient Expiring Multi Party contract utilities.
- * @dev Useing this library to deploy EMP's allows calling contracts to avoid importing the full EMP bytecode.
+ * @dev Using this library to deploy EMP's allows calling contracts to avoid importing the full EMP bytecode.
  */
 library ExpiringMultiPartyLib {
     /**
