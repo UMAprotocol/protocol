@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
-import "./ExpiringMultiParty.sol";
+import "./ExpiringMultiPartyLib.sol";
 
 
 /**
@@ -115,7 +115,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      * @return address of the deployed ExpiringMultiParty contract
      */
     function createExpiringMultiParty(Params memory params) public returns (address) {
-        ExpiringMultiParty derivative = new ExpiringMultiParty(_convertParams(params));
+        address derivative = ExpiringMultiPartyLib.deploy(_convertParams(params));
 
         address[] memory parties = new address[](1);
         parties[0] = msg.sender;
