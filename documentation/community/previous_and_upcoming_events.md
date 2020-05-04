@@ -4,8 +4,8 @@
 
 ## Past Events
 
-- May 2, 2020: DeFi Discussions ["Using UMA and Balancer Pools to Create Perpetual Synthetic Tokens"](https://www.crowdcast.io/e/defi-discussions/41) with Hart Lambur (UMA) and Fernando Martinelli (Balancer Labs)
-- May 1, 2020: DeFi Discussions ["How To Build Synthetic Tokens Without An On-Chain Price Feed"](https://www.crowdcast.io/e/defi-discussions/18) with Allison Lu
+- May 2, 2020: DeFi Discussions ["Using UMA and Balancer Pools to Create Perpetual Synthetic Tokens"](https://www.crowdcast.io/e/defi-discussions/41) with Hart Lambur (UMA) and Fernando Martinelli (Balancer Labs) [(slides)](https://docs.google.com/presentation/d/1zpq6iUcyTtHJAtESVFqZ4xGEfdDm12k5B5fnqeDmI7Q/edit?usp=sharing)
+- May 1, 2020: DeFi Discussions ["How To Build Synthetic Tokens Without An On-Chain Price Feed"](https://www.crowdcast.io/e/defi-discussions/18) with Allison Lu [(slides)](https://docs.google.com/presentation/d/1yDtzhOQqi0xz6n0NpQPbPy-9evzj7fE15yEfATsG2cY/edit?usp=sharing)
 - April 24, 2020: Crypto Tonight Ep. 4 [“When Defi is not Fine”](https://youtu.be/efW-MHdA_ws)
 - April 8, 2020: Priceless Synthetic Tokens on Liquid Staking Working Group Call [Video](https://youtu.be/hua-qhA28Vc)
 - March 30, 2020: Monolith Digital #DeFi [Meetup](https://www.meetup.com/monolith/events/269605712)
