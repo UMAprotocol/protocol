@@ -156,7 +156,6 @@ contract Liquidatable is PricelessPositionManager {
             params.minSponsorTokens,
             params.timerAddress
         )
-    // nonReentrant() This modifier is already applied on the FeePayer constructor.
     {
         require(params.collateralRequirement.isGreaterThan(1));
         require(params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1));

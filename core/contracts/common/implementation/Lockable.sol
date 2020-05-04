@@ -28,7 +28,7 @@ contract Lockable {
      */
     modifier nonReentrant() {
         _preEntranceCheck();
-        _postEntranceSet();
+        _preEntranceSet();
         _;
         _postEntranceReset();
     }
@@ -50,7 +50,7 @@ contract Lockable {
         require(_notEntered, "ReentrancyGuard: reentrant call");
     }
 
-    function _postEntranceSet() internal {
+    function _preEntranceSet() internal {
         // Any calls to nonReentrant after this point will fail
         _notEntered = false;
     }

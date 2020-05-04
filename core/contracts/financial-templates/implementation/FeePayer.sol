@@ -72,7 +72,7 @@ abstract contract FeePayer is Testable, Lockable {
         address _collateralAddress,
         address _finderAddress,
         address _timerAddress
-    ) public Testable(_timerAddress) nonReentrant() {
+    ) public Testable(_timerAddress) {
         collateralCurrency = IERC20(_collateralAddress);
         finder = FinderInterface(_finderAddress);
         lastPaymentTime = getCurrentTime();
