@@ -63,13 +63,13 @@ contract Liquidatable is PricelessPositionManager {
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
+        FixedPoint.Unsigned minSponsorTokens;
         // Params specifically for Liquidatable.
         uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
-        FixedPoint.Unsigned minSponsorTokens;
     }
 
     // Liquidations are unique by ID per sponsor
@@ -410,7 +410,8 @@ contract Liquidatable is PricelessPositionManager {
             // Pay LIQUIDATOR: collateral + dispute bond + returned final fee
             withdrawalAmount = collateral.add(disputeBondAmount).add(finalFee);
             delete liquidations[sponsor][liquidationId];
-            // If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
+            // If the state is pre-dispute but time has passed liveness then there was no dispute. We represent this
+            // state as a dispute failed and the liquidator can withdraw
         } else if (liquidation.state == Status.PreDispute && msg.sender == liquidation.liquidator) {
             // Pay LIQUIDATOR: collateral + returned final fee
             withdrawalAmount = collateral.add(finalFee);

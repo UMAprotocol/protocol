@@ -33,7 +33,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
 
-    // Enum to store the state of the PricelessPositionManager. Set on expiration or emergency shutdown.
+    // Enum to store the state of the PricelessPositionManager. Set on expiration, emergency shutdown, or initial
+    // settlement.
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
     ContractState public contractState;
 
@@ -308,7 +309,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and waiting
      * `withdrawalLiveness`), withdraws `positionData.withdrawalRequestAmount` of collateral currency.
-     * @dev Might not withdraw the full requested amount in order to account for precision loss.
+     * @dev Might not withdraw the full requested amount in order to account for precision loss or if the full requested
+     * amount exceeds the collateral in the position (due to paying fees).
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function withdrawPassedRequest()
