@@ -22,18 +22,6 @@ class BalanceMonitor {
 
     this.botsToMonitor = botsToMonitor;
 
-    // Structure to monitor if a wallet address have been alerted yet for each alert type.
-    this.walletsAlerted = {};
-
-    // Populate walletsAlerted for each bot, starting with each alert type at not sent.
-    for (let bot of botsToMonitor) {
-      this.walletsAlerted[bot.address] = {
-        collateralThreshold: false,
-        syntheticThreshold: false,
-        etherThreshold: false
-      };
-    }
-
     this.formatDecimalString = createFormatFunction(this.web3, 2);
 
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
@@ -52,7 +40,7 @@ class BalanceMonitor {
     // check if their collateral, synthetic or ether balance is below a given threshold. If it is, then
     // send a winston event. The message structure is defined with the `_createLowBalanceMrkdwn` formatter.
     for (let bot of this.botsToMonitor) {
-      if (this._shouldPushBotNotification(bot, "collateralThreshold", this.client.getCollateralBalance)) {
+      if (this._ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
@@ -65,7 +53,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this._shouldPushBotNotification(bot, "syntheticThreshold", this.client.getSyntheticBalance)) {
+      if (this._ltThreshold(this.client.getSyntheticBalance(bot.address), bot.syntheticThreshold)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
@@ -78,7 +66,7 @@ class BalanceMonitor {
           )
         });
       }
-      if (this._shouldPushBotNotification(bot, "etherThreshold", this.client.getEtherBalance)) {
+      if (this._ltThreshold(this.client.getEtherBalance(bot.address), bot.etherThreshold)) {
         this.logger.info({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
@@ -93,22 +81,6 @@ class BalanceMonitor {
       }
     }
   };
-
-  // A notification should only be pushed if the bot's balance is below the threshold and a notification
-  // for for that threshold has not already been sent out.
-  _shouldPushBotNotification(bot, thresholdKey, balanceQueryFunction) {
-    let shouldPushBotNotification = false;
-    if (this._ltThreshold(balanceQueryFunction(bot.address), bot[thresholdKey])) {
-      if (!this.walletsAlerted[bot.address][thresholdKey]) {
-        shouldPushBotNotification = true;
-      }
-      this.walletsAlerted[bot.address][thresholdKey] = true;
-    } else {
-      this.walletsAlerted[bot.address][thresholdKey] = false;
-    }
-
-    return shouldPushBotNotification;
-  }
 
   _createLowBalanceMrkdwn = (bot, threshold, tokenBalance, tokenSymbol, tokenName) => {
     return (
