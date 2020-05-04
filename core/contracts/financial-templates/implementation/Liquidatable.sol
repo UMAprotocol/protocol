@@ -411,7 +411,7 @@ contract Liquidatable is PricelessPositionManager {
             withdrawalAmount = collateral.add(disputeBondAmount).add(finalFee);
             delete liquidations[sponsor][liquidationId];
             // If the state is pre-dispute but time has passed liveness then there was no dispute. We represent this
-            // state as a dispute failed and the liquidator can withdraw
+            // state as a dispute failed and the liquidator can withdraw.
         } else if (liquidation.state == Status.PreDispute && msg.sender == liquidation.liquidator) {
             // Pay LIQUIDATOR: collateral + returned final fee
             withdrawalAmount = collateral.add(finalFee);
