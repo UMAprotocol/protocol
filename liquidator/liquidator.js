@@ -53,6 +53,7 @@ class Liquidator {
       // Create the transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
+        { rawValue: "0" },
         { rawValue: this.web3.utils.toWei(priceFeed) },
         { rawValue: position.numTokens }
       );
