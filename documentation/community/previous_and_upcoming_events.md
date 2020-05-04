@@ -2,10 +2,10 @@
 
 ## Upcoming Events
 
-- May 1-2, 2020: DeFi Full-Stack [Agenda](https://defi-fullstack.dystopialabs.com/)
-
 ## Past Events
 
+- May 2, 2020: DeFi Discussions ["Using UMA and Balancer Pools to Create Perpetual Synthetic Tokens"](https://www.crowdcast.io/e/defi-discussions/41) with Hart Lambur (UMA) and Fernando Martinelli (Balancer Labs)
+- May 1, 2020: DeFi Discussions ["How To Build Synthetic Tokens Without An On-Chain Price Feed"](https://www.crowdcast.io/e/defi-discussions/18) with Allison Lu
 - April 24, 2020: Crypto Tonight Ep. 4 [“When Defi is not Fine”](https://youtu.be/efW-MHdA_ws)
 - April 8, 2020: Priceless Synthetic Tokens on Liquid Staking Working Group Call [Video](https://youtu.be/hua-qhA28Vc)
 - March 30, 2020: Monolith Digital #DeFi [Meetup](https://www.meetup.com/monolith/events/269605712)
