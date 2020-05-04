@@ -63,7 +63,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   async update() {
-    const { toWei, toBN } = this.web3.utls;
+    const { toWei, toBN } = this.web3.utils;
     const currentTime = this.getTime();
 
     // Return eatly if the last call was too recent.
@@ -73,7 +73,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
     // timestamp (because the close of that OHLC may be relevant).
-    const earliestHistoricalTimestamp = Math.floor((currentTime - lookback) / this.ohlcPeriod) * this.ohlcPeriod;
+    const earliestHistoricalTimestamp = Math.floor((currentTime - this.lookback) / this.ohlcPeriod) * this.ohlcPeriod;
 
     // See https://docs.cryptowat.ch/rest-api/markets/ohlc for how this url is constructed.
     const ohlcUrl = [
@@ -83,7 +83,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       `apikey=${this.apiKey}`
     ].join("");
 
-    const ohlcResponse = await networker.getJson(url);
+    const ohlcResponse = await this.networker.getJson(ohlcUrl);
+    if (!ohlcResponse.result) {
+      console.error("Could not parse ohlc result:", ohlcResponse);
+      return;
+    }
 
     // Return data structure:
     // {
@@ -103,13 +107,13 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     //   }
     // }
     // For more info, see: https://docs.cryptowat.ch/rest-api/markets/ohlc
-    this.historicalPricePeriods = ohlcResponse.result[this.ohlcPeriod.toString()]
+    const newHistoricalPricePeriods = ohlcResponse.result[this.ohlcPeriod.toString()]
       .map(ohlc => ({
         // Output data should be a list of objects with only the open and close times and prices.
         openTime: ohlc[0] - this.ohlcPeriod,
         closeTime: ohlc[0],
-        openPrice: toBN(toWei(ohlc[1])),
-        closePrice: toBN(toWei(ohlc[4]))
+        openPrice: toBN(toWei(ohlc[1].toString())),
+        closePrice: toBN(toWei(ohlc[4].toString()))
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -118,7 +122,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
     const priceUrl = `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price?apikey=${this.apikey}`;
-    const priceResponse = await networker.getJson(url);
+    const priceResponse = await this.networker.getJson(priceUrl);
+    if (!priceResponse.result) {
+      console.error("Could not parse price result:", priceResponse);
+      return;
+    }
 
     // Return data structure:
     // {
@@ -126,7 +134,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     //     "price": priceValue
     //   }
     // }
-    this.currentPrice = toBN(toWei(priceResponse.result.price));
+    this.currentPrice = toBN(toWei(priceResponse.result.price.toString()));
+
+    this.historicalPricePeriods = newHistoricalPricePeriods;
     this.lastUpdateTime = currentTime;
   }
 }
