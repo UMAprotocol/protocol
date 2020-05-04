@@ -33,5 +33,13 @@ contract("Lockable", function(accounts) {
     it("should not allow indirect local recursion", async function() {
       assert(await didContractThrow(reentrancyMock.countThisRecursive(10)));
     });
+
+    it("should not allow local calls to view-only functions", async function() {
+      assert(await didContractThrow(reentrancyMock.countLocalCall()));
+    });
+
+    it("should not allow indirect local calls to view-only functions", async function() {
+      assert(await didContractThrow(reentrancyMock.countThisCall()));
+    });
   });
 });

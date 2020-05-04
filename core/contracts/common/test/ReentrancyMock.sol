@@ -45,6 +45,16 @@ contract ReentrancyMock is Lockable {
         }
     }
 
+    function countLocalCall() public nonReentrant {
+        getCount();
+    }
+
+    function countThisCall() public nonReentrant {
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = address(this).call(abi.encodeWithSignature("getCount()"));
+        require(success, "ReentrancyMock: failed call");
+    }
+
     function getCount() public view nonReentrantView returns (uint256) {
         return counter;
     }
