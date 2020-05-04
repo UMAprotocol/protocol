@@ -21,17 +21,17 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       return null;
     }
 
-    return _computeMedian(currentPrices);
+    return this._computeMedian(currentPrices);
   }
 
   getHistoricalPrice(time) {
     const historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
 
-    if (currentPrices.some(element => element === undefined || element === null)) {
+    if (historicalPrices.some(element => element === undefined || element === null)) {
       return null;
     }
 
-    return _computeMedian(historicalPrices);
+    return this._computeMedian(historicalPrices);
   }
 
   getLastUpdateTime() {
