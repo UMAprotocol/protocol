@@ -1,15 +1,12 @@
 pragma solidity ^0.6.0;
 
 
-// TODO:
-// - Conform comments to Natspec
-// - Add unit tests
-
-// Extends https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol
-// with view-method lock inspired by https://github.com/balancer-labs/balancer-core/blob/master/contracts/BPool.sol
-
+/**
+ * @title A contract that provides modifiers to prevent reentrancy to state-changing and view-only methods. This contract
+ * is inspired by https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol
+ * and https://github.com/balancer-labs/balancer-core/blob/master/contracts/BPool.sol.
+ */
 contract Lockable {
-    // TODO: I don't like this name but its an intuitive placeholder.
     bool private _notEntered;
 
     constructor() internal {
