@@ -213,13 +213,13 @@ abstract contract FeePayer is Testable {
         removedCollateral = initialBalance.sub(_getFeeAdjustedCollateral(rawCollateral));
     }
 
-    // Increase rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // Increase rawCollateral by a fee-adjusted collateralToAdd amount. Fee adjustment scales up collateralToAdd
     // by dividing it by cumulativeFeeMultiplier. There is potential for this quotient to be floored, therefore
     // rawCollateral is increased by less than expected. Because this method is usually called in conjunction with an
     // actual addition of collateral to this contract, return the fee-adjusted amount that the rawCollateral is
-    // increased by so that the caller can minimize error between collateral removed and rawCollateral credited.
+    // increased by so that the caller can minimize error between collateral added and rawCollateral credited.
     // NOTE: This return value exists only for the sake of symmetry with _removeCollateral. We don't actually use it
-    // because we are OK if more collateral is stored in the contract than is represented by totalPositionCollateral.
+    // because we are OK if more collateral is stored in the contract than is represented by rawTotalPositionCollateral.
     function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
         internal
         returns (FixedPoint.Unsigned memory addedCollateral)
