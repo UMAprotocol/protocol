@@ -19,13 +19,6 @@ class CRMonitor {
 
     this.walletsToMonitor = walletsToMonitor;
 
-    // Structure to monitor if a wallet address have been alerted yet for each alert type.
-    this.walletsAlerted = {};
-
-    for (let wallet of walletsToMonitor) {
-      this.walletsAlerted[wallet.address] = { crAlert: false };
-    }
-
     this.formatDecimalString = createFormatFunction(this.web3, 2);
 
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
@@ -46,7 +39,7 @@ class CRMonitor {
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
     // If it is, then send an alert of formatted markdown text.
     for (let wallet of this.walletsToMonitor) {
-      const [shouldPush, crRatio] = this._shouldPushWalletNotification(wallet, priceFeed);
+      const { shouldPush, crRatio } = this._shouldPushWalletNotification(wallet, priceFeed);
       if (shouldPush) {
         // Sample message:
         // Risk alert: [Tracked wallet name] has fallen below [threshold]%.
@@ -102,16 +95,10 @@ class CRMonitor {
       return [false, 0];
     }
 
-    let shouldPushWalletNotification = false;
-    if (this._ltThreshold(positionCR, this.web3.utils.toWei(wallet.crAlert.toString()))) {
-      if (!this.walletsAlerted[wallet.address].crAlert) {
-        shouldPushWalletNotification = true;
-      }
-      this.walletsAlerted[wallet.address].crAlert = true;
-    } else {
-      this.walletsAlerted[wallet.address].crAlert = false;
-    }
-    return [shouldPushWalletNotification, positionCR];
+    return {
+      shouldPush: this._ltThreshold(positionCR, this.web3.utils.toWei(wallet.crAlert.toString())),
+      crRatio: positionCR
+    };
   }
 
   // Checks if a big number value is below a given threshold.
@@ -123,7 +110,7 @@ class CRMonitor {
     return this.web3.utils.toBN(value).lt(this.web3.utils.toBN(threshold));
   }
 
-  // TODO: refactor this out into a selerate utility function
+  // TODO: refactor this out into a separate utility function
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
   _calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
