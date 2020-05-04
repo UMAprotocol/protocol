@@ -16,7 +16,8 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
   const { toBN, toWei } = web3.utils;
 
   // Fake data to inject.
-  // Note: the first element is the historical data and the second is the price.
+  // Note: the first element is the historical data and the second is the price. There's a lot of magic numbers here,
+  // but with price data, it may be more confusing to attempt to name them all.
   const validResponses = [
     {
       result: {
@@ -59,17 +60,17 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
   it("No update", async function() {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1000), undefined);
+    assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), undefined);
   });
 
   it("Basic historical price", async function() {
-    // Fake data to inject.
-    // Note: the first element is the historical data and the second is the price.
-    networker.getJsonReturns = validResponses;
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
 
     await cryptoWatchPriceFeed.update();
 
     // Before period 1 should return null.
-    assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376340), null);
+    assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376339), null);
 
     // During period 1.
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376340).toString(), toWei("1.1"));
@@ -84,9 +85,79 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
     assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376521).toString(), toWei("1.5"));
   });
 
-  it("Basic price", async function() {});
+  it("Basic current price", async function() {
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
 
-  it("No or bad response", async function() {});
+    await cryptoWatchPriceFeed.update();
 
-  it("Update frequency", async function() {});
+    // Should return the current price in the data.
+    assert.equal(cryptoWatchPriceFeed.getCurrentPrice().toString(), toWei("1.5"));
+  });
+
+  it("Last update time", async function() {
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
+
+    await cryptoWatchPriceFeed.update();
+
+    // Should return the mock time.
+    assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), mockTime);
+  });
+
+  it("No or bad response", async function() {
+    // Bad price response.
+    networker.getJsonReturns = [
+      {
+        result: {
+          "60": [] // Valid response, just no data points.
+        }
+      },
+      {
+        result: {
+          error: "test"
+        }
+      }
+    ];
+
+    await cryptoWatchPriceFeed.update();
+
+    assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
+    assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
+
+    // Bad historical ohlc response.
+    networker.getJsonReturns = [
+      {
+        error: "test"
+      },
+      {
+        result: {
+          price: 15.1
+        }
+      }
+    ];
+
+    await cryptoWatchPriceFeed.update();
+
+    assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
+    assert.equal(cryptoWatchPriceFeed.getHistoricalPrice(1588376515), undefined);
+  });
+
+  it("Update frequency", async function() {
+    networker.getJsonReturns = [...validResponses];
+
+    await cryptoWatchPriceFeed.update();
+
+    networker.getJsonReturns = [...validResponses];
+
+    // Update the return price to ensure it new data doesn't show up in the output.
+    networker.getJsonReturns[1].result.price = 1.4;
+
+    const originalMockTime = mockTime;
+    mockTime += minTimeBetweenUpdates - 1;
+
+    await cryptoWatchPriceFeed.update();
+    assert.equal(cryptoWatchPriceFeed.getLastUpdateTime(), originalMockTime);
+    assert.equal(cryptoWatchPriceFeed.getCurrentPrice().toString(), toWei("1.5"));
+  });
 });

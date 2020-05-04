@@ -84,7 +84,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     ].join("");
 
     const ohlcResponse = await this.networker.getJson(ohlcUrl);
-    if (!ohlcResponse.result) {
+    if (!ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
       console.error("Could not parse ohlc result:", ohlcResponse);
       return;
     }
@@ -123,7 +123,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
     const priceUrl = `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price?apikey=${this.apikey}`;
     const priceResponse = await this.networker.getJson(priceUrl);
-    if (!priceResponse.result) {
+    if (!priceResponse.result || !priceResponse.result.price) {
       console.error("Could not parse price result:", priceResponse);
       return;
     }
