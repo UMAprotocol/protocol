@@ -156,6 +156,7 @@ contract Liquidatable is PricelessPositionManager {
             params.minSponsorTokens,
             params.timerAddress
         )
+        nonReentrant()
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
         require(
@@ -195,6 +196,7 @@ contract Liquidatable is PricelessPositionManager {
         external
         fees()
         onlyPreExpiration()
+        nonReentrant()
         returns (
             uint256 liquidationId,
             FixedPoint.Unsigned memory tokensLiquidated,
@@ -306,6 +308,7 @@ contract Liquidatable is PricelessPositionManager {
         external
         disputable(liquidationId, sponsor)
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory totalPaid)
     {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, liquidationId);
@@ -354,6 +357,7 @@ contract Liquidatable is PricelessPositionManager {
         public
         withdrawable(liquidationId, sponsor)
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
@@ -444,14 +448,7 @@ contract Liquidatable is PricelessPositionManager {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
     }
 
-    /**
-     * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
-     */
-    function pfc() public override view returns (FixedPoint.Unsigned memory) {
-        return super.pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
-    }
-
-    function getLiquidations(address sponsor) external view returns (LiquidationData[] memory) {
+    function getLiquidations(address sponsor) external view nonReentrantView() returns (LiquidationData[] memory) {
         return liquidations[sponsor];
     }
 
@@ -494,6 +491,10 @@ contract Liquidatable is PricelessPositionManager {
             liquidationId,
             disputeSucceeded
         );
+    }
+
+    function _pfc() internal override view returns (FixedPoint.Unsigned memory) {
+        return super._pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
     }
 
     function _getLiquidationData(address sponsor, uint256 liquidationId)

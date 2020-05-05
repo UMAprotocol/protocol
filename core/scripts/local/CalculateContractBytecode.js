@@ -5,7 +5,6 @@
 // where voting is the name of the contract you want to check.
 
 const argv = require("minimist")(process.argv.slice(), { string: ["contract"] });
-const truffle = require("truffle");
 
 module.exports = async function(callback) {
   if (!argv.contract) {

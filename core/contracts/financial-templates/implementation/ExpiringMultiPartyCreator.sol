@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
+import "../../common/implementation/Lockable.sol";
 import "./ExpiringMultiPartyLib.sol";
 
 
@@ -12,7 +13,7 @@ import "./ExpiringMultiPartyLib.sol";
  * @notice Factory contract to create and register new instances of expiring multiparty contracts.
  * Responsible for constraining the parameters used to construct a new EMP.
  */
-contract ExpiringMultiPartyCreator is ContractCreator, Testable {
+contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
 
     /****************************************
@@ -82,7 +83,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
         address _collateralTokenWhitelist,
         address _tokenFactoryAddress,
         address _timerAddress
-    ) public ContractCreator(_finderAddress) Testable(_timerAddress) {
+    ) public ContractCreator(_finderAddress) Testable(_timerAddress) nonReentrant() {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
         uint32[16] memory timestamps = [
@@ -113,7 +114,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
      * @param params is a `ConstructorParams` object from ExpiringMultiParty.
      * @return address of the deployed ExpiringMultiParty contract
      */
-    function createExpiringMultiParty(Params memory params) public returns (address) {
+    function createExpiringMultiParty(Params memory params) public nonReentrant() returns (address) {
         address derivative = ExpiringMultiPartyLib.deploy(_convertParams(params));
 
         _registerContract(new address[](0), address(derivative));

@@ -158,7 +158,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         address _tokenFactoryAddress,
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
+    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
@@ -179,7 +179,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * Once the request liveness is passed, the sponsor can execute the transfer.
      * @dev The liveness length is the same as the withdrawal liveness.
      */
-    function requestTransferPosition() public onlyPreExpiration() {
+    function requestTransferPosition() public onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp == 0, "Pending transfer");
 
@@ -203,6 +203,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         public
         onlyPreExpiration()
         noPendingWithdrawal(msg.sender)
+        nonReentrant()
     {
         require(
             _getFeeAdjustedCollateral(positions[newSponsorAddress].rawCollateral).isEqual(
@@ -231,7 +232,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending transfer position request.
      */
-    function cancelTransferPosition() external onlyPreExpiration() {
+    function cancelTransferPosition() external onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.transferPositionRequestPassTimestamp != 0, "No pending transfer");
 
@@ -252,6 +253,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         onlyPreExpiration()
         noPendingWithdrawal(msg.sender)
         fees()
+        nonReentrant()
     {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -278,6 +280,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         onlyPreExpiration()
         noPendingWithdrawal(msg.sender)
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -306,6 +309,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         public
         onlyPreExpiration()
         noPendingWithdrawal(msg.sender)
+        nonReentrant()
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
@@ -336,6 +340,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         external
         onlyPreExpiration()
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -366,7 +371,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external onlyPreExpiration() {
+    function cancelWithdrawal() external onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(positionData.requestPassTimestamp != 0, "No pending withdrawal");
 
@@ -388,6 +393,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         public
         onlyPreExpiration()
         fees()
+        nonReentrant()
     {
         require(_checkCollateralization(collateralAmount, numTokens), "CR below GCR");
 
@@ -426,6 +432,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         onlyPreExpiration()
         noPendingWithdrawal(msg.sender)
         fees()
+        nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
@@ -469,7 +476,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * caller's full balance.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function settleExpired() external onlyPostExpiration() fees() returns (FixedPoint.Unsigned memory amountWithdrawn) {
+    function settleExpired()
+        external
+        onlyPostExpiration()
+        fees()
+        nonReentrant()
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
+    {
         // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
         require(contractState != ContractState.Open, "Unexpired position");
 
@@ -533,7 +546,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev this function can only be called once the contract is expired and cant be re-called
      * due to the state modifiers applied on it.
      */
-    function expire() external onlyPostExpiration() onlyOpenState() fees() {
+    function expire() external onlyPostExpiration() onlyOpenState() fees() nonReentrant() {
         contractState = ContractState.ExpiredPriceRequested;
 
         // The final fee for this request is paid out of the contract rather than by the caller.
@@ -551,7 +564,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * which prevents re-entry into this function or the `expire` function. No fees are paid when calling
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
-    function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() {
+    function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() nonReentrant() {
         require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
 
         contractState = ContractState.ExpiredPriceRequested;
@@ -564,7 +577,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
-    function remargin() external override onlyPreExpiration() {
+    function remargin() external override onlyPreExpiration() nonReentrant() {
         return;
     }
 
@@ -574,7 +587,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * rawCollateral, which isn't a user-readable value.
      * @param sponsor address whose collateral amount is retrieved.
      */
-    function getCollateral(address sponsor) external view returns (FixedPoint.Unsigned memory) {
+    function getCollateral(address sponsor) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
         return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
     }
@@ -582,14 +595,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     /**
      * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
      */
-    function totalPositionCollateral() external view returns (FixedPoint.Unsigned memory) {
-        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
-    }
-
-    /**
-     * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
-     */
-    function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
+    function totalPositionCollateral() external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
@@ -649,6 +655,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         // Return fee-adjusted amount of collateral deleted from position.
         return startingGlobalCollateral.sub(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
+    }
+
+    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
+        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
     function _getPositionData(address sponsor)

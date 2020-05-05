@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
@@ -16,7 +17,7 @@ import "../../oracle/implementation/Constants.sol";
  * contract is abstract as each derived contract that inherits `FeePayer` must implement `pfc()`.
  */
 
-abstract contract FeePayer is Testable {
+abstract contract FeePayer is Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -71,7 +72,7 @@ abstract contract FeePayer is Testable {
         address _collateralAddress,
         address _finderAddress,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) public Testable(_timerAddress) nonReentrant() {
         collateralCurrency = IERC20(_collateralAddress);
         finder = FinderInterface(_finderAddress);
         lastPaymentTime = getCurrentTime();
@@ -83,20 +84,20 @@ abstract contract FeePayer is Testable {
      ****************************************/
 
     /**
-     * @notice Pays UMA DVM regular fees to the Store contract.
+     * @notice Pays UMA DVM regular fees (as a % of the collateral pool) to the Store contract.
      * @dev These must be paid periodically for the life of the contract. If the contract has not paid its
      * regular fee in a week or more then a late penalty is applied which is sent to the caller.
      * This will revert if the amount of fees owed are greater than the pfc. An event is only fired if the fees charged are greater than 0.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
      * This will return 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
      */
-    function payRegularFees() public returns (FixedPoint.Unsigned memory totalPaid) {
+    function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
-        FixedPoint.Unsigned memory _pfc = pfc();
+        FixedPoint.Unsigned memory collateralPool = _pfc();
 
-        // Exit early if there is no pfc (thus, no fees to be paid).
-        if (_pfc.isEqual(0)) {
+        // Exit early if there is no collateral from which to pay fees.
+        if (collateralPool.isEqual(0)) {
             return totalPaid;
         }
 
@@ -108,7 +109,7 @@ abstract contract FeePayer is Testable {
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
             lastPaymentTime,
             time,
-            _pfc
+            collateralPool
         );
         lastPaymentTime = time;
 
@@ -130,8 +131,7 @@ abstract contract FeePayer is Testable {
 
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
-        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
-        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
+        _adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -156,13 +156,12 @@ abstract contract FeePayer is Testable {
             collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
         } else {
             // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
-            FixedPoint.Unsigned memory _pfc = pfc();
+            FixedPoint.Unsigned memory collateralPool = _pfc();
 
-            // The final fee must be < pfc or the fee will be larger than 100%.
-            require(_pfc.isGreaterThan(amount), "Final fee is more than PfC");
+            // The final fee must be < available collateral or the fee will be larger than 100%.
+            require(collateralPool.isGreaterThan(amount), "Final fee is more than PfC");
 
-            // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
-            _adjustCumulativeFeeMultiplier(amount, _pfc);
+            _adjustCumulativeFeeMultiplier(amount, collateralPool);
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -174,14 +173,19 @@ abstract contract FeePayer is Testable {
 
     /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
-     * @dev Derived contracts are expected to implement this function so the payRegularFees()
-     * method can correctly compute the owed regular fees.
+     * @dev This will be equivalent to the collateral pool available from which to pay fees.
+     * Therefore, derived contracts are expected to implement this so that pay-fee methods
+     * can correctly compute the owed fees as a % of PfC.
      */
-    function pfc() public virtual view returns (FixedPoint.Unsigned memory);
+    function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+        return _pfc();
+    }
 
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/
+
+    function _pfc() internal virtual view returns (FixedPoint.Unsigned memory);
 
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
@@ -246,7 +250,7 @@ abstract contract FeePayer is Testable {
         addedCollateral = _getFeeAdjustedCollateral(rawCollateral).sub(initialBalance);
     }
 
-    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption.
+    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current available collateral.
     function _adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
         internal
     {
