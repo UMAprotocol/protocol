@@ -190,7 +190,8 @@ contract Liquidatable is PricelessPositionManager {
         address sponsor,
         FixedPoint.Unsigned calldata minCollateralPerToken,
         FixedPoint.Unsigned calldata maxCollateralPerToken,
-        FixedPoint.Unsigned calldata maxTokensToLiquidate
+        FixedPoint.Unsigned calldata maxTokensToLiquidate,
+        uint256 deadline
     )
         external
         fees()
@@ -201,6 +202,9 @@ contract Liquidatable is PricelessPositionManager {
             FixedPoint.Unsigned memory finalFeeBond
         )
     {
+        // Check that this transaction was mined pre-deadline.
+        require(getCurrentTime() <= deadline, "Mined after deadline");
+
         // Retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
