@@ -17,6 +17,7 @@
 const { toWei, toBN } = web3.utils;
 const { RegistryRolesEnum } = require("../../common/Enums.js");
 const { interfaceName } = require("../utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 // Contract to test
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
@@ -56,6 +57,7 @@ contract("IntegrationTest", function(accounts) {
 
   const mintAndApprove = toBN(toWei("100000000000000")); // number of tokens minted and approved by each account
   const timeOffsetBetweenTests = toBN(60 * 60); // timestep advance between loop iterations (1 hour)
+  const unreachableDeadline = MAX_UINT_VAL;
 
   beforeEach(async () => {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -228,8 +230,10 @@ contract("IntegrationTest", function(accounts) {
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
         await expiringMultiParty.createLiquidation(
           sponsor,
+          { rawValue: "0" },
           { rawValue: GCR.toString() }, // the liquidation is submitted at the GCR price
           { rawValue: positionTokensOutstanding.toString() }, // all tokens in the position are liquidated
+          unreachableDeadline,
           { from: liquidator }
         );
 
@@ -432,8 +436,10 @@ contract("IntegrationTest", function(accounts) {
         const positionTokensOutstanding = (await expiringMultiParty.positions(sponsor)).tokensOutstanding;
         await expiringMultiParty.createLiquidation(
           sponsor,
+          { rawValue: "0" },
           { rawValue: GCR.toString() },
           { rawValue: positionTokensOutstanding.toString() },
+          unreachableDeadline,
           { from: liquidator }
         );
 
@@ -659,8 +665,10 @@ contract("IntegrationTest", function(accounts) {
 
         await expiringMultiParty.createLiquidation(
           sponsor,
+          { rawValue: "0" },
           { rawValue: GCR.toString() },
           { rawValue: positionTokensOutstanding.toString() },
+          unreachableDeadline,
           { from: liquidator }
         );
 
