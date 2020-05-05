@@ -7,6 +7,7 @@
 ** tutorials
 *** prerequisites.md
 *** creating_from_truffle.md
+*** creating_from_sponsor_cli.md
 ** known_issues.md
 ** glossary.md
 * oracle
