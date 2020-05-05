@@ -60,14 +60,14 @@ async function run(price, address, shouldPoll) {
   const botMonitorObject = [
     {
       name: "UMA liquidator Bot",
-      address: accounts[1],
-      collateralThreshold: toWei("10000000"),
-      syntheticThreshold: toWei("10000000"),
-      etherThreshold: toWei("10000000")
+      address: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+      collateralThreshold: toWei("10"),
+      syntheticThreshold: toWei("10"),
+      etherThreshold: toWei("10")
     }
   ];
 
-  const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, accounts[0], botMonitorObject);
+  const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
 
   while (true) {
     try {
