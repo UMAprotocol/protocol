@@ -2,6 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 const { ExpiringMultiPartyEventClient } = require("../ExpiringMultiPartyEventClient");
 const { delay } = require("../delay");
@@ -21,6 +22,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const sponsor2 = accounts[3];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const unreachableDeadline = MAX_UINT_VAL;
 
   // Contracts
   let collateralToken;
@@ -108,6 +110,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -138,6 +141,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client.clearState();
@@ -176,6 +180,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -209,6 +214,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 

@@ -2,6 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
 const { delay } = require("../delay");
@@ -19,6 +20,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor2 = accounts[1];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const unreachableDeadline = MAX_UINT_VAL;
 
   let collateralToken;
   let emp;
@@ -152,6 +154,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: sponsor1 }
     );
     await emp.createLiquidation(
@@ -159,6 +162,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: sponsor1 }
     );
 
@@ -249,6 +253,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
@@ -256,6 +261,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client._update();
@@ -288,6 +294,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
@@ -295,6 +302,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client._update();
@@ -358,6 +366,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
@@ -365,6 +374,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client._update();
