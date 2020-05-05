@@ -84,7 +84,7 @@ abstract contract FeePayer is Testable, Lockable {
      ****************************************/
 
     /**
-     * @notice Pays UMA DVM regular fees to the Store contract.
+     * @notice Pays UMA DVM regular fees (as a % of the collateral pool) to the Store contract.
      * @dev These must be paid periodically for the life of the contract. If the contract has not paid its
      * regular fee in a week or more then a late penalty is applied which is sent to the caller.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
@@ -92,10 +92,10 @@ abstract contract FeePayer is Testable, Lockable {
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
-        FixedPoint.Unsigned memory pfc = _pfc();
+        FixedPoint.Unsigned memory collateralPool = _pfc();
 
-        // Exit early if there is no pfc (thus, no fees to be paid).
-        if (pfc.isEqual(0)) {
+        // Exit early if there is no collateral from which to pay fees.
+        if (collateralPool.isEqual(0)) {
             return totalPaid;
         }
 
@@ -107,7 +107,7 @@ abstract contract FeePayer is Testable, Lockable {
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
             lastPaymentTime,
             time,
-            pfc
+            collateralPool
         );
         lastPaymentTime = time;
 
@@ -115,8 +115,7 @@ abstract contract FeePayer is Testable, Lockable {
 
         totalPaid = regularFee.add(latePenalty);
 
-        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
-        _adjustCumulativeFeeMultiplier(totalPaid, pfc);
+        _adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -141,13 +140,12 @@ abstract contract FeePayer is Testable, Lockable {
             collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
         } else {
             // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
-            FixedPoint.Unsigned memory pfc = _pfc();
+            FixedPoint.Unsigned memory collateralPool = _pfc();
 
-            // The final fee must be < pfc or the fee will be larger than 100%.
-            require(pfc.isGreaterThan(amount), "Final fee is more than PfC");
+            // The final fee must be < available collateral or the fee will be larger than 100%.
+            require(collateralPool.isGreaterThan(amount), "Final fee is more than PfC");
 
-            // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
-            _adjustCumulativeFeeMultiplier(amount, pfc);
+            _adjustCumulativeFeeMultiplier(amount, collateralPool);
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -159,7 +157,8 @@ abstract contract FeePayer is Testable, Lockable {
 
     /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
-     * @dev Derived contracts are expected to implement this so that pay-fee methods
+     * @dev This will be equivalent to the collateral pool available from which to pay fees.
+     * Therefore, derived contracts are expected to implement this so that pay-fee methods
      * can correctly compute the owed fees as a % of PfC.
      */
     function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
@@ -235,7 +234,7 @@ abstract contract FeePayer is Testable, Lockable {
         addedCollateral = _getFeeAdjustedCollateral(rawCollateral).sub(initialBalance);
     }
 
-    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption.
+    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current available collateral.
     function _adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
         internal
     {
