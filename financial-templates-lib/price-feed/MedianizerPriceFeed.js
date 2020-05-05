@@ -15,6 +15,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     this.priceFeeds = priceFeeds;
   }
 
+  // Takes the median of all of the constituent price feeds' currentPrices.
   getCurrentPrice() {
     const currentPrices = this.priceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
     if (currentPrices.some(element => element === undefined || element === null)) {
@@ -24,6 +25,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     return this._computeMedian(currentPrices);
   }
 
+  // Takes the median of all of the constituent price feeds' historical prices.
   getHistoricalPrice(time) {
     const historicalPrices = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPrice(time));
 
@@ -34,6 +36,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     return this._computeMedian(historicalPrices);
   }
 
+  // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
     const lastUpdateTimes = this.priceFeeds.map(priceFeed => priceFeed.getLastUpdateTime());
 
@@ -45,6 +48,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     return Math.max(...lastUpdateTimes);
   }
 
+  // Updates all constituent price feeds.
   async update() {
     for (const priceFeed of this.priceFeeds) {
       await priceFeed.update();

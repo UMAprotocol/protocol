@@ -177,6 +177,7 @@ contract("Liquidatable", function(accounts) {
         await didContractThrow(
           liquidationContract.createLiquidation(
             sponsor,
+            { rawValue: "0" },
             { rawValue: pricePerToken.toString() },
             { rawValue: amountOfSynthetic.toString() },
             { from: liquidator }
@@ -203,7 +204,34 @@ contract("Liquidatable", function(accounts) {
         await didContractThrow(
           liquidationContract.createLiquidation(
             sponsor,
+            { rawValue: "0" },
             { rawValue: pricePerToken.toString() },
+            { rawValue: amountOfSynthetic.toString() },
+            { from: liquidator }
+          )
+        )
+      );
+    });
+    it("Collateralization is out of bounds", async () => {
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            { rawValue: "0" },
+            // The `maxCollateralPerToken` is below the actual collateral per token, so the liquidate call should fail.
+            { rawValue: pricePerToken.subn(1).toString() },
+            { rawValue: amountOfSynthetic.toString() },
+            { from: liquidator }
+          )
+        )
+      );
+      assert(
+        await didContractThrow(
+          liquidationContract.createLiquidation(
+            sponsor,
+            // The `minCollateralPerToken` is above the actual collateral per token, so the liquidate call should fail.
+            { rawValue: pricePerToken.addn(1).toString() },
+            { rawValue: pricePerToken.addn(2).toString() },
             { rawValue: amountOfSynthetic.toString() },
             { from: liquidator }
           )
@@ -213,12 +241,14 @@ contract("Liquidatable", function(accounts) {
     it("Returns correct ID", async () => {
       const { liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
       );
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -228,6 +258,7 @@ contract("Liquidatable", function(accounts) {
     it("Pulls correct token amount", async () => {
       const { tokensLiquidated } = await liquidationContract.createLiquidation.call(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -239,6 +270,7 @@ contract("Liquidatable", function(accounts) {
       const intitialBalance = await syntheticToken.balanceOf(liquidator);
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -256,6 +288,7 @@ contract("Liquidatable", function(accounts) {
 
       const { finalFeeBond } = await liquidationContract.createLiquidation.call(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -266,6 +299,7 @@ contract("Liquidatable", function(accounts) {
       const intitialBalance = await collateralToken.balanceOf(liquidator);
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -283,6 +317,7 @@ contract("Liquidatable", function(accounts) {
     it("Emits an event", async () => {
       const createLiquidationResult = await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -305,6 +340,7 @@ contract("Liquidatable", function(accounts) {
       // Create first liquidation
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -329,12 +365,14 @@ contract("Liquidatable", function(accounts) {
       // Create second liquidation
       const { liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
       );
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -363,12 +401,14 @@ contract("Liquidatable", function(accounts) {
       // Create partial liquidation.
       let { liquidationId, tokensLiquidated } = await liquidationContract.createLiquidation.call(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
       );
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
@@ -388,6 +428,7 @@ contract("Liquidatable", function(accounts) {
       // A independent and identical liquidation can be created.
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         // Due to rounding problems, have to increase the pricePerToken.
         { rawValue: pricePerToken.muln(2).toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
@@ -395,12 +436,14 @@ contract("Liquidatable", function(accounts) {
       );
       ({ liquidationId } = await liquidationContract.createLiquidation.call(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
       ));
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
         { from: liquidator }
@@ -424,6 +467,7 @@ contract("Liquidatable", function(accounts) {
         await didContractThrow(
           liquidationContract.createLiquidation(
             sponsor,
+            { rawValue: "0" },
             { rawValue: pricePerToken.muln(2).toString() },
             { rawValue: liquidationAmount.toString() },
             { from: liquidator }
@@ -458,6 +502,7 @@ contract("Liquidatable", function(accounts) {
       liquidationTime = await liquidationContract.getCurrentTime();
       liquidationResult = await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -854,12 +899,14 @@ contract("Liquidatable", function(accounts) {
         // Create another liquidation
         const { liquidationId } = await liquidationContract.createLiquidation.call(
           sponsor,
+          { rawValue: "0" },
           { rawValue: pricePerToken.toString() },
           { rawValue: amountOfSynthetic.toString() },
           { from: liquidator }
         );
         await liquidationContract.createLiquidation(
           sponsor,
+          { rawValue: "0" },
           { rawValue: pricePerToken.toString() },
           { rawValue: amountOfSynthetic.toString() },
           { from: liquidator }
@@ -1183,6 +1230,7 @@ contract("Liquidatable", function(accounts) {
       // Create a Liquidation
       await edgeLiquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -1221,6 +1269,7 @@ contract("Liquidatable", function(accounts) {
       // however due to the pending withdrawal amount, the liquidated collateral gets reduced to 0.
       const createLiquidationResult = await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -1283,6 +1332,7 @@ contract("Liquidatable", function(accounts) {
         await didContractThrow(
           liquidationContract.createLiquidation(
             sponsor,
+            { rawValue: "0" },
             { rawValue: pricePerToken.toString() },
             { rawValue: amountOfSynthetic.toString() },
             { from: liquidator }
@@ -1313,6 +1363,7 @@ contract("Liquidatable", function(accounts) {
       liquidationTime = await liquidationContract.getCurrentTime();
       await liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -1405,6 +1456,7 @@ contract("Liquidatable", function(accounts) {
       // Create a Liquidation which can be tested against.
       await USDCLiquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: USDCPricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
         { from: liquidator }
@@ -1635,6 +1687,7 @@ contract("Liquidatable", function(accounts) {
       // Create a liquidation.
       await _liquidationContract.createLiquidation(
         sponsor,
+        { rawValue: "0" },
         { rawValue: toWei("1.5") },
         { rawValue: numTokens },
         { from: liquidator }

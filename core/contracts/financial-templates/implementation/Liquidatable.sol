@@ -181,13 +181,15 @@ contract Liquidatable is PricelessPositionManager {
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
      * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
      * @param sponsor address to liquidate.
-     * @param collateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
+     * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
+     * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
      * @return liquidationId of the newly created liquidation.
      */
     function createLiquidation(
         address sponsor,
-        FixedPoint.Unsigned calldata collateralPerToken,
+        FixedPoint.Unsigned calldata minCollateralPerToken,
+        FixedPoint.Unsigned calldata maxCollateralPerToken,
         FixedPoint.Unsigned calldata maxTokensToLiquidate
     )
         external
@@ -217,12 +219,16 @@ contract Liquidatable is PricelessPositionManager {
         {
             FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
-            // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
-            // what the liquidator was willing to liquidate at.
-            // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
+            // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
+            // maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
             require(
-                collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
+                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
                 "CR is more than max liq. price"
+            );
+            // minCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
+            require(
+                minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal),
+                "CR is less than min liq. price"
             );
         }
 
@@ -231,9 +237,6 @@ contract Liquidatable is PricelessPositionManager {
         // For purposes of disputes, it's actually this liquidatedCollateral value that's used. This value is net of
         // withdrawal requests.
         FixedPoint.Unsigned memory liquidatedCollateral = startCollateralNetOfWithdrawal.mul(ratio);
-        // Part of the withdrawal request is also removed. Ideally:
-        // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
-        FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(ratio);
 
         // Compute final fee at time of liquidation.
         finalFeeBond = _computeFinalFees();
@@ -259,8 +262,16 @@ contract Liquidatable is PricelessPositionManager {
             })
         );
 
+        // Scoping to get rid of a stack too deep error.
         // Adjust the sponsor's remaining position.
-        _reduceSponsorPosition(sponsor, tokensLiquidated, lockedCollateral, withdrawalAmountToRemove);
+        {
+            // Part of the withdrawal request is also removed. Ideally:
+            // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
+            FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(
+                ratio
+            );
+            _reduceSponsorPosition(sponsor, tokensLiquidated, lockedCollateral, withdrawalAmountToRemove);
+        }
 
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
@@ -425,7 +436,7 @@ contract Liquidatable is PricelessPositionManager {
             delete liquidations[sponsor][liquidationId];
         }
 
-        require(withdrawalAmount.isGreaterThan(0));
+        require(withdrawalAmount.isGreaterThan(0), "Invalid withdrawal amount");
         amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
