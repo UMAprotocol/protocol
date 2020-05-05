@@ -13,9 +13,6 @@ const { TokenBalanceClient } = require("../financial-templates-lib/TokenBalanceC
 // Monitor modules to report on client state changes
 const { ContractMonitor } = require("./ContractMonitor");
 const { BalanceMonitor } = require("./BalanceMonitor");
-
-// Monitor modules to report on client state changes
-const { ContractMonitor } = require("./ContractMonitor");
 const { CRMonitor } = require("./CRMonitor");
 
 // Truffle contracts
