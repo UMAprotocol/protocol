@@ -144,7 +144,6 @@ contract Liquidatable is PricelessPositionManager {
      */
     constructor(ConstructorParams memory params)
         public
-        nonReentrant()
         PricelessPositionManager(
             params.expirationTimestamp,
             params.withdrawalLiveness,
@@ -157,6 +156,7 @@ contract Liquidatable is PricelessPositionManager {
             params.minSponsorTokens,
             params.timerAddress
         )
+        nonReentrant()
     {
         require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
         require(

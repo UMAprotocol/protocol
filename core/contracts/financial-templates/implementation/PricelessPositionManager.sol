@@ -202,8 +202,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function transferPositionPassedRequest(address newSponsorAddress)
         public
         onlyPreExpiration()
-        nonReentrant()
         noPendingWithdrawal(msg.sender)
+        nonReentrant()
     {
         require(
             _getFeeAdjustedCollateral(positions[newSponsorAddress].rawCollateral).isEqual(
@@ -252,8 +252,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         public
         onlyPreExpiration()
         noPendingWithdrawal(msg.sender)
-        nonReentrant()
         fees()
+        nonReentrant()
     {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         PositionData storage positionData = _getPositionData(msg.sender);
