@@ -433,7 +433,10 @@ contract("Liquidatable", function(accounts) {
     });
   });
 
-  describe("Liquidation has been created", () => {
+  describe("Full liquidation has been created", () => {
+    // Used to catch events.
+    let liquidationResult;
+
     beforeEach(async () => {
       // Create position
       await liquidationContract.create(
@@ -453,7 +456,7 @@ contract("Liquidatable", function(accounts) {
 
       // Create a Liquidation
       liquidationTime = await liquidationContract.getCurrentTime();
-      await liquidationContract.createLiquidation(
+      liquidationResult = await liquidationContract.createLiquidation(
         sponsor,
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.toString() },
@@ -485,6 +488,11 @@ contract("Liquidatable", function(accounts) {
         assert.equal(newLiquidation.disputer, zeroAddress);
         assert.equal(newLiquidation.liquidationTime.toString(), liquidationTime.toString());
         assert.equal(newLiquidation.settlementPrice.toString(), "0");
+      });
+      it("EndedSponsorPosition event was emitted", async () => {
+        truffleAssert.eventEmitted(liquidationResult, "EndedSponsorPosition", ev => {
+          return ev.sponsor == sponsor;
+        });
       });
       it("Liquidation does not exist", async () => {
         assert(await didContractThrow(liquidationContract.liquidations(sponsor, liquidationParams.falseLiquidationId)));

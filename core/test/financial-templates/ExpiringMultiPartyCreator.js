@@ -15,7 +15,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Timer = artifacts.require("Timer");
 
-contract("ExpiringMultiParty", function(accounts) {
+contract("ExpiringMultiPartyCreator", function(accounts) {
   let contractCreator = accounts[0];
 
   // Contract variables
@@ -133,7 +133,7 @@ contract("ExpiringMultiParty", function(accounts) {
     let expiringMultiPartyAddress;
     truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", ev => {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
-      return ev.expiringMultiPartyAddress != 0 && ev.partyMemberAddress == contractCreator;
+      return ev.expiringMultiPartyAddress != 0 && ev.deployerAddress == contractCreator;
     });
 
     // Ensure value returned from the event is the same as returned from the function.
@@ -163,9 +163,8 @@ contract("ExpiringMultiParty", function(accounts) {
     let expiringMultiPartyAddress;
     truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", ev => {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
-      return ev.expiringMultiPartyAddress != 0 && ev.partyMemberAddress == contractCreator;
+      return ev.expiringMultiPartyAddress != 0 && ev.deployerAddress == contractCreator;
     });
     assert.isTrue(await registry.isContractRegistered(expiringMultiPartyAddress));
-    assert.isTrue(await registry.isPartyMemberOfContract(contractCreator, expiringMultiPartyAddress));
   });
 });

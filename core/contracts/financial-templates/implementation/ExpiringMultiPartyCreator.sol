@@ -67,7 +67,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
     uint256 public constant STRICT_LIQUIDATION_LIVENESS = 3600;
 
-    event CreatedExpiringMultiParty(address indexed expiringMultiPartyAddress, address indexed partyMemberAddress);
+    event CreatedExpiringMultiParty(address indexed expiringMultiPartyAddress, address indexed deployerAddress);
 
     /**
      * @notice Constructs the ExpiringMultiPartyCreator contract.
@@ -110,17 +110,13 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable {
 
     /**
      * @notice Creates an instance of expiring multi party and registers it within the registry.
-     * @dev caller is automatically registered as the first (and only) party member.
      * @param params is a `ConstructorParams` object from ExpiringMultiParty.
      * @return address of the deployed ExpiringMultiParty contract
      */
     function createExpiringMultiParty(Params memory params) public returns (address) {
         address derivative = ExpiringMultiPartyLib.deploy(_convertParams(params));
 
-        address[] memory parties = new address[](1);
-        parties[0] = msg.sender;
-
-        _registerContract(parties, address(derivative));
+        _registerContract(new address[](0), address(derivative));
 
         emit CreatedExpiringMultiParty(address(derivative), msg.sender);
 
