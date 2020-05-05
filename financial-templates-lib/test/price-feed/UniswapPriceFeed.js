@@ -1,4 +1,5 @@
 const { toWei, toBN } = web3.utils;
+const winston = require("winston");
 
 const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
 const { mineTransactionsAtTime } = require("../../../common/SolidityTestUtils.js");
@@ -17,7 +18,23 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
   beforeEach(async function() {
     uniswapMock = await UniswapMock.new({ from: owner });
-    uniswapPriceFeed = new UniswapPriceFeed(Uniswap.abi, web3, uniswapMock.address, 3600, 3600, () => mockTime);
+
+    // The UniswapPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // DummyLogger will not print anything to console as only capture `info` level events.
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: [new winston.transports.Console()]
+    });
+
+    uniswapPriceFeed = new UniswapPriceFeed(
+      dummyLogger,
+      Uniswap.abi,
+      web3,
+      uniswapMock.address,
+      3600,
+      3600,
+      () => mockTime
+    );
   });
 
   it("Basic current price", async function() {

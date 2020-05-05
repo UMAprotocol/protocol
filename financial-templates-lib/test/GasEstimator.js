@@ -1,4 +1,5 @@
 const { delay } = require("../delay");
+const winston = require("winston");
 
 const { GasEstimator } = require("../GasEstimator");
 
@@ -7,7 +8,11 @@ contract("GasEstimator.js", function() {
 
   describe("Construction with default config", () => {
     beforeEach(() => {
-      gasEstimator = new GasEstimator();
+      const dummyLogger = winston.createLogger({
+        level: "info",
+        transports: [new winston.transports.Console()]
+      });
+      gasEstimator = new GasEstimator(dummyLogger);
     });
 
     it("Default parameters are set correctly", () => {
@@ -36,7 +41,11 @@ contract("GasEstimator.js", function() {
 
   describe("Construction with custom config", () => {
     beforeEach(() => {
-      gasEstimator = new GasEstimator((updateThreshold = 1.5), (defaultFastPriceGwei = 10));
+      const dummyLogger = winston.createLogger({
+        level: "info",
+        transports: [new winston.transports.Console()]
+      });
+      gasEstimator = new GasEstimator(dummyLogger, (updateThreshold = 1.5), (defaultFastPriceGwei = 10));
     });
 
     it("Default parameters are set correctly", () => {

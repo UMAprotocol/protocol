@@ -5,16 +5,20 @@ const { toWei } = web3.utils;
 const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
-// JS libs
-const { ContractMonitor } = require("./ContractMonitor");
+// Clients to retrieve on-chain data
+const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
+
+// Monitor modules to report on client state changes
+const { ContractMonitor } = require("./ContractMonitor");
+const { CRMonitor } = require("./CRMonitor");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
 // TODO: Figure out a good way to run this script, maybe with a wrapper shell script.
-// Currently, you can run it with `truffle exec ../liquidator/index.js --address=<address> --price=<price>` *from the core
-// directory*.
+// Currently, you can run it with `truffle exec ../monitor/index.js --price=<price>` *from the core  directory*.
 
 /**
  * @notice Continuously attempts to monitor contract positions listening for newly emmited events.
@@ -34,21 +38,46 @@ async function run(price, address, shouldPoll) {
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(address);
 
-  // Client and liquidator bot
-  const empEventClient = new ExpiringMultiPartyEventClient(ExpiringMultiParty.abi, web3, emp.address, 10);
+  // 1. Contract state monitor
+  const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
   const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]]);
+
+  // 3. Collateralization Ratio monitor
+  // TODO: refactor this to dependency injection the logger like with the other monitors
+  const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address, 10);
+
+  // Wallet objects to monitor. For each wallet spesify a name,
+  const walletMonitorObject = [
+    {
+      name: "Monitored sponsor wallet",
+      address: accounts[2],
+      crAlert: 150
+    }
+  ];
+
+  const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject);
 
   while (true) {
     try {
-      // Steps:
-      // 1. Update the client
-      // 2. Check For new liquidation events
-      // 3. Check for new disputes
-      // 4. Check for new disputeSettlements
+      // 1.  Contract monitor
+      // 1.a Update the client
       await empEventClient._update();
+      // 1.b Check For new liquidation events
       await contractMonitor.checkForNewLiquidations(() => toWei(price.toString()));
+      // 1.c Check for new disputes
       await contractMonitor.checkForNewDisputeEvents(() => toWei(price.toString()));
+      // 1.d Check for new disputeSettlements
       await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei(price.toString()));
+
+      console.log("At the point");
+
+      // 3.  Position Collateralization Ratio monitor
+      // 1.a Update the client
+      await empClient._update();
+      // 1.b Check for positions below their CR
+      crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
+
+      console.log("After the point");
     } catch (error) {
       Logger.error({
         at: "Monitors#index",

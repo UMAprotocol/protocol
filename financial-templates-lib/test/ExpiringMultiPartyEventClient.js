@@ -80,7 +80,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: []
+      transports: [new winston.transports.Console()]
     });
 
     client = new ExpiringMultiPartyEventClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address);
