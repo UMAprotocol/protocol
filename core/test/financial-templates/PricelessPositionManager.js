@@ -792,14 +792,18 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal(redeemedAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
 
     // Execute the settlement and check balances.
-    await settleExpired({ from: sponsor });
-    await pricelessPositionManager.settleExpired({ from: sponsor });
+    settleExpiredResult = await settleExpired({ from: sponsor });
     const sponsorFinalCollateral = await collateral.balanceOf(sponsor);
     const sponsorFinalSynthetic = await tokenCurrency.balanceOf(sponsor);
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
       expectedTotalSponsorCollateralReturned
     );
+
+    // Check events.
+    truffleAssert.eventEmitted(settleExpiredResult, "EndedSponsorPosition", ev => {
+      return ev.sponsor == sponsor;
+    });
 
     // The token Sponsor should have no synthetic positions left after settlement.
     assert.equal(sponsorFinalSynthetic, 0);

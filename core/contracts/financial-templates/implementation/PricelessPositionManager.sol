@@ -215,6 +215,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         emit RequestTransferPositionExecuted(msg.sender, newSponsorAddress);
         emit NewSponsor(newSponsorAddress);
+        emit EndedSponsorPosition(msg.sender);
     }
 
     /**
@@ -480,6 +481,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
             // Reset the position state as all the value has been removed after settlement.
             delete positions[msg.sender];
+            emit EndedSponsorPosition(msg.sender);
         }
 
         // Take the min of the remaining collateral and the collateral "owed". If the contract is undercapitalized,
