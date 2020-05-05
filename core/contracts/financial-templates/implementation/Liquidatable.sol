@@ -448,13 +448,6 @@ contract Liquidatable is PricelessPositionManager {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
     }
 
-    /**
-     * @dev This returns the profit from corruption from active and liquidated positions.
-     */
-    function pfc() public override view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        return _pfc();
-    }
-
     function getLiquidations(address sponsor) external view nonReentrantView() returns (LiquidationData[] memory) {
         return liquidations[sponsor];
     }

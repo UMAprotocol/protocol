@@ -599,14 +599,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
-    /**
-     * @dev This returns the profit from corruption from active positions. Liquidatable is expected to override this method
-     * in order to return the PfC from both active and liquidated positions.
-     */
-    function pfc() public virtual view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        return _pfc();
-    }
-
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/

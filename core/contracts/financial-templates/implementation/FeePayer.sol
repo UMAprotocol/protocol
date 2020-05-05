@@ -159,14 +159,18 @@ abstract contract FeePayer is Testable, Lockable {
 
     /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
-     * @dev Derived contracts are expected to implement a public `pfc()` method that calls this internal function so that the payRegularFees()
-     * method can correctly compute the owed regular fees. The public `pfc()` can therefore have the `nonReentrantView()` modifier.
+     * @dev Derived contracts are expected to implement this so that pay-fee methods
+     * can correctly compute the owed fees as a % of PfC.
      */
-    function _pfc() internal virtual view returns (FixedPoint.Unsigned memory);
+    function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+        return _pfc();
+    }
 
     /****************************************
      *         INTERNAL FUNCTIONS           *
      ****************************************/
+
+    function _pfc() internal virtual view returns (FixedPoint.Unsigned memory);
 
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
