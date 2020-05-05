@@ -446,6 +446,7 @@ contract("Liquidatable", function(accounts) {
         { rawValue: "0" },
         { rawValue: pricePerToken.toString() },
         { rawValue: amountOfSynthetic.divn(5).toString() },
+        unreachableDeadline,
         { from: liquidator }
       );
       await liquidationContract.createLiquidation(

@@ -235,6 +235,9 @@ contract Liquidatable is PricelessPositionManager {
             );
         }
 
+        // Compute final fee at time of liquidation.
+        finalFeeBond = _computeFinalFees();
+
         // These will be populated within the scope below.
         FixedPoint.Unsigned memory lockedCollateral;
         FixedPoint.Unsigned memory liquidatedCollateral;
@@ -260,9 +263,6 @@ contract Liquidatable is PricelessPositionManager {
 
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
-
-        // Compute final fee at time of liquidation.
-        finalFeeBond = _computeFinalFees();
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
