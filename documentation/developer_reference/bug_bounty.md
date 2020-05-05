@@ -5,13 +5,11 @@ All contract code and balances are publicly verifiable, and security researchers
 
 ## Audit
 
-<!-- TODO: Add details of audit.
-The contracts have been carefully audited by smart contract security experts [names].
-The audit report can be found [here].
--->
-
 UMA encourages the community to audit our contracts and security; we also encourage the responsible disclosure of any issues.
 The bug bounty program is intended to recognize the value of working with the community of independent security researchers, and sets out our definition of good faith in the context of finding and reporting vulnerabilities, as well as what you can expect from us in return.
+
+The contracts in [the common directory](https://github.com/UMAprotocol/protocol/tree/9d403ddb5f2f07194daefe7da51e0e0a6306f2c4/core/contracts/common) and [the oracle directory](https://github.com/UMAprotocol/protocol/tree/9d403ddb5f2f07194daefe7da51e0e0a6306f2c4/core/contracts/oracle) of the `/protocol` repo have been carefully audited by OpenZeppelin.
+The audit report can be found [here](https://blog.openzeppelin.com/uma-audit-phase-1/).
 
 ## Rewards
 

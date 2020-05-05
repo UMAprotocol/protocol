@@ -79,7 +79,7 @@ See this [blog post](https://medium.com/uma-project/umas-initial-uniswap-listing
 
 Here are some additional resources regarding the UMA DVM:
 
-- [Explainer](./oracle/architecture.md)
+- [Explainer](../oracle/architecture.md)
 - [Blog post](https://medium.com/uma-project/umas-data-verification-mechanism-3c5342759eb8) on UMA’s DVM design
 - [Whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-DVM-oracle-whitepaper.pdf) on UMA’s DVM design
 - [Research repo](https://github.com/UMAprotocol/research) for optimal fee policy

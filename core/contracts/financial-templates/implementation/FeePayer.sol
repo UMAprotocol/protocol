@@ -54,9 +54,9 @@ abstract contract FeePayer is Testable {
      *              MODIFIERS               *
      ****************************************/
 
-    // modifier that calls payFees().
+    // modifier that calls payRegularFees().
     modifier fees {
-        payFees();
+        payRegularFees();
         _;
     }
 
@@ -88,7 +88,7 @@ abstract contract FeePayer is Testable {
      * regular fee in a week or more then a late penalty is applied which is sent to the caller.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
      */
-    function payFees() public returns (FixedPoint.Unsigned memory totalPaid) {
+    function payRegularFees() public returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory _pfc = pfc();
@@ -113,8 +113,9 @@ abstract contract FeePayer is Testable {
         emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         totalPaid = regularFee.add(latePenalty);
-        FixedPoint.Unsigned memory effectiveFee = totalPaid.divCeil(_pfc);
-        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+
+        // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -126,12 +127,9 @@ abstract contract FeePayer is Testable {
         }
     }
 
-    /**
-     * @notice Pays UMA DVM final fees to the Store contract.
-     * @dev This is a flat fee charged for each price request.
-     * @param payer address of who is paying the fees.
-     * @param amount the amount of collateral to send as the final fee.
-     */
+    // Pays UMA Oracle final fees of `amount` in `collateralCurrency` to the Store contract. Final fee is a flat fee charged for each price request.
+    // If payer is the contract, adjusts internal bookkeeping variables. If payer is not the contract, pulls in `amount`
+    // of collateral currency.
     function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
         if (amount.isEqual(0)) {
             return;
@@ -147,9 +145,8 @@ abstract contract FeePayer is Testable {
             // The final fee must be < pfc or the fee will be larger than 100%.
             require(_pfc.isGreaterThan(amount));
 
-            // Add the adjustment.
-            FixedPoint.Unsigned memory effectiveFee = amount.divCeil(pfc());
-            cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
+            // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
+            _adjustCumulativeFeeMultiplier(amount, _pfc);
         }
 
         emit FinalFeesPaid(amount.rawValue);
@@ -161,7 +158,7 @@ abstract contract FeePayer is Testable {
 
     /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
-     * @dev Derived contracts are expected to implement this function so the payFees()
+     * @dev Derived contracts are expected to implement this function so the payRegularFees()
      * method can correctly compute the owed regular fees.
      */
     function pfc() public virtual view returns (FixedPoint.Unsigned memory);
@@ -182,7 +179,7 @@ abstract contract FeePayer is Testable {
     // Returns the user's collateral minus any fees that have been subtracted since it was originally
     // deposited into the contract. Note: if the contract has paid fees since it was deployed, the raw
     // value should be larger than the returned value.
-    function _getCollateral(FixedPoint.Unsigned memory rawCollateral)
+    function _getFeeAdjustedCollateral(FixedPoint.Unsigned memory rawCollateral)
         internal
         view
         returns (FixedPoint.Unsigned memory collateral)
@@ -193,7 +190,7 @@ abstract contract FeePayer is Testable {
     // Converts a user-readable collateral value into a raw value that accounts for already-assessed
     // fees. If any fees have been taken from this contract in the past, then the raw value will be
     // larger than the user-readable value.
-    function _convertCollateral(FixedPoint.Unsigned memory collateral)
+    function _convertToRawCollateral(FixedPoint.Unsigned memory collateral)
         internal
         view
         returns (FixedPoint.Unsigned memory rawCollateral)
@@ -210,26 +207,34 @@ abstract contract FeePayer is Testable {
         internal
         returns (FixedPoint.Unsigned memory removedCollateral)
     {
-        FixedPoint.Unsigned memory initialBalance = _getCollateral(rawCollateral);
-        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToRemove);
+        FixedPoint.Unsigned memory initialBalance = _getFeeAdjustedCollateral(rawCollateral);
+        FixedPoint.Unsigned memory adjustedCollateral = _convertToRawCollateral(collateralToRemove);
         rawCollateral.rawValue = rawCollateral.sub(adjustedCollateral).rawValue;
-        removedCollateral = initialBalance.sub(_getCollateral(rawCollateral));
+        removedCollateral = initialBalance.sub(_getFeeAdjustedCollateral(rawCollateral));
     }
 
-    // Increase rawCollateral by a fee-adjusted collateralToRemove amount. Fee adjustment scales up collateralToRemove
+    // Increase rawCollateral by a fee-adjusted collateralToAdd amount. Fee adjustment scales up collateralToAdd
     // by dividing it by cumulativeFeeMultiplier. There is potential for this quotient to be floored, therefore
     // rawCollateral is increased by less than expected. Because this method is usually called in conjunction with an
     // actual addition of collateral to this contract, return the fee-adjusted amount that the rawCollateral is
-    // increased by so that the caller can minimize error between collateral removed and rawCollateral credited.
+    // increased by so that the caller can minimize error between collateral added and rawCollateral credited.
     // NOTE: This return value exists only for the sake of symmetry with _removeCollateral. We don't actually use it
-    // because we are OK if more collateral is stored in the contract than is represented by totalPositionCollateral.
+    // because we are OK if more collateral is stored in the contract than is represented by rawTotalPositionCollateral.
     function _addCollateral(FixedPoint.Unsigned storage rawCollateral, FixedPoint.Unsigned memory collateralToAdd)
         internal
         returns (FixedPoint.Unsigned memory addedCollateral)
     {
-        FixedPoint.Unsigned memory initialBalance = _getCollateral(rawCollateral);
-        FixedPoint.Unsigned memory adjustedCollateral = _convertCollateral(collateralToAdd);
+        FixedPoint.Unsigned memory initialBalance = _getFeeAdjustedCollateral(rawCollateral);
+        FixedPoint.Unsigned memory adjustedCollateral = _convertToRawCollateral(collateralToAdd);
         rawCollateral.rawValue = rawCollateral.add(adjustedCollateral).rawValue;
-        addedCollateral = _getCollateral(rawCollateral).sub(initialBalance);
+        addedCollateral = _getFeeAdjustedCollateral(rawCollateral).sub(initialBalance);
+    }
+
+    // Scale the cumulativeFeeMultiplier by the ratio of fees paid to the current profit from corruption.
+    function _adjustCumulativeFeeMultiplier(FixedPoint.Unsigned memory amount, FixedPoint.Unsigned memory currentPfc)
+        internal
+    {
+        FixedPoint.Unsigned memory effectiveFee = amount.divCeil(currentPfc);
+        cumulativeFeeMultiplier = cumulativeFeeMultiplier.mul(FixedPoint.fromUnscaledUint(1).sub(effectiveFee));
     }
 }

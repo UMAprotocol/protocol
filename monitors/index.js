@@ -6,12 +6,17 @@ const { delay } = require("../financial-templates-lib/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // Clients to retrieve on-chain data
+const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
 const { TokenBalanceClient } = require("../financial-templates-lib/TokenBalanceClient");
 
 // Monitor modules to report on client state changes
 const { ContractMonitor } = require("./ContractMonitor");
 const { BalanceMonitor } = require("./BalanceMonitor");
+
+// Monitor modules to report on client state changes
+const { ContractMonitor } = require("./ContractMonitor");
+const { CRMonitor } = require("./CRMonitor");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -68,6 +73,20 @@ async function run(price, address, shouldPoll) {
   ];
 
   const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, accounts[0], botMonitorObject);
+  // 3. Collateralization Ratio monitor
+  // TODO: refactor this to dependency injection the logger like with the other monitors
+  const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address, 10);
+
+  // Wallet objects to monitor. For each wallet spesify a name,
+  const walletMonitorObject = [
+    {
+      name: "Monitored sponsor wallet",
+      address: accounts[2],
+      crAlert: 150
+    }
+  ];
+
+  const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject);
 
   while (true) {
     try {
@@ -87,7 +106,15 @@ async function run(price, address, shouldPoll) {
       // 2.b Check for monitored bot balance changes
       balanceMonitor.checkBotBalances();
       // 2.c Check for wallet threshold changes
-      // balanceMonitor.checkWalletCrRatio();
+      balanceMonitor.checkWalletCrRatio();
+
+      // 3.  Position Collateralization Ratio monitor
+      // 1.a Update the client
+      await empClient._update();
+      // 1.b Check for positions below their CR
+      crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
+
+      console.log("After the point");
     } catch (error) {
       Logger.error({
         at: "Monitors#index",

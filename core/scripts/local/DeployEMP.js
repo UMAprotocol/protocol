@@ -62,7 +62,7 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     const constructorParams = {
-      expirationTimestamp: "1601510400", // 2020-09-01T00:00:00.000Z
+      expirationTimestamp: "1601510400", // 2020-09-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "BTCUSD",
@@ -94,6 +94,8 @@ const deployEMP = async callback => {
     // Done!
     console.log(`Using Mock Oracle @ ${mockOracle.address}`);
     console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
+    console.log(`Deployer address @ ${deployer}`);
+    console.log(`First sponsor with under-collateralized position @ ${firstSponsor}`);
     console.table(constructorParams);
   } catch (err) {
     console.error(err);

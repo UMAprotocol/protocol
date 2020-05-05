@@ -20,7 +20,8 @@ Owners of UMA tokens govern 2 areas of the UMA ecosystem:
 
 1. Financial contracts depending on the DVM
 1. The UMA DVM
-   All governance issues will be addressed via an UMIP process. The UMIP process is detailed [here](./governance/UMIPs.md).
+
+All governance issues will be addressed via an UMIP process. The UMIP process is detailed [here](./governance/UMIPs.md).
 
 Because UMA token owners will be responsible for voting on price requests from financial contracts depending on the DVM, they need to approve any price identifiers that they may be asked to opine on and any financial contracts that may create price requests.
 To that end, they need to:
