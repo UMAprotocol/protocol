@@ -5,7 +5,7 @@ import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
-import "./ExpiringMultiParty.sol";
+import "./ExpiringMultiPartyLib.sol";
 
 
 /**
@@ -68,7 +68,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
     uint256 public constant STRICT_LIQUIDATION_LIVENESS = 3600;
 
-    event CreatedExpiringMultiParty(address indexed expiringMultiPartyAddress, address indexed partyMemberAddress);
+    event CreatedExpiringMultiParty(address indexed expiringMultiPartyAddress, address indexed deployerAddress);
 
     /**
      * @notice Constructs the ExpiringMultiPartyCreator contract.
@@ -111,17 +111,13 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
 
     /**
      * @notice Creates an instance of expiring multi party and registers it within the registry.
-     * @dev caller is automatically registered as the first (and only) party member.
      * @param params is a `ConstructorParams` object from ExpiringMultiParty.
      * @return address of the deployed ExpiringMultiParty contract
      */
     function createExpiringMultiParty(Params memory params) public nonReentrant() returns (address) {
-        ExpiringMultiParty derivative = new ExpiringMultiParty(_convertParams(params));
+        address derivative = ExpiringMultiPartyLib.deploy(_convertParams(params));
 
-        address[] memory parties = new address[](1);
-        parties[0] = msg.sender;
-
-        _registerContract(parties, address(derivative));
+        _registerContract(new address[](0), address(derivative));
 
         emit CreatedExpiringMultiParty(address(derivative), msg.sender);
 
@@ -148,12 +144,12 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         constructorParams.tokenFactoryAddress = tokenFactoryAddress;
 
         // Enforce configuration constraints.
-        require(_isValidTimestamp(params.expirationTimestamp));
-        require(bytes(params.syntheticName).length != 0);
-        require(bytes(params.syntheticSymbol).length != 0);
+        require(_isValidTimestamp(params.expirationTimestamp), "Invalid expiration timestamp");
+        require(bytes(params.syntheticName).length != 0, "Missing synthetic name");
+        require(bytes(params.syntheticSymbol).length != 0, "Missing synthetic symbol");
         constructorParams.withdrawalLiveness = STRICT_WITHDRAWAL_LIVENESS;
         constructorParams.liquidationLiveness = STRICT_LIQUIDATION_LIVENESS;
-        require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress));
+        require(collateralTokenWhitelist.isOnWhitelist(params.collateralAddress), "Collateral is not whitelisted");
 
         // Input from function call.
         constructorParams.expirationTimestamp = params.expirationTimestamp;

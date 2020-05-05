@@ -19,23 +19,23 @@ Please see [here](./documentation/developer_reference/bug_bounty.md) for details
 
 ## Developer Information and Tools
 
-### Solhint - Solidity Linter
+For information on how to initialize and interact with our smart contracts, please see the
+[documentation site](https://docs.umaproject.org).
 
-Find more information about solhint [here](https://protofire.github.io/solhint/). There are plugins available to see solhint errors inline in many IDEs.
+### Install dependencies
 
-- Make sure you've run `npm install`.
-- To run over all contracts under `contracts/`:
-
-```
-$(npm bin)/solhint contracts/**/*.sol
-```
-
-### Running Prettier JS Formatter
-
-To run prettier over the `.js` files in the repo, run:
+You'll need the latest LTS release of nodejs and npm installed. Assuming that's done, run:
 
 ```
-npm run prettier
+npm install
+```
+
+### Running the linter
+
+To run the formatter, run:
+
+```
+npm run lint-fix
 ```
 
 ## Coverage
@@ -45,15 +45,26 @@ These can be generated manually by developers. There are no regression tests or 
 generate a coverage report automatically, but if you'd like to generate it locally, run:
 
 ```
-npm run coverage
+./ci/coverage.sh core
 ```
 
-The full report can be viewed by opening the `coverage/index.html` file in a browser.
+The full report can be viewed by opening the `core/coverage/index.html` file in a browser.
 
 ## Style Guide
 
 See [STYLE.md](STYLE.md).
 
-## Roadmap for the Oracle
+## Roadmap for the DVM
 
-The current iteration of the system relies on a centrally controlled oracle to settle financial contracts with correct prices. To provide truly universal market access, future iterations will open up the system to allow outside participation while still providing guarantees about correct behavior, even with assumptions of arbitrary (byzantine) behavior. Look forward to our second whitepaper where we outline our vision for a trustless oracle.
+Version 1 of the UMA Token and DVM have been released and launched. You can find the addresses of relevant contracts
+[here](./core/networks/1.json). This version implements most of what's described in the
+[whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-DVM-oracle-whitepaper.pdf). Notable exceptions
+include:
+
+- The voting process uses a simple modal majority. If there is no majority, the vote is retried in the next round.
+- Defense against parasitic usage as described in section 8.1.
+- The buyback-and-burn mechanism is currently run by the UMA Foundation rather than other automated mechanisms
+  mentioned in section 5.2.
+
+The goal is to bring the implementation closer to the whitepaper in future DVM upgrades. Please see the
+[documentation site](https://docs.umaproject.org) for more details.

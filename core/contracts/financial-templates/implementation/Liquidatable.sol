@@ -63,13 +63,13 @@ contract Liquidatable is PricelessPositionManager {
         bytes32 priceFeedIdentifier;
         string syntheticName;
         string syntheticSymbol;
+        FixedPoint.Unsigned minSponsorTokens;
         // Params specifically for Liquidatable.
         uint256 liquidationLiveness;
         FixedPoint.Unsigned collateralRequirement;
         FixedPoint.Unsigned disputeBondPct;
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
-        FixedPoint.Unsigned minSponsorTokens;
     }
 
     // Liquidations are unique by ID per sponsor
@@ -158,8 +158,11 @@ contract Liquidatable is PricelessPositionManager {
             params.timerAddress
         )
     {
-        require(params.collateralRequirement.isGreaterThan(1));
-        require(params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1));
+        require(params.collateralRequirement.isGreaterThan(1), "CR is more than 100%");
+        require(
+            params.sponsorDisputeRewardPct.add(params.disputerDisputeRewardPct).isLessThan(1),
+            "Rewards are more than 100%"
+        );
 
         // Set liquidatable specific variables.
         liquidationLiveness = params.liquidationLiveness;
@@ -179,13 +182,15 @@ contract Liquidatable is PricelessPositionManager {
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
      * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
      * @param sponsor address to liquidate.
-     * @param collateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
+     * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
+     * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
      * @return liquidationId of the newly created liquidation.
      */
     function createLiquidation(
         address sponsor,
-        FixedPoint.Unsigned calldata collateralPerToken,
+        FixedPoint.Unsigned calldata minCollateralPerToken,
+        FixedPoint.Unsigned calldata maxCollateralPerToken,
         FixedPoint.Unsigned calldata maxTokensToLiquidate
     )
         external
@@ -216,10 +221,17 @@ contract Liquidatable is PricelessPositionManager {
         {
             FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
-            // Check the max price constraint to ensure that the Position's collateralization ratio hasn't increased beyond
-            // what the liquidator was willing to liquidate at.
-            // collateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-            require(collateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
+            // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
+            // maxCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
+            require(
+                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
+                "CR is more than max liq. price"
+            );
+            // minCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
+            require(
+                minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal),
+                "CR is less than min liq. price"
+            );
         }
 
         // The actual amount of collateral that gets moved to the liquidation.
@@ -227,9 +239,6 @@ contract Liquidatable is PricelessPositionManager {
         // For purposes of disputes, it's actually this liquidatedCollateral value that's used. This value is net of
         // withdrawal requests.
         FixedPoint.Unsigned memory liquidatedCollateral = startCollateralNetOfWithdrawal.mul(ratio);
-        // Part of the withdrawal request is also removed. Ideally:
-        // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
-        FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(ratio);
 
         // Compute final fee at time of liquidation.
         finalFeeBond = _computeFinalFees();
@@ -255,8 +264,16 @@ contract Liquidatable is PricelessPositionManager {
             })
         );
 
+        // Scoping to get rid of a stack too deep error.
         // Adjust the sponsor's remaining position.
-        _reduceSponsorPosition(sponsor, tokensLiquidated, lockedCollateral, withdrawalAmountToRemove);
+        {
+            // Part of the withdrawal request is also removed. Ideally:
+            // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
+            FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(
+                ratio
+            );
+            _reduceSponsorPosition(sponsor, tokensLiquidated, lockedCollateral, withdrawalAmountToRemove);
+        }
 
         // Add to the global liquidation collateral count.
         _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
@@ -347,7 +364,8 @@ contract Liquidatable is PricelessPositionManager {
         require(
             (msg.sender == liquidation.disputer) ||
                 (msg.sender == liquidation.liquidator) ||
-                (msg.sender == liquidation.sponsor)
+                (msg.sender == liquidation.sponsor),
+            "Caller cannot withdraw rewards"
         );
 
         // Settles the liquidation if necessary.
@@ -414,14 +432,15 @@ contract Liquidatable is PricelessPositionManager {
             // Pay LIQUIDATOR: collateral + dispute bond + returned final fee
             withdrawalAmount = collateral.add(disputeBondAmount).add(finalFee);
             delete liquidations[sponsor][liquidationId];
-            // If the state is pre-dispute but time has passed liveness then the dispute failed and the liquidator can withdraw
+            // If the state is pre-dispute but time has passed liveness then there was no dispute. We represent this
+            // state as a dispute failed and the liquidator can withdraw.
         } else if (liquidation.state == Status.PreDispute && msg.sender == liquidation.liquidator) {
             // Pay LIQUIDATOR: collateral + returned final fee
             withdrawalAmount = collateral.add(finalFee);
             delete liquidations[sponsor][liquidationId];
         }
 
-        require(withdrawalAmount.isGreaterThan(0));
+        require(withdrawalAmount.isGreaterThan(0), "Invalid withdrawal amount");
         amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
@@ -495,7 +514,8 @@ contract Liquidatable is PricelessPositionManager {
         // Revert if the caller is attempting to access an invalid liquidation
         // (one that has never been created or one has never been initialized).
         require(
-            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized
+            liquidationId < liquidationArray.length && liquidationArray[liquidationId].state != Status.Uninitialized,
+            "Invalid liquidation ID"
         );
         return liquidationArray[liquidationId];
     }
@@ -509,7 +529,10 @@ contract Liquidatable is PricelessPositionManager {
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
-        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute));
+        require(
+            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.PreDispute),
+            "Liquidation not disputable"
+        );
     }
 
     function _withdrawable(uint256 liquidationId, address sponsor) internal view {
@@ -519,7 +542,8 @@ contract Liquidatable is PricelessPositionManager {
         // Must be disputed or the liquidation has passed expiry.
         require(
             (state > Status.PreDispute) ||
-                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute))
+                ((_getLiquidationExpiry(liquidation) <= getCurrentTime()) && (state == Status.PreDispute)),
+            "Liquidation not withdrawable"
         );
     }
 }
