@@ -10,7 +10,7 @@ Oracles are only used when a liquidation is disputed — which is designed to be
 
 One can write priceless financial contract templates to create various kinds of financial products.
 The UMA team has written one to create synthetic tokens.
-These are ERC-20 tokens whose required backing collateral collateral is determined by the value of a price identifier.
+These are ERC-20 tokens whose required backing collateral is determined by the value of a price identifier.
 There is no on-chain price feed for the values of the price identifier; rather, token holders and token sponsors should monitor the value of this price identifier off-chain to inform their decisions about how much collateral to maintain on-chain.
 If token sponsors are improperly collateralized, liquidators can liquidate token sponsors’ positions.
 Improper liquidations can be disputed by disputers. Details on these mechanisms are available [here](../synthetic_tokens/explainer.md).

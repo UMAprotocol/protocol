@@ -87,7 +87,9 @@ abstract contract FeePayer is Testable, Lockable {
      * @notice Pays UMA DVM regular fees (as a % of the collateral pool) to the Store contract.
      * @dev These must be paid periodically for the life of the contract. If the contract has not paid its
      * regular fee in a week or more then a late penalty is applied which is sent to the caller.
+     * This will revert if the amount of fees owed are greater than the pfc. An event is only fired if the fees charged are greater than 0.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
+     * This will return 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
      */
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
@@ -111,9 +113,23 @@ abstract contract FeePayer is Testable, Lockable {
         );
         lastPaymentTime = time;
 
-        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
-
         totalPaid = regularFee.add(latePenalty);
+        if (totalPaid.isEqual(0)) {
+            return totalPaid;
+        }
+        // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay as much of the fee
+        // that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the regular fee, which has the effect of paying
+        // the store first, followed by the caller if there is any fee remaining.
+        if (totalPaid.isGreaterThan(_pfc)) {
+            FixedPoint.Unsigned memory deficit = totalPaid.sub(_pfc);
+            FixedPoint.Unsigned memory latePenaltyReduction = FixedPoint.min(latePenalty, deficit);
+            latePenalty = latePenalty.sub(latePenaltyReduction);
+            deficit = deficit.sub(latePenaltyReduction);
+            regularFee = regularFee.sub(FixedPoint.min(regularFee, deficit));
+            totalPaid = _pfc;
+        }
+
+        emit RegularFeesPaid(regularFee.rawValue, latePenalty.rawValue);
 
         _adjustCumulativeFeeMultiplier(totalPaid, collateralPool);
 
