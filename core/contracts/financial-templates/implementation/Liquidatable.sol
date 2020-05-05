@@ -144,6 +144,7 @@ contract Liquidatable is PricelessPositionManager {
      */
     constructor(ConstructorParams memory params)
         public
+        nonReentrant()
         PricelessPositionManager(
             params.expirationTimestamp,
             params.withdrawalLiveness,
