@@ -184,6 +184,7 @@ contract Liquidatable is PricelessPositionManager {
      * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
+     * @param deadline abort the liquidation if the transaction is mined after this timestamp.
      * @return liquidationId of the newly created liquidation.
      */
     function createLiquidation(
