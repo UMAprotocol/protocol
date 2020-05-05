@@ -1,5 +1,6 @@
 const { LiquidationStatesEnum } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 const winston = require("winston");
 const sinon = require("sinon");
 
@@ -41,6 +42,7 @@ contract("Disputer.js", function(accounts) {
   let spy;
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const unreachableDeadline = MAX_UINT_VAL;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -137,6 +139,7 @@ contract("Disputer.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
@@ -144,6 +147,7 @@ contract("Disputer.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
@@ -151,6 +155,7 @@ contract("Disputer.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -191,6 +196,7 @@ contract("Disputer.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -199,6 +205,7 @@ contract("Disputer.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -235,6 +242,7 @@ contract("Disputer.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -243,6 +251,7 @@ contract("Disputer.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("1") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
