@@ -92,10 +92,10 @@ abstract contract FeePayer is Testable, Lockable {
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
-        FixedPoint.Unsigned memory _pfc = _pfc();
+        FixedPoint.Unsigned memory pfc = _pfc();
 
         // Exit early if there is no pfc (thus, no fees to be paid).
-        if (_pfc.isEqual(0)) {
+        if (pfc.isEqual(0)) {
             return totalPaid;
         }
 
@@ -107,7 +107,7 @@ abstract contract FeePayer is Testable, Lockable {
         (FixedPoint.Unsigned memory regularFee, FixedPoint.Unsigned memory latePenalty) = store.computeRegularFee(
             lastPaymentTime,
             time,
-            _pfc
+            pfc
         );
         lastPaymentTime = time;
 
@@ -116,7 +116,7 @@ abstract contract FeePayer is Testable, Lockable {
         totalPaid = regularFee.add(latePenalty);
 
         // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
-        _adjustCumulativeFeeMultiplier(totalPaid, _pfc);
+        _adjustCumulativeFeeMultiplier(totalPaid, pfc);
 
         if (regularFee.isGreaterThan(0)) {
             collateralCurrency.safeIncreaseAllowance(address(store), regularFee.rawValue);
@@ -141,13 +141,13 @@ abstract contract FeePayer is Testable, Lockable {
             collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
         } else {
             // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
-            FixedPoint.Unsigned memory _pfc = _pfc();
+            FixedPoint.Unsigned memory pfc = _pfc();
 
             // The final fee must be < pfc or the fee will be larger than 100%.
-            require(_pfc.isGreaterThan(amount));
+            require(pfc.isGreaterThan(amount));
 
             // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
-            _adjustCumulativeFeeMultiplier(amount, _pfc);
+            _adjustCumulativeFeeMultiplier(amount, pfc);
         }
 
         emit FinalFeesPaid(amount.rawValue);
