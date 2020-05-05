@@ -143,7 +143,7 @@ abstract contract FeePayer is Testable {
             FixedPoint.Unsigned memory _pfc = pfc();
 
             // The final fee must be < pfc or the fee will be larger than 100%.
-            require(_pfc.isGreaterThan(amount));
+            require(_pfc.isGreaterThan(amount), "Final fee is more than PfC");
 
             // Adjust the cumulative fee multiplier by the fee paid and the current PFC.
             _adjustCumulativeFeeMultiplier(amount, _pfc);

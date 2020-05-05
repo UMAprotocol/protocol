@@ -154,8 +154,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress
     ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) {
-        require(_expirationTimestamp > getCurrentTime());
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
+        require(_expirationTimestamp > getCurrentTime(), "Invalid expiration in future");
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
 
         expirationTimestamp = _expirationTimestamp;
         withdrawalLiveness = _withdrawalLiveness;
@@ -176,11 +176,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function requestTransferPosition() public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.transferPositionRequestPassTimestamp == 0);
+        require(positionData.transferPositionRequestPassTimestamp == 0, "Pending transfer");
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
-        require(requestPassTime <= expirationTimestamp);
+        require(requestPassTime <= expirationTimestamp, "Request expires post-expiry");
 
         // Update the position object for the user.
         positionData.transferPositionRequestPassTimestamp = requestPassTime;
@@ -198,13 +198,15 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(
             _getFeeAdjustedCollateral(positions[newSponsorAddress].rawCollateral).isEqual(
                 FixedPoint.fromUnscaledUint(0)
-            )
+            ),
+            "Sponsor already has position"
         );
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp == 0, "Pending withdrawal");
         require(
             positionData.transferPositionRequestPassTimestamp != 0 &&
-                positionData.transferPositionRequestPassTimestamp <= getCurrentTime()
+                positionData.transferPositionRequestPassTimestamp <= getCurrentTime(),
+            "Invalid transfer request"
         );
 
         // Reset transfer request.
@@ -223,7 +225,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function cancelTransferPosition() external onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.transferPositionRequestPassTimestamp != 0);
+        require(positionData.transferPositionRequestPassTimestamp != 0, "No pending transfer");
 
         emit RequestTransferPositionCanceled(msg.sender);
 
@@ -238,9 +240,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() fees() {
-        require(collateralAmount.isGreaterThan(0));
+        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp == 0, "Pending withdrawal");
 
         // Increase the position and global collateral balance by collateral amount.
         _incrementCollateralBalances(positionData, collateralAmount);
@@ -266,8 +268,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
-        require(collateralAmount.isGreaterThan(0));
+        require(positionData.requestPassTimestamp == 0, "Pending withdrawal");
+        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
         // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
@@ -290,15 +292,16 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function requestWithdrawal(FixedPoint.Unsigned memory collateralAmount) public onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
+        require(positionData.requestPassTimestamp == 0, "Pending withdrawal");
         require(
             collateralAmount.isGreaterThan(0) &&
-                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral))
+                collateralAmount.isLessThanOrEqual(_getFeeAdjustedCollateral(positionData.rawCollateral)),
+            "Invalid collateral amount"
         );
 
         // Make sure the proposed expiration of this request is not post-expiry.
         uint256 requestPassTime = getCurrentTime().add(withdrawalLiveness);
-        require(requestPassTime <= expirationTimestamp);
+        require(requestPassTime <= expirationTimestamp, "Request expires post-expiry");
 
         // Update the position object for the user.
         positionData.requestPassTimestamp = requestPassTime;
@@ -321,7 +324,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp != 0 && positionData.requestPassTimestamp <= getCurrentTime());
+        require(
+            positionData.requestPassTimestamp != 0 && positionData.requestPassTimestamp <= getCurrentTime(),
+            "Invalid withdraw request"
+        );
 
         // If withdrawal request amount is > position collateral, then withdraw the full collateral amount.
         // This situation is possible due to fees charged since the withdrawal was originally requested.
@@ -347,7 +353,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function cancelWithdrawal() external onlyPreExpiration() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp != 0);
+        require(positionData.requestPassTimestamp != 0, "No pending withdrawal");
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
@@ -407,8 +413,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp == 0);
-        require(!numTokens.isGreaterThan(positionData.tokensOutstanding));
+        require(positionData.requestPassTimestamp == 0, "Pending withdrawal");
+        require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Invalid token amount");
 
         FixedPoint.Unsigned memory fractionRedeemed = numTokens.div(positionData.tokensOutstanding);
         FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
@@ -424,7 +430,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
             // Decrease the sponsors position tokens size. Ensure it is above the min sponsor size.
             FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(numTokens);
-            require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
+            require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
             positionData.tokensOutstanding = newTokenCount;
 
             // Update the totalTokensOutstanding after redemption.
@@ -450,7 +456,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function settleExpired() external onlyPostExpiration() fees() returns (FixedPoint.Unsigned memory amountWithdrawn) {
         // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
-        require(contractState != ContractState.Open);
+        require(contractState != ContractState.Open, "Unexpired position");
 
         // Get the current settlement price and store it. If it is not resolved will revert.
         if (contractState != ContractState.ExpiredPriceReceived) {
@@ -531,7 +537,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * `emergencyShutdown` as the governor who would call the function would also receive the fees.
      */
     function emergencyShutdown() external override onlyPreExpiration() onlyOpenState() {
-        require(msg.sender == _getFinancialContractsAdminAddress());
+        require(msg.sender == _getFinancialContractsAdminAddress(), "Caller not Governor");
 
         contractState = ContractState.ExpiredPriceRequested;
         // Expiratory time now becomes the current time (emergency shutdown time).
@@ -600,7 +606,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         // Ensure that the sponsor will meet the min position size after the reduction.
         FixedPoint.Unsigned memory newTokenCount = positionData.tokensOutstanding.sub(tokensToRemove);
-        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens));
+        require(newTokenCount.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
         positionData.tokensOutstanding = newTokenCount;
 
         // Decrement the position's withdrawal amount.
@@ -661,7 +667,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime), "Can only get a price once the DVM has resolved");
+        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
         int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
 
         // For now we don't want to deal with negative prices in positions.
@@ -706,7 +712,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory collateralAmount
     ) internal returns (FixedPoint.Unsigned memory) {
         _removeCollateral(positionData.rawCollateral, collateralAmount);
-        require(_checkPositionCollateralization(positionData));
+        require(_checkPositionCollateralization(positionData), "CR below GCR");
         return _removeCollateral(rawTotalPositionCollateral, collateralAmount);
     }
 
@@ -714,19 +720,22 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // unnecessarily increase contract bytecode size.
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _onlyOpenState() internal view {
-        require(contractState == ContractState.Open);
+        require(contractState == ContractState.Open, "Contract state is not OPEN");
     }
 
     function _onlyPreExpiration() internal view {
-        require(getCurrentTime() < expirationTimestamp);
+        require(getCurrentTime() < expirationTimestamp, "Only callable pre-expiry");
     }
 
     function _onlyPostExpiration() internal view {
-        require(getCurrentTime() >= expirationTimestamp);
+        require(getCurrentTime() >= expirationTimestamp, "Only callable post-expiry");
     }
 
     function _onlyCollateralizedPosition(address sponsor) internal view {
-        require(_getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0));
+        require(
+            _getFeeAdjustedCollateral(positions[sponsor].rawCollateral).isGreaterThan(0),
+            "Position has no collateral"
+        );
     }
 
     /****************************************
