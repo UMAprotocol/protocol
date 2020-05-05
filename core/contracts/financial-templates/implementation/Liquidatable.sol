@@ -429,13 +429,10 @@ contract Liquidatable is PricelessPositionManager {
     }
 
     /**
-     * @dev This overrides pfc() so the Liquidatable contract can report its profit from corruption.
-     * Note: We do not apply the nonReentrantView() modifier here because it is applied to `payRegularFees()` which will call `pfc()`.
-     * We could have replaced added an internal `_pfc()` method to be called by `payRegularFees()` in order to make this `nonReentrantView()`,
-     * but decided not to in order to save bytecode.
+     * @dev This returns the profit from corruption from active and liquidated positions.
      */
-    function pfc() public override view returns (FixedPoint.Unsigned memory) {
-        return super.pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
+    function pfc() public override view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+        return _pfc();
     }
 
     function getLiquidations(address sponsor) external view nonReentrantView() returns (LiquidationData[] memory) {
@@ -481,6 +478,10 @@ contract Liquidatable is PricelessPositionManager {
             liquidationId,
             disputeSucceeded
         );
+    }
+
+    function _pfc() internal override view returns (FixedPoint.Unsigned memory) {
+        return super._pfc().add(_getFeeAdjustedCollateral(rawLiquidationCollateral));
     }
 
     function _getLiquidationData(address sponsor, uint256 liquidationId)

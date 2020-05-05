@@ -572,13 +572,11 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @dev This overrides pfc() so the PricelessPositionManager can report its profit from corruption.
-     * Note: We do not apply the nonReentrantView() modifier here because it is applied to `payRegularFees()` which will call `pfc()`.
-     * We could have replaced added an internal `_pfc()` method to be called by `payRegularFees()` in order to make this `nonReentrantView()`,
-     * but decided not to in order to save bytecode.
+     * @dev This returns the profit from corruption from active positions. Liquidatable is expected to override this method
+     * in order to return the PfC from both active and liquidated positions.
      */
-    function pfc() public virtual override view returns (FixedPoint.Unsigned memory) {
-        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
+    function pfc() public virtual view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+        return _pfc();
     }
 
     /****************************************
@@ -637,6 +635,10 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
         // Return fee-adjusted amount of collateral deleted from position.
         return startingGlobalCollateral.sub(_getFeeAdjustedCollateral(rawTotalPositionCollateral));
+    }
+
+    function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
+        return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
     function _getPositionData(address sponsor)

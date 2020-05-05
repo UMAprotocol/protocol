@@ -92,7 +92,7 @@ abstract contract FeePayer is Testable, Lockable {
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
-        FixedPoint.Unsigned memory _pfc = pfc();
+        FixedPoint.Unsigned memory _pfc = _pfc();
 
         // Exit early if there is no pfc (thus, no fees to be paid).
         if (_pfc.isEqual(0)) {
@@ -141,7 +141,7 @@ abstract contract FeePayer is Testable, Lockable {
             collateralCurrency.safeTransferFrom(payer, address(this), amount.rawValue);
         } else {
             // If the payer is the contract, adjust the cumulativeFeeMultiplier to compensate.
-            FixedPoint.Unsigned memory _pfc = pfc();
+            FixedPoint.Unsigned memory _pfc = _pfc();
 
             // The final fee must be < pfc or the fee will be larger than 100%.
             require(_pfc.isGreaterThan(amount));
@@ -159,10 +159,10 @@ abstract contract FeePayer is Testable, Lockable {
 
     /**
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
-     * @dev Derived contracts are expected to implement this function so the payRegularFees()
-     * method can correctly compute the owed regular fees.
+     * @dev Derived contracts are expected to implement a public `pfc()` method that calls this internal function so that the payRegularFees()
+     * method can correctly compute the owed regular fees. The public `pfc()` can therefore have the `nonReentrantView()` modifier.
      */
-    function pfc() public virtual view returns (FixedPoint.Unsigned memory);
+    function _pfc() internal virtual view returns (FixedPoint.Unsigned memory);
 
     /****************************************
      *         INTERNAL FUNCTIONS           *
