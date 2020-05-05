@@ -1,4 +1,5 @@
 const { toWei } = web3.utils;
+const winston = require("winston");
 
 const { interfaceName } = require("../../core/utils/Constants.js");
 
@@ -68,8 +69,15 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       timerAddress: Timer.address
     };
 
+    // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // DummyLogger will not print anything to console as only capture `info` level events.
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: [new winston.transports.Console()]
+    });
+
     emp = await ExpiringMultiParty.new(constructorParams);
-    client = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+    client = new ExpiringMultiPartyClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
 

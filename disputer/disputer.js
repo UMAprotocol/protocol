@@ -1,11 +1,10 @@
 // When running this script it assumed that the account has enough tokens and allowance from the unlocked truffle
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
-const { Logger } = require("../financial-templates-lib/logger/Logger");
-
 class Disputer {
-  constructor(expiringMultiPartyClient, gasEstimator, account) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, account) {
     this.account = account;
+    this.logger = logger;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
@@ -27,7 +26,7 @@ class Disputer {
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   queryAndDispute = async priceFunction => {
-    Logger.debug({
+    this.logger.debug({
       at: "Disputer",
       message: "Checking for any disputable liquidations"
     });
@@ -41,7 +40,7 @@ class Disputer {
     );
 
     if (disputeableLiquidations.length === 0) {
-      Logger.debug({
+      this.logger.debug({
         at: "Disputer",
         message: "No disputable liquidations"
       });
@@ -56,7 +55,7 @@ class Disputer {
       try {
         await dispute.call({ from: this.account, gasPrice: this.gasEstimator.getCurrentFastPrice() });
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "Disputer",
           message:
             "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.✋",
@@ -72,7 +71,7 @@ class Disputer {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      Logger.info({
+      this.logger.info({
         at: "Disputer",
         message: "Disputing liquidation🔥",
         liquidation: disputeableLiquidation,
@@ -85,7 +84,7 @@ class Disputer {
       try {
         receipt = await dispute.send(txnConfig);
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "Disputer",
           message: "Failed to dispute liquidation",
           error: error
@@ -100,7 +99,7 @@ class Disputer {
         id: receipt.events.LiquidationDisputed.returnValues.disputeId,
         disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
       };
-      Logger.info({
+      this.logger.info({
         at: "Disputer",
         message: "Dispute tx result📄",
         disputeResult: logResult
@@ -113,7 +112,7 @@ class Disputer {
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   queryAndWithdrawRewards = async () => {
-    Logger.debug({
+    this.logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
     });
@@ -126,7 +125,7 @@ class Disputer {
       .filter(liquidation => liquidation.disputer === this.account);
 
     if (disputedLiquidations.length === 0) {
-      Logger.debug({
+      this.logger.debug({
         at: "Disputer",
         message: "No withdrawable disputes"
       });
@@ -142,7 +141,7 @@ class Disputer {
       try {
         withdrawAmount = await withdraw.call({ from: this.account });
       } catch (error) {
-        Logger.debug({
+        this.logger.debug({
           at: "Disputer",
           message: "No rewards to withdraw.",
           liquidation: liquidation,
@@ -156,7 +155,7 @@ class Disputer {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      Logger.info({
+      this.logger.info({
         at: "Liquidator",
         message: "Withdrawing dispute🤑",
         liquidation: liquidation,
@@ -169,7 +168,7 @@ class Disputer {
       try {
         receipt = await withdraw.send(txnConfig);
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "Disputer",
           message: "Failed to withdraw dispute rewards",
           error: error
@@ -183,7 +182,7 @@ class Disputer {
         withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
         liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
       };
-      Logger.info({
+      this.logger.info({
         at: "Disputer",
         message: "Withdraw tx result📄",
         liquidationResult: logResult
