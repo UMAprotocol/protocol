@@ -8,9 +8,11 @@ const { Logger } = require("../financial-templates-lib/logger/Logger");
 // Clients to retrieve on-chain data
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
 const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
+const { TokenBalanceClient } = require("../financial-templates-lib/TokenBalanceClient");
 
 // Monitor modules to report on client state changes
 const { ContractMonitor } = require("./ContractMonitor");
+const { BalanceMonitor } = require("./BalanceMonitor");
 const { CRMonitor } = require("./CRMonitor");
 
 // Truffle contracts
@@ -42,6 +44,32 @@ async function run(price, address, shouldPoll) {
   const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
   const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]]);
 
+  // 2. Balance monitor
+  const collateralTokenAddress = await emp.collateralCurrency();
+  const syntheticTokenAddress = await emp.tokenCurrency();
+
+  const tokenBalanceClient = new TokenBalanceClient(
+    Logger,
+    ExpandedERC20.abi,
+    web3,
+    collateralTokenAddress,
+    syntheticTokenAddress,
+    10
+  );
+
+  // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
+  // TODO: refactor this to pull state from env variables
+  const botMonitorObject = [
+    {
+      name: "UMA liquidator Bot",
+      address: accounts[1],
+      collateralThreshold: toWei("10000000"),
+      syntheticThreshold: toWei("10000000"),
+      etherThreshold: toWei("10000000")
+    }
+  ];
+
+  const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, accounts[0], botMonitorObject);
   // 3. Collateralization Ratio monitor
   // TODO: refactor this to dependency injection the logger like with the other monitors
   const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address, 10);
@@ -69,7 +97,13 @@ async function run(price, address, shouldPoll) {
       // 1.d Check for new disputeSettlements
       await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei(price.toString()));
 
-      console.log("At the point");
+      // 2.  Wallet Balance monitor
+      // 2.a Update the client
+      await tokenBalanceClient._update();
+      // 2.b Check for monitored bot balance changes
+      balanceMonitor.checkBotBalances();
+      // 2.c Check for wallet threshold changes
+      balanceMonitor.checkWalletCrRatio();
 
       // 3.  Position Collateralization Ratio monitor
       // 1.a Update the client
