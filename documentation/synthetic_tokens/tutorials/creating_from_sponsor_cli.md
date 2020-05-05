@@ -12,6 +12,8 @@ It will let you be the “Token Sponsor,” which lets you:
 - Redeem the borrowed synthetic tokens and get collateral back
 - Transfer your position to another Ethereum address
 
+This [video](https://www.crowdcast.io/e/defi-discussions/18) will walk through the steps of this tutorial, starting around minute 11:00.
+
 ## Prerequisites
 
 1. Install homebrew via website `brew.sh`
