@@ -120,18 +120,21 @@ contract("Disputer.js", function(accounts) {
 
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor2,
+      { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor3,
+      { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -171,6 +174,7 @@ contract("Disputer.js", function(accounts) {
 
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -178,6 +182,7 @@ contract("Disputer.js", function(accounts) {
 
     await emp.createLiquidation(
       sponsor2,
+      { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -213,12 +218,19 @@ contract("Disputer.js", function(accounts) {
 
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("1.75") },
       { rawValue: toWei("100") },
       { from: liquidator }
     );
 
-    await emp.createLiquidation(sponsor2, { rawValue: toWei("1.75") }, { rawValue: toWei("1") }, { from: liquidator });
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: "0" },
+      { rawValue: toWei("1.75") },
+      { rawValue: toWei("1") },
+      { from: liquidator }
+    );
 
     // Send most of the user's balance elsewhere leaving only enough to dispute sponsor1's position.
     const transferAmount = (await collateralToken.balanceOf(disputeBot)).sub(toBN(toWei("1")));

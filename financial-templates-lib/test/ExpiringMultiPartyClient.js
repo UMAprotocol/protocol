@@ -141,11 +141,18 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // If a position is liquidated it should be removed from the list of positions and added to the undisputed liquidations.
     const { liquidationId } = await emp.createLiquidation.call(
       sponsor2,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
       { from: sponsor1 }
     );
-    await emp.createLiquidation(sponsor2, { rawValue: toWei("99999") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      { from: sponsor1 }
+    );
 
     await updateAndVerify(
       client,
@@ -231,12 +238,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Create a new liquidation for account[0]'s position.
     const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -268,12 +277,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Create a new liquidation for account[0]'s position.
     await emp.createLiquidation.call(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
       { from: liquidator }
@@ -336,12 +347,14 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Create a new liquidation for account[0]'s position.
     const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
       { from: liquidator }
