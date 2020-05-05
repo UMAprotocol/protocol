@@ -49,12 +49,16 @@ class Liquidator {
     }
 
     for (const position of underCollateralizedPositions) {
+      // Note: query the time again during each iteration to ensure the deadline is set reasonably.
+      const currentBlockTime = await this.empContract.methods.getCurrentTime().call();
+      const fiveMinutes = 300;
       // Create the transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: "0" },
         { rawValue: this.web3.utils.toWei(priceFeed) },
-        { rawValue: position.numTokens }
+        { rawValue: position.numTokens },
+        parseInt(currentBlockTime) + fiveMinutes
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.

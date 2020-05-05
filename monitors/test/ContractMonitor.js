@@ -2,6 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 // Script to test
 const { ContractMonitor } = require("../ContractMonitor");
@@ -29,6 +30,7 @@ contract("ContractMonitor.js", function(accounts) {
   const sponsor2 = accounts[4];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const unreachableDeadline = MAX_UINT_VAL;
 
   // Contracts
   let collateralToken;
@@ -129,6 +131,7 @@ contract("ContractMonitor.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -156,6 +159,7 @@ contract("ContractMonitor.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: sponsor1 } // not the monitored liquidator address
     );
 
@@ -177,6 +181,7 @@ contract("ContractMonitor.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -203,6 +208,7 @@ contract("ContractMonitor.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: sponsor1 }
     );
 
@@ -232,6 +238,7 @@ contract("ContractMonitor.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -273,6 +280,7 @@ contract("ContractMonitor.js", function(accounts) {
       { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: sponsor1 }
     );
 

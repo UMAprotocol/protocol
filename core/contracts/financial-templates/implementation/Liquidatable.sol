@@ -185,13 +185,15 @@ contract Liquidatable is PricelessPositionManager {
      * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
+     * @param deadline abort the liquidation if the transaction is mined after this timestamp.
      * @return liquidationId of the newly created liquidation.
      */
     function createLiquidation(
         address sponsor,
         FixedPoint.Unsigned calldata minCollateralPerToken,
         FixedPoint.Unsigned calldata maxCollateralPerToken,
-        FixedPoint.Unsigned calldata maxTokensToLiquidate
+        FixedPoint.Unsigned calldata maxTokensToLiquidate,
+        uint256 deadline
     )
         external
         fees()
@@ -203,11 +205,13 @@ contract Liquidatable is PricelessPositionManager {
             FixedPoint.Unsigned memory finalFeeBond
         )
     {
+        // Check that this transaction was mined pre-deadline.
+        require(getCurrentTime() <= deadline, "Mined after deadline");
+
         // Retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
 
         tokensLiquidated = FixedPoint.min(maxTokensToLiquidate, positionToLiquidate.tokensOutstanding);
-        FixedPoint.Unsigned memory ratio = tokensLiquidated.div(positionToLiquidate.tokensOutstanding);
 
         // Starting values for the Position being liquidated.
         // If withdrawal request amount is > position's collateral, then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
@@ -234,14 +238,34 @@ contract Liquidatable is PricelessPositionManager {
             );
         }
 
-        // The actual amount of collateral that gets moved to the liquidation.
-        FixedPoint.Unsigned memory lockedCollateral = startCollateral.mul(ratio);
-        // For purposes of disputes, it's actually this liquidatedCollateral value that's used. This value is net of
-        // withdrawal requests.
-        FixedPoint.Unsigned memory liquidatedCollateral = startCollateralNetOfWithdrawal.mul(ratio);
-
         // Compute final fee at time of liquidation.
         finalFeeBond = _computeFinalFees();
+
+        // These will be populated within the scope below.
+        FixedPoint.Unsigned memory lockedCollateral;
+        FixedPoint.Unsigned memory liquidatedCollateral;
+
+        // Scoping to get rid of a stack too deep error.
+        {
+            FixedPoint.Unsigned memory ratio = tokensLiquidated.div(positionToLiquidate.tokensOutstanding);
+
+            // The actual amount of collateral that gets moved to the liquidation.
+            lockedCollateral = startCollateral.mul(ratio);
+
+            // For purposes of disputes, it's actually this liquidatedCollateral value that's used. This value is net of
+            // withdrawal requests.
+            liquidatedCollateral = startCollateralNetOfWithdrawal.mul(ratio);
+
+            // Part of the withdrawal request is also removed. Ideally:
+            // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
+            FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(
+                ratio
+            );
+            _reduceSponsorPosition(sponsor, tokensLiquidated, lockedCollateral, withdrawalAmountToRemove);
+        }
+
+        // Add to the global liquidation collateral count.
+        _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
 
         // Construct liquidation object.
         // Note: all dispute-related values are just zeroed out until a dispute occurs.
@@ -263,20 +287,6 @@ contract Liquidatable is PricelessPositionManager {
                 finalFee: finalFeeBond
             })
         );
-
-        // Scoping to get rid of a stack too deep error.
-        // Adjust the sponsor's remaining position.
-        {
-            // Part of the withdrawal request is also removed. Ideally:
-            // liquidatedCollateral + withdrawalAmountToRemove = lockedCollateral.
-            FixedPoint.Unsigned memory withdrawalAmountToRemove = positionToLiquidate.withdrawalRequestAmount.mul(
-                ratio
-            );
-            _reduceSponsorPosition(sponsor, tokensLiquidated, lockedCollateral, withdrawalAmountToRemove);
-        }
-
-        // Add to the global liquidation collateral count.
-        _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
 
         emit LiquidationCreated(
             sponsor,
