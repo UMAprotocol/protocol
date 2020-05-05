@@ -90,7 +90,7 @@ contract("CRMonitor.js", function(accounts) {
     });
 
     emp = await ExpiringMultiParty.new(constructorParams);
-    empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+    empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
 
     const walletMonitorObject = [
       {

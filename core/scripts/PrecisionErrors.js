@@ -579,7 +579,7 @@ async function runExport() {
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
   // 4) Pay the fees.
-  await emp.payFees();
+  await emp.payRegularFees();
 
   /**
    * @notice PRE-TEST INVARIANTS
