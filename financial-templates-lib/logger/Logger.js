@@ -1,14 +1,18 @@
-// The logger has a number of different levels based on the severity of the incident:
-// -> Debugs: self explanatory. Normal status-based logging. These can trigger
-//   every iteration. Unlimited volume. Prints to console.
-// -> Info: when something happens that is notable, but not necessarily actionable.
-//   These should not trigger every iteration. Any on-chain event that executed correctly.
-//   Print to console & trigger a slack message.
-// -> Error: anything that requires human intervention. If the bot is low on funds or a
-//   transaction fails(some txn failures are sporadic and normal, but it may be difficult
-//   to distinguish).These can trigger every iteration, but only if it's because the bot
-//   encounters a persistent issue that requires human intervention to solve.
-//   Print to console, trigger a slack message and place a phone call to DRI.
+// The logger has a four different levels based on the severity of the incident:
+// -> Debug. Can be considered a console log. Used periodically to inform status updates of repetitive state changes like
+//    polling or no events found. Only viewable on GCE logs.
+// -> Info. Used to report informative events, like a liquidation/dispute/dispute settlement. These events are noteworthy
+//    but don’t require action or acknowledgment from any team member. Viewable on GCE logs and sends a slack message
+//    to appropriate channels.
+// -> Warn. Used to report warning events that might require response but don't necessarily indicate system failure.
+//    Require Acknowledgment from person on duty, or escalation occurs until warning is acknowledged. For example
+//    warnings would be used to indicate that a bot’s balance has dropped below a given threshold or a collateralization
+//    ratio of a given account moves below a threshold. Viewable on GCE logs, sends a slack message to appropriate
+//    channel and initiates a PagerDuty incident with urgency setting ‘low’.
+// -> Error. Used to report system failure or situations that require immediate response from appropriate team members.
+//    For example an error level message is generated when a liquidation/dispute/dispute settlement transaction from a
+//    UMA bot reverts, token price deviates significantly from the target price or a bot crashes. Viewable on GCE logs,
+//    sends a slack message to appropriate channel and initiates a PagerDuty incident with urgency setting ‘high’.
 
 // calling debug/info/error logging requires an specificity formatted json object as a param for the logger.
 // All objects must have an `at`, `message` as a minimum to describe where the error was logged from
