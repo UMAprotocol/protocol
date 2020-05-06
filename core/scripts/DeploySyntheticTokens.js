@@ -49,9 +49,7 @@ const parseLine = line => {
     sponsorDisputeReward: fields[7],
     disputeReward: fields[8],
     // Hardcode min sponsor tokens. Most users of this script aren't interested in configuring this value.
-    minSponsorTokens: "0.01",
-    // Use actual block time.
-    timerAddress: "0x0000000000000000000000000000000000000000"
+    minSponsorTokens: "0.01"
   };
 };
 
@@ -101,8 +99,7 @@ const actualDeploy = async inputCsv => {
       disputeBondPct: percentToFixedPoint(params.disputeBond),
       sponsorDisputeRewardPct: percentToFixedPoint(params.sponsorDisputeReward),
       disputerDisputeRewardPct: percentToFixedPoint(params.disputeReward),
-      minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
-      timerAddress: params.timerAddress
+      minSponsorTokens: percentToFixedPoint(params.minSponsorTokens)
     };
     const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams);

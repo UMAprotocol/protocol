@@ -31,7 +31,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned sponsorDisputeRewardPct;
         FixedPoint.Unsigned disputerDisputeRewardPct;
         FixedPoint.Unsigned minSponsorTokens;
-        address timerAddress;
     }
 
     /**
@@ -52,21 +51,23 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     AddressWhitelist public collateralTokenWhitelist;
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
+    // - Address of contract that keeps track of time for testing environments, or 0x0 for production that use live time.
+    address public timerContractAddress;
     // - Discretize expirations such that they must expire on the first of each month.
     mapping(uint256 => bool) public validExpirationTimestamps;
-    // - Time for pending withdrawal to be disputed: 60 minutes. Lower liveness increases sponsor usability.
+    // - Time for pending withdrawal to be disputed: 120 minutes. Lower liveness increases sponsor usability.
     // However, this parameter is a reflection of how long we expect it to take for liquidators to identify
     // that a sponsor is undercollateralized and acquire the tokens needed to liquidate them. This is also a
     // reflection of how long a malicious sponsor would need to maintain a lower-price manipulation to get
     // their withdrawal processed maliciously (if set too low, it’s quite easy for malicious sponsors to
     // request a withdrawal and spend gas to prevent other transactions from processing until the withdrawal
     //  gets approved). Ultimately, liveness is a friction to be minimized, but not critical to system function.
-    uint256 public constant STRICT_WITHDRAWAL_LIVENESS = 3600;
-    // - Time for liquidation to be disputed: 60 minutes. Similar reasoning to withdrawal liveness.
+    uint256 public constant STRICT_WITHDRAWAL_LIVENESS = 7200;
+    // - Time for liquidation to be disputed: 120 minutes. Similar reasoning to withdrawal liveness.
     // Lower liveness is more usable for liquidators. However, the parameter is a reflection of how
     // long we expect it to take disputers to notice bad liquidations. Malicious liquidators would
     // also need to attack the base chain for this long to prevent dispute transactions from processing.
-    uint256 public constant STRICT_LIQUIDATION_LIVENESS = 3600;
+    uint256 public constant STRICT_LIQUIDATION_LIVENESS = 7200;
 
     event CreatedExpiringMultiParty(address indexed expiringMultiPartyAddress, address indexed deployerAddress);
 
@@ -75,8 +76,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _collateralTokenWhitelist UMA protocol contract to track whitelisted collateral.
      * @param _tokenFactoryAddress ERC20 token factory used to deploy synthetic token instances.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
-     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
         address _finderAddress,
@@ -86,6 +85,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     ) public ContractCreator(_finderAddress) Testable(_timerAddress) nonReentrant() {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
+        timerContractAddress = _timerAddress;
         uint32[16] memory timestamps = [
             1585699200, // 2020-04-01T00:00:00.000Z
             1588291200, // 2020-05-01T00:00:00.000Z
@@ -142,6 +142,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         // Known from creator deployment.
         constructorParams.finderAddress = finderAddress;
         constructorParams.tokenFactoryAddress = tokenFactoryAddress;
+        constructorParams.timerAddress = timerContractAddress;
 
         // Enforce configuration constraints.
         require(_isValidTimestamp(params.expirationTimestamp), "Invalid expiration timestamp");
@@ -162,6 +163,5 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         constructorParams.sponsorDisputeRewardPct = params.sponsorDisputeRewardPct;
         constructorParams.disputerDisputeRewardPct = params.disputerDisputeRewardPct;
         constructorParams.minSponsorTokens = params.minSponsorTokens;
-        constructorParams.timerAddress = params.timerAddress;
     }
 }
