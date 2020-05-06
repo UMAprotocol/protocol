@@ -1,6 +1,8 @@
 const { toWei } = web3.utils;
+const winston = require("winston");
 
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
 const { delay } = require("../delay");
@@ -18,6 +20,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   const sponsor2 = accounts[1];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const unreachableDeadline = MAX_UINT_VAL;
 
   let collateralToken;
   let emp;
@@ -68,8 +71,15 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       timerAddress: Timer.address
     };
 
+    // The ExpiringMultiPartyClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // DummyLogger will not print anything to console as only capture `info` level events.
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: [new winston.transports.Console()]
+    });
+
     emp = await ExpiringMultiParty.new(constructorParams);
-    client = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
+    client = new ExpiringMultiPartyClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address);
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor1 });
     await collateralToken.approve(emp.address, toWei("1000000"), { from: sponsor2 });
 
@@ -141,11 +151,20 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // If a position is liquidated it should be removed from the list of positions and added to the undisputed liquidations.
     const { liquidationId } = await emp.createLiquidation.call(
       sponsor2,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: sponsor1 }
     );
-    await emp.createLiquidation(sponsor2, { rawValue: toWei("99999") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: sponsor1 }
+    );
 
     await updateAndVerify(
       client,
@@ -231,14 +250,18 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Create a new liquidation for account[0]'s position.
     const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client._update();
@@ -268,14 +291,18 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Create a new liquidation for account[0]'s position.
     await emp.createLiquidation.call(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client._update();
@@ -336,14 +363,18 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Create a new liquidation for account[0]'s position.
     const { liquidationId } = await emp.createLiquidation.call(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("9999999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client._update();

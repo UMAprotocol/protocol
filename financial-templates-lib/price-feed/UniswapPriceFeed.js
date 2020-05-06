@@ -1,14 +1,12 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 
-const { delay } = require("../delay");
-const { Logger } = require("../logger/Logger");
-const { LiquidationStatesEnum } = require("../../common/Enums");
 const { MAX_SAFE_JS_INT } = require("../../common/Constants");
 
 // An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
 class UniswapPriceFeed extends PriceFeedInterface {
-  constructor(abi, web3, uniswapAddress, twapLength, historicalLookback, getTime) {
+  constructor(logger, abi, web3, uniswapAddress, twapLength, historicalLookback, getTime) {
     super();
+    this.logger = logger;
     this.web3 = web3;
     this.uniswap = new web3.eth.Contract(abi, uniswapAddress);
     this.twapLength = twapLength;

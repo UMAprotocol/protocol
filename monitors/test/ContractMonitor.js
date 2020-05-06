@@ -2,6 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 // Script to test
 const { ContractMonitor } = require("../ContractMonitor");
@@ -29,6 +30,7 @@ contract("ContractMonitor.js", function(accounts) {
   const sponsor2 = accounts[4];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const unreachableDeadline = MAX_UINT_VAL;
 
   // Contracts
   let collateralToken;
@@ -126,8 +128,10 @@ contract("ContractMonitor.js", function(accounts) {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -152,8 +156,10 @@ contract("ContractMonitor.js", function(accounts) {
     // Liquidate another position and ensure the Contract monitor emits the correct params
     const txObject2 = await emp.createLiquidation(
       sponsor2,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: sponsor1 } // not the monitored liquidator address
     );
 
@@ -172,8 +178,10 @@ contract("ContractMonitor.js", function(accounts) {
     // Create liquidation to dispute.
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -195,7 +203,14 @@ contract("ContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "15.00")); // dispute bond of 10% of sponsor 1's 150 collateral => 15
 
     // Create a second liquidation to dispute from a non-monitored account.
-    await emp.createLiquidation(sponsor2, { rawValue: toWei("99999") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: sponsor1 }
+    );
 
     // the disputer is also not monitored
     const txObject2 = await emp.dispute("0", sponsor2, {
@@ -220,8 +235,10 @@ contract("ContractMonitor.js", function(accounts) {
     let liquidationTime = (await emp.getCurrentTime()).toNumber();
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -258,7 +275,14 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Create a second liquidation from a non-monitored address (sponsor1).
     liquidationTime = (await emp.getCurrentTime()).toNumber();
-    await emp.createLiquidation(sponsor2, { rawValue: toWei("99999") }, { rawValue: toWei("100") }, { from: sponsor1 });
+    await emp.createLiquidation(
+      sponsor2,
+      { rawValue: "0" },
+      { rawValue: toWei("99999") },
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: sponsor1 }
+    );
 
     // Dispute the liquidator from a non-monitor address (sponsor2)
     await emp.dispute("0", sponsor2, {

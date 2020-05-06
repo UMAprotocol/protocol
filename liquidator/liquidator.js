@@ -1,10 +1,9 @@
 // When running this script it assumed that the account has enough tokens and allowance from the unlocked Truffle
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
-const { Logger } = require("../financial-templates-lib/logger/Logger");
-
 class Liquidator {
-  constructor(expiringMultiPartyClient, gasEstimator, account) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, account) {
+    this.logger = logger;
     this.account = account;
 
     // Expiring multiparty contract to read contract state
@@ -30,7 +29,7 @@ class Liquidator {
     const contractTime = await this.empContract.methods.getCurrentTime().call();
     const priceFeed = priceFunction(contractTime);
 
-    Logger.debug({
+    this.logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
       inputPrice: priceFeed
@@ -42,7 +41,7 @@ class Liquidator {
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
 
     if (underCollateralizedPositions.length === 0) {
-      Logger.debug({
+      this.logger.debug({
         at: "Liquidator",
         message: "No undercollateralized position"
       });
@@ -50,18 +49,23 @@ class Liquidator {
     }
 
     for (const position of underCollateralizedPositions) {
+      // Note: query the time again during each iteration to ensure the deadline is set reasonably.
+      const currentBlockTime = await this.empContract.methods.getCurrentTime().call();
+      const fiveMinutes = 300;
       // Create the transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
+        { rawValue: "0" },
         { rawValue: this.web3.utils.toWei(priceFeed) },
-        { rawValue: position.numTokens }
+        { rawValue: position.numTokens },
+        parseInt(currentBlockTime) + fiveMinutes
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
       try {
         await liquidation.call({ from: this.account });
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "Liquidator",
           message:
             "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation.",
@@ -77,7 +81,7 @@ class Liquidator {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      Logger.info({
+      this.logger.info({
         at: "Liquidator",
         message: "Liquidating position🔥",
         position: position,
@@ -90,7 +94,7 @@ class Liquidator {
       try {
         receipt = await liquidation.send(txnConfig);
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position",
           error: error
@@ -107,7 +111,7 @@ class Liquidator {
         lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
         liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
       };
-      Logger.info({
+      this.logger.info({
         at: "Liquidator",
         message: "Liquidation tx result 📄",
         liquidationResult: logResult
@@ -120,7 +124,7 @@ class Liquidator {
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
   queryAndWithdrawRewards = async () => {
-    Logger.debug({
+    this.logger.debug({
       at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
@@ -136,7 +140,7 @@ class Liquidator {
       .filter(liquidation => liquidation.liquidator === this.account);
 
     if (potentialWithdrawableLiquidations.length === 0) {
-      Logger.debug({
+      this.logger.debug({
         at: "Liquidator",
         message: "No withdrawable liquidations"
       });
@@ -152,7 +156,7 @@ class Liquidator {
       try {
         withdrawAmount = await withdraw.call({ from: this.account });
       } catch (error) {
-        Logger.debug({
+        this.logger.debug({
           at: "Liquidator",
           message: "No rewards to withdraw.",
           liquidation: liquidation,
@@ -166,7 +170,7 @@ class Liquidator {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      Logger.info({
+      this.logger.info({
         at: "Liquidator",
         message: "Withdrawing liquidation🤑",
         liquidation: liquidation,
@@ -179,7 +183,7 @@ class Liquidator {
       try {
         receipt = await withdraw.send(txnConfig);
       } catch (error) {
-        Logger.error({
+        this.logger.error({
           at: "Liquidator",
           message: "Failed to withdraw liquidation rewards",
           error: error
@@ -193,7 +197,7 @@ class Liquidator {
         withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
         liquidationStatus: receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
       };
-      Logger.info({
+      this.logger.info({
         at: "Liquidator",
         message: "Withdraw tx result📄",
         liquidationResult: logResult

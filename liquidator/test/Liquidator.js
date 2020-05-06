@@ -1,5 +1,6 @@
 const { toWei, hexToUtf8, toBN } = web3.utils;
-
+const winston = require("winston");
+const sinon = require("sinon");
 const { LiquidationStatesEnum } = require("../../common/Enums");
 const { interfaceName } = require("../../core/utils/Constants.js");
 
@@ -9,6 +10,9 @@ const { Liquidator } = require("../liquidator.js");
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
 const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
+
+// Custom winston transport module to monitor winston log outputs
+const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -32,6 +36,8 @@ contract("Liquidator.js", function(accounts) {
   let liquidator;
   let syntheticToken;
   let mockOracle;
+
+  let spy;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -93,12 +99,19 @@ contract("Liquidator.js", function(accounts) {
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: sponsor3 });
     await syntheticToken.approve(emp.address, toWei("100000000"), { from: liquidatorBot });
 
+    spy = sinon.spy();
+
+    const spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+    });
+
     // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
-    empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address);
-    gasEstimator = new GasEstimator();
+    empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
+    gasEstimator = new GasEstimator(spyLogger);
 
     // Create a new instance of the liquidator to test
-    liquidator = new Liquidator(empClient, gasEstimator, accounts[0]);
+    liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0]);
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {

@@ -5,7 +5,6 @@
 // where voting is the name of the contract you want to check.
 
 const argv = require("minimist")(process.argv.slice(), { string: ["contract"] });
-const truffle = require("truffle");
 
 module.exports = async function(callback) {
   if (!argv.contract) {
@@ -16,7 +15,7 @@ module.exports = async function(callback) {
   // Load contracts into script and output info.
   console.log("loading", argv.contract + ".json");
   let obj = require("./../../build/contracts/" + argv.contract + ".json");
-  const byteCodeSize = (obj.bytecode.length - 2) / 2;
+  const byteCodeSize = (obj.deployedBytecode.length - 2) / 2;
   const remainingSize = 2 ** 14 + 2 ** 13 - byteCodeSize;
   console.log("Contract is", byteCodeSize, "bytes in size.");
   console.log("This leaves a total of", remainingSize, "bytes within the EIP170 limit.");

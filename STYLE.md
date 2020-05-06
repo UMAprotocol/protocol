@@ -58,6 +58,6 @@ Private variables are not preceded by underscores.
 
 Function parameters are not preceded by underscores unless they are constructor parameters. This is because constructors often initialize contract variables for the first and only time.
 
-## Javascript
+### Comments
 
-TODO
+We follow the official Soldity style guide and use the ["Ethereum Natural Language Specification Format" or "NatSpec"](https://solidity.readthedocs.io/en/latest/style-guide.html#natspec). We choose to apply this only to public methods. If internal methods require documentation, we prefer to use single line (`//`) format comments.

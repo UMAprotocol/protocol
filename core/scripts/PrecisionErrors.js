@@ -15,6 +15,8 @@ const assert = require("assert").strict;
 const truffleAssert = require("truffle-assertions");
 const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
 const { interfaceName } = require("../utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
+const unreachableDeadline = MAX_UINT_VAL;
 
 // Contracts to test
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -579,7 +581,7 @@ async function runExport() {
   startTime = await emp.getCurrentTime();
   await emp.setCurrentTime(startTime.addn(1));
   // 4) Pay the fees.
-  await emp.payFees();
+  await emp.payRegularFees();
 
   /**
    * @notice PRE-TEST INVARIANTS
@@ -1030,8 +1032,10 @@ async function runExport() {
    */
   createLiquidationResult = await emp.createLiquidation(
     sponsor,
+    { rawValue: "0" },
     { rawValue: testConfig.collateralRatio },
     { rawValue: testConfig.amountToLiquidate },
+    unreachableDeadline,
     { from: sponsor }
   );
   expectedRemainingCollateral = toBN(await collateral.balanceOf(emp.address)).sub(toBN(testConfig.amountToLiquidate));
@@ -1061,8 +1065,10 @@ async function runExport() {
    */
   createLiquidationResult = await emp.createLiquidation(
     sponsor,
+    { rawValue: "0" },
     { rawValue: testConfig.collateralRatio },
     { rawValue: testConfig.amountToLiquidate },
+    unreachableDeadline,
     { from: sponsor }
   );
   expectedRemainingCollateral = expectedRemainingCollateral.sub(toBN(testConfig.amountToLiquidate));
@@ -1092,8 +1098,10 @@ async function runExport() {
    */
   createLiquidationResult = await emp.createLiquidation(
     sponsor,
+    { rawValue: "0" },
     { rawValue: testConfig.collateralRatio },
     { rawValue: testConfig.amountToLiquidate },
+    unreachableDeadline,
     { from: sponsor }
   );
   expectedRemainingCollateral = expectedRemainingCollateral.sub(toBN(testConfig.amountToLiquidate));

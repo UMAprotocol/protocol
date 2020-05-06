@@ -2,6 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 
 const { interfaceName } = require("../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../common/Constants.js");
 
 const { ExpiringMultiPartyEventClient } = require("../ExpiringMultiPartyEventClient");
 const { delay } = require("../delay");
@@ -21,6 +22,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
   const sponsor2 = accounts[3];
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+  const unreachableDeadline = MAX_UINT_VAL;
 
   // Contracts
   let collateralToken;
@@ -80,7 +82,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // The ExpiringMultiPartyEventClient does not emit any info level events. Therefore no need to test Winston outputs.
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: []
+      transports: [new winston.transports.Console()]
     });
 
     client = new ExpiringMultiPartyEventClient(dummyLogger, ExpiringMultiParty.abi, web3, emp.address);
@@ -105,8 +107,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // Create liquidation to liquidate sponsor2 from sponsor1
     const txObject1 = await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -134,8 +138,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // Correctly adds a second event after creating a new liquidation
     const txObject2 = await emp.createLiquidation(
       sponsor2,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
     await client.clearState();
@@ -171,8 +177,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     // Create liquidation to liquidate sponsor2 from sponsor1
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 
@@ -203,8 +211,10 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     const liquidationTime = (await emp.getCurrentTime()).toNumber();
     await emp.createLiquidation(
       sponsor1,
+      { rawValue: "0" },
       { rawValue: toWei("99999") },
       { rawValue: toWei("100") },
+      unreachableDeadline,
       { from: liquidator }
     );
 

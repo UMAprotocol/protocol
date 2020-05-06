@@ -1,7 +1,6 @@
 // This transport enables winston logging to send messages to pager duty
 
 const Transport = require("winston-transport");
-const { RoboCaller } = require("./RoboCaller");
 const pdClient = require("node-pagerduty");
 
 module.exports = class PagerDutyTransport extends Transport {
@@ -22,7 +21,7 @@ module.exports = class PagerDutyTransport extends Transport {
             id: this.serviceId,
             type: "service_reference"
           },
-          urgency: info.level == "info" ? "high" : "low",
+          urgency: info.level == "warn" ? "low" : "high", // if level is warn then urgency is low. If level is error then urgency is high.
           body: {
             type: "incident_body",
             details: info.mrkdwn ? info.mrkdwn : info.message
