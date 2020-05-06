@@ -11,11 +11,18 @@ const TwilioTransport = require("./TwilioTransport");
 require("dotenv").config();
 const argv = require("minimist")(process.argv.slice(), {});
 
-// transports array to store all winston transports
+// Transports array to store all winston transports.
 let transports = [];
 
-// add a console transport to log to the console.
-transports.push(ConsoleTransport.createConsoleTransport());
+// If the logger is running in production mode then add the GCE winston transport. Else, add a console transport.
+if (process.env.ENVIRONMENT == "production") {
+  const { LoggingWinston } = require("@google-cloud/logging-winston");
+  require("@google-cloud/trace-agent").start();
+  transports.push(new LoggingWinston());
+} else {
+  // Add a console transport to log to the console.
+  transports.push(ConsoleTransport.createConsoleTransport());
+}
 
 // If there is "test" in the environment then skip the slack or twilio transports.
 if (argv._.indexOf("test") == -1) {
