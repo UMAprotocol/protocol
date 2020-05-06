@@ -460,6 +460,7 @@ async function runExport() {
    * 14) Retrieving rewards from voting *
    *********************************/
   console.log("14. RETRIEVING DVM VOTING REWARDS");
+  // TODO: implement logic to retrieve rewards
 
   console.log("...REVERTING STATE...", snapshotId);
   await revertToSnapshot(web3, snapshotId);
