@@ -8,7 +8,9 @@ const { MAX_UINT_VAL } = require("../../common/Constants.js");
 const { ContractMonitor } = require("../ContractMonitor");
 
 // Helper client script
-const { ExpiringMultiPartyEventClient } = require("../../financial-templates-lib/ExpiringMultiPartyEventClient");
+const {
+  ExpiringMultiPartyEventClient
+} = require("../../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
@@ -136,7 +138,7 @@ contract("ContractMonitor.js", function(accounts) {
     );
 
     // Update the eventClient and check it has the liquidation event stored correctly
-    await eventClient._update();
+    await eventClient.update();
 
     // Check for liquidation events
     await contractMonitor.checkForNewLiquidations(() => toWei("1"));
@@ -163,7 +165,7 @@ contract("ContractMonitor.js", function(accounts) {
       { from: sponsor1 } // not the monitored liquidator address
     );
 
-    await eventClient._update();
+    await eventClient.update();
 
     // check for new liquidations and check the winston messages sent to the spy
     await contractMonitor.checkForNewLiquidations(() => toWei("1"));
@@ -191,7 +193,7 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Update the eventClient and check it has the dispute event stored correctly
     await eventClient.clearState();
-    await eventClient._update();
+    await eventClient.update();
 
     await contractMonitor.checkForNewDisputeEvents(() => toWei("1"));
 
@@ -219,7 +221,7 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Update the eventClient and check it has the dispute event stored correctly
     await eventClient.clearState();
-    await eventClient._update();
+    await eventClient.update();
 
     await contractMonitor.checkForNewDisputeEvents(() => toWei("1"));
 
@@ -262,7 +264,7 @@ contract("ContractMonitor.js", function(accounts) {
     await eventClient.clearState();
 
     // Update the eventClient and check it has the dispute event stored correctly
-    await eventClient._update();
+    await eventClient.update();
 
     await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei("1"));
 
@@ -304,7 +306,7 @@ contract("ContractMonitor.js", function(accounts) {
     await eventClient.clearState();
 
     // Update the eventClient and check it has the dispute event stored correctly
-    await eventClient._update();
+    await eventClient.update();
 
     await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei("1"));
 

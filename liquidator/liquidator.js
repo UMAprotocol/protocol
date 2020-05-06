@@ -119,7 +119,7 @@ class Liquidator {
     }
 
     // Update the EMP Client since we created new liquidations.
-    await this.empClient.forceUpdate();
+    await this.empClient.update();
   };
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
@@ -205,7 +205,7 @@ class Liquidator {
     }
 
     // Update the EMP Client since we withdrew rewards.
-    await this.empClient.forceUpdate();
+    await this.empClient.update();
   };
 }
 

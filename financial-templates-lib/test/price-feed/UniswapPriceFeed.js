@@ -3,7 +3,7 @@ const winston = require("winston");
 
 const { UniswapPriceFeed } = require("../../price-feed/UniswapPriceFeed");
 const { mineTransactionsAtTime } = require("../../../common/SolidityTestUtils.js");
-const { delay } = require("../../delay.js");
+const { delay } = require("../../helpers/delay.js");
 const { MAX_SAFE_JS_INT } = require("../../../common/Constants");
 
 const UniswapMock = artifacts.require("UniswapMock");

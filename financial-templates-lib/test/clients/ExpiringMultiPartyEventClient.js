@@ -1,11 +1,10 @@
 const { toWei } = web3.utils;
 const winston = require("winston");
 
-const { interfaceName } = require("../../core/utils/Constants.js");
-const { MAX_UINT_VAL } = require("../../common/Constants.js");
+const { interfaceName } = require("../../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../../common/Constants.js");
 
-const { ExpiringMultiPartyEventClient } = require("../ExpiringMultiPartyEventClient");
-const { delay } = require("../delay");
+const { ExpiringMultiPartyEventClient } = require("../../clients/ExpiringMultiPartyEventClient");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -116,7 +115,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
     // Update the client and check it has the liquidation event stored correctly
     await client.clearState();
-    await client._update();
+    await client.update();
 
     // Compare with expected processed event object
     assert.deepStrictEqual(
@@ -145,7 +144,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
       { from: liquidator }
     );
     await client.clearState();
-    await client._update();
+    await client.update();
     assert.deepStrictEqual(
       [
         {
@@ -188,7 +187,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
 
     // Update the client and check it has the dispute event stored correctly
     await client.clearState();
-    await client._update();
+    await client.update();
 
     // Compare with expected processed event object
     assert.deepStrictEqual(
@@ -237,7 +236,7 @@ contract("ExpiringMultiPartyEventClient.js", function(accounts) {
     await client.clearState();
 
     // Update the client and check it has the dispute event stored correctly
-    await client._update();
+    await client.update();
 
     // Compare with expected processed event object
     assert.deepStrictEqual(

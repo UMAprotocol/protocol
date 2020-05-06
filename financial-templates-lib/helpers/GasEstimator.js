@@ -17,7 +17,7 @@ class GasEstimator {
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
   }
 
-  // Calls _update unless it was recently called, as determined by this.updateThreshold.
+  // Calls update unless it was recently called, as determined by this.updateThreshold.
   update = async () => {
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {

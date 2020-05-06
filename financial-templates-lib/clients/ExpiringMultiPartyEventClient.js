@@ -1,64 +1,23 @@
-const { delay } = require("./delay");
-
-// A thick client for getting information about an ExpiringMultiParty events.
-// This client is kept separate from the main ExpiringMultiPartyClient to keep
-// a clear separation of concerns and to limit the overhead from querying chain necessarily.
-// If no updateThreshold is specified then default to updating every 60 seconds.
+// A thick client for getting information about an ExpiringMultiParty events. This client is kept separate from the
+// ExpiringMultiPartyClient to keep a clear separation of concerns and to limit the overhead from querying chain
+// necessarily.// If no updateThreshold is specified then default to updating every 60 seconds.
 class ExpiringMultiPartyEventClient {
-  constructor(logger, abi, web3, empAddress, updateThreshold = 60) {
-    this.updateThreshold = updateThreshold;
-    this.lastUpdateTimestamp;
-
+  constructor(logger, empAbi, web3, empAddress) {
     this.web3 = web3;
     this.logger = logger;
 
     // EMP contract
-    this.emp = new this.web3.eth.Contract(abi, empAddress);
+    this.emp = new this.web3.eth.Contract(empAbi, empAddress);
     this.empAddress = empAddress;
 
-    // EMP Events
+    // EMP Events data structure to enable synchronous retrieval of information.
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
 
+    // Last block number seen by the client.
     this.lastBlockNumberSeen = 0;
   }
-
-  // Calls _update unless it was recently called, as determined by this.updateThreshold.
-  update = async () => {
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
-      this.logger.debug({
-        at: "ExpiringMultiPartyEventClient",
-        message: "EMP state update skipped",
-        currentTime: currentTime,
-        lastUpdateTimestamp: this.lastUpdateTimestamp,
-        timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime
-      });
-      return;
-    } else {
-      await this._update();
-      this.lastUpdateTimestamp = currentTime;
-      this.logger.debug({
-        at: "ExpiringMultiPartyEventClient",
-        message: "EMP state updated",
-        lastUpdateTimestamp: this.lastUpdateTimestamp
-      });
-    }
-  };
-
-  // Force call of _update, designed to be called by downstream caller that knowingly updated the EMP state.
-  forceUpdate = async () => {
-    const currentTime = Math.floor(Date.now() / 1000);
-    await this._update();
-    this.lastUpdateTimestamp = currentTime;
-    this.logger.debug({
-      at: "ExpiringMultiPartyEventClient",
-      message: "EMP state force updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
-    });
-  };
-
   // Delete all events within the client
   clearState = async () => {
     this.liquidationEvents = [];
@@ -75,26 +34,7 @@ class ExpiringMultiPartyEventClient {
   // Returns an array of dispute events.
   getAllDisputeSettlementEvents = () => this.disputeSettlementEvents;
 
-  start = () => {
-    this._poll();
-  };
-
-  _poll = async () => {
-    while (true) {
-      try {
-        await this._update();
-      } catch (error) {
-        this.logger.error({
-          at: "ExpiringMultiPartyEventClient",
-          message: "client polling error",
-          error: error
-        });
-      }
-      await delay(Number(10_000));
-    }
-  };
-
-  _update = async () => {
+  update = async () => {
     const currentBlockNumber = await this.web3.eth.getBlockNumber();
     // Look for events on chain from the previous seen block number to the current block number.
     // Liquidation events

@@ -1,11 +1,10 @@
 const { toWei } = web3.utils;
 const winston = require("winston");
 
-const { interfaceName } = require("../../core/utils/Constants.js");
-const { MAX_UINT_VAL } = require("../../common/Constants.js");
+const { interfaceName } = require("../../../core/utils/Constants.js");
+const { MAX_UINT_VAL } = require("../../../common/Constants.js");
 
-const { ExpiringMultiPartyClient } = require("../ExpiringMultiPartyClient");
-const { delay } = require("../delay");
+const { ExpiringMultiPartyClient } = require("../../clients/ExpiringMultiPartyClient");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
@@ -30,7 +29,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
   let identifierWhitelist;
 
   const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
-    await client.forceUpdate();
+    await client.update();
 
     assert.deepStrictEqual(expectedSponsors.sort(), client.getAllSponsors().sort());
     assert.deepStrictEqual(expectedPositions.sort(), client.getAllPositions().sort());
@@ -195,7 +194,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // Pending withdrawals state should be correctly identified.
     await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor1 });
-    await client._update();
+    await client.update();
 
     await updateAndVerify(
       client,
@@ -214,7 +213,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // Remove the pending withdrawal and ensure it is removed from the client.
     await emp.cancelWithdrawal({ from: sponsor1 });
-    await client._update();
+    await client.update();
     // assert.deepStrictEqual([], client.getPendingWithdrawals());
   });
 
@@ -222,7 +221,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
     await emp.create({ rawValue: toWei("1500") }, { rawValue: toWei("100") }, { from: sponsor2 });
 
-    await client._update();
+    await client.update();
     // At 150% collateralization requirement, the position is just collateralized enough at a token price of 1.
     assert.deepStrictEqual([], client.getUnderCollateralizedPositions(toWei("1")));
     // Undercollateralized at a price just above 1.
@@ -264,7 +263,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       unreachableDeadline,
       { from: liquidator }
     );
-    await client._update();
+    await client.update();
 
     const liquidations = client.getUndisputedLiquidations();
     // Disputable if the disputer believes the price was `1`, and not disputable if they believe the price was just
@@ -276,7 +275,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
     await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
-    await client._update();
+    await client.update();
 
     // The disputed liquidation should no longer show up as undisputed.
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
@@ -305,7 +304,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       unreachableDeadline,
       { from: liquidator }
     );
-    await client._update();
+    await client.update();
 
     const liquidations = client.getUndisputedLiquidations();
     const liquidationTime = liquidations[0].liquidationTime;
@@ -328,7 +327,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // Move EMP time to the liquidation's expiry.
     const liquidationLiveness = 1000;
     await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
-    await client._update();
+    await client.update();
 
     // The liquidation is registered by the EMP client as expired.
     assert.deepStrictEqual([], client.getUndisputedLiquidations().sort());
@@ -350,7 +349,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
 
     // Withdraw from the expired liquidation and check that the liquidation is deleted.
     await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
-    await client._update();
+    await client.update();
     assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
   });
 
@@ -377,7 +376,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       unreachableDeadline,
       { from: liquidator }
     );
-    await client._update();
+    await client.update();
     const liquidations = client.getUndisputedLiquidations();
     const liquidationTime = liquidations[0].liquidationTime;
 
@@ -388,7 +387,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     // We need to advance the Oracle time forward to make `requestPrice` work.
     await mockOracle.setCurrentTime(Number(await emp.getCurrentTime()) + 1);
     await emp.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
-    await client._update();
+    await client.update();
 
     // The disputed liquidation should no longer show up as undisputed.
     assert.deepStrictEqual(
@@ -412,24 +411,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
     const disputePrice = toWei("1.6");
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, disputePrice);
     await emp.withdrawLiquidation("0", sponsor1, { from: liquidator });
-    await client._update();
+    await client.update();
     assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
-  });
-
-  it("Does not update unless forced to", async function() {
-    await client.update();
-    const lastUpdateTime = client.lastUpdateTimestamp;
-
-    // Move time forward so that if an update were to happen, then
-    // the `lastUpdateTimestamp` get reset.
-    await delay(Number(1_000));
-
-    // Call regular update function which should return because we are within the update threshold.
-    await client.update();
-    assert.equal(client.lastUpdateTimestamp, lastUpdateTime);
-
-    // Force an update and check that the last timestamp has reset.
-    await client.forceUpdate();
-    assert(client.lastUpdateTimestamp > lastUpdateTime);
   });
 });

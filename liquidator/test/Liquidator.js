@@ -8,8 +8,8 @@ const { interfaceName } = require("../../core/utils/Constants.js");
 const { Liquidator } = require("../liquidator.js");
 
 // Helper client script
-const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
-const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
+const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
@@ -189,7 +189,7 @@ contract("Liquidator.js", function(accounts) {
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     const liquidationLiveness = 1000;
     await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
-    await empClient.forceUpdate();
+    await empClient.update();
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -223,7 +223,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
-    await empClient.forceUpdate();
+    await empClient.update();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
@@ -268,7 +268,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
-    await empClient.forceUpdate();
+    await empClient.update();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
