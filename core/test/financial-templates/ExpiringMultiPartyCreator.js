@@ -63,10 +63,6 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), (await TokenFactory.deployed()).address);
   });
 
-  it("Timer address should be set on construction", async function() {
-    assert.equal(await expiringMultiPartyCreator.timerContractAddress(), (await Timer.deployed()).address);
-  });
-
   it("Expiration timestamp must be one of the allowed timestamps", async function() {
     // Change only expiration timestamp.
     const validExpiration = "1598918400";
@@ -159,7 +155,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     );
 
     // Deployed EMP timer should be same as EMP creator.
-    assert.equal(await expiringMultiParty.timerAddress(), await expiringMultiPartyCreator.timerContractAddress());
+    assert.equal(await expiringMultiParty.timerAddress(), await expiringMultiPartyCreator.timerAddress());
   });
 
   it("Creation correctly registers ExpiringMultiParty within the registry", async function() {

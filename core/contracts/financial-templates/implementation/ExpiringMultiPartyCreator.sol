@@ -51,8 +51,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     AddressWhitelist public collateralTokenWhitelist;
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
-    // - Address of contract that keeps track of time for testing environments, or 0x0 for production that use live time.
-    address public timerContractAddress;
     // - Discretize expirations such that they must expire on the first of each month.
     mapping(uint256 => bool) public validExpirationTimestamps;
     // - Time for pending withdrawal to be disputed: 120 minutes. Lower liveness increases sponsor usability.
@@ -85,7 +83,6 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     ) public ContractCreator(_finderAddress) Testable(_timerAddress) nonReentrant() {
         collateralTokenWhitelist = AddressWhitelist(_collateralTokenWhitelist);
         tokenFactoryAddress = _tokenFactoryAddress;
-        timerContractAddress = _timerAddress;
         uint32[16] memory timestamps = [
             1585699200, // 2020-04-01T00:00:00.000Z
             1588291200, // 2020-05-01T00:00:00.000Z
@@ -142,7 +139,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         // Known from creator deployment.
         constructorParams.finderAddress = finderAddress;
         constructorParams.tokenFactoryAddress = tokenFactoryAddress;
-        constructorParams.timerAddress = timerContractAddress;
+        constructorParams.timerAddress = timerAddress;
 
         // Enforce configuration constraints.
         require(_isValidTimestamp(params.expirationTimestamp), "Invalid expiration timestamp");
