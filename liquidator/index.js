@@ -2,7 +2,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["address"], in
 const { toWei } = web3.utils;
 
 // Helpers
-const { delay } = require("../financial-templates-lib/delay");
+const { delay } = require("../financial-templates-lib/helpers/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
