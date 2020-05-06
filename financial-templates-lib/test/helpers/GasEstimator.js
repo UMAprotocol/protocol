@@ -1,5 +1,5 @@
 const winston = require("winston");
-// Helpers
+// Helper
 const { delay } = require("../../helpers/delay");
 
 // Script to test
