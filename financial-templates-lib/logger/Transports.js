@@ -53,7 +53,7 @@ if (argv._.indexOf("test") == -1) {
   if (process.env.PAGERDUTY_API_KEY) {
     transports.push(
       new PagerDutyTransport(
-        { level: "info" },
+        { level: "warn" },
         {
           pdApiToken: process.env.PAGERDUTY_API_KEY,
           pdServiceId: process.env.PAGERDUTY_SERVICE_ID,
