@@ -57,7 +57,7 @@ if (argv._.indexOf("test") == -1) {
         {
           pdApiToken: process.env.PAGERDUTY_API_KEY,
           pdServiceId: process.env.PAGERDUTY_SERVICE_ID,
-          fromEmail: process - env.PAGERDUTY_FROM_EMAIL
+          fromEmail: process.env.PAGERDUTY_FROM_EMAIL
         }
       )
     );
