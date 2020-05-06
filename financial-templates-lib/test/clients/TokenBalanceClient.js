@@ -2,7 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 
 // Script to test
-const { TokenBalanceClient } = require("../clients/TokenBalanceClient");
+const { TokenBalanceClient } = require("../../clients/TokenBalanceClient");
 
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");
@@ -31,7 +31,7 @@ contract("BalanceMonitor.js", function(accounts) {
       level: "info",
       transports: [new winston.transports.Console()]
     });
-    client = new TokenBalanceClient(dummyLogger, Token.abi, web3, collateralToken.address, syntheticToken.address, 10);
+    client = new TokenBalanceClient(dummyLogger, Token.abi, web3, collateralToken.address, syntheticToken.address);
   });
 
   it("Returning token balances", async function() {

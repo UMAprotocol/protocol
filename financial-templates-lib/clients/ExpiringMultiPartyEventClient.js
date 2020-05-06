@@ -1,5 +1,3 @@
-const { delay } = require("../helpers/delay");
-
 // A thick client for getting information about an ExpiringMultiParty events. This client is kept separate from the
 // ExpiringMultiPartyClient to keep a clear separation of concerns and to limit the overhead from querying chain
 // necessarily.// If no updateThreshold is specified then default to updating every 60 seconds.

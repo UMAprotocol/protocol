@@ -1,5 +1,3 @@
-const { delay } = require("../helpers/delay");
-
 // A thick client for getting information about an different token Balance from the chain. This client is kept separate
 // from the other clients to only store token balances for a given EMP. After a balance is requested for a given wallet
 // address that wallet is registered within a local array of addresses that the client monitors. This lets bots that

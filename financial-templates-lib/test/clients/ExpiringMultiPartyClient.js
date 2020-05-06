@@ -4,7 +4,7 @@ const winston = require("winston");
 const { interfaceName } = require("../../../core/utils/Constants.js");
 const { MAX_UINT_VAL } = require("../../../common/Constants.js");
 
-const { ExpiringMultiPartyClient } = require("../clients/ExpiringMultiPartyClient");
+const { ExpiringMultiPartyClient } = require("../../clients/ExpiringMultiPartyClient");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
