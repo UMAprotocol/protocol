@@ -1,4 +1,4 @@
-// A mock of the Networker to allow the user to check the inputs and set the outputs.
+// A mock of the Networker to allow the user to check the inputs and set the outputs of network requests.
 class NetworkerMock {
   // Value that will hold the most recent input to getJson.
   getJsonInputs = [];
