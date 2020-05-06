@@ -1,4 +1,3 @@
-const { delay } = require("../helpers/delay");
 const { LiquidationStatesEnum } = require("../../common/Enums");
 
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
