@@ -14,7 +14,7 @@ const Voting = artifacts.require("Voting");
 
 const advanceTime = async callback => {
   try {
-    const leapForward = argv.time ? argv.time : 3600;
+    const leapForward = argv.time ? argv.time : 7200;
     console.log(`Advancing contract time forward by ${leapForward} seconds`);
 
     // Since MockOracle and EMP share the same Timer, it suffices to just advance the oracle's time.

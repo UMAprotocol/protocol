@@ -14,6 +14,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Timer = artifacts.require("Timer");
+const Finder = artifacts.require("Finder");
 
 contract("ExpiringMultiPartyCreator", function(accounts) {
   let contractCreator = accounts[0];
@@ -49,8 +50,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       disputeBondPct: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
       disputerDisputeRewardPct: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: Timer.address
+      minSponsorTokens: { rawValue: toWei("1") }
     };
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -153,6 +153,9 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
       hexToUtf8(await expiringMultiParty.priceIdentifier()),
       hexToUtf8(constructorParams.priceFeedIdentifier)
     );
+
+    // Deployed EMP timer should be same as EMP creator.
+    assert.equal(await expiringMultiParty.timerAddress(), await expiringMultiPartyCreator.timerAddress());
   });
 
   it("Creation correctly registers ExpiringMultiParty within the registry", async function() {
