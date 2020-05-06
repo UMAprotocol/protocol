@@ -1,4 +1,4 @@
-// An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
+// A mock of the Networker to allow the user to check the inputs and set the outputs.
 class NetworkerMock {
   // Value that will hold the most recent input to getJson.
   getJsonInputs = [];

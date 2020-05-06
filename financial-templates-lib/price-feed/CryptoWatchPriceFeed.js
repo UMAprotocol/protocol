@@ -13,9 +13,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   // getTime function to return the current time.
   // minTimeBetweenUpdates min number of seconds between updates. If update() is called again before this number of
   // seconds has passed, it will be a no-op.
-  constructor(web3, apiKey, exchange, pair, lookback, networker, getTime, minTimeBetweenUpdates) {
+  constructor(web3, logger, apiKey, exchange, pair, lookback, networker, getTime, minTimeBetweenUpdates) {
     super();
     this.web3 = web3;
+    this.logger = logger;
     this.apiKey = apiKey;
     this.exchange = exchange;
     this.pair = pair;
@@ -66,10 +67,24 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     const { toWei, toBN } = this.web3.utils;
     const currentTime = this.getTime();
 
-    // Return eatly if the last call was too recent.
+    // Return early if the last call was too recent.
     if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+      this.logger.debug({
+        at: "CryptoWatchPriceFeed",
+        message: "Update skipped because the last one was too recent",
+        currentTime: currentTime,
+        lastUpdateTimestamp: this.lastUpdateTime,
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+      });
       return;
     }
+
+    this.logger.debug({
+      at: "CryptoWatchPriceFeed",
+      message: "Updating",
+      currentTime: currentTime,
+      lastUpdateTimestamp: this.lastUpdateTime
+    });
 
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
     // timestamp (because the close of that OHLC may be relevant).
@@ -84,7 +99,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     ].join("");
 
     const ohlcResponse = await this.networker.getJson(ohlcUrl);
-    if (!ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
+    if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
       console.error("Could not parse ohlc result:", ohlcResponse);
       return;
     }
@@ -123,7 +138,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
     const priceUrl = `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price?apikey=${this.apikey}`;
     const priceResponse = await this.networker.getJson(priceUrl);
-    if (!priceResponse.result || !priceResponse.result.price) {
+    if (!ohlcResponse || !priceResponse.result || !priceResponse.result.price) {
       console.error("Could not parse price result:", priceResponse);
       return;
     }
