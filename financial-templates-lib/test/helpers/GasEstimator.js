@@ -1,7 +1,9 @@
-const { delay } = require("../delay");
 const winston = require("winston");
+// Helpers
+const { delay } = require("../../helpers/delay");
 
-const { GasEstimator } = require("../GasEstimator");
+// Script to test
+const { GasEstimator } = require("../../helpers/GasEstimator");
 
 contract("GasEstimator.js", function() {
   let gasEstimator;
@@ -45,17 +47,17 @@ contract("GasEstimator.js", function() {
         level: "info",
         transports: [new winston.transports.Console()]
       });
-      gasEstimator = new GasEstimator(dummyLogger, (updateThreshold = 1.5), (defaultFastPriceGwei = 10));
+      gasEstimator = new GasEstimator(dummyLogger, (updateThreshold = 2), (defaultFastPriceGwei = 10));
     });
 
     it("Default parameters are set correctly", () => {
-      assert.equal(gasEstimator.updateThreshold, 1.5);
+      assert.equal(gasEstimator.updateThreshold, 2);
       assert.equal(gasEstimator.defaultFastPriceGwei, 10);
     });
     it("Updates if called after update threshold", async () => {
       await gasEstimator.update();
       const lastUpdateTimestamp = gasEstimator.lastUpdateTimestamp;
-      await delay(Number(5_500));
+      await delay(Number(3_000));
       await gasEstimator.update();
       assert(lastUpdateTimestamp < gasEstimator.lastUpdateTimestamp);
     });

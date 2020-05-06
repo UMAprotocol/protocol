@@ -31,7 +31,7 @@ class GasEstimator {
       });
       return;
     } else {
-      await this.update();
+      await this._update();
       this.lastUpdateTimestamp = currentTime;
       this.logger.debug({
         at: "GasEstimator",
@@ -47,7 +47,7 @@ class GasEstimator {
     return this.lastFastPriceGwei * 1e9;
   };
 
-  update = async () => {
+  _update = async () => {
     this.lastFastPriceGwei = await this._getPrice(url);
   };
 
