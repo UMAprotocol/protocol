@@ -135,7 +135,7 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
-    this.lastUpdateTimestamp = (await this.emp.methods.currentTime().call()).toNumber();
+    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({
       at: "ExpiringMultiPartyClient",
       message: "Expiring multi party state updated",

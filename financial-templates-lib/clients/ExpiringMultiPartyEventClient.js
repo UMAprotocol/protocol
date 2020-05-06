@@ -95,7 +95,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
     this.lastBlockNumberSeen = currentBlockNumber;
-    this.lastUpdateTimestamp = (await this.emp.methods.currentTime().call()).toNumber();
+    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
     this.logger.debug({
       at: "ExpiringMultiPartyEventClient",
       message: "Expiring multi party event state updated",
