@@ -1,5 +1,6 @@
 const { CryptoWatchPriceFeed } = require("../../price-feed/CryptoWatchPriceFeed");
 const { NetworkerMock } = require("./NetworkerMock");
+const winston = require("winston");
 
 contract("CryptoWatchPriceFeed.js", function(accounts) {
   let cryptoWatchPriceFeed;
@@ -45,8 +46,13 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
 
   beforeEach(async function() {
     networker = new NetworkerMock();
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: []
+    });
     cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
       web3,
+      dummyLogger,
       apiKey,
       exchange,
       pair,
