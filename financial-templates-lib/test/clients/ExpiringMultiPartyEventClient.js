@@ -5,7 +5,6 @@ const { interfaceName } = require("../../../core/utils/Constants.js");
 const { MAX_UINT_VAL } = require("../../../common/Constants.js");
 
 const { ExpiringMultiPartyEventClient } = require("../clients/ExpiringMultiPartyEventClient");
-const { delay } = require("../helpers/delay");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
