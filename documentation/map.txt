@@ -7,7 +7,7 @@
 ** tutorials
 *** prerequisites.md
 *** creating_from_truffle.md
-*** creating_from_sponsor_cli.md
+*** using_the_uma_sponsor_cli_tool.md
 ** known_issues.md
 ** glossary.md
 * oracle

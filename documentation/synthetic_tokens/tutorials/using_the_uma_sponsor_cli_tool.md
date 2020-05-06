@@ -1,4 +1,4 @@
-# UMA Sponsor CLI Tool
+# Using the UMA Sponsor CLI Tool
 
 The Sponsor CLI tool lets you interact with a synthetic token contract.
 In this tutorial, you’ll be deploying a synthetic token contract to a local testnet and interacting with it via the Sponsor CLI tool.
@@ -143,6 +143,7 @@ Navigate to the list of live synthetic tokens. Select the token contract for whi
 
 Because you are the only token sponsor, you cannot make a “fast” withdrawal as explained [here](../synthetic_tokens/explainer.md).
 Rather, this will be a “slow” delay. The request will take 60 minutes to process, as the liveness period for withdrawals has been set in this local testnet deployment to 60 minutes.
+During this liveness period, the collateral in the contract is locked (a sponsor cannot add additional collateral or make another withdrawal request).
 Request to withdraw 15 ETH. After submitting this request, a summary of the relevant transaction will be displayed, as well as an updated summary of your token sponsor position.
 Note that the pending collateral withdrawal of 15 ETH is now reflected.
 
