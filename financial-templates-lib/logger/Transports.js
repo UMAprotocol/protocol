@@ -7,15 +7,13 @@
 const ConsoleTransport = require("./ConsoleTransport");
 const SlackTransport = require("./SlackTransport");
 const TwilioTransport = require("./TwilioTransport");
+const PagerDutyTransport = require("./PagerDutyTransport");
 
 require("dotenv").config();
 const argv = require("minimist")(process.argv.slice(), {});
 
 // transports array to store all winston transports
 let transports = [];
-
-// add a console transport to log to the console.
-transports.push(ConsoleTransport.createConsoleTransport());
 
 // If there is "test" in the environment then skip the slack or twilio transports.
 if (argv._.indexOf("test") == -1) {
@@ -45,6 +43,15 @@ if (argv._.indexOf("test") == -1) {
           twilioFrom: process.env.TWILIO_FROM_NUMBER,
           twilioCallNumbers: numbersToCall
         }
+      )
+    );
+  }
+  // If there is a Pagerduty API key then add the pagerduty winston transport.
+  if (process.env.PAGERDUTY_API_KEY) {
+    transports.push(
+      new PagerDutyTransport(
+        { level: "info" },
+        { pdApiToken: process.env.PAGERDUTY_API_KEY, pdServiceId: process.env.PAGERDUTY_SERVICE_ID }
       )
     );
   }
