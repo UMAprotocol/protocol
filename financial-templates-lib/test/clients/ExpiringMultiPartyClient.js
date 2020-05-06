@@ -4,7 +4,7 @@ const winston = require("winston");
 const { interfaceName } = require("../../../core/utils/Constants.js");
 const { MAX_UINT_VAL } = require("../../../common/Constants.js");
 
-const { ExpiringMultiPartyClient } = require("../client/ExpiringMultiPartyClient");
+const { ExpiringMultiPartyClient } = require("../clients/ExpiringMultiPartyClient");
 const { delay } = require("../delay");
 
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

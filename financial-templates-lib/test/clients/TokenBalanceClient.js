@@ -2,7 +2,7 @@ const { toWei } = web3.utils;
 const winston = require("winston");
 
 // Script to test
-const { TokenBalanceClient } = require("../client/TokenBalanceClient");
+const { TokenBalanceClient } = require("../clients/TokenBalanceClient");
 
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");
