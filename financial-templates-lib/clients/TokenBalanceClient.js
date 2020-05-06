@@ -52,6 +52,11 @@ class TokenBalanceClient {
       this.tokenBalances.syntheticBalances[account] = await this.syntheticToken.methods.balanceOf(account).call();
       this.tokenBalances.etherBalances[account] = await this.web3.eth.getBalance(account);
     }
+
+    this.logger.debug({
+      at: "TokenBalanceClient",
+      message: "Token balance storage updated"
+    });
   };
 
   _registerAddress = address => {
