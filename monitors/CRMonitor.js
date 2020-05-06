@@ -13,10 +13,11 @@ class CRMonitor {
   constructor(logger, expiringMultiPartyClient, walletsToMonitor) {
     this.logger = logger;
 
+    // Expiring multiparty contract to read contract state.
     this.empClient = expiringMultiPartyClient;
-    this.empContract = this.empClient.emp;
     this.web3 = this.empClient.web3;
 
+    // Object of wallets to monitor.
     this.walletsToMonitor = walletsToMonitor;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2);
@@ -29,7 +30,7 @@ class CRMonitor {
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
   checkWalletCrRatio = async priceFunction => {
     // yield the price feed at the current time.
-    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const contractTime = this.empClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
     this.logger.debug({
       at: "CRMonitor",

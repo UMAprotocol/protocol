@@ -20,6 +20,7 @@ class ExpiringMultiPartyClient {
     this.expiredLiquidations = [];
     this.disputedLiquidations = [];
     this.collateralRequirement = null;
+    this.lastUpdateTime = 0;
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -54,6 +55,9 @@ class ExpiringMultiPartyClient {
 
   // Returns an array of sponsor addresses.
   getAllSponsors = () => this.sponsorAddresses;
+
+  // Returns the last time the client was updated.
+  getLastUpdateTime = () => this.lastUpdateTime;
 
   update = async () => {
     this.collateralRequirement = this.web3.utils.toBN(
@@ -130,6 +134,8 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
+
+    this.lastUpdateTime = (await this.emp.methods.getCurrentTime().call()).toNumber();
   };
   _isUnderCollateralized = (numTokens, amountCollateral, trv) => {
     const { toBN, toWei } = this.web3.utils;

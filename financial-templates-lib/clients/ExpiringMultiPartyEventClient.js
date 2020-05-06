@@ -17,8 +17,9 @@ class ExpiringMultiPartyEventClient {
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
 
-    // Last block number seen by the client.
+    // Last block number and time seen by the client.
     this.lastBlockNumberSeen = 0;
+    this.lastUpdateTime = 0;
   }
   // Delete all events within the client
   clearState = async () => {
@@ -35,6 +36,9 @@ class ExpiringMultiPartyEventClient {
 
   // Returns an array of dispute events.
   getAllDisputeSettlementEvents = () => this.disputeSettlementEvents;
+
+  // Returns the last time the client was updated.
+  getLastUpdateTime = () => this.lastUpdateTime;
 
   update = async () => {
     const currentBlockNumber = await this.web3.eth.getBlockNumber();
@@ -93,6 +97,7 @@ class ExpiringMultiPartyEventClient {
       });
     }
     this.lastBlockNumberSeen = currentBlockNumber;
+    this.lastUpdateTime = (await this.emp.methods.getCurrentTime().call()).toNumber();
   };
 }
 
