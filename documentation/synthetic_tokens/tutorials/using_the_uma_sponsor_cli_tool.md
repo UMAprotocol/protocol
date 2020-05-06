@@ -14,7 +14,7 @@ This [video](https://www.crowdcast.io/e/defi-discussions/18) will walk through t
 
 ## Prerequisites
 
-1. Install homebrew via website `brew.sh`
+1. Install homebrew via Homebrew. Tutorial can be found [here](https://changelog.com/posts/install-node-js-with-homebrew-on-os-x).
 2. Install [Node v12](https://nodejs.org/en/download/) and make sure that npm is v6 or above. You can verify by running in the terminal:
 
 ```bash
