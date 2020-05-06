@@ -188,9 +188,7 @@ After confirming, you will be presented with the relevant transactions and a sum
 ## Transferring a Token Sponsor Position
 
 Navigate to the list of live synthetic tokens and select the contract for which you are a token sponsor. Navigate to “Transfer position to new owner” and press “Enter”.
-After confirming, your request to transfer the token sponsor position will be submitted. Just as with a withdrawal request, this request will have a liveness period of 60 minutes.[^1]
-
-[^1]: If transfers were instantaneous, a sponsor who is about to get liquidated would simply transfer their position to a different account, thereby avoiding (frontrunning) the liquidation. In theory, they could keep doing these transfers forever, never getting liquidated.
+After confirming, your request to transfer the token sponsor position will be submitted. Just as with a withdrawal request, this request will have a liveness period of 60 minutes. (If transfers were instantaneous, a sponsor who is about to get liquidated would simply transfer their position to a different account, thereby avoiding (frontrunning) the liquidation. In theory, they could keep doing these transfers forever, never getting liquidated.)
 
 Note that your summary indicates that there is a “Pending transfer request”.
 
