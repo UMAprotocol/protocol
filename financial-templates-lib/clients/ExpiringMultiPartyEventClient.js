@@ -3,8 +3,8 @@
 // necessarily.// If no updateThreshold is specified then default to updating every 60 seconds.
 class ExpiringMultiPartyEventClient {
   constructor(logger, empAbi, web3, empAddress) {
-    this.web3 = web3;
     this.logger = logger;
+    this.web3 = web3;
 
     // EMP contract
     this.emp = new this.web3.eth.Contract(empAbi, empAddress);
@@ -17,6 +17,7 @@ class ExpiringMultiPartyEventClient {
 
     // Last block number seen by the client.
     this.lastBlockNumberSeen = 0;
+    this.lastUpdateTimestamp = 0;
   }
   // Delete all events within the client
   clearState = async () => {
@@ -33,6 +34,9 @@ class ExpiringMultiPartyEventClient {
 
   // Returns an array of dispute events.
   getAllDisputeSettlementEvents = () => this.disputeSettlementEvents;
+
+  // Returns the last update timestamp.
+  getLastUpdateTime = () => this.lastUpdateTimestamp;
 
   update = async () => {
     const currentBlockNumber = await this.web3.eth.getBlockNumber();
@@ -91,6 +95,12 @@ class ExpiringMultiPartyEventClient {
       });
     }
     this.lastBlockNumberSeen = currentBlockNumber;
+    this.lastUpdateTimestamp = (await this.emp.methods.currentTime().call()).toNumber();
+    this.logger.debug({
+      at: "ExpiringMultiPartyClient",
+      message: "Expiring multi party state updated",
+      lastUpdateTimestamp: this.lastUpdateTimestamp
+    });
   };
 }
 

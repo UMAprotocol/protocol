@@ -20,6 +20,7 @@ class BalanceMonitor {
     this.client = tokenBalanceClient;
     this.web3 = this.client.web3;
 
+    // Bot addresses and thresholds to monitor.
     this.botsToMonitor = botsToMonitor;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2);

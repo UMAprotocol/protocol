@@ -3,18 +3,18 @@
 
 class Disputer {
   constructor(logger, expiringMultiPartyClient, gasEstimator, account) {
-    this.account = account;
     this.logger = logger;
+    this.account = account;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
+    this.web3 = this.empClient.web3;
 
     // Gas Estimator to calculate the current Fast gas rate
     this.gasEstimator = gasEstimator;
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
-    this.web3 = this.empClient.web3;
   }
 
   // Update the client and gasEstimator clients.
