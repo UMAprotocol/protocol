@@ -41,6 +41,20 @@ git clone https://github.com/UMAprotocol/protocol.git
 
 5. Run `npm install` in `protocol/`.
 
+6. Symlink the CLI to your global directory. There are 2 ways to do this. Either run
+
+```sh
+npm link
+```
+
+OR
+
+```sh
+npm install -g ./
+```
+
+You may need to prefix these commands (`sudo npm link`) to run them.
+
 ## Launching the CLI tool
 
 1. Navigate to the `/core` folder: `cd core`
@@ -71,7 +85,7 @@ This is the output you should see:
 5. Run the CLI.
 
 ```bash
-sh scripts/cli/cli_entry.sh --network=test
+uma --network=test
 ```
 
 This will show you the top-level menu of the CLI tool.
@@ -143,7 +157,7 @@ $(npm bin)/truffle exec scripts/local/AdvanceEMP.js --network=test
 Return to the Sponsor CLI tool with the following command.
 
 ```bash
-sh scripts/cli/cli_entry.sh --network=test
+uma --network=test
 ```
 
 Navigate to the contract you previously used to create a synthetic token position.
@@ -190,7 +204,7 @@ $(npm bin)/truffle exec scripts/local/AdvanceEMP.js --network=test
 Return to the Sponsor CLI tool with the following command:
 
 ```bash
-sh scripts/cli/cli_entry.sh --network=test
+uma --network=test
 ```
 
 Navigate to the contract you are a token sponsor for.
