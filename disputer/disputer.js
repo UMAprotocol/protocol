@@ -71,9 +71,9 @@ class Disputer {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      this.logger.info({
+      this.logger.debug({
         at: "Disputer",
-        message: "Disputing liquidation🔥",
+        message: "Disputing liquidation",
         liquidation: disputeableLiquidation,
         inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
         txnConfig
@@ -86,7 +86,7 @@ class Disputer {
       } catch (error) {
         this.logger.error({
           at: "Disputer",
-          message: "Failed to dispute liquidation",
+          message: "Failed to dispute liquidation🚨",
           error: error
         });
         continue;
@@ -102,6 +102,9 @@ class Disputer {
       this.logger.info({
         at: "Disputer",
         message: "Dispute tx result📄",
+        liquidation: disputeableLiquidation,
+        inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
+        txnConfig,
         disputeResult: logResult
       });
     }
@@ -155,9 +158,9 @@ class Disputer {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      this.logger.info({
+      this.logger.debug({
         at: "Liquidator",
-        message: "Withdrawing dispute🤑",
+        message: "Withdrawing dispute",
         liquidation: liquidation,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
         txnConfig
@@ -185,6 +188,9 @@ class Disputer {
       this.logger.info({
         at: "Disputer",
         message: "Withdraw tx result📄",
+        liquidation: liquidation,
+        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        txnConfig,
         liquidationResult: logResult
       });
     }

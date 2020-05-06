@@ -167,9 +167,11 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
     assert.equal((await emp.getLiquidations(sponsor3))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
     // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
     await disputer.queryAndDispute(time => toWei("1.1"));
+    assert.equal(spy.callCount, 2); // 2 info level logs should be sent at the conclusion of the disputes.
 
     // Sponsor2 and sponsor3 should be disputed.
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
@@ -211,12 +213,14 @@ contract("Disputer.js", function(accounts) {
 
     // With a price of 1.1, the sponsors should be correctly collateralized, so disputes should be issued against sponsor1 and sponsor2's liquidations.
     await disputer.queryAndDispute(time => toWei("1.1"));
+    assert.equal(spy.callCount, 2); // Two info level events for the two disputes.
 
     // Push a price of 1.3, which should cause sponsor1's dispute to fail and sponsor2's dispute to succeed.
     const liquidationTime = await emp.getCurrentTime();
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, toWei("1.3"));
 
     await disputer.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 3); // One additional info level event for the successful withdrawal.
 
     // sponsor1's dispute was unsuccessful, so the disputeBot should not have called the withdraw method.
     assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
@@ -261,6 +265,7 @@ contract("Disputer.js", function(accounts) {
 
     // Both positions should be disputed with a presumed price of 1.1, but will only have enough collateral for the smaller one.
     await disputer.queryAndDispute(time => toWei("1.1"));
+    assert.equal(spy.callCount, 2); // Two info events for the the 1 successful dispute and one for the failed dispute.
 
     // Only sponsor2 should be disputed.
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
@@ -269,6 +274,7 @@ contract("Disputer.js", function(accounts) {
     // Transfer balance back, and the dispute should go through.
     await collateralToken.transfer(disputeBot, transferAmount, { from: rando });
     await disputer.queryAndDispute(time => toWei("1.1"));
+    assert.equal(spy.callCount, 3); // Info level event for the correctly processed dispute.
 
     // sponsor1 should now be disputed.
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
