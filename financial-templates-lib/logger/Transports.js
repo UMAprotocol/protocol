@@ -7,6 +7,7 @@
 const ConsoleTransport = require("./ConsoleTransport");
 const SlackTransport = require("./SlackTransport");
 const TwilioTransport = require("./TwilioTransport");
+const PagerDutyTransport = require("./PagerDutyTransport");
 
 require("dotenv").config();
 const argv = require("minimist")(process.argv.slice(), {});
@@ -51,6 +52,19 @@ if (argv._.indexOf("test") == -1) {
           twilioAuth: process.env.TWILIO_AUTH,
           twilioFrom: process.env.TWILIO_FROM_NUMBER,
           twilioCallNumbers: numbersToCall
+        }
+      )
+    );
+  }
+  // If there is a Pagerduty API key then add the pagerduty winston transport.
+  if (process.env.PAGERDUTY_API_KEY) {
+    transports.push(
+      new PagerDutyTransport(
+        { level: "warn" },
+        {
+          pdApiToken: process.env.PAGERDUTY_API_KEY,
+          pdServiceId: process.env.PAGERDUTY_SERVICE_ID,
+          fromEmail: process.env.PAGERDUTY_FROM_EMAIL
         }
       )
     );

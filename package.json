@@ -62,6 +62,7 @@
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
     "node-metamask": "github:UMAprotocol/node-metamask",
+    "node-pagerduty": "^1.2.0",
     "ora": "^4.0.3",
     "require-context": "^1.1.0",
     "secp256k1": "^3.7.1",
