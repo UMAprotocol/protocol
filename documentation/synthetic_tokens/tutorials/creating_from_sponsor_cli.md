@@ -7,8 +7,6 @@ It will let you be the “Token Sponsor,” which lets you:
 
 - Deposit collateral (ETH) and borrow synthetic tokens
 - Manage your position’s collateral (deposit/withdraw)
-- Deposit additional collateral
-- Withdraw excess collateral
 - Redeem the borrowed synthetic tokens and get collateral back
 - Transfer your position to another Ethereum address
 
