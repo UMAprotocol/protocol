@@ -107,7 +107,7 @@ class Disputer {
     }
 
     // Update the EMP Client since we disputed liquidations.
-    await this.empClient.forceUpdate();
+    await this.empClient.update();
   };
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
@@ -190,7 +190,7 @@ class Disputer {
     }
 
     // Update the EMP Client since we withdrew rewards.
-    await this.empClient.forceUpdate();
+    await this.empClient.update();
   };
 }
 

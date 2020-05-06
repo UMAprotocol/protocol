@@ -7,8 +7,8 @@ const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Disputer } = require("./disputer");
-const { GasEstimator } = require("../financial-templates-lib/GasEstimator");
-const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
+const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
+const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");

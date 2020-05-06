@@ -6,7 +6,7 @@ const sinon = require("sinon");
 const { BalanceMonitor } = require("../BalanceMonitor");
 
 // Helper client script
-const { TokenBalanceClient } = require("../../financial-templates-lib/TokenBalanceClient");
+const { TokenBalanceClient } = require("../../financial-templates-lib/clients/TokenBalanceClient");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
@@ -79,8 +79,8 @@ contract("BalanceMonitor.js", function(accounts) {
 
   it("Correctly emits messages on balance threshold", async function() {
     // Update the client.
-    await tokenBalanceClient._update();
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
 
     // The spy should not have been called. All positions are correctly funded and collateralized.
@@ -90,7 +90,7 @@ contract("BalanceMonitor.js", function(accounts) {
     // Transferring 2000 tokens from the liquidatorBot brings its balance to 9000. this is below the 10000 threshold.
     await collateralToken.transfer(tokenCreator, toWei("2000"), { from: liquidatorBot });
     assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("9000"));
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
 
     // The spy should be called exactly once. The most recent message should inform of the correct monitored position,
@@ -105,14 +105,14 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
 
     // Querying the balance again should emit a second message as the balance is still below the threshold.
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 2);
 
     // Likewise a further drop in collateral should emit a new message.
     await collateralToken.transfer(tokenCreator, toWei("2000"), { from: liquidatorBot });
     assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("7000"));
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 3);
 
@@ -122,7 +122,7 @@ contract("BalanceMonitor.js", function(accounts) {
     await syntheticToken.transfer(tokenCreator, "1", { from: disputerBot });
     assert.equal((await syntheticToken.balanceOf(disputerBot)).toString(), toBN(toWei("100")).sub(toBN("1")));
 
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 5);
     assert.isTrue(lastSpyLogIncludes(spy, "Disputer bot")); // name of bot from bot object
@@ -134,8 +134,8 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "UMATEST")); // Message should include the Synthetic currency symbol
   });
   it("Correctly emits messages on balance threshold", async function() {
-    await tokenBalanceClient._update();
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
 
     // Test the ETH balance thresholding. Transfer enough Eth away from liquidatorBot should result in alert.
@@ -152,7 +152,7 @@ contract("BalanceMonitor.js", function(accounts) {
     // After this transaction the liquidatorBot's ETH balance is below the threshold of 10Eth. The balance should be 5Eth,
     // minus the transaction fees. Thus strictly less than 5. This should emit an message.
     assert.isTrue(toBN(await web3.eth.getBalance(liquidatorBot)).lt(toBN(toWei("5"))));
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
@@ -173,15 +173,15 @@ contract("BalanceMonitor.js", function(accounts) {
   });
   it("Correctly emit messages if balance moves above and below thresholds", async function() {
     // Update the client. No messages should be sent as above threshold values on all fronts.
-    await tokenBalanceClient._update();
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 0);
 
     // Transfer tokens away from the liquidator below the threshold should emit a message
     await collateralToken.transfer(tokenCreator, toWei("1001"), { from: liquidatorBot });
     assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("9999"));
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object
@@ -192,7 +192,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "DAI")); // Message should include the collateral currency symbol
 
     // Updating again should emit another message
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 2);
 
@@ -200,14 +200,14 @@ contract("BalanceMonitor.js", function(accounts) {
     // transferring tokens away again should initiate a new message.
     await collateralToken.transfer(liquidatorBot, toWei("11"), { from: tokenCreator });
     assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("10010")); // balance above threshold
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 2); // No new event as balance above threshold
 
     await collateralToken.transfer(tokenCreator, toWei("15"), { from: liquidatorBot });
     assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), toWei("9995")); // balance below threshold
 
-    await tokenBalanceClient._update();
+    await tokenBalanceClient.update();
     await balanceMonitor.checkBotBalances();
     assert.equal(spy.callCount, 3); // 1 new event as balance below threshold
     assert.isTrue(lastSpyLogIncludes(spy, "Liquidator bot")); // name of bot from bot object

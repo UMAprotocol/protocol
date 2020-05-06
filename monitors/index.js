@@ -2,13 +2,13 @@ const argv = require("minimist")(process.argv.slice(), { string: ["address"], in
 const { toWei } = web3.utils;
 
 // Helpers.
-const { delay } = require("../financial-templates-lib/delay");
+const { delay } = require("../financial-templates-lib/helpers/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
 
 // Clients to retrieve on-chain data.
-const { ExpiringMultiPartyClient } = require("../financial-templates-lib/ExpiringMultiPartyClient");
-const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/ExpiringMultiPartyEventClient");
-const { TokenBalanceClient } = require("../financial-templates-lib/TokenBalanceClient");
+const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { ExpiringMultiPartyEventClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
+const { TokenBalanceClient } = require("../financial-templates-lib/clients/TokenBalanceClient");
 
 // Monitor modules to report on client state changes.
 const { ContractMonitor } = require("./ContractMonitor");
@@ -89,7 +89,7 @@ async function run(price, address, shouldPoll) {
     try {
       // 1.  Contract monitor
       // 1.a Update the client
-      await empEventClient._update();
+      await empEventClient.update();
       // 1.b Check For new liquidation events
       await contractMonitor.checkForNewLiquidations(() => toWei(price.toString()));
       // 1.c Check for new disputes
@@ -99,7 +99,7 @@ async function run(price, address, shouldPoll) {
 
       // 2.  Wallet Balance monitor
       // 2.a Update the client
-      await tokenBalanceClient._update();
+      await tokenBalanceClient.update();
       // 2.b Check for monitored bot balance changes
       balanceMonitor.checkBotBalances();
       // 2.c Check for wallet threshold changes
@@ -107,7 +107,7 @@ async function run(price, address, shouldPoll) {
 
       // 3.  Position Collateralization Ratio monitor
       // 1.a Update the client
-      await empClient._update();
+      await empClient.update();
       // 1.b Check for positions below their CR
       crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
 

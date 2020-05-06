@@ -10,8 +10,8 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const { Disputer } = require("../disputer.js");
 
 // Helper client script
-const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/ExpiringMultiPartyClient");
-const { GasEstimator } = require("../../financial-templates-lib/GasEstimator");
+const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");

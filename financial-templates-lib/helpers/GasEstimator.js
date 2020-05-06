@@ -17,7 +17,7 @@ class GasEstimator {
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
   }
 
-  // Calls _update unless it was recently called, as determined by this.updateThreshold.
+  // Calls update unless it was recently called, as determined by this.updateThreshold.
   update = async () => {
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
@@ -31,7 +31,7 @@ class GasEstimator {
       });
       return;
     } else {
-      await this._update();
+      await this.update();
       this.lastUpdateTimestamp = currentTime;
       this.logger.debug({
         at: "GasEstimator",
@@ -47,7 +47,7 @@ class GasEstimator {
     return this.lastFastPriceGwei * 1e9;
   };
 
-  _update = async () => {
+  update = async () => {
     this.lastFastPriceGwei = await this._getPrice(url);
   };
 
