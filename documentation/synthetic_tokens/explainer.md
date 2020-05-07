@@ -14,6 +14,8 @@ Some of the most creative ideas for synthetic tokens fall in the last category. 
 - tokens that track the number of downloads of a Chrome extension (e.g. Metamask)
 - tokens that track the success of trade ideas on r/WallStreetBets
 
+By changing the price identifier of a priceless synthetic token, you can create synthetic tokens that behave like tokenized versions of other derivatives, like options.
+
 ## Priceless Synthetic Tokens
 
 “Priceless” synthetic tokens are synthetic tokens that are securely collateralized without an on-chain price feed. These tokens are designed with mechanisms to incentivize token sponsors (those who create synthetic tokens) to properly collateralize their positions. These mechanisms include a liquidation and dispute process that allows token holders to be rewarded for identifying improperly collateralized [token sponsor](glossary.md#token-sponsor) positions. The dispute process relies on an oracle, the UMA [DVM](glossary.md#dvm), to settle disputes regarding liquidations.
@@ -103,6 +105,13 @@ Here are three ways in which a liquidation can be resolved:
   - The liquidator will receive collateral equalling: (i) the value of the token at the time of liquidation as determined by the DVM, less (ii) the dispute reward paid to the disputer, less (iii) the improper liquidation reward paid to the original token sponsor.
   - The token sponsor will receive any remaining collateral and a reward for the improper liquidation.
     ![](st_liquidation_3.png)
+
+A table summarizing these payouts is below:
+| | Token Sponsor | Liquidator | Disputer |
+|----------------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------|-------------------------------|
+| Liquidation was not disputed | 0 | Token Sponsor's collateral + Liquidator bond | 0 |
+| Token Sponsor was over-collateralized | Token Sponsor's collateral - Value of tokens + Improper liquidation reward | Value of tokens - Dispute reward - Improper liquidation reward | Dispute bond + Dispute reward |
+| Token Sponsor was under-collateralized | 0 | Token Sponsor's collateral + Dispute bond + Liquidator bond | 0 |
 
 ## Redeeming Tokens
 
