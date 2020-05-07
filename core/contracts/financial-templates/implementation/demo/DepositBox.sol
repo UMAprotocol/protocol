@@ -20,14 +20,13 @@ import "../../../oracle/implementation/ContractCreator.sol";
  * Specifically, this contract should be thought of as a "Deposit Box" into which the user deposits some ERC20 collateral.
  * The main feature of this box is that the user can withdraw their ERC20 corresponding to a desired USD amount.
  * When the user wants to make a withdrawal, a price request is enqueued with the UMA DVM.
- * it would take for the UMA DVM to return the corresponding amount of ERC20. For simplicty, the user is constrained to
- * have one outstanding withdrawal request at any given time. Regular fees are charged on the collateral in the deposit box throughout
+ * For simplicty, the user is constrained to have one outstanding withdrawal request at any given time.
+ * Regular fees are charged on the collateral in the deposit box throughout
  * the lifetime of the deposit box, and final fees are charged on each price request.
  *
- * Note that this toy example would perform poorly as a mainnet product, given the long period of time
  * This example is intended to accompany a technical tutorial for how to integrate the DVM into a project.
  * The main feature this demo serves to showcase is how to build a financial product on-chain that "pulls" price requests
- * from the DVM, which is an implementation of the "priceless" oracle framework.
+ * from the DVM on-demand, which is an implementation of the "priceless" oracle framework.
  *
  * The typical user flow would be:
  * - User sets up a deposit box for the (wETH - USD) price-identifier. The "collateral currency" in this deposit box is therefore wETH.
@@ -172,8 +171,10 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
 
         emit RequestWithdrawal(msg.sender, denominatedCollateralAmount.rawValue, depositBoxData.requestPassTimestamp);
 
-        // Every price request costs a fixed fee.
-        _payFinalFees(address(this), _computeFinalFees());
+        // Every price request costs a fixed fee. Check that this user has enough deposited to cover the final fee.
+        FixedPoint.Unsigned memory finalFee = _computeFinalFees();
+        require(_getFeeAdjustedCollateral(depositBoxData.rawCollateral).isGreaterThanOrEqual(finalFee), "Cannot pay final fee");
+        _payFinalFees(address(this), finalFee);
         // A price request is sent for the current timestamp.
         _requestOraclePrice(depositBoxData.requestPassTimestamp);
     }
@@ -185,31 +186,30 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * amount exceeds the collateral in the position (due to paying fees).
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function withdrawPassedRequest()
+    function executeWithdrawal()
         external
         fees()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         DepositBoxData storage depositBoxData = _getDepositBoxData(msg.sender);
-        require(depositBoxData.requestPassTimestamp != 0, "No pending withdrawal");
+        require(depositBoxData.requestPassTimestamp != 0 && depositBoxData.requestPassTimestamp <= getCurrentTime(), "Invalid withdraw request");
 
         // Get the resolved price or revert.
         FixedPoint.Unsigned memory exchangeRate = _getOraclePrice(depositBoxData.requestPassTimestamp);
 
-        // Calculate denomated amount of collateral.
+        // Calculate denomated amount of collateral based on resolved exchange rate.
         // Example 1: User wants to withdraw $100 of ETH, exchange rate is $200/ETH, therefore user to receive 0.5 ETH.
         // Example 2: User wants to withdraw $250 of ETH, exchange rate is $200/ETH, therefore user to receive 1.25 ETH.
         FixedPoint.Unsigned memory denominatedAmountToWithdraw = depositBoxData.withdrawalRequestAmount.div(
             exchangeRate
         );
 
-        // If withdrawal request amount is >= position collateral, then withdraw the full collateral amount and delete the deposit box data.
-        if (denominatedAmountToWithdraw.isGreaterThanOrEqual(_getFeeAdjustedCollateral(depositBoxData.rawCollateral))) {
+        // If withdrawal request amount is > collateral, then withdraw the full collateral amount and delete the deposit box data.
+        if (denominatedAmountToWithdraw.isGreaterThan(_getFeeAdjustedCollateral(depositBoxData.rawCollateral))) {
             denominatedAmountToWithdraw = _getFeeAdjustedCollateral(depositBoxData.rawCollateral);
 
             // Reset the position state as all the value has been removed after settlement.
-            delete depositBoxes[msg.sender];
             emit EndedDepositBox(msg.sender);
         }
 
@@ -264,6 +264,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @dev This is necessary because the struct returned by the depositBoxes() method shows
      * rawCollateral, which isn't a user-readable value.
      * @param user address whose collateral amount is retrieved.
+     * @return the fee-adjusted collateral amount in the deposit box (i.e. available for withdrawal).
      */
     function getCollateral(address user) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         // Note: do a direct access to avoid the validity check.
@@ -272,6 +273,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
 
     /**
      * @notice Accessor method for the total collateral stored within the entire contract.
+     * @return the total fee-adjusted collateral amount in the contract (i.e. across all users).
      */
     function totalDepositBoxCollateral() external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalDepositBoxCollateral);
