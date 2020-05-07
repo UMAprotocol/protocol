@@ -137,7 +137,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      */
     function deposit(FixedPoint.Unsigned memory collateralAmount) public fees() nonReentrant() {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
-        DepositBoxData storage depositBoxData = _getDepositBoxData(msg.sender);
+        DepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         if (_getFeeAdjustedCollateral(depositBoxData.rawCollateral).isEqual(0)) {
             emit NewDepositBox(msg.sender);
         }
@@ -173,7 +173,10 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
 
         // Every price request costs a fixed fee. Check that this user has enough deposited to cover the final fee.
         FixedPoint.Unsigned memory finalFee = _computeFinalFees();
-        require(_getFeeAdjustedCollateral(depositBoxData.rawCollateral).isGreaterThanOrEqual(finalFee), "Cannot pay final fee");
+        require(
+            _getFeeAdjustedCollateral(depositBoxData.rawCollateral).isGreaterThanOrEqual(finalFee),
+            "Cannot pay final fee"
+        );
         _payFinalFees(address(this), finalFee);
         // A price request is sent for the current timestamp.
         _requestOraclePrice(depositBoxData.requestPassTimestamp);
@@ -186,14 +189,12 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * amount exceeds the collateral in the position (due to paying fees).
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function executeWithdrawal()
-        external
-        fees()
-        nonReentrant()
-        returns (FixedPoint.Unsigned memory amountWithdrawn)
-    {
+    function executeWithdrawal() external fees() nonReentrant() returns (FixedPoint.Unsigned memory amountWithdrawn) {
         DepositBoxData storage depositBoxData = _getDepositBoxData(msg.sender);
-        require(depositBoxData.requestPassTimestamp != 0 && depositBoxData.requestPassTimestamp <= getCurrentTime(), "Invalid withdraw request");
+        require(
+            depositBoxData.requestPassTimestamp != 0 && depositBoxData.requestPassTimestamp <= getCurrentTime(),
+            "Invalid withdraw request"
+        );
 
         // Get the resolved price or revert.
         FixedPoint.Unsigned memory exchangeRate = _getOraclePrice(depositBoxData.requestPassTimestamp);
@@ -267,8 +268,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @return the fee-adjusted collateral amount in the deposit box (i.e. available for withdrawal).
      */
     function getCollateral(address user) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        // Note: do a direct access to avoid the validity check.
-        return _getFeeAdjustedCollateral(depositBoxes[user].rawCollateral);
+        return _getFeeAdjustedCollateral(_getDepositBoxData(user).rawCollateral);
     }
 
     /**
