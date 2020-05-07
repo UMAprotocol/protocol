@@ -162,7 +162,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
         noPendingWithdrawal(msg.sender)
         nonReentrant()
     {
-        DepositBoxData storage depositBoxData = _getDepositBoxData(msg.sender);
+        DepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(denominatedCollateralAmount.isGreaterThan(0), "Invalid collateral amount");
 
         // Update the position object for the user.
@@ -190,7 +190,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function executeWithdrawal() external fees() nonReentrant() returns (FixedPoint.Unsigned memory amountWithdrawn) {
-        DepositBoxData storage depositBoxData = _getDepositBoxData(msg.sender);
+        DepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(
             depositBoxData.requestPassTimestamp != 0 && depositBoxData.requestPassTimestamp <= getCurrentTime(),
             "Invalid withdraw request"
@@ -235,7 +235,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @notice Cancels a pending withdrawal request.
      */
     function cancelWithdrawal() external nonReentrant() {
-        DepositBoxData storage depositBoxData = _getDepositBoxData(msg.sender);
+        DepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(depositBoxData.requestPassTimestamp != 0, "No pending withdrawal");
 
         emit RequestWithdrawalCanceled(
@@ -268,7 +268,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @return the fee-adjusted collateral amount in the deposit box (i.e. available for withdrawal).
      */
     function getCollateral(address user) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        return _getFeeAdjustedCollateral(_getDepositBoxData(user).rawCollateral);
+        return _getFeeAdjustedCollateral(depositBoxes[user].rawCollateral);
     }
 
     /**
@@ -315,12 +315,8 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
         depositBoxData.requestPassTimestamp = 0;
     }
 
-    function _getDepositBoxData(address user) internal view returns (DepositBoxData storage) {
-        return depositBoxes[user];
-    }
-
     function _depositBoxHasNoPendingWithdrawal(address user) internal view {
-        require(_getDepositBoxData(user).requestPassTimestamp == 0, "Pending withdrawal");
+        require(depositBoxes[user].requestPassTimestamp == 0, "Pending withdrawal");
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
