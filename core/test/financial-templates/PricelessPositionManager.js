@@ -859,6 +859,47 @@ contract("PricelessPositionManager", function(accounts) {
     assert(await didContractThrow(pricelessPositionManager.redeem({ rawValue: numTokens }, { from: sponsor })));
   });
 
+  it("Non sponsor can use depositTo", async function() {
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+
+    const numTokens = toWei("1");
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: numTokens }, { from: sponsor });
+
+    // Other makes a deposit to the sponsor's account.
+    await pricelessPositionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: other });
+
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("2"));
+    assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), "0");
+  });
+
+  it("Sponsor can use depositTo to other account", async function() {
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+
+    const numTokens = toWei("1");
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: numTokens }, { from: other });
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: numTokens }, { from: sponsor });
+
+    // Other makes a deposit to the sponsor's account despite having their own position.
+    await pricelessPositionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: other });
+
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("2"));
+    assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), toWei("1"));
+  });
+
+  it("Sponsor use depositTo on own account", async function() {
+    await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
+
+    const numTokens = toWei("1");
+    await pricelessPositionManager.create({ rawValue: toWei("1") }, { rawValue: numTokens }, { from: sponsor });
+
+    // Sponsor makes a deposit to their own account.
+    await pricelessPositionManager.depositTo(sponsor, { rawValue: toWei("1") }, { from: sponsor });
+
+    assert.equal((await pricelessPositionManager.getCollateral(sponsor)).toString(), toWei("2"));
+  });
+
   it("Basic fees", async function() {
     // Set up position.
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
