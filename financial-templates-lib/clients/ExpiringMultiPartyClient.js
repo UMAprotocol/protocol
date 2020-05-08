@@ -19,6 +19,9 @@ class ExpiringMultiPartyClient {
     this.expiredLiquidations = [];
     this.disputedLiquidations = [];
     this.collateralRequirement = null;
+
+    // Store the last on-chain time the clients were updated to inform price request information.
+    this.lastUpdateTimestamp = 0;
   }
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
@@ -53,6 +56,9 @@ class ExpiringMultiPartyClient {
 
   // Returns an array of sponsor addresses.
   getAllSponsors = () => this.sponsorAddresses;
+
+  // Returns the last update timestamp.
+  getLastUpdateTime = () => this.lastUpdateTimestamp;
 
   update = async () => {
     this.collateralRequirement = this.web3.utils.toBN(
@@ -129,6 +135,12 @@ class ExpiringMultiPartyClient {
             ]),
       []
     );
+    this.lastUpdateTimestamp = await this.emp.methods.getCurrentTime().call();
+    this.logger.debug({
+      at: "ExpiringMultiPartyClient",
+      message: "Expiring multi party state updated",
+      lastUpdateTimestamp: this.lastUpdateTimestamp
+    });
   };
   _isUnderCollateralized = (numTokens, amountCollateral, trv) => {
     const { toBN, toWei } = this.web3.utils;

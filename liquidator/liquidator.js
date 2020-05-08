@@ -26,7 +26,7 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFunction => {
-    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const contractTime = this.empClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
 
     this.logger.debug({
@@ -50,7 +50,7 @@ class Liquidator {
 
     for (const position of underCollateralizedPositions) {
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
-      const currentBlockTime = await this.empContract.methods.getCurrentTime().call();
+      const currentBlockTime = this.empClient.getLastUpdateTime();
       const fiveMinutes = 300;
       // Create the transaction.
       const liquidation = this.empContract.methods.createLiquidation(
