@@ -101,7 +101,7 @@ class Disputer {
       };
       this.logger.info({
         at: "Disputer",
-        message: "Dispute tx result📄",
+        message: "Position has been disputed!🔥",
         liquidation: disputeableLiquidation,
         inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
         txnConfig,

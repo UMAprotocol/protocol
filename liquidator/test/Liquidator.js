@@ -24,7 +24,7 @@ const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 
 contract("Liquidator.js", function(accounts) {
-  // implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0]
+  // Implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0].
   const liquidatorBot = accounts[0];
   const sponsor1 = accounts[1];
   const sponsor2 = accounts[2];
@@ -130,25 +130,27 @@ contract("Liquidator.js", function(accounts) {
     // Start with a mocked price of 1 usd per token.
     // This puts both sponsors over collateralized so no liquidations should occur.
     await liquidator.queryAndLiquidate(time => toWei("1"));
+    assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
     // There should be no liquidations created from any sponsor account
     assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
     assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
 
-    // Both token sponsors should still have their positions with full collateral
+    // Both token sponsors should still have their positions with full collateral.
     assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
     assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
 
     // Next, assume the price feed given to the liquidator has moved such that two of the three sponsors
-    // is now undercollateralize. The liquidator bot should correctly identify this and liquidate the positions.
+    // are now undercollateralize. The liquidator bot should correctly identify this and liquidate the positions.
     // A price of 1.3 USD per token puts sponsor1 and sponsor2 at undercollateralized while sponsor3 remains
     // collateralized. Numerically debt * price * coltReq > debt for collateralized position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     // Sponsor2: 100 * 1.3 * 1.2 > 150 [undercollateralized]
-    // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
+    // Sponsor3: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
 
     await liquidator.queryAndLiquidate(time => toWei("1.3"));
+    assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     assert.equal((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
@@ -171,6 +173,10 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor3 should have all their collateral left and no liquidations.
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
     assert.equal((await emp.getCollateral(sponsor3)).rawValue, toWei("175"));
+
+    // Another query at the same price should execute no new liquidations.
+    await liquidator.queryAndLiquidate(time => toWei("1.3"));
+    assert.equal(spy.callCount, 2);
   });
 
   it("Can withdraw rewards from expired liquidations", async function() {
@@ -184,16 +190,17 @@ contract("Liquidator.js", function(accounts) {
     // and liquidates the position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     await liquidator.queryAndLiquidate(time => toWei("1.3"));
+    assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
 
     // Advance the timer to the liquidation expiry.
     const liquidationTime = (await emp.getLiquidations(sponsor1))[0].liquidationTime;
     const liquidationLiveness = 1000;
     await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
-    await empClient.update();
 
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2); // 1 info level events should be sent at the conclusion of the withdrawal.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral.
     const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -220,13 +227,14 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     const liquidationPrice = toWei("1.3");
     await liquidator.queryAndLiquidate(time => liquidationPrice);
+    assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
 
     // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
-    await empClient.update();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 1); // no new info level events as too early.
 
     // Simulate a failed dispute by pushing a price to the oracle, at the time of the liquidation request, such that
     // the position was truly undercollateralized. In other words, the liquidator was liquidating at the correct price.
@@ -238,6 +246,7 @@ contract("Liquidator.js", function(accounts) {
     // for the liquidation time.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2); // 1 new info level event should be sent due to the withdrawal.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral + the disputer's dispute bond:
     // 125 + (10% of 125) = 137.5 units of collateral.
@@ -265,13 +274,14 @@ contract("Liquidator.js", function(accounts) {
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
     const liquidationPrice = toWei("1.3");
     await liquidator.queryAndLiquidate(time => liquidationPrice);
+    assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
 
     // Dispute the liquidation, which requires staking a dispute bond.
     await emp.dispute("0", sponsor1, { from: sponsor3 });
-    await empClient.update();
 
     // Attempt to withdraw before dispute resolves should do nothing exit gracefully.
     await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 1); // no new info level events as too early.
 
     // Simulate a successful dispute by pushing a price to the oracle, at the time of the liquidation request, such that
     // the position was not undercollateralized. In other words, the liquidator was liquidating at the incorrect price.
@@ -283,6 +293,7 @@ contract("Liquidator.js", function(accounts) {
     // for the liquidation time.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2); // 1 new info level event should be sent due to the withdrawal.
 
     // Liquidator should have their collateral increased by TRV - (disputer and sponsor rewards):
     // 100 - 2 * (10% of 100) = 80 units of collateral.
@@ -306,17 +317,20 @@ contract("Liquidator.js", function(accounts) {
 
     // No transaction should be sent, so this should not throw.
     await liquidator.queryAndLiquidate(time => liquidationPrice);
+    assert.equal(spy.callCount, 1); // 1 new error level event due to the failed liquidation.
 
     // No liquidations should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 0);
 
     // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
     await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
-    // No need to force update the `empClient` here since we are not interested in detecting the `liquidatorBot`'s new position,
-    // but now when we try to liquidate the position the liquidation will go through because the bot will have the requisite balance.
+    // No need to force update the `empClient` here since we are not interested in detecting the `liquidatorBot`'s new
+    // position, but now when we try to liquidate the position the liquidation will go through because the bot will have
+    // the requisite balance.
 
     // Can now liquidate the position.
     await liquidator.queryAndLiquidate(time => liquidationPrice);
+    assert.equal(spy.callCount, 2); // 1 new info level event due to the successful liquidation.
 
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);

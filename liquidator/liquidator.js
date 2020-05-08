@@ -81,9 +81,9 @@ class Liquidator {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      this.logger.info({
+      this.logger.debug({
         at: "Liquidator",
-        message: "Liquidating position🔥",
+        message: "Liquidating position",
         position: position,
         inputPrice: this.web3.utils.toWei(priceFeed),
         txnConfig
@@ -96,7 +96,7 @@ class Liquidator {
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to liquidate position",
+          message: "Failed to liquidate position🚨",
           error: error
         });
         continue;
@@ -113,7 +113,10 @@ class Liquidator {
       };
       this.logger.info({
         at: "Liquidator",
-        message: "Liquidation tx result 📄",
+        message: "Position has been liquidated!🔥",
+        position: position,
+        inputPrice: this.web3.utils.toWei(priceFeed),
+        txnConfig,
         liquidationResult: logResult
       });
     }
@@ -170,9 +173,9 @@ class Liquidator {
         gas: 1500000,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
-      this.logger.info({
+      this.logger.debug({
         at: "Liquidator",
-        message: "Withdrawing liquidation🤑",
+        message: "Withdrawing liquidation",
         liquidation: liquidation,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
         txnConfig
@@ -199,7 +202,10 @@ class Liquidator {
       };
       this.logger.info({
         at: "Liquidator",
-        message: "Withdraw tx result📄",
+        message: "Liquidation withdrawn🤑",
+        liquidation: liquidation,
+        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        txnConfig,
         liquidationResult: logResult
       });
     }
