@@ -5,32 +5,33 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "../FeePayer.sol";
+import "../implementation/FeePayer.sol";
 
-import "../../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/FixedPoint.sol";
 
-import "../../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../../oracle/interfaces/OracleInterface.sol";
-import "../../../oracle/interfaces/AdministrateeInterface.sol";
-import "../../../oracle/implementation/ContractCreator.sol";
+import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
+import "../../oracle/interfaces/OracleInterface.sol";
+import "../../oracle/interfaces/AdministrateeInterface.sol";
+import "../../oracle/implementation/ContractCreator.sol";
 
 
 /**
  * @title Token Deposit Box
  * @notice This is a minimal example of a financial template that depends on price requests from the DVM.
- * Specifically, this contract should be thought of as a "Deposit Box" into which the user deposits some ERC20 collateral.
+ * This contract should be thought of as a "Deposit Box" into which the user deposits some ERC20 collateral.
  * The main feature of this box is that the user can withdraw their ERC20 corresponding to a desired USD amount.
  * When the user wants to make a withdrawal, a price request is enqueued with the UMA DVM.
  * For simplicty, the user is constrained to have one outstanding withdrawal request at any given time.
- * Regular fees are charged on the collateral in the deposit box throughout
- * the lifetime of the deposit box, and final fees are charged on each price request.
+ * Regular fees are charged on the collateral in the deposit box throughout the lifetime of the deposit box,
+ * and final fees are charged on each price request.
  *
  * This example is intended to accompany a technical tutorial for how to integrate the DVM into a project.
- * The main feature this demo serves to showcase is how to build a financial product on-chain that "pulls" price requests
- * from the DVM on-demand, which is an implementation of the "priceless" oracle framework.
+ * The main feature this demo serves to showcase is how to build a financial product on-chain that "pulls" price
+ * requests from the DVM on-demand, which is an implementation of the "priceless" oracle framework.
  *
  * The typical user flow would be:
- * - User sets up a deposit box for the (wETH - USD) price-identifier. The "collateral currency" in this deposit box is therefore wETH.
+ * - User sets up a deposit box for the (wETH - USD) price-identifier. The "collateral currency" in this deposit
+ *   box is therefore wETH.
  *   The user can subsequently make withdrawal requests for USD-denominated amounts of wETH.
  * - User deposits 10 wETH into their deposit box.
  * - User later requests to withdraw $100 USD of wETH.
