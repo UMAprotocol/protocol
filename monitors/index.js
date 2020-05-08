@@ -1,4 +1,4 @@
-const argv = require("minimist")(process.argv.slice(), { string: ["address"], integer: ["price"] });
+require("dotenv").config();
 const { toWei } = web3.utils;
 
 // Helpers.
