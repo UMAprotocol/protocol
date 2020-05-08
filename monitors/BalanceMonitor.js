@@ -42,7 +42,7 @@ class BalanceMonitor {
     // send a winston event. The message structure is defined with the `_createLowBalanceMrkdwn` formatter.
     for (let bot of this.botsToMonitor) {
       if (this._ltThreshold(this.client.getCollateralBalance(bot.address), bot.collateralThreshold)) {
-        this.logger.info({
+        this.logger.warn({
           at: "BalanceMonitor",
           message: "Low collateral balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
@@ -55,7 +55,7 @@ class BalanceMonitor {
         });
       }
       if (this._ltThreshold(this.client.getSyntheticBalance(bot.address), bot.syntheticThreshold)) {
-        this.logger.info({
+        this.logger.warn({
           at: "BalanceMonitor",
           message: "Low synthetic balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(
@@ -68,7 +68,7 @@ class BalanceMonitor {
         });
       }
       if (this._ltThreshold(this.client.getEtherBalance(bot.address), bot.etherThreshold)) {
-        this.logger.info({
+        this.logger.warn({
           at: "BalanceMonitor",
           message: "Low Ether balance warning ⚠️",
           mrkdwn: this._createLowBalanceMrkdwn(

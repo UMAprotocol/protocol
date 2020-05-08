@@ -68,7 +68,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message:
-            "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation.",
+            "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation✋",
           sponsor: position.sponsor,
           position: position,
           error: error
@@ -96,7 +96,7 @@ class Liquidator {
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to liquidate position",
+          message: "Failed to liquidate position🚨",
           error: error
         });
         continue;

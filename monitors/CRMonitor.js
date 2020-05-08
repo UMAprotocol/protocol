@@ -78,9 +78,9 @@ class CRMonitor {
           " is " +
           this.formatDecimalString(priceFeed);
 
-        this.logger.info({
+        this.logger.warn({
           at: "ContractMonitor",
-          message: "Collateralization ratio alert 🚨!",
+          message: "Collateralization ratio alert 🙅‍♂️!",
           mrkdwn: mrkdwn
         });
       }
