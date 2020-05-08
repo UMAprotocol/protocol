@@ -4,8 +4,9 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "../../common/implementation/FixedPoint.sol";
 import "./PricelessPositionManager.sol";
+
+import "../../common/implementation/FixedPoint.sol";
 
 
 /**
@@ -78,9 +79,8 @@ contract Liquidatable is PricelessPositionManager {
     // Total collateral in liquidation.
     FixedPoint.Unsigned public rawLiquidationCollateral;
 
-    // Immutable contract parameters.
-
-    // Amount of time for pending liquidation before expiry
+    // Immutable contract parameters:
+    // Amount of time for pending liquidation before expiry.
     uint256 public liquidationLiveness;
     // Required collateral:TRV ratio for a position to be considered sufficiently collateralized.
     FixedPoint.Unsigned public collateralRequirement;
@@ -88,10 +88,10 @@ contract Liquidatable is PricelessPositionManager {
     // Represented as a multiplier, for example 1.5e18 = "150%" and 0.05e18 = "5%"
     FixedPoint.Unsigned public disputeBondPct;
     // Percent of oraclePrice paid to sponsor in the Disputed state (i.e. following a successful dispute)
-    // Represented as a multiplier, see above
+    // Represented as a multiplier, see above.
     FixedPoint.Unsigned public sponsorDisputeRewardPct;
     // Percent of oraclePrice paid to disputer in the Disputed state (i.e. following a successful dispute)
-    // Represented as a multiplier, see above
+    // Represented as a multiplier, see above.
     FixedPoint.Unsigned public disputerDisputeRewardPct;
 
     /****************************************
@@ -181,7 +181,7 @@ contract Liquidatable is PricelessPositionManager {
      * synthetic tokens to retire the position's outstanding tokens.
      * @dev This method generates an ID that will uniquely identify liquidation for the sponsor. This contract must be
      * approved to spend at least `tokensLiquidated` of `tokenCurrency` and at least `finalFeeBond` of `collateralCurrency`.
-     * @param sponsor address to liquidate.
+     * @param sponsor address of the sponsor to liquidate.
      * @param minCollateralPerToken abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
@@ -213,8 +213,8 @@ contract Liquidatable is PricelessPositionManager {
 
         tokensLiquidated = FixedPoint.min(maxTokensToLiquidate, positionToLiquidate.tokensOutstanding);
 
-        // Starting values for the Position being liquidated.
-        // If withdrawal request amount is > position's collateral, then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
+        // Starting values for the Position being liquidated. If withdrawal request amount is > position's collateral,
+        // then set this to 0, otherwise set it to (startCollateral - withdrawal request amount).
         FixedPoint.Unsigned memory startCollateral = _getFeeAdjustedCollateral(positionToLiquidate.rawCollateral);
         FixedPoint.Unsigned memory startCollateralNetOfWithdrawal = FixedPoint.fromUnscaledUint(0);
         if (positionToLiquidate.withdrawalRequestAmount.isLessThanOrEqual(startCollateral)) {
@@ -268,9 +268,8 @@ contract Liquidatable is PricelessPositionManager {
         _addCollateral(rawLiquidationCollateral, lockedCollateral.add(finalFeeBond));
 
         // Construct liquidation object.
-        // Note: all dispute-related values are just zeroed out until a dispute occurs.
-        // liquidationId is the index of the new LiquidationData that we will push into the array,
-        // which is equal to the current length of the array pre-push.
+        // Note: All dispute-related values are zeroed out until a dispute occurs. liquidationId is the index of the new
+        // LiquidationData that is pushed into the array, which is equal to the current length of the array pre-push.
         liquidationId = liquidations[sponsor].length;
         liquidations[sponsor].push(
             LiquidationData({
@@ -319,7 +318,7 @@ contract Liquidatable is PricelessPositionManager {
         disputable(liquidationId, sponsor)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory totalPaid)
+        returns (FixedPoint.Unsigned memory)
     {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, liquidationId);
 
@@ -329,8 +328,7 @@ contract Liquidatable is PricelessPositionManager {
         );
         _addCollateral(rawLiquidationCollateral, disputeBondAmount);
 
-        // Request a price from DVM,
-        // Liquidation is pending dispute until DVM returns a price
+        // Request a price from DVM. Liquidation is pending dispute until DVM returns a price.
         disputedLiquidation.state = Status.PendingDispute;
         disputedLiquidation.disputer = msg.sender;
 
@@ -345,19 +343,20 @@ contract Liquidatable is PricelessPositionManager {
             disputeBondAmount.rawValue
         );
 
-        totalPaid = disputeBondAmount.add(disputedLiquidation.finalFee);
-
-        // Pay a final fee.
+        // Pay the final fee for requesting price from the DVM.
         _payFinalFees(msg.sender, disputedLiquidation.finalFee);
 
+        // Transfer the dispute bond amount from the caller to this contract.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
+
+        return disputeBondAmount.add(disputedLiquidation.finalFee);
     }
 
     /**
      * @notice After a dispute has settled or after a non-disputed liquidation has expired,
      * the sponsor, liquidator, and/or disputer can call this method to receive payments.
      * @dev If the dispute SUCCEEDED: the sponsor, liquidator, and disputer are eligible for payment.
-     * If the dispute FAILED: only the liquidator can receive payment
+     * If the dispute FAILED: only the liquidator can receive payment.
      * Once all collateral is withdrawn, delete the liquidation data.
      * @param liquidationId uniquely identifies the sponsor's liquidation.
      * @param sponsor address of the sponsor associated with the liquidation.
@@ -368,7 +367,7 @@ contract Liquidatable is PricelessPositionManager {
         withdrawable(liquidationId, sponsor)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory amountWithdrawn)
+        returns (FixedPoint.Unsigned memory)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require(
@@ -378,12 +377,13 @@ contract Liquidatable is PricelessPositionManager {
             "Caller cannot withdraw rewards"
         );
 
-        // Settles the liquidation if necessary.
-        // Note: this will fail if the price has not resolved yet.
+        FixedPoint.Unsigned memory amountWithdrawn;
+
+        // Settles the liquidation if necessary. This call will revert if the price has not resolved yet.
         _settle(liquidationId, sponsor);
 
-        // Calculate rewards as a function of the TRV. Note: all payouts are scaled by the unit collateral value so
-        // all payouts are charged the fees pro rata.
+        // Calculate rewards as a function of the TRV.
+        // Note: all payouts are scaled by the unit collateral value so all payouts are charged the fees pro rata.
         FixedPoint.Unsigned memory feeAttenuation = _getFeeAdjustedCollateral(liquidation.rawUnitCollateral);
         FixedPoint.Unsigned memory tokenRedemptionValue = liquidation
             .tokensOutstanding
@@ -421,7 +421,7 @@ contract Liquidatable is PricelessPositionManager {
                 // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
                 // If TRV > Collateral, then subtract rewards from collateral
                 // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
-                // the constructor when these params are set
+                // the constructor when these params are set.
                 FixedPoint.Unsigned memory payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(
                     disputerDisputeReward
                 );
@@ -429,7 +429,7 @@ contract Liquidatable is PricelessPositionManager {
                 delete liquidation.liquidator;
             }
 
-            // Free up space once all collateral is withdrawn
+            // Free up space once all collateral is withdrawn by removing the liquidation object from the array.
             if (
                 liquidation.disputer == address(0) &&
                 liquidation.sponsor == address(0) &&
@@ -449,15 +449,24 @@ contract Liquidatable is PricelessPositionManager {
             withdrawalAmount = collateral.add(finalFee);
             delete liquidations[sponsor][liquidationId];
         }
-
         require(withdrawalAmount.isGreaterThan(0), "Invalid withdrawal amount");
+
+        // Decrease the total collateral held in liquidatable by the amount withdrawn.
         amountWithdrawn = _removeCollateral(rawLiquidationCollateral, withdrawalAmount);
 
         emit LiquidationWithdrawn(msg.sender, amountWithdrawn.rawValue, liquidation.state);
 
+        // Transfer amount withdrawn from this contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
+
+        return amountWithdrawn;
     }
 
+    /**
+     * @notice Gets all liquidation information for a given sponsor address.
+     * @param sponsor address of the position sponsor.
+     * @return LiquidationData array of all liquidation information for the given sponsor address.
+     */
     function getLiquidations(address sponsor) external view nonReentrantView() returns (LiquidationData[] memory) {
         return liquidations[sponsor];
     }

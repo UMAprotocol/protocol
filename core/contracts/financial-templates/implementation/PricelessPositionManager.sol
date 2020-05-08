@@ -33,8 +33,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
 
-    // Enum to store the state of the PricelessPositionManager. Set on expiration, emergency shutdown, or initial
-    // settlement.
+    // Stores the state of the PricelessPositionManager. Set on expiration, emergency shutdown, or initial & settlement.
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
     ContractState public contractState;
 
@@ -269,9 +268,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` from the sponsor's position to the sponsor.
-     * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global
-     * collateralization ratio. In that case, use `requestWithdrawal`. Might not withdraw the full requested
-     * amount in order to account for precision loss.
+     * @dev Reverts if the withdrawal puts this position's collateralization ratio below the global collateralization
+     * ratio. In that case, use `requestWithdrawal`. Might not withdraw the full requested amount to account for precision loss.
      * @param collateralAmount is the amount of collateral to withdraw.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -281,27 +279,30 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory amountWithdrawn)
+        returns (FixedPoint.Unsigned memory)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
         // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
-        amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralAmount);
+        FixedPoint.Unsigned memory amountWithdrawn = _decrementCollateralBalancesCheckGCR(
+            positionData,
+            collateralAmount
+        );
 
         emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
 
         // Move collateral currency from contract to sender.
-        // Note that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
+        // Note: that we move the amount of collateral that is decreased from rawCollateral (inclusive of fees)
         // instead of the user requested amount. This eliminates precision loss that could occur
         // where the user withdraws more collateral than rawCollateral is decremented by.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
+        return amountWithdrawn;
     }
 
     /**
-     * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw
-     * `collateralAmount` from their position.
+     * @notice Starts a withdrawal request that, if passed, allows the sponsor to withdraw` from their position.
      * @dev The request will be pending for `withdrawalLiveness`, during which the position can be liquidated.
      * @param collateralAmount the amount of collateral requested to withdraw
      */
@@ -341,7 +342,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         onlyPreExpiration()
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory amountWithdrawn)
+        returns (FixedPoint.Unsigned memory)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
@@ -357,7 +358,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         }
 
         // Decrement the sponsor's collateral and global collateral amounts.
-        amountWithdrawn = _decrementCollateralBalances(positionData, amountToWithdraw);
+        FixedPoint.Unsigned memory amountWithdrawn = _decrementCollateralBalances(positionData, amountToWithdraw);
 
         // Reset withdrawal request by setting withdrawal amount and withdrawal timestamp to 0.
         _resetWithdrawalRequest(positionData);
@@ -366,6 +367,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
+        return amountWithdrawn;
     }
 
     /**
@@ -433,7 +435,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory amountWithdrawn)
+        returns (FixedPoint.Unsigned memory)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(!numTokens.isGreaterThan(positionData.tokensOutstanding), "Invalid token amount");
@@ -442,6 +444,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         FixedPoint.Unsigned memory collateralRedeemed = fractionRedeemed.mul(
             _getFeeAdjustedCollateral(positionData.rawCollateral)
         );
+
+        FixedPoint.Unsigned memory amountWithdrawn;
 
         // If redemption returns all tokens the sponsor has then we can delete their position. Else, downsize.
         if (positionData.tokensOutstanding.isEqual(numTokens)) {
@@ -465,24 +469,18 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
         tokenCurrency.burn(numTokens.rawValue);
+        return amountWithdrawn;
     }
 
     /**
-     * @notice After a contract has passed expiry all token holders can redeem their tokens for
-     * underlying at the prevailing price defined by the DVM from the `expire` function.
-     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional
-     * amount of `collateralCurrency`. Might not redeem the full proportional amount of collateral
-     * in order to account for precision loss. This contract must be approved to spend `tokenCurrency` at least up to the
-     * caller's full balance.
+     * @notice After a contract has passed expiry all token holders can redeem their tokens for underlying at the
+     * prevailing price defined by the DVM from the `expire` function.
+     * @dev This burns all tokens from the caller of `tokenCurrency` and sends back the proportional amount of
+     * `collateralCurrency`. Might not redeem the full proportional amount of collateral in order to account for
+     * precision loss. This contract must be approved to spend `tokenCurrency` at least up to the caller's full balance.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function settleExpired()
-        external
-        onlyPostExpiration()
-        fees()
-        nonReentrant()
-        returns (FixedPoint.Unsigned memory amountWithdrawn)
-    {
+    function settleExpired() external onlyPostExpiration() fees() nonReentrant() returns (FixedPoint.Unsigned memory) {
         // If the contract state is open and onlyPostExpiration passed then `expire()` has not yet been called.
         require(contractState != ContractState.Open, "Unexpired position");
 
@@ -526,7 +524,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         );
 
         // Decrement total contract collateral and outstanding debt.
-        amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
+        FixedPoint.Unsigned memory amountWithdrawn = _removeCollateral(rawTotalPositionCollateral, payout);
         totalTokensOutstanding = totalTokensOutstanding.sub(tokensToRedeem);
 
         emit SettleExpiredPosition(msg.sender, amountWithdrawn.rawValue, tokensToRedeem.rawValue);
@@ -535,6 +533,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
+        return amountWithdrawn;
     }
 
     /****************************************
@@ -543,8 +542,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Locks contract state in expired and requests oracle price.
-     * @dev this function can only be called once the contract is expired and cant be re-called
-     * due to the state modifiers applied on it.
+     * @dev this function can only be called once the contract is expired and can't be re-called.
      */
     function expire() external onlyPostExpiration() onlyOpenState() fees() nonReentrant() {
         contractState = ContractState.ExpiredPriceRequested;
@@ -702,7 +700,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         return FixedPoint.Unsigned(uint256(oraclePrice));
     }
 
-    // Reset withdrawal request by setting the withdrawl request and withdrawl timestamp to 0.
+    // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
     function _resetWithdrawalRequest(PositionData storage positionData) internal {
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
         positionData.requestPassTimestamp = 0;
@@ -763,9 +761,9 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         );
     }
 
-    // Note: This checks whether an already existing position has a pending withdrawal. This cannot be used on the `create` method
-    // because it is possible that `create` is called on a new position (i.e. one without any collateral or tokens outstanding) which would fail
-    // the `onlyCollateralizedPosition` modifier on `_getPositionData`.
+    // Note: This checks whether an already existing position has a pending withdrawal. This cannot be used on the
+    // `create` method because it is possible that `create` is called on a new position (i.e. one without any collateral
+    // or tokens outstanding) which would fail the `onlyCollateralizedPosition` modifier on `_getPositionData`.
     function _positionHasNoPendingWithdrawal(address sponsor) internal view {
         require(_getPositionData(sponsor).requestPassTimestamp == 0, "Pending withdrawal");
     }
@@ -800,7 +798,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
         private
         pure
-        returns (FixedPoint.Unsigned memory ratio)
+        returns (FixedPoint.Unsigned memory)
     {
         if (!numTokens.isGreaterThan(0)) {
             return FixedPoint.fromUnscaledUint(0);
