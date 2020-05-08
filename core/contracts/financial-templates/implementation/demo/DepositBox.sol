@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../FeePayer.sol";
+
 import "../../../common/implementation/FixedPoint.sol";
 
 import "../../../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -56,14 +57,17 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
     }
 
     // Maps addresses to their deposit boxes. Each address can have only one position.
-    mapping(address => DepositBoxData) public depositBoxes;
+    mapping(address => DepositBoxData) private depositBoxes;
 
     // Unique identifier for DVM price feed ticker.
-    bytes32 public priceIdentifier;
+    bytes32 private priceIdentifier;
 
     // Similar to the rawCollateral in DepositBoxData, this value should not be used directly.
     // _getFeeAdjustedCollateral(), _addCollateral() and _removeCollateral() must be used to access and adjust.
-    FixedPoint.Unsigned public rawTotalDepositBoxCollateral;
+    FixedPoint.Unsigned private rawTotalDepositBoxCollateral;
+
+    // This blocks every public state-modifying method until it flips to true, via the `initialize()` method.
+    bool private initialized;
 
     /****************************************
      *                EVENTS                *
@@ -94,6 +98,15 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
         _;
     }
 
+    modifier isInitialized() {
+        _isInitialized();
+        _;
+    }
+
+    /****************************************
+     *           PUBLIC FUNCTIONS           *
+     ****************************************/
+
     /**
      * @notice Construct the DepositBox.
      * @param _collateralAddress ERC20 token to be deposited.
@@ -101,6 +114,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @param _priceIdentifier registered in the DVM, used to price the ERC20 deposited.
      * The price identifier consists of a "base" asset and a "quote" asset. The "base" asset corresponds to the collateral ERC20
      * currency deposited into this account, and it is denominated in the "quote" asset on withdrawals.
+     * An example price identifier would be "ETH-USD" which will resolve and return the USD price of ETH.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
@@ -124,18 +138,20 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @notice This should be called after construction of the DepositBox and handles registration with the Registry, which is required
      * to make price requests in production environments.
      * @dev This contract must hold the `ContractCreator` role with the Registry in order to register itself as a financial-template with the DVM.
+     * Note that `_registerContract` cannot be called from the constructor because this contract first needs to be given the `ContractCreator` role
+     * in order to register with the `Registry`. But, its address is not known until after deployment.
      */
     function initialize() public nonReentrant() {
+        initialized = true;
         _registerContract(new address[](0), address(this));
     }
 
     /**
      * @notice Transfers `collateralAmount` of `collateralCurrency` into caller's deposit box.
-     * @dev This contract must be approved to spend
-     * at least `collateralAmount` of `collateralCurrency`.
+     * @dev This contract must be approved to spend at least `collateralAmount` of `collateralCurrency`.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
-    function deposit(FixedPoint.Unsigned memory collateralAmount) public fees() nonReentrant() {
+    function deposit(FixedPoint.Unsigned memory collateralAmount) public isInitialized() fees() nonReentrant() {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         DepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         if (_getFeeAdjustedCollateral(depositBoxData.rawCollateral).isEqual(0)) {
@@ -152,13 +168,15 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
     }
 
     /**
-     * @notice Starts a withdrawal request that allows the sponsor to withdraw
-     * `denominatedCollateralAmount` from their position denominated in the quote asset of the price identifier, following a DVM price resolution.
-     * @dev The request will be pending for the duration of the DVM vote and can be cancelled at any time. Only one withdrawal request can exist for the user.
+     * @notice Starts a withdrawal request that allows the sponsor to withdraw `denominatedCollateralAmount`
+     * from their position denominated in the quote asset of the price identifier, following a DVM price resolution.
+     * @dev The request will be pending for the duration of the DVM vote and can be cancelled at any time.
+     * Only one withdrawal request can exist for the user.
      * @param denominatedCollateralAmount the quote-asset denominated amount of collateral requested to withdraw.
      */
     function requestWithdrawal(FixedPoint.Unsigned memory denominatedCollateralAmount)
         public
+        isInitialized()
         noPendingWithdrawal(msg.sender)
         nonReentrant()
     {
@@ -189,7 +207,13 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * amount exceeds the collateral in the position (due to paying fees).
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
-    function executeWithdrawal() external fees() nonReentrant() returns (FixedPoint.Unsigned memory amountWithdrawn) {
+    function executeWithdrawal()
+        external
+        isInitialized()
+        fees()
+        nonReentrant()
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
+    {
         DepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(
             depositBoxData.requestPassTimestamp != 0 && depositBoxData.requestPassTimestamp <= getCurrentTime(),
@@ -234,7 +258,7 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external nonReentrant() {
+    function cancelWithdrawal() external isInitialized() nonReentrant() {
         DepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(depositBoxData.requestPassTimestamp != 0, "No pending withdrawal");
 
@@ -252,11 +276,14 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
      * @notice `emergencyShutdown` and `remargin` are required to be implemented by all financial contracts and exposed to the DVM, but
      * because this is a minimal demo they will simply exit silently.
      */
-    function emergencyShutdown() external override nonReentrant() {
+    function emergencyShutdown() external override isInitialized() nonReentrant() {
         return;
     }
 
-    function remargin() external override nonReentrant() {
+    /**
+     * @notice Same comment as `emergencyShutdown`. For the sake of simplicity, this will simply exit silently.
+     */
+    function remargin() external override isInitialized() nonReentrant() {
         return;
     }
 
@@ -319,6 +346,10 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
         require(depositBoxes[user].requestPassTimestamp == 0, "Pending withdrawal");
     }
 
+    function _isInitialized() internal view {
+        require(initialized, "Uninitialized contract");
+    }
+
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
@@ -340,6 +371,9 @@ contract DepositBox is FeePayer, AdministrateeInterface, ContractCreator {
         return FixedPoint.Unsigned(uint256(oraclePrice));
     }
 
+    // `_pfc()` is inherited from FeePayer and must be implemented to return the available pool of collateral from
+    // which fees can be charged. For this contract, the available fee pool is simply all of the collateral locked up in the
+    // contract.
     function _pfc() internal virtual override view returns (FixedPoint.Unsigned memory) {
         return _getFeeAdjustedCollateral(rawTotalDepositBoxCollateral);
     }
