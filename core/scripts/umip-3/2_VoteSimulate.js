@@ -1,3 +1,9 @@
+// This script simulates a vote from a large token holder to ratify the proposal from script 1_Propose.js.
+// It is intended to be run on a main-net Ganache fork with the foundation wallet unlocked. Leading on
+// from the previous script run a ganache cli instance as:
+// ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc
+// then run the script as: truffle exec ./scripts/umip-3/2_VoteSimulate.js --network mainnet-fork
+
 const assert = require("assert").strict;
 
 const { getRandomUnsignedInt } = require("../../../common/Random.js");
@@ -10,6 +16,8 @@ const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const Voting = artifacts.require("Voting");
 const Governor = artifacts.require("Governor");
+
+const resetStateAfterSimulation = false;
 
 async function runExport() {
   console.log("Running UMIP-3 Upgrade vote simulator🔥");
@@ -36,7 +44,7 @@ async function runExport() {
   if (argv.repeated) {
     assert((await governor.numProposals()).toNumber() > 1);
   } else {
-    assert.equal((await governor.numProposals()).toNumber(), 1); // there should be 1 proposal on the first run.
+    assert.equal((await governor.numProposals()).toNumber(), 3); // there should be 3 proposal on the first run.
   }
   assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests
 
@@ -153,14 +161,14 @@ async function runExport() {
     (await voting.getCurrentRoundId()).toString()
   );
 
-  assert.equal((await voting.getPendingRequests()).length, 0); // There should be no pending requests as vote is concluded
+  assert.equal((await voting.getPendingRequests()).length, 1); // There should be no pending requests as vote is concluded
 
   /** *******************************************************************
    * 4) Execute proposal submitted to governor now that voting is done *
    **********************************************************************/
 
   console.log("4. EXECUTING GOVERNOR PROPOSALS");
-  const proposalId = (await governor.numProposals()).subn(1).toString(); // most recent proposal in voting.sol
+  const proposalId = (await governor.numProposals()).subn(2).toString(); // most recent proposal in voting.sol
   const proposal = await governor.getProposal(proposalId);
 
   // for every transactions within the proposal
