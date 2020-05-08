@@ -33,7 +33,7 @@ abstract contract FeePayer is Testable, Lockable {
     FinderInterface public finder;
 
     // Tracks the last block time when the fees were paid.
-    uint256 public lastPaymentTime;
+    uint256 private lastPaymentTime;
 
     // Tracks the cumulative fees that have been paid by the contract for use by derived contracts.
     // The multiplier starts at 1, and is updated by computing cumulativeFeeMultiplier * (1 - effectiveFee).
