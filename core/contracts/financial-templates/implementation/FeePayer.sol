@@ -152,7 +152,7 @@ abstract contract FeePayer is Testable, Lockable {
      * expected to implement this so that pay-fee methods can correctly compute the owed fees as a % of PfC.
      * @return pfc value for equal to the current profic from corrution denominated in collateral currency.
      */
-    function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory pfc) {
         return _pfc();
     }
 

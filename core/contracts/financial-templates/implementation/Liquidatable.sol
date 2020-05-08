@@ -318,7 +318,7 @@ contract Liquidatable is PricelessPositionManager {
         disputable(liquidationId, sponsor)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory totalPaid)
     {
         LiquidationData storage disputedLiquidation = _getLiquidationData(sponsor, liquidationId);
 
@@ -342,14 +342,13 @@ contract Liquidatable is PricelessPositionManager {
             liquidationId,
             disputeBondAmount.rawValue
         );
+        totalPaid = disputeBondAmount.add(disputedLiquidation.finalFee);
 
         // Pay the final fee for requesting price from the DVM.
         _payFinalFees(msg.sender, disputedLiquidation.finalFee);
 
         // Transfer the dispute bond amount from the caller to this contract.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), disputeBondAmount.rawValue);
-
-        return disputeBondAmount.add(disputedLiquidation.finalFee);
     }
 
     /**
@@ -465,7 +464,12 @@ contract Liquidatable is PricelessPositionManager {
      * @param sponsor address of the position sponsor.
      * @return LiquidationData array of all liquidation information for the given sponsor address.
      */
-    function getLiquidations(address sponsor) external view nonReentrantView() returns (LiquidationData[] memory) {
+    function getLiquidations(address sponsor)
+        external
+        view
+        nonReentrantView()
+        returns (LiquidationData[] memory liquidationData)
+    {
         return liquidations[sponsor];
     }
 
@@ -517,7 +521,7 @@ contract Liquidatable is PricelessPositionManager {
     function _getLiquidationData(address sponsor, uint256 liquidationId)
         internal
         view
-        returns (LiquidationData storage)
+        returns (LiquidationData storage liquidation)
     {
         LiquidationData[] storage liquidationArray = liquidations[sponsor];
 

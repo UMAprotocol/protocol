@@ -584,16 +584,28 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @dev This is necessary because the struct returned by the positions() method shows
      * rawCollateral, which isn't a user-readable value.
      * @param sponsor address whose collateral amount is retrieved.
+     * @return collateralAmount amount of collateral within a sponsors position.
      */
-    function getCollateral(address sponsor) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function getCollateral(address sponsor)
+        external
+        view
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory collateralAmount)
+    {
         // Note: do a direct access to avoid the validity check.
         return _getFeeAdjustedCollateral(positions[sponsor].rawCollateral);
     }
 
     /**
      * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
+     * @return totalPositionCollateral amount of all collateral within the Expiring Multi Party Contract.
      */
-    function totalPositionCollateral() external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function totalPositionCollateral()
+        external
+        view
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory totalPositionCollateral)
+    {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
 
@@ -798,7 +810,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     function _getCollateralizationRatio(FixedPoint.Unsigned memory collateral, FixedPoint.Unsigned memory numTokens)
         private
         pure
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory ratio)
     {
         if (!numTokens.isGreaterThan(0)) {
             return FixedPoint.fromUnscaledUint(0);
