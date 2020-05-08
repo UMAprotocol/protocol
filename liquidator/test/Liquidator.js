@@ -153,19 +153,21 @@ contract("Liquidator.js", function(accounts) {
     assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
-    assert.equal((await emp.getLiquidations(sponsor1))[0].sponsor, sponsor1);
-    assert.equal((await emp.getLiquidations(sponsor1))[0].liquidator, liquidatorBot);
-    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
-    assert.equal((await emp.getLiquidations(sponsor1))[0].liquidatedCollateral, toWei("125"));
+    let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+    assert.equal(liquidationObject.sponsor, sponsor1);
+    assert.equal(liquidationObject.liquidator, liquidatorBot);
+    assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal(liquidationObject.liquidatedCollateral, toWei("125"));
 
     // Sponsor1 should have zero collateral left in their position from the liquidation.
     assert.equal((await emp.getCollateral(sponsor1)).rawValue, 0);
 
     // Sponsor2 should be in a liquidation state with the bot as the liquidator.
-    assert.equal((await emp.getLiquidations(sponsor2))[0].sponsor, sponsor2);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].liquidator, liquidatorBot);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
-    assert.equal((await emp.getLiquidations(sponsor2))[0].liquidatedCollateral, toWei("150"));
+    liquidationObject = (await emp.getLiquidations(sponsor2))[0];
+    assert.equal(liquidationObject.sponsor, sponsor2);
+    assert.equal(liquidationObject.liquidator, liquidatorBot);
+    assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal(liquidationObject.liquidatedCollateral, toWei("150"));
 
     // Sponsor2 should have zero collateral left in their position from the liquidation.
     assert.equal((await emp.getCollateral(sponsor2)).rawValue, 0);
@@ -334,5 +336,6 @@ contract("Liquidator.js", function(accounts) {
 
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
+    assert.equal(spy.callCount, 2); // 1 new log level event due to the successful execution.
   });
 });
