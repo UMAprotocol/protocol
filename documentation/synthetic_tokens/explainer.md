@@ -112,7 +112,7 @@ A table summarizing these payouts is below:
 | -------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------- |
 | Liquidation was not disputed           | 0                                                                          | Token Sponsor's collateral + Liquidator bond                   | 0                             |
 | Token Sponsor was over-collateralized  | Token Sponsor's collateral - Value of tokens + Improper liquidation reward | Value of tokens - Dispute reward - Improper liquidation reward | Dispute bond + Dispute reward |
-| Token Sponsor was under-collateralized | 0                                                                          | Token Sponsor's collateral + Dispute bond    | 0                             |
+| Token Sponsor was under-collateralized | 0                                                                          | Token Sponsor's collateral + Dispute bond                      | 0                             |
 
 ## Redeeming Tokens
 
