@@ -462,7 +462,7 @@ contract Liquidatable is PricelessPositionManager {
     /**
      * @notice Gets all liquidation information for a given sponsor address.
      * @param sponsor address of the position sponsor.
-     * @return LiquidationData array of all liquidation information for the given sponsor address.
+     * @return liquidationData array of all liquidation information for the given sponsor address.
      */
     function getLiquidations(address sponsor)
         external
