@@ -279,17 +279,14 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         noPendingWithdrawal(msg.sender)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
 
         // Decrement the sponsor's collateral and global collateral amounts. Check the GCR between decrement to ensure
         // position remains above the GCR within the witdrawl. If this is not the case the caller must submit a request.
-        FixedPoint.Unsigned memory amountWithdrawn = _decrementCollateralBalancesCheckGCR(
-            positionData,
-            collateralAmount
-        );
+        amountWithdrawn = _decrementCollateralBalancesCheckGCR(positionData, collateralAmount);
 
         emit Withdrawal(msg.sender, amountWithdrawn.rawValue);
 
@@ -298,7 +295,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         // instead of the user requested amount. This eliminates precision loss that could occur
         // where the user withdraws more collateral than rawCollateral is decremented by.
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
-        return amountWithdrawn;
     }
 
     /**
