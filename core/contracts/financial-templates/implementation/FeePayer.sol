@@ -97,7 +97,7 @@ abstract contract FeePayer is Testable, Lockable {
         StoreInterface store = _getStore();
         uint256 time = getCurrentTime();
         FixedPoint.Unsigned memory collateralPool = _pfc();
-        FixedPoint.Unsigned memory totalPaid;
+        FixedPoint.Unsigned memory totalPaid = FixedPoint.fromUnscaledUint(0);
 
         // Exit early if there is no collateral from which to pay fees.
         if (collateralPool.isEqual(0)) {
