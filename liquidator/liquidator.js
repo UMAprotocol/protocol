@@ -113,7 +113,7 @@ class Liquidator {
       };
       this.logger.info({
         at: "Liquidator",
-        message: "Position has been liquidated!🔥",
+        message: "Position has been liquidated!🔫",
         position: position,
         inputPrice: this.web3.utils.toWei(priceFeed),
         txnConfig,

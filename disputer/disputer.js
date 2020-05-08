@@ -101,7 +101,7 @@ class Disputer {
       };
       this.logger.info({
         at: "Disputer",
-        message: "Position has been disputed!🔥",
+        message: "Position has been disputed!👮‍♂️",
         liquidation: disputeableLiquidation,
         inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
         txnConfig,
@@ -187,7 +187,7 @@ class Disputer {
       };
       this.logger.info({
         at: "Disputer",
-        message: "Withdraw tx result📄",
+        message: "Dispute withdrawn🤑",
         liquidation: liquidation,
         amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
         txnConfig,
