@@ -367,7 +367,7 @@ contract Liquidatable is PricelessPositionManager {
         withdrawable(liquidationId, sponsor)
         fees()
         nonReentrant()
-        returns (FixedPoint.Unsigned memory)
+        returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require(
@@ -376,8 +376,6 @@ contract Liquidatable is PricelessPositionManager {
                 (msg.sender == liquidation.sponsor),
             "Caller cannot withdraw rewards"
         );
-
-        FixedPoint.Unsigned memory amountWithdrawn;
 
         // Settles the liquidation if necessary. This call will revert if the price has not resolved yet.
         _settle(liquidationId, sponsor);
@@ -519,7 +517,7 @@ contract Liquidatable is PricelessPositionManager {
     function _getLiquidationData(address sponsor, uint256 liquidationId)
         internal
         view
-        returns (LiquidationData storage liquidation)
+        returns (LiquidationData storage)
     {
         LiquidationData[] storage liquidationArray = liquidations[sponsor];
 
