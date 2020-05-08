@@ -1,30 +1,33 @@
-# Welcome to UMA Documentation
+# Getting Started
 
-UMA builds decentralized infrastructure to allow developers to build financial applications. There are two primary
-parts of this infrastructure: the decentralized oracle (DVM) and the financial contract templates that depend on it.
+UMA builds open-source infrastructure for “priceless” financial contracts on Ethereum. Specifically, this is two things:
 
-This documentation will explain the code as it exists today. For a more theoretical explanation of the UMA DVM, see
-the [DVM whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-DVM-oracle-whitepaper.pdf). For a deeper
-explanation of the philosophy behind the self-enforcing financial contract templates, see the
-[financial contract template whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-whitepaper.pdf).
+- Priceless financial contract designs, which can be used to create synthetic tokens
+- Data Verification Mechanism (DVM), a decentralized oracle service
 
-## Tutorials
+Together, these two technologies enable the creation of fast, efficient, and secure synthetic derivatives on the Ethereum blockchain.
 
-If you'd like to start working with the UMA platform, we have a variety of tutorials that should help you get familiar
-with the technology. A good place to start is the [prerequisites](../synthetic_tokens/tutorials/prerequisites.md), which will be required
-before working through any of the other tutorials.
+## General Information
 
-## Explainers
+If you would like to learn more about the concepts behind the DVM and priceless financial contracts, start by reading this [overview](../getting_started/architecture_overview.md) of the UMA ecosystem. The following sections go into additional detail on priceless DeFi contracts and the DVM.
 
-To learn more about how the platform works, there are a few high-level explainers to help you conceptually understand
-how parts of the system interact with one another. For a high-level introduction to how the decentralized oracle (DVM)
-works, please see the [architecture overview](../oracle/architecture.md).
+## For Developers
+
+If you are a developer interested in building with UMA’s technology, start with this [explainer](../synthetic_tokens/explainer.md) of how UMA's priceless synthetic tokens work, and then try out this [tutorial](../synthetic_tokens/tutorials/creating_from_truffle.md) for how to deploy your own token on testnet. You can find additional reference materials, including a list of UMA-supported mainnet and testnet deployments, [here](../developer_reference/contract_addresses.md).
+
+## For Market Makers
+
+If you are a market maker interested in market making or acting as a liquidator or disputer for financial products deployed with UMA’s priceless synthetic token template, you can find more information about the economic incentives for these roles in this [explainer](../synthetic_tokens/explainer.md) for synthetic tokens.
+
+## For UMA Token Holders
+
+If you are interested in the UMA project token, please read this [section](../oracle/governance/UMA_token_holder_responsibilities.md) to learn more about the role of the UMA project token in the DVM and the rights and responsibilities of UMA project token holders.
 
 ## Contracts
 
 For a more detailed view, API documentation is available for all UMA smart contracts.
 
-## Contact us
+## Contact Us
 
 If you have any questions or want to reach out, please join our [Slack](https://umaprotocol.slack.com/) using this
 [invite link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LTM4ODg0NGZhYWZkNjkzMDE4MjU0ZGFlYWQzZTFiZWFlZjI2NDE4OGI2NWY3OTdhYjYyZjg0MjAzMTgwODVhZTE).

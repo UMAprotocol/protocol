@@ -10,7 +10,7 @@
 ** known_issues.md
 ** glossary.md
 * oracle
-** architecture.md
+** technical_architecture.md
 ** dvm_interfaces.md
 ** tutorials
 *** voting_with_uma_tokens.md
@@ -19,6 +19,7 @@
 *** UMA_token_holder_responsibilities.md
 *** UMIPs.md
 *** adding_a_price_identifier.md
+** mainnet_deployment_info.md
 * developer_reference
 ** contract_addresses.md
 ** bug_bounty.md
