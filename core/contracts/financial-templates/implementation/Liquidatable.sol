@@ -76,7 +76,7 @@ contract Liquidatable is PricelessPositionManager {
     mapping(address => LiquidationData[]) public liquidations;
 
     // Total collateral in liquidation.
-    FixedPoint.Unsigned public rawLiquidationCollateral;
+    FixedPoint.Unsigned private rawLiquidationCollateral;
 
     // Immutable contract parameters.
 

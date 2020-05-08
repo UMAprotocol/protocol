@@ -61,7 +61,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     // Similar to the rawCollateral in PositionData, this value should not be used directly.
     // _getFeeAdjustedCollateral(), _addCollateral() and _removeCollateral() must be used to access and adjust.
-    FixedPoint.Unsigned public rawTotalPositionCollateral;
+    FixedPoint.Unsigned private rawTotalPositionCollateral;
 
     // Synthetic token created by this contract.
     ExpandedIERC20 public tokenCurrency;
