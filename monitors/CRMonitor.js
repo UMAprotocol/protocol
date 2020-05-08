@@ -14,9 +14,9 @@ class CRMonitor {
     this.logger = logger;
 
     this.empClient = expiringMultiPartyClient;
-    this.empContract = this.empClient.emp;
     this.web3 = this.empClient.web3;
 
+    // Wallet addresses and thresholds to monitor.
     this.walletsToMonitor = walletsToMonitor;
 
     this.formatDecimalString = createFormatFunction(this.web3, 2);
@@ -29,7 +29,7 @@ class CRMonitor {
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
   checkWalletCrRatio = async priceFunction => {
     // yield the price feed at the current time.
-    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const contractTime = await this.empClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
     this.logger.debug({
       at: "CRMonitor",
@@ -78,9 +78,9 @@ class CRMonitor {
           " is " +
           this.formatDecimalString(priceFeed);
 
-        this.logger.info({
+        this.logger.warn({
           at: "ContractMonitor",
-          message: "Collateralization ratio alert 🚨!",
+          message: "Collateralization ratio alert 🙅‍♂️!",
           mrkdwn: mrkdwn
         });
       }

@@ -53,7 +53,7 @@ async function run(price, address, shouldPoll) {
     } catch (error) {
       Logger.error({
         at: "liquidator#index",
-        message: "liquidator polling error",
+        message: "liquidator polling error🚨",
         error: error
       });
     }

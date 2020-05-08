@@ -115,7 +115,7 @@ async function run(price, address, shouldPoll) {
     } catch (error) {
       Logger.error({
         at: "Monitors#index",
-        message: "Monitor polling error",
+        message: "Monitor polling error🚨",
         error: error
       });
     }

@@ -65,7 +65,7 @@ class GasEstimator {
     } catch (error) {
       this.logger.error({
         at: "GasEstimator",
-        message: "client polling error",
+        message: "client polling error🚨",
         error: error
       });
 

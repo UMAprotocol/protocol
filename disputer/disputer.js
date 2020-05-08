@@ -3,18 +3,18 @@
 
 class Disputer {
   constructor(logger, expiringMultiPartyClient, gasEstimator, account) {
-    this.account = account;
     this.logger = logger;
+    this.account = account;
 
     // Expiring multiparty contract to read contract state
     this.empClient = expiringMultiPartyClient;
+    this.web3 = this.empClient.web3;
 
     // Gas Estimator to calculate the current Fast gas rate
     this.gasEstimator = gasEstimator;
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
-    this.web3 = this.empClient.web3;
   }
 
   // Update the client and gasEstimator clients.
@@ -57,8 +57,7 @@ class Disputer {
       } catch (error) {
         this.logger.error({
           at: "Disputer",
-          message:
-            "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute.✋",
+          message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
           sponsor: disputeableLiquidation.sponsor,
           liquidation: disputeableLiquidation,
           error: error
@@ -173,7 +172,7 @@ class Disputer {
       } catch (error) {
         this.logger.error({
           at: "Disputer",
-          message: "Failed to withdraw dispute rewards",
+          message: "Failed to withdraw dispute rewards🚨",
           error: error
         });
         continue;

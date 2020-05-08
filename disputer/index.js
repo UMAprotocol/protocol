@@ -22,7 +22,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 async function run(price, address, shouldPoll) {
   Logger.info({
     at: "Disputer#index",
-    message: "Disputer started",
+    message: "Disputer started🔎",
     empAddress: argv.address,
     currentPrice: argv.price
   });
@@ -42,7 +42,7 @@ async function run(price, address, shouldPoll) {
       await disputer.queryAndWithdrawRewards();
     } catch (error) {
       Logger.error({
-        at: "Disputer#index",
+        at: "Disputer#index🚨",
         message: "Disputer error",
         error: error
       });

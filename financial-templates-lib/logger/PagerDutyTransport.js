@@ -1,4 +1,8 @@
-// This transport enables winston logging to send messages to pager duty.
+// This transport enables winston logging to send messages to pager duty. All pager duty logs are either `low` or `high`
+// urgency. If set to `low` the incident has a less aggressive escalation policy. In this `low` setting if the
+// notification is not acknowledged by the person on call within 30 mins a second person is contacted until the warning
+// is acknowledged. If set to `high` the incident is aggressively escalated. If no acknowledgement within 5 minutes a
+//  second person is contacted until the message is acknowledged.
 
 const Transport = require("winston-transport");
 const pdClient = require("node-pagerduty");
