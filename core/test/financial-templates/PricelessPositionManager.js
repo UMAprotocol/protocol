@@ -873,7 +873,7 @@ contract("PricelessPositionManager", function(accounts) {
     assert.equal((await pricelessPositionManager.getCollateral(other)).toString(), "0");
   });
 
-  it("Sponsor can use depositTo to other account", async function() {
+  it("Existing sponsor can use depositTo on other account", async function() {
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: other });
     await collateral.approve(pricelessPositionManager.address, toWei("1000"), { from: sponsor });
 
