@@ -13,10 +13,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   // getTime function to return the current time.
   // minTimeBetweenUpdates min number of seconds between updates. If update() is called again before this number of
   // seconds has passed, it will be a no-op.
-  constructor(web3, logger, apiKey, exchange, pair, lookback, networker, getTime, minTimeBetweenUpdates) {
+  constructor(logger, web3, apiKey, exchange, pair, lookback, networker, getTime, minTimeBetweenUpdates) {
     super();
-    this.web3 = web3;
     this.logger = logger;
+    this.web3 = web3;
+
     this.apiKey = apiKey;
     this.exchange = exchange;
     this.pair = pair;
