@@ -33,7 +33,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      *  PRICELESS POSITION DATA STRUCTURES  *
      ****************************************/
 
-    // Stores the state of the PricelessPositionManager. Set on expiration, emergency shutdown, or initial & settlement.
+    // Stores the state of the PricelessPositionManager. Set on expiration, emergency shutdown, or settlement.
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
     ContractState public contractState;
 
