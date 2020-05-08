@@ -51,8 +51,8 @@ contract("CryptoWatchPriceFeed.js", function(accounts) {
       transports: []
     });
     cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
-      web3,
       dummyLogger,
+      web3,
       apiKey,
       exchange,
       pair,
