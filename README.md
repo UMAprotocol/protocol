@@ -1,10 +1,11 @@
 # UMA Protocol
 
-<div style="text-align:center"><img src="https://miro.medium.com/max/3600/1*fRjfRN56M7xosNJgypdKdg.png" /></div>
+<div style="text-align:center"><img src="./documentation/Logo.png" /></div>
 
 [![<UMAprotocol>](https://circleci.com/gh/UMAprotocol/protocol.svg?style=shield)](https://app.circleci.com/pipelines/github/UMAprotocol/protocol)
-![GitHub](https://img.shields.io/github/license/UMAprotocol/protocol)
+![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/umaprotocol/voting)
 
+![GitHub](https://img.shields.io/github/license/UMAprotocol/protocol)
 ![GitHub last commit](https://img.shields.io/github/last-commit/UMAprotocol/protocol)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/UMAprotocol/protocol)
 ![GitHub contributors](https://img.shields.io/github/contributors-anon/UMAprotocol/protocol)
@@ -13,22 +14,22 @@
 [![Generic badge](https://img.shields.io/badge/Send-Email-blue.svg)](mailto:hello@umaproject.org)
 ![Twitter Follow](https://img.shields.io/twitter/follow/UMAprotocol?label=Follow%20%40UMAprotocol&style=shield)
 
-## Documentation
+## Documentation 📚
 
 Our docs site is [here](https://docs.umaproject.org). It contains tutorials, explainers, and smart contract
 documentation. If you'd like to view these docs on github instead, check out the
 [documentation folder](./documentation).
 
-## Security and Bug Bounty
+## Security and Bug Bounty 🐛
 
 Please see [here](./documentation/developer_reference/bug_bounty.md) for details on our bug bounty.
 
-## Developer Information and Tools
+## Developer Information and Tools 👩‍💻
 
 For information on how to initialize and interact with our smart contracts, please see the
 [documentation site](https://docs.umaproject.org).
 
-### Install dependencies
+### Install dependencies 👷‍♂️
 
 You'll need the latest LTS release of nodejs and npm installed. Assuming that's done, run:
 
@@ -36,7 +37,7 @@ You'll need the latest LTS release of nodejs and npm installed. Assuming that's 
 npm install
 ```
 
-### Running the linter
+### Running the linter 🧽
 
 To run the formatter, run:
 
@@ -44,7 +45,7 @@ To run the formatter, run:
 npm run lint-fix
 ```
 
-## Coverage
+## Coverage 🔎
 
 We use the [solidity-coverage](https://github.com/sc-forks/solidity-coverage) package to generate our coverage reports.
 These can be generated manually by developers. There are no regression tests or published reports. CircleCI does
@@ -56,11 +57,11 @@ generate a coverage report automatically, but if you'd like to generate it local
 
 The full report can be viewed by opening the `core/coverage/index.html` file in a browser.
 
-## Style Guide
+## Style Guide 🕺
 
 See [STYLE.md](STYLE.md).
 
-## Roadmap for the DVM
+## Roadmap for the DVM 🛣
 
 Version 1 of the UMA Token and DVM have been released and launched. You can find the addresses of relevant contracts
 [here](./core/networks/1.json). This version implements most of what's described in the
