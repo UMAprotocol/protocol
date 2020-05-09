@@ -598,13 +598,13 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Accessor method for the total collateral stored within the PricelessPositionManager.
-     * @return totalPositionCollateral amount of all collateral within the Expiring Multi Party Contract.
+     * @return totalPototalCollateralsitionCollateral amount of all collateral within the Expiring Multi Party Contract.
      */
     function totalPositionCollateral()
         external
         view
         nonReentrantView()
-        returns (FixedPoint.Unsigned memory totalPricelessPositionManagerCollateral)
+        returns (FixedPoint.Unsigned memory totalCollateral)
     {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
