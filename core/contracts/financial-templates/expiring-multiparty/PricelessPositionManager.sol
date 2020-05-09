@@ -13,8 +13,8 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "./TokenFactory.sol";
-import "./FeePayer.sol";
+import "../common/TokenFactory.sol";
+import "../common/FeePayer.sol";
 
 
 /**
