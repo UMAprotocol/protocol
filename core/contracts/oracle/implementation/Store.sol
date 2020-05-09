@@ -81,11 +81,18 @@ contract Store is StoreInterface, Withdrawable, Testable {
     /**
      * @notice Computes the regular oracle fees that a contract should pay for a period.
      * @dev The late penalty is similar to the regular fee in that is is charged per second over the period between
-     * startTime and endTime. The late penalty percentage increases over time as follows:
+     * startTime and endTime.
+     *
+     * The late penalty percentage increases over time as follows:
+     *
      * - 0-1 week since startTime: no late penalty
+     *
      * - 1-2 weeks since startTime: 1x late penalty percentage is applied
+     *
      * - 2-3 weeks since startTime: 2x late penalty percentage is applied
+     *
      * - ...
+     *
      * @param startTime defines the beginning time from which the fee is paid.
      * @param endTime end time until which the fee is paid.
      * @param pfc "profit from corruption", or the maximum amount of margin currency that a
