@@ -4,9 +4,14 @@
 
 [![<UMAprotocol>](https://circleci.com/gh/UMAprotocol/protocol.svg?style=shield)](https://app.circleci.com/pipelines/github/UMAprotocol/protocol)
 ![GitHub](https://img.shields.io/github/license/UMAprotocol/protocol)
+
+![GitHub last commit](https://img.shields.io/github/last-commit/UMAprotocol/protocol)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/UMAprotocol/protocol)
+![GitHub contributors](https://img.shields.io/github/contributors-anon/UMAprotocol/protocol)
+
 [![Generic badge](https://img.shields.io/badge/Slack-Join-green.svg)](https://join.slack.com/t/umaprotocol/shared_invite/zt-7mtxxds5-OIhE~q_WkwGCVNrq0~G~rg)
 [![Generic badge](https://img.shields.io/badge/Send-Email-blue.svg)](mailto:hello@umaproject.org)
-![Twitter Follow](https://img.shields.io/twitter/follow/UMAprotocol?label=Follow%20%40UMAprotocol&style=shield)
+![Twitter Follow](https://img.shields.io/twitter/follow/UMAprotocol?label=Follow%20%40UMAprotocol&style=social)
 
 ## Documentation
 
