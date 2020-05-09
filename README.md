@@ -1,11 +1,12 @@
 # UMA Protocol
 
-## Contact
+<div style="text-align:center"><img src="https://miro.medium.com/max/3600/1*fRjfRN56M7xosNJgypdKdg.png" /></div>
 
-- [Slack](https://umaprotocol.slack.com): to join, use this
-  [invite link](https://join.slack.com/t/umaprotocol/shared_invite/enQtNTk4MjQ4ODY0MDA1LTM4ODg0NGZhYWZkNjkzMDE4MjU0ZGFlYWQzZTFiZWFlZjI2NDE4OGI2NWY3OTdhYjYyZjg0MjAzMTgwODVhZTE).
-  Please use Slack for all technical questions and discussions.
-- [Email](mailto:hello@umaproject.org): for anything non-technical.
+[![<UMAprotocol>](https://circleci.com/gh/UMAprotocol/protocol.svg?style=shield)](https://app.circleci.com/pipelines/github/UMAprotocol/protocol)
+![GitHub](https://img.shields.io/github/license/UMAprotocol/protocol)
+[![Generic badge](https://img.shields.io/badge/Slack-Join-green.svg)](https://join.slack.com/t/umaprotocol/shared_invite/zt-7mtxxds5-OIhE~q_WkwGCVNrq0~G~rg)
+[![Generic badge](https://img.shields.io/badge/Send-Email-blue.svg)](mailto:hello@umaproject.org)
+![Twitter Follow](https://img.shields.io/twitter/follow/UMAprotocol?label=Follow%20%40UMAprotocol&style=shield)
 
 ## Documentation
 
