@@ -35,4 +35,4 @@ gsutil cp gs://staging-deployment-configuration/voter-app.yaml voter-dapp/app.ya
 # for each service.
 VERSIONS_TO_DELETE=$(gcloud app versions list --filter="TRAFFIC_SPLIT=0.00" --format="value(VERSION.ID)")
 
-gcloud app versions delete -q $out
+gcloud app versions delete -q $VERSIONS_TO_DELETE
