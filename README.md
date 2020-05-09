@@ -10,10 +10,10 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/UMAprotocol/protocol)
 ![GitHub contributors](https://img.shields.io/github/contributors-anon/UMAprotocol/protocol)
 
-[![Generic badge](https://img.shields.io/badge/Website-Browse-red.svg)](https://umaproject.org/)
-[![Generic badge](https://img.shields.io/badge/Slack-Join-green.svg)](https://join.slack.com/t/umaprotocol/shared_invite/zt-7mtxxds5-OIhE~q_WkwGCVNrq0~G~rg)
-[![Generic badge](https://img.shields.io/badge/Send-Email-blue.svg)](mailto:hello@umaproject.org)
-![Twitter Follow](https://img.shields.io/twitter/follow/UMAprotocol?label=Follow%20%40UMAprotocol&style=shield)
+[![Generic badge](https://img.shields.io/badge/homepage-view-red.svg)](https://umaproject.org/)
+[![Generic badge](https://img.shields.io/badge/slack-join-green.svg)](https://join.slack.com/t/umaprotocol/shared_invite/zt-7mtxxds5-OIhE~q_WkwGCVNrq0~G~rg)
+[![Generic badge](https://img.shields.io/badge/send-email-blue.svg)](mailto:hello@umaproject.org)
+![Twitter Follow](https://img.shields.io/twitter/follow/UMAprotocol?label=follow%20%40UMAprotocol&style=social)
 
 ## Documentation 📚
 
