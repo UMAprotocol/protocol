@@ -604,7 +604,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         external
         view
         nonReentrantView()
-        returns (FixedPoint.Unsigned memory totalPositionCollateral)
+        returns (FixedPoint.Unsigned memory totalPricelessPositionManagerCollateral)
     {
         return _getFeeAdjustedCollateral(rawTotalPositionCollateral);
     }
