@@ -13,8 +13,8 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/AdministrateeInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
-import "./TokenFactory.sol";
-import "./FeePayer.sol";
+import "../common/TokenFactory.sol";
+import "../common/FeePayer.sol";
 
 
 /**
@@ -242,28 +242,40 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     }
 
     /**
-     * @notice Transfers `collateralAmount` of `collateralCurrency` into the sponsor's position.
+     * @notice Transfers `collateralAmount` of `collateralCurrency` into the specified sponsor's position.
      * @dev Increases the collateralization level of a position after creation. This contract must be approved to spend
      * at least `collateralAmount` of `collateralCurrency`.
+     * @param sponsor the sponsor to credit the deposit to.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
-    function deposit(FixedPoint.Unsigned memory collateralAmount)
+    function depositTo(address sponsor, FixedPoint.Unsigned memory collateralAmount)
         public
         onlyPreExpiration()
-        noPendingWithdrawal(msg.sender)
+        noPendingWithdrawal(sponsor)
         fees()
         nonReentrant()
     {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
-        PositionData storage positionData = _getPositionData(msg.sender);
+        PositionData storage positionData = _getPositionData(sponsor);
 
         // Increase the position and global collateral balance by collateral amount.
         _incrementCollateralBalances(positionData, collateralAmount);
 
-        emit Deposit(msg.sender, collateralAmount.rawValue);
+        emit Deposit(sponsor, collateralAmount.rawValue);
 
         // Move collateral currency from sender to contract.
         collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
+    }
+
+    /**
+     * @notice Transfers `collateralAmount` of `collateralCurrency` into the caller's position.
+     * @dev Increases the collateralization level of a position after creation. This contract must be approved to spend
+     * at least `collateralAmount` of `collateralCurrency`.
+     * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
+     */
+    function deposit(FixedPoint.Unsigned memory collateralAmount) public {
+        // This is just a thin wrapper over depositTo that specified the sender as the sponsor.
+        depositTo(msg.sender, collateralAmount);
     }
 
     /**
