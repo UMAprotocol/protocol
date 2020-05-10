@@ -375,7 +375,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
 
         emit RequestWithdrawalExecuted(msg.sender, amountWithdrawn.rawValue);
-        return amountWithdrawn;
     }
 
     /**
@@ -475,7 +474,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), numTokens.rawValue);
         tokenCurrency.burn(numTokens.rawValue);
-        return amountWithdrawn;
     }
 
     /**
@@ -545,7 +543,6 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
         tokenCurrency.safeTransferFrom(msg.sender, address(this), tokensToRedeem.rawValue);
         tokenCurrency.burn(tokensToRedeem.rawValue);
-        return amountWithdrawn;
     }
 
     /****************************************
