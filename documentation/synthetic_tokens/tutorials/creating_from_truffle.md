@@ -45,7 +45,7 @@ Note that in this example, `priceFeedIdentifier`, `syntheticName`, and `syntheti
 <!-- prettier-ignore -->
 ```js
 const constructorParams = { expirationTimestamp: "1585699200", collateralAddress: TestnetERC20.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, minSponsorTokens: { rawValue: '100000000000000' }, timerAddress: '0x0000000000000000000000000000000000000000' }
-};
+}
 ```
 
 5. Before the contract for the synthetic tokens can be created, the price identifier for the synthetic tokens must be registered with `IdentifierWhitelist`.
@@ -125,12 +125,12 @@ await emp.redeem({ rawValue: web3.utils.toWei("50") })
    Our collateral token balance should increase to 9,925.
 
 ```js
-;(await collateralToken.balanceOf(accounts[0]))
-  .toString()(
-    // collateral token balance
-    await syntheticToken.balanceOf(accounts[0])
-  )
-  .toString()
+// Print balance
+const collateralBalance = await collateralToken.balanceOf(accounts[0])
+collateralBalance.toString()
+// collateral token balance
+const syntheticBalance = await syntheticToken.balanceOf(accounts[0])
+syntheticBalance.toString()
 // synthetic token balance
 await emp.positions(accounts[0])
 // position information
@@ -167,8 +167,9 @@ await emp.withdrawPassedRequest()
 4. Let’s now check that our collateral token balance has returned to 9,925.
 
 ```js
-;(await collateralToken.balanceOf(accounts[0])).toString()
 // collateral token balance
+const tokenBalance = await collateralToken.balanceOf(accounts[0])
+tokenBalance.toString()
 ```
 
 <!--
