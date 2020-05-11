@@ -130,6 +130,8 @@ const deposit = async (depositBoxAddress, amountOfWethToDeposit) => {
   const accounts = await web3.eth.getAccounts();
 
   console.group("4. Depositing ERC20 into the DepositBox");
+  // Note: The DVM charges a "regular" fee as a % of the deposited collateral every second. However, because the
+  // default regular fee is 0, this test setup incurs no periodic fees.
   await depositBox.deposit({ rawValue: amountOfWethToDeposit });
   console.log(`- Deposited ${fromWei(amountOfWethToDeposit)} WETH into the DepositBox`);
 
@@ -168,6 +170,9 @@ const withdraw = async (depositBoxAddress, mockPrice, amountOfUsdToWithdraw) => 
   // The user wants to withdraw a USD-denominated amount of WETH.
   // Note: If the USD amount is greater than the user's deposited balance, the contract will simply withdraw
   // the full user balance.
+  // Note-2: The DVM charges a fixed fee on every price request. Therefore, in practice each `requestWithdrawal()` call
+  // would incur this fixed fee, which is paid from the deposited collateral pool. However, because the
+  // default fee is 0, this test setup incurs no fixed fee.
   const requestTimestamp = await depositBox.getCurrentTime();
   await depositBox.requestWithdrawal({ rawValue: amountOfUsdToWithdraw });
   console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of WETH`);
