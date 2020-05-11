@@ -229,7 +229,7 @@ const main = async callback => {
 
     // Done!
   } catch (err) {
-    throw err;
+    console.error(err);
   }
   callback();
 };
