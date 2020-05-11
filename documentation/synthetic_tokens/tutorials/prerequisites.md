@@ -24,6 +24,7 @@ If everything worked, we should see the line "> Compiled successfully using:" in
 
 1. Install the [Ganache UI](https://truffleframework.com/ganache).
 2. Run Ganache on localhost port `9545` (use the above links for instructions on how to do this).
+3. Note that to deploy new Priceless position managers you must set your gas to at least 9 million in Ganache. To do this click the gear icon at the top right of Ganache, then click "CHAIN" and set the "GAS LIMIT" field to `10000000`. Then click the "RESTART" button top right. This will enable your Ganache instance to deploy larger contracts.
 
 If everything was setup correctly, we should be able to run automated tests from `protocol/core`:
 
