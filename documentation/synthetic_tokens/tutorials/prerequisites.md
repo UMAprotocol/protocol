@@ -24,7 +24,8 @@ If everything worked, we should see the line "> Compiled successfully using:" in
 
 1. Install the [Ganache UI](https://truffleframework.com/ganache).
 2. Run Ganache on localhost port `9545` (use the above links for instructions on how to do this).
-3. Note that to deploy new `ExpiringMultiPartyCreator`, the main factory used in the priceless financial contract, you must set your gas limit to at least 9 million in Ganache. To do this click the gear icon at the top right of Ganache, then click "CHAIN" and set the "GAS LIMIT" field to `10000000`. Then click the "RESTART" button top right. This will enable your Ganache instance to deploy larger contracts.
+3. Under "Accounts & Keys", set the "Account Default Balance" to `100000`. This will ensure that you have enough local testnet ETH to run through tutorials.
+4. Note that to deploy new `ExpiringMultiPartyCreator`, the main factory used in the priceless financial contract, you must set your gas limit to at least 9 million in Ganache. To do this click the gear icon at the top right of Ganache, then click "CHAIN" and set the "GAS LIMIT" field to `10000000`. Then click the "RESTART" button top right. This will enable your Ganache instance to deploy larger contracts.
 
 If everything was setup correctly, we should be able to run automated tests from `protocol/core`:
 
