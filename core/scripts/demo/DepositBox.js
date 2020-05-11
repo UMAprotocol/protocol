@@ -1,8 +1,8 @@
 /**
- * @notice Deploys the a TOY financial contract, registers it with the DVM, and goes through a simple user flow.
+ * @notice Deploys a TOY financial contract, registers it with the DVM, and goes through a simple user flow.
  * @dev DepositBox is an example financial contract that integrates the DVM for on-chain price discovery.
  * It is intended for educational purposes and would not be very useful in practice. The purpose of the contract
- * is to hold custody of a user's ERC20 token balance. The user links the DepositBox with one of the price identifiers
+ * is to custody a user's ERC20 token balance. The user links the DepositBox with one of the price identifiers
  * enabled on the DVM. For example, the user might deposit ETH into the DepositBox and register it with the "ETH-USD"
  * price identifier. The user can now withdraw a "USD"-denominated amount of "ETH" from their DepositBox via
  * smart contract calls. The feature introduced by the DVM is on-chain pricing of the user's ERC20 balance. In this example,
@@ -10,9 +10,10 @@
  * price feed. The DVM therefore enables the user to "pull" a reference price.
  *
  * This script includes steps to deploy a "ETH-USD" DepositBox, register it with the DVM and the correct price identifier, and uses the DVM
- * to withdraw USD-denominated amounts of ETH
+ * to withdraw USD-denominated amounts of ETH.
  *
- * How to run: `cd core && $(npm bin)/truffle exec ./scripts/demo/DepositBox.js --network test`
+ * How to run:
+ * - `cd core && $(npm bin)/truffle exec ./scripts/demo/DepositBox.js --network test`
  * Assumptions:
  * - User is using a local blockchain (i.e. not Kovan/Ropsten/Rinkeby/Mainnet)
  * - User is running this script in the web3 environment injected by Truffle.
@@ -21,6 +22,8 @@
  * - User is referencing the ETH-USD pricefeed identifier.
  * Prerequisites:
  * - Migrate the contracts via `$(npm bin)/truffle migrate --reset --network test`.
+ * - The migration step ensures that the user is the owner of the Finder, IdentifierWhitelist,
+ *   Registry, and other important system contracts and can therefore modify their configurations.
  */
 
 // Helper modules
@@ -43,7 +46,7 @@ const priceFeedIdentifier = utf8ToHex("ETH/USD");
 const deploy = async () => {
   console.group("1. Deploying new DepositBox");
   const collateral = await WETH9.deployed();
-  console.log(`- Using WETH contract as collateral token @ ${collateral.address}`);
+  console.log("- Using WETH as collateral token");
 
   // Pricefeed identifier must be whitelisted prior to DepositBox construction.
   const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -56,18 +59,17 @@ const deploy = async () => {
   // - The user should pass in the zero address (i.e. 0x0) for the Timer, but using the deployed Timer
   // for testing purposes is convenient because they can advance time as needed.
   const finder = await Finder.deployed();
-  console.log(`- Using Finder @ ${finder.address}`);
   const mockOracle = await MockOracle.new(finder.address, Timer.address);
-  console.log(`- Deployed MockOracle @ ${mockOracle.address}`);
   const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
   await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  console.log("- Set Finder.Oracle to MockOracle");
+  console.log("- Deployed a MockOracle");
 
-  // Deploy a new DepositBox contract. The DVM or "oracle" that the DepositBox will use
-  // will be the one that is registered with the Finder. The above steps ensure that the "MockOracle"
-  // is used on local blockchains. Again, if not on a local blockchain, use the zero address for the Timer address.
+  // Deploy a new DepositBox contract. We pass in the collateral token address (i.e. the token we will deposit into
+  // the contract), the Finder address (which stores references to all of the important system contracts like
+  // the oracle), the pricefeed identifier we will use to pull the price of our collateral (denominated in some other
+  // asset), and a Timer contract address, which is a contract deployed specifically to aid time-dependent testing.
   const depositBox = await DepositBox.new(collateral.address, finder.address, priceFeedIdentifier, Timer.address);
-  console.log(`- Deployed @ ${depositBox.address}`);
+  console.log("- Deployed a new DepositBox and linked it with the MockOracle");
   console.groupEnd();
   return depositBox.address;
 };
@@ -80,7 +82,8 @@ const register = async depositBoxAddress => {
   // is intended to be used on local blockchains for educational purposes, it has an
   // `initialize()` public method that will register itself with the DVM.  Therefore
   // we need to grant the DepositBox the power to register contracts with the DVM.
-  // In production environments, the Governor contract owns this privilege to register contracts
+  //
+  // Note: In production environments, only the Governor contract owns the privilege to register contracts
   // with the DVM. Therefore, the `initialize()` method would fail in production environments.
   const depositBox = await DepositBox.at(depositBoxAddress);
 
@@ -88,11 +91,10 @@ const register = async depositBoxAddress => {
   // This step assumes that the user has the ability to assign Registry roles, which is a role
   // held by the deployer of the Registry.
   const registry = await Registry.deployed();
-  console.log(`- Using Registry @ ${registry.address}`);
   await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, depositBox.address);
-  console.log("- Granted CONTRACT_CREATOR role to DepositBox");
+  console.log("- Granted DepositBox contract right to register itself with DVM");
   await depositBox.initialize();
-  console.log("- DepositBox registered itself with DVM");
+  console.log("- DepositBox is registered");
   console.groupEnd();
   return;
 };
@@ -102,8 +104,8 @@ const setupWallets = async (depositBoxAddress, amountOfWethToMint) => {
   const accounts = await web3.eth.getAccounts();
 
   console.group("3. Minting ERC20 to user and giving DepositBox allowance to transfer collateral");
+  // This WETH contract is copied from the officially deployed WETH contract on mainnet.
   const collateral = await WETH9.deployed();
-  console.log(`- Using WETH contract @ ${collateral.address}`);
 
   // WETH must be converted from ETH via `deposit()`.
   await collateral.deposit({ value: amountOfWethToMint });
@@ -116,6 +118,80 @@ const setupWallets = async (depositBoxAddress, amountOfWethToMint) => {
   console.log("- Increased DepositBox allowance to spend WETH");
   const postAllowance = await collateral.allowance(accounts[0], depositBoxAddress);
   console.log(`- Contract's WETH allowance: ${fromWei(postAllowance.toString())}`);
+
+  console.groupEnd();
+  return;
+};
+
+// Deposit collateral into the DepositBox.
+const deposit = async (depositBoxAddress, amountOfWethToDeposit) => {
+  const collateral = await WETH9.deployed();
+  const depositBox = await DepositBox.at(depositBoxAddress);
+  const accounts = await web3.eth.getAccounts();
+
+  console.group("4. Depositing ERC20 into the DepositBox");
+  await depositBox.deposit({ rawValue: amountOfWethToDeposit });
+  console.log(`- Deposited ${fromWei(amountOfWethToDeposit)} WETH into the DepositBox`);
+
+  // Let's check our deposited balance. Note that multiple users can deploy collateral into the same deposit box,
+  // but each user (i.e. each address) has its own token balance. So, because we will be depositing collateral
+  // for only one user, the "total collateral" in the DepositBox will be equal to the user's individual collateral
+  // balance.
+  const userCollateral = await depositBox.getCollateral(accounts[0]);
+  const totalCollateral = await depositBox.totalDepositBoxCollateral();
+  const userBalance = await collateral.balanceOf(accounts[0]);
+
+  console.log(`- User's deposit balance: ${fromWei(userCollateral.toString())}`);
+  console.log(`- Total deposit balance: ${fromWei(totalCollateral.toString())}`);
+  console.log(`- User's WETH balance: ${fromWei(userBalance.toString())}`);
+
+  console.groupEnd();
+  return;
+};
+
+// Withdraw from DepositBox.
+const withdraw = async (depositBoxAddress, mockPrice, amountOfUsdToWithdraw) => {
+  const collateral = await WETH9.deployed();
+  const depositBox = await DepositBox.at(depositBoxAddress);
+  const accounts = await web3.eth.getAccounts();
+  const finder = await Finder.deployed();
+  const mockOracle = await MockOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
+
+  console.group("5. Withdrawing ERC20 from DepositBox");
+
+  // Technically, withdrawing is a two step process. First, a request to withdraw must be submitted to the DVM.
+  // Next, the DVM voters will resolve and return a price (in production, each voting round takes ~2 days).
+  // Once a price is resolved, the user of the DepositBox can finalize the withdrawal. However, for test purposes
+  // we can "resolve" prices instantaneously by pushing a price (i.e. `mockPrice`) to the MockOracle.
+
+  // Submit a withdrawal request, which sends a price request for the current timestamp to the DVM.
+  // The user wants to withdraw a USD-denominated amount of WETH.
+  // Note: If the USD amount is greater than the user's deposited balance, the contract will simply withdraw
+  // the full user balance.
+  const requestTimestamp = await depositBox.getCurrentTime();
+  await depositBox.requestWithdrawal({ rawValue: amountOfUsdToWithdraw });
+  console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of WETH`);
+
+  // Manually push a price to the DVM. This price must be a positive integer.
+  await mockOracle.pushPrice(priceFeedIdentifier, requestTimestamp.toNumber(), mockPrice);
+  console.log(`- Resolved a price of ${fromWei(mockPrice)} WETH-USD`);
+
+  // Following a price resolution, the user can withdraw their requested USD amount.
+  await depositBox.executeWithdrawal();
+
+  // Let's check the token balances. At an exchange rate of (1 WETH = $200 USD) and given a requested withdrawal
+  // amount of $10,000, the DepositBox should have withdrawn ($10,000/$200) 50 WETH.
+  const userCollateral = await depositBox.getCollateral(accounts[0]);
+  const totalCollateral = await depositBox.totalDepositBoxCollateral();
+  const userBalance = await collateral.balanceOf(accounts[0]);
+
+  console.log(`- User's deposit balance: ${fromWei(userCollateral.toString())}`);
+  console.log(`- Total deposit balance: ${fromWei(totalCollateral.toString())}`);
+  console.log(`- User's WETH balance: ${fromWei(userBalance.toString())}`);
+
+  // Note: the user can cancel their requested withdrawal via the DepositBox's `cancelWithdrawal()` method.
+
+  console.groupEnd();
   return;
 };
 
@@ -136,10 +212,17 @@ const main = async callback => {
     console.log("\n");
 
     // Deposit collateral
-    // TODO
+    const amountOfWethToDeposit = toWei("200");
+    await deposit(deployedContract, amountOfWethToDeposit);
+    console.log("\n");
 
     // Withdraw USD denominated collateteral
-    // TODO
+    const amountOfUsdToWithdraw = toWei("10000"); // $10,000
+    const exchangeRate = toWei("200"); // 1 ETH = $200
+    await withdraw(deployedContract, exchangeRate, amountOfUsdToWithdraw);
+    console.log("\n");
+
+    // Done!
   } catch (err) {
     throw err;
   }
