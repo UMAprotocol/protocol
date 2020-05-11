@@ -28,7 +28,7 @@ Details on these two fees are available [here](../economic_architecture.md).
 
 ## Toy Integration Tutorial
 
-1. Ensure that you have followed all the prerequisites [here](../synthetic_tokens/prerequisites.md).
+1. Ensure that you have followed all the prerequisites [here](../../synthetic_tokens/prerequisites.md).
 2. Migrate the contracts by running the following command:
 
 ```bash
