@@ -12,6 +12,12 @@
         "singleQuote": false,
         "explicitTypes": "always"
       }
+    },
+    {
+      "files": "*.md",
+      "options": {
+        "semi": false
+      }
     }
   ]
 }
