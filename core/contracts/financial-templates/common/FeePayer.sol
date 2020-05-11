@@ -3,9 +3,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
+
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
@@ -33,7 +35,7 @@ abstract contract FeePayer is Testable, Lockable {
     FinderInterface public finder;
 
     // Tracks the last block time when the fees were paid.
-    uint256 public lastPaymentTime;
+    uint256 private lastPaymentTime;
 
     // Tracks the cumulative fees that have been paid by the contract for use by derived contracts.
     // The multiplier starts at 1, and is updated by computing cumulativeFeeMultiplier * (1 - effectiveFee).
@@ -85,11 +87,11 @@ abstract contract FeePayer is Testable, Lockable {
 
     /**
      * @notice Pays UMA DVM regular fees (as a % of the collateral pool) to the Store contract.
-     * @dev These must be paid periodically for the life of the contract. If the contract has not paid its
-     * regular fee in a week or more then a late penalty is applied which is sent to the caller.
-     * This will revert if the amount of fees owed are greater than the pfc. An event is only fired if the fees charged are greater than 0.
+     * @dev These must be paid periodically for the life of the contract. If the contract has not paid its regular fee
+     * in a week or more then a late penalty is applied which is sent to the caller. This will revert if the amount of
+     * fees owed are greater than the pfc. An event is only fired if the fees charged are greater than 0.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
-     * This will return 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
+     * This returns 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
      */
     function payRegularFees() public nonReentrant() returns (FixedPoint.Unsigned memory totalPaid) {
         StoreInterface store = _getStore();
@@ -117,9 +119,9 @@ abstract contract FeePayer is Testable, Lockable {
         if (totalPaid.isEqual(0)) {
             return totalPaid;
         }
-        // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay as much of the fee
-        // that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the regular fee, which has the effect of paying
-        // the store first, followed by the caller if there is any fee remaining.
+        // If the effective fees paid as a % of the pfc is > 100%, then we need to reduce it and make the contract pay
+        // as much of the fee that it can (up to 100% of its pfc). We'll reduce the late penalty first and then the
+        // regular fee, which has the effect of paying the store first, followed by the caller if there is any fee remaining.
         if (totalPaid.isGreaterThan(collateralPool)) {
             FixedPoint.Unsigned memory deficit = totalPaid.sub(collateralPool);
             FixedPoint.Unsigned memory latePenaltyReduction = FixedPoint.min(latePenalty, deficit);
@@ -141,11 +143,26 @@ abstract contract FeePayer is Testable, Lockable {
         if (latePenalty.isGreaterThan(0)) {
             collateralCurrency.safeTransfer(msg.sender, latePenalty.rawValue);
         }
+        return totalPaid;
     }
 
-    // Pays UMA Oracle final fees of `amount` in `collateralCurrency` to the Store contract. Final fee is a flat fee charged for each price request.
-    // If payer is the contract, adjusts internal bookkeeping variables. If payer is not the contract, pulls in `amount`
-    // of collateral currency.
+    /**
+     * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
+     * @dev This is equivalent to the collateral pool available from which to pay fees. Therefore, derived contracts are
+     * expected to implement this so that pay-fee methods can correctly compute the owed fees as a % of PfC.
+     * @return pfc value for equal to the current profic from corrution denominated in collateral currency.
+     */
+    function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+        return _pfc();
+    }
+
+    /****************************************
+     *         INTERNAL FUNCTIONS           *
+     ****************************************/
+
+    // Pays UMA Oracle final fees of `amount` in `collateralCurrency` to the Store contract. Final fee is a flat fee
+    // charged for each price request. If payer is the contract, adjusts internal bookkeeping variables. If payer is not
+    // the contract, pulls in `amount` of collateral currency.
     function _payFinalFees(address payer, FixedPoint.Unsigned memory amount) internal {
         if (amount.isEqual(0)) {
             return;
@@ -171,20 +188,6 @@ abstract contract FeePayer is Testable, Lockable {
         store.payOracleFeesErc20(address(collateralCurrency), amount);
     }
 
-    /**
-     * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
-     * @dev This will be equivalent to the collateral pool available from which to pay fees.
-     * Therefore, derived contracts are expected to implement this so that pay-fee methods
-     * can correctly compute the owed fees as a % of PfC.
-     */
-    function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        return _pfc();
-    }
-
-    /****************************************
-     *         INTERNAL FUNCTIONS           *
-     ****************************************/
-
     function _pfc() internal virtual view returns (FixedPoint.Unsigned memory);
 
     function _getStore() internal view returns (StoreInterface) {
@@ -207,9 +210,8 @@ abstract contract FeePayer is Testable, Lockable {
         return rawCollateral.mul(cumulativeFeeMultiplier);
     }
 
-    // Converts a user-readable collateral value into a raw value that accounts for already-assessed
-    // fees. If any fees have been taken from this contract in the past, then the raw value will be
-    // larger than the user-readable value.
+    // Converts a user-readable collateral value into a raw value that accounts for already-assessed fees. If any fees
+    // have been taken from this contract in the past, then the raw value will be larger than the user-readable value.
     function _convertToRawCollateral(FixedPoint.Unsigned memory collateral)
         internal
         view

@@ -30,3 +30,9 @@ gsutil cp gs://staging-deployment-configuration/voter-app.yaml voter-dapp/app.ya
 # Deploy docs
 ./scripts/deploy_docs.sh documentation/gae_app.yaml -q
 
+# Delete old versions.
+# TODO: this currently deletes any versions that aren't being used. It'd be preferable to leave the last few versions
+# for each service.
+VERSIONS_TO_DELETE=$(gcloud app versions list --filter="TRAFFIC_SPLIT=0.00" --format="value(VERSION.ID)")
+
+gcloud app versions delete -q $VERSIONS_TO_DELETE

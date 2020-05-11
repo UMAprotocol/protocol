@@ -11,7 +11,12 @@ import "./ExpiringMultiPartyLib.sol";
 /**
  * @title Expiring Multi Party Contract creator.
  * @notice Factory contract to create and register new instances of expiring multiparty contracts.
- * Responsible for constraining the parameters used to construct a new EMP.
+ * Responsible for constraining the parameters used to construct a new EMP. This creator contains a number of constraints
+ * that are applied to newly created expiring multi party contract. These constraints can evolve over time and are
+ * initially constrained to conservative values in this first iteration. Technically there is nothing in the
+ * ExpiringMultiParty contract requiring these constraints. However, because `createExpiringMultiParty()` is intended
+ * to be the only way to create valid financial contracts that are registered with the DVM (via _registerContract),
+  we can enforce deployment configurations here.
  */
 contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
@@ -32,22 +37,11 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         FixedPoint.Unsigned disputerDisputeRewardPct;
         FixedPoint.Unsigned minSponsorTokens;
     }
-
-    /**
-     * @notice Deployment Configuration Constraints.
-     * @dev: These constraints can evolve over time and are initially constrained to conservative values
-     * in this first iteration of an EMP creator. Technically there is nothing in the ExpiringMultiParty
-     * contract requiring these constraints. However, because `createExpiringMultiParty()` is intended to
-     * be the only way to create valid financial contracts that are **registered** with the
-     * DVM (via `_registerContract()`), we can enforce deployment configurations here.
-     **/
-
     // - Whitelist allowed collateral currencies.
     // Note: before an instantiation of ExpiringMultipartyCreator is approved to register contracts, voters should
-    // ensure that the ownership of this collateralTokenWhitelist has been renounced (so it is effectively
-    // frozen). One could also set the owner to the address of the Governor contract, but voters may find that option
-    // less preferable since it would force them to take a more active role in managing this financial contract
-    // template.
+    // ensure that the ownership of this collateralTokenWhitelist has been renounced (so it is effectively frozen). One
+    // could also set the owner to the address of the Governor contract, but voters may find that option less preferable
+    // since it would force them to take a more active role in managing this financial contract template.
     AddressWhitelist public collateralTokenWhitelist;
     // - Address of TokenFactory to pass into newly constructed ExpiringMultiParty contracts
     address public tokenFactoryAddress;
@@ -109,7 +103,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
     /**
      * @notice Creates an instance of expiring multi party and registers it within the registry.
      * @param params is a `ConstructorParams` object from ExpiringMultiParty.
-     * @return address of the deployed ExpiringMultiParty contract
+     * @return address of the deployed ExpiringMultiParty contract.
      */
     function createExpiringMultiParty(Params memory params) public nonReentrant() returns (address) {
         address derivative = ExpiringMultiPartyLib.deploy(_convertParams(params));
