@@ -120,10 +120,7 @@ const Poll = async function(callback) {
       throw new Error("Bad input arg! Specify a bot monitor and wallet monitor object to track.");
     }
 
-    let pollingDelay = 10_000; // default to 10 seconds, else use env value
-    if (process.env.POLLING_DELAY) {
-      pollingDelay = process.env.POLLING_DELAY;
-    }
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
 
     // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
     const botMonitorObject = JSON.parse(process.env.BOT_MONITOR_OBJECT);

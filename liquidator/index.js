@@ -78,10 +78,7 @@ const Poll = async function(callback) {
       throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
     }
 
-    let pollingDelay = 10_000; // default to 10 seconds, else use env value
-    if (process.env.POLLING_DELAY) {
-      pollingDelay = process.env.POLLING_DELAY;
-    }
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
 
     await run(process.env.PRICE, process.env.EMP_ADDRESS, true, pollingDelay);
   } catch (err) {
