@@ -32,10 +32,10 @@ Details on these two fees are available [here](../economic_architecture.md).
 2. Migrate the contracts by running the following command:
 
 ```bash
-$(npm bin)/truffle migrate --network test
+$(npm bin)/truffle migrate --reset --network test
 ```
 
-3. From the `/core` directory, run the following script to deploy the `DepositBox` contract:
+3. To deploy the `DepositBox` contract and go through a simple user flow, run the following script from the `/core` directory:
 
 ```bash
 $(npm bin)/truffle exec ./scripts/demo/DepositBox.js --network test
@@ -54,18 +54,18 @@ You should see the following output:
  - DepositBox is registered
 3. Minting ERC20 to user and giving DepositBox allowance to transfer collateral
  - Converted 1000 ETH into WETH
- - User's WETH balance: 5800
+ - User's WETH balance: 1000
  - Increased DepositBox allowance to spend WETH
  - Contract's WETH allowance: 1000
 4. Depositing ERC20 into the DepositBox
  - Deposited 200 WETH into the DepositBox
  - User's deposit balance: 200
  - Total deposit balance: 200
- - User's WETH balance: 5600
+ - User's WETH balance: 800
 5. Withdrawing ERC20 from DepositBox
  - Submitted a withdrawal request for 10000 USD of WETH
  - Resolved a price of 200 WETH-USD
  - User's deposit balance: 150
  - Total deposit balance: 150
- - User's WETH balance: 5650
+ - User's WETH balance: 850
 ```
