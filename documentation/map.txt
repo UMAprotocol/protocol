@@ -11,6 +11,7 @@
 ** glossary.md
 * oracle
 ** technical_architecture.md
+** economic_architecture.md
 ** dvm_interfaces.md
 ** tutorials
 *** voting_with_uma_tokens.md
