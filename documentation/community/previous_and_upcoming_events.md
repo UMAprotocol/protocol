@@ -2,6 +2,8 @@
 
 ## Upcoming Events
 
+- May 27, 2020: 'Decentralized Finance: Money Legos or Money Jenga?' by Allison Lu [link](https://www.meetup.com/Women-in-Blockchain-Boston-Meetup/events/270611418/)
+
 ## Past Events
 
 - May 2, 2020: DeFi Discussions ["Using UMA and Balancer Pools to Create Perpetual Synthetic Tokens"](https://www.crowdcast.io/e/defi-discussions/41) with Hart Lambur (UMA) and Fernando Martinelli (Balancer Labs) [(slides)](https://docs.google.com/presentation/d/1zpq6iUcyTtHJAtESVFqZ4xGEfdDm12k5B5fnqeDmI7Q/edit?usp=sharing)
