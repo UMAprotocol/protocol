@@ -43,7 +43,7 @@ The DVM collects two types of fees from registered financial contracts, a “reg
 Each financial contract must report its PfC in terms of its single collateral currency.
 
 The regular fee is paid periodically by financial contracts (generally whenever someone interacts with them).
-They are calculated based on the PfC, the amount of time since they last paid them, and the current fee rate. The exact formula used can be found in the `computeRegularFee` function of the `Store` contract.
+They are calculated based on the PfC, the amount of time since they last paid them, and the current fee rate. The exact formula used can be found in the `computeRegularFee` function of the `Store` contract [here](https://www.google.com/url?q=https://docs.umaproject.org/uma/contracts/Store.html%23Store-computeRegularFee-uint256-uint256-struct-FixedPoint-Unsigned-&sa=D&ust=1589318419433000&usg=AFQjCNGP7ACxQYI_mvdyYJpy8k4FtIMumg).
 These fees are paid into the `Store` contract.
 $UMA-holders control which address has `Withdrawer` privilege from the `Store`. 
 The owner of the `Withdrawer` privilege uses the funds from the `Store` to perform “buy and burn” operations on the $UMA tokens to maintain CoC > PfC.
