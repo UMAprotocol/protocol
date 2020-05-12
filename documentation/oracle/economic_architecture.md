@@ -43,9 +43,10 @@ The DVM collects two types of fees from registered financial contracts, a “reg
 Each financial contract must report its PfC in terms of its single collateral currency.
 
 The regular fee is paid periodically by financial contracts (generally whenever someone interacts with them).
-They are calculated based on the PfC, the amount of time since they last paid them, and the current fee rate. The exact formula used can be found in the `computeRegularFee` function of the [`Store` contract](../../contracts/Store.html).
+They are calculated based on the PfC, the amount of time since they last paid them, and the current fee rate. The exact formula used can be found in the `computeRegularFee` function of the `Store` contract.
 These fees are paid into the `Store` contract.
-$UMA-holders control which address has Withdrawer privilege from the `Store`. The owner of the `Withdrawer` privilege uses the funds from the `Store` to perform “buy and burn” operations on the $UMA tokens to maintain CoC > PfC.
+$UMA-holders control which address has `Withdrawer` privilege from the `Store`. 
+The owner of the `Withdrawer` privilege uses the funds from the `Store` to perform “buy and burn” operations on the $UMA tokens to maintain CoC > PfC.
 
 The “final fee” is paid to the `Store` each time that a financial contract makes a price request from the DVM.
 The “final fee” is a fixed amount for each collateral type.
@@ -54,7 +55,7 @@ Currently, \$UMA tokenholders must manually observe the PfC and CoC to determine
 The rates should generally go up as the CoC > PfC inequality comes closer to being violated.
 Higher fees slightly reduce the PfC since the collateral is pulled from the contracts to put into the Store, and the Risk Labs Foundation regularly withdraws the fees that have collected in the `Store` and uses them to “buy and burn” UMA tokens to increase the CoC.
 
-Fee rates, as well as other parameters relating to the DVM, are established via on-chain governance by \$UMA token holders via the [UMIP process](../governance/UMIPs.md).
+Fee rates, as well as other parameters relating to the DVM, are established via on-chain governance by \$UMA token holders via the [UMIP process](./governance/UMIPs.md).
 
 ## Additional Research
 
