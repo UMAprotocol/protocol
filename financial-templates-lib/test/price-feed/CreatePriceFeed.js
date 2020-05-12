@@ -40,7 +40,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(await createPriceFeed(web3, logger, networker, getTime, config), null);
   });
 
-  it("Valid CryptoWatch", async function() {
+  it("Valid CryptoWatch config", async function() {
     const config = {
       type: "cryptowatch",
       apiKey,
@@ -60,7 +60,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validCryptoWatchFeed.getTime(), getTime());
   });
 
-  it("Invalid CryptoWatch", async function() {
+  it("Invalid CryptoWatch config", async function() {
     const validConfig = {
       type: "cryptowatch",
       apiKey,
@@ -86,7 +86,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     );
   });
 
-  it("Valid Uniswap", async function() {
+  it("Valid Uniswap config", async function() {
     const config = {
       type: "uniswap",
       uniswapAddress,
@@ -103,7 +103,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validUniswapFeed.getTime(), getTime());
   });
 
-  it("Invalid Uniswap", async function() {
+  it("Invalid Uniswap config", async function() {
     const validConfig = {
       type: "uniswap",
       uniswapAddress,
@@ -125,7 +125,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     );
   });
 
-  it("Valid Medianizer Inheritance", async function() {
+  it("Valid Medianizer inherited config", async function() {
     const config = {
       type: "medianizer",
       apiKey,
@@ -155,7 +155,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validMedianizerFeed.priceFeeds[1].uniswap.options.address, uniswapAddress);
   });
 
-  it("Valid Medianizer Override", async function() {
+  it("Valid Medianizer override config", async function() {
     const lookbackOverride = 5;
     const config = {
       type: "medianizer",
@@ -177,7 +177,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validMedianizerFeed.priceFeeds[0].lookback, lookbackOverride);
   });
 
-  it("Medianizer feed cannot have no feeds to medianize", async function() {
+  it("Medianizer feed cannot have 0 nested feeds to medianize", async function() {
     const config = {
       type: "medianizer",
       apiKey,
@@ -196,7 +196,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(await createPriceFeed(web3, logger, networker, getTime, { ...config, medianizedFeeds: [] }), null);
   });
 
-  it("Medianizer feed cannot have invalid nested feed", async function() {
+  it("Medianizer feed cannot have a nested feed with an invalid config", async function() {
     const config = {
       type: "medianizer",
       apiKey,
