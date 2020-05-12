@@ -60,7 +60,7 @@ async function run(price, address, shouldPoll, botMonitorObject, walletMonitorOb
 
   const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
 
-  // 3. Collateralization Ratio monitor
+  // 3. Collateralization Ratio monitor.
   const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
 
   const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject);
@@ -83,13 +83,11 @@ async function run(price, address, shouldPoll, botMonitorObject, walletMonitorOb
       // 2.b Check for monitored bot balance changes
       await balanceMonitor.checkBotBalances();
 
-      // 3.  Position Collateralization Ratio monitor
+      // 3.  Position Collateralization Ratio monitor.
       // 3.a Update the client
-      // await empClient.update();
-      // // 3.b Check for positions below their CR
-      // await crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
-
-      console.log("End loop");
+      await empClient.update();
+      // 3.b Check for positions below their CR
+      await crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
     } catch (error) {
       console.log("ERROR", error);
       Logger.error({
