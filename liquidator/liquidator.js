@@ -70,18 +70,17 @@ class Liquidator {
     const { toBN, fromWei, toWei } = this.web3.utils;
 
     const contractTime = this.empClient.getLastUpdateTime();
-    let priceFeed = priceFunction(contractTime);
+    const priceFeed = priceFunction(contractTime);
 
     // The `priceFeed` is a Number that is used to determine if a position is liquidatable. The higher the
     // `priceFeed` value, the more collateral that the position is required to have to be correctly collateralized.
-    // Therefore, we add a buffer by reducing `priceFeed` to (`crThreshold` * `priceFeed`).
-    priceFeed = fromWei(toBN(priceFeed).mul(toBN(this.crThreshold)));
-
+    // Therefore, we add a buffer by deriving a `scaledPriceFeed` from (`crThreshold` * `priceFeed`)
+    const scaledPriceFeed = fromWei(toBN(priceFeed).mul(toBN(this.crThreshold)));
     this.logger.debug({
       at: "Liquidator",
-      message: "Raising liquidation price threshold",
-      priceFeed: priceFeed,
-      priceThreshold: this.priceThreshold
+      message: "Scaling down collateral threshold for liquidations",
+      scaledPriceFeed: scaledPriceFeed,
+      crThreshold: this.crThreshold
     });
 
     this.logger.debug({
@@ -93,7 +92,7 @@ class Liquidator {
     await this.update();
 
     // Get the latest undercollateralized positions from the client.
-    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
+    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(scaledPriceFeed);
 
     if (underCollateralizedPositions.length === 0) {
       this.logger.debug({
@@ -111,7 +110,7 @@ class Liquidator {
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: "0" },
-        { rawValue: toWei(priceFeed) },
+        { rawValue: toWei(scaledPriceFeed) },
         { rawValue: position.numTokens },
         parseInt(currentBlockTime) + fiveMinutes
       );
@@ -140,7 +139,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidating position",
         position: position,
-        inputPrice: toWei(priceFeed),
+        inputPrice: toWei(scaledPriceFeed),
         txnConfig
       });
 
@@ -170,7 +169,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,
-        inputPrice: toWei(priceFeed),
+        inputPrice: toWei(scaledPriceFeed),
         txnConfig,
         liquidationResult: logResult
       });
