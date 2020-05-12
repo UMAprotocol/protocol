@@ -69,7 +69,7 @@ const Poll = async function(callback) {
     }
 
     let pollingDelay = 10_000; // default to 10 seconds, else use env value
-    if (!process.env.POLLING_DELAY) {
+    if (process.env.POLLING_DELAY) {
       pollingDelay = process.env.POLLING_DELAY;
     }
 
