@@ -29,7 +29,7 @@ class CRMonitor {
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
   checkWalletCrRatio = async priceFunction => {
     // yield the price feed at the current time.
-    const contractTime = this.empClient.getLastUpdateTime();
+    const contractTime = await this.empClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
     this.logger.debug({
       at: "CRMonitor",
