@@ -22,6 +22,7 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
  * @param {Number} price Price used to determine undercollateralized positions to liquidate.
  * @param {String} address Contract address of the EMP.
  * @param {Boolean} shouldPoll If False, then exit after one iteration. Used for testing.
+ * @param {Number} pollingDelay The amount of milliseconds to wait between iterations.
  * @return None or throws an Error.
  */
 async function run(price, address, shouldPoll, pollingDelay) {

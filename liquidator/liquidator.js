@@ -2,6 +2,14 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 class Liquidator {
+  /**
+   * @notice Constructs new Liquidator bot.
+   * @param {*Object} logger Module used to send logs.
+   * @param {*Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {*Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {*String} account Ethereum account from which to send txns.
+   * @param {*Object} config Contains optional fields to override default configuration.
+   */
   constructor(logger, expiringMultiPartyClient, gasEstimator, account, config) {
     this.logger = logger;
     this.account = account;
@@ -16,18 +24,37 @@ class Liquidator {
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
 
-    // Set default config settings. Caller can override these settings by passing in new
-    // values via the `config` input object.
+    /**
+     * @notice Default config settings. Liquidator deployer can override these settings by passing in new
+     * values via the `config` input object.
+     * @dev The `isValid` property is a function that should be called before resetting any config settings.
+     * `isValid` must return a Boolean.
+     */
+    const { toBN, toWei } = this.web3.utils;
     const defaultConfig = {
-      crThreshold: this.web3.utils.toWei("0.98")
-      // `crThreshold`: Expressed as a percentage. If a position's CR is below the
-      // minimum CR allowed times `crThreshold`, then the bot will liquidate the position.
-      // This acts as a defensive buffer against sharp price movements delays in transactions getting mined.
+      crThreshold: {
+        // `crThreshold`: Expressed as a percentage. If a position's CR is below the
+        // minimum CR allowed times `crThreshold`, then the bot will liquidate the position.
+        // This acts as a defensive buffer against sharp price movements delays in transactions getting mined.
+        value: toWei("0.98"),
+        isValid: x => {
+          return toBN(x).gt("0");
+        }
+      }
     };
+
+    // Set and validate config settings
     Object.keys(defaultConfig).forEach(field => {
-      this[field] = config && config[field] ? config[field] : defaultConfig[field];
-      // TODO: Should we validate these fields? i.e. `priceThreshold < 1 && > -1`? If so, should I add a
-      // `validate: () => { return check_val }` arrow function to each defaultConfig field?
+      this[field] = config && config[field] ? config[field] : defaultConfig[field].value;
+      if (!defaultConfig[field].isValid(this[field])) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Attempting to set configuration field with invalid value",
+          field: field,
+          value: this[field]
+        });
+        throw new Error("Attempting to set configuration field with invalid value");
+      }
     });
   }
 
@@ -40,7 +67,7 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFunction => {
-    const { toBN, fromWei } = this.web3.utils;
+    const { toBN, fromWei, toWei } = this.web3.utils;
 
     const contractTime = this.empClient.getLastUpdateTime();
     let priceFeed = priceFunction(contractTime);
@@ -84,7 +111,7 @@ class Liquidator {
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: "0" },
-        { rawValue: this.web3.utils.toWei(priceFeed) },
+        { rawValue: toWei(priceFeed) },
         { rawValue: position.numTokens },
         parseInt(currentBlockTime) + fiveMinutes
       );
@@ -113,7 +140,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidating position",
         position: position,
-        inputPrice: this.web3.utils.toWei(priceFeed),
+        inputPrice: toWei(priceFeed),
         txnConfig
       });
 
@@ -143,7 +170,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,
-        inputPrice: this.web3.utils.toWei(priceFeed),
+        inputPrice: toWei(priceFeed),
         txnConfig,
         liquidationResult: logResult
       });
@@ -155,6 +182,8 @@ class Liquidator {
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
   queryAndWithdrawRewards = async () => {
+    const { fromWei } = this.web3.utils;
+
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
@@ -205,7 +234,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig
       });
 
@@ -232,7 +261,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig,
         liquidationResult: logResult
       });

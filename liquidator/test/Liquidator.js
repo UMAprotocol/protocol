@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { LiquidationStatesEnum } = require("../../common/Enums");
@@ -12,7 +12,7 @@ const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clie
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+const { SpyTransport } = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -346,6 +346,20 @@ contract("Liquidator.js", function(accounts) {
   });
 
   describe("Overrides the default liquidator configuration settings", function() {
+    it("Cannot set `crThreshold` to 0", async function() {
+      let errorThrown;
+      try {
+        liquidatorConfig = {
+          crThreshold: toWei("0")
+        };
+        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isFalse(errorThrown);
+    });
+
     it("Sets `crThreshold` to 98%", async function() {
       liquidatorConfig = {
         crThreshold: toWei("0.98")
