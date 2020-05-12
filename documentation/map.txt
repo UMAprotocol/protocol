@@ -12,6 +12,7 @@
 * oracle
 ** technical_architecture.md
 ** dvm_interfaces.md
+** security.md
 ** tutorials
 *** voting_with_uma_tokens.md
 *** voting_with_UMA_2-key_contract.md
