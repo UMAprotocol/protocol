@@ -28,12 +28,13 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {String} address Contract address of the EMP.
  * @return None or throws an Error.
  */
-async function run(price, address, shouldPoll) {
+async function run(price, address, shouldPoll, botMonitorObject, walletMonitorObject, pollingDelay) {
   Logger.info({
     at: "Monitor#index",
     message: "Monitor started 🕵️‍♂️",
     empAddress: address,
-    currentPrice: price
+    currentPrice: price,
+    pollingDelay: pollingDelay
   });
 
   // Setup web3 accounts an contract instance
@@ -57,16 +58,10 @@ async function run(price, address, shouldPoll) {
     10
   );
 
-  // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
-  const botMonitorObject = JSON.parse(process.env.BOT_MONITOR_OBJECT);
-
   const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
 
   // 3. Collateralization Ratio monitor
   const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
-
-  // Wallet objects to monitor. For each wallet spesify a name,
-  const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
 
   const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject);
 
@@ -86,15 +81,15 @@ async function run(price, address, shouldPoll) {
       // 2.a Update the client
       await tokenBalanceClient.update();
       // 2.b Check for monitored bot balance changes
-      balanceMonitor.checkBotBalances();
+      await balanceMonitor.checkBotBalances();
 
       // 3.  Position Collateralization Ratio monitor
       // 3.a Update the client
-      await empClient.update();
-      // 3.b Check for positions below their CR
-      crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
+      // await empClient.update();
+      // // 3.b Check for positions below their CR
+      // await crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
 
-      console.log("After the point");
+      console.log("End loop");
     } catch (error) {
       console.log("ERROR", error);
       Logger.error({
@@ -103,7 +98,7 @@ async function run(price, address, shouldPoll) {
         error: error.toString()
       });
     }
-    await delay(Number(10_000));
+    await delay(Number(pollingDelay));
 
     if (!shouldPoll) {
       break;
@@ -127,7 +122,18 @@ const Poll = async function(callback) {
       throw new Error("Bad input arg! Specify a bot monitor and wallet monitor object to track.");
     }
 
-    await run(process.env.PRICE, process.env.EMP_ADDRESS, true);
+    let pollingDelay = 10_000; // default to 10 seconds, else use env value
+    if (!process.env.POLLING_DELAY) {
+      pollingDelay = process.env.POLLING_DELAY;
+    }
+
+    // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
+    const botMonitorObject = JSON.parse(process.env.BOT_MONITOR_OBJECT);
+
+    // Wallet objects to monitor.
+    const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
+
+    await run(process.env.PRICE, process.env.EMP_ADDRESS, true, botMonitorObject, walletMonitorObject, pollingDelay);
   } catch (err) {
     callback(err);
   }
