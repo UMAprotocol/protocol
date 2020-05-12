@@ -2,7 +2,7 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 class Liquidator {
-  constructor(logger, expiringMultiPartyClient, gasEstimator, account) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, account, config) {
     this.logger = logger;
     this.account = account;
 
@@ -15,6 +15,20 @@ class Liquidator {
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
+
+    // Set default config settings. Caller can override these settings by passing in new
+    // values via the `config` input object.
+    const defaultConfig = {
+      priceThreshold: this.web3.utils.toWei("0.98")
+      // `priceThreshold`: Expressed as a percentage. If a position's CR is below the
+      // minimum CR allowed times `priceThreshold`, then the bot will liquidate the position.
+      // This acts as a defensive buffer against sharp price movements delays in transactions getting mined.
+    };
+    Object.keys(defaultConfig).forEach(field => {
+      this[field] = config && config[field] ? config[field] : defaultConfig[field];
+      // TODO: Should we validate these fields? i.e. `priceThreshold < 1 && > -1`? If so, should I add a
+      // `validate: () => { return check_val }` arrow function to each defaultConfig field?
+    });
   }
 
   // Update the client and gasEstimator clients.
@@ -26,8 +40,22 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFunction => {
+    const { toBN, fromWei } = this.web3.utils;
+
     const contractTime = this.empClient.getLastUpdateTime();
-    const priceFeed = priceFunction(contractTime);
+    let priceFeed = priceFunction(contractTime);
+
+    // The `priceFeed` is a Number that is used to determine if a position is liquidatable. The higher the
+    // `priceFeed` value, the more collateral that the position is required to have to be correctly collateralized.
+    // Therefore, we add a buffer by reducing `priceFeed` to ((1 - `priceThreshold`) * `priceFeed`).
+    priceFeed = fromWei(toBN(priceFeed).mul(toBN(this.priceThreshold)));
+
+    this.logger.debug({
+      at: "Liquidator",
+      message: "Raising liquidation price threshold",
+      priceFeed: priceFeed,
+      priceThreshold: this.priceThreshold
+    });
 
     this.logger.debug({
       at: "Liquidator",
