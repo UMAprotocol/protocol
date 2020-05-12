@@ -4,11 +4,11 @@
 class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
-   * @param {*Object} logger Module used to send logs.
-   * @param {*Object} expiringMultiPartyClient Module used to query EMP information on-chain.
-   * @param {*Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
-   * @param {*String} account Ethereum account from which to send txns.
-   * @param {?Object} config Optional. Contains fields with which constructor will attempt to override defaults.
+   * @param {Object} logger Module used to send logs.
+   * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
   constructor(logger, expiringMultiPartyClient, gasEstimator, account, config) {
     this.logger = logger;
