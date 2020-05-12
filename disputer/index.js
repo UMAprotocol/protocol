@@ -59,7 +59,9 @@ async function run(price, address, shouldPoll, pollingDelay) {
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw new Error("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
+      throw new Error(
+        "Bad input arg! Specify an `EMP_ADDRESS ` for the location of the expiring Multi Party within your enviroment variables."
+      );
     }
     // TODO: Remove this price flag once we have built the pricefeed module.
     if (!process.env.PRICE) {
