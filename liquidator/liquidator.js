@@ -33,12 +33,13 @@ class Liquidator {
     const { toBN, toWei } = this.web3.utils;
     const defaultConfig = {
       crThreshold: {
-        // `crThreshold`: Expressed as a percentage. If a position's CR is below the
-        // minimum CR allowed times `crThreshold`, then the bot will liquidate the position.
-        // This acts as a defensive buffer against sharp price movements delays in transactions getting mined.
-        value: toWei("0.98"),
+        // `crThreshold`: If collateral falls more than `crThreshold` % below the min collateral requirement,
+        // then it will be liquidated. For example: If the minimum collateralization ratio is 120% and the TRV is 100,
+        // then the minimum collateral requirement is 120. However, if `crThreshold = 0.02`, then the minimum
+        // collateral requirement is 120 * (1-0.02) = 117.6, or 2% below 120.
+        value: toWei("0.02"),
         isValid: x => {
-          return toBN(x).gt("0");
+          return toBN(x).lt(toBN(toWei("1"))) && toBN(x).gte(toBN("0"));
         }
       }
     };
@@ -74,8 +75,8 @@ class Liquidator {
 
     // The `priceFeed` is a Number that is used to determine if a position is liquidatable. The higher the
     // `priceFeed` value, the more collateral that the position is required to have to be correctly collateralized.
-    // Therefore, we add a buffer by deriving a `scaledPriceFeed` from (`crThreshold` * `priceFeed`)
-    const scaledPriceFeed = fromWei(toBN(priceFeed).mul(toBN(this.crThreshold)));
+    // Therefore, we add a buffer by deriving a `scaledPriceFeed` from (`1 - crThreshold` * `priceFeed`)
+    const scaledPriceFeed = fromWei(toBN(priceFeed).mul(toBN(toWei("1")).sub(toBN(this.crThreshold))));
     this.logger.debug({
       at: "Liquidator",
       message: "Scaling down collateral threshold for liquidations",

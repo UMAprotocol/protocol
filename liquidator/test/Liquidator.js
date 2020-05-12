@@ -115,7 +115,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Create a new instance of the liquidator to test
     liquidatorConfig = {
-      crThreshold: toWei("1.0")
+      crThreshold: toWei("0")
     };
     liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
   });
@@ -346,23 +346,37 @@ contract("Liquidator.js", function(accounts) {
   });
 
   describe("Overrides the default liquidator configuration settings", function() {
-    it("Cannot set `crThreshold` to 0", async function() {
+    it("Cannot set `crThreshold` >= 1", async function() {
       let errorThrown;
       try {
         liquidatorConfig = {
-          crThreshold: toWei("0")
+          crThreshold: toWei("1")
         };
         new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
       }
-      assert.isFalse(errorThrown);
+      assert.isTrue(errorThrown);
     });
 
-    it("Sets `crThreshold` to 98%", async function() {
+    it("Cannot set `crThreshold` < 0", async function() {
+      let errorThrown;
+      try {
+        liquidatorConfig = {
+          crThreshold: "0"
+        };
+        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isTrue(errorThrown);
+    });
+
+    it("Sets `crThreshold` to 2%", async function() {
       liquidatorConfig = {
-        crThreshold: toWei("0.98")
+        crThreshold: toWei("0.02")
       };
       liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
 
@@ -377,7 +391,7 @@ contract("Liquidator.js", function(accounts) {
 
       // Next, assume that the price feed has moved such that both sponsors are technically undercollateralized.
       // However, the price threshold provides just enough buffer for sponsor2 to avoid liquidation.
-      // Numerically: (tokens_outstanding * price * coltReq * crThreshold > debt)
+      // Numerically: (tokens_outstanding * price * coltReq * (1-crThreshold) > debt)
       // must hold for correctly collateralized positions. If the price feed is 1 USD, then
       // there must be more than (100 * 1 * 1.2 * 0.98 = 117.6) collateral in the position.
       // Note that without the price threshold, the minimum collateral would be (100 * 1 * 1.2 = 120), which
