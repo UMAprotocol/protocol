@@ -1,4 +1,4 @@
-const argv = require("minimist")(process.argv.slice(), { string: ["address"], integer: ["price"] });
+require("dotenv").config();
 const { toWei } = web3.utils;
 
 // Helpers.
@@ -28,12 +28,13 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {String} address Contract address of the EMP.
  * @return None or throws an Error.
  */
-async function run(price, address, shouldPoll) {
+async function run(price, address, shouldPoll, botMonitorObject, walletMonitorObject, pollingDelay) {
   Logger.info({
     at: "Monitor#index",
     message: "Monitor started 🕵️‍♂️",
     empAddress: address,
-    currentPrice: price
+    currentPrice: price,
+    pollingDelay: pollingDelay
   });
 
   // Setup web3 accounts an contract instance
@@ -57,31 +58,10 @@ async function run(price, address, shouldPoll) {
     10
   );
 
-  // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
-  // TODO: refactor this to pull state from env variables
-  const botMonitorObject = [
-    {
-      name: "UMA liquidator Bot",
-      address: "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
-      collateralThreshold: toWei("10"),
-      syntheticThreshold: toWei("10"),
-      etherThreshold: toWei("10")
-    }
-  ];
-
   const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
-  // 3. Collateralization Ratio monitor
-  // TODO: refactor this to dependency injection the logger like with the other monitors
-  const empClient = new ExpiringMultiPartyClient(ExpiringMultiParty.abi, web3, emp.address, 10);
 
-  // Wallet objects to monitor. For each wallet spesify a name,
-  const walletMonitorObject = [
-    {
-      name: "Monitored sponsor wallet",
-      address: accounts[2],
-      crAlert: 150
-    }
-  ];
+  // 3. Collateralization Ratio monitor.
+  const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
 
   const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject);
 
@@ -101,25 +81,22 @@ async function run(price, address, shouldPoll) {
       // 2.a Update the client
       await tokenBalanceClient.update();
       // 2.b Check for monitored bot balance changes
-      balanceMonitor.checkBotBalances();
-      // 2.c Check for wallet threshold changes
-      balanceMonitor.checkWalletCrRatio();
+      await balanceMonitor.checkBotBalances();
 
-      // 3.  Position Collateralization Ratio monitor
-      // 1.a Update the client
+      // 3.  Position Collateralization Ratio monitor.
+      // 3.a Update the client
       await empClient.update();
-      // 1.b Check for positions below their CR
-      crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
-
-      console.log("After the point");
+      // 3.b Check for positions below their CR
+      await crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
     } catch (error) {
+      console.log("ERROR", error);
       Logger.error({
         at: "Monitors#index",
         message: "Monitor polling error🚨",
-        error: error
+        error: error.toString()
       });
     }
-    await delay(Number(10_000));
+    await delay(Number(pollingDelay));
 
     if (!shouldPoll) {
       break;
@@ -129,15 +106,29 @@ async function run(price, address, shouldPoll) {
 
 const Poll = async function(callback) {
   try {
-    if (!argv.address) {
-      throw new Error("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
+    if (!process.env.EMP_ADDRESS) {
+      throw new Error(
+        "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party."
+      );
     }
     // TODO: Remove this price flag once we have built the pricefeed module.
-    if (!argv.price) {
+    if (!process.env.PRICE) {
       throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
     }
 
-    await run(argv.price, argv.address, true);
+    if (!process.env.BOT_MONITOR_OBJECT || !process.env.WALLET_MONITOR_OBJECT) {
+      throw new Error("Bad input arg! Specify a bot monitor and wallet monitor object to track.");
+    }
+
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
+
+    // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
+    const botMonitorObject = JSON.parse(process.env.BOT_MONITOR_OBJECT);
+
+    // Wallet objects to monitor.
+    const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
+
+    await run(process.env.PRICE, process.env.EMP_ADDRESS, true, botMonitorObject, walletMonitorObject, pollingDelay);
   } catch (err) {
     callback(err);
   }

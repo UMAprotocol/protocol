@@ -19,6 +19,7 @@ antora.yml
 # GAE deployment files and directories for GAE deployments.
 app.yaml
 .gae_deploy
+*-env.txt
 
 # environment-specific values pulled by dotenv package
 .env

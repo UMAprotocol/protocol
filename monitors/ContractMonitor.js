@@ -47,7 +47,7 @@ class ContractMonitor {
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
   checkForNewLiquidations = async priceFunction => {
-    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const contractTime = this.empEventClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
 
     this.logger.debug({
@@ -98,7 +98,7 @@ class ContractMonitor {
   };
 
   checkForNewDisputeEvents = async priceFunction => {
-    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const contractTime = this.empEventClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
 
     this.logger.debug({
@@ -140,7 +140,7 @@ class ContractMonitor {
   };
 
   checkForNewDisputeSettlementEvents = async priceFunction => {
-    const contractTime = await this.empContract.methods.getCurrentTime().call();
+    const contractTime = this.empEventClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
 
     this.logger.debug({
