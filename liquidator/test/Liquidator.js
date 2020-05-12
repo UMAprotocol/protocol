@@ -364,7 +364,7 @@ contract("Liquidator.js", function(accounts) {
       let errorThrown;
       try {
         liquidatorConfig = {
-          crThreshold: "0"
+          crThreshold: toWei("-0.02")
         };
         new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
         errorThrown = false;
