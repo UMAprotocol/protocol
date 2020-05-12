@@ -115,7 +115,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Create a new instance of the liquidator to test
     liquidatorConfig = {
-      priceThreshold: toWei("1.0")
+      crThreshold: toWei("1.0")
     };
     liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
   });
@@ -346,9 +346,9 @@ contract("Liquidator.js", function(accounts) {
   });
 
   describe("Overrides the default liquidator configuration settings", function() {
-    it("Sets `priceThreshold` to 98%", async function() {
+    it("Sets `crThreshold` to 98%", async function() {
       liquidatorConfig = {
-        priceThreshold: toWei("0.98")
+        crThreshold: toWei("0.98")
       };
       liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
 
@@ -363,9 +363,9 @@ contract("Liquidator.js", function(accounts) {
 
       // Next, assume that the price feed has moved such that both sponsors are technically undercollateralized.
       // However, the price threshold provides just enough buffer for sponsor2 to avoid liquidation.
-      // Numerically: (tokens_outstanding * price * coltReq * (1 - priceThreshold) > debt)
+      // Numerically: (tokens_outstanding * price * coltReq * crThreshold > debt)
       // must hold for correctly collateralized positions. If the price feed is 1 USD, then
-      // there must be more than (100 * 1 * 1.2 * (1 - 0.02) = 117.6) collateral in the position.
+      // there must be more than (100 * 1 * 1.2 * 0.98 = 117.6) collateral in the position.
       // Note that without the price threshold, the minimum collateral would be (100 * 1 * 1.2 = 120), which
       // would make both sponsors undercollateralized. Because of the price threshold setting, the bot should only
       // liquidate sponsor1.

@@ -19,9 +19,9 @@ class Liquidator {
     // Set default config settings. Caller can override these settings by passing in new
     // values via the `config` input object.
     const defaultConfig = {
-      priceThreshold: this.web3.utils.toWei("0.98")
-      // `priceThreshold`: Expressed as a percentage. If a position's CR is below the
-      // minimum CR allowed times `priceThreshold`, then the bot will liquidate the position.
+      crThreshold: this.web3.utils.toWei("0.98")
+      // `crThreshold`: Expressed as a percentage. If a position's CR is below the
+      // minimum CR allowed times `crThreshold`, then the bot will liquidate the position.
       // This acts as a defensive buffer against sharp price movements delays in transactions getting mined.
     };
     Object.keys(defaultConfig).forEach(field => {
@@ -47,8 +47,8 @@ class Liquidator {
 
     // The `priceFeed` is a Number that is used to determine if a position is liquidatable. The higher the
     // `priceFeed` value, the more collateral that the position is required to have to be correctly collateralized.
-    // Therefore, we add a buffer by reducing `priceFeed` to ((1 - `priceThreshold`) * `priceFeed`).
-    priceFeed = fromWei(toBN(priceFeed).mul(toBN(this.priceThreshold)));
+    // Therefore, we add a buffer by reducing `priceFeed` to (`crThreshold` * `priceFeed`).
+    priceFeed = fromWei(toBN(priceFeed).mul(toBN(this.crThreshold)));
 
     this.logger.debug({
       at: "Liquidator",
