@@ -1,4 +1,4 @@
-const argv = require("minimist")(process.argv.slice(), { string: ["address", "price"] });
+require("dotenv").config();
 const { toWei } = web3.utils;
 
 // Helpers
@@ -19,12 +19,13 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
  * @param {String} address Contract address of the EMP.
  * @return None or throws an Error.
  */
-async function run(price, address, shouldPoll) {
+async function run(price, address, shouldPoll, pollingDelay) {
   Logger.info({
     at: "Disputer#index",
     message: "Disputer started🔎",
-    empAddress: argv.address,
-    currentPrice: argv.price
+    empAddress: address,
+    currentPrice: price,
+    pollingDelay: pollingDelay
   });
 
   // Setup web3 accounts an contract instance
@@ -47,7 +48,7 @@ async function run(price, address, shouldPoll) {
         error: error
       });
     }
-    await delay(Number(10_000));
+    await delay(Number(pollingDelay));
 
     if (!shouldPoll) {
       break;
@@ -57,15 +58,19 @@ async function run(price, address, shouldPoll) {
 
 const Poll = async function(callback) {
   try {
-    if (!argv.address) {
-      throw new Error("Bad input arg! Specify an `address` for the location of the expiring Multi Party.");
+    if (!process.env.EMP_ADDRESS) {
+      throw new Error(
+        "Bad input arg! Specify an `EMP_ADDRESS ` for the location of the expiring Multi Party within your enviroment variables."
+      );
     }
     // TODO: Remove this price flag once we have built the pricefeed module.
-    if (!argv.price) {
+    if (!process.env.PRICE) {
       throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
     }
 
-    await run(argv.price, argv.address, true);
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
+
+    await run(process.env.PRICE, process.env.EMP_ADDRESS, true, pollingDelay);
   } catch (err) {
     console.error(err);
     callback(err);
