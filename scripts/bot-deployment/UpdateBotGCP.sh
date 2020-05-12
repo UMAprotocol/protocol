@@ -10,7 +10,7 @@ fi
 echo "Updating" $1
 echo "Using ENV file:" $2
 gcloud compute instances update-container $1 \
-    --container-image docker.io/chrismaree/monitorbot:v0.0.4 \
+    --container-image docker.io/umaprotocol/voting:latest \
     --container-env-file $2 \
     --zone us-central1-a \
     --container-restart-policy on-failure \
