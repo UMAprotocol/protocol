@@ -183,6 +183,39 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor3))[0].disputer, disputeBot);
   });
 
+  it("Detect disputable withdraws and send dipsutes", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // The liquidator creates a position to have synthetic tokens.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+    // The sponsor1 submits a valid withdrawal request of withdrawing exactly 5e18 collateral. This places their
+    // position at collateral of 120 and debt of 100. At a price of 1 unit per token they are exactly collateralized.
+
+    await emp.requestWithdrawal({ rawValue: toWei("5") }, { from: sponsor1 });
+
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("1.75") }, // Price high enough to initiate the liquidation
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
+
+    // With a price of 1 usd per token this withdrawal was actually valid, even though it's very close to liquidation.
+    // This makes all sponsors undercollateralized, meaning no disputes are issued.
+    await disputer.queryAndDispute(time => toWei("1.00"));
+    assert.equal(spy.callCount, 1); // 1 info level logs should be sent at the conclusion of the disputes.
+
+    // Sponsor1 be disputed.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+
+    // The disputeBot should be the disputer in sponsor1  liquidations.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+  });
+
   it("Withdraw from successful disputes", async function() {
     // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
