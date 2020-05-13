@@ -113,7 +113,7 @@ contract("Liquidator.js", function(accounts) {
 
     // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
     empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
-    const getTime = () => empClient.getLastUpdateTime();
+    const getTime = () => emp.getCurrentTime();
     gasEstimator = new GasEstimator(spyLogger, getTime);
 
     // Create a new instance of the price feed mock.

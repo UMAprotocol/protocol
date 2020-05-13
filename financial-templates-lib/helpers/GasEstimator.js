@@ -6,12 +6,12 @@ const url = "https://ethgasstation.info/json/ethgasAPI.json";
 
 // If no updateThreshold is specified then default to updating every 60 seconds.
 class GasEstimator {
-  constructor(logger, getTime, updateThreshold = 60, defaultFastPriceGwei = 40) {
+  constructor(logger, asyncGetTime, updateThreshold = 60, defaultFastPriceGwei = 40) {
     this.logger = logger;
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
     this.lastFastPriceGwei;
-    this.getTime = getTime;
+    this.asyncGetTime = asyncGetTime;
 
     // If the script fails or the API response fails default to this value
     this.defaultFastPriceGwei = defaultFastPriceGwei;
@@ -20,7 +20,7 @@ class GasEstimator {
 
   // Calls update unless it was recently called, as determined by this.updateThreshold.
   update = async () => {
-    const currentTime = this.getTime();
+    const currentTime = await this.asyncGetTime();
     if (currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
       this.logger.debug({
         at: "GasEstimator",

@@ -115,7 +115,7 @@ contract("Disputer.js", function(accounts) {
 
     // Create a new instance of the ExpiringMultiPartyClient & GasEstimator to construct the disputer
     empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
-    const getTime = () => empClient.getLastUpdateTime();
+    const getTime = () => emp.getCurrentTime();
     gasEstimator = new GasEstimator(spyLogger, getTime);
 
     // Create a new instance of the disputer to test

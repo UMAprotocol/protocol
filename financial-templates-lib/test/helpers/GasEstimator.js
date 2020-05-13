@@ -8,7 +8,7 @@ const { GasEstimator } = require("../../helpers/GasEstimator");
 contract("GasEstimator.js", function() {
   let gasEstimator;
 
-  const getTime = () => Math.floor(Date.now() / 1000);
+  const getTime = () => new Promise(resolve => resolve(Math.floor(Date.now() / 1000)));
 
   describe("Construction with default config", () => {
     beforeEach(() => {
