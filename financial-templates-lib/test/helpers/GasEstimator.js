@@ -8,13 +8,15 @@ const { GasEstimator } = require("../../helpers/GasEstimator");
 contract("GasEstimator.js", function() {
   let gasEstimator;
 
+  const getTime = () => Math.floor(Date.now() / 1000);
+
   describe("Construction with default config", () => {
     beforeEach(() => {
       const dummyLogger = winston.createLogger({
         level: "info",
         transports: [new winston.transports.Console()]
       });
-      gasEstimator = new GasEstimator(dummyLogger);
+      gasEstimator = new GasEstimator(dummyLogger, getTime);
     });
 
     it("Default parameters are set correctly", () => {
@@ -47,7 +49,7 @@ contract("GasEstimator.js", function() {
         level: "info",
         transports: [new winston.transports.Console()]
       });
-      gasEstimator = new GasEstimator(dummyLogger, (updateThreshold = 2), (defaultFastPriceGwei = 10));
+      gasEstimator = new GasEstimator(dummyLogger, getTime, (updateThreshold = 2), (defaultFastPriceGwei = 10));
     });
 
     it("Default parameters are set correctly", () => {

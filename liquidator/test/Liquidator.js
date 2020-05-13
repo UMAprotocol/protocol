@@ -111,7 +111,8 @@ contract("Liquidator.js", function(accounts) {
 
     // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
     empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
-    gasEstimator = new GasEstimator(spyLogger);
+    const getTime = () => empClient.getLastUpdateTime();
+    gasEstimator = new GasEstimator(spyLogger, getTime);
 
     // Create a new instance of the liquidator to test
     liquidatorConfig = {
