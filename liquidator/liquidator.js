@@ -38,6 +38,29 @@ class Liquidator {
         isValid: x => {
           return toBN(x).lt(toBN(toWei("1"))) && toBN(x).gte(toBN("0"));
         }
+      },
+      liquidationDeadline: {
+        // `liquidationDeadline`: Aborts the liquidation if the transaction is mined this amount of time after the
+        // EMP client's last update time. Denominated in seconds, so 300 = 5 minutes.
+        value: 300,
+        isValid: x => {
+          return x >= 0;
+        }
+      },
+      liquidationMinPrice: {
+        // `liquidationMinPrice`: Aborts the liquidation if the amount of collateral in the position per token
+        // outstanding is below this ratio.
+        value: toWei("0"),
+        isValid: x => {
+          return toBN(x).gte(toBN("0"));
+        }
+      },
+      txnGasLimit: {
+        // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
+        value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
+        isValid: x => {
+          return x >= 6000000 && x < 15000000;
+        }
       }
     };
 
@@ -103,14 +126,13 @@ class Liquidator {
     for (const position of underCollateralizedPositions) {
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
-      const fiveMinutes = 300;
       // Create the transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
-        { rawValue: "0" },
+        { rawValue: this.liquidationMinPrice },
         { rawValue: toWei(scaledPriceFeed) },
         { rawValue: position.numTokens },
-        parseInt(currentBlockTime) + fiveMinutes
+        parseInt(currentBlockTime) + this.liquidationDeadline
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
@@ -130,7 +152,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -224,7 +246,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
