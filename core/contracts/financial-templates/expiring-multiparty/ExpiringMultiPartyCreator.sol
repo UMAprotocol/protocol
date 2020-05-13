@@ -68,6 +68,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _collateralTokenWhitelist UMA protocol contract to track whitelisted collateral.
      * @param _tokenFactoryAddress ERC20 token factory used to deploy synthetic token instances.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
      */
     constructor(
         address _finderAddress,

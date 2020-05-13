@@ -126,11 +126,11 @@ class ExpiringMultiPartyClient {
             acc.concat([
               {
                 sponsor: address,
-                requestPassTimestamp: positions[i].requestPassTimestamp,
+                withdrawalRequestPassTimestamp: positions[i].withdrawalRequestPassTimestamp,
                 withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
                 numTokens: positions[i].tokensOutstanding.toString(),
                 amountCollateral: collateral[i].toString(),
-                hasPendingWithdrawal: positions[i].requestPassTimestamp > 0
+                hasPendingWithdrawal: positions[i].withdrawalRequestPassTimestamp > 0
               }
             ]),
       []
