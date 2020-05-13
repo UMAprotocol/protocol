@@ -76,7 +76,7 @@ class Liquidator {
     if (!price) {
       this.logger.warn({
         at: "Liquidator",
-        message: "Price feed returned invalid value",
+        message: "Cannot liquidate: price feed returned invalid value",
         price
       });
       return;
