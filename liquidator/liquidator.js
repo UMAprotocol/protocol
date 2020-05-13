@@ -89,14 +89,15 @@ class Liquidator {
     this.logger.debug({
       at: "Liquidator",
       message: "Scaling down collateral threshold for liquidations",
-      scaledPrice: scaledPrice,
+      inputPrice: price.toString(),
+      scaledPrice: scaledPrice.toString(),
       crThreshold: this.crThreshold
     });
 
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
-      inputPrice: price.toString()
+      scaledPrice: scaledPrice.toString()
     });
 
     await this.update();
