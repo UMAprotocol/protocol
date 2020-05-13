@@ -13,7 +13,7 @@ const {
 } = require("../../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
 
 // Price feed mock
-const { PriceFeedMock } = require("../../financial-templates-lib/test/PriceFeedMock");
+const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
