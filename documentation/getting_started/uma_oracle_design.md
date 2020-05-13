@@ -67,13 +67,10 @@ Owners of the UMA token have the following rights and responsibilities:
 - Upgrade core DVM protocol
 - Modify DVM parameters
 
-To vote on price requests, voters will be able to use [vote.umaproject.org](vote.umaproject.org) or a CLI tool that will be made public shortly.
+To vote on price requests, voters will be able to use [vote.umaproject.org](https://vote.umaproject.org/) or a [CLI tool](../oracle/tutorials/voting_with_uma_tokens.md).
 
 All responsibilities relating to governance of the UMA ecosystem (any responsibility outside of voting on price requests) will be effected via the UMIP (UMA Improvement Proposal) process.
 To read more about UMIPs, please look at this [repo](https://github.com/UMAprotocol/UMIPs).
-
-The UMA project token will be listed on Uniswap at approximately 15:00 UTC on Wednesday, April 29th.
-See this [blog post](https://medium.com/uma-project/umas-initial-uniswap-listing-afa7b6f6a330) for additional information.
 
 ## Additional Resources
 
