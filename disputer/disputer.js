@@ -35,6 +35,13 @@ class Disputer {
         isValid: x => {
           return x >= 0;
         }
+      },
+      txnGasLimit: {
+        // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
+        value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
+        isValid: x => {
+          return x >= 6000000 && x < 15000000;
+        }
       }
     };
 
@@ -105,7 +112,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -152,6 +159,8 @@ class Disputer {
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   queryAndWithdrawRewards = async () => {
+    const { fromWei } = this.web3.utils;
+
     this.logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
@@ -192,14 +201,14 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig
       });
 
@@ -226,7 +235,7 @@ class Disputer {
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig,
         liquidationResult: logResult
       });
