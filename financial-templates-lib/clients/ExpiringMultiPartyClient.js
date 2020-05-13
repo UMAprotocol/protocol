@@ -31,7 +31,12 @@ class ExpiringMultiPartyClient {
   // according to the provided `tokenRedemptionValue`.
   getUnderCollateralizedPositions = tokenRedemptionValue => {
     return this.positions.filter(position =>
-      this._isUnderCollateralized(position.numTokens, position.amountCollateral, tokenRedemptionValue)
+      this._isUnderCollateralized(
+        position.numTokens,
+        position.amountCollateral,
+        position.withdrawalRequestAmount,
+        tokenRedemptionValue
+      )
     );
   };
 
@@ -51,7 +56,7 @@ class ExpiringMultiPartyClient {
   // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
   // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
   isDisputable = (liquidation, tokenRedemptionValue) => {
-    return !this._isUnderCollateralized(liquidation.numTokens, liquidation.amountCollateral, tokenRedemptionValue);
+    return !this._isUnderCollateralized(liquidation.numTokens, liquidation.amountCollateral, "0", tokenRedemptionValue);
   };
 
   // Returns an array of sponsor addresses.
@@ -142,17 +147,18 @@ class ExpiringMultiPartyClient {
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
   };
-  _isUnderCollateralized = (numTokens, amountCollateral, trv) => {
+  _isUnderCollateralized = (numTokens, amountCollateral, withdrawalRequest, trv) => {
     const { toBN, toWei } = this.web3.utils;
     const fixedPointAdjustment = toBN(toWei("1"));
     // The formula for an undercollateralized position is:
-    // (numTokens * trv) * collateralRequirement > amountCollateral.
+    // (numTokens * trv) * collateralRequirement > collateralNetWithdrawal.
     // Need to adjust by 10**18 twice because each value is represented as a fixed point scaled up by 10**18.
+    const collateralNetWithdrawal = toBN(amountCollateral).sub(toBN(withdrawalRequest));
     return toBN(numTokens)
       .mul(toBN(trv))
       .mul(this.collateralRequirement)
       .gt(
-        toBN(amountCollateral)
+        toBN(collateralNetWithdrawal)
           .mul(fixedPointAdjustment)
           .mul(fixedPointAdjustment)
       );
