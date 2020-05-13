@@ -58,6 +58,8 @@ class Liquidator {
         isValid: x => {
           return toBN(x).gte(toBN("0"));
         }
+        // TODO: We should specify as a percentage of the token price so that no valid
+        // liquidation would ever lose money.
       },
       txnGasLimit: {
         // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
