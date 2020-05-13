@@ -28,16 +28,18 @@ class ExpiringMultiPartyClient {
   getAllPositions = () => this.positions;
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each position that is undercollateralized
-  // according to the provided `tokenRedemptionValue`.
+  // according to the provided `tokenRedemptionValue`. Note that the `amountCollateral` fed into `_isUnderCollateralized`
+  // is taken as the positions `amountCollateral` minus any `withdrawalRequestAmount`. As a result this function will return
+  // positions that are undercollateralized due to too little collateral or a withdrawal that, if passed, would make the
+  // position undercollateralized. As a result no down stream logic needs to consider withdrawals.
   getUnderCollateralizedPositions = tokenRedemptionValue => {
-    return this.positions.filter(position =>
-      this._isUnderCollateralized(
-        position.numTokens,
-        position.amountCollateral,
-        position.withdrawalRequestAmount,
-        tokenRedemptionValue
-      )
-    );
+    return this.positions.filter(position => {
+      const collateralNetWithdrawal = this.web3.utils
+        .toBN(position.amountCollateral)
+        .sub(this.web3.utils.toBN(position.withdrawalRequestAmount))
+        .toString();
+      return this._isUnderCollateralized(position.numTokens, collateralNetWithdrawal, tokenRedemptionValue);
+    });
   };
 
   // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
@@ -56,7 +58,7 @@ class ExpiringMultiPartyClient {
   // Whether the given undisputed `liquidation` (`getUndisputedLiquidations` returns an array of `liquidation`s) is disputable.
   // `tokenRedemptionValue` should be the redemption value at `liquidation.time`.
   isDisputable = (liquidation, tokenRedemptionValue) => {
-    return !this._isUnderCollateralized(liquidation.numTokens, liquidation.amountCollateral, "0", tokenRedemptionValue);
+    return !this._isUnderCollateralized(liquidation.numTokens, liquidation.amountCollateral, tokenRedemptionValue);
   };
 
   // Returns an array of sponsor addresses.
@@ -147,18 +149,17 @@ class ExpiringMultiPartyClient {
       lastUpdateTimestamp: this.lastUpdateTimestamp
     });
   };
-  _isUnderCollateralized = (numTokens, amountCollateral, withdrawalRequest, trv) => {
+  _isUnderCollateralized = (numTokens, amountCollateral, trv) => {
     const { toBN, toWei } = this.web3.utils;
     const fixedPointAdjustment = toBN(toWei("1"));
     // The formula for an undercollateralized position is:
-    // (numTokens * trv) * collateralRequirement > collateralNetWithdrawal.
+    // (numTokens * trv) * collateralRequirement > amountCollateral.
     // Need to adjust by 10**18 twice because each value is represented as a fixed point scaled up by 10**18.
-    const collateralNetWithdrawal = toBN(amountCollateral).sub(toBN(withdrawalRequest));
     return toBN(numTokens)
       .mul(toBN(trv))
       .mul(this.collateralRequirement)
       .gt(
-        toBN(collateralNetWithdrawal)
+        toBN(amountCollateral)
           .mul(fixedPointAdjustment)
           .mul(fixedPointAdjustment)
       );

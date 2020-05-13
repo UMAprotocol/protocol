@@ -221,7 +221,6 @@ contract("Liquidator.js", function(accounts) {
     // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
     // amount of collateral minus the collateral withdrawn. 125 - 10 = 115
     let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
-    console.log("liquidationObject", liquidationObject);
     assert.equal(liquidationObject.sponsor, sponsor1);
     assert.equal(liquidationObject.liquidator, liquidatorBot);
     assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
@@ -236,7 +235,7 @@ contract("Liquidator.js", function(accounts) {
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
-    assert.equal(spy.callCount, 2); // 1 info level events should be sent at the conclusion of the withdrawal.
+    assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. total 2.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral.
     const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -275,7 +274,7 @@ contract("Liquidator.js", function(accounts) {
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
-    assert.equal(spy.callCount, 2); // 1 info level events should be sent at the conclusion of the withdrawal.
+    assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. Total 2.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral.
     const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
