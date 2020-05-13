@@ -209,13 +209,14 @@ contract("Disputer.js", function(accounts) {
     await disputer.queryAndDispute(time => toWei("1.00"));
     assert.equal(spy.callCount, 1); // 1 info level logs should be sent at the conclusion of the disputes.
 
-    // Sponsor1 be disputed.
+    // Sponsor1 should be disputed.
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
 
     // The disputeBot should be the disputer in sponsor1  liquidations.
     assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
 
-    // Push a price of 1, which should cause sponsor1's dispute to fail.
+    // Push a price of 1, which should cause sponsor1's dispute to succeed as the position is correctly collateralized
+    // at a price of 1.
     const liquidationTime = await emp.getCurrentTime();
     await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, toWei("1"));
 
