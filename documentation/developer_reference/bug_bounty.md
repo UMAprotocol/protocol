@@ -11,6 +11,9 @@ The bug bounty program is intended to recognize the value of working with the co
 The contracts in [the common directory](https://github.com/UMAprotocol/protocol/tree/9d403ddb5f2f07194daefe7da51e0e0a6306f2c4/core/contracts/common) and [the oracle directory](https://github.com/UMAprotocol/protocol/tree/9d403ddb5f2f07194daefe7da51e0e0a6306f2c4/core/contracts/oracle) of the `/protocol` repo have been carefully audited by OpenZeppelin.
 The audit report can be found [here](https://blog.openzeppelin.com/uma-audit-phase-1/).
 
+The contracts in [the financial-templates directory](https://github.com/UMAprotocol/protocol/tree/e6eaa48124ae3f209fb117cf05eb18292cf26d21/core/contracts/financial-templates/implementation) have been audited by OpenZeppelin.
+The audit report can be found [here](https://blog.openzeppelin.com/uma-audit-phase-2/).
+
 ## Rewards
 
 UMA offers substantial rewards for discoveries that can prevent the loss of assets, the freezing of assets, or harm to users.
@@ -30,8 +33,7 @@ Our [documentation site](https://docs.umaproject.org/uma/index.html) has an exte
 ### In scope:
 
 - DVM contracts [link](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/oracle/implementation)
-
-<!-- TODO: ADD WHEN READY - Multi-sponsor token contracts [link](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/financial-templates/implementation) -->
+- Multi-sponsor token contracts [link](https://github.com/UMAprotocol/protocol/tree/master/core/contracts/financial-templates)
 
 ### Examples of what’s in scope:
 
