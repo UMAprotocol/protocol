@@ -45,11 +45,6 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
   const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
   if (!priceFeed) {
-    Logger.error({
-      at: "liquidator#index",
-      message: "Price feed config is invalid",
-      priceFeedConfig
-    });
     throw "Price feed config is invalid";
   }
 
