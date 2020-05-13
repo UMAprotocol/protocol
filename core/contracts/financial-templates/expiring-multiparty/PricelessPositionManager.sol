@@ -41,8 +41,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // This struct acts as bookkeeping for how much of that collateral is allocated to each sponsor.
     struct PositionData {
         FixedPoint.Unsigned tokensOutstanding;
-        // Tracks pending withdrawal requests. A withdrawal request is pending if `requestPassTimestamp != 0`.
-        uint256 requestPassTimestamp;
+        // Tracks pending withdrawal requests. A withdrawal request is pending if `withdrawalRequestPassTimestamp != 0`.
+        uint256 withdrawalRequestPassTimestamp;
         FixedPoint.Unsigned withdrawalRequestAmount;
         // Raw collateral value. This value should never be accessed directly -- always use _getFeeAdjustedCollateral().
         // To add or remove collateral, use _addCollateral() and _removeCollateral().
@@ -332,7 +332,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(requestPassTime < expirationTimestamp, "Request expires post-expiry");
 
         // Update the position object for the user.
-        positionData.requestPassTimestamp = requestPassTime;
+        positionData.withdrawalRequestPassTimestamp = requestPassTime;
         positionData.withdrawalRequestAmount = collateralAmount;
 
         emit RequestWithdrawal(msg.sender, collateralAmount.rawValue);
@@ -354,7 +354,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     {
         PositionData storage positionData = _getPositionData(msg.sender);
         require(
-            positionData.requestPassTimestamp != 0 && positionData.requestPassTimestamp <= getCurrentTime(),
+            positionData.withdrawalRequestPassTimestamp != 0 &&
+                positionData.withdrawalRequestPassTimestamp <= getCurrentTime(),
             "Invalid withdraw request"
         );
 
@@ -382,7 +383,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      */
     function cancelWithdrawal() external onlyPreExpiration() nonReentrant() {
         PositionData storage positionData = _getPositionData(msg.sender);
-        require(positionData.requestPassTimestamp != 0, "No pending withdrawal");
+        require(positionData.withdrawalRequestPassTimestamp != 0, "No pending withdrawal");
 
         emit RequestWithdrawalCanceled(msg.sender, positionData.withdrawalRequestAmount.rawValue);
 
@@ -407,7 +408,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         require(_checkCollateralization(collateralAmount, numTokens), "CR below GCR");
 
         PositionData storage positionData = positions[msg.sender];
-        require(positionData.requestPassTimestamp == 0, "Pending withdrawal");
+        require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
         if (positionData.tokensOutstanding.isEqual(0)) {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
             emit NewSponsor(msg.sender);
@@ -724,7 +725,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // Reset withdrawal request by setting the withdrawal request and withdrawal timestamp to 0.
     function _resetWithdrawalRequest(PositionData storage positionData) internal {
         positionData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
-        positionData.requestPassTimestamp = 0;
+        positionData.withdrawalRequestPassTimestamp = 0;
     }
 
     // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
@@ -786,7 +787,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
     // `create` method because it is possible that `create` is called on a new position (i.e. one without any collateral
     // or tokens outstanding) which would fail the `onlyCollateralizedPosition` modifier on `_getPositionData`.
     function _positionHasNoPendingWithdrawal(address sponsor) internal view {
-        require(_getPositionData(sponsor).requestPassTimestamp == 0, "Pending withdrawal");
+        require(_getPositionData(sponsor).withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
     }
 
     /****************************************

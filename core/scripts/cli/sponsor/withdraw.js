@@ -57,7 +57,7 @@ const withdraw = async (web3, artifacts, emp) => {
   };
 
   // First check if user has a withdrawal request pending.
-  const withdrawalRequestPassedTimestamp = position.requestPassTimestamp;
+  const withdrawalRequestPassedTimestamp = position.withdrawalRequestPassTimestamp;
   if (withdrawalRequestPassedTimestamp.toString() !== "0") {
     const withdrawRequestAmount = position.withdrawalRequestAmount.toString();
     const currentTime = await emp.getCurrentTime();
