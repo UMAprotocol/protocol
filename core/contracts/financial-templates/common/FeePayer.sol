@@ -150,7 +150,7 @@ abstract contract FeePayer is Testable, Lockable {
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
      * @dev This is equivalent to the collateral pool available from which to pay fees. Therefore, derived contracts are
      * expected to implement this so that pay-fee methods can correctly compute the owed fees as a % of PfC.
-     * @return pfc value for equal to the current profic from corrution denominated in collateral currency.
+     * @return pfc value for equal to the current profit from corrution denominated in collateral currency.
      */
     function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         return _pfc();
