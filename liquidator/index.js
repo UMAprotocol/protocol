@@ -39,17 +39,18 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(address);
 
-  // Client and liquidator bot
-  const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
   const getTime = () => empClient.getLastUpdateTime();
   const gasEstimator = new GasEstimator(Logger, getTime);
-  const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
 
   // Price feed.
   const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
   if (!priceFeed) {
     throw "Price feed config is invalid";
   }
+
+  // Client and liquidator bot
+  const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
+  const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
 
   while (true) {
     try {
