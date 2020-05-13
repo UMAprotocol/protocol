@@ -28,10 +28,10 @@ class ExpiringMultiPartyClient {
   getAllPositions = () => this.positions;
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each position that is undercollateralized
-  // according to the provided `tokenRedemptionValue`. Note that the `amountCollateral` fed into `_isUnderCollateralized`
-  // is taken as the positions `amountCollateral` minus any `withdrawalRequestAmount`. As a result this function will return
-  // positions that are undercollateralized due to too little collateral or a withdrawal that, if passed, would make the
-  // position undercollateralized. As a result no down stream logic needs to consider withdrawals.
+  // according to the provided `tokenRedemptionValue`. Note that the `amountCollateral` fed into
+  // `_isUnderCollateralized` is taken as the positions `amountCollateral` minus any `withdrawalRequestAmount`. As a
+  // result this function will return positions that are undercollateralized due to too little collateral or a withdrawal
+  // that, if passed, would make the position undercollateralized.
   getUnderCollateralizedPositions = tokenRedemptionValue => {
     return this.positions.filter(position => {
       const collateralNetWithdrawal = this.web3.utils
