@@ -95,6 +95,8 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async () => {
+    await this.update();
+
     const { toBN, fromWei, toWei } = this.web3.utils;
     const price = this.priceFeed.getCurrentPrice();
 
@@ -124,8 +126,6 @@ class Liquidator {
       message: "Checking for under collateralized positions",
       scaledPrice: scaledPrice.toString()
     });
-
-    await this.update();
 
     // Get the latest undercollateralized positions from the client.
     const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(scaledPrice);
