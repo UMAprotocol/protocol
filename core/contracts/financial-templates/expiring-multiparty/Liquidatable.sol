@@ -186,7 +186,9 @@ contract Liquidatable is PricelessPositionManager {
      * @param maxCollateralPerToken abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate.
      * @param deadline abort the liquidation if the transaction is mined after this timestamp.
-     * @return liquidationId of the newly created liquidation.
+     * @return liquidationId ID of the newly created liquidation.
+     * @return tokensLiquidated amount of synthetic tokens removed and liquidated from the `sponsor`'s position.
+     * @return finalFeeBond amount of collateral to be posted by liquidator and returned if not disputed successfully.
      */
     function createLiquidation(
         address sponsor,
@@ -312,6 +314,7 @@ contract Liquidatable is PricelessPositionManager {
      * bond amount is calculated from `disputeBondPct` times the collateral in the liquidation.
      * @param liquidationId of the disputed liquidation.
      * @param sponsor the address of the sponsor whose liquidation is being disputed.
+     * @return totalPaid amount of collateral charged to disputer (i.e. final fee bond + dispute bond).
      */
     function dispute(uint256 liquidationId, address sponsor)
         external

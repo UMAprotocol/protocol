@@ -99,7 +99,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("50"),
           amountCollateral: toWei("10"),
           hasPendingWithdrawal: false,
-          requestPassTimestamp: "0",
+          withdrawalRequestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         }
       ] // expected position
@@ -116,7 +116,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: false,
-          requestPassTimestamp: "0",
+          withdrawalRequestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         }
       ]
@@ -133,7 +133,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: false,
-          requestPassTimestamp: "0",
+          withdrawalRequestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         },
         {
@@ -141,7 +141,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("45"),
           amountCollateral: toWei("100"),
           hasPendingWithdrawal: false,
-          requestPassTimestamp: "0",
+          withdrawalRequestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         }
       ]
@@ -174,7 +174,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: false,
-          requestPassTimestamp: "0",
+          withdrawalRequestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         }
       ]
@@ -205,7 +205,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("100"),
           amountCollateral: toWei("20"),
           hasPendingWithdrawal: true,
-          requestPassTimestamp: (await emp.getCurrentTime()).add(await emp.withdrawalLiveness()).toString(),
+          withdrawalRequestPassTimestamp: (await emp.getCurrentTime()).add(await emp.withdrawalLiveness()).toString(),
           withdrawalRequestAmount: toWei("10")
         }
       ]
@@ -232,7 +232,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("100"),
           amountCollateral: toWei("150"),
           hasPendingWithdrawal: false,
-          requestPassTimestamp: "0",
+          withdrawalRequestPassTimestamp: "0",
           withdrawalRequestAmount: "0"
         }
       ],

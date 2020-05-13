@@ -88,8 +88,9 @@ abstract contract FeePayer is Testable, Lockable {
     /**
      * @notice Pays UMA DVM regular fees (as a % of the collateral pool) to the Store contract.
      * @dev These must be paid periodically for the life of the contract. If the contract has not paid its regular fee
-     * in a week or more then a late penalty is applied which is sent to the caller. This will revert if the amount of
-     * fees owed are greater than the pfc. An event is only fired if the fees charged are greater than 0.
+     * in a week or more then a late penalty is applied which is sent to the caller. If the amount of
+     * fees owed are greater than the pfc, then this will pay as much as possible from the available collateral.
+     * An event is only fired if the fees charged are greater than 0.
      * @return totalPaid Amount of collateral that the contract paid (sum of the amount paid to the Store and caller).
      * This returns 0 and exit early if there is no pfc, fees were already paid during the current block, or the fee rate is 0.
      */
@@ -150,7 +151,7 @@ abstract contract FeePayer is Testable, Lockable {
      * @notice Gets the current profit from corruption for this contract in terms of the collateral currency.
      * @dev This is equivalent to the collateral pool available from which to pay fees. Therefore, derived contracts are
      * expected to implement this so that pay-fee methods can correctly compute the owed fees as a % of PfC.
-     * @return pfc value for equal to the current profic from corrution denominated in collateral currency.
+     * @return pfc value for equal to the current profit from corrution denominated in collateral currency.
      */
     function pfc() public view nonReentrantView() returns (FixedPoint.Unsigned memory) {
         return _pfc();

@@ -465,7 +465,7 @@ contract("PricelessPositionManager", function(accounts) {
 
     // Check that withdrawal-request related parameters in pricelessPositionManager are reset
     const positionData = await pricelessPositionManager.positions(sponsor);
-    assert.equal(positionData.requestPassTimestamp.toString(), 0);
+    assert.equal(positionData.withdrawalRequestPassTimestamp.toString(), 0);
     assert.equal(positionData.withdrawalRequestAmount.toString(), 0);
 
     // Verify state of pricelessPositionManager post-withdrawal.
@@ -812,7 +812,7 @@ contract("PricelessPositionManager", function(accounts) {
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
-    assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
   });
@@ -1088,7 +1088,7 @@ contract("PricelessPositionManager", function(accounts) {
     const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
-    assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
 
@@ -1232,7 +1232,7 @@ contract("PricelessPositionManager", function(accounts) {
       const sponsorsPosition = await pricelessPositionManager.positions(sponsor);
       assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
       assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
-      assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+      assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
       assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
     });
@@ -1742,7 +1742,7 @@ contract("PricelessPositionManager", function(accounts) {
     const sponsorsPosition = await customPricelessPositionManager.positions(sponsor);
     assert.equal(sponsorsPosition.rawCollateral.rawValue, 0);
     assert.equal(sponsorsPosition.tokensOutstanding.rawValue, 0);
-    assert.equal(sponsorsPosition.requestPassTimestamp.toString(), 0);
+    assert.equal(sponsorsPosition.withdrawalRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.transferPositionRequestPassTimestamp.toString(), 0);
     assert.equal(sponsorsPosition.withdrawalRequestAmount.rawValue, 0);
   });

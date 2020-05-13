@@ -79,7 +79,7 @@ const transfer = async (web3, emp) => {
     // Transfer request has passed, user can transfer or cancel.
     else {
       // Executing transfer requests can only occur if there are no pending withdrawals.
-      const hasPendingWithdrawal = position.requestPassTimestamp.toString() !== "0";
+      const hasPendingWithdrawal = position.withdrawalRequestPassTimestamp.toString() !== "0";
 
       if (hasPendingWithdrawal) {
         console.log(
