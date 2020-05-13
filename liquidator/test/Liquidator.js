@@ -10,7 +10,7 @@ const { Liquidator } = require("../liquidator.js");
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
-const { PriceFeedMock } = require("../../financial-templates-lib/test/PriceFeedMock");
+const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport } = require("../../financial-templates-lib/logger/SpyTransport");
