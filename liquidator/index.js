@@ -9,6 +9,8 @@ const { Logger } = require("../financial-templates-lib/logger/Logger");
 const { Liquidator } = require("./liquidator");
 const { GasEstimator } = require("../financial-templates-lib/helpers/GasEstimator");
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
+const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
+const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -25,12 +27,11 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
  * @param {Number} pollingDelay The amount of milliseconds to wait between iterations.
  * @return None or throws an Error.
  */
-async function run(price, address, shouldPoll, pollingDelay) {
+async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
   Logger.info({
     at: "liquidator#index",
     message: "liquidator started 🕵️‍♂️",
     empAddress: address,
-    currentPrice: price,
     pollingDelay: pollingDelay
   });
 
@@ -42,7 +43,13 @@ async function run(price, address, shouldPoll, pollingDelay) {
   const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
   const getTime = () => empClient.getLastUpdateTime();
   const gasEstimator = new GasEstimator(Logger, getTime);
-  const liquidator = new Liquidator(Logger, empClient, gasEstimator, accounts[0]);
+  const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
+
+  // Price feed.
+  const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+  if (!priceFeed) {
+    throw "Price feed config is invalid";
+  }
 
   while (true) {
     try {
@@ -52,7 +59,7 @@ async function run(price, address, shouldPoll, pollingDelay) {
       // Acquire synthetic tokens somehow. v0: assume the bot holds on to them.
       // Liquidate any undercollateralized positions!
       // Withdraw money from any liquidations that are expired or DisputeFailed.
-      await liquidator.queryAndLiquidate(() => toWei(price));
+      await liquidator.queryAndLiquidate();
       await liquidator.queryAndWithdrawRewards();
     } catch (error) {
       Logger.error({
@@ -76,14 +83,12 @@ const Poll = async function(callback) {
         "Bad input arg! Specify an `EMP_ADDRESS ` for the location of the expiring Multi Party within your enviroment variables."
       );
     }
-    // TODO: Remove this price flag once we have built the pricefeed module.
-    if (!process.env.PRICE) {
-      throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
-    }
 
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
 
-    await run(process.env.PRICE, process.env.EMP_ADDRESS, true, pollingDelay);
+    const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
+
+    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig);
   } catch (err) {
     callback(err);
   }
