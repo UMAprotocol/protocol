@@ -47,7 +47,11 @@ async function run(price, address, shouldPoll, botMonitorObject, walletMonitorOb
   // Setup price feed.
   // TODO: consider making getTime async and using contract time.
   const getTime = () => Math.round(new Date().getTime() / 1000);
-  const priceFeed = createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+  const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+
+  if (!priceFeed) {
+    throw "Invalid price feed config";
+  }
 
   // 1. Contract state monitor
   const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);

@@ -112,7 +112,7 @@ contract("CRMonitor.js", function(accounts) {
       }
     ];
 
-    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject);
+    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject, priceFeedMock);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
