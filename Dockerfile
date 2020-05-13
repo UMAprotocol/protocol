@@ -19,7 +19,7 @@
 # To `docker run` with your locally built image, replace `umaprotocol/voting` with <username>/<imagename>.
 
 # Fix node version due to high potential for incompatibilities.
-FROM node:12
+FROM node:lts
 
 # Pull down latest version of code from Github.
 RUN git clone https://github.com/UMAprotocol/protocol.git
