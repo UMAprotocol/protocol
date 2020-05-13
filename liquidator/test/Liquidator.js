@@ -352,7 +352,7 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: toWei("1")
         };
-        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -366,7 +366,7 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: toWei("-0.02")
         };
-        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
         errorThrown = false;
       } catch (err) {
         errorThrown = true;

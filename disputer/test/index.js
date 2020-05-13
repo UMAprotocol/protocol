@@ -55,7 +55,7 @@ contract("index.js", function(accounts) {
     const price = "1";
     let errorThrown;
     try {
-      await Poll.run(price, address, false);
+      await Poll.run(price, address, false, 10_000);
       errorThrown = false;
     } catch (err) {
       console.error(err);
