@@ -74,7 +74,7 @@ class Liquidator {
     const price = this.priceFeed.getCurrentPrice();
 
     if (!price) {
-      this.logger.error({
+      this.logger.warn({
         at: "Liquidator",
         message: "Price feed returned invalid value",
         price

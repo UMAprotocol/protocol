@@ -144,14 +144,21 @@ contract("Liquidator.js", function(accounts) {
     await liquidator.queryAndLiquidate();
     assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
+    // Both token sponsors should still have their positions with full collateral.
+    assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
+    assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
+
+    // No liquidations if the price feed returns an invalid value.
+    priceFeedMock.setCurrentPrice(null);
+    await liquidator.queryAndLiquidate();
+
+    // One warn log should be sent since the price feed returned a bad value.
+    assert.equal(spy.callCount, 1);
+
     // There should be no liquidations created from any sponsor account
     assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
     assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
     assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
-
-    // Both token sponsors should still have their positions with full collateral.
-    assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
-    assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
 
     // Next, assume the price feed given to the liquidator has moved such that two of the three sponsors
     // are now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
@@ -163,7 +170,7 @@ contract("Liquidator.js", function(accounts) {
 
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
     await liquidator.queryAndLiquidate();
-    assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
+    assert.equal(spy.callCount, 3); // 2 info level events should be sent at the conclusion of the 2 liquidations.
 
     // Sponsor1 should be in a liquidation state with the bot as the liquidator.
     let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
@@ -192,7 +199,7 @@ contract("Liquidator.js", function(accounts) {
     // Another query at the same price should execute no new liquidations.
     priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
     await liquidator.queryAndLiquidate();
-    assert.equal(spy.callCount, 2);
+    assert.equal(spy.callCount, 3);
   });
 
   it("Can withdraw rewards from expired liquidations", async function() {
