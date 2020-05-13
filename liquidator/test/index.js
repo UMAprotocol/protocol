@@ -10,12 +10,14 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
+const UniswapMock = artifacts.require("UniswapMock");
 
 contract("index.js", function(accounts) {
   const contractCreator = accounts[0];
 
   let collateralToken;
   let emp;
+  let uniswap;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -46,14 +48,27 @@ contract("index.js", function(accounts) {
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
+
+    uniswap = await UniswapMock.new();
+
+    // Set two uniswap prices to give it a little history.
+    await uniswap.setPrice(toWei("1"), toWei("1"));
+    await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
   it("Completes one iteration without throwing an error", async function() {
     const address = emp.address;
-    const price = "1";
+
+    const priceFeedConfig = {
+      type: "uniswap",
+      uniswapAddress: uniswap.address,
+      twapLength: 1,
+      lookback: 1
+    };
+
     let errorThrown;
     try {
-      await Poll.run(price, address, false, 10_000);
+      await Poll.run(address, false, 10_000, priceFeedConfig);
       errorThrown = false;
     } catch (err) {
       console.error(err);
