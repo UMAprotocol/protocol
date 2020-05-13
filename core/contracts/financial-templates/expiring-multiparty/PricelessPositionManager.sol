@@ -143,6 +143,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      * @param _syntheticName name for the token contract that will be deployed.
      * @param _syntheticSymbol symbol for the token contract that will be deployed.
      * @param _tokenFactoryAddress deployed UMA token factory to create the synthetic token.
+     * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
@@ -174,8 +175,8 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
      ****************************************/
 
     /**
-     * @notice Requests to transfer ownership of the caller's current position to `newSponsorAddress`.
-     * Once the request liveness is passed, the sponsor can execute the transfer.
+     * @notice Requests to transfer ownership of the caller's current position to a new sponsor address.
+     * Once the request liveness is passed, the sponsor can execute the transfer and specify the new sponsor.
      * @dev The liveness length is the same as the withdrawal liveness.
      */
     function requestTransferPosition() public onlyPreExpiration() nonReentrant() {
@@ -585,6 +586,12 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
         emit EmergencyShutdown(msg.sender, oldExpirationTimestamp, expirationTimestamp);
     }
 
+    /**
+     * @notice Theoretically supposed to pays fees and moves money between margin accounts to make sure they
+     * reflect the NAV of the contract. However, this contract does not use this functionality.
+     * @dev This is supposed to be implemented by any contract that inherits `AdministrateeInterface` and callable
+     * only by the Governor contract. This method is therefore minimally implemented in this contract and does nothing.
+     */
     function remargin() external override onlyPreExpiration() nonReentrant() {
         return;
     }
