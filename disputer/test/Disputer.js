@@ -121,7 +121,7 @@ contract("Disputer.js", function(accounts) {
     disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0]);
   });
 
-  it("Detect disputable positions and send dipsutes", async function() {
+  it("Detect disputable positions and send disputes", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
@@ -183,7 +183,7 @@ contract("Disputer.js", function(accounts) {
     assert.equal((await emp.getLiquidations(sponsor3))[0].disputer, disputeBot);
   });
 
-  it("Detect disputable withdraws and send dipsutes", async function() {
+  it("Detect disputable withdraws and send disputes", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
