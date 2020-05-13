@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { LiquidationStatesEnum } = require("../../common/Enums");
@@ -12,7 +12,7 @@ const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clie
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
 
 // Custom winston transport module to monitor winston log outputs
-const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
+const { SpyTransport } = require("../../financial-templates-lib/logger/SpyTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -38,6 +38,9 @@ contract("Liquidator.js", function(accounts) {
   let mockOracle;
 
   let spy;
+  let spyLogger;
+
+  let liquidatorConfig;
 
   before(async function() {
     collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
@@ -101,7 +104,7 @@ contract("Liquidator.js", function(accounts) {
 
     spy = sinon.spy();
 
-    const spyLogger = winston.createLogger({
+    spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
@@ -111,7 +114,10 @@ contract("Liquidator.js", function(accounts) {
     gasEstimator = new GasEstimator(spyLogger);
 
     // Create a new instance of the liquidator to test
-    liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0]);
+    liquidatorConfig = {
+      crThreshold: toWei("0")
+    };
+    liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
   });
 
   it("Can correctly detect undercollateralized positions and liquidate them", async function() {
@@ -142,7 +148,7 @@ contract("Liquidator.js", function(accounts) {
     assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
 
     // Next, assume the price feed given to the liquidator has moved such that two of the three sponsors
-    // are now undercollateralize. The liquidator bot should correctly identify this and liquidate the positions.
+    // are now undercollateralized. The liquidator bot should correctly identify this and liquidate the positions.
     // A price of 1.3 USD per token puts sponsor1 and sponsor2 at undercollateralized while sponsor3 remains
     // collateralized. Numerically debt * price * coltReq > debt for collateralized position.
     // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
@@ -337,5 +343,80 @@ contract("Liquidator.js", function(accounts) {
     // The liquidation should have gone through.
     assert.equal((await emp.getLiquidations(sponsor1)).length, 1);
     assert.equal(spy.callCount, 2); // 1 new log level event due to the successful execution.
+  });
+
+  describe("Overrides the default liquidator configuration settings", function() {
+    it("Cannot set `crThreshold` >= 1", async function() {
+      let errorThrown;
+      try {
+        liquidatorConfig = {
+          crThreshold: toWei("1")
+        };
+        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isTrue(errorThrown);
+    });
+
+    it("Cannot set `crThreshold` < 0", async function() {
+      let errorThrown;
+      try {
+        liquidatorConfig = {
+          crThreshold: toWei("-0.02")
+        };
+        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isTrue(errorThrown);
+    });
+
+    it("Sets `crThreshold` to 2%", async function() {
+      liquidatorConfig = {
+        crThreshold: toWei("0.02")
+      };
+      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+
+      // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("118") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+      // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+      // Next, assume that the price feed has moved such that both sponsors are technically undercollateralized.
+      // However, the price threshold provides just enough buffer for sponsor2 to avoid liquidation.
+      // Numerically: (tokens_outstanding * price * coltReq * (1-crThreshold) > debt)
+      // must hold for correctly collateralized positions. If the price feed is 1 USD, then
+      // there must be more than (100 * 1 * 1.2 * 0.98 = 117.6) collateral in the position.
+      // Note that without the price threshold, the minimum collateral would be (100 * 1 * 1.2 = 120), which
+      // would make both sponsors undercollateralized. Because of the price threshold setting, the bot should only
+      // liquidate sponsor1.
+      // Sponsor1: 100 * 1 * 1.2 * 0.98 > 115 [undercollateralized]
+      // Sponsor1: 100 * 1 * 1.2 * 0.98 < 118 [sufficiently collateralized]
+      // Sponsor2: 100 * 1 * 1.2 > 118 [would be undercollateralized w/o threshold]
+
+      await liquidator.queryAndLiquidate(time => toWei("1"));
+      assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the 1 liquidation.
+
+      // Sponsor1 should be in a liquidation state with the bot as the liquidator.
+      let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+      assert.equal(liquidationObject.sponsor, sponsor1);
+      assert.equal(liquidationObject.liquidator, liquidatorBot);
+      assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+      assert.equal(liquidationObject.liquidatedCollateral, toWei("115"));
+
+      // Sponsor1 should have zero collateral left in their position from the liquidation.
+      assert.equal((await emp.getCollateral(sponsor1)).rawValue, 0);
+
+      // Sponsor2 should have all their collateral left and no liquidations.
+      assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+      assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("118"));
+    });
   });
 });

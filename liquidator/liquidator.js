@@ -2,7 +2,15 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 class Liquidator {
-  constructor(logger, expiringMultiPartyClient, gasEstimator, account) {
+  /**
+   * @notice Constructs new Liquidator bot.
+   * @param {Object} logger Module used to send logs.
+   * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
+   */
+  constructor(logger, expiringMultiPartyClient, gasEstimator, account, config) {
     this.logger = logger;
     this.account = account;
 
@@ -15,6 +23,37 @@ class Liquidator {
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
+
+    // Default config settings. Liquidator deployer can override these settings by passing in new
+    // values via the `config` input object. The `isValid` property is a function that should be called
+    // before resetting any config settings. `isValid` must return a Boolean.
+    const { toBN, toWei } = this.web3.utils;
+    const defaultConfig = {
+      crThreshold: {
+        // `crThreshold`: If collateral falls more than `crThreshold` % below the min collateral requirement,
+        // then it will be liquidated. For example: If the minimum collateralization ratio is 120% and the TRV is 100,
+        // then the minimum collateral requirement is 120. However, if `crThreshold = 0.02`, then the minimum
+        // collateral requirement is 120 * (1-0.02) = 117.6, or 2% below 120.
+        value: toWei("0.02"),
+        isValid: x => {
+          return toBN(x).lt(toBN(toWei("1"))) && toBN(x).gte(toBN("0"));
+        }
+      }
+    };
+
+    // Set and validate config settings
+    Object.keys(defaultConfig).forEach(field => {
+      this[field] = config && config[field] ? config[field] : defaultConfig[field].value;
+      if (!defaultConfig[field].isValid(this[field])) {
+        this.logger.error({
+          at: "Liquidator",
+          message: "Attempting to set configuration field with invalid value",
+          field: field,
+          value: this[field]
+        });
+        throw new Error("Attempting to set configuration field with invalid value");
+      }
+    });
   }
 
   // Update the client and gasEstimator clients.
@@ -26,8 +65,21 @@ class Liquidator {
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
   queryAndLiquidate = async priceFunction => {
+    const { toBN, fromWei, toWei } = this.web3.utils;
+
     const contractTime = this.empClient.getLastUpdateTime();
     const priceFeed = priceFunction(contractTime);
+
+    // The `priceFeed` is a Number that is used to determine if a position is liquidatable. The higher the
+    // `priceFeed` value, the more collateral that the position is required to have to be correctly collateralized.
+    // Therefore, we add a buffer by deriving a `scaledPriceFeed` from (`1 - crThreshold` * `priceFeed`)
+    const scaledPriceFeed = fromWei(toBN(priceFeed).mul(toBN(toWei("1")).sub(toBN(this.crThreshold))));
+    this.logger.debug({
+      at: "Liquidator",
+      message: "Scaling down collateral threshold for liquidations",
+      scaledPriceFeed: scaledPriceFeed,
+      crThreshold: this.crThreshold
+    });
 
     this.logger.debug({
       at: "Liquidator",
@@ -38,7 +90,7 @@ class Liquidator {
     await this.update();
 
     // Get the latest undercollateralized positions from the client.
-    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(priceFeed);
+    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(scaledPriceFeed);
 
     if (underCollateralizedPositions.length === 0) {
       this.logger.debug({
@@ -56,7 +108,7 @@ class Liquidator {
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
         { rawValue: "0" },
-        { rawValue: this.web3.utils.toWei(priceFeed) },
+        { rawValue: toWei(scaledPriceFeed) },
         { rawValue: position.numTokens },
         parseInt(currentBlockTime) + fiveMinutes
       );
@@ -85,7 +137,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidating position",
         position: position,
-        inputPrice: this.web3.utils.toWei(priceFeed),
+        inputPrice: toWei(scaledPriceFeed),
         txnConfig
       });
 
@@ -115,7 +167,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,
-        inputPrice: this.web3.utils.toWei(priceFeed),
+        inputPrice: toWei(scaledPriceFeed),
         txnConfig,
         liquidationResult: logResult
       });
@@ -127,6 +179,8 @@ class Liquidator {
 
   // Queries ongoing liquidations and attempts to withdraw rewards from both expired and disputed liquidations.
   queryAndWithdrawRewards = async () => {
+    const { fromWei } = this.web3.utils;
+
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
@@ -177,7 +231,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig
       });
 
@@ -204,7 +258,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Liquidation withdrawn🤑",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig,
         liquidationResult: logResult
       });
