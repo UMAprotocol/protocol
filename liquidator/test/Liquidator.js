@@ -194,9 +194,6 @@ contract("Liquidator.js", function(accounts) {
     // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor2 });
 
-    // sponsor3 creates a position with 175 units of collateral, creating 100 synthetic tokens.
-    await emp.create({ rawValue: toWei("175") }, { rawValue: toWei("100") }, { from: sponsor3 });
-
     // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
     await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
 
@@ -208,7 +205,6 @@ contract("Liquidator.js", function(accounts) {
     // There should be no liquidations created from any sponsor account
     assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
     assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
-    assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
 
     // Both token sponsors should still have their positions with full collateral.
     assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
@@ -256,7 +252,6 @@ contract("Liquidator.js", function(accounts) {
 
     // The other two positions should not have any liquidations associated with them.
     assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
-    assert.deepStrictEqual(await emp.getLiquidations(sponsor3), []);
   });
 
   it("Can withdraw rewards from expired liquidations", async function() {

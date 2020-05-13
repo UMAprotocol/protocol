@@ -45,7 +45,7 @@ contract("Disputer.js", function(accounts) {
   const unreachableDeadline = MAX_UINT_VAL;
 
   before(async function() {
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
+    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
@@ -56,7 +56,9 @@ contract("Disputer.js", function(accounts) {
     await collateralToken.mint(sponsor3, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(liquidator, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(disputeBot, toWei("100000"), { from: contractCreator });
+  });
 
+  beforeEach(async function() {
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
     mockOracle = await MockOracle.new(finder.address, Timer.address, {
@@ -64,9 +66,7 @@ contract("Disputer.js", function(accounts) {
     });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  });
 
-  beforeEach(async function() {
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
@@ -214,6 +214,16 @@ contract("Disputer.js", function(accounts) {
 
     // The disputeBot should be the disputer in sponsor1  liquidations.
     assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+
+    // Push a price of 1, which should cause sponsor1's dispute to fail.
+    const liquidationTime = await emp.getCurrentTime();
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, toWei("1"));
+
+    await disputer.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2); // One additional info level event for the successful withdrawal.
+
+    // sponsor1's dispute should be successful (valid withdrawal)
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
   });
 
   it("Withdraw from successful disputes", async function() {
