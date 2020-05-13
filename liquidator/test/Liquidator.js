@@ -362,7 +362,7 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: toWei("1")
         };
-        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -376,7 +376,7 @@ contract("Liquidator.js", function(accounts) {
         liquidatorConfig = {
           crThreshold: toWei("-0.02")
         };
-        new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+        new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -388,7 +388,7 @@ contract("Liquidator.js", function(accounts) {
       liquidatorConfig = {
         crThreshold: toWei("0.02")
       };
-      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, accounts[0], liquidatorConfig);
+      liquidator = new Liquidator(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], liquidatorConfig);
 
       // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("115") }, { rawValue: toWei("100") }, { from: sponsor1 });

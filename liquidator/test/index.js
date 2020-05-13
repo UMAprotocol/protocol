@@ -58,7 +58,6 @@ contract("index.js", function(accounts) {
 
   it("Completes one iteration without throwing an error", async function() {
     const address = emp.address;
-    const price = "1";
 
     const priceFeedConfig = {
       type: "uniswap",

@@ -32,7 +32,6 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
     at: "liquidator#index",
     message: "liquidator started 🕵️‍♂️",
     empAddress: address,
-    currentPrice: price,
     pollingDelay: pollingDelay
   });
 
@@ -43,7 +42,16 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
   // Setup price feed.
   // TODO: consider making getTime async and using contract time.
   const getTime = () => Math.round(new Date().getTime() / 1000);
-  const priceFeed = createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+  const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+
+  if (!priceFeed) {
+    Logger.error({
+      at: "liquidator#index",
+      message: "Price feed config is invalid",
+      priceFeedConfig
+    });
+    throw "Price feed config is invalid";
+  }
 
   // Client and liquidator bot
   const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
