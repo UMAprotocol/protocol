@@ -588,7 +588,7 @@ contract PricelessPositionManager is FeePayer, AdministrateeInterface {
 
     /**
      * @notice Theoretically supposed to pays fees and moves money between margin accounts to make sure they
-     * reflect the NAV of the contract. However, this contract does not use this functionality.
+     * reflect the NAV of the contract. However, this functionality doesn't apply to this contract.
      * @dev This is supposed to be implemented by any contract that inherits `AdministrateeInterface` and callable
      * only by the Governor contract. This method is therefore minimally implemented in this contract and does nothing.
      */
