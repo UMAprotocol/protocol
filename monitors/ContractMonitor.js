@@ -68,6 +68,21 @@ class ContractMonitor {
         .call();
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
 
+      if (!price) {
+        this.logger.warn({
+          at: "ContractMonitor",
+          message: "Could not get historical price for liquidation",
+          price,
+          liquidationTime: liquidationTime.toString()
+        });
+      }
+
+      const collateralizationString = price
+        ? this.formatDecimalString(
+            this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
+          )
+        : "[Invalid]";
+
       // Sample message:
       // Liquidation alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // initiated liquidation for for [x][collateral currency]of sponsor collateral
@@ -86,9 +101,7 @@ class ContractMonitor {
         " " +
         this.syntheticCurrencySymbol +
         " tokens. Sponsor collateralization was " +
-        this.formatDecimalString(
-          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
-        ) +
+        collateralizationString +
         "%. tx: " +
         createEtherscanLinkMarkdown(this.web3, event.transactionHash);
 

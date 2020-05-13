@@ -34,6 +34,16 @@ class CRMonitor {
   checkWalletCrRatio = async () => {
     // yield the price feed at the current time.
     const price = this.priceFeed.getCurrentPrice();
+
+    if (!price) {
+      this.logger.warn({
+        at: "CRMonitor",
+        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value",
+        price
+      });
+      return;
+    }
+
     this.logger.debug({
       at: "CRMonitor",
       message: "Checking wallet collateralization ratios",
