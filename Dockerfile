@@ -19,7 +19,7 @@
 # To `docker run` with your locally built image, replace `umaprotocol/voting` with <username>/<imagename>.
 
 # Fix node version due to high potential for incompatibilities.
-FROM node:12
+FROM node:11
 
 # Pull down latest version of code from Github.
 RUN git clone https://github.com/UMAprotocol/protocol.git
@@ -38,3 +38,4 @@ WORKDIR core/
 # Command to run any command provided by the COMMAND env variable.
 # Use the command listed at the top to run the voting script repeatedly in a 60 second loop.
 ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
+CMD ["--network=test"]
