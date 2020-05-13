@@ -10,11 +10,15 @@ class CRMonitor {
   //    address: "0x12345",
   //    crAlert: 150 },
   // ...];
-  constructor(logger, expiringMultiPartyClient, walletsToMonitor) {
+  // @param priceFeed offchain price feed used to track the token price.
+  constructor(logger, expiringMultiPartyClient, walletsToMonitor, priceFeed) {
     this.logger = logger;
 
     this.empClient = expiringMultiPartyClient;
     this.web3 = this.empClient.web3;
+
+    // Offchain price feed to compute the current collateralization ratio for the monitored positions.
+    this.priceFeed = priceFeed;
 
     // Wallet addresses and thresholds to monitor.
     this.walletsToMonitor = walletsToMonitor;
@@ -27,14 +31,13 @@ class CRMonitor {
   }
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
-  checkWalletCrRatio = async priceFunction => {
+  checkWalletCrRatio = async () => {
     // yield the price feed at the current time.
-    const contractTime = this.empClient.getLastUpdateTime();
-    const priceFeed = priceFunction(contractTime);
+    const price = this.priceFeed.getCurrentPrice();
     this.logger.debug({
       at: "CRMonitor",
       message: "Checking wallet collateralization ratios",
-      price: priceFeed
+      price
     });
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
     // If it is, then send an alert of formatted markdown text.
@@ -54,7 +57,7 @@ class CRMonitor {
       }
 
       // If CR = null then there are no tokens outstanding and so dont push a notification.
-      const positionCR = this._calculatePositionCRPercent(collateral, tokensOutstanding, priceFeed);
+      const positionCR = this._calculatePositionCRPercent(collateral, tokensOutstanding, price);
       if (positionCR == null) {
         continue;
       }
@@ -76,7 +79,7 @@ class CRMonitor {
           "% threshold. Current value of " +
           this.syntheticCurrencySymbol +
           " is " +
-          this.formatDecimalString(priceFeed);
+          this.formatDecimalString(price);
 
         this.logger.warn({
           at: "ContractMonitor",

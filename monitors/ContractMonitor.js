@@ -1,12 +1,15 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
 
 class ContractMonitor {
-  constructor(logger, expiringMultiPartyEventClient, monitoredLiquidators, monitoredDisputers) {
+  constructor(logger, expiringMultiPartyEventClient, monitoredLiquidators, monitoredDisputers, priceFeed) {
     this.logger = logger;
 
     // Bot and ecosystem accounts to monitor. Will inform the console logs when events are detected from these accounts.
     this.monitoredLiquidators = monitoredLiquidators;
     this.monitoredDisputers = monitoredDisputers;
+
+    // Offchain price feed to get the price for liquidations.
+    this.priceFeed = priceFeed;
 
     // EMP event client to read latest contract events.
     this.empEventClient = expiringMultiPartyEventClient;
@@ -29,7 +32,7 @@ class ContractMonitor {
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price
   // This is cr = [collateral / (tokensOutstanding * price)] * 100
-  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice) => {
+  calculatePositionCRPercent = (collateral, tokensOutstanding, tokenPrice, price) => {
     return this.web3.utils
       .toBN(collateral)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1")))
@@ -46,14 +49,10 @@ class ContractMonitor {
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
-  checkForNewLiquidations = async priceFunction => {
-    const contractTime = this.empEventClient.getLastUpdateTime();
-    const priceFeed = priceFunction(contractTime);
-
+  checkForNewLiquidations = async () => {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
-      price: priceFeed,
       lastLiquidationBlockNumber: this.lastLiquidationBlockNumber
     });
 
@@ -64,6 +63,11 @@ class ContractMonitor {
     let newLiquidationEvents = latestLiquidationEvents.filter(event => event.blockNumber > this.lastDisputeBlockNumber);
 
     for (let event of newLiquidationEvents) {
+      const { liquidationTime } = await this.empContract.methods
+        .liquidations(event.sponsor, event.liquidationId)
+        .call();
+      const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
+
       // Sample message:
       // Liquidation alert: [ethereum address if third party, or “UMA” if it’s our bot]
       // initiated liquidation for for [x][collateral currency]of sponsor collateral
@@ -83,7 +87,7 @@ class ContractMonitor {
         this.syntheticCurrencySymbol +
         " tokens. Sponsor collateralization was " +
         this.formatDecimalString(
-          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, priceFeed)
+          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
         ) +
         "%. tx: " +
         createEtherscanLinkMarkdown(this.web3, event.transactionHash);
@@ -97,14 +101,10 @@ class ContractMonitor {
     this.lastLiquidationBlockNumber = this.getLastSeenBlockNumber(latestLiquidationEvents);
   };
 
-  checkForNewDisputeEvents = async priceFunction => {
-    const contractTime = this.empEventClient.getLastUpdateTime();
-    const priceFeed = priceFunction(contractTime);
-
+  checkForNewDisputeEvents = async () => {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute events",
-      price: priceFeed,
       lastDisputeBlockNumber: this.lastDisputeBlockNumber
     });
 
@@ -139,14 +139,10 @@ class ContractMonitor {
     this.lastDisputeBlockNumber = this.getLastSeenBlockNumber(latestDisputeEvents);
   };
 
-  checkForNewDisputeSettlementEvents = async priceFunction => {
-    const contractTime = this.empEventClient.getLastUpdateTime();
-    const priceFeed = priceFunction(contractTime);
-
+  checkForNewDisputeSettlementEvents = async () => {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute settlement events",
-      price: priceFeed,
       lastDisputeSettlementBlockNumber: this.lastDisputeSettlementBlockNumber
     });
 
