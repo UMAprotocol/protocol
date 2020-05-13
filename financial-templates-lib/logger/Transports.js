@@ -5,7 +5,6 @@
 // Transport objects
 const ConsoleTransport = require("./ConsoleTransport");
 const SlackTransport = require("./SlackTransport");
-const TwilioTransport = require("./TwilioTransport");
 const PagerDutyTransport = require("./PagerDutyTransport");
 
 require("dotenv").config();
@@ -24,37 +23,13 @@ if (process.env.ENVIRONMENT == "production") {
   transports.push(ConsoleTransport.createConsoleTransport());
 }
 
-// If there is "test" in the environment then skip the slack or twilio transports.
+// If there is "test" in the environment then skip the slack & pagerduty.
 if (argv._.indexOf("test") == -1) {
   // If there is a slack web hook, add to the transports array to enable slack messages.
   if (process.env.SLACK_WEBHOOK) {
     transports.push(SlackTransport.createSlackTransport(process.env.SLACK_WEBHOOK));
   }
 
-  // If all the required environment variables for twilio are added, add the transport array.
-  if (process.env.TWILIO_SID && process.env.TWILIO_AUTH && process.env.DRI_NUMBER1 && process.env.TWILIO_FROM_NUMBER) {
-    // read in the numbers to call from the environment variables. Each number is prefaced by a DRI_NUMBER.
-    let numbersToCall = [];
-    for (const envVariable in process.env) {
-      if (envVariable.startsWith("DRI_NUMBER")) {
-        numbersToCall.push(process.env[envVariable]);
-      }
-    }
-
-    transports.push(
-      new TwilioTransport(
-        {
-          level: "error" // note that twilio will only report on error. levels
-        },
-        {
-          twilioSid: process.env.TWILIO_SID,
-          twilioAuth: process.env.TWILIO_AUTH,
-          twilioFrom: process.env.TWILIO_FROM_NUMBER,
-          twilioCallNumbers: numbersToCall
-        }
-      )
-    );
-  }
   // If there is a Pagerduty API key then add the pagerduty winston transport.
   if (process.env.PAGERDUTY_API_KEY) {
     transports.push(
