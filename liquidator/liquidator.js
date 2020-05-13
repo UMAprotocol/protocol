@@ -73,6 +73,15 @@ class Liquidator {
     const { toBN, fromWei, toWei } = this.web3.utils;
     const price = this.priceFeed.getCurrentPrice();
 
+    if (!price) {
+      this.logger.error({
+        at: "Liquidator",
+        message: "Price feed returned invalid value",
+        price
+      });
+      return;
+    }
+
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
     // `price` value, the more collateral that the position is required to have to be correctly collateralized.
     // Therefore, we add a buffer by deriving a `scaledPrice` from (`1 - crThreshold` * `price`)
