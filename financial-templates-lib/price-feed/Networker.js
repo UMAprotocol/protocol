@@ -21,3 +21,7 @@ class Networker {
     return json;
   }
 }
+
+module.exports = {
+  Networker
+};
