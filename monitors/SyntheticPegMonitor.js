@@ -34,9 +34,9 @@ class SyntheticPegMonitor {
     const { toBN, toWei } = this.web3.utils;
     const defaultConfig = {
       deviationAlertThreshold: {
-        // `deviationAlertThreshold`: Percentage error threshold used to compare observed and expected token prices.
+        // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
         // if the deviation in token price exceeds this value an alert is fired.
-        value: this.web3.utils.toBN(this.web3.utils.toWei("20")),
+        value: this.web3.utils.toBN(this.web3.utils.toWei("0.2")),
         isValid: x => {
           return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gte(toBN("0"));
         }
@@ -64,9 +64,9 @@ class SyntheticPegMonitor {
       });
       return;
     }
-    const percentageError = this._calculatePercentageError(uniswapTokenPrice, cryptoWatchTokenPrice);
+    const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
-    if (percentageError.gt(this.deviationAlertThreshold)) {
+    if (deviationError.gt(this.deviationAlertThreshold)) {
       this.logger.error({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",
@@ -78,22 +78,22 @@ class SyntheticPegMonitor {
           " on Uniswap. Target price is " +
           this.formatDecimalString(cryptoWatchTokenPrice) +
           ". Error of " +
-          this.formatDecimalString(percentageError) +
+          this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
           "%."
       });
     }
   };
 
-  // Takes in two big numbers and returns the percentage error between them.
-  // calculated using: δ = | (observed - expected) / expected | * 100
-  // For example an observed price of 1.25 with an expected price of 1.15 will return | (1.2 - 1.0) / 1.0 | * 100 = 20%
-  _calculatePercentageError(observedValue, expectedValue) {
+  // Takes in two big numbers and returns the error between them.
+  // calculated using: δ = | (observed - expected) / expected |
+  // For example an observed price of 1.25 with an expected price of 1.0 will return | (1.2 - 1.0) / 1.0 | = 0.20
+  // This is equivalent of a 20 percent absolute deviation between the numbers.
+  _calculateDeviationError(observedValue, expectedValue) {
     return observedValue
       .sub(expectedValue)
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1"))) // Scale the numerator before division
       .div(expectedValue)
-      .abs()
-      .muln(100); // scale for percentage
+      .abs();
   }
 }
 

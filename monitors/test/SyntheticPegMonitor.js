@@ -119,7 +119,7 @@ contract("SyntheticPegMonitor", function(accounts) {
 
     // Tested module that uses the two price feeds.
     syntheticPegMonitorConfig = {
-      deviationAlertThreshold: toBN(toWei("20")) // Any deviation larger than 20% should fire an alert
+      deviationAlertThreshold: toBN(toWei("0.2")) // Any deviation larger than 0.2 should fire an alert
     };
     syntheticPegMonitor = new SyntheticPegMonitor(
       spyLogger,
@@ -131,27 +131,26 @@ contract("SyntheticPegMonitor", function(accounts) {
   it("Calculate percentage error returns expected values", async function() {
     // Test with simple values with know percentage error.
     assert.equal(
-      syntheticPegMonitor._calculatePercentageError(toBN(toWei("1")), toBN(toWei("1"))).toString(),
+      syntheticPegMonitor._calculateDeviationError(toBN(toWei("1")), toBN(toWei("1"))).toString(),
       toBN(toWei("0")).toString()
     );
     assert.equal(
-      syntheticPegMonitor._calculatePercentageError(toBN(toWei("1.11")), toBN(toWei("1"))).toString(),
-      toBN(toWei("11")).toString()
+      syntheticPegMonitor._calculateDeviationError(toBN(toWei("1.11")), toBN(toWei("1"))).toString(),
+      toBN(toWei("0.11")).toString()
     );
     assert.equal(
-      syntheticPegMonitor._calculatePercentageError(toBN(toWei("1.25")), toBN(toWei("1"))).toString(),
-      toBN(toWei("25")).toString()
+      syntheticPegMonitor._calculateDeviationError(toBN(toWei("1.25")), toBN(toWei("1"))).toString(),
+      toBN(toWei("0.25")).toString()
     );
 
     // More aggressive test with local validation of the calculation.
     assert.equal(
-      syntheticPegMonitor._calculatePercentageError(toBN(toWei("3.1415")), toBN(toWei("3.14159"))).toString(),
+      syntheticPegMonitor._calculateDeviationError(toBN(toWei("3.1415")), toBN(toWei("3.14159"))).toString(),
       toBN(toWei("3.1415")) // actual
         .sub(toBN(toWei("3.14159"))) // expected
         .mul(toBN(toWei("1"))) // Scale the numerator before division
         .div(toBN(toWei("3.14159"))) // expected
         .abs()
-        .muln(100) // scale for percentage
         .toString()
     );
   });
