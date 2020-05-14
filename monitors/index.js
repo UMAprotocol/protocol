@@ -30,12 +30,11 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {String} address Contract address of the EMP.
  * @return None or throws an Error.
  */
-async function run(price, address, shouldPoll, botMonitorObject, walletMonitorObject, pollingDelay, priceFeedConfig) {
+async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, pollingDelay, priceFeedConfig) {
   Logger.info({
     at: "Monitor#index",
     message: "Monitor started 🕵️‍♂️",
     empAddress: address,
-    currentPrice: price,
     pollingDelay: pollingDelay,
     priceFeedConfig
   });
@@ -124,13 +123,9 @@ const Poll = async function(callback) {
         "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party."
       );
     }
-    // TODO: Remove this price flag once we have built the pricefeed module.
-    if (!process.env.PRICE) {
-      throw new Error("Bad input arg! Specify a `price` as the pricefeed.");
-    }
 
     if (!process.env.BOT_MONITOR_OBJECT || !process.env.WALLET_MONITOR_OBJECT) {
-      throw new Error("Bad input arg! Specify a bot monitor and wallet monitor object to track.");
+      throw new Error("Bad input arg! Specify a `BOT_MONITOR_OBJECT` & `WALLET_MONITOR_OBJECT` to track.");
     }
 
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
@@ -141,18 +136,14 @@ const Poll = async function(callback) {
     // Wallet objects to monitor.
     const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
 
+    if (!process.env.PRICE_FEED_CONFIG) {
+      throw new Error("Bad input arg! Specify `PRICE_FEED_CONFIG` to define the price feed settings");
+    }
+
     // Read price feed configuration from an environment variable.
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
-    await run(
-      process.env.PRICE,
-      process.env.EMP_ADDRESS,
-      true,
-      botMonitorObject,
-      walletMonitorObject,
-      pollingDelay,
-      priceFeedConfig
-    );
+    await run(process.env.EMP_ADDRESS, true, botMonitorObject, walletMonitorObject, pollingDelay, priceFeedConfig);
   } catch (err) {
     callback(err);
   }
