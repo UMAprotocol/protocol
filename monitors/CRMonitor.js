@@ -2,15 +2,19 @@ const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common
 
 // This module is used to monitor a list of addresses and their associated Collateralization ratio.
 class CRMonitor {
-  // @param logger an instance of a winston logger used to emit messages, logs and errors.
-  // @param expiringMultiPartyClient is an instance of the expiringMultiPartyClient from the `financial-templates lib
-  // which provides synchronous access to positions opened against an expiring multiparty
-  // @param walletsToMonitor  An array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert` must be given.
-  //  [{ name: "Market Making bot",
-  //    address: "0x12345",
-  //    crAlert: 150 },
-  // ...];
-  // @param priceFeed offchain price feed used to track the token price.
+  /**
+   * @notice Constructs new Collateral Requirement Monitor.
+   * @param {Object} logger an instance of a winston logger used to emit messages, logs and errors.
+   * @param {Object} expiringMultiPartyClient an instance of the expiringMultiPartyClient from the `financial-templates
+   *                 lib which provides synchronous access to positions opened against an expiring multiparty
+   * @param {Object} walletsToMonitor array of wallets to Monitor. Each wallet's `walletName`, `address`, `crAlert`
+   *                 must be given:
+   *                 [{ name: "Market Making bot",
+   *                    address: "0x12345",
+   *                    crAlert: 150 },
+   *                  ...];
+   * @param {Object} priceFeed offchain price feed used to track the token price.
+   */
   constructor(logger, expiringMultiPartyClient, walletsToMonitor, priceFeed) {
     this.logger = logger;
 
