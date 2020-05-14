@@ -19,7 +19,7 @@ This is a 3 step process:
 
 The current implementation of this mechanism is a simpler version of the vision described in the sources above.
 
-Currently, UMA tokenholders manually observe the PfC and CoC.
+Currently, \$UMA tokenholders manually observe the PfC and CoC.
 
 ### Step 1: Measuring CoC
 
