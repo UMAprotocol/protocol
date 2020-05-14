@@ -72,11 +72,8 @@ class Liquidator {
       }
     };
 
-    // Set and validate config settings.
-    const newConfig = createObjectFromDefaultProps(config, defaultConfig);
-    Object.keys(newConfig).forEach(setting => {
-      this[setting] = newConfig[setting];
-    });
+    // Validate and set config settings to class state.
+    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
   }
 
   // Update the client and gasEstimator clients.
