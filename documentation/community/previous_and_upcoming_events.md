@@ -4,6 +4,7 @@
 
 ## Past Events
 
+- May 12, 2020: [HackMoney DeFi Panel](https://www.youtube.com/watch?v=HcEjy3N1iLo)
 - May 2, 2020: DeFi Discussions ["Using UMA and Balancer Pools to Create Perpetual Synthetic Tokens"](https://www.crowdcast.io/e/defi-discussions/41) with Hart Lambur (UMA) and Fernando Martinelli (Balancer Labs) [(slides)](https://docs.google.com/presentation/d/1zpq6iUcyTtHJAtESVFqZ4xGEfdDm12k5B5fnqeDmI7Q/edit?usp=sharing)
 - May 1, 2020: DeFi Discussions ["How To Build Synthetic Tokens Without An On-Chain Price Feed"](https://www.crowdcast.io/e/defi-discussions/18) with Allison Lu [(slides)](https://docs.google.com/presentation/d/1yDtzhOQqi0xz6n0NpQPbPy-9evzj7fE15yEfATsG2cY/edit?usp=sharing)
 - April 24, 2020: Crypto Tonight Ep. 4 [“When Defi is not Fine”](https://youtu.be/efW-MHdA_ws)
