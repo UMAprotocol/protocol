@@ -4,6 +4,8 @@ const { toWei } = web3.utils;
 // Helpers.
 const { delay } = require("../financial-templates-lib/helpers/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
+const { createPriceFeed } = require("../financial-templates-lib/price-feed/CreatePriceFeed");
+const { Networker } = require("../financial-templates-lib/price-feed/Networker");
 
 // Clients to retrieve on-chain data.
 const { ExpiringMultiPartyClient } = require("../financial-templates-lib/clients/ExpiringMultiPartyClient");
@@ -28,22 +30,32 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @param {String} address Contract address of the EMP.
  * @return None or throws an Error.
  */
-async function run(price, address, shouldPoll, botMonitorObject, walletMonitorObject, pollingDelay) {
+async function run(price, address, shouldPoll, botMonitorObject, walletMonitorObject, pollingDelay, priceFeedConfig) {
   Logger.info({
     at: "Monitor#index",
     message: "Monitor started 🕵️‍♂️",
     empAddress: address,
     currentPrice: price,
-    pollingDelay: pollingDelay
+    pollingDelay: pollingDelay,
+    priceFeedConfig
   });
 
   // Setup web3 accounts an contract instance
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(address);
 
+  // Setup price feed.
+  // TODO: consider making getTime async and using contract time.
+  const getTime = () => Math.round(new Date().getTime() / 1000);
+  const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+
+  if (!priceFeed) {
+    throw "Invalid price feed config";
+  }
+
   // 1. Contract state monitor
   const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
-  const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]]);
+  const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]], priceFeed);
 
   // 2. Balance monitor
   const collateralTokenAddress = await emp.collateralCurrency();
@@ -63,19 +75,20 @@ async function run(price, address, shouldPoll, botMonitorObject, walletMonitorOb
   // 3. Collateralization Ratio monitor.
   const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
 
-  const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject);
+  const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, priceFeed);
 
   while (true) {
     try {
       // 1.  Contract monitor
-      // 1.a Update the client
+      // 1.a Update dependencies.
       await empEventClient.update();
+      await priceFeed.update();
       // 1.b Check For new liquidation events
-      await contractMonitor.checkForNewLiquidations(() => toWei(price.toString()));
+      await contractMonitor.checkForNewLiquidations();
       // 1.c Check for new disputes
-      await contractMonitor.checkForNewDisputeEvents(() => toWei(price.toString()));
+      await contractMonitor.checkForNewDisputeEvents();
       // 1.d Check for new disputeSettlements
-      await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei(price.toString()));
+      await contractMonitor.checkForNewDisputeSettlementEvents();
 
       // 2.  Wallet Balance monitor
       // 2.a Update the client
@@ -87,7 +100,7 @@ async function run(price, address, shouldPoll, botMonitorObject, walletMonitorOb
       // 3.a Update the client
       await empClient.update();
       // 3.b Check for positions below their CR
-      await crMonitor.checkWalletCrRatio(() => toWei(price.toString()));
+      await crMonitor.checkWalletCrRatio();
     } catch (error) {
       console.log("ERROR", error);
       Logger.error({
@@ -128,7 +141,18 @@ const Poll = async function(callback) {
     // Wallet objects to monitor.
     const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
 
-    await run(process.env.PRICE, process.env.EMP_ADDRESS, true, botMonitorObject, walletMonitorObject, pollingDelay);
+    // Read price feed configuration from an environment variable.
+    const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
+
+    await run(
+      process.env.PRICE,
+      process.env.EMP_ADDRESS,
+      true,
+      botMonitorObject,
+      walletMonitorObject,
+      pollingDelay,
+      priceFeedConfig
+    );
   } catch (err) {
     callback(err);
   }

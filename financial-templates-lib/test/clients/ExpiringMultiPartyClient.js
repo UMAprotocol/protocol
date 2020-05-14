@@ -253,7 +253,7 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
           numTokens: toWei("100"),
           amountCollateral: toWei("150"),
           hasPendingWithdrawal: true,
-          requestPassTimestamp: (currentTime + 1000).toString(),
+          withdrawalRequestPassTimestamp: (currentTime + 1000).toString(),
           withdrawalRequestAmount: toWei("1")
         }
       ],

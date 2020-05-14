@@ -1,4 +1,4 @@
-const { toWei } = web3.utils;
+const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName } = require("../../core/utils/Constants.js");
@@ -11,6 +11,9 @@ const { ContractMonitor } = require("../ContractMonitor");
 const {
   ExpiringMultiPartyEventClient
 } = require("../../financial-templates-lib/clients/ExpiringMultiPartyEventClient");
+
+// Price feed mock
+const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
@@ -44,6 +47,9 @@ contract("ContractMonitor.js", function(accounts) {
 
   // Test object for EMP event client
   let eventClient;
+
+  // Price feed mock
+  let priceFeedMock;
 
   // re-used variables
   let expirationTime;
@@ -98,8 +104,9 @@ contract("ContractMonitor.js", function(accounts) {
 
     emp = await ExpiringMultiParty.new(constructorParams);
     eventClient = new ExpiringMultiPartyEventClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
+    priceFeedMock = new PriceFeedMock();
     // accounts[1] is liquidator bot to monitor and accounts[2] is dispute bot to monitor.
-    contractMonitor = new ContractMonitor(spyLogger, eventClient, [accounts[1]], [accounts[2]]);
+    contractMonitor = new ContractMonitor(spyLogger, eventClient, [accounts[1]], [accounts[2]], priceFeedMock);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -139,9 +146,10 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Update the eventClient and check it has the liquidation event stored correctly
     await eventClient.update();
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1")));
 
     // Check for liquidation events
-    await contractMonitor.checkForNewLiquidations(() => toWei("1"));
+    await contractMonitor.checkForNewLiquidations();
 
     // Ensure that the spy correctly captured the liquidation events key information.
     // Should contain etherscan addresses for the liquidator, sponsor and transaction
@@ -168,7 +176,7 @@ contract("ContractMonitor.js", function(accounts) {
     await eventClient.update();
 
     // check for new liquidations and check the winston messages sent to the spy
-    await contractMonitor.checkForNewLiquidations(() => toWei("1"));
+    await contractMonitor.checkForNewLiquidations();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor1}`)); // liquidator in txObject2
     assert.isFalse(lastSpyLogIncludes(spy, "(Monitored liquidator bot)")); // not called from a monitored address
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor2}`)); // token sponsor
@@ -194,8 +202,9 @@ contract("ContractMonitor.js", function(accounts) {
     // Update the eventClient and check it has the dispute event stored correctly
     await eventClient.clearState();
     await eventClient.update();
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1")));
 
-    await contractMonitor.checkForNewDisputeEvents(() => toWei("1"));
+    await contractMonitor.checkForNewDisputeEvents();
 
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`)); // disputer address
     assert.isTrue(lastSpyLogIncludes(spy, "(Monitored dispute bot)")); // disputer is monitored
@@ -223,7 +232,7 @@ contract("ContractMonitor.js", function(accounts) {
     await eventClient.clearState();
     await eventClient.update();
 
-    await contractMonitor.checkForNewDisputeEvents(() => toWei("1"));
+    await contractMonitor.checkForNewDisputeEvents();
 
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor2}`)); // disputer address
     assert.isFalse(lastSpyLogIncludes(spy, "(Monitored dispute bot)")); // disputer is not monitored
@@ -265,8 +274,9 @@ contract("ContractMonitor.js", function(accounts) {
 
     // Update the eventClient and check it has the dispute event stored correctly
     await eventClient.update();
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1")));
 
-    await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei("1"));
+    await contractMonitor.checkForNewDisputeSettlementEvents();
 
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${liquidator}`));
     assert.isTrue(lastSpyLogIncludes(spy, "(Monitored liquidator bot)"));
@@ -308,7 +318,7 @@ contract("ContractMonitor.js", function(accounts) {
     // Update the eventClient and check it has the dispute event stored correctly
     await eventClient.update();
 
-    await contractMonitor.checkForNewDisputeSettlementEvents(() => toWei("1"));
+    await contractMonitor.checkForNewDisputeSettlementEvents();
 
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${sponsor1}`)); // liquidator address
     assert.isFalse(lastSpyLogIncludes(spy, "(Monitored liquidator bot)")); // This liquidator is not monitored
