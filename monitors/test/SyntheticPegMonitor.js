@@ -119,7 +119,7 @@ contract("SyntheticPegMonitor", function(accounts) {
 
     // Tested module that uses the two price feeds.
     syntheticPegMonitorConfig = {
-      deviationAlertThreshold: 20 // Any deviation larger than 20% should fire an alert
+      deviationAlertThreshold: toBN(toWei("20")) // Any deviation larger than 20% should fire an alert
     };
     syntheticPegMonitor = new SyntheticPegMonitor(
       spyLogger,

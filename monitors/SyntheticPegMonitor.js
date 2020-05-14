@@ -27,18 +27,18 @@ class SyntheticPegMonitor {
     this.formatDecimalString = createFormatFunction(this.web3, 2);
 
     // If the price of one price feed deviates by more than `deviationAlertThreshold` percent from the other, trigger alert.
-    this.deviationAlertThreshold = this.web3.utils.toBN(this.web3.utils.toWei("20"));
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
+    const { toBN, toWei } = this.web3.utils;
     const defaultConfig = {
       deviationAlertThreshold: {
         // `deviationAlertThreshold`: Percentage error threshold used to compare observed and expected token prices.
         // if the deviation in token price exceeds this value an alert is fired.
-        value: 20,
+        value: this.web3.utils.toBN(this.web3.utils.toWei("20")),
         isValid: x => {
-          return x >= 0 && x < 100;
+          return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gte(toBN("0"));
         }
       }
     };
