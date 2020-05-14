@@ -214,7 +214,8 @@ contract("Liquidator.js", function(accounts) {
 
     // Start with a mocked price of 1 usd per token.
     // This puts both sponsors over collateralized so no liquidations should occur.
-    await liquidator.queryAndLiquidate(time => toWei("1"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    await liquidator.queryAndLiquidate();
     assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
     // There should be no liquidations created from any sponsor account
@@ -230,7 +231,8 @@ contract("Liquidator.js", function(accounts) {
     // This places their position with a CR of: 115 / (100 * 1) * 100 = 115%. This is below the CR threshold.
     await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor1 });
 
-    await liquidator.queryAndLiquidate(time => toWei("1"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    await liquidator.queryAndLiquidate();
     assert.equal(spy.callCount, 1); // There should be one log from the liquidation event of the withdrawal.
 
     // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
