@@ -1,17 +1,17 @@
-# This docker container can be pulled from umaprotocol/voting on dockerhub.
-# To get the latest image, run:
-#   docker pull umaprotocol/voting
-#
-# Execute the voting system with:
-#   docker run
-#     --env SENDGRID_API_KEY=<key>
-#     --env NOTIFICATION_FROM_ADDRESS=<email address>
-#     --env NOTIFICATION_TO_ADDRESS=<email address>
-#     --env LOCALHOST=<ethereum host>
-#     --env LOCALPORT=<ethereum port>
-#     --env MNEMONIC=<mnemonic>
-#     --env COMMAND="while true; do $(npm bin)/truffle exec ./scripts/Voting.js --network=<your_network>; sleep 60; done"
-#     umaprotocol/voting
+# This docker container can be pulled from umaprotocol/protocol on dockerhub.
+# To get the latest image, run: docker pull umaprotocol/protocol
+# This docker container is used to access all components of the UMA ecosystem
+# including liquidator, disputors and monitor bots. Settings for these bots are
+# defined via enviroment variables. For example to run a liquidator bot run:
+# docker run --env MNEMONIC="<mnemonic>" \
+#     --env PAGERDUTY_API_KEY="<pager duty api key>" \
+#     --env PAGERDUTY_SERVICE_ID="< service id>" \
+#     --env PAGERDUTY_FROM_EMAIL="<from email>" \
+#     --env SLACK_WEBHOOK="<slack webhook>" \
+#     --env EMP_ADDRESS="<emp address>" \
+#     --env POLLING_DELAY="<update delay in ms>" \
+#     --env COMMAND="npx truffle exec ../liquidator/index.js --network mainnet_mnemonic" \
+#     umaprotocol/protocol:latest
 #
 # To build the docker image locally, run the following command from the `protocol` directory:
 #   docker build -t <username>/<imagename> .
@@ -19,11 +19,13 @@
 # To `docker run` with your locally built image, replace `umaprotocol/voting` with <username>/<imagename>.
 
 # Fix node version due to high potential for incompatibilities.
-FROM node:11
+FROM node:lts
 
-# Pull down latest version of code from Github.
-RUN git clone https://github.com/UMAprotocol/protocol.git
-WORKDIR protocol
+# All source code and execution happens from the protocol directory.
+WORKDIR /protocol
+
+# Copy the latest state of the repo into the protocol directory.
+COPY . ./
 
 # Install dependencies and compile contracts.
 RUN apt-get update
@@ -31,11 +33,8 @@ RUN apt-get install -y libudev-dev libusb-1.0-0-dev
 RUN npm install
 RUN scripts/buildContracts.sh
 
-# The setup above could probably be extracted to a base Docker image, but that may require modifying the directory
-# structure more.
-WORKDIR core/
+# For now all logic in the mono-repo must be executed from the `core` directory.
+WORKDIR /protocol/core/
 
 # Command to run any command provided by the COMMAND env variable.
-# Use the command listed at the top to run the voting script repeatedly in a 60 second loop.
 ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
-CMD ["--network=test"]
