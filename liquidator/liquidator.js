@@ -1,6 +1,8 @@
 // When running this script it assumed that the account has enough tokens and allowance from the unlocked Truffle
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
+const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
+
 class Liquidator {
   /**
    * @notice Constructs new Liquidator bot.
@@ -70,20 +72,8 @@ class Liquidator {
       }
     };
 
-    // Set and validate config settings.
-    // TODO: Refactor this functionality into a common/ module.
-    Object.keys(defaultConfig).forEach(field => {
-      this[field] = config && field in config ? config[field] : defaultConfig[field].value;
-      if (!defaultConfig[field].isValid(this[field])) {
-        this.logger.error({
-          at: "Liquidator",
-          message: "Attempting to set configuration field with invalid value",
-          field: field,
-          value: this[field]
-        });
-        throw new Error("Attempting to set configuration field with invalid value");
-      }
-    });
+    // Validate and set config settings to class state.
+    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
   }
 
   // Update the client and gasEstimator clients.
