@@ -10,7 +10,7 @@ fi
 echo "Deploying" $1
 echo "Using ENV file:" $1
 gcloud compute instances create-with-container $1 \
-    --container-image docker.io/umaprotocol/voting:latest \
+    --container-image docker.io/umaprotocol/protocol:latest \
     --container-env-file $2 \
     --zone us-central1-a \
     --container-restart-policy on-failure \
