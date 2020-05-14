@@ -1,4 +1,4 @@
-const { toWei } = web3.utils;
+const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const { interfaceName } = require("../../core/utils/Constants.js");
@@ -8,6 +8,9 @@ const { CRMonitor } = require("../CRMonitor");
 
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
+
+// Price feed mock
+const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
@@ -36,6 +39,9 @@ contract("CRMonitor.js", function(accounts) {
 
   // Test object for EMP event client
   let eventClient;
+
+  // Price feed mock
+  let priceFeedMock;
 
   // re-used variables
   let expirationTime;
@@ -91,6 +97,7 @@ contract("CRMonitor.js", function(accounts) {
 
     emp = await ExpiringMultiParty.new(constructorParams);
     empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
+    priceFeedMock = new PriceFeedMock();
 
     const walletMonitorObject = [
       {
@@ -105,7 +112,7 @@ contract("CRMonitor.js", function(accounts) {
       }
     ];
 
-    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject);
+    crMonitor = new CRMonitor(spyLogger, empClient, walletMonitorObject, priceFeedMock);
 
     syntheticToken = await Token.at(await emp.tokenCurrency());
 
@@ -134,13 +141,15 @@ contract("CRMonitor.js", function(accounts) {
   it("Winston correctly emits collateralization ratio message", async function() {
     // No messages created if safely above the CR threshold
     await empClient.update();
-    await crMonitor.checkWalletCrRatio(time => toWei("1"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 0);
 
     // Emits a message if below the CR threshold. At a price of 1.3 only the monitoredTrader should be undercollateralized
     // with a CR of 250 / (100 * 1.3) =1.923 which is below this addresses threshold of 200 and should emit a message.
     await empClient.update();
-    await crMonitor.checkWalletCrRatio(time => toWei("1.3"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("1.3")));
+    await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
     assert.isTrue(lastSpyLogIncludes(spy, "Monitored trader wallet")); // Monitored wallet name from `walletMonitorObject`
@@ -151,25 +160,29 @@ contract("CRMonitor.js", function(accounts) {
     // of 1.2 monitoredTrader's CR = 250/(100*1.2) = 2.083 and monitoredSponsor's CR = 300/(100*1.2) = 2.5 which places
     // both monitored wallets above their thresholds. As a result no new message should be sent.
     await empClient.update();
-    await crMonitor.checkWalletCrRatio(time => toWei("1.2"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("1.2")));
+    await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 1); // no new message.
 
     // Crossing the price threshold for both sponsors should emit exactly 2 new messages. At a price of 2.1
     // monitoredTrader's CR = 250/(100*2.1) = 1.1904 and monitoredSponsor's CR = 300/(100*2.1) = 1.42857. At these CRs
     // Both bots are below their thresholds
     await empClient.update();
-    await crMonitor.checkWalletCrRatio(time => toWei("2.1"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("2.1")));
+    await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 3); // two new messages
 
     // A second check below this threshold should again trigger messages for both sponsors.
     await empClient.update();
-    await crMonitor.checkWalletCrRatio(time => toWei("2.1"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("2.1")));
+    await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 5);
 
     // Reset the price to over collateralized state for both accounts by moving the price into the lower value. This
     // should not emit any events as both correctly collateralized.
     await empClient.update();
-    await crMonitor.checkWalletCrRatio(time => toWei("1"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 5);
 
     // In addition to the price moving of the synthetic, adding/removing collateral or creating/redeeming debt can also impact
@@ -186,7 +199,8 @@ contract("CRMonitor.js", function(accounts) {
     await emp.withdrawPassedRequest({ from: monitoredTrader });
 
     await empClient.update();
-    await crMonitor.checkWalletCrRatio(time => toWei("1"));
+    priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    await crMonitor.checkWalletCrRatio();
     assert.equal(spy.callCount, 6); // a new message is sent.
   });
 });
