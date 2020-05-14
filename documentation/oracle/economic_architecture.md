@@ -2,6 +2,8 @@
 
 The economic architecture of the UMA DVM is summarized here, and additional details can be found in the [whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-DVM-oracle-whitepaper.pdf).
 
+This section provides an overview of the current implementation of the economic guarantees of the DVM. For a discussion of the guiding principles behind designing the economic guarantees of the DVM, please look at [this section](../getting_started/uma_oracle_design.md).
+
 ## Economic Guarantees of the UMA DVM
 
 UMA looks at the potential profit from corruption (PfC) and cost of corruption (CoC) of contracts in the system and has designed a mechanism to ensure that the cost of corrupting the DVM will exceed the potential profit.
@@ -27,15 +29,12 @@ Since you would need >50% of the participating voting tokens for any given round
 
 ### Step 2: Measuring PfC
 
-PfC is the maximum profit an attacker could make if they had full control of the DVM and the prices it returns.
-The exact amount one could profit depends on the individual smart contracts.
-However, each smart contract that depends on the DVM is responsible for computing this number.
-To track it, one would have to look at the value that’s computed by each financial contract and add them up.
-Practically, a close proxy for this number is typically to observe the sum total of collateral across all contracts that use the DVM.
+The system-wide PfC is the sum of the PfC of each financial contract that is registered with the DVM.
+The PfC of an individual financial contract is the maximum profit an attacker could make if they had full control of the DVM and the prices it returns to that financial contract.
+Each smart contract that is registered with the DVM is responsible for computing their PfC values and exposing a `pfc()` method so others can read it.
+This PfC value is reported to the DVM whenever fees are paid, since the fee amount is a function of the PfC value.
 
-PfC, on a technical level, is measured by the financial contracts, themselves.
-They compute this number, internally, and expose a `pfc()` method so others can read it.
-They report it to the DVM whenever they pay fees, since the fee computation depends on the PfC value.
+To calculate the PfC for the overall DVM system, the system sums the PfC values computed and reported by each individual financial contract.
 
 ### Step 3: Maintaining CoC > PfC
 
