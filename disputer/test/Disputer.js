@@ -12,6 +12,7 @@ const { Disputer } = require("../disputer.js");
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
+const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
@@ -41,6 +42,7 @@ contract("Disputer.js", function(accounts) {
 
   let spy;
   let spyLogger;
+  let priceFeedMock;
 
   let disputerConfig;
 
@@ -124,7 +126,11 @@ contract("Disputer.js", function(accounts) {
     disputerConfig = {
       disputeDelay: 0
     };
-    disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0], disputerConfig);
+
+    // Create price feed mock.
+    priceFeedMock = new PriceFeedMock();
+
+    disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
   });
 
   it("Detect disputable positions and send disputes", async function() {
@@ -167,7 +173,8 @@ contract("Disputer.js", function(accounts) {
 
     // Start with a mocked price of 1.75 usd per token.
     // This makes all sponsors undercollateralized, meaning no disputes are issued.
-    await disputer.queryAndDispute(time => toWei("1.75"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.75")));
+    await disputer.queryAndDispute();
 
     // There should be no liquidations created from any sponsor account
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
@@ -176,7 +183,8 @@ contract("Disputer.js", function(accounts) {
     assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
     // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 2); // 2 info level logs should be sent at the conclusion of the disputes.
 
     // Sponsor2 and sponsor3 should be disputed.
@@ -212,7 +220,8 @@ contract("Disputer.js", function(accounts) {
 
     // With a price of 1 usd per token this withdrawal was actually valid, even though it's very close to liquidation.
     // This makes all sponsors undercollateralized, meaning no disputes are issued.
-    await disputer.queryAndDispute(time => toWei("1.00"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 1); // 1 info level logs should be sent at the conclusion of the disputes.
 
     // Sponsor1 should be disputed.
@@ -262,7 +271,8 @@ contract("Disputer.js", function(accounts) {
     );
 
     // With a price of 1.1, the sponsors should be correctly collateralized, so disputes should be issued against sponsor1 and sponsor2's liquidations.
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 2); // Two info level events for the two disputes.
 
     // Push a price of 1.3, which should cause sponsor1's dispute to fail and sponsor2's dispute to succeed.
@@ -314,7 +324,8 @@ contract("Disputer.js", function(accounts) {
     await collateralToken.transfer(rando, transferAmount, { from: disputeBot });
 
     // Both positions should be disputed with a presumed price of 1.1, but will only have enough collateral for the smaller one.
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 2); // Two info events for the the 1 successful dispute and one for the failed dispute.
 
     // Only sponsor2 should be disputed.
@@ -323,7 +334,8 @@ contract("Disputer.js", function(accounts) {
 
     // Transfer balance back, and the dispute should go through.
     await collateralToken.transfer(disputeBot, transferAmount, { from: rando });
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 3); // Info level event for the correctly processed dispute.
 
     // sponsor1 should now be disputed.
@@ -337,7 +349,7 @@ contract("Disputer.js", function(accounts) {
         disputerConfig = {
           disputeDelay: -1
         };
-        disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0], disputerConfig);
+        disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
         errorThrown = false;
       } catch (err) {
         errorThrown = true;
@@ -349,7 +361,7 @@ contract("Disputer.js", function(accounts) {
       disputerConfig = {
         disputeDelay: 60
       };
-      disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0], disputerConfig);
+      disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
 
       // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
       await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -371,7 +383,8 @@ contract("Disputer.js", function(accounts) {
       // not enough time has passed since the liquidation timestamp, so we'll delay disputing for now. The
       // `disputeDelay` configuration enforces that we must wait `disputeDelay` seconds after the liquidation
       // timestamp before disputing.
-      await disputer.queryAndDispute(time => toWei("1.1"));
+      priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+      await disputer.queryAndDispute();
       assert.equal(spy.callCount, 0);
 
       // Sponsor1 should not be disputed.
@@ -380,7 +393,8 @@ contract("Disputer.js", function(accounts) {
       // Advance contract time and attempt to dispute again.
       await emp.setCurrentTime(Number(liquidationTime) + disputerConfig.disputeDelay);
 
-      await disputer.queryAndDispute(time => toWei("1.1"));
+      priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+      await disputer.queryAndDispute();
       assert.equal(spy.callCount, 1);
 
       // The disputeBot should be the disputer in sponsor1's liquidations.
