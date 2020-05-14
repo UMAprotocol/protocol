@@ -68,20 +68,20 @@ class ContractMonitor {
         .call();
       const price = this.priceFeed.getHistoricalPrice(parseInt(liquidationTime.toString()));
 
-      if (!price) {
+      let collateralizationString;
+      if (price) {
+        collateralizationString = this.formatDecimalString(
+          this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
+        );
+      } else {
         this.logger.warn({
           at: "ContractMonitor",
           message: "Could not get historical price for liquidation",
           price,
           liquidationTime: liquidationTime.toString()
         });
+        collateralizationString = "[Invalid]";
       }
-
-      const collateralizationString = price
-        ? this.formatDecimalString(
-            this.calculatePositionCRPercent(event.liquidatedCollateral, event.tokensOutstanding, price)
-          )
-        : "[Invalid]";
 
       // Sample message:
       // Liquidation alert: [ethereum address if third party, or “UMA” if it’s our bot]
