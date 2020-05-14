@@ -40,6 +40,9 @@ contract("Disputer.js", function(accounts) {
   let mockOracle;
 
   let spy;
+  let spyLogger;
+
+  let disputerConfig;
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
   const unreachableDeadline = MAX_UINT_VAL;
@@ -108,7 +111,7 @@ contract("Disputer.js", function(accounts) {
 
     spy = sinon.spy();
 
-    const spyLogger = winston.createLogger({
+    spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
@@ -118,10 +121,13 @@ contract("Disputer.js", function(accounts) {
     gasEstimator = new GasEstimator(spyLogger);
 
     // Create a new instance of the disputer to test
-    disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0]);
+    disputerConfig = {
+      disputeDelay: 0
+    };
+    disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0], disputerConfig);
   });
 
-  it("Detect disputable positions and send dipsutes", async function() {
+  it("Detect disputable positions and send disputes", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
@@ -278,5 +284,64 @@ contract("Disputer.js", function(accounts) {
 
     // sponsor1 should now be disputed.
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+  });
+
+  describe("Overrides the default disputer configuration settings", function() {
+    it("Cannot set `disputeDelay` < 0", async function() {
+      let errorThrown;
+      try {
+        disputerConfig = {
+          disputeDelay: -1
+        };
+        disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0], disputerConfig);
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isTrue(errorThrown);
+    });
+
+    it("Sets `disputeDelay` to 60 seconds", async function() {
+      disputerConfig = {
+        disputeDelay: 60
+      };
+      disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0], disputerConfig);
+
+      // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // The liquidator creates a position to have synthetic tokens.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+      await emp.createLiquidation(
+        sponsor1,
+        { rawValue: "0" },
+        { rawValue: toWei("1.75") },
+        { rawValue: toWei("100") },
+        unreachableDeadline,
+        { from: liquidator }
+      );
+      const liquidationTime = await emp.getCurrentTime();
+
+      // With a price of 1.1, sponsor1 should be correctly collateralized, so a dispute should be issued. However,
+      // not enough time has passed since the liquidation timestamp, so we'll delay disputing for now. The
+      // `disputeDelay` configuration enforces that we must wait `disputeDelay` seconds after the liquidation
+      // timestamp before disputing.
+      await disputer.queryAndDispute(time => toWei("1.1"));
+      assert.equal(spy.callCount, 0);
+
+      // Sponsor1 should not be disputed.
+      assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+
+      // Advance contract time and attempt to dispute again.
+      await emp.setCurrentTime(Number(liquidationTime) + disputerConfig.disputeDelay);
+
+      await disputer.queryAndDispute(time => toWei("1.1"));
+      assert.equal(spy.callCount, 1);
+
+      // The disputeBot should be the disputer in sponsor1's liquidations.
+      assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+      assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+    });
   });
 });

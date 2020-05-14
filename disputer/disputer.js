@@ -2,7 +2,15 @@
 // wallet to run the liquidations. Future versions will deal with generating additional synthetic tokens from EMPs as the bot needs.
 
 class Disputer {
-  constructor(logger, expiringMultiPartyClient, gasEstimator, account) {
+  /**
+   * @notice Constructs new Disputer bot.
+   * @param {Object} logger Module used to send logs.
+   * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
+   * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
+   */
+  constructor(logger, expiringMultiPartyClient, gasEstimator, account, config) {
     this.logger = logger;
     this.account = account;
 
@@ -15,6 +23,42 @@ class Disputer {
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
+
+    // Default config settings. Disputer deployer can override these settings by passing in new
+    // values via the `config` input object. The `isValid` property is a function that should be called
+    // before resetting any config settings. `isValid` must return a Boolean.
+    const defaultConfig = {
+      disputeDelay: {
+        // `disputeDelay`: Amount of time to wait after the request timestamp of the liquidation to be disputed.
+        // This makes the reading of the historical price more reliable. Denominated in seconds.
+        value: 60,
+        isValid: x => {
+          return x >= 0;
+        }
+      },
+      txnGasLimit: {
+        // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
+        value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
+        isValid: x => {
+          return x >= 6000000 && x < 15000000;
+        }
+      }
+    };
+
+    // Set and validate config settings.
+    // TODO: Refactor this functionality into a common/ module.
+    Object.keys(defaultConfig).forEach(field => {
+      this[field] = config && field in config ? config[field] : defaultConfig[field].value;
+      if (!defaultConfig[field].isValid(this[field])) {
+        this.logger.error({
+          at: "Disputer",
+          message: "Attempting to set configuration field with invalid value",
+          field: field,
+          value: this[field]
+        });
+        throw new Error("Attempting to set configuration field with invalid value");
+      }
+    });
   }
 
   // Update the client and gasEstimator clients.
@@ -35,8 +79,10 @@ class Disputer {
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
-    const disputeableLiquidations = undisputedLiquidations.filter(liquidation =>
-      this.empClient.isDisputable(liquidation, priceFunction(liquidation.liquidationTime))
+    const disputeableLiquidations = undisputedLiquidations.filter(
+      liquidation =>
+        this.empClient.isDisputable(liquidation, priceFunction(liquidation.liquidationTime)) &&
+        this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
     );
 
     if (disputeableLiquidations.length === 0) {
@@ -67,7 +113,7 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
@@ -114,6 +160,8 @@ class Disputer {
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   queryAndWithdrawRewards = async () => {
+    const { fromWei } = this.web3.utils;
+
     this.logger.debug({
       at: "Disputer",
       message: "Checking for disputed liquidations that may have resolved"
@@ -154,14 +202,14 @@ class Disputer {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing dispute",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig
       });
 
@@ -188,7 +236,7 @@ class Disputer {
         at: "Disputer",
         message: "Dispute withdrawn🤑",
         liquidation: liquidation,
-        amount: this.web3.utils.fromWei(withdrawAmount.rawValue),
+        amount: fromWei(withdrawAmount.rawValue),
         txnConfig,
         liquidationResult: logResult
       });
