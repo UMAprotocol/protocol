@@ -7,10 +7,11 @@ class Liquidator {
    * @param {Object} logger Module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {Object} priceFeed Module used to query the current token price.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, account, config) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, config) {
     this.logger = logger;
     this.account = account;
 
@@ -23,6 +24,9 @@ class Liquidator {
 
     // Instance of the expiring multiparty to perform on-chain liquidations.
     this.empContract = this.empClient.emp;
+
+    // Instance of the price feed to get the realtime token price.
+    this.priceFeed = priceFeed;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
@@ -38,12 +42,38 @@ class Liquidator {
         isValid: x => {
           return toBN(x).lt(toBN(toWei("1"))) && toBN(x).gte(toBN("0"));
         }
+      },
+      liquidationDeadline: {
+        // `liquidationDeadline`: Aborts the liquidation if the transaction is mined this amount of time after the
+        // EMP client's last update time. Denominated in seconds, so 300 = 5 minutes.
+        value: 300,
+        isValid: x => {
+          return x >= 0;
+        }
+      },
+      liquidationMinPrice: {
+        // `liquidationMinPrice`: Aborts the liquidation if the amount of collateral in the position per token
+        // outstanding is below this ratio.
+        value: toWei("0"),
+        isValid: x => {
+          return toBN(x).gte(toBN("0"));
+        }
+        // TODO: We should specify as a percentage of the token price so that no valid
+        // liquidation would ever lose money.
+      },
+      txnGasLimit: {
+        // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
+        value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
+        isValid: x => {
+          return x >= 6000000 && x < 15000000;
+        }
       }
     };
 
-    // Set and validate config settings
+    // Set and validate config settings.
+    // TODO: Refactor this functionality into a common/ module.
     Object.keys(defaultConfig).forEach(field => {
-      this[field] = config && config[field] ? config[field] : defaultConfig[field].value;
+      this[field] = config && field in config ? config[field] : defaultConfig[field].value;
       if (!defaultConfig[field].isValid(this[field])) {
         this.logger.error({
           at: "Liquidator",
@@ -61,36 +91,45 @@ class Liquidator {
   update = async () => {
     await this.empClient.update();
     await this.gasEstimator.update();
+    await this.priceFeed.update();
   };
 
   // Queries underCollateralized positions and performs liquidations against any under collateralized positions.
-  queryAndLiquidate = async priceFunction => {
+  queryAndLiquidate = async () => {
+    await this.update();
+
     const { toBN, fromWei, toWei } = this.web3.utils;
+    const price = this.priceFeed.getCurrentPrice();
 
-    const contractTime = this.empClient.getLastUpdateTime();
-    const priceFeed = priceFunction(contractTime);
+    if (!price) {
+      this.logger.warn({
+        at: "Liquidator",
+        message: "Cannot liquidate: price feed returned invalid value",
+        price
+      });
+      return;
+    }
 
-    // The `priceFeed` is a Number that is used to determine if a position is liquidatable. The higher the
-    // `priceFeed` value, the more collateral that the position is required to have to be correctly collateralized.
-    // Therefore, we add a buffer by deriving a `scaledPriceFeed` from (`1 - crThreshold` * `priceFeed`)
-    const scaledPriceFeed = fromWei(toBN(priceFeed).mul(toBN(toWei("1")).sub(toBN(this.crThreshold))));
+    // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
+    // `price` value, the more collateral that the position is required to have to be correctly collateralized.
+    // Therefore, we add a buffer by deriving a `scaledPrice` from (`1 - crThreshold` * `price`)
+    const scaledPrice = fromWei(price.mul(toBN(toWei("1")).sub(toBN(this.crThreshold))));
     this.logger.debug({
       at: "Liquidator",
       message: "Scaling down collateral threshold for liquidations",
-      scaledPriceFeed: scaledPriceFeed,
+      inputPrice: price.toString(),
+      scaledPrice: scaledPrice.toString(),
       crThreshold: this.crThreshold
     });
 
     this.logger.debug({
       at: "Liquidator",
       message: "Checking for under collateralized positions",
-      inputPrice: priceFeed
+      scaledPrice: scaledPrice.toString()
     });
 
-    await this.update();
-
     // Get the latest undercollateralized positions from the client.
-    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(scaledPriceFeed);
+    const underCollateralizedPositions = this.empClient.getUnderCollateralizedPositions(scaledPrice);
 
     if (underCollateralizedPositions.length === 0) {
       this.logger.debug({
@@ -103,14 +142,13 @@ class Liquidator {
     for (const position of underCollateralizedPositions) {
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.empClient.getLastUpdateTime();
-      const fiveMinutes = 300;
       // Create the transaction.
       const liquidation = this.empContract.methods.createLiquidation(
         position.sponsor,
-        { rawValue: "0" },
-        { rawValue: toWei(scaledPriceFeed) },
+        { rawValue: this.liquidationMinPrice },
+        { rawValue: toWei(scaledPrice) },
         { rawValue: position.numTokens },
-        parseInt(currentBlockTime) + fiveMinutes
+        parseInt(currentBlockTime) + this.liquidationDeadline
       );
 
       // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
@@ -130,14 +168,14 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
         at: "Liquidator",
         message: "Liquidating position",
         position: position,
-        inputPrice: toWei(scaledPriceFeed),
+        inputPrice: toWei(scaledPrice),
         txnConfig
       });
 
@@ -167,7 +205,7 @@ class Liquidator {
         at: "Liquidator",
         message: "Position has been liquidated!🔫",
         position: position,
-        inputPrice: toWei(scaledPriceFeed),
+        inputPrice: toWei(scaledPrice),
         txnConfig,
         liquidationResult: logResult
       });
@@ -224,7 +262,7 @@ class Liquidator {
 
       const txnConfig = {
         from: this.account,
-        gas: 1500000,
+        gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
       this.logger.debug({
