@@ -238,6 +238,27 @@ contract("ExpiringMultiPartyClient.js", function(accounts) {
       ],
       client.getUnderCollateralizedPositions(toWei("1.00000000000000001"))
     );
+
+    // After submitting a withdraw request that brings the position below the CR ratio the client should detect this.
+    // Withdrawing just 1 wei of collateral will place the position below the CR ratio.
+    await emp.requestWithdrawal({ rawValue: toWei("1") }, { from: sponsor1 });
+
+    await client.update();
+    // Update client to get withdrawal information.
+    const currentTime = Number(await emp.getCurrentTime());
+    assert.deepStrictEqual(
+      [
+        {
+          sponsor: sponsor1,
+          numTokens: toWei("100"),
+          amountCollateral: toWei("150"),
+          hasPendingWithdrawal: true,
+          requestPassTimestamp: (currentTime + 1000).toString(),
+          withdrawalRequestAmount: toWei("1")
+        }
+      ],
+      client.getUnderCollateralizedPositions(toWei("1"))
+    );
   });
 
   it("Returns undisputed liquidations", async function() {

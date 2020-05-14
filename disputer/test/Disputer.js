@@ -48,7 +48,7 @@ contract("Disputer.js", function(accounts) {
   const unreachableDeadline = MAX_UINT_VAL;
 
   before(async function() {
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
+    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
@@ -59,7 +59,9 @@ contract("Disputer.js", function(accounts) {
     await collateralToken.mint(sponsor3, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(liquidator, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(disputeBot, toWei("100000"), { from: contractCreator });
+  });
 
+  beforeEach(async function() {
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
     mockOracle = await MockOracle.new(finder.address, Timer.address, {
@@ -67,9 +69,7 @@ contract("Disputer.js", function(accounts) {
     });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  });
 
-  beforeEach(async function() {
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
@@ -187,6 +187,50 @@ contract("Disputer.js", function(accounts) {
     // The disputeBot should be the disputer in sponsor2 and sponsor3's liquidations.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, disputeBot);
     assert.equal((await emp.getLiquidations(sponsor3))[0].disputer, disputeBot);
+  });
+
+  it("Detect disputable withdraws and send disputes", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // The liquidator creates a position to have synthetic tokens.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+    // The sponsor1 submits a valid withdrawal request of withdrawing exactly 5e18 collateral. This places their
+    // position at collateral of 120 and debt of 100. At a price of 1 unit per token they are exactly collateralized.
+
+    await emp.requestWithdrawal({ rawValue: toWei("5") }, { from: sponsor1 });
+
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("1.75") }, // Price high enough to initiate the liquidation
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
+
+    // With a price of 1 usd per token this withdrawal was actually valid, even though it's very close to liquidation.
+    // This makes all sponsors undercollateralized, meaning no disputes are issued.
+    await disputer.queryAndDispute(time => toWei("1.00"));
+    assert.equal(spy.callCount, 1); // 1 info level logs should be sent at the conclusion of the disputes.
+
+    // Sponsor1 should be disputed.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+
+    // The disputeBot should be the disputer in sponsor1  liquidations.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+
+    // Push a price of 1, which should cause sponsor1's dispute to succeed as the position is correctly collateralized
+    // at a price of 1.
+    const liquidationTime = await emp.getCurrentTime();
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, toWei("1"));
+
+    await disputer.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2); // One additional info level event for the successful withdrawal.
+
+    // sponsor1's dispute should be successful (valid withdrawal)
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
   });
 
   it("Withdraw from successful disputes", async function() {
