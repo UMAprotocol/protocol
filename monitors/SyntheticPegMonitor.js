@@ -49,6 +49,7 @@ class SyntheticPegMonitor {
       at: "SyntheticPegMonitor",
       message: "Checking price deviation"
     });
+    // Get the latest prices from the two price feeds.
     const uniswapTokenPrice = this.uniswapPriceFeed.getLastBlockPrice();
     const cryptoWatchTokenPrice = this.cryptoWatchPriceFeed.getCurrentPrice();
 
