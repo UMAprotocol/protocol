@@ -73,14 +73,19 @@ const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
       throw new Error(
-        "Bad input arg! Specify an `EMP_ADDRESS ` for the location of the expiring Multi Party within your enviroment variables."
+        "Bad input arg! Specify an `EMP_ADDRESS ` for the location of the expiring Multi Party within your environment variables."
       );
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
-    const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig);
+    if (!process.env.PRICE_FEED_CONFIG) {
+      throw new Error(
+        "Bad input arg! Specify an `PRICE_FEED_CONFIG ` for the location of the expiring Multi Party within your environment variables."
+      );
+    }
+
+    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, process.env.PRICE_FEED_CONFIG);
   } catch (err) {
     console.error(err);
     callback(err);
