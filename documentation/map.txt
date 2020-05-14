@@ -12,6 +12,7 @@
 ** glossary.md
 * oracle
 ** technical_architecture.md
+** economic_architecture.md
 ** dvm_interfaces.md
 ** security.md
 ** tutorials
