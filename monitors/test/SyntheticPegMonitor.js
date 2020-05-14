@@ -121,7 +121,12 @@ contract("SyntheticPegMonitor", function(accounts) {
     syntheticPegMonitorConfig = {
       deviationAlertThreshold: 20 // Any deviation larger than 20% should fire an alert
     };
-    syntheticPegMonitor = new SyntheticPegMonitor(spyLogger, uniswapPriceFeed, cryptoWatchPriceFeed);
+    syntheticPegMonitor = new SyntheticPegMonitor(
+      spyLogger,
+      uniswapPriceFeed,
+      cryptoWatchPriceFeed,
+      syntheticPegMonitorConfig
+    );
   });
   it("Calculate percentage error returns expected values", async function() {
     // Test with simple values with know percentage error.

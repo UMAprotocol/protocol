@@ -1,4 +1,5 @@
 const { createFormatFunction, createEtherscanLinkMarkdown } = require("../common/FormattingUtils");
+const { createObjectFromDefaultProps } = require("../common/ObjectUtils");
 
 class SyntheticPegMonitor {
   /**
@@ -8,7 +9,7 @@ class SyntheticPegMonitor {
    * @param {Object} cryptoWatchPriceFeed Module used to query the current crypto watch token price.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, uniswapPriceFeed, cryptoWatchPriceFeed) {
+  constructor(logger, uniswapPriceFeed, cryptoWatchPriceFeed, config) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
@@ -41,6 +42,7 @@ class SyntheticPegMonitor {
         }
       }
     };
+    Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
   }
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
