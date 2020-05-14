@@ -14,6 +14,7 @@ const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport } = require("../../financial-templates-lib/logger/SpyTransport");
+const ConsoleTransport = require("../../financial-templates-lib/logger/ConsoleTransport");
 
 // Contracts and helpers
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -108,7 +109,7 @@ contract("Liquidator.js", function(accounts) {
 
     spyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "info" }, { spy: spy }), ConsoleTransport.createConsoleTransport()]
     });
 
     // Create a new instance of the ExpiringMultiPartyClient & gasEstimator to construct the liquidator
