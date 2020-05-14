@@ -39,7 +39,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
   const accounts = await web3.eth.getAccounts();
   const emp = await ExpiringMultiParty.at(address);
 
-  const getTime = () => emp.getCurrentTime();
+  const getTime = () => Math.round(new Date().getTime() / 1000);
   const gasEstimator = new GasEstimator(Logger, getTime);
 
   // Price feed.

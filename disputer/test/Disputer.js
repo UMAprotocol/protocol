@@ -12,6 +12,7 @@ const { Disputer } = require("../disputer.js");
 // Helper client script
 const { ExpiringMultiPartyClient } = require("../../financial-templates-lib/clients/ExpiringMultiPartyClient");
 const { GasEstimator } = require("../../financial-templates-lib/helpers/GasEstimator");
+const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock");
 
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
@@ -40,12 +41,16 @@ contract("Disputer.js", function(accounts) {
   let mockOracle;
 
   let spy;
+  let spyLogger;
+  let priceFeedMock;
+
+  let disputerConfig;
 
   const zeroAddress = "0x0000000000000000000000000000000000000000";
   const unreachableDeadline = MAX_UINT_VAL;
 
   before(async function() {
-    collateralToken = await Token.new("UMA", "UMA", 18, { from: contractCreator });
+    collateralToken = await Token.new("DAI", "DAI", 18, { from: contractCreator });
     await collateralToken.addMember(1, contractCreator, {
       from: contractCreator
     });
@@ -56,7 +61,9 @@ contract("Disputer.js", function(accounts) {
     await collateralToken.mint(sponsor3, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(liquidator, toWei("100000"), { from: contractCreator });
     await collateralToken.mint(disputeBot, toWei("100000"), { from: contractCreator });
+  });
 
+  beforeEach(async function() {
     // Create a mockOracle and finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
     mockOracle = await MockOracle.new(finder.address, Timer.address, {
@@ -64,9 +71,7 @@ contract("Disputer.js", function(accounts) {
     });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  });
 
-  beforeEach(async function() {
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
@@ -108,21 +113,28 @@ contract("Disputer.js", function(accounts) {
 
     spy = sinon.spy();
 
-    const spyLogger = winston.createLogger({
+    spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
     // Create a new instance of the ExpiringMultiPartyClient & GasEstimator to construct the disputer
     empClient = new ExpiringMultiPartyClient(spyLogger, ExpiringMultiParty.abi, web3, emp.address);
-    const getTime = () => emp.getCurrentTime();
+    const getTime = () => Math.round(new Date().getTime() / 1000);
     gasEstimator = new GasEstimator(spyLogger, getTime);
 
     // Create a new instance of the disputer to test
-    disputer = new Disputer(spyLogger, empClient, gasEstimator, accounts[0]);
+    disputerConfig = {
+      disputeDelay: 0
+    };
+
+    // Create price feed mock.
+    priceFeedMock = new PriceFeedMock();
+
+    disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
   });
 
-  it("Detect disputable positions and send dipsutes", async function() {
+  it("Detect disputable positions and send disputes", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
 
@@ -162,7 +174,8 @@ contract("Disputer.js", function(accounts) {
 
     // Start with a mocked price of 1.75 usd per token.
     // This makes all sponsors undercollateralized, meaning no disputes are issued.
-    await disputer.queryAndDispute(time => toWei("1.75"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.75")));
+    await disputer.queryAndDispute();
 
     // There should be no liquidations created from any sponsor account
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
@@ -171,7 +184,8 @@ contract("Disputer.js", function(accounts) {
     assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
     // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 2); // 2 info level logs should be sent at the conclusion of the disputes.
 
     // Sponsor2 and sponsor3 should be disputed.
@@ -182,6 +196,51 @@ contract("Disputer.js", function(accounts) {
     // The disputeBot should be the disputer in sponsor2 and sponsor3's liquidations.
     assert.equal((await emp.getLiquidations(sponsor2))[0].disputer, disputeBot);
     assert.equal((await emp.getLiquidations(sponsor3))[0].disputer, disputeBot);
+  });
+
+  it("Detect disputable withdraws and send disputes", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // The liquidator creates a position to have synthetic tokens.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+    // The sponsor1 submits a valid withdrawal request of withdrawing exactly 5e18 collateral. This places their
+    // position at collateral of 120 and debt of 100. At a price of 1 unit per token they are exactly collateralized.
+
+    await emp.requestWithdrawal({ rawValue: toWei("5") }, { from: sponsor1 });
+
+    await emp.createLiquidation(
+      sponsor1,
+      { rawValue: "0" },
+      { rawValue: toWei("1.75") }, // Price high enough to initiate the liquidation
+      { rawValue: toWei("100") },
+      unreachableDeadline,
+      { from: liquidator }
+    );
+
+    // With a price of 1 usd per token this withdrawal was actually valid, even though it's very close to liquidation.
+    // This makes all sponsors undercollateralized, meaning no disputes are issued.
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1")));
+    await disputer.queryAndDispute();
+    assert.equal(spy.callCount, 1); // 1 info level logs should be sent at the conclusion of the disputes.
+
+    // Sponsor1 should be disputed.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+
+    // The disputeBot should be the disputer in sponsor1  liquidations.
+    assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+
+    // Push a price of 1, which should cause sponsor1's dispute to succeed as the position is correctly collateralized
+    // at a price of 1.
+    const liquidationTime = await emp.getCurrentTime();
+    await mockOracle.pushPrice(web3.utils.utf8ToHex("UMATEST"), liquidationTime, toWei("1"));
+
+    await disputer.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2); // One additional info level event for the successful withdrawal.
+
+    // sponsor1's dispute should be successful (valid withdrawal)
+    assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.DISPUTE_SUCCEEDED);
   });
 
   it("Withdraw from successful disputes", async function() {
@@ -213,7 +272,8 @@ contract("Disputer.js", function(accounts) {
     );
 
     // With a price of 1.1, the sponsors should be correctly collateralized, so disputes should be issued against sponsor1 and sponsor2's liquidations.
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 2); // Two info level events for the two disputes.
 
     // Push a price of 1.3, which should cause sponsor1's dispute to fail and sponsor2's dispute to succeed.
@@ -265,7 +325,8 @@ contract("Disputer.js", function(accounts) {
     await collateralToken.transfer(rando, transferAmount, { from: disputeBot });
 
     // Both positions should be disputed with a presumed price of 1.1, but will only have enough collateral for the smaller one.
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 2); // Two info events for the the 1 successful dispute and one for the failed dispute.
 
     // Only sponsor2 should be disputed.
@@ -274,10 +335,72 @@ contract("Disputer.js", function(accounts) {
 
     // Transfer balance back, and the dispute should go through.
     await collateralToken.transfer(disputeBot, transferAmount, { from: rando });
-    await disputer.queryAndDispute(time => toWei("1.1"));
+    priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+    await disputer.queryAndDispute();
     assert.equal(spy.callCount, 3); // Info level event for the correctly processed dispute.
 
     // sponsor1 should now be disputed.
     assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+  });
+
+  describe("Overrides the default disputer configuration settings", function() {
+    it("Cannot set `disputeDelay` < 0", async function() {
+      let errorThrown;
+      try {
+        disputerConfig = {
+          disputeDelay: -1
+        };
+        disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
+        errorThrown = false;
+      } catch (err) {
+        errorThrown = true;
+      }
+      assert.isTrue(errorThrown);
+    });
+
+    it("Sets `disputeDelay` to 60 seconds", async function() {
+      disputerConfig = {
+        disputeDelay: 60
+      };
+      disputer = new Disputer(spyLogger, empClient, gasEstimator, priceFeedMock, accounts[0], disputerConfig);
+
+      // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
+      await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+      // The liquidator creates a position to have synthetic tokens.
+      await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidator });
+
+      await emp.createLiquidation(
+        sponsor1,
+        { rawValue: "0" },
+        { rawValue: toWei("1.75") },
+        { rawValue: toWei("100") },
+        unreachableDeadline,
+        { from: liquidator }
+      );
+      const liquidationTime = await emp.getCurrentTime();
+
+      // With a price of 1.1, sponsor1 should be correctly collateralized, so a dispute should be issued. However,
+      // not enough time has passed since the liquidation timestamp, so we'll delay disputing for now. The
+      // `disputeDelay` configuration enforces that we must wait `disputeDelay` seconds after the liquidation
+      // timestamp before disputing.
+      priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+      await disputer.queryAndDispute();
+      assert.equal(spy.callCount, 0);
+
+      // Sponsor1 should not be disputed.
+      assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PRE_DISPUTE);
+
+      // Advance contract time and attempt to dispute again.
+      await emp.setCurrentTime(Number(liquidationTime) + disputerConfig.disputeDelay);
+
+      priceFeedMock.setHistoricalPrice(toBN(toWei("1.1")));
+      await disputer.queryAndDispute();
+      assert.equal(spy.callCount, 1);
+
+      // The disputeBot should be the disputer in sponsor1's liquidations.
+      assert.equal((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.PENDING_DISPUTE);
+      assert.equal((await emp.getLiquidations(sponsor1))[0].disputer, disputeBot);
+    });
   });
 });

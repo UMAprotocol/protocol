@@ -89,7 +89,7 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     await printSponsorSummary(sponsorAddress);
     const position = await emp.positions(sponsorAddress);
 
-    const hasPendingWithdrawal = position.requestPassTimestamp.toString() !== "0";
+    const hasPendingWithdrawal = position.withdrawalRequestPassTimestamp.toString() !== "0";
     if (hasPendingWithdrawal) {
       console.log(
         "Because you have a pending withdrawal, other contract functions are blocked. Either execute or cancel your withdrawal. You can still request to transfer your position to a new sponsor address and cancel this request, but you cannot execute the transfer until the withdrawal request is processed."

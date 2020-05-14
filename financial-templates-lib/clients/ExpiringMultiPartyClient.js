@@ -28,11 +28,18 @@ class ExpiringMultiPartyClient {
   getAllPositions = () => this.positions;
 
   // Returns an array of { sponsor, numTokens, amountCollateral } for each position that is undercollateralized
-  // according to the provided `tokenRedemptionValue`.
+  // according to the provided `tokenRedemptionValue`. Note that the `amountCollateral` fed into
+  // `_isUnderCollateralized` is taken as the positions `amountCollateral` minus any `withdrawalRequestAmount`. As a
+  // result this function will return positions that are undercollateralized due to too little collateral or a withdrawal
+  // that, if passed, would make the position undercollateralized.
   getUnderCollateralizedPositions = tokenRedemptionValue => {
-    return this.positions.filter(position =>
-      this._isUnderCollateralized(position.numTokens, position.amountCollateral, tokenRedemptionValue)
-    );
+    return this.positions.filter(position => {
+      const collateralNetWithdrawal = this.web3.utils
+        .toBN(position.amountCollateral)
+        .sub(this.web3.utils.toBN(position.withdrawalRequestAmount))
+        .toString();
+      return this._isUnderCollateralized(position.numTokens, collateralNetWithdrawal, tokenRedemptionValue);
+    });
   };
 
   // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
@@ -126,11 +133,11 @@ class ExpiringMultiPartyClient {
             acc.concat([
               {
                 sponsor: address,
-                requestPassTimestamp: positions[i].requestPassTimestamp,
+                withdrawalRequestPassTimestamp: positions[i].withdrawalRequestPassTimestamp,
                 withdrawalRequestAmount: positions[i].withdrawalRequestAmount.toString(),
                 numTokens: positions[i].tokensOutstanding.toString(),
                 amountCollateral: collateral[i].toString(),
-                hasPendingWithdrawal: positions[i].requestPassTimestamp > 0
+                hasPendingWithdrawal: positions[i].withdrawalRequestPassTimestamp > 0
               }
             ]),
       []
