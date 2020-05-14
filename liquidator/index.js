@@ -94,7 +94,9 @@ const Poll = async function(callback) {
       );
     }
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, process.env.PRICE_FEED_CONFIG);
+    const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
+
+    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig);
   } catch (err) {
     callback(err);
   }

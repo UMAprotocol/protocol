@@ -87,7 +87,7 @@ const Poll = async function(callback) {
 
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, priceFeedConfig);
+    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig);
   } catch (err) {
     console.error(err);
     callback(err);
