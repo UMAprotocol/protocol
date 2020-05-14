@@ -202,6 +202,74 @@ contract("Liquidator.js", function(accounts) {
     assert.equal(spy.callCount, 3);
   });
 
+  it("Can correctly detect invalid withdrawals and liquidate them", async function() {
+    // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
+
+    // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
+    await emp.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }, { from: sponsor2 });
+
+    // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
+    await emp.create({ rawValue: toWei("1000") }, { rawValue: toWei("500") }, { from: liquidatorBot });
+
+    // Start with a mocked price of 1 usd per token.
+    // This puts both sponsors over collateralized so no liquidations should occur.
+    priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    await liquidator.queryAndLiquidate();
+    assert.equal(spy.callCount, 0); // No info level logs should be sent.
+
+    // There should be no liquidations created from any sponsor account
+    assert.deepStrictEqual(await emp.getLiquidations(sponsor1), []);
+    assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+
+    // Both token sponsors should still have their positions with full collateral.
+    assert.equal((await emp.getCollateral(sponsor1)).rawValue, toWei("125"));
+    assert.equal((await emp.getCollateral(sponsor2)).rawValue, toWei("150"));
+
+    // If sponsor1 requests a withdrawal of any amount of collateral above 5 units at the given price of 1 usd per token
+    // their remaining position becomes undercollateralized. Say they request to withdraw 10 units of collateral.
+    // This places their position with a CR of: 115 / (100 * 1) * 100 = 115%. This is below the CR threshold.
+    await emp.requestWithdrawal({ rawValue: toWei("10") }, { from: sponsor1 });
+
+    priceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    await liquidator.queryAndLiquidate();
+    assert.equal(spy.callCount, 1); // There should be one log from the liquidation event of the withdrawal.
+
+    // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
+    // amount of collateral minus the collateral withdrawn. 125 - 10 = 115
+    let liquidationObject = (await emp.getLiquidations(sponsor1))[0];
+    assert.equal(liquidationObject.sponsor, sponsor1);
+    assert.equal(liquidationObject.liquidator, liquidatorBot);
+    assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+    assert.equal(liquidationObject.liquidatedCollateral, toWei("115"));
+    assert.equal(liquidationObject.lockedCollateral, toWei("125"));
+
+    // Advance the timer to the liquidation expiry.
+    const liquidationTime = liquidationObject.liquidationTime;
+    const liquidationLiveness = 1000;
+    await emp.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+
+    // Now that the liquidation has expired, the liquidator can withdraw rewards.
+    const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    await liquidator.queryAndWithdrawRewards();
+    assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. total 2.
+
+    // Liquidator should have their collateral increased by Sponsor1's collateral.
+    const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
+    assert.equal(
+      toBN(collateralPreWithdraw)
+        .add(toBN(toWei("125")))
+        .toString(),
+      collateralPostWithdraw.toString()
+    );
+
+    // Liquidation data should have been deleted.
+    assert.deepStrictEqual((await emp.getLiquidations(sponsor1))[0].state, LiquidationStatesEnum.UNINITIALIZED);
+
+    // The other two positions should not have any liquidations associated with them.
+    assert.deepStrictEqual(await emp.getLiquidations(sponsor2), []);
+  });
+
   it("Can withdraw rewards from expired liquidations", async function() {
     // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
     await emp.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }, { from: sponsor1 });
@@ -224,7 +292,7 @@ contract("Liquidator.js", function(accounts) {
     // Now that the liquidation has expired, the liquidator can withdraw rewards.
     const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
     await liquidator.queryAndWithdrawRewards();
-    assert.equal(spy.callCount, 2); // 1 info level events should be sent at the conclusion of the withdrawal.
+    assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. Total 2.
 
     // Liquidator should have their collateral increased by Sponsor1's collateral.
     const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);

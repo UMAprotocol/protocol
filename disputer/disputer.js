@@ -9,10 +9,11 @@ class Disputer {
    * @param {Object} logger Module used to send logs.
    * @param {Object} expiringMultiPartyClient Module used to query EMP information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, expiringMultiPartyClient, gasEstimator, account, config) {
+  constructor(logger, expiringMultiPartyClient, gasEstimator, priceFeed, account, config) {
     this.logger = logger;
     this.account = account;
 
@@ -22,6 +23,9 @@ class Disputer {
 
     // Gas Estimator to calculate the current Fast gas rate
     this.gasEstimator = gasEstimator;
+
+    // Price feed to compute the token price.
+    this.priceFeed = priceFeed;
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.empContract = this.empClient.emp;
@@ -59,10 +63,11 @@ class Disputer {
   update = async () => {
     await this.empClient.update();
     await this.gasEstimator.update();
+    await this.priceFeed.update();
   };
 
   // Queries disputable liquidations and disputes any that were incorrectly liquidated.
-  queryAndDispute = async priceFunction => {
+  queryAndDispute = async () => {
     this.logger.debug({
       at: "Disputer",
       message: "Checking for any disputable liquidations"
@@ -74,8 +79,10 @@ class Disputer {
     const undisputedLiquidations = this.empClient.getUndisputedLiquidations();
     const disputeableLiquidations = undisputedLiquidations.filter(
       liquidation =>
-        this.empClient.isDisputable(liquidation, priceFunction(liquidation.liquidationTime)) &&
-        this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
+        this.empClient.isDisputable(
+          liquidation,
+          this.priceFeed.getHistoricalPrice(parseInt(liquidation.liquidationTime.toString()))
+        ) && this.empClient.getLastUpdateTime() >= Number(liquidation.liquidationTime) + this.disputeDelay
     );
 
     if (disputeableLiquidations.length === 0) {
@@ -109,11 +116,15 @@ class Disputer {
         gas: this.txnGasLimit,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
       };
+
+      const disputeTime = parseInt(disputeableLiquidation.liquidationTime.toString());
+      const inputPrice = this.priceFeed.getHistoricalPrice(disputeTime).toString();
+
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
         liquidation: disputeableLiquidation,
-        inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
+        inputPrice,
         txnConfig
       });
 
@@ -141,7 +152,7 @@ class Disputer {
         at: "Disputer",
         message: "Position has been disputed!👮‍♂️",
         liquidation: disputeableLiquidation,
-        inputPrice: priceFunction(disputeableLiquidation.liquidationTime),
+        inputPrice,
         txnConfig,
         disputeResult: logResult
       });
