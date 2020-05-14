@@ -48,7 +48,7 @@ class Disputer {
     // Set and validate config settings.
     // TODO: Refactor this functionality into a common/ module.
     Object.keys(defaultConfig).forEach(field => {
-      this[field] = config && Object.keys(config).includes(field) ? config[field] : defaultConfig[field].value;
+      this[field] = config && field in config ? config[field] : defaultConfig[field].value;
       if (!defaultConfig[field].isValid(this[field])) {
         this.logger.error({
           at: "Disputer",
