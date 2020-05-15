@@ -4,8 +4,8 @@
 # including liquidator, disputors and monitor bots. Settings for these bots are
 # defined via enviroment variables. For example to run a liquidator bot run:
 # docker run --env MNEMONIC="<mnemonic>" \
-#     --env PAGERDUTY_API_KEY="<pager duty api key>" \
-#     --env PAGERDUTY_SERVICE_ID="< service id>" \
+#     --env PAGERDUTY_API_KEY="<pagerduty api key>" \
+#     --env PAGERDUTY_SERVICE_ID="<pagerduty service id>" \
 #     --env PAGERDUTY_FROM_EMAIL="<from email>" \
 #     --env SLACK_WEBHOOK="<slack webhook>" \
 #     --env EMP_ADDRESS="<emp address>" \
@@ -16,7 +16,7 @@
 # To build the docker image locally, run the following command from the `protocol` directory:
 #   docker build -t <username>/<imagename> .
 #
-# To `docker run` with your locally built image, replace `umaprotocol/voting` with <username>/<imagename>.
+# To `docker run` with your locally built image, replace `umaprotocol/protocol` with <username>/<imagename>.
 
 # Fix node version due to high potential for incompatibilities.
 FROM node:lts
