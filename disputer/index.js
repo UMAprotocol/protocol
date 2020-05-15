@@ -24,49 +24,50 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
  * @return None or throws an Error.
  */
 async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
-  Logger.info({
-    at: "Disputer#index",
-    message: "Disputer started🔎",
-    empAddress: address,
-    pollingDelay: pollingDelay,
-    priceFeedConfig
-  });
+  try {
+    Logger.info({
+      at: "Disputer#index",
+      message: "Disputer started🔎",
+      empAddress: address,
+      pollingDelay: pollingDelay,
+      priceFeedConfig
+    });
 
-  // Setup web3 accounts an contract instance
-  const accounts = await web3.eth.getAccounts();
-  const emp = await ExpiringMultiParty.at(address);
+    // Setup web3 accounts an contract instance
+    const accounts = await web3.eth.getAccounts();
+    const emp = await ExpiringMultiParty.at(address);
 
-  // Setup price feed.
-  // TODO: consider making getTime async and using contract time.
-  const getTime = () => Math.round(new Date().getTime() / 1000);
-  const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+    // Setup price feed.
+    // TODO: consider making getTime async and using contract time.
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+    const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
-  if (!priceFeed) {
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
-    throw new Error("Price feed config is invalid");
-  }
+    if (!priceFeed) {
+      throw new Error("Price feed config is invalid");
+    }
 
-  // Client and dispute bot
-  const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
-  const gasEstimator = new GasEstimator(Logger);
-  const disputer = new Disputer(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
+    // Client and dispute bot
+    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
+    const gasEstimator = new GasEstimator(Logger);
+    const disputer = new Disputer(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
 
-  while (true) {
-    try {
+    while (true) {
       await disputer.queryAndDispute();
       await disputer.queryAndWithdrawRewards();
-    } catch (error) {
-      Logger.error({
-        at: "Disputer#index🚨",
-        message: "Disputer error",
-        error: error.toString()
-      });
-    }
-    await delay(Number(pollingDelay));
 
-    if (!shouldPoll) {
-      break;
+      await delay(Number(pollingDelay));
+
+      if (!shouldPoll) {
+        break;
+      }
     }
+  } catch (error) {
+    Logger.error({
+      at: "Disputer#index🚨",
+      message: "Disputer error",
+      error: error.toString()
+    });
+    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
   }
 }
 
@@ -89,9 +90,14 @@ const Poll = async function(callback) {
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
     await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig);
-  } catch (err) {
-    console.error(err);
-    callback(err);
+  } catch (error) {
+    Logger.error({
+      at: "Disputer#index🚨",
+      message: "Disputer configuration error",
+      error: error.toString()
+    });
+    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    callback(error);
   }
   callback();
 };

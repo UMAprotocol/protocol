@@ -31,54 +31,53 @@ const ExpandedERC20 = artifacts.require("ExpandedERC20");
  * @return None or throws an Error.
  */
 async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, pollingDelay, priceFeedConfig) {
-  Logger.info({
-    at: "Monitor#index",
-    message: "Monitor started 🕵️‍♂️",
-    empAddress: address,
-    pollingDelay: pollingDelay,
-    priceFeedConfig
-  });
+  try {
+    Logger.info({
+      at: "Monitor#index",
+      message: "Monitor started 🕵️‍♂️",
+      empAddress: address,
+      pollingDelay: pollingDelay,
+      priceFeedConfig
+    });
 
-  // Setup web3 accounts an contract instance
-  const accounts = await web3.eth.getAccounts();
-  const emp = await ExpiringMultiParty.at(address);
+    // Setup web3 accounts an contract instance
+    const accounts = await web3.eth.getAccounts();
+    const emp = await ExpiringMultiParty.at(address);
 
-  // Setup price feed.
-  // TODO: consider making getTime async and using contract time.
-  const getTime = () => Math.round(new Date().getTime() / 1000);
-  const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+    // Setup price feed.
+    // TODO: consider making getTime async and using contract time.
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+    const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
-  if (!priceFeed) {
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
-    throw new Error("Invalid price feed config");
-  }
+    if (!priceFeed) {
+      throw new Error("Invalid price feed config");
+    }
 
-  // 1. Contract state monitor
-  const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
-  const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]], priceFeed);
+    // 1. Contract state monitor
+    const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+    const contractMonitor = new ContractMonitor(Logger, empEventClient, [accounts[0]], [accounts[0]], priceFeed);
 
-  // 2. Balance monitor
-  const collateralTokenAddress = await emp.collateralCurrency();
-  const syntheticTokenAddress = await emp.tokenCurrency();
+    // 2. Balance monitor
+    const collateralTokenAddress = await emp.collateralCurrency();
+    const syntheticTokenAddress = await emp.tokenCurrency();
 
-  const tokenBalanceClient = new TokenBalanceClient(
-    Logger,
-    ExpandedERC20.abi,
-    web3,
-    collateralTokenAddress,
-    syntheticTokenAddress,
-    10
-  );
+    const tokenBalanceClient = new TokenBalanceClient(
+      Logger,
+      ExpandedERC20.abi,
+      web3,
+      collateralTokenAddress,
+      syntheticTokenAddress,
+      10
+    );
 
-  const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
+    const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
 
-  // 3. Collateralization Ratio monitor.
-  const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+    // 3. Collateralization Ratio monitor.
+    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
 
-  const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, priceFeed);
+    const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, priceFeed);
 
-  while (true) {
-    try {
+    while (true) {
       // 1.a Update dependencies.
       await empEventClient.update();
       await priceFeed.update();
@@ -100,22 +99,22 @@ async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, p
       await empClient.update();
       // 3.b Check for positions below their CR
       await crMonitor.checkWalletCrRatio();
-    } catch (error) {
-      console.log("ERROR", error);
-      Logger.error({
-        at: "Monitors#index",
-        message: "Monitor polling error🚨",
-        error: error.toString().toString()
-      });
-    }
-    await delay(Number(pollingDelay));
 
-    if (!shouldPoll) {
-      break;
+      await delay(Number(pollingDelay));
+
+      if (!shouldPoll) {
+        break;
+      }
     }
+  } catch (error) {
+    Logger.error({
+      at: "Monitors#index",
+      message: "Monitor polling error. Monitor crashed🚨",
+      error: error.toString()
+    });
+    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
   }
 }
-
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
@@ -144,8 +143,15 @@ const Poll = async function(callback) {
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
     await run(process.env.EMP_ADDRESS, true, botMonitorObject, walletMonitorObject, pollingDelay, priceFeedConfig);
-  } catch (err) {
-    callback(err);
+  } catch (error) {
+    console.log("COUGHT", error);
+    Logger.error({
+      at: "Monitors#index",
+      message: "Monitor bot config error🚨",
+      error: error.toString()
+    });
+    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    callback(error);
   }
   callback();
 };
