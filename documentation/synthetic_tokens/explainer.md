@@ -25,8 +25,6 @@ This is the minimum number of tokens that a token sponsor must have created agai
 Any action that would reduce a token sponsor's position to below this threshold is disallowed and will revert.
 This includes partial liquidations that leave the sponsor's position smaller than the minimum size, token redemptions that bring the position below the minimum size, and new position creations that request to mint fewer than the minimum number of tokens.
 
-For more details on how a “priceless” framework can be applied more generally to other types of financial contract templates on the blockchain, check out this blog post. <!-- TODO: add link to blog post -->
-
 ## Launching a New Synthetic Token
 
 To launch a new type of synthetic token for which an existing market does not yet exist, that synthetic token’s smart contract must first be parameterized and deployed. Anyone can parameterize and deploy this contract.

@@ -14,10 +14,11 @@
 ** technical_architecture.md
 ** economic_architecture.md
 ** dvm_interfaces.md
-** security.md
+** known_issues.md
 ** tutorials
 *** voting_with_uma_tokens.md
 *** voting_with_UMA_2-key_contract.md
+*** integrating_the_dvm.md
 ** governance
 *** UMA_token_holder_responsibilities.md
 *** UMIPs.md
