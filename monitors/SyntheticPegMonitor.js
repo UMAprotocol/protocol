@@ -7,7 +7,7 @@ class SyntheticPegMonitor {
    * @param {Object} logger Module used to send logs.
    * @param {Object} web3 Instance of a web3 client provided by the class that initiates the monitor module.
    * @param {Object} uniswapPriceFeed Module used to query the current uniswap token price.
-   * @param {Object} medianizerPriceFeed Module used to query the current crypto watch token price.
+   * @param {Object} medianizerPriceFeed Module used to query the median price among selected price feeds.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
   constructor(logger, web3, uniswapPriceFeed, medianizerPriceFeed, config) {
@@ -23,6 +23,7 @@ class SyntheticPegMonitor {
     // TODO: replace this with an actual query to the collateral currency symbol
     this.collateralCurrencySymbol = "DAI";
     this.syntheticCurrencySymbol = "UMATEST";
+    this.pricefeedIdentifierName = "UMATEST/DAI";
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
     this.formatDecimalString = createFormatFunction(this.web3, 2);
@@ -39,16 +40,32 @@ class SyntheticPegMonitor {
         isValid: x => {
           return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gte(toBN("0"));
         }
+      },
+      volatilityWindow: {
+        // `volatilityWindow`: Length of time (in seconds) to snapshot volatility.
+        value: 360000, // 1 hour.
+        isValid: x => {
+          return x >= 0;
+        }
+      },
+      volatilityAlertThreshold: {
+        // `volatilityAlertThreshold`: Error threshold for pricefeed's price volatility over `volatilityWindow`.
+        // Expressed as a %.
+        value: this.web3.utils.toBN(this.web3.utils.toWei("0.05")),
+        isValid: x => {
+          return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gt(toBN("0"));
+        }
       }
     };
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
   }
 
-  // Queries disputable liquidations and disputes any that were incorrectly liquidated.
+  // Compares synthetic price on Uniswap with pegged price on medianizer price feed and fires a message
+  // if the synythetic price deviates too far from the peg.
   checkPriceDeviation = async () => {
     this.logger.debug({
       at: "SyntheticPegMonitor",
-      message: "Checking price deviation"
+      message: "Checking synthetic price deviation from pricefeed peg"
     });
     // Get the latest prices from the two price feeds.
     const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
@@ -57,7 +74,7 @@ class SyntheticPegMonitor {
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
-        message: "Cannot check for price deviation: price check error",
+        message: "Unable to get price",
         uniswapTokenPrice: uniswapTokenPrice,
         cryptoWatchTokenPrice: cryptoWatchTokenPrice
       });
@@ -83,6 +100,56 @@ class SyntheticPegMonitor {
     }
   };
 
+  // Checks difference between minimum and maximum historical price over `volatilityWindow` amount of time in the
+  // specified price feed. Fires a message if the difference exceeds the `volatilityAlertThreshold` %.
+  checkPriceVolatility = async () => {
+    // TODO: For now, assume that we are only monitoring the medianizer price feed's volatility. Future work would allow
+    // caller to specify which pricefeed (`uniswap` or `medianizer`) they want to check. Or, should we check both?
+
+    this.logger.debug({
+      at: "SyntheticPegMonitor",
+      message: "Checking pricefeed volatility"
+    });
+
+    // Get all historical prices from `volatilityWindow` seconds before the last update time and
+    // record the minimum and maximum.
+    const latestTime = this.medianizerPriceFeed.getLastUpdateTime();
+    const pricefeedVolatility = _calculateHistoricalVolatility(
+      this.medianizerPriceFeed,
+      latestTime,
+      this.volatilityWindow
+    );
+    const pricefeedLatestPrice = this.medianizerPriceFeed.getHistoricalPrice(latestTime);
+
+    if (!pricefeedVolatility || !pricefeedLatestPrice) {
+      this.logger.warn({
+        at: "SyntheticPegMonitor",
+        message: "Unable to get price",
+        pricefeedVolatility: pricefeedVolatility,
+        pricefeedLatestPrice: pricefeedLatestPrice
+      });
+      return;
+    }
+
+    // If the volatility percentage is greater than (gt) the threshold send a message.
+    if (pricefeedVolatility.gt(this.volatilityAlertThreshold)) {
+      this.logger.error({
+        at: "SyntheticPegMonitor",
+        message: "High pricefeed volatility alert 😵",
+        mrkdwn:
+          "Latest updated " +
+          this.pricefeedIdentifierName +
+          " price is " +
+          this.formatDecimalString(pricefeedLatestPrice) +
+          ". Price moved " +
+          this.formatDecimalString(pricefeedVolatility.muln(100)) +
+          "% over the last " +
+          this.formatDecimalString(this.volatilityWindow) +
+          " hour(s)."
+      });
+    }
+  };
+
   // Takes in two big numbers and returns the error between them.
   // calculated using: δ = | (observed - expected) / expected |
   // For example an observed price of 1.2 with an expected price of 1.0 will return | (1.2 - 1.0) / 1.0 | = 0.20
@@ -93,6 +160,27 @@ class SyntheticPegMonitor {
       .mul(this.web3.utils.toBN(this.web3.utils.toWei("1"))) // Scale the numerator before division
       .div(expectedValue)
       .abs();
+  }
+
+  // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past
+  // until `mostRecentTime`.
+  _calculateHistoricalVolatility(pricefeed, mostRecentTime, lookback) {
+    // Set max and min to latest price to start.
+    let min = pricefeed.getHistoricalPrice(mostRecentTime);
+    let max = min;
+
+    for (let i = 0; i < lookback; i++) {
+      let _price = pricefeed.getHistoricalPrice(mostRecentTime - i);
+      if (_price < min) {
+        min = _price;
+      }
+      if (_price > max) {
+        mx = _price;
+      }
+    }
+
+    // The min-max % calculation is identical to the equation in `_calculateDeviationError`.
+    return this._calculateDeviationError(min, max);
   }
 }
 
