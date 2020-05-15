@@ -8,7 +8,7 @@ if [ $# -ne 2 ]; then
 fi
 
 echo "Deploying" $1
-echo "Using ENV file:" $1
+echo "Using ENV file:" $2
 gcloud compute instances create-with-container $1 \
     --container-image docker.io/umaprotocol/protocol:latest \
     --container-env-file $2 \
