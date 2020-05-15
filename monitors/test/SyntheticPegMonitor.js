@@ -2,14 +2,7 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 
-// Uniswap Price feed helpers
-const { UniswapPriceFeed } = require("../../financial-templates-lib/price-feed/UniswapPriceFeed");
-const { mineTransactionsAtTime } = require("../../common/SolidityTestUtils");
-const { delay } = require("../../financial-templates-lib/helpers/delay");
-const { MAX_SAFE_JS_INT } = require("../../common/Constants");
-
-// MedianizerPriceFeed helpers.
-const { MedianizerPriceFeed } = require("../../financial-templates-lib/price-feed/MedianizerPriceFeed");
+// Price feed mock.
 const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock.js");
 
 // Tested module
@@ -18,65 +11,15 @@ const { SyntheticPegMonitor } = require("../SyntheticPegMonitor");
 // Custom winston transport module to monitor winston log outputs
 const { SpyTransport, lastSpyLogIncludes } = require("../../financial-templates-lib/logger/SpyTransport");
 
-// COntract artifacts to mock Uniswap
-const UniswapMock = artifacts.require("UniswapMock");
-const Uniswap = artifacts.require("Uniswap");
-
 contract("SyntheticPegMonitor", function(accounts) {
-  const owner = accounts[0];
-
-  let uniswapPriceFeed;
-  let cryptoWatchPriceFeed;
-  let mockTime = 1588376548;
-  let networker;
-  let syntheticPegMonitor;
-
-  let spy;
-  let spyLogger;
-
-  let syntheticPegMonitorConfig;
-
-  // Set the most recent Meadinizer price to a given value.
-  const injectMedianizerLatestPrice = async injectPrice => {
-    const validResponses = [
-      {
-        result: {
-          "60": [
-            [
-              1588376400, // CloseTime
-              1.1, // OpenPrice
-              1.7, // HighPrice
-              0.5, // LowPrice
-              1.2, // ClosePrice
-              281.73395575, // Volume
-              2705497.370853147 // QuoteVolume
-            ],
-            [1588376460, 1.2, 1.8, 0.6, 1.3, 281.73395575, 2705497.370853147],
-            [1588376520, 1.3, 1.9, 0.7, 1.4, 888.92215493, 8601704.133826157]
-          ]
-        }
-      },
-      {
-        result: {
-          price: injectPrice
-        }
-      }
-    ];
-    networker.getJsonReturns = [...validResponses];
-  };
-
-  // Inject a price into the uniswap market. Simulates new trading events.
-  const injectUniswapLatestPrice = async injectPrice => {
-    // Keeping the denominator fixed to 1 means that the resultant price is always the numerator.
-    const denominator = toWei("1");
-    const numerator = toWei(injectPrice.toString());
-    await uniswapMock.setPrice(denominator, numerator);
-  };
+  let uniswapPriceFeedMock;
+  let medianizerPriceFeedMock;
 
   spy = sinon.spy();
 
   beforeEach(async function() {
-    uniswapMock = await UniswapMock.new({ from: owner });
+    uniswapPriceFeedMock = new PriceFeedMock();
+    medianizerPriceFeedMock = new PriceFeedMock();
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     // Note that only `info` level messages are captured.
@@ -85,39 +28,15 @@ contract("SyntheticPegMonitor", function(accounts) {
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
 
-    // Uniswap Price feed
-    uniswapPriceFeed = new UniswapPriceFeed(
-      spyLogger,
-      Uniswap.abi,
-      web3,
-      uniswapMock.address,
-      60, // twapLength
-      lookback,
-      () => mockTime
-    );
-
-    // Crypto watch Price feed
-    networker = new NetworkerMock();
-    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
-      spyLogger,
-      web3,
-      apiKey,
-      exchange,
-      pair,
-      lookback,
-      networker,
-      getTime,
-      minTimeBetweenUpdates
-    );
-
     // Tested module that uses the two price feeds.
     syntheticPegMonitorConfig = {
       deviationAlertThreshold: toBN(toWei("0.2")) // Any deviation larger than 0.2 should fire an alert
     };
     syntheticPegMonitor = new SyntheticPegMonitor(
       spyLogger,
-      uniswapPriceFeed,
-      cryptoWatchPriceFeed,
+      web3,
+      uniswapPriceFeedMock,
+      medianizerPriceFeedMock,
       syntheticPegMonitorConfig
     );
   });
@@ -151,22 +70,16 @@ contract("SyntheticPegMonitor", function(accounts) {
   it("Correctly emits messages ", async function() {
     // Zero price deviation should not emit any events.
     // Inject prices to feeds
-    await injectMedianizerLatestPrice(1);
-    await injectUniswapLatestPrice(1);
-
-    // Update price feeds.
-    await uniswapPriceFeed.update();
-    await cryptoWatchPriceFeed.update();
+    medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
 
     // Check for price deviation from monitor module.
     await syntheticPegMonitor.checkPriceDeviation();
     assert.equal(spy.callCount, 0); // There should be no messages sent at this point.
 
     // Price deviation above the threshold of 20% should send a message.
-    await injectMedianizerLatestPrice(1);
-    await injectUniswapLatestPrice(1.25);
-    await uniswapPriceFeed.update();
-    await cryptoWatchPriceFeed.update();
+    medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("1.25")));
     await syntheticPegMonitor.checkPriceDeviation();
     assert.equal(spy.callCount, 1); // There should be one message sent at this point.
     assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
@@ -175,23 +88,19 @@ contract("SyntheticPegMonitor", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "25.00")); // percentage error
 
     // Price deviation at the threshold of 20% should send a message.
-    await injectMedianizerLatestPrice(1);
-    await injectUniswapLatestPrice(1.2);
-    await uniswapPriceFeed.update();
-    await cryptoWatchPriceFeed.update();
+    medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("1.2")));
     await syntheticPegMonitor.checkPriceDeviation();
     assert.equal(spy.callCount, 1); // There should be no new messages sent.
 
     // Price deviation below the threshold of 20% should send a message.
-    await injectMedianizerLatestPrice(1);
-    await injectUniswapLatestPrice(0.75);
-    await uniswapPriceFeed.update();
-    await cryptoWatchPriceFeed.update();
+    medianizerPriceFeedMock.setCurrentPrice(toBN(toWei("1")));
+    uniswapPriceFeedMock.setCurrentPrice(toBN(toWei("0.7")));
     await syntheticPegMonitor.checkPriceDeviation();
     assert.equal(spy.callCount, 2); // There should be one message sent at this point.
     assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
-    assert.isTrue(lastSpyLogIncludes(spy, "0.75")); // uniswap price
+    assert.isTrue(lastSpyLogIncludes(spy, "0.7")); // uniswap price
     assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
-    assert.isTrue(lastSpyLogIncludes(spy, "25.00")); // percentage error
+    assert.isTrue(lastSpyLogIncludes(spy, "30.00")); // percentage error
   });
 });

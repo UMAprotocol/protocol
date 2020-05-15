@@ -5,18 +5,19 @@ class SyntheticPegMonitor {
   /**
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
+   * @param {Object} web3 Instance of a web3 client provided by the class that initiates the monitor module.
    * @param {Object} uniswapPriceFeed Module used to query the current uniswap token price.
    * @param {Object} medianizerPriceFeed Module used to query the current crypto watch token price.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, uniswapPriceFeed, medianizerPriceFeed, config) {
+  constructor(logger, web3, uniswapPriceFeed, medianizerPriceFeed, config) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
     this.uniswapPriceFeed = uniswapPriceFeed;
     this.medianizerPriceFeed = medianizerPriceFeed;
 
-    this.web3 = this.uniswapPriceFeed.web3;
+    this.web3 = web3;
 
     // Contract constants
     // TODO: replace this with an actual query to the collateral currency symbol
@@ -50,7 +51,7 @@ class SyntheticPegMonitor {
       message: "Checking price deviation"
     });
     // Get the latest prices from the two price feeds.
-    const uniswapTokenPrice = this.uniswapPriceFeed.getLastBlockPrice();
+    const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
 
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
