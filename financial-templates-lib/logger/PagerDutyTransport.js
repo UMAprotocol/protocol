@@ -16,6 +16,8 @@ module.exports = class PagerDutyTransport extends Transport {
   }
 
   async log(info, callback) {
+    console.log("info", info);
+    console.log("formatted", info.mrkdwn ? info.mrkdwn : info);
     try {
       await this.pd.incidents.createIncident(this.fromEmail, {
         incident: {
@@ -28,7 +30,7 @@ module.exports = class PagerDutyTransport extends Transport {
           urgency: info.level == "warn" ? "low" : "high", // If level is warn then urgency is low. If level is error then urgency is high.
           body: {
             type: "incident_body",
-            details: info.mrkdwn ? info.mrkdwn : info // If the message has markdown then add it. Else put the whole info object.
+            details: info.mrkdwn ? info.mrkdwn : JSON.stringify(info) // If the message has markdown then add it. Else put the whole info object.
           }
         }
       });

@@ -9,7 +9,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     super();
 
     if (priceFeeds.length === 0) {
-      throw "MedianizerPriceFeed cannot be constructed with no constituent price feeds.";
+      throw new Error("MedianizerPriceFeed cannot be constructed with no constituent price feeds.");
     }
 
     this.priceFeeds = priceFeeds;

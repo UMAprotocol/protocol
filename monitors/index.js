@@ -49,7 +49,8 @@ async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, p
   const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
   if (!priceFeed) {
-    throw "Invalid price feed config";
+    await delay(5000);
+    throw new Error("Invalid price feed config");
   }
 
   // 1. Contract state monitor
@@ -78,7 +79,6 @@ async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, p
 
   while (true) {
     try {
-      // 1.  Contract monitor
       // 1.a Update dependencies.
       await empEventClient.update();
       await priceFeed.update();
@@ -105,7 +105,7 @@ async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, p
       Logger.error({
         at: "Monitors#index",
         message: "Monitor polling error🚨",
-        error: error.toString()
+        error: error.toString().toString()
       });
     }
     await delay(Number(pollingDelay));

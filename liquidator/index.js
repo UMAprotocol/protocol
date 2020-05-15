@@ -45,7 +45,8 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
   const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
   if (!priceFeed) {
-    throw "Price feed config is invalid";
+    await delay(5000);
+    throw new Error("Price feed config is invalid");
   }
 
   // Client and liquidator bot
@@ -67,7 +68,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       Logger.error({
         at: "liquidator#index",
         message: "liquidator polling error🚨",
-        error: error
+        error: error.toString()
       });
     }
     await delay(Number(pollingDelay));
