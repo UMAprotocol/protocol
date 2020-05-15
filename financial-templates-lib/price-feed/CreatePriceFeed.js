@@ -4,7 +4,7 @@ const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
 const Uniswap = require("../../core/build/contracts/Uniswap.json");
 
-async function createPriceFeed(web3, logger, networker, getTime, config) {
+async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {
     const requiredFields = ["apiKey", "exchange", "pair", "lookback", "minTimeBetweenUpdates"];
 
