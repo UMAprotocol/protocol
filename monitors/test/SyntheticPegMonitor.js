@@ -15,7 +15,11 @@ contract("SyntheticPegMonitor", function(accounts) {
   let uniswapPriceFeedMock;
   let medianizerPriceFeedMock;
 
-  spy = sinon.spy();
+  let spy;
+  let spylogger;
+
+  let syntheticPegMonitorConfig;
+  let syntheticPegMonitor;
 
   beforeEach(async function() {
     uniswapPriceFeedMock = new PriceFeedMock();
@@ -23,27 +27,28 @@ contract("SyntheticPegMonitor", function(accounts) {
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     // Note that only `info` level messages are captured.
+    spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "info" }, { spy: spy })]
     });
-
-    // Tested module that uses the two price feeds.
-    syntheticPegMonitorConfig = {
-      deviationAlertThreshold: toBN(toWei("0.2")), // Any deviation larger than 0.2 should fire an alert
-      volatilityWindow: 5, // Small window for testing
-      volatilityAlertThreshold: toBN(toWei("0.05"))
-    };
-    syntheticPegMonitor = new SyntheticPegMonitor(
-      spyLogger,
-      web3,
-      uniswapPriceFeedMock,
-      medianizerPriceFeedMock,
-      syntheticPegMonitorConfig
-    );
   });
 
   describe("Synthetic price deviation from peg", function() {
+    beforeEach(async function() {
+      // Tested module that uses the two price feeds.
+      syntheticPegMonitorConfig = {
+        deviationAlertThreshold: toBN(toWei("0.2")) // Any deviation larger than 0.2 should fire an alert
+      };
+      syntheticPegMonitor = new SyntheticPegMonitor(
+        spyLogger,
+        web3,
+        uniswapPriceFeedMock,
+        medianizerPriceFeedMock,
+        syntheticPegMonitorConfig
+      );
+    });
+
     it("Calculate percentage error returns expected values", async function() {
       // Test with simple values with know percentage error.
       assert.equal(
@@ -110,16 +115,104 @@ contract("SyntheticPegMonitor", function(accounts) {
   });
 
   describe("Pricefeed volatility", function() {
-    it("Calculate price volatility returns expected values", async function() {
-      // Inject prices into pricefeed.
-      const latestTime = medianizerPriceFeedMock.getLatestTime();
-
-      assert.equal(
-        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, latestTime, 3).toString(),
-        toBN(toWei("0.05")).toString()
+    beforeEach(async function() {
+      // Tested module that uses the two price feeds.
+      syntheticPegMonitorConfig = {
+        volatilityWindow: 3650,
+        volatilityAlertThreshold: toBN(toWei("0.3"))
+      };
+      syntheticPegMonitor = new SyntheticPegMonitor(
+        spyLogger,
+        web3,
+        uniswapPriceFeedMock,
+        medianizerPriceFeedMock,
+        syntheticPegMonitorConfig
       );
     });
 
-    it("Correctly emits messages", async function() {});
+    it("Calculate price volatility returns expected values", async function() {
+      // Inject prices into pricefeed.
+      const historicalPrices = [
+        { timestamp: 100, price: toBN(toWei("10")) },
+        { timestamp: 101, price: toBN(toWei("11")) },
+        { timestamp: 102, price: toBN(toWei("12")) },
+        { timestamp: 103, price: toBN(toWei("13")) },
+        { timestamp: 104, price: toBN(toWei("14")) },
+        { timestamp: 105, price: toBN(toWei("15")) },
+        { timestamp: 106, price: toBN(toWei("16")) },
+        { timestamp: 107, price: toBN(toWei("17")) }
+      ];
+      medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+      // Volatility window is 5, so historical volatility will be calculated 5 timestamps back of the last update time.
+      const volatilityWindow = 5;
+
+      // Test when volatility window is larger than the amount of historical prices. The last update time is 103,
+      // so this should read the volatility from timestamps [103, 102, 102, and 100]. The min/max should be 10/13,
+      // and the volatility should be (3 / 10 = 0.3) or 30%.
+      medianizerPriceFeedMock.setLastUpdateTime(103);
+      assert.equal(
+        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 103, volatilityWindow).toString(),
+        toBN(toWei("0.3")).toString()
+      );
+
+      // Test when volatility window captures only one historical price. The last update time is 100,
+      // so this should read the volatility from timestamps [100]. The min/max should be 10/10,
+      // and the volatility should be 0%.
+      medianizerPriceFeedMock.setLastUpdateTime(100);
+      assert.equal(
+        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 100, volatilityWindow).toString(),
+        "0"
+      );
+
+      // Test when volatility window captures only one historical price. The last update time is 200,
+      // so this should read the volatility from no timestamps. This should return null.
+      medianizerPriceFeedMock.setLastUpdateTime(200);
+      assert.equal(
+        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 200, volatilityWindow),
+        null
+      );
+
+      // Test when volatility window is smaller than the amount of historical prices. The last update time is 106,
+      // so this should read the volatility from timestamps [106, 105, 104, 103, 102]. The min/max should be 12/16,
+      // and the volatility should be (4 / 12 = 0.3333) or 33%.
+      medianizerPriceFeedMock.setLastUpdateTime(106);
+      assert.equal(
+        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 106, volatilityWindow).toString(),
+        toBN(toWei("0.333333333333333333")).toString() // 18 3's is max that can be represented with Wei.
+      );
+    });
+
+    it("Correctly emits messages", async function() {
+      // Inject prices into pricefeed.
+      const historicalPrices = [
+        { timestamp: 100, price: toBN(toWei("10")) },
+        { timestamp: 101, price: toBN(toWei("11")) },
+        { timestamp: 102, price: toBN(toWei("12")) },
+        { timestamp: 103, price: toBN(toWei("13")) },
+        { timestamp: 104, price: toBN(toWei("14")) },
+        { timestamp: 105, price: toBN(toWei("15")) },
+        { timestamp: 106, price: toBN(toWei("16")) },
+        { timestamp: 107, price: toBN(toWei("17")) }
+      ];
+      medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+      // Test when volatility is under threshold. Monitor should not emit any events.
+      // Min/Max from time 103 should be 10/13, so volatility should be 3/10 = 30%, which is
+      // not greater than the 30% threshold.
+      medianizerPriceFeedMock.setLastUpdateTime(103);
+      await syntheticPegMonitor.checkPriceVolatility();
+      assert.equal(spy.callCount, 0); // There should be no messages sent at this point.
+
+      // Test when volatility is over threshold. Monitor should emit an error message.
+      // Min/Max from time 104 is 10/14, so volatility is 4/10 = 40%.
+      medianizerPriceFeedMock.setLastUpdateTime(104);
+      await syntheticPegMonitor.checkPriceVolatility();
+      assert.equal(spy.callCount, 1); // There should be no messages sent at this point.
+      assert.isTrue(lastSpyLogIncludes(spy, "pricefeed volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 60/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility
+    });
   });
 });

@@ -11,10 +11,23 @@ class PriceFeedMock extends PriceFeedInterface {
     this.currentPrice = currentPrice;
     this.historicalPrice = historicalPrice;
     this.lastUpdateTime = lastUpdateTime;
+    this.historicalPrices = [];
   }
 
   setCurrentPrice(currentPrice) {
     this.currentPrice = currentPrice;
+  }
+
+  // Store an array of historical prices [{timestamp, price}] so that getHistoricalPrice can return
+  // a price for a specific timestamp if found in this array.
+  setHistoricalPrices(historicalPrices) {
+    historicalPrices.forEach(_price => {
+      if (!_price.timestamp || !_price.price) {
+        throw "Invalid historical price => [{timestamp, price}]";
+      }
+
+      this.historicalPrices[_price.timestamp] = _price.price;
+    });
   }
 
   setHistoricalPrice(historicalPrice) {
@@ -30,7 +43,11 @@ class PriceFeedMock extends PriceFeedInterface {
   }
 
   getHistoricalPrice(time) {
-    return this.historicalPrice;
+    // If a price for `time` was set via `setHistoricalPrices`, then return that price, otherwise return the mocked
+    // historical price.
+    if (time in this.historicalPrices) {
+      return this.historicalPrices[time];
+    } else return this.historicalPrice;
   }
 
   getLastUpdateTime() {
