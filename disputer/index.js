@@ -40,7 +40,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
     // Setup price feed.
     // TODO: consider making getTime async and using contract time.
     const getTime = () => Math.round(new Date().getTime() / 1000);
-    const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+    const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig)
 
     if (!priceFeed) {
       throw "Price feed config is invalid";

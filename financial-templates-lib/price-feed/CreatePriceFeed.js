@@ -4,7 +4,7 @@ const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 
 const Uniswap = require("../../core/build/contracts/Uniswap.json");
 
-async function createPriceFeed(web3, logger, networker, getTime, config) {
+async function createPriceFeed(logger, web3, networker, getTime, config) {
   if (config.type === "cryptowatch") {
     const requiredFields = ["apiKey", "exchange", "pair", "lookback", "minTimeBetweenUpdates"];
 
@@ -75,7 +75,7 @@ async function createPriceFeed(web3, logger, networker, getTime, config) {
       // on the nested config.
       const combinedConfig = { ...config, type: undefined, ...medianizedFeedConfig };
 
-      const priceFeed = await createPriceFeed(web3, logger, networker, getTime, combinedConfig);
+      const priceFeed = await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
 
       if (priceFeed === null) {
         // If one of the nested feeds errored and returned null, just return null up the stack.

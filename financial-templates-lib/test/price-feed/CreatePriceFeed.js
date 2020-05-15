@@ -37,7 +37,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates
     };
 
-    assert.equal(await createPriceFeed(web3, logger, networker, getTime, config), null);
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, config), null);
   });
 
   it("Valid CryptoWatch config", async function() {
@@ -50,7 +50,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates
     };
 
-    const validCryptoWatchFeed = await createPriceFeed(web3, logger, networker, getTime, config);
+    const validCryptoWatchFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.isTrue(validCryptoWatchFeed instanceof CryptoWatchPriceFeed);
     assert.equal(validCryptoWatchFeed.apiKey, apiKey);
@@ -70,18 +70,18 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates
     };
 
-    assert.equal(await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, apiKey: undefined }), null);
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, apiKey: undefined }), null);
     assert.equal(
-      await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, exchange: undefined }),
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, exchange: undefined }),
       null
     );
-    assert.equal(await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, pair: undefined }), null);
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, pair: undefined }), null);
     assert.equal(
-      await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, lookback: undefined }),
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
       null
     );
     assert.equal(
-      await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
       null
     );
   });
@@ -94,7 +94,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       lookback
     };
 
-    const validUniswapFeed = await createPriceFeed(web3, logger, networker, getTime, config);
+    const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.isTrue(validUniswapFeed instanceof UniswapPriceFeed);
     assert.equal(validUniswapFeed.uniswap.options.address, uniswapAddress);
@@ -112,15 +112,15 @@ contract("CreatePriceFeed.js", function(accounts) {
     };
 
     assert.equal(
-      await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, uniswapAddress: undefined }),
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, uniswapAddress: undefined }),
       null
     );
     assert.equal(
-      await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, twapLength: undefined }),
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, twapLength: undefined }),
       null
     );
     assert.equal(
-      await createPriceFeed(web3, logger, networker, getTime, { ...validConfig, lookback: undefined }),
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
       null
     );
   });
@@ -145,7 +145,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       ]
     };
 
-    const validMedianizerFeed = await createPriceFeed(web3, logger, networker, getTime, config);
+    const validMedianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.isTrue(validMedianizerFeed instanceof MedianizerPriceFeed);
     assert.isTrue(validMedianizerFeed.priceFeeds[0] instanceof CryptoWatchPriceFeed);
@@ -172,7 +172,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       ]
     };
 
-    const validMedianizerFeed = await createPriceFeed(web3, logger, networker, getTime, config);
+    const validMedianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.equal(validMedianizerFeed.priceFeeds[0].lookback, lookbackOverride);
   });
@@ -187,13 +187,13 @@ contract("CreatePriceFeed.js", function(accounts) {
       minTimeBetweenUpdates
     };
 
-    const medianizerFeed = await createPriceFeed(web3, logger, networker, getTime, config);
+    const medianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     // medianizedFeeds is missing.
-    assert.equal(await createPriceFeed(web3, logger, networker, getTime, config), null);
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, config), null);
 
     // medianizedFeeds is 0 length.
-    assert.equal(await createPriceFeed(web3, logger, networker, getTime, { ...config, medianizedFeeds: [] }), null);
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...config, medianizedFeeds: [] }), null);
   });
 
   it("Medianizer feed cannot have a nested feed with an invalid config", async function() {
@@ -212,7 +212,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       ]
     };
 
-    const medianizerFeed = await createPriceFeed(web3, logger, networker, getTime, config);
+    const medianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.equal(medianizerFeed, null);
   });
