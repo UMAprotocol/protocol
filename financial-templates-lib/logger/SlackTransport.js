@@ -60,6 +60,11 @@ const slackFormatter = info => {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
           ].text.text += `    - _tx_: <https://etherscan.io/tx/${info[key][subKey]}|${info[key][subKey]}> \n`;
+        }
+        if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
+          formattedResponse.blocks[
+            formattedResponse.blocks.length - 1
+          ].text.text += `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`;
         } else {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
