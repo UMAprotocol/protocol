@@ -76,7 +76,8 @@ To read more about UMIPs, please look at this [repo](https://github.com/UMAproto
 
 Here are some additional resources regarding the UMA DVM:
 
-- [Explainer](../oracle/architecture.md)
+- [Technical Architecture](../oracle/technical_architecture.md)
+- [Economic Architecture](../oracle/economic_architecture.md)
 - [Blog post](https://medium.com/uma-project/umas-data-verification-mechanism-3c5342759eb8) on UMA’s DVM design
 - [Whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-DVM-oracle-whitepaper.pdf) on UMA’s DVM design
 - [Research repo](https://github.com/UMAprotocol/research) for optimal fee policy
