@@ -61,6 +61,8 @@ const slackFormatter = info => {
             formattedResponse.blocks.length - 1
           ].text.text += `    - _tx_: <https://etherscan.io/tx/${info[key][subKey]}|${info[key][subKey]}> \n`;
         }
+        // If the value within the object itself is an object we dont want to spread it any further. Rather,
+        // convert the object to a string and print it along side it's key value pair.
         if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
