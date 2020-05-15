@@ -8,9 +8,9 @@ const { mineTransactionsAtTime } = require("../../common/SolidityTestUtils");
 const { delay } = require("../../financial-templates-lib/helpers/delay");
 const { MAX_SAFE_JS_INT } = require("../../common/Constants");
 
-// Crypto watch price feed helpers
-const { CryptoWatchPriceFeed } = require("../../financial-templates-lib/price-feed/CryptoWatchPriceFeed");
-const { NetworkerMock } = require("../../financial-templates-lib/test/price-feed/NetworkerMock");
+// MedianizerPriceFeed helpers.
+const { MedianizerPriceFeed } = require("../../financial-templates-lib/price-feed/MedianizerPriceFeed");
+const { PriceFeedMock } = require("../../financial-templates-lib/test/price-feed/PriceFeedMock.js");
 
 // Tested module
 const { SyntheticPegMonitor } = require("../SyntheticPegMonitor");
@@ -31,20 +31,13 @@ contract("SyntheticPegMonitor", function(accounts) {
   let networker;
   let syntheticPegMonitor;
 
-  const apiKey = "test-api-key";
-  const exchange = "test-exchange";
-  const pair = "test-pair";
-  const lookback = 120; // 2 minutes.
-  const getTime = () => mockTime;
-  const minTimeBetweenUpdates = 60;
-
   let spy;
   let spyLogger;
 
   let syntheticPegMonitorConfig;
 
-  // Set the most recent CryptoWatch price to a given value.
-  const injectCryptoWatchLatestPrice = async injectPrice => {
+  // Set the most recent Meadinizer price to a given value.
+  const injectMedianizerLatestPrice = async injectPrice => {
     const validResponses = [
       {
         result: {
@@ -158,7 +151,7 @@ contract("SyntheticPegMonitor", function(accounts) {
   it("Correctly emits messages ", async function() {
     // Zero price deviation should not emit any events.
     // Inject prices to feeds
-    await injectCryptoWatchLatestPrice(1);
+    await injectMedianizerLatestPrice(1);
     await injectUniswapLatestPrice(1);
 
     // Update price feeds.
@@ -170,7 +163,7 @@ contract("SyntheticPegMonitor", function(accounts) {
     assert.equal(spy.callCount, 0); // There should be no messages sent at this point.
 
     // Price deviation above the threshold of 20% should send a message.
-    await injectCryptoWatchLatestPrice(1);
+    await injectMedianizerLatestPrice(1);
     await injectUniswapLatestPrice(1.25);
     await uniswapPriceFeed.update();
     await cryptoWatchPriceFeed.update();
@@ -182,7 +175,7 @@ contract("SyntheticPegMonitor", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "25.00")); // percentage error
 
     // Price deviation at the threshold of 20% should send a message.
-    await injectCryptoWatchLatestPrice(1);
+    await injectMedianizerLatestPrice(1);
     await injectUniswapLatestPrice(1.2);
     await uniswapPriceFeed.update();
     await cryptoWatchPriceFeed.update();
@@ -190,7 +183,7 @@ contract("SyntheticPegMonitor", function(accounts) {
     assert.equal(spy.callCount, 1); // There should be no new messages sent.
 
     // Price deviation below the threshold of 20% should send a message.
-    await injectCryptoWatchLatestPrice(1);
+    await injectMedianizerLatestPrice(1);
     await injectUniswapLatestPrice(0.75);
     await uniswapPriceFeed.update();
     await cryptoWatchPriceFeed.update();

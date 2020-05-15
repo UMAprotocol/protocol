@@ -6,15 +6,15 @@ class SyntheticPegMonitor {
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
    * @param {Object} uniswapPriceFeed Module used to query the current uniswap token price.
-   * @param {Object} cryptoWatchPriceFeed Module used to query the current crypto watch token price.
+   * @param {Object} medianizerPriceFeed Module used to query the current crypto watch token price.
    * @param {Object} [config] Contains fields with which constructor will attempt to override defaults.
    */
-  constructor(logger, uniswapPriceFeed, cryptoWatchPriceFeed, config) {
+  constructor(logger, uniswapPriceFeed, medianizerPriceFeed, config) {
     this.logger = logger;
 
     // Instance of price feeds used to check for deviation of synthetic token price.
     this.uniswapPriceFeed = uniswapPriceFeed;
-    this.cryptoWatchPriceFeed = cryptoWatchPriceFeed;
+    this.medianizerPriceFeed = medianizerPriceFeed;
 
     this.web3 = this.uniswapPriceFeed.web3;
 
@@ -25,8 +25,6 @@ class SyntheticPegMonitor {
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
     this.formatDecimalString = createFormatFunction(this.web3, 2);
-
-    // If the price of one price feed deviates by more than `deviationAlertThreshold` percent from the other, trigger alert.
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `config` input object. The `isValid` property is a function that should be called
@@ -53,7 +51,7 @@ class SyntheticPegMonitor {
     });
     // Get the latest prices from the two price feeds.
     const uniswapTokenPrice = this.uniswapPriceFeed.getLastBlockPrice();
-    const cryptoWatchTokenPrice = this.cryptoWatchPriceFeed.getCurrentPrice();
+    const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
 
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
       this.logger.warn({
