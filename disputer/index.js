@@ -42,7 +42,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
   const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
   if (!priceFeed) {
-    await delay(5000);
+    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
     throw new Error("Price feed config is invalid");
   }
 
