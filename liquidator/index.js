@@ -46,7 +46,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
     const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
     if (!priceFeed) {
-      throw new Error("Price feed config is invalid");
+      throw "Price feed config is invalid";
     }
 
     // Client and liquidator bot
@@ -83,17 +83,13 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw new Error(
-        "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables."
-      );
+      throw "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables.";
     }
 
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
 
     if (!process.env.PRICE_FEED_CONFIG) {
-      throw new Error(
-        "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables."
-      );
+      throw "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables.";
     }
 
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);

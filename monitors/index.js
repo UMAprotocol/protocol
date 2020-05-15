@@ -50,7 +50,7 @@ async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, p
     const priceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
     if (!priceFeed) {
-      throw new Error("Invalid price feed config");
+      throw "Invalid price feed config";
     }
 
     // 1. Contract state monitor
@@ -118,13 +118,11 @@ async function run(address, shouldPoll, botMonitorObject, walletMonitorObject, p
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw new Error(
-        "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party."
-      );
+      throw "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party.";
     }
 
     if (!process.env.BOT_MONITOR_OBJECT || !process.env.WALLET_MONITOR_OBJECT) {
-      throw new Error("Bad input arg! Specify a `BOT_MONITOR_OBJECT` & `WALLET_MONITOR_OBJECT` to track.");
+      throw "Bad input arg! Specify a `BOT_MONITOR_OBJECT` & `WALLET_MONITOR_OBJECT` to track.";
     }
 
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
@@ -136,7 +134,7 @@ const Poll = async function(callback) {
     const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
 
     if (!process.env.PRICE_FEED_CONFIG) {
-      throw new Error("Bad input arg! Specify `PRICE_FEED_CONFIG` to define the price feed settings");
+      throw "Bad input arg! Specify `PRICE_FEED_CONFIG` to define the price feed settings";
     }
 
     // Read price feed configuration from an environment variable.
