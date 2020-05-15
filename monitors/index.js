@@ -16,7 +16,7 @@ const { TokenBalanceClient } = require("../financial-templates-lib/clients/Token
 const { ContractMonitor } = require("./ContractMonitor");
 const { BalanceMonitor } = require("./BalanceMonitor");
 const { CRMonitor } = require("./CRMonitor");
-const { syntheticPegMonitor } = require("./syntheticPegMonitor");
+const { SyntheticPegMonitor } = require("./SyntheticPegMonitor");
 
 // Truffle contracts
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -95,7 +95,7 @@ async function run(
 
   // 4. Synthetic Peg Monitor.
   const uniswapPriceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
-  const syntheticPegMonitor = new syntheticPegMonitor(
+  const syntheticPegMonitor = new SyntheticPegMonitor(
     Logger,
     web3,
     uniswapPriceFeed,
@@ -129,7 +129,7 @@ async function run(
       await crMonitor.checkWalletCrRatio();
 
       // 4. Synthetic peg monitor
-      // 4.a Update the price feeds.
+      // 4.a Update the price feeds
       await uniswapPriceFeed.update();
       await medianizerPriceFeed.update();
       // 4.b Check for synthetic peg deviation
@@ -153,16 +153,14 @@ async function run(
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw new Error(
-        "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party."
-      );
+      throw "Bad environment variables! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party.";
     }
 
     if (!process.env.BOT_MONITOR_OBJECT || !process.env.WALLET_MONITOR_OBJECT) {
-      throw new Error("Bad input arg! Specify a `BOT_MONITOR_OBJECT` & `WALLET_MONITOR_OBJECT` to track.");
+      throw "Bad input arg! Specify a `BOT_MONITOR_OBJECT` & `WALLET_MONITOR_OBJECT` to track.";
     }
 
-    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10_000;
+    const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
 
     // Bot objects to monitor. For each bot specify a name, address and the thresholds to monitor.
     const botMonitorObject = JSON.parse(process.env.BOT_MONITOR_OBJECT);
@@ -171,9 +169,7 @@ const Poll = async function(callback) {
     const walletMonitorObject = JSON.parse(process.env.WALLET_MONITOR_OBJECT);
 
     if (!process.env.UNISWAP_PRICE_FEED_CONFIG || !process.env.MEDIANIZER_PRICE_FEED_CONFIG) {
-      throw new Error(
-        "Bad input arg! Specify `PRICE_FEED_CONFIG` and `MEDIANIZER_PRICE_FEED_CONFIG` to define the price feed settings"
-      );
+      throw "Bad input arg! Specify `PRICE_FEED_CONFIG` and `MEDIANIZER_PRICE_FEED_CONFIG` to define the price feed settings.";
     }
 
     // Read price feed configuration from an environment variable.
@@ -181,7 +177,7 @@ const Poll = async function(callback) {
     const medianizerPriceFeedConfig = JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG);
 
     if (!process.env.SYNTHETIC_PEG_MONITOR_OBJECT) {
-      throw new Error("Bad input arg! Specify `SYNTHETIC_PEG_OBJECT` to parameterize the Synthetic peg monitor");
+      throw "Bad input arg! Specify `SYNTHETIC_PEG_OBJECT` to parameterize the Synthetic peg monitor.";
     }
 
     // Read the synthetic peg monitor config from an environment variable.
