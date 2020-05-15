@@ -16,8 +16,6 @@ module.exports = class PagerDutyTransport extends Transport {
   }
 
   async log(info, callback) {
-    console.log("info", info);
-    console.log("formatted", info.mrkdwn ? info.mrkdwn : info);
     try {
       await this.pd.incidents.createIncident(this.fromEmail, {
         incident: {
