@@ -137,7 +137,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       });
 
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
-    const priceUrl = `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price?apikey=${this.apikey}`;
+    const priceUrl = `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price?apikey=${this.apiKey}`;
     const priceResponse = await this.networker.getJson(priceUrl);
     if (!ohlcResponse || !priceResponse.result || !priceResponse.result.price) {
       this.logger.error({
