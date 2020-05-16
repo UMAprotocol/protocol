@@ -41,70 +41,72 @@ async function run(
   uniswapPriceFeedConfig,
   medianizerPriceFeedConfig
 ) {
-  Logger.info({
-    at: "Monitor#index",
-    message: "Monitor started 🕵️‍♂️",
-    empAddress: address,
-    pollingDelay: pollingDelay,
-    uniswapPriceFeedConfig,
-    medianizerPriceFeedConfig
-  });
+  try {
+    Logger.info({
+      at: "Monitor#index",
+      message: "Monitor started 🕵️‍♂️",
+      empAddress: address,
+      pollingDelay: pollingDelay,
+      botMonitorObject,
+      walletMonitorObject,
+      uniswapPriceFeedConfig,
+      medianizerPriceFeedConfig
+    });
 
-  // Setup web3 accounts an contract instance
-  const accounts = await web3.eth.getAccounts();
-  const emp = await ExpiringMultiParty.at(address);
+    // Setup web3 accounts an contract instance
+    const accounts = await web3.eth.getAccounts();
+    const emp = await ExpiringMultiParty.at(address);
 
-  // Setup price feed.
-  // TODO: consider making getTime async and using contract time.
-  const getTime = () => Math.round(new Date().getTime() / 1000);
-  const medianizerPriceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+    // Setup price feed.
+    // TODO: consider making getTime async and using contract time.
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+    const medianizerPriceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
 
-  if (!uniswapPriceFeed || !medianizerPriceFeed) {
-    throw "Invalid price feed config";
-  }
+    if (!uniswapPriceFeed || !medianizerPriceFeed) {
+      throw "Invalid price feed config";
+    }
 
-  // 1. Contract state monitor
-  const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
-  const contractMonitor = new ContractMonitor(
-    Logger,
-    empEventClient,
-    [accounts[0]],
-    [accounts[0]],
-    medianizerPriceFeed
-  );
+    // 1. Contract state monitor
+    const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+    const contractMonitor = new ContractMonitor(
+      Logger,
+      empEventClient,
+      [accounts[0]],
+      [accounts[0]],
+      medianizerPriceFeed
+    );
 
-  // 2. Balance monitor
-  const collateralTokenAddress = await emp.collateralCurrency();
-  const syntheticTokenAddress = await emp.tokenCurrency();
+    // 2. Balance monitor
+    const collateralTokenAddress = await emp.collateralCurrency();
+    const syntheticTokenAddress = await emp.tokenCurrency();
 
-  const tokenBalanceClient = new TokenBalanceClient(
-    Logger,
-    ExpandedERC20.abi,
-    web3,
-    collateralTokenAddress,
-    syntheticTokenAddress,
-    10
-  );
+    const tokenBalanceClient = new TokenBalanceClient(
+      Logger,
+      ExpandedERC20.abi,
+      web3,
+      collateralTokenAddress,
+      syntheticTokenAddress,
+      10
+    );
 
-  const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
+    const balanceMonitor = new BalanceMonitor(Logger, tokenBalanceClient, botMonitorObject);
 
-  // 3. Collateralization Ratio monitor.
-  const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
+    // 3. Collateralization Ratio monitor.
+    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
 
-  const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, medianizerPriceFeed);
+    const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, medianizerPriceFeed);
 
-  // 4. Synthetic Peg Monitor.
-  const uniswapPriceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
-  const syntheticPegMonitor = new SyntheticPegMonitor(
-    Logger,
-    web3,
-    uniswapPriceFeed,
-    medianizerPriceFeed,
-    syntheticPegMonitorObject
-  );
+    // 4. Synthetic Peg Monitor.
+    const uniswapPriceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+    const syntheticPegMonitor = new SyntheticPegMonitor(
+      Logger,
+      web3,
+      uniswapPriceFeed,
+      medianizerPriceFeed,
+      syntheticPegMonitorObject
+    );
 
-  while (true) {
-    try {
+    while (true) {
       // 1.  Contract monitor
       // 1.a Update the client
       await empEventClient.update();
@@ -134,22 +136,22 @@ async function run(
       await medianizerPriceFeed.update();
       // 4.b Check for synthetic peg deviation
       await syntheticPegMonitor.checkPriceDeviation();
-    } catch (error) {
-      console.log("ERROR", error);
-      Logger.error({
-        at: "Monitors#index",
-        message: "Monitor polling error🚨",
-        error: error.toString()
-      });
-    }
-    await delay(Number(pollingDelay));
 
-    if (!shouldPoll) {
-      break;
+      await delay(Number(pollingDelay));
+
+      if (!shouldPoll) {
+        break;
+      }
     }
+  } catch (error) {
+    Logger.error({
+      at: "Monitors#index",
+      message: "Monitor polling error. Monitor crashed🚨",
+      error: error.toString()
+    });
+    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
   }
 }
-
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {

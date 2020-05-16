@@ -151,7 +151,7 @@ class Liquidator {
             "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation✋",
           sponsor: position.sponsor,
           position: position,
-          error: error
+          error: error.toString()
         });
         continue;
       }
@@ -177,7 +177,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          error: error
+          error: error.toString()
         });
         continue;
       }
@@ -245,7 +245,7 @@ class Liquidator {
           at: "Liquidator",
           message: "No rewards to withdraw.",
           liquidation: liquidation,
-          error: error
+          error: error.toString()
         });
         continue;
       }
@@ -271,7 +271,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to withdraw liquidation rewards",
-          error: error
+          error: error.toString()
         });
         continue;
       }
