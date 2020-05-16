@@ -10,7 +10,7 @@ fi
 
 if [ $# -eq 1 ]; then
     echo "Updating" $1
-    echo "Using no new enviroment variable. Keeping current configuration"
+    echo "No configuration file provided. Keeping current configuration"
     gcloud compute instances update-container $1 \
         --container-image docker.io/umaprotocol/protocol:latest \
         --zone us-central1-a \
