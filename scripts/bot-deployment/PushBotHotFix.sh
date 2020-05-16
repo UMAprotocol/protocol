@@ -2,7 +2,7 @@
 set -e
 
 if [ $# -eq 0 ]; then
-    echo "Incorrect number of arguments supplied! First and only required argument is bot's name. Optionally include a config file."
+    echo "Incorrect number of arguments supplied! First argument is the bot's name. Second argument (optional) is a config file with environment variables to supply to the bot."
     echo "example: ./scripts/bot-deployment/UpdateBotGCP.sh ethbtc-monitor-bot [keep env variables]"
     echo "example: ./scripts/bot-deployment/UpdateBotGCP.sh ethbtc-monitor-bot ./scripts/bot-deployment/ETHBTC-monitor-bot-env.txt [update env variables]"
     exit 1
