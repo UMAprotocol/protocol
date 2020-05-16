@@ -134,8 +134,8 @@ module.exports = {
   networks: networks,
   plugins: ["solidity-coverage"],
   mocha: {
-    enableTimeouts: false,
-    before_timeout: 1800000
+    reporter: "eth-gas-reporter",
+    reporterOptions: {}
   },
   compilers: {
     solc: {
