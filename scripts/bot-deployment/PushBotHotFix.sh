@@ -17,7 +17,7 @@ docker push umaprotocol/protocol:hotfix
 echo "Pushing docker container to docker hub..."
 if [ $# -eq 1 ]; then
     echo "Pushing hot fix to" $1
-    echo "Using no new enviroment variable. Keeping current configuration."
+    echo "No configuration file provided. Keeping current configuration"
     gcloud compute instances update-container $1 \
         --container-image docker.io/umaprotocol/protocol:hotfix \
         --zone us-central1-a \
