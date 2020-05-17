@@ -255,7 +255,7 @@ function ActiveRequests({ votingAccount, votingGateway }) {
         hash: computeVoteHash({
           price,
           salt,
-          account,
+          votingAccount,
           time: pendingRequests[index].time,
           roundId: currentRoundId,
           identifier: pendingRequests[index].identifier
