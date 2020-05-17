@@ -44,7 +44,7 @@ Note that in this example, `priceFeedIdentifier`, `syntheticName`, and `syntheti
 
 <!-- prettier-ignore -->
 ```js
-const constructorParams = { expirationTimestamp: "1606780800", collateralAddress: TestnetERC20.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, minSponsorTokens: { rawValue: '100000000000000' }, timerAddress: '0x0000000000000000000000000000000000000000' }
+const constructorParams = { expirationTimestamp: "1606780800", collateralAddress: TestnetERC20.address, priceFeedIdentifier: web3.utils.utf8ToHex("UMATEST"), syntheticName: "Test UMA Token", syntheticSymbol: "UMATEST", collateralRequirement: { rawValue: web3.utils.toWei("1.5") }, disputeBondPct: { rawValue: web3.utils.toWei("0.1") }, sponsorDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, disputerDisputeRewardPct: { rawValue: web3.utils.toWei("0.1") }, minSponsorTokens: { rawValue: '100000000000000' }, timerAddress: Timer.address }
 ```
 
 5. Before the contract for the synthetic tokens can be created, the price identifier for the synthetic tokens must be registered with `IdentifierWhitelist`.
@@ -155,12 +155,16 @@ await emp.deposit({ rawValue: web3.utils.toWei("10") })
 await emp.requestWithdrawal({ rawValue: web3.utils.toWei("10") })
 ```
 
-3. Now, we need to simulate the withdrawal liveness period passing without a dispute of our withdrawal request.
-   Because we set this period to be 1000 when we parameterized and deployed the contract, let’s simulate 1001 of time elapsing.
-   Once the 1001 has elapsed, we can withdraw the amount we previously requested.
+3. Now, we need to simulate the withdrawal liveness period passing without a dispute of our withdrawal request. The `ExpiringMultipartyCreator` used in step 8 has a strict withdrawal liveness of 7200 seconds, or 2 hours. This means that in order for a withdrawal request to be processed _at least_ 2 hours must pass before attempting to withdraw from the position. We can simulate time advancing until after this withdrawal liveness period by using an the deployed instance of `Timer`. This contact acts to simulate time changes within the UMA ecosystem when testing smart contracts.
 
 ```js
-await emp.setCurrentTime((await emp.getCurrentTime()).toNumber() + 1001)
+// Create an instance of the `Timer` Contract
+const timer = await Timer.deployed()
+
+// Advance time forward from the current time to current time + 7201 seconds
+await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 7201)
+
+// Withdraw the now processed request.
 await emp.withdrawPassedRequest()
 ```
 
