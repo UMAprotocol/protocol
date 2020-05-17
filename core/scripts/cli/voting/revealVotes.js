@@ -17,9 +17,12 @@ const revealVotes = async (web3, voting, designatedVoting) => {
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
   const roundPhase = await voting.getVotePhase();
-  // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
-  const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
+
+  // If the user is using the two key contract, then the voting account is the designated voting contract's address.
+  const signingAccount = await getDefaultAccount(web3);
+  const votingAccount = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
+
+  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, voting);
   style.spinnerReadingContracts.stop();
 
   if (roundPhase.toString() === VotePhasesEnum.COMMIT) {
@@ -54,7 +57,9 @@ const revealVotes = async (web3, voting, designatedVoting) => {
       for (let i = 0; i < selections.length; i++) {
         // Construct commitment
         try {
-          newReveals.push(await constructReveal(selections[i], roundId, web3, account, voting));
+          newReveals.push(
+            await constructReveal(selections[i], roundId, web3, signingAccount, voting, designatedVoting.address)
+          );
         } catch (err) {
           failures.push({ request: selections[i], err });
         }
@@ -63,7 +68,11 @@ const revealVotes = async (web3, voting, designatedVoting) => {
       // Batch reveal the votes and display a receipt to the user
       if (newReveals.length > 0) {
         style.spinnerWritingContracts.start();
-        const { successes, batches } = await batchRevealVotes(newReveals, voting, account);
+        const { successes, batches } = await batchRevealVotes(
+          newReveals,
+          designatedVoting ? designatedVoting : voting,
+          signingAccount
+        );
         style.spinnerWritingContracts.stop();
 
         // Print results

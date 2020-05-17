@@ -23,9 +23,12 @@ const commitVotes = async (web3, voting, designatedVoting) => {
   const pendingRequests = await voting.getPendingRequests();
   const roundId = await voting.getCurrentRoundId();
   const roundPhase = (await voting.getVotePhase()).toString();
-  // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
-  const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
+
+  // If the user is using the two key contract, then the voting account is the designated voting contract's address.
+  const signingAccount = await getDefaultAccount(web3);
+  const votingAccount = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
+
+  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, voting);
   style.spinnerReadingContracts.stop();
 
   if (roundPhase === VotePhasesEnum.REVEAL) {
@@ -69,7 +72,16 @@ const commitVotes = async (web3, voting, designatedVoting) => {
 
         // Construct commitment
         try {
-          newCommitments.push(await constructCommitment(selections[i], roundId, web3, priceInput["price"], account));
+          newCommitments.push(
+            await constructCommitment(
+              selections[i],
+              roundId,
+              web3,
+              priceInput["price"],
+              signingAccount,
+              designatedVoting
+            )
+          );
         } catch (err) {
           failures.push({ request: selections[i], err });
         }
@@ -78,7 +90,11 @@ const commitVotes = async (web3, voting, designatedVoting) => {
       // Batch commit the votes and display a receipt to the user
       if (newCommitments.length > 0) {
         style.spinnerWritingContracts.start();
-        const { successes, batches } = await batchCommitVotes(newCommitments, voting, account);
+        const { successes, batches } = await batchCommitVotes(
+          newCommitments,
+          designatedVoting ? designatedVoting : voting,
+          signingAccount
+        );
         style.spinnerWritingContracts.stop();
 
         // Construct etherscan link based on network

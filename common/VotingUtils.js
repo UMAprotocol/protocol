@@ -12,19 +12,23 @@ const argv = require("minimist")(process.argv.slice());
 /**
  * Generate a salt and use it to encrypt a committed vote in response to a price request
  * Return committed vote details to the voter
- * @param {* Object} request {identifier, time}
- * @param {* String} roundId
- * @param {* Object} web3
- * @param {* String | Number | BN} price
- * @param {* String} account
+ * @param {Object} request {identifier, time}
+ * @param {String} roundId
+ * @param {Object} web3
+ * @param {String | Number | BN} price
+ * @param {String} account account to sign message with
+ * @param {Object} [designatedVoting] proxy voting contract,
  */
-const constructCommitment = async (request, roundId, web3, price, account) => {
+const constructCommitment = async (request, roundId, web3, price, account, designatedVoting) => {
+  // Voting account is the "voter" that we include in the commit hash.
+  const votingAccount = designatedVoting ? designatedVoting.address : account;
+
   const priceWei = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
   const hash = computeVoteHash({
     price: priceWei,
     salt,
-    account,
+    account: votingAccount,
     time: request.time,
     roundId,
     identifier: request.identifier
@@ -51,14 +55,18 @@ const constructCommitment = async (request, roundId, web3, price, account) => {
 
 /**
  * Decrypt an encrypted vote commit for the voter and return vote details
- * @param {* Object} request {identifier, time}
- * @param {* String} roundId
- * @param {* Object} web3
- * @param {* String} account
- * @param {* Object} votingContract deployed Voting.sol instance
+ * @param {Object} request {identifier, time}
+ * @param {String} roundId
+ * @param {Object} web3
+ * @param {String} account account to sign message with
+ * @param {Object} votingContract deployed Voting.sol instance
+ * @param {Object} [designatedVotingAddress] proxy voting contract,
  */
-const constructReveal = async (request, roundId, web3, account, votingContract) => {
-  const encryptedCommit = (await getLatestEvent("EncryptedVote", request, roundId, account, votingContract))
+const constructReveal = async (request, roundId, web3, account, votingContract, designatedVotingAddress) => {
+  // Voting account is the "voter" whose past votes we query to find encrypted commits.
+  const votingAccount = designatedVotingAddress ? designatedVotingAddress : account;
+
+  const encryptedCommit = (await getLatestEvent("EncryptedVote", request, roundId, votingAccount, votingContract))
     .encryptedVote;
 
   let privateKey;
