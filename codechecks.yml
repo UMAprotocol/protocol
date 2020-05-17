@@ -1,4 +1,0 @@
-checks:
-  - name: eth-gas-reporter/codechecks
-  - options:
-      buildPath: "./core"

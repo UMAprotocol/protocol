@@ -110,9 +110,6 @@ jobs:
       - run:
           name: Run tests
           command: ./ci/run_truffle_tests.sh
-      - run: 
-          name: th-gas-reporter/codechecks
-          command: npx codechecks
   coverage:
     docker:
       # Note: we made a compromise here to get solidity-coverage to work. We're just creating a new build inside the
