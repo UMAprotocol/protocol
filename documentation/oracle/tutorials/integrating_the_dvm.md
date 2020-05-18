@@ -22,9 +22,7 @@ Moreover, the DepositBox user would be paying for the privilege of having the DV
 
 The `DepositBox` contract will pay regular fees to the DVM proportional to the amount of collateral deposited into the contract. Additionally, whenever a user makes a withdrawal request, the contract will pay a fixed final fee to the DVM.
 
-<!-- TODO: Add link
 Details on these two fees are available [here](../economic_architecture.md).
--->
 
 ## Toy Integration Tutorial
 

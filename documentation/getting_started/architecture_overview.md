@@ -2,8 +2,8 @@
 
 UMA builds open-source infrastructure for “priceless” financial contracts on Ethereum. Specifically, this is two things:
 
-- Data Verification Mechanism (DVM), a decentralized oracle service
-- Priceless financial contract designs, which can be used to create synthetic tokens
+- [Data Verification Mechanism](./uma_oracle_design.md) (DVM), a decentralized oracle service
+- [Priceless financial contract designs](./priceless_defi_contracts.md), which can be used to create synthetic tokens
 
 Together, these two technologies enable the creation of fast, efficient, and secure synthetic derivatives on the Ethereum blockchain.
 
