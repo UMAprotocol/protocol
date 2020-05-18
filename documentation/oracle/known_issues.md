@@ -73,3 +73,54 @@ If Charlie notices that voters have gone against his wishes, he is free to revea
 Noting that interactive zk proofs are costly, this “fuzzing” solution may inadvertently create avenues through which the DVM voting system could be DoS’d.
 The contract and Charlie also need not send collateral to the DVM to escrow during the resolution process.
 This collateral may be stored in a separate account and the DVM may instead only return the payments to be made from that account to each party.
+
+#### Bribery Attack
+
+The economic guarantees of the UMA system as described [here](./economic_architecture.md) require that the cost of corruption (CoC) stays above the profit from corruption (PfC).
+A “bribery attack” arises if the cost of controlling 50% of the participating UMA tokens is a small bribe relative to the cost of purchasing UMA tokens.
+This would cause the CoC of the UMA DVM to be lower than the PfC, and the economic guarantee of the UMA DVM may not hold.
+
+This bribery attack is a variation on the "P + Epsilon attack" Vitalik Buterin described [here](https://blog.ethereum.org/2015/01/28/p-epsilon-attack/).
+Our version of this attack (and solution) is formalized in this research [note](https://github.com/UMAprotocol/research/blob/master/notes/BribeAttack.pdf) and is summarized below.
+
+##### Overview of Attack
+
+The DVM uses a Schelling-Point style voting system with tokenized voting rights that pays a reward to voters who vote with the majority (described [here](./economic_architecture.md)).
+
+In a bribery attack, assume that there exists a 3rd party individual who would like to corrupt the DVM by bribing any UMA tokenholder who puts in a corrupted vote with a reward of `x`.
+
+Assume each UMA token is worth 1 unit of value and entitles the token holder to submit 1 vote.
+Each voter must decide whether to submit a corrupted vote (“be corrupted”) or an uncorrupted vote (“not be corrupted”).
+The system is considered corrupted if the majority of UMA tokenholders submit the corrupted vote.
+
+We assume that if the system is corrupted, the UMA voting token becomes worthless — the UMA token that was previously worth 1 unit of value goes to 0.
+
+To compel voters to submit accurate votes, the UMA system issues `r` newly minted UMA tokens, to be distributed proportionally to all voters who voted with the majority.
+We label that the fraction of voters who are honest (not corrupted) as `p` (this means `p` is between 0 and 1).
+This means the reward that an honest voter receives is scaled by how many corrupted voters honestly.
+If `p=1` and all voters are honest, the reward received is `r`; if `p=0.5` and only half of the voters are honest, the reward received is `2*r`.
+
+The payout for each voter depends both on the vote they submit and the votes that all other voters submit.
+We can construct the following payout matrix:
+
+|                         | Voter is corrupted | Voter is not corrupted |
+| ----------------------- | ------------------ | ---------------------- |
+| System is corrupted     | x                  | 0                      |
+| System is not corrupted | 1+x                | 1+r/p                  |
+
+Reasoning the above matrix, it follows that if bribe `x` is greater than the reward `r/p` paid to honest voters, a rational voter will vote to corrupt the system.
+
+Since successfully corrupting the system requires convincing more than half of the voters to submit corrupt votes, the boundary scenario we care most about is when `p = 0.5`.
+Substituting `p = 0.5` into the `x > r/p` relationship means that we need `x > 2*r` to convince half the voters to submit corrupt votes.
+An attacker can successfully bribe the system by promising to pay 2 times the reward offered. This is problematic.
+
+##### Proposed Solution to Bribery Problem
+
+In the previous game, the “rules” were fixed and defined before-hand; it was a static game. In reality, the DVM has a protocol for governance, which includes updating and changing the rules of the game.
+
+If there were an outside party that proposed a bribe of `x` in order to try and convince voters to submit corrupt votes, the token-holders could vote to increase the reward offered by the DVM such that `x < 2*r`.
+By doing so, token holders can continuously stay ahead of any bribes.
+
+It’s worth remembering that token holders do not want to be successfully bribed. In the event of a successful bribe, the token they own collapses in value.
+As such, token holders have a large incentive to change the rules to prevent any bribe.
+Because attackers know this, it means even attempting to bribe the token holders is futile—token holders will just quickly increase the reward `r` to thwart the bribe attempt.
