@@ -4,7 +4,7 @@
 
 [![<UMAprotocol>](https://circleci.com/gh/UMAprotocol/protocol.svg?style=shield)](https://app.circleci.com/pipelines/github/UMAprotocol/protocol)
 [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/umaprotocol/protocol)](https://hub.docker.com/r/umaprotocol/protocol)
-[![Coverage Status](https://coveralls.io/repos/github/UMAprotocol/protocol/badge.svg)](https://coveralls.io/github/UMAprotocol/protocol)
+[![Coverage Status](https://coveralls.io/repos/github/UMAprotocol/protocol/badge.svg?branch=master)](https://coveralls.io/github/UMAprotocol/protocol?branch=master)
 
 [![GitHub](https://img.shields.io/github/license/UMAprotocol/protocol)](https://github.com/UMAprotocol/protocol/blob/master/LICENSE)
 [![GitHub last commit](https://img.shields.io/github/last-commit/UMAprotocol/protocol)](https://github.com/UMAprotocol/protocol/commits/master)
@@ -57,7 +57,7 @@ generate a coverage report automatically, but if you'd like to generate it local
 ./ci/coverage.sh core
 ```
 
-The full report can be viewed by opening the `core/coverage/index.html` file in a browser.
+The full report can be viewed by opening the `core/coverage/index.html` file in a browser. The full report can be viewed by opening the `core/coverage/index.html` file in a browser. You can also find an online version of our covarge report on [coveralls](https://coveralls.io/builds/30869565).
 
 ## Style Guide 🕺
 
