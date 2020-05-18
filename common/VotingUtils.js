@@ -10,19 +10,42 @@ const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("
 const argv = require("minimist")(process.argv.slice());
 
 /**
+ * Return voting contract, voting account, and signing account based on whether user is using a
+ * designated voting proxy.
+ * @param {String} account current default signing account
+ * @param {Object} voting DVM contract
+ * @param {Object} [designatedVoting] designated voting proxy contract
+ * @return votingContract Contract to send votes to.
+ * @return votingAccount address that votes are attributed to.
+ * @return signingAddress address used to sign encrypted messages.
+ */
+const getVotingRoles = (account, voting, designatedVoting) => {
+  if (designatedVoting) {
+    return {
+      votingContract: designatedVoting,
+      votingAccount: designatedVoting.address,
+      signingAddress: account
+    };
+  } else {
+    return {
+      votingContract: voting,
+      votingAccount: account,
+      signingAddress: account
+    };
+  }
+};
+
+/**
  * Generate a salt and use it to encrypt a committed vote in response to a price request
- * Return committed vote details to the voter
+ * Return committed vote details to the voter.
  * @param {Object} request {identifier, time}
  * @param {String} roundId
  * @param {Object} web3
  * @param {String | Number | BN} price
- * @param {String} account account to sign message with
- * @param {Object} [designatedVoting] proxy voting contract,
+ * @param {String} signingAccount
+ * @param {String} votingAccount
  */
-const constructCommitment = async (request, roundId, web3, price, account, designatedVoting) => {
-  // Voting account is the "voter" that we include in the commit hash.
-  const votingAccount = designatedVoting ? designatedVoting.address : account;
-
+const constructCommitment = async (request, roundId, web3, price, signingAccount, votingAccount) => {
   const priceWei = web3.utils.toWei(price.toString());
   const salt = web3.utils.toBN(web3.utils.randomHex(32));
   const hash = computeVoteHash({
@@ -37,9 +60,9 @@ const constructCommitment = async (request, roundId, web3, price, account, desig
   const vote = { price: priceWei, salt };
   let publicKey;
   if (argv.network === "metamask") {
-    publicKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account)).publicKey;
+    publicKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), signingAccount)).publicKey;
   } else {
-    publicKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account)).publicKey;
+    publicKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), signingAccount)).publicKey;
   }
   const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
 
@@ -58,22 +81,19 @@ const constructCommitment = async (request, roundId, web3, price, account, desig
  * @param {Object} request {identifier, time}
  * @param {String} roundId
  * @param {Object} web3
- * @param {String} account account to sign message with
+ * @param {String} signingAccount
  * @param {Object} votingContract deployed Voting.sol instance
- * @param {Object} [designatedVotingAddress] proxy voting contract,
+ * @param {String} votingAccount
  */
-const constructReveal = async (request, roundId, web3, account, votingContract, designatedVotingAddress) => {
-  // Voting account is the "voter" whose past votes we query to find encrypted commits.
-  const votingAccount = designatedVotingAddress ? designatedVotingAddress : account;
-
+const constructReveal = async (request, roundId, web3, signingAccount, votingContract, votingAccount) => {
   const encryptedCommit = (await getLatestEvent("EncryptedVote", request, roundId, votingAccount, votingContract))
     .encryptedVote;
 
   let privateKey;
   if (argv.network === "metamask") {
-    privateKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), account)).privateKey;
+    privateKey = (await deriveKeyPairFromSignatureMetamask(web3, getKeyGenMessage(roundId), signingAccount)).privateKey;
   } else {
-    privateKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account)).privateKey;
+    privateKey = (await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), signingAccount)).privateKey;
   }
   const vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
 
@@ -153,7 +173,14 @@ const batchRevealVotes = async (newReveals, votingContract, account) => {
 // Optimally batch together reward retrievals in the fewest batches possible,
 // each retrieveRewards is one Ethereum transaction. Return the number of successes
 // and batches to the user
-const batchRetrieveRewards = async (requests, roundId, votingContract, account) => {
+const batchRetrieveRewards = async (
+  requests,
+  roundId,
+  votingContract,
+  votingAccount,
+  signingAccount,
+  designatedVoting
+) => {
   let successes = [];
   let batches = 0;
   for (let i = 0; i < requests.length; i += BATCH_MAX_RETRIEVALS) {
@@ -167,7 +194,15 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, account) 
     }
 
     // Always call `retrieveRewards`, even if there's only one reward. Difference in gas cost is negligible.
-    const { receipt } = await votingContract.retrieveRewards(account, roundId, pendingRequests, { from: account });
+    // @dev: If the user is retrieving rewards through a designated voting proxy, the `retrieveRewards` method only
+    // takes in two parameters: roundId and pendingRequests.
+    let txn;
+    if (designatedVoting) {
+      txn = await designatedVoting.retrieveRewards(roundId, pendingRequests, { from: signingAccount });
+    } else {
+      txn = await votingContract.retrieveRewards(votingAccount, roundId, pendingRequests, { from: signingAccount });
+    }
+    const receipt = txn.receipt;
 
     // Add the batch transaction hash to each reveal.
     maxBatchSize.forEach(retrieve => {
@@ -213,6 +248,7 @@ const getLatestEvent = async (eventName, request, roundId, account, votingContra
 };
 
 module.exports = {
+  getVotingRoles,
   getLatestEvent,
   constructCommitment,
   constructReveal,

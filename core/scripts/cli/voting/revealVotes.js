@@ -3,26 +3,26 @@ const style = require("../textStyle");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
 const { VotePhasesEnum } = require("../../../../common/Enums");
-const { constructReveal, batchRevealVotes } = require("../../../../common/VotingUtils");
+const { constructReveal, batchRevealVotes, getVotingRoles } = require("../../../../common/VotingUtils");
 
 /**
  * This prompts the user to select which pending price requests, that they have committed votes on, they want to reveal.
  * A vote can only be revealed once, unlike a commit.
  *
  * @param {* Object} web3 Web3 provider
- * @param {* Object} voting deployed Voting.sol contract instance
+ * @param {* Object} oracle deployed Voting.sol contract instance
  */
-const revealVotes = async (web3, voting, designatedVoting) => {
+const revealVotes = async (web3, oracle, designatedVoting) => {
   style.spinnerReadingContracts.start();
-  const pendingRequests = await voting.getPendingRequests();
-  const roundId = await voting.getCurrentRoundId();
-  const roundPhase = await voting.getVotePhase();
+  const pendingRequests = await oracle.getPendingRequests();
+  const roundId = await oracle.getCurrentRoundId();
+  const roundPhase = await oracle.getVotePhase();
+  const account = await getDefaultAccount(web3);
 
   // If the user is using the two key contract, then the voting account is the designated voting contract's address.
-  const signingAccount = await getDefaultAccount(web3);
-  const votingAccount = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
+  const { votingAccount, signingAddress, votingContract } = getVotingRoles(account, oracle, designatedVoting);
 
-  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, voting);
+  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, oracle);
   style.spinnerReadingContracts.stop();
 
   if (roundPhase.toString() === VotePhasesEnum.COMMIT) {
@@ -57,10 +57,9 @@ const revealVotes = async (web3, voting, designatedVoting) => {
       for (let i = 0; i < selections.length; i++) {
         // Construct commitment
         try {
-          newReveals.push(
-            await constructReveal(selections[i], roundId, web3, signingAccount, voting, designatedVoting.address)
-          );
+          newReveals.push(await constructReveal(selections[i], roundId, web3, signingAddress, oracle, votingAccount));
         } catch (err) {
+          console.error(err);
           failures.push({ request: selections[i], err });
         }
       }
@@ -68,11 +67,7 @@ const revealVotes = async (web3, voting, designatedVoting) => {
       // Batch reveal the votes and display a receipt to the user
       if (newReveals.length > 0) {
         style.spinnerWritingContracts.start();
-        const { successes, batches } = await batchRevealVotes(
-          newReveals,
-          designatedVoting ? designatedVoting : voting,
-          signingAccount
-        );
+        const { successes, batches } = await batchRevealVotes(newReveals, votingContract, signingAddress);
         style.spinnerWritingContracts.stop();
 
         // Print results
