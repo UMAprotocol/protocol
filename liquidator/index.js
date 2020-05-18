@@ -1,9 +1,9 @@
 require("dotenv").config();
-const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
 const { Logger } = require("../financial-templates-lib/logger/Logger");
+const { startServer } = require("../common/ServerUtils");
 
 // JS libs
 const { Liquidator } = require("./liquidator");
@@ -25,9 +25,10 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
  * @param {String} address Contract address of the EMP.
  * @param {Boolean} shouldPoll If False, then exit after one iteration. Used for testing.
  * @param {Number} pollingDelay The amount of milliseconds to wait between iterations.
+ * @param {Number} [monitorPort] Monitor server port number.
  * @return None or throws an Error.
  */
-async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
+async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPort) {
   try {
     Logger.info({
       at: "liquidator#index",
@@ -54,6 +55,14 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
     const gasEstimator = new GasEstimator(Logger);
     const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
 
+    // Start monitoring server, which should listen for incoming requests as long as this bot is alive.
+    const { server, portNumber } = startServer(monitorPort);
+    Logger.debug({
+      at: "liquidator#index",
+      message: "Monitor server is listening",
+      portNumber: portNumber
+    });
+
     while (true) {
       // Steps:
       // Get most recent price from a price feed.
@@ -70,6 +79,10 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
         break;
       }
     }
+
+    // TODO: I'm not sure if this actually is working as expected.
+    // Close server gracefully.
+    server.close();
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",

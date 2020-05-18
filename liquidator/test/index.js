@@ -1,4 +1,5 @@
 const { toWei, utf8ToHex } = web3.utils;
+const fetch = require("node-fetch");
 
 // Script to test
 const Poll = require("../index.js");
@@ -66,14 +67,46 @@ contract("index.js", function(accounts) {
       lookback: 1
     };
 
-    let errorThrown;
+    let errorThrown = false;
     try {
       await Poll.run(address, false, 10_000, priceFeedConfig);
-      errorThrown = false;
     } catch (err) {
-      console.error(err);
       errorThrown = true;
     }
     assert.isFalse(errorThrown);
+  });
+
+  it("Responds to incoming monitor requests while bot is alive", async function() {
+    const address = emp.address;
+
+    const priceFeedConfig = {
+      type: "uniswap",
+      uniswapAddress: uniswap.address,
+      twapLength: 1,
+      lookback: 1
+    };
+
+    const monitorPort = 3333;
+    const url = `http://localhost:${monitorPort}`;
+    const route = "/";
+
+    // Pinging server while bot is dead should throw an error.
+    let errorThrown = false;
+    try {
+      await fetch(`${url}${route}`);
+    } catch (err) {
+      errorThrown = true;
+    }
+    assert.isTrue(errorThrown);
+
+    // Start bot, which should start the server
+    await Poll.run(address, true, 10_000, priceFeedConfig, monitorPort);
+
+    // Pinging server while bot is alive should succeed.
+    const response = await fetch(`${url}${route}`);
+    const data = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(data.message, "Bot is up");
   });
 });
