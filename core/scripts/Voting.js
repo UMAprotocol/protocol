@@ -1,7 +1,6 @@
 const Voting = artifacts.require("Voting");
 const { VotePhasesEnum } = require("../../common/Enums");
 const { BATCH_MAX_COMMITS, BATCH_MAX_REVEALS } = require("../../common/Constants");
-const { computeTopicHash } = require("../../common/EncryptionHelper");
 const publicNetworks = require("../../common/PublicNetworks");
 const sendgrid = require("@sendgrid/mail");
 const fetch = require("node-fetch");
@@ -478,7 +477,14 @@ class VotingSystem {
 
   async constructCommitment(request, roundId, isProd) {
     const fetchedPrice = await fetchPrice(request, isProd);
-    return await _constructCommitment(request, roundId, web3, web3.utils.fromWei(fetchedPrice), this.account);
+    return await _constructCommitment(
+      request,
+      roundId,
+      web3,
+      web3.utils.fromWei(fetchedPrice),
+      this.account,
+      this.account
+    );
   }
 
   async runBatchCommit(requests, roundId, isProd) {
@@ -530,7 +536,7 @@ class VotingSystem {
 
   async constructReveal(request, roundId, isProd) {
     try {
-      return await _constructReveal(request, roundId, web3, this.account, this.voting);
+      return await _constructReveal(request, roundId, web3, this.account, this.voting, this.account);
     } catch (e) {
       if (isProd) {
         console.error("Failed to decrypt message:", e);
