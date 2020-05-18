@@ -26,7 +26,7 @@ const retrieveRewards = async (web3, oracle, designatedVoting) => {
   const account = await getDefaultAccount(web3);
 
   // If the user is using the two key contract, then the voting account is the designated voting contract's address.
-  const { votingAccount, signingAddress, votingContract } = getVotingRoles(account, oracle, designatedVoting);
+  const { votingAccount, signingAddress } = getVotingRoles(account, oracle, designatedVoting);
 
   const { rewardsByRoundId, roundIds } = await getAvailableRewards(web3, oracle, votingAccount);
 
@@ -55,10 +55,9 @@ const retrieveRewards = async (web3, oracle, designatedVoting) => {
       const { successes, batches } = await batchRetrieveRewards(
         resolvedVotes,
         roundId,
-        votingContract,
+        oracle,
         votingAccount,
-        signingAddress,
-        designatedVoting
+        signingAddress
       );
       style.spinnerWritingContracts.stop();
 

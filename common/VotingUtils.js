@@ -173,14 +173,7 @@ const batchRevealVotes = async (newReveals, votingContract, account) => {
 // Optimally batch together reward retrievals in the fewest batches possible,
 // each retrieveRewards is one Ethereum transaction. Return the number of successes
 // and batches to the user
-const batchRetrieveRewards = async (
-  requests,
-  roundId,
-  votingContract,
-  votingAccount,
-  signingAccount,
-  designatedVoting
-) => {
+const batchRetrieveRewards = async (requests, roundId, votingContract, votingAccount, signingAccount) => {
   let successes = [];
   let batches = 0;
   for (let i = 0; i < requests.length; i += BATCH_MAX_RETRIEVALS) {
@@ -194,15 +187,9 @@ const batchRetrieveRewards = async (
     }
 
     // Always call `retrieveRewards`, even if there's only one reward. Difference in gas cost is negligible.
-    // @dev: If the user is retrieving rewards through a designated voting proxy, the `retrieveRewards` method only
-    // takes in two parameters: roundId and pendingRequests.
-    let txn;
-    if (designatedVoting) {
-      txn = await designatedVoting.retrieveRewards(roundId, pendingRequests, { from: signingAccount });
-    } else {
-      txn = await votingContract.retrieveRewards(votingAccount, roundId, pendingRequests, { from: signingAccount });
-    }
-    const receipt = txn.receipt;
+    const { receipt } = await votingContract.retrieveRewards(votingAccount, roundId, pendingRequests, {
+      from: signingAccount
+    });
 
     // Add the batch transaction hash to each reveal.
     maxBatchSize.forEach(retrieve => {
