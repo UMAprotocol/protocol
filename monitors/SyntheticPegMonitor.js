@@ -50,7 +50,6 @@ class SyntheticPegMonitor {
       },
       volatilityAlertThreshold: {
         // `volatilityAlertThreshold`: Error threshold for pricefeed's price volatility over `volatilityWindow`.
-        // Expressed as a %.
         value: this.web3.utils.toBN(this.web3.utils.toWei("0.05")),
         isValid: x => {
           return toBN(x).lte(toBN(toWei("100"))) && toBN(x).gt(toBN("0"));
