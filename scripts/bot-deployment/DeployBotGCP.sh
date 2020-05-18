@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [ $# -ne 2 ]|| [ $# -gt 2 ]; then
+if [ $# -ne 2 ] || [ $# -gt 2 ]; then
     echo "Incorrect number of arguments supplied! First argument is bot's name. Second argument is path to config file."
     echo "example: ./DeployBotGCP.sh ethbtc-monitor-bot ./ethbtc-monitor-bot-env.txt"
     exit 1
