@@ -33,7 +33,8 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       at: "liquidator#index",
       message: "liquidator started 🕵️‍♂️",
       empAddress: address,
-      pollingDelay: pollingDelay
+      pollingDelay: pollingDelay,
+      priceFeedConfig
     });
 
     // Setup web3 accounts an contract instance
@@ -71,6 +72,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       }
     }
   } catch (error) {
+    console.log(error);
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",

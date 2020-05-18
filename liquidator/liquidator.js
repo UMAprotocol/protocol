@@ -73,7 +73,9 @@ class Liquidator {
     };
 
     // Validate and set config settings to class state.
+    console.log("DEFAULT", defaultConfig);
     Object.assign(this, createObjectFromDefaultProps(config, defaultConfig));
+    console.log("THIS", this);
   }
 
   // Update the client and gasEstimator clients.
@@ -94,7 +96,7 @@ class Liquidator {
     if (!price) {
       this.logger.warn({
         at: "Liquidator",
-        message: "Cannot liquidate: price feed returned invalid value",
+        message: "Cannot liquidate: price feed returned invalid alue",
         price
       });
       return;
@@ -109,7 +111,7 @@ class Liquidator {
       message: "Scaling down collateral threshold for liquidations",
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
-      crThreshold: this.crThreshold
+      crThreshold: this.crThreshold.toString()
     });
 
     this.logger.debug({
