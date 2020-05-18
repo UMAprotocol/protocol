@@ -38,7 +38,7 @@ const formatWithMaxDecimals = (num, decimalPlaces, roundUp) => {
     .toString();
 
   // This puts commas in the thousands places, but only before the decimal point.
-  var fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
+  const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
   fixedPrecisionFloatParts[0] = fixedPrecisionFloatParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return fixedPrecisionFloatParts.join(".");
 };
