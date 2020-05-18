@@ -119,6 +119,8 @@ contract("SyntheticPegMonitor", function(accounts) {
       // Tested module that uses the two price feeds.
       syntheticPegMonitorConfig = {
         volatilityWindow: 3650,
+        // Not divisible by 3600 in order to test that "volatility window in hours" is printed
+        // correctly by Logger.
         volatilityAlertThreshold: toBN(toWei("0.3"))
       };
       syntheticPegMonitor = new SyntheticPegMonitor(
@@ -216,7 +218,7 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.equal(spy.callCount, 1);
       assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility alert"));
       assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
-      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 60/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility
 
       uniswapPriceFeedMock.setLastUpdateTime(104);
@@ -224,8 +226,39 @@ contract("SyntheticPegMonitor", function(accounts) {
       assert.equal(spy.callCount, 2);
       assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility alert"));
       assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
-      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 60/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility
+    });
+
+    it("Stress testing with a lot of historical price data points", async function() {
+      // Inject prices into pricefeed.
+      const historicalPrices = [];
+      for (let i = 0; i < 10000; i++) {
+        historicalPrices.push({ timestamp: i, price: toBN(toWei(i.toString())) });
+      }
+      medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
+      uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+      medianizerPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
+      uniswapPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
+
+      // There should be one alert emitted for each pricefeed.
+      // Max price will be 9999, min price will be (9999-3650+1) = 6350.
+      // Vol will be 3649/6350 = 57.46%
+      await syntheticPegMonitor.checkPegVolatility();
+      assert.equal(spy.callCount, 1);
+      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "9,999.00")); // latest pricefeed price
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "57.46")); // actual volatility
+
+      // uniswapPriceFeedMock.setLastUpdateTime(104);
+      await syntheticPegMonitor.checkSyntheticVolatility();
+      assert.equal(spy.callCount, 2);
+      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "9,999.00")); // latest pricefeed price
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "57.46")); // actual volatility
     });
   });
 });
