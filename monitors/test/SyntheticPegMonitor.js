@@ -196,20 +196,33 @@ contract("SyntheticPegMonitor", function(accounts) {
         { timestamp: 107, price: toBN(toWei("17")) }
       ];
       medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
+      uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
 
       // Test when volatility is under threshold. Monitor should not emit any events.
       // Min/Max from time 103 should be 10/13, so volatility should be 3/10 = 30%, which is
       // not greater than the 30% threshold.
       medianizerPriceFeedMock.setLastUpdateTime(103);
-      await syntheticPegMonitor.checkPriceVolatility();
+      uniswapPriceFeedMock.setLastUpdateTime(103);
+      await syntheticPegMonitor.checkPegVolatility();
+      await syntheticPegMonitor.checkSyntheticVolatility();
       assert.equal(spy.callCount, 0); // There should be no messages sent at this point.
+
+      // There should be one alert emitted for each pricefeed.
 
       // Test when volatility is over threshold. Monitor should emit an error message.
       // Min/Max from time 104 is 10/14, so volatility is 4/10 = 40%.
       medianizerPriceFeedMock.setLastUpdateTime(104);
-      await syntheticPegMonitor.checkPriceVolatility();
-      assert.equal(spy.callCount, 1); // There should be no messages sent at this point.
-      assert.isTrue(lastSpyLogIncludes(spy, "pricefeed volatility alert"));
+      await syntheticPegMonitor.checkPegVolatility();
+      assert.equal(spy.callCount, 1);
+      assert.isTrue(lastSpyLogIncludes(spy, "peg price volatility alert"));
+      assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
+      assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 60/3600)
+      assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility
+
+      uniswapPriceFeedMock.setLastUpdateTime(104);
+      await syntheticPegMonitor.checkSyntheticVolatility();
+      assert.equal(spy.callCount, 2);
+      assert.isTrue(lastSpyLogIncludes(spy, "synthetic price volatility alert"));
       assert.isTrue(lastSpyLogIncludes(spy, "14.00")); // latest pricefeed price
       assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 60/3600)
       assert.isTrue(lastSpyLogIncludes(spy, "40.00")); // actual volatility

@@ -100,30 +100,22 @@ class SyntheticPegMonitor {
     }
   };
 
-  // Checks difference between minimum and maximum historical price over `volatilityWindow` amount of time in the
-  // specified price feed. Fires a message if the difference exceeds the `volatilityAlertThreshold` %.
-  checkPriceVolatility = async () => {
-    // TODO: Should we allow caller to specify the Uniswap versus Medianizer pricefeed? Should we check both on each call?
-    // For now, I'm assuming we are checking the volatility on the peg's price.
+  // Checks difference between minimum and maximum historical price over `volatilityWindow` amount of time.
+  // Fires a message if the difference exceeds the `volatilityAlertThreshold` %.
+  checkPegVolatility = async () => {
     const pricefeed = this.medianizerPriceFeed;
 
     this.logger.debug({
       at: "SyntheticPegMonitor",
-      message: "Checking pricefeed volatility"
+      message: "Checking peg price volatility"
     });
 
-    // Get all historical prices from `volatilityWindow` seconds before the last update time and
-    // record the minimum and maximum.
-    const latestTime = pricefeed.getLastUpdateTime();
-    const pricefeedVolatility = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
-    // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from precisely the
-    // same timestamp as the "latest price". This would prevent inaccurate volatility readings where `currentTime` differs from `lastUpdateTime`.
-    const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
-
+    const { pricefeedVolatility, pricefeedLatestPrice } = await this._checkPricefeedVolatility(pricefeed);
     if (!pricefeedVolatility || !pricefeedLatestPrice) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
+        pricefeed: "Medianizer",
         pricefeedVolatility: pricefeedVolatility,
         pricefeedLatestPrice: pricefeedLatestPrice
       });
@@ -134,7 +126,7 @@ class SyntheticPegMonitor {
     if (pricefeedVolatility.gt(this.volatilityAlertThreshold)) {
       this.logger.error({
         at: "SyntheticPegMonitor",
-        message: "High pricefeed volatility alert 😵",
+        message: "High peg price volatility alert 😵",
         mrkdwn:
           "Latest updated " +
           this.pricefeedIdentifierName +
@@ -147,6 +139,61 @@ class SyntheticPegMonitor {
           " hour(s)."
       });
     }
+  };
+
+  checkSyntheticVolatility = async () => {
+    const pricefeed = this.uniswapPriceFeed;
+
+    this.logger.debug({
+      at: "SyntheticPegMonitor",
+      message: "Checking synthetic price volatility"
+    });
+
+    const { pricefeedVolatility, pricefeedLatestPrice } = await this._checkPricefeedVolatility(pricefeed);
+    if (!pricefeedVolatility || !pricefeedLatestPrice) {
+      this.logger.warn({
+        at: "SyntheticPegMonitor",
+        message: "Unable to get price",
+        pricefeed: "Uniswap",
+        pricefeedVolatility: pricefeedVolatility,
+        pricefeedLatestPrice: pricefeedLatestPrice
+      });
+      return;
+    }
+
+    // If the volatility percentage is greater than (gt) the threshold send a message.
+    if (pricefeedVolatility.gt(this.volatilityAlertThreshold)) {
+      this.logger.error({
+        at: "SyntheticPegMonitor",
+        message: "High synthetic price volatility alert 😵",
+        mrkdwn:
+          "Latest updated " +
+          this.pricefeedIdentifierName +
+          " price is " +
+          this.formatDecimalString(pricefeedLatestPrice) +
+          ". Price moved " +
+          this.formatDecimalString(pricefeedVolatility.muln(100)) +
+          "% over the last " +
+          formatHours(this.volatilityWindow) +
+          " hour(s)."
+      });
+    }
+  };
+
+  // Return historical volatility for pricefeed over specified time range and latest price.
+  _checkPricefeedVolatility = async pricefeed => {
+    // Get all historical prices from `volatilityWindow` seconds before the last update time and
+    // record the minimum and maximum.
+    const latestTime = pricefeed.getLastUpdateTime();
+    const pricefeedVolatility = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
+    // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from precisely the
+    // same timestamp as the "latest price". This would prevent inaccurate volatility readings where `currentTime` differs from `lastUpdateTime`.
+    const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
+
+    return {
+      pricefeedVolatility,
+      pricefeedLatestPrice
+    };
   };
 
   // Takes in two big numbers and returns the error between them.
