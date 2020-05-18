@@ -33,7 +33,7 @@ const { transports } = require("./Transports");
 async function waitForLogger(logger) {
   const loggerDone = new Promise(resolve => logger.on("finish", resolve));
   logger.end();
-  return loggerDone;
+  return await loggerDone;
 }
 
 const Logger = winston.createLogger({
