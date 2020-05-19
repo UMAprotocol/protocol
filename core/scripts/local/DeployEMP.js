@@ -52,6 +52,8 @@ const deployEMP = async callback => {
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
     }
 
+    const priceFeedIdentifier = web3.utils.utf8ToHex("BTC/USD");
+
     // Create a new EMP
     const constructorParams = {
       expirationTimestamp: "1596240000", // 2020-08-01T00:00:00.000Z. Note, this date will no longer work once it is in the past.
