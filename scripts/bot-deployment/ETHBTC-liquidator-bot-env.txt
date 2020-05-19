@@ -1,0 +1,10 @@
+MNEMONIC=gym run toss toy split project supreme hip response antique split valley
+PAGERDUTY_API_KEY=5akBysuAfzMZHsh_oFCP
+PAGERDUTY_SERVICE_ID=PQWHBOB
+PAGERDUTY_FROM_EMAIL=chris@umaproject.org
+SLACK_WEBHOOK=https://hooks.slack.com/services/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
+EMP_ADDRESS=0xDe15ae6E8CAA2fDa906b1621cF0F7296Aa79d9f1
+POLLING_DELAY=30000
+ENVIRONMENT=production
+COMMAND=npx truffle exec ../liquidator/index.js --network kovan_mnemonic
+PRICE_FEED_CONFIG={"type":"medianizer","apiKey":"IMUDH14WH6E3ROS8AKBX","pair":"ethbtc","lookback":7200,"minTimeBetweenUpdates":60,"medianizedFeeds":[{"type":"cryptowatch","exchange":"coinbase-pro"},{"type":"cryptowatch","exchange":"binance"},{"type":"cryptowatch","exchange":"bitstamp"}]}

@@ -33,8 +33,14 @@ const formatWithMaxDecimals = (num, decimalPlaces, roundUp) => {
   const fullPrecisionFloat = BigNumber(num);
 
   // Convert back to BN to truncate any trailing 0s that the toFixed() output would print.
-  const fixedPrecisionFloat = BigNumber(fullPrecisionFloat).toFixed(decimalPlaces);
-  return fixedPrecisionFloat.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
+    .toFixed(decimalPlaces)
+    .toString();
+
+  // This puts commas in the thousands places, but only before the decimal point.
+  const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
+  fixedPrecisionFloatParts[0] = fixedPrecisionFloatParts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return fixedPrecisionFloatParts.join(".");
 };
 
 const createFormatFunction = (web3, numDisplayedDecimals) => {

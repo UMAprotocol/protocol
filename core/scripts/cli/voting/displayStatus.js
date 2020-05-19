@@ -1,4 +1,5 @@
 const style = require("../textStyle");
+const { getVotingRoles } = require("../../../../common/VotingUtils");
 const { VotePhasesEnum } = require("../../../../common/Enums");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
 const filterRequests = require("./filterRequestsByRound");
@@ -17,21 +18,24 @@ const getResolvedPrices = require("./getResolvedVotesByRoundId");
  * - Any resolved price requests that the user can retrieve rewards from
  *
  * @param {* Object} web3 Web3 provider
- * @param {* Object} voting deployed Voting.sol contract instance
+ * @param {* Object} oracle deployed Voting.sol contract instance
  */
-const displayVoteStatus = async (web3, voting, designatedVoting) => {
+const displayVoteStatus = async (web3, oracle, designatedVoting) => {
   style.spinnerReadingContracts.start();
-  const pendingRequests = await voting.getPendingRequests();
-  const roundId = await voting.getCurrentRoundId();
-  const roundPhase = (await voting.getVotePhase()).toString();
+  const pendingRequests = await oracle.getPendingRequests();
+  const roundId = await oracle.getCurrentRoundId();
+  const roundPhase = (await oracle.getVotePhase()).toString();
   // TODO: #901 Can't access Voting.rounds in latest deployed Contract https://etherscan.io/address/0xfe3c4f1ec9f5df918d42ef7ed3fba81cc0086c5f#readContract
   // const roundStats = await voting.rounds(roundId);
-  const currentTime = await voting.getCurrentTime();
-  // If the user is using the two key contract, then the account is the designated voting contract's address
-  const account = designatedVoting ? designatedVoting.address : await getDefaultAccount(web3);
-  const filteredRequests = await filterRequests(pendingRequests, account, roundId, roundPhase, voting);
-  const resolvedPrices = await getResolvedPrices(web3, voting, account);
-  const rewards = await getAvailableRewards(web3, voting, account);
+  const currentTime = await oracle.getCurrentTime();
+  const account = await getDefaultAccount(web3);
+
+  // If the user is using the two key contract, then the voting account is the designated voting contract's address.
+  const { votingAccount } = getVotingRoles(account, oracle, designatedVoting);
+
+  const filteredRequests = await filterRequests(pendingRequests, votingAccount, roundId, roundPhase, oracle);
+  const resolvedPrices = await getResolvedPrices(web3, oracle, votingAccount);
+  const rewards = await getAvailableRewards(web3, oracle, votingAccount);
   style.spinnerReadingContracts.stop();
 
   // TODO: #901 Can't access Voting.rounds in latest deployed Contract https://etherscan.io/address/0xfe3c4f1ec9f5df918d42ef7ed3fba81cc0086c5f#readContract

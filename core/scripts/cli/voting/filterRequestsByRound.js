@@ -36,7 +36,11 @@ const filterRequestsByRound = async (pendingRequests, account, roundId, roundPha
         const request = chronologicalPriceRequests[i];
         const ev = await getLatestEvent("EncryptedVote", request, roundId, account, votingContract);
         if (ev !== null) {
-          filteredRequests.push(request);
+          // Check for already revealed vote.
+          const alreadyRevealedVote = await getLatestEvent("VoteRevealed", request, roundId, account, votingContract);
+          if (!alreadyRevealedVote) {
+            filteredRequests.push(request);
+          }
         }
       }
     }
