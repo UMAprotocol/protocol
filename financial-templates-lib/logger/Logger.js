@@ -42,12 +42,16 @@ async function waitForLogger(logger) {
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
 const winstonFormatter = logEntry => {
   if (process.env.BOT_IDENTIFIER) logEntry["bot-identifier"] = process.env.BOT_IDENTIFIER;
-  return winston.format.combine(winston.format(logEntry => logEntry)(), winston.format.json());
+  return logEntry;
 };
 
 const Logger = winston.createLogger({
   level: "debug",
-  format: winston.format(winstonFormatter)(),
+  format: winston.format.combine(
+    winston.format(winstonFormatter)(),
+    winston.format(logEntry => logEntry)(),
+    winston.format.json()
+  ),
   transports,
   exitOnError: false
 });
