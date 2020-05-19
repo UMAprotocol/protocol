@@ -11,7 +11,7 @@ const listMarkets = async (web3, artifacts) => {
   const choices = [];
   for (let i = 0; i < markets.length; i++) {
     const market = markets[i];
-    if (market.contractState !== PositionStatesEnum.OPEN) {
+    if (!market || market.contractState !== PositionStatesEnum.OPEN) {
       continue;
     }
     const asPercent = web3.utils.fromWei(market.collateralRequirement.muln(100).toString());
