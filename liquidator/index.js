@@ -35,7 +35,8 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       message: "liquidator started 🕵️‍♂️",
       empAddress: address,
       pollingDelay: pollingDelay,
-      priceFeedConfig
+      priceFeedConfig,
+      monitorPort
     });
 
     // Setup web3 accounts an contract instance
@@ -109,7 +110,9 @@ const Poll = async function(callback) {
 
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
-    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig);
+    const portNumber = 8888;
+
+    await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig, portNumber);
   } catch (error) {
     Logger.error({
       at: "Liquidator#index",
