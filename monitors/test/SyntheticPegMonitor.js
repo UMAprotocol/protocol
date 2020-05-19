@@ -154,7 +154,9 @@ contract("SyntheticPegMonitor", function(accounts) {
       // and the volatility should be (3 / 10 = 0.3) or 30%.
       medianizerPriceFeedMock.setLastUpdateTime(103);
       assert.equal(
-        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 103, volatilityWindow).toString(),
+        syntheticPegMonitor
+          ._calculateHistoricalVolatility(medianizerPriceFeedMock, 103, volatilityWindow)
+          .volatility.toString(),
         toBN(toWei("0.3")).toString()
       );
 
@@ -163,7 +165,9 @@ contract("SyntheticPegMonitor", function(accounts) {
       // and the volatility should be 0%.
       medianizerPriceFeedMock.setLastUpdateTime(100);
       assert.equal(
-        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 100, volatilityWindow).toString(),
+        syntheticPegMonitor
+          ._calculateHistoricalVolatility(medianizerPriceFeedMock, 100, volatilityWindow)
+          .volatility.toString(),
         "0"
       );
 
@@ -180,7 +184,9 @@ contract("SyntheticPegMonitor", function(accounts) {
       // and the volatility should be (4 / 12 = 0.3333) or 33%.
       medianizerPriceFeedMock.setLastUpdateTime(106);
       assert.equal(
-        syntheticPegMonitor._calculateHistoricalVolatility(medianizerPriceFeedMock, 106, volatilityWindow).toString(),
+        syntheticPegMonitor
+          ._calculateHistoricalVolatility(medianizerPriceFeedMock, 106, volatilityWindow)
+          .volatility.toString(),
         toBN(toWei("0.333333333333333333")).toString() // 18 3's is max that can be represented with Wei.
       );
     });
