@@ -145,6 +145,9 @@ async function run(
       await medianizerPriceFeed.update();
       // 4.b Check for synthetic peg deviation
       await syntheticPegMonitor.checkPriceDeviation();
+      // 4.c Check for price feed volatility
+      await syntheticPegMonitor.checkPegVolatility();
+      await syntheticPegMonitor.checkSyntheticVolatility();
 
       await delay(Number(pollingDelay));
 

@@ -14,6 +14,11 @@ const formatDate = (timestampInSeconds, web3) => {
   ).toString();
 };
 
+const formatHours = (seconds, decimals = 2) => {
+  // 3600 seconds in an hour.
+  return (seconds / 3600).toFixed(decimals);
+};
+
 // formatWei converts a string or BN instance from Wei to Ether, e.g., 1e19 -> 10.
 const formatWei = (num, web3) => {
   // Web3's `fromWei` function doesn't work on BN objects in minified mode (e.g.,
@@ -84,6 +89,7 @@ function createEtherscanLinkMarkdown(web3, hex) {
 
 module.exports = {
   formatDate,
+  formatHours,
   formatWei,
   formatWithMaxDecimals,
   createFormatFunction,
