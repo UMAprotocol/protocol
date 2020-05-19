@@ -130,10 +130,11 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     });
     // Get the latest `encryptedVote` for each (identifier, time).
     const encryptedVoteMap = {};
-    for (const ev of encryptedVoteEvents) {
-      encryptedVoteMap[toPriceRequestKey(ev.returnValues.identifier, ev.returnValues.time)] =
-        ev.returnValues.encryptedVote;
-    }
+    const ev = encryptedVoteEvents[1];
+    // for (const ev of encryptedVoteEvents) {
+    encryptedVoteMap[toPriceRequestKey(ev.returnValues.identifier, ev.returnValues.time)] =
+      ev.returnValues.encryptedVote;
+    // }
     for (const request of pendingRequests) {
       voteStatuses.push({ committedValue: encryptedVoteMap[toPriceRequestKey(request.identifier, request.time)] });
     }
