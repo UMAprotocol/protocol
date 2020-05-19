@@ -66,7 +66,7 @@ class GasEstimator {
       this.logger.error({
         at: "GasEstimator",
         message: "client polling error🚨",
-        error: error
+        error: error.toString()
       });
 
       // In the failure mode return the fast default price.

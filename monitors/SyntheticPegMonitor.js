@@ -62,13 +62,16 @@ class SyntheticPegMonitor {
   // Compares synthetic price on Uniswap with pegged price on medianizer price feed and fires a message
   // if the synythetic price deviates too far from the peg.
   checkPriceDeviation = async () => {
-    this.logger.debug({
-      at: "SyntheticPegMonitor",
-      message: "Checking synthetic price deviation from pricefeed peg"
-    });
     // Get the latest prices from the two price feeds.
     const uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
     const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
+
+    this.logger.debug({
+      at: "SyntheticPegMonitor",
+      message: "Checking price deviation",
+      uniswapTokenPrice: uniswapTokenPrice.toString(),
+      cryptoWatchTokenPrice: cryptoWatchTokenPrice.toString()
+    });
 
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
       this.logger.warn({
@@ -81,7 +84,7 @@ class SyntheticPegMonitor {
     }
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
     // If the percentage error is greater than (gt) the threshold send a message.
-    if (deviationError.gt(this.deviationAlertThreshold)) {
+    if (deviationError.gt(this.web3.utils.toBN(this.deviationAlertThreshold))) {
       this.logger.error({
         at: "SyntheticPegMonitor",
         message: "Synthetic off peg alert 😵",

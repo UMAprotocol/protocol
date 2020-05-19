@@ -140,7 +140,12 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     const priceUrl = `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price?apikey=${this.apiKey}`;
     const priceResponse = await this.networker.getJson(priceUrl);
     if (!ohlcResponse || !priceResponse.result || !priceResponse.result.price) {
-      console.error("Could not parse price result:", priceResponse);
+      this.logger.error({
+        at: "CryptoWatchPriceFeed",
+        message: "Could not parse price result:",
+        priceUrl,
+        priceResponse
+      });
       return;
     }
 

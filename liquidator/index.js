@@ -3,7 +3,7 @@ const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
-const { Logger } = require("../financial-templates-lib/logger/Logger");
+const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Liquidator } = require("./liquidator");
@@ -28,33 +28,34 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
  * @return None or throws an Error.
  */
 async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
-  Logger.info({
-    at: "liquidator#index",
-    message: "liquidator started 🕵️‍♂️",
-    empAddress: address,
-    pollingDelay: pollingDelay
-  });
+  try {
+    Logger.info({
+      at: "liquidator#index",
+      message: "liquidator started 🕵️‍♂️",
+      empAddress: address,
+      pollingDelay: pollingDelay,
+      priceFeedConfig
+    });
 
-  // Setup web3 accounts an contract instance
-  const accounts = await web3.eth.getAccounts();
-  const emp = await ExpiringMultiParty.at(address);
+    // Setup web3 accounts an contract instance
+    const accounts = await web3.eth.getAccounts();
+    const emp = await ExpiringMultiParty.at(address);
 
-  // Setup price feed.
-  // TODO: consider making getTime async and using contract time.
-  const getTime = () => Math.round(new Date().getTime() / 1000);
-  const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig);
+    // Setup price feed.
+    // TODO: consider making getTime async and using contract time.
+    const getTime = () => Math.round(new Date().getTime() / 1000);
+    const priceFeed = await createPriceFeed(Logger, web3, new Networker(Logger), getTime, priceFeedConfig);
 
-  if (!priceFeed) {
-    throw "Price feed config is invalid";
-  }
+    if (!priceFeed) {
+      throw "Price feed config is invalid";
+    }
 
-  // Client and liquidator bot
-  const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
-  const gasEstimator = new GasEstimator(Logger);
-  const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
+    // Client and liquidator bot
+    const empClient = new ExpiringMultiPartyClient(Logger, ExpiringMultiParty.abi, web3, emp.address);
+    const gasEstimator = new GasEstimator(Logger);
+    const liquidator = new Liquidator(Logger, empClient, gasEstimator, priceFeed, accounts[0]);
 
-  while (true) {
-    try {
+    while (true) {
       // Steps:
       // Get most recent price from a price feed.
       // Call client.getUnderCollateralizedPositions()
@@ -63,42 +64,48 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       // Withdraw money from any liquidations that are expired or DisputeFailed.
       await liquidator.queryAndLiquidate();
       await liquidator.queryAndWithdrawRewards();
-    } catch (error) {
-      Logger.error({
-        at: "liquidator#index",
-        message: "liquidator polling error🚨",
-        error: error
-      });
-    }
-    await delay(Number(pollingDelay));
 
-    if (!shouldPoll) {
-      break;
+      await delay(Number(pollingDelay));
+
+      if (!shouldPoll) {
+        break;
+      }
     }
+  } catch (error) {
+    console.log(error);
+    Logger.error({
+      at: "Liquidator#index",
+      message: "Liquidator polling error🚨",
+      error: error.toString()
+    });
+    await waitForLogger(Logger);
   }
 }
 
 const Poll = async function(callback) {
   try {
     if (!process.env.EMP_ADDRESS) {
-      throw new Error(
-        "Bad input arg! Specify an `EMP_ADDRESS ` for the location of the expiring Multi Party within your environment variables."
-      );
+      throw "Bad input arg! Specify an `EMP_ADDRESS` for the location of the expiring Multi Party within your environment variables.";
     }
 
     const pollingDelay = process.env.POLLING_DELAY ? process.env.POLLING_DELAY : 10000;
 
     if (!process.env.PRICE_FEED_CONFIG) {
-      throw new Error(
-        "Bad input arg! Specify an `PRICE_FEED_CONFIG ` for the location of the expiring Multi Party within your environment variables."
-      );
+      throw "Bad input arg! Specify an `PRICE_FEED_CONFIG` for the location of the expiring Multi Party within your environment variables.";
     }
 
     const priceFeedConfig = JSON.parse(process.env.PRICE_FEED_CONFIG);
 
     await run(process.env.EMP_ADDRESS, true, pollingDelay, priceFeedConfig);
-  } catch (err) {
-    callback(err);
+  } catch (error) {
+    Logger.error({
+      at: "Liquidator#index",
+      message: "Liquidator configuration error🚨",
+      error: error.toString()
+    });
+    await waitForLogger(Logger);
+    callback(error);
+    return;
   }
   callback();
 };

@@ -94,8 +94,7 @@ class Liquidator {
     if (!price) {
       this.logger.warn({
         at: "Liquidator",
-        message: "Cannot liquidate: price feed returned invalid value",
-        price
+        message: "Cannot liquidate: price feed returned invalid value"
       });
       return;
     }
@@ -109,7 +108,7 @@ class Liquidator {
       message: "Scaling down collateral threshold for liquidations",
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
-      crThreshold: this.crThreshold
+      crThreshold: this.crThreshold.toString()
     });
 
     this.logger.debug({
@@ -151,7 +150,7 @@ class Liquidator {
             "Cannot liquidate position: not enough synthetic (or large enough approval) to initiate liquidation✋",
           sponsor: position.sponsor,
           position: position,
-          error: error
+          error: error.toString()
         });
         continue;
       }
@@ -177,7 +176,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          error: error
+          error: error.toString()
         });
         continue;
       }
@@ -245,7 +244,7 @@ class Liquidator {
           at: "Liquidator",
           message: "No rewards to withdraw.",
           liquidation: liquidation,
-          error: error
+          error: error.toString()
         });
         continue;
       }
@@ -271,7 +270,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to withdraw liquidation rewards",
-          error: error
+          error: error.toString()
         });
         continue;
       }

@@ -67,7 +67,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     let i = events.length;
     while (i !== 0) {
       const event = events[--i];
-      event.timestamp = (await web3.eth.getBlock(event.blockNumber)).timestamp;
+      event.timestamp = (await this.web3.eth.getBlock(event.blockNumber)).timestamp;
       event.price = this._getPriceFromSyncEvent(event);
       if (event.timestamp <= lookbackWindowStart) {
         break;
