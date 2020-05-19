@@ -49,7 +49,6 @@ async function run(
       pollingDelay: pollingDelay,
       botMonitorObject,
       walletMonitorObject,
-      syntheticPegMonitorObject,
       uniswapPriceFeedConfig,
       medianizerPriceFeedConfig
     });
@@ -61,13 +60,11 @@ async function run(
     // Setup price feed.
     // TODO: consider making getTime async and using contract time.
     const getTime = () => Math.round(new Date().getTime() / 1000);
-    const medianizerPriceFeed = await createPriceFeed(
-      Logger,
-      web3,
-      new Networker(Logger),
-      getTime,
-      medianizerPriceFeedConfig
-    );
+    const medianizerPriceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
+
+    if (!uniswapPriceFeed || !medianizerPriceFeed) {
+      throw "Invalid price feed config";
+    }
 
     // 1. Contract state monitor
     const empEventClient = new ExpiringMultiPartyEventClient(Logger, ExpiringMultiParty.abi, web3, emp.address, 10);
@@ -100,13 +97,7 @@ async function run(
     const crMonitor = new CRMonitor(Logger, empClient, walletMonitorObject, medianizerPriceFeed);
 
     // 4. Synthetic Peg Monitor.
-    const uniswapPriceFeed = await createPriceFeed(
-      Logger,
-      web3,
-      new Networker(Logger),
-      getTime,
-      uniswapPriceFeedConfig
-    );
+    const uniswapPriceFeed = await createPriceFeed(web3, Logger, new Networker(Logger), getTime, priceFeedConfig);
     const syntheticPegMonitor = new SyntheticPegMonitor(
       Logger,
       web3,
