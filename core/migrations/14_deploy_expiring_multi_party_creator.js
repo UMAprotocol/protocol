@@ -19,6 +19,7 @@ module.exports = async function(deployer, network, accounts) {
 
   const finder = await Finder.deployed();
   const tokenFactory = await TokenFactory.deployed();
+  const registry = await Registry.deployed();
 
   // Deploy EMPLib and link to EMPCreator.
   await deploy(deployer, network, ExpiringMultiPartyLib);
