@@ -57,7 +57,7 @@ generate a coverage report automatically, but if you'd like to generate it local
 ./ci/coverage.sh core
 ```
 
-The full report can be viewed by opening the `core/coverage/index.html` file in a browser. The full report can be viewed by opening the `core/coverage/index.html` file in a browser. You can also find an online version of our covarge report on [coveralls](https://coveralls.io/builds/30869565).
+The full report can be viewed by opening the `core/coverage/index.html` file in a browser. The full report can be viewed by opening the `core/coverage/index.html` file in a browser. You can also find an online version of our covarge report on [coveralls](https://coveralls.io/github/UMAprotocol/protocol).
 
 ## Style Guide 🕺
 
