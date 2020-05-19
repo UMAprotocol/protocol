@@ -10,8 +10,6 @@ const publicNetworkNames = Object.values(require("../PublicNetworks.js")).map(el
 
 let configOverride = {};
 
-console.log(process.env.GCKMS_CONFIG);
-
 // If there is no env variable providing the config, attempt to pull it from a file.
 // TODO: this is kinda hacky. We should refactor this to only take in the config using one method.
 if (process.env.GCKMS_CONFIG) {
