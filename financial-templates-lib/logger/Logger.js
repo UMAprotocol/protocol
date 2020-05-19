@@ -30,6 +30,12 @@
 const winston = require("winston");
 const { transports } = require("./Transports");
 
+async function waitForLogger(logger) {
+  const loggerDone = new Promise(resolve => logger.on("finish", resolve));
+  logger.end();
+  return await loggerDone;
+}
+
 const Logger = winston.createLogger({
   level: "debug",
   format: winston.format.combine(winston.format(info => info)(), winston.format.json()),
@@ -38,5 +44,6 @@ const Logger = winston.createLogger({
 });
 
 module.exports = {
-  Logger
+  Logger,
+  waitForLogger
 };
