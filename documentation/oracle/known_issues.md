@@ -97,7 +97,7 @@ We assume that if the system is corrupted, the UMA voting token becomes worthles
 
 To compel voters to submit accurate votes, the UMA system issues `r` newly minted UMA tokens, to be distributed proportionally to all voters who voted with the majority.
 We label that the fraction of voters who are honest (not corrupted) as `p` (this means `p` is between 0 and 1).
-This means the reward that an honest voter receives is scaled by how many corrupted voters honestly.
+The reward that an honest voter receives is therefore scaled by how many token holders vote honestly—the reward paid to an honest voter is `r/p`.
 If `p=1` and all voters are honest, the reward received is `r`; if `p=0.5` and only half of the voters are honest, the reward received is `2*r`.
 
 The payout for each voter depends both on the vote they submit and the votes that all other voters submit.
