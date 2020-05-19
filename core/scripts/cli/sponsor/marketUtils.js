@@ -13,54 +13,62 @@ const getMarketSummary = async (web3, artifacts) => {
 
   const registry = await Registry.deployed();
   const contractAddresses = await registry.getAllRegisteredContracts();
-  style.spinnerReadingContracts.stop();
 
-  const emps = [];
-  for (const address of contractAddresses) {
-    // The governor is always registered as a contract, but it isn't an ExpiringMultiParty.
-    if (address !== Governor.address) {
-      // Additional check that the address is a contract.
-      try {
-        emps.push(await ExpiringMultiParty.at(address));
-      } catch (err) {
-        continue;
+  const emps = await Promise.all(
+    contractAddresses.map(async address => {
+      // The governor is always registered as a contract, but it isn't an ExpiringMultiParty.
+      if (address !== Governor.address) {
+        // Additional check that the address is a contract.
+        try {
+          return await ExpiringMultiParty.at(address);
+        } catch (err) {
+          return null;
+        }
       }
-    }
-  }
+    })
+  );
 
-  const markets = [];
   const etherscanBaseUrl = PublicNetworks[web3.networkId]
     ? PublicNetworks[web3.networkId].etherscan
     : "https://fake-etherscan.com";
-  for (let i = 0; i < emps.length; i++) {
-    const emp = emps[i];
-    const contractState = (await emp.contractState()).toString();
 
-    const tokenAddress = await emp.tokenCurrency();
-    const token = await SyntheticToken.at(tokenAddress);
-    const name = await token.name();
-    const symbol = await token.symbol();
+  const markets = await Promise.all(
+    emps.map(async emp => {
+      if (!emp) {
+        return null;
+      }
 
-    const collateralRequirement = await emp.collateralRequirement();
+      const contractState = (await emp.contractState()).toString();
 
-    const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
-    const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
+      const tokenAddress = await emp.tokenCurrency();
+      const token = await SyntheticToken.at(tokenAddress);
+      const name = await token.name();
+      const symbol = await token.symbol();
 
-    const expirationTimestamp = (await emp.expirationTimestamp()).toString();
+      const collateralRequirement = await emp.collateralRequirement();
 
-    const etherscanLink = `${etherscanBaseUrl}/contracts/${emp.address}`;
+      const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+      const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
 
-    markets.push({
-      emp,
-      contractState,
-      name,
-      symbol,
-      collateralRequirement,
-      collateralSymbol,
-      expirationTimestamp,
-      etherscanLink
-    });
-  }
+      const expirationTimestamp = (await emp.expirationTimestamp()).toString();
+
+      const etherscanLink = `${etherscanBaseUrl}/contracts/${emp.address}`;
+
+      return {
+        emp,
+        contractState,
+        name,
+        symbol,
+        collateralRequirement,
+        collateralSymbol,
+        expirationTimestamp,
+        etherscanLink
+      };
+    })
+  );
+
+  style.spinnerReadingContracts.stop();
+
   return markets;
 };
 
