@@ -43,7 +43,7 @@ class CRMonitor {
       this.logger.warn({
         at: "CRMonitor",
         message: "Cannot compute wallet collateralization ratio because price feed returned invalid value",
-        price: price.toString()
+        price
       });
       return;
     }
@@ -51,7 +51,7 @@ class CRMonitor {
     this.logger.debug({
       at: "CRMonitor",
       message: "Checking wallet collateralization ratios",
-      price: price.toString()
+      price
     });
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
     // If it is, then send an alert of formatted markdown text.
