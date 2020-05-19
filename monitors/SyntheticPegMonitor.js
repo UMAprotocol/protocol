@@ -248,7 +248,7 @@ class SyntheticPegMonitor {
         min = _price;
       }
       if (_price.gt(max)) {
-        mx = _price;
+        max = _price;
       }
     }
 
