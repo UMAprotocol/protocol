@@ -107,28 +107,33 @@ class SyntheticPegMonitor {
   checkPegVolatility = async () => {
     const pricefeed = this.medianizerPriceFeed;
 
+    const { pricefeedVolatility, pricefeedLatestPrice, min, max } = await this._checkPricefeedVolatility(pricefeed);
+
     this.logger.debug({
       at: "SyntheticPegMonitor",
-      message: "Checking peg price volatility"
+      message: "Checking peg price volatility",
+      pricefeedVolatility: pricefeedVolatility.toString(),
+      pricefeedLatestPrice: pricefeedLatestPrice.toString(),
+      minPrice: min.toString(),
+      maxPrice: max.toString()
     });
 
-    const { pricefeedVolatility, pricefeedLatestPrice } = await this._checkPricefeedVolatility(pricefeed);
     if (!pricefeedVolatility || !pricefeedLatestPrice) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
         pricefeed: "Medianizer",
-        pricefeedVolatility: pricefeedVolatility,
-        pricefeedLatestPrice: pricefeedLatestPrice
+        pricefeedVolatility: pricefeedVolatility.toString(),
+        pricefeedLatestPrice: pricefeedLatestPrice.toString()
       });
       return;
     }
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.gt(this.volatilityAlertThreshold)) {
+    if (pricefeedVolatility.gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
       this.logger.error({
         at: "SyntheticPegMonitor",
-        message: "High peg price volatility alert 😵",
+        message: "High peg price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
           this.pricefeedIdentifierName +
@@ -138,7 +143,9 @@ class SyntheticPegMonitor {
           this.formatDecimalString(pricefeedVolatility.muln(100)) +
           "% over the last " +
           formatHours(this.volatilityWindow) +
-          " hour(s)."
+          " hour(s). Threshold is " +
+          this.formatDecimalString(this.web3.utils.toBN(this.volatilityAlertThreshold).muln(100)) +
+          " %."
       });
     }
   };
@@ -146,28 +153,33 @@ class SyntheticPegMonitor {
   checkSyntheticVolatility = async () => {
     const pricefeed = this.uniswapPriceFeed;
 
+    const { pricefeedVolatility, pricefeedLatestPrice, min, max } = await this._checkPricefeedVolatility(pricefeed);
+
     this.logger.debug({
       at: "SyntheticPegMonitor",
-      message: "Checking synthetic price volatility"
+      message: "Checking synthetic price volatility",
+      pricefeedVolatility: pricefeedVolatility.toString(),
+      pricefeedLatestPrice: pricefeedLatestPrice.toString(),
+      minPrice: min.toString(),
+      maxPrice: max.toString()
     });
 
-    const { pricefeedVolatility, pricefeedLatestPrice } = await this._checkPricefeedVolatility(pricefeed);
     if (!pricefeedVolatility || !pricefeedLatestPrice) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
         pricefeed: "Uniswap",
-        pricefeedVolatility: pricefeedVolatility,
-        pricefeedLatestPrice: pricefeedLatestPrice
+        pricefeedVolatility: pricefeedVolatility.toString(),
+        pricefeedLatestPrice: pricefeedLatestPrice.toString()
       });
       return;
     }
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
-    if (pricefeedVolatility.gt(this.volatilityAlertThreshold)) {
+    if (pricefeedVolatility.gt(this.web3.utils.toBN(this.volatilityAlertThreshold))) {
       this.logger.error({
         at: "SyntheticPegMonitor",
-        message: "High synthetic price volatility alert 😵",
+        message: "High synthetic price volatility alert 🌋",
         mrkdwn:
           "Latest updated " +
           this.pricefeedIdentifierName +
@@ -177,7 +189,9 @@ class SyntheticPegMonitor {
           this.formatDecimalString(pricefeedVolatility.muln(100)) +
           "% over the last " +
           formatHours(this.volatilityWindow) +
-          " hour(s)."
+          " hour(s). Threshold is " +
+          this.formatDecimalString(this.web3.utils.toBN(this.volatilityAlertThreshold).muln(100)) +
+          " %."
       });
     }
   };
@@ -187,14 +201,20 @@ class SyntheticPegMonitor {
     // Get all historical prices from `volatilityWindow` seconds before the last update time and
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
-    const pricefeedVolatility = this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
+    const { volatility: pricefeedVolatility, min, max } = this._calculateHistoricalVolatility(
+      pricefeed,
+      latestTime,
+      this.volatilityWindow
+    );
     // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from precisely the
     // same timestamp as the "latest price". This would prevent inaccurate volatility readings where `currentTime` differs from `lastUpdateTime`.
     const pricefeedLatestPrice = pricefeed.getHistoricalPrice(latestTime);
 
     return {
       pricefeedVolatility,
-      pricefeedLatestPrice
+      pricefeedLatestPrice,
+      min,
+      max
     };
   };
 
@@ -233,7 +253,11 @@ class SyntheticPegMonitor {
     }
 
     // The min-max % calculation is identical to the equation in `_calculateDeviationError`.
-    return this._calculateDeviationError(max, min);
+    return {
+      min: min,
+      max: max,
+      volatility: this._calculateDeviationError(max, min)
+    };
   }
 }
 
