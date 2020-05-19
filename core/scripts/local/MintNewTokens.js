@@ -17,6 +17,8 @@ const mintNewTokens = async function(callback) {
     console.log(`Added ${argv.amount} token(s) at ${marginToken.address} to account ${argv.to}`);
   } catch (e) {
     console.log(`ERROR: ${e}`);
+    callback(e);
+    return;
   }
 
   callback();

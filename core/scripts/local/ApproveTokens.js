@@ -19,7 +19,8 @@ const approveTokens = async function(callback) {
 
     console.log(`Approved ${amount} token(s) at ${marginToken.address} to be spent by account ${argv.to}`);
   } catch (e) {
-    console.log(`ERROR: ${e}`);
+    callback(e);
+    return;
   }
 
   callback();
