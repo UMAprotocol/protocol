@@ -17,9 +17,8 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
   if (!defaultProps) {
     throw new Error("Undefined `defaultProps`");
   }
-
   if (!overrideProps) {
-    overrideProps = {};
+    return defaultProps;
   }
 
   const newObject = {};
