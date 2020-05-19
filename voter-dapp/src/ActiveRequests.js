@@ -80,8 +80,6 @@ function ActiveRequests({ votingAccount, votingGateway }) {
     ])
   );
 
-  console.log(encryptedVoteEvents);
-
   const closedDialogIndex = -1;
   const [dialogContentIndex, setDialogContentIndex] = useState(closedDialogIndex);
   const handleClickExplain = index => {
