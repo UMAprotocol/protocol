@@ -11,7 +11,7 @@ const listExpiredMarkets = async (web3, artifacts) => {
   const choices = [];
   for (let i = 0; i < markets.length; i++) {
     const market = markets[i];
-    if (market.contractState === PositionStatesEnum.OPEN) {
+    if (!market || market.contractState === PositionStatesEnum.OPEN) {
       continue;
     }
     const state = market.contractState === PositionStatesEnum.EXPIRED_PRICE_REQUESTED ? "Pending" : "Settled";

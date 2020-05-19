@@ -2,8 +2,8 @@ require("dotenv").config();
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
-const { Logger } = require("../financial-templates-lib/logger/Logger");
 const { startServer } = require("../common/ServerUtils");
+const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Liquidator } = require("./liquidator");
@@ -34,7 +34,8 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
       at: "liquidator#index",
       message: "liquidator started 🕵️‍♂️",
       empAddress: address,
-      pollingDelay: pollingDelay
+      pollingDelay: pollingDelay,
+      priceFeedConfig
     });
 
     // Setup web3 accounts an contract instance
@@ -84,12 +85,13 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig, monitorPo
     // Close server gracefully.
     server.close();
   } catch (error) {
+    console.log(error);
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",
       error: error.toString()
     });
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    await waitForLogger(Logger);
   }
 }
 
@@ -114,8 +116,9 @@ const Poll = async function(callback) {
       message: "Liquidator configuration error🚨",
       error: error.toString()
     });
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    await waitForLogger(Logger);
     callback(error);
+    return;
   }
   callback();
 };

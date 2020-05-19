@@ -2,7 +2,6 @@ const inquirer = require("inquirer");
 
 const sponsor = require("./sponsor");
 const style = require("./textStyle");
-const vote = require("./vote");
 const wallet = require("./wallet");
 const admin = require("./admin.js");
 
@@ -43,7 +42,10 @@ async function run() {
         await wallet(web3, artifacts);
         break;
       case ACTIONS.vote:
-        await vote(web3, artifacts);
+        console.log(
+          `${style.help(`Voting through the CLI is currently unstable due to incompatible encryption/decryption
+           between browser and Node.js, please use the dApp at vote.umaproject.org instead.`)}`
+        );
         break;
       case ACTIONS.sponsor:
         await sponsor(web3, artifacts);
