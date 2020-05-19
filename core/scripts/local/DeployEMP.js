@@ -19,6 +19,7 @@ const Token = artifacts.require("ExpandedERC20");
 const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const Timer = artifacts.require("Timer");
+const TokenFactory = artifacts.require("TokenFactory");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["mock_dvm"] });
 
 // Contracts we need to interact with.
@@ -67,6 +68,18 @@ const deployEMP = async callback => {
     let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
     emp = await ExpiringMultiParty.at(_emp);
+
+    const empConstructorParams = {
+      ...constructorParams,
+      finderAddress: Finder.address,
+      tokenFactoryAddress: TokenFactory.address,
+      timerAddress: await expiringMultiPartyCreator.timerAddress(),
+      withdrawalLiveness: (await expiringMultiPartyCreator.STRICT_WITHDRAWAL_LIVENESS()).toString(),
+      liquidationLiveness: (await expiringMultiPartyCreator.STRICT_LIQUIDATION_LIVENESS()).toString()
+    };
+
+    const encodedParameters = web3.eth.abi.encodeParameters(ExpiringMultiParty.abi[0].inputs, [empConstructorParams]);
+    console.log("Encoded EMP Parameters", encodedParameters);
 
     // Done!
     console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
