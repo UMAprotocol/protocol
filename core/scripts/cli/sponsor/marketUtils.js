@@ -28,9 +28,11 @@ const getMarketSummary = async (web3, artifacts) => {
     })
   );
 
-  const etherscanBaseUrl = PublicNetworks[web3.networkId]
-    ? PublicNetworks[web3.networkId].etherscan
-    : "https://fake-etherscan.com";
+  const networkId = await web3.eth.net.getId();
+
+  const etherscanBaseUrl = PublicNetworks[networkId]
+    ? PublicNetworks[networkId].etherscan
+    : "https://fake-etherscan.com/";
 
   const markets = await Promise.all(
     emps.map(async emp => {
@@ -52,7 +54,7 @@ const getMarketSummary = async (web3, artifacts) => {
 
       const expirationTimestamp = (await emp.expirationTimestamp()).toString();
 
-      const etherscanLink = `${etherscanBaseUrl}/contracts/${emp.address}`;
+      const etherscanLink = `${etherscanBaseUrl}address/${emp.address}`;
 
       return {
         emp,

@@ -24,7 +24,7 @@ const create = async (web3, artifacts, emp) => {
   });
   // Use BigNumber.js to so that we can set ROUNDING_MODE to round ceiling. We need to do this to make sure we send
   // enough collateral to create the requested tokens.
-  BigNumber.set({ ROUNDING_MODE: 2 });
+  BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
   const scalingFactor = BigNumber(toWei("1"));
   const tokens = BigNumber(toWei(input["tokensCreated"]));
   const gcr = totalPositionCollateral.times(scalingFactor).div(totalTokensOutstanding);
