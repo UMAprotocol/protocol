@@ -3,7 +3,7 @@ const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
-const { Logger } = require("../financial-templates-lib/logger/Logger");
+const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Liquidator } = require("./liquidator");
@@ -33,7 +33,8 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       at: "liquidator#index",
       message: "liquidator started 🕵️‍♂️",
       empAddress: address,
-      pollingDelay: pollingDelay
+      pollingDelay: pollingDelay,
+      priceFeedConfig
     });
 
     // Setup web3 accounts an contract instance
@@ -71,12 +72,13 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       }
     }
   } catch (error) {
+    console.log(error);
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator polling error🚨",
       error: error.toString()
     });
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    await waitForLogger(Logger);
   }
 }
 
@@ -101,8 +103,9 @@ const Poll = async function(callback) {
       message: "Liquidator configuration error🚨",
       error: error.toString()
     });
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    await waitForLogger(Logger);
     callback(error);
+    return;
   }
   callback();
 };

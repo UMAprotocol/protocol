@@ -94,8 +94,7 @@ class Liquidator {
     if (!price) {
       this.logger.warn({
         at: "Liquidator",
-        message: "Cannot liquidate: price feed returned invalid value",
-        price
+        message: "Cannot liquidate: price feed returned invalid value"
       });
       return;
     }
@@ -109,7 +108,7 @@ class Liquidator {
       message: "Scaling down collateral threshold for liquidations",
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
-      crThreshold: this.crThreshold
+      crThreshold: this.crThreshold.toString()
     });
 
     this.logger.debug({

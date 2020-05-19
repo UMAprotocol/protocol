@@ -3,7 +3,7 @@ const { toWei } = web3.utils;
 
 // Helpers
 const { delay } = require("../financial-templates-lib/helpers/delay");
-const { Logger } = require("../financial-templates-lib/logger/Logger");
+const { Logger, waitForLogger } = require("../financial-templates-lib/logger/Logger");
 
 // JS libs
 const { Disputer } = require("./disputer");
@@ -67,7 +67,7 @@ async function run(address, shouldPoll, pollingDelay, priceFeedConfig) {
       message: "Disputer error",
       error: error.toString()
     });
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    await waitForLogger(Logger);
   }
 }
 
@@ -92,8 +92,9 @@ const Poll = async function(callback) {
       message: "Disputer configuration error",
       error: error.toString()
     });
-    await delay(5000); // Hacky fix to ensure that winston still fires messages upstream.
+    await waitForLogger(Logger);
     callback(error);
+    return;
   }
   callback();
 };
