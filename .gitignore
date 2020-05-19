@@ -20,6 +20,7 @@ antora.yml
 app.yaml
 .gae_deploy
 *.env
+*env.txt
 
 # environment-specific values pulled by dotenv package
 .env
