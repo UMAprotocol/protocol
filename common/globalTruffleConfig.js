@@ -20,7 +20,7 @@ const privateKey = process.env.PRIVATE_KEY
 const infuraApiKey = process.env.INFURA_API_KEY ? process.env.INFURA_API_KEY : "9317010b1b6343558b7eff9d25934f38";
 
 // Default options
-const gasPx = 50000000000; // 20 gwei
+const gasPx = 20000000000; // 20 gwei
 const gas = 9000000; // Conservative estimate of the block gas limit.
 
 // Adds a public network.
