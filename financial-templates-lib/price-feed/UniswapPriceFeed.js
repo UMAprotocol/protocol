@@ -4,7 +4,7 @@ const { MAX_SAFE_JS_INT } = require("../../common/Constants");
 
 // An implementation of PriceFeedInterface that uses a Uniswap v2 TWAP as the price feed source.
 class UniswapPriceFeed extends PriceFeedInterface {
-  constructor(logger, abi, web3, uniswapAddress, twapLength, historicalLookback, getTime) {
+  constructor(logger, abi, web3, uniswapAddress, twapLength, historicalLookback, getTime, invertPrice) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -12,6 +12,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.twapLength = twapLength;
     this.getTime = getTime;
     this.historicalLookback = historicalLookback;
+    this.invertPrice = invertPrice;
   }
 
   getCurrentPrice() {
@@ -95,7 +96,11 @@ class UniswapPriceFeed extends PriceFeedInterface {
     const reserve0 = toBN(event.returnValues.reserve0);
     const reserve1 = toBN(event.returnValues.reserve1);
 
-    return reserve1.mul(fixedPointAdjustment).div(reserve0);
+    if (this.invertPrice) {
+      return reserve0.mul(fixedPointAdjustment).div(reserve1);
+    } else {
+      return reserve1.mul(fixedPointAdjustment).div(reserve0);
+    }
   }
 
   _computeTwap(eventsIn, startTime, endTime) {

@@ -19,6 +19,7 @@ contract("CreatePriceFeed.js", function(accounts) {
   const minTimeBetweenUpdates = 60;
   const twapLength = 180;
   const uniswapAddress = toChecksumAddress(randomHex(20));
+  const invertPrice = true;
 
   beforeEach(async function() {
     networker = new NetworkerMock();
@@ -101,6 +102,14 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validUniswapFeed.twapLength, twapLength);
     assert.equal(validUniswapFeed.historicalLookback, lookback);
     assert.equal(validUniswapFeed.getTime(), getTime());
+    assert.equal(validUniswapFeed.invertPrice, undefined);
+
+    // Invert parameter should be passed through.
+    const validInvertedUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, {
+      ...config,
+      invertPrice: true
+    });
+    assert.isTrue(validInvertedUniswapFeed.invertPrice);
   });
 
   it("Invalid Uniswap config", async function() {

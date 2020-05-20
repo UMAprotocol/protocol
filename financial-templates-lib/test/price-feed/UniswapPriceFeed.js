@@ -15,13 +15,14 @@ contract("UniswapPriceFeed.js", function(accounts) {
   let mockUniswap;
   let uniswapPriceFeed;
   let mockTime = 0;
+  let dummyLogger;
 
   beforeEach(async function() {
     uniswapMock = await UniswapMock.new({ from: owner });
 
     // The UniswapPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    const dummyLogger = winston.createLogger({
+    dummyLogger = winston.createLogger({
       level: "info",
       transports: [new winston.transports.Console()]
     });
@@ -33,7 +34,8 @@ contract("UniswapPriceFeed.js", function(accounts) {
       uniswapMock.address,
       3600,
       3600,
-      () => mockTime
+      () => mockTime,
+      false
     );
   });
 
@@ -204,6 +206,24 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
     assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3601), null);
+  });
+
+  it("Invert price", async function() {
+    uniswapPriceFeed = new UniswapPriceFeed(
+      dummyLogger,
+      Uniswap.abi,
+      web3,
+      uniswapMock.address,
+      3600,
+      3600,
+      () => mockTime,
+      true
+    );
+
+    await uniswapMock.setPrice(toWei("2"), toWei("1"));
+    await uniswapPriceFeed.update();
+
+    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("2"));
   });
   // TODO: add the following TWAP tests using simulated block times:
   // - Some events pre TWAP window, some inside window.
