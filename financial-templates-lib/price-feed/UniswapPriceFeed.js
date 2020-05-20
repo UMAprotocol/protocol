@@ -97,9 +97,9 @@ class UniswapPriceFeed extends PriceFeedInterface {
     const reserve1 = toBN(event.returnValues.reserve1);
 
     if (this.invertPrice) {
-      return reserve1.mul(fixedPointAdjustment).div(reserve0);
-    } else {
       return reserve0.mul(fixedPointAdjustment).div(reserve1);
+    } else {
+      return reserve1.mul(fixedPointAdjustment).div(reserve0);
     }
   }
 
