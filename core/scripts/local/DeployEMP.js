@@ -52,7 +52,7 @@ const deployEMP = async callback => {
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
     }
 
-    const priceFeedIdentifier = web3.utils.utf8ToHex("BTC/USD");
+    const priceFeedIdentifier = web3.utils.utf8ToHex("ETH/BTC");
 
     // Create a new EMP
     const constructorParams = {
