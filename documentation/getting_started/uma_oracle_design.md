@@ -42,7 +42,7 @@ The DVM then sums each contract’s PfC into a system-wide PfC number.
 
 The CoC > PfC mechanism is enforced by a variable-fee policy.
 Enforcing the CoC > PfC inequality requires keeping the cost of 51% of the participating voting tokens above the system-wide PfC.
-In other words, the total market cap of the participating voting tokens needs to be >50% the system-wide PfC.
+In other words, the total market cap of the participating voting tokens needs to be >200% the system-wide PfC.
 
 The DVM is designed to do this by continuously monitoring this CoC > PfC relationship and initiating programmatic, repeated, token buybacks if the voting token price drops below target.
 All purchased tokens are burned, reducing token supply (which increases the market cap).
