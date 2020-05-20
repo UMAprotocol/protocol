@@ -20,7 +20,7 @@ if [ $# -eq 1 ]; then
     echo "No configuration file provided. Keeping current configuration"
     gcloud compute instances update-container $1 \
         --container-image docker.io/umaprotocol/protocol:hotfix \
-        --zone us-central1-a \
+        --zone northamerica-northeast1-b \
         --container-restart-policy on-failure \
         --container-stdin
 fi
@@ -31,7 +31,7 @@ if [ $# -eq 2 ]; then
     gcloud compute instances update-container $1 \
         --container-image docker.io/umaprotocol/protocol:hotfix \
         --container-env-file $2 \
-        --zone us-central1-a \
+        --zone northamerica-northeast1-b \
         --container-restart-policy on-failure \
         --container-stdin
 fi

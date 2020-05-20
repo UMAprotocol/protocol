@@ -13,7 +13,8 @@ echo "Running as Service Account:" $3
 gcloud compute instances create-with-container $1 \
     --container-image docker.io/umaprotocol/protocol:latest \
     --container-env-file $2 \
-    --zone us-central1-a \
+    --zone northamerica-northeast1-b \
     --container-restart-policy on-failure \
     --container-stdin \
-    --service-account $3
+    --service-account $3 \
+    --scopes cloud-platform
