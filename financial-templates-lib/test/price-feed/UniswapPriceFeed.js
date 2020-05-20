@@ -15,13 +15,14 @@ contract("UniswapPriceFeed.js", function(accounts) {
   let mockUniswap;
   let uniswapPriceFeed;
   let mockTime = 0;
+  let dummyLogger;
 
   beforeEach(async function() {
     uniswapMock = await UniswapMock.new({ from: owner });
 
     // The UniswapPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    const dummyLogger = winston.createLogger({
+    dummyLogger = winston.createLogger({
       level: "info",
       transports: [new winston.transports.Console()]
     });
@@ -216,7 +217,7 @@ contract("UniswapPriceFeed.js", function(accounts) {
       3600,
       3600,
       () => mockTime,
-      false
+      true
     );
 
     await uniswapMock.setPrice(toWei("2"), toWei("1"));
