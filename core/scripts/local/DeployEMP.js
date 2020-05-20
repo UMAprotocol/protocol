@@ -52,7 +52,7 @@ const deployEMP = async callback => {
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
     }
 
-    const priceFeedIdentifier = web3.utils.utf8ToHex("BTC/USD");
+    const priceFeedIdentifier = web3.utils.utf8ToHex("ETH/BTC");
 
     // Create a new EMP
     const constructorParams = {
@@ -60,7 +60,7 @@ const deployEMP = async callback => {
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
       syntheticName: "ETH/BTC Synthetic Token Expiring 1 August 2020",
-      syntheticSymbol: "ETHBTC-Aug20",
+      syntheticSymbol: "ETHBTC-AUG20",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.03") },
       sponsorDisputeRewardPct: { rawValue: toWei("0.05") },
