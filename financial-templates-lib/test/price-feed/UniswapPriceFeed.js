@@ -33,7 +33,8 @@ contract("UniswapPriceFeed.js", function(accounts) {
       uniswapMock.address,
       3600,
       3600,
-      () => mockTime
+      () => mockTime,
+      false
     );
   });
 
@@ -204,6 +205,24 @@ contract("UniswapPriceFeed.js", function(accounts) {
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
     assert.equal(uniswapPriceFeed.getHistoricalPrice(currentTime - 3601), null);
+  });
+
+  it("Invert price", async function() {
+    uniswapPriceFeed = new UniswapPriceFeed(
+      dummyLogger,
+      Uniswap.abi,
+      web3,
+      uniswapMock.address,
+      3600,
+      3600,
+      () => mockTime,
+      false
+    );
+
+    await uniswapMock.setPrice(toWei("2"), toWei("1"));
+    await uniswapPriceFeed.update();
+
+    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("2"));
   });
   // TODO: add the following TWAP tests using simulated block times:
   // - Some events pre TWAP window, some inside window.
