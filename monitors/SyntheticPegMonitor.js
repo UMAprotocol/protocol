@@ -22,8 +22,8 @@ class SyntheticPegMonitor {
     // Contract constants
     // TODO: replace this with an actual query to the collateral currency symbol
     this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "UMATEST";
-    this.pricefeedIdentifierName = "UMATEST/DAI";
+    this.syntheticCurrencySymbol = "ETHBTC";
+    this.pricefeedIdentifierName = "ETHBTC/DAI";
 
     // TODO: get the decimals of the collateral currency and use this to scale the output appropriately for non 1e18 colat
     this.formatDecimalString = createFormatFunction(this.web3, 2);

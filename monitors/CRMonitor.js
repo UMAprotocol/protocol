@@ -31,7 +31,7 @@ class CRMonitor {
 
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
     this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "UMATEST";
+    this.syntheticCurrencySymbol = "ETHBTC";
   }
 
   // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
