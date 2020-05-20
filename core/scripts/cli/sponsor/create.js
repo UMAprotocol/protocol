@@ -22,9 +22,13 @@ const create = async (web3, artifacts, emp) => {
     name: "tokensCreated",
     validate: value => value > 0 || "Number of tokens must be positive"
   });
-  // Use BigNumber.js to so that we can set ROUNDING_MODE to round ceiling. We need to do this to make sure we send
-  // enough collateral to create the requested tokens.
-  BigNumber.set({ ROUNDING_MODE: 2 });
+
+  // Apply settings to BigNumber.js library.
+  // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
+  // Note: RANGE is set to 500 so values don't overflow to infinity until they hit +-1e500.
+  // Note: EXPONENTIAL_AT is set to 500 to keep BigNumber from using exponential notation until the numbers hit
+  // +-1e500.
+  BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
   const scalingFactor = BigNumber(toWei("1"));
   const tokens = BigNumber(toWei(input["tokensCreated"]));
   const gcr = totalPositionCollateral.times(scalingFactor).div(totalTokensOutstanding);
