@@ -28,7 +28,7 @@ contract("BalanceMonitor.js", function(accounts) {
     // Create new tokens for every test to reset balances of all accounts
     collateralToken = await Token.new("Dai Stable coin", "DAI", 18, { from: tokenCreator });
     await collateralToken.addMember(1, tokenCreator, { from: tokenCreator });
-    syntheticToken = await Token.new("Test UMA Token", "UMATEST", 18, { from: tokenCreator });
+    syntheticToken = await Token.new("Test UMA Token", "ETHBTC", 18, { from: tokenCreator });
     await syntheticToken.addMember(1, tokenCreator, { from: tokenCreator });
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
@@ -131,7 +131,7 @@ contract("BalanceMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, "synthetic balance warning")); // Tx moved synthetic. should emit accordingly
     assert.isTrue(lastSpyLogIncludes(spy, "100.00")); // Correctly formatted number of threshold Synthetic
     assert.isTrue(lastSpyLogIncludes(spy, "99.99")); // Correctly formatted number of Synthetic
-    assert.isTrue(lastSpyLogIncludes(spy, "UMATEST")); // Message should include the Synthetic currency symbol
+    assert.isTrue(lastSpyLogIncludes(spy, "ETHBTC")); // Message should include the Synthetic currency symbol
   });
   it("Correctly emits messages on balance threshold", async function() {
     await tokenBalanceClient.update();

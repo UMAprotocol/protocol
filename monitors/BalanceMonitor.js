@@ -27,7 +27,7 @@ class BalanceMonitor {
 
     // TODO: replace this with a fetcher that pulls the actual collateral token symbol
     this.collateralCurrencySymbol = "DAI";
-    this.syntheticCurrencySymbol = "UMATEST";
+    this.syntheticCurrencySymbol = "ETHBTC";
   }
 
   // Queries all bot ballance for collateral, synthetic and ether against specified thresholds
