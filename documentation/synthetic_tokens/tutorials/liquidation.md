@@ -123,3 +123,5 @@ Using network 'kovan_mnemonic'.
 }
 ... the bot prints its configuration and starts running ...
 ```
+
+The bot will create log messages depending on spesific execution 
