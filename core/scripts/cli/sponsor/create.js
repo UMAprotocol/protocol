@@ -3,13 +3,14 @@ const inquirer = require("inquirer");
 const { wrapToWeth, getCurrencySymbol, getIsWeth } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
 
-const create = async (web3, artifacts, emp) => {
+const create = async (web3, artifacts, emp, hasExistingPosition) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { toWei, fromWei } = web3.utils;
 
   // TODO: Understand why we need a .rawValue in one case but not the other.
   const totalPositionCollateral = BigNumber((await emp.totalPositionCollateral()).rawValue.toString());
   const totalTokensOutstanding = BigNumber((await emp.totalTokensOutstanding()).toString());
+  const minPositionSize = BigNumber((await emp.minSponsorTokens()).toString());
   if (totalTokensOutstanding.isZero()) {
     // When creating the globally first position, we wouldn't have a GCR. Therefore, creating that position is a
     // different flow that isn't currently part of this tool.
@@ -18,9 +19,20 @@ const create = async (web3, artifacts, emp) => {
   }
 
   const input = await inquirer.prompt({
-    message: "How many tokens to create?",
+    message: hasExistingPosition
+      ? "How many tokens to create?"
+      : `How many tokens to create (must be > ${fromWei(minPositionSize.toString())})?`,
     name: "tokensCreated",
-    validate: value => value > 0 || "Number of tokens must be positive"
+    validate: value => {
+      if (hasExistingPosition) {
+        return value > 0 || "Number of tokens must be positive";
+      } else {
+        return (
+          BigNumber(toWei(value)).gte(minPositionSize) ||
+          `Position cannot be smaller than ${fromWei(minPositionSize.toString())} tokens`
+        );
+      }
+    }
   });
 
   // Apply settings to BigNumber.js library.
