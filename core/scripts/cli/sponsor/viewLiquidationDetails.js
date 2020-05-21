@@ -1,14 +1,19 @@
 const inquirer = require("inquirer");
 const getDefaultAccount = require("../wallet/getDefaultAccount");
-const { LiquidationStatesEnum } = require("../../../../common/Enums.js");
 const { getIsWeth, unwrapToEth } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
 
 const viewLiquidationDetails = async (web3, artifacts, emp, liquidation, id) => {
+  // If liquidation data is empty, then liquidation rewards have already been withdrawn.
+  if (liquidation.liquidator === "0x0000000000000000000000000000000000000000") {
+    console.log("Cannot withdraw rewards from this liquidation");
+    return;
+  }
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
 
   const sponsorAddress = await getDefaultAccount(web3);
-  const display = `Liquidated at epoch time ${liquidation.liquidationTime} by ${liquidation.liquidator}`;
+  const liquidationTimeReadable = new Date(Number(liquidation.liquidationTime.toString()) * 1000);
+  const display = `Liquidated at time ${liquidationTimeReadable} by ${liquidation.liquidator}`;
   const backChoice = "Back";
   const withdrawAction = "Withdraw";
   choices = [{ name: backChoice }];

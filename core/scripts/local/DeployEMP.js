@@ -6,7 +6,6 @@
  * This script is intended to make testing the Sponsor CLI easier.
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
-const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { interfaceName } = require("../../utils/Constants.js");
 
 // Deployed contract ABI's and addresses we need to fetch.
@@ -15,8 +14,6 @@ const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const MockOracle = artifacts.require("MockOracle");
-const Token = artifacts.require("ExpandedERC20");
-const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");

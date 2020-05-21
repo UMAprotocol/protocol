@@ -35,13 +35,19 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     }
   };
 
-  const liquidations = await emp.getLiquidations(sponsorAddress);
+  // Read liquidations from past events, since they will be deleted from the contract state after all of their rewards are withdrawn.
+  const liquidationEvents = await emp.getPastEvents("LiquidationCreated", {
+    fromBlock: 0,
+    filter: { sponsor: sponsorAddress }
+  });
   const liquidationStateToDisplay = state => {
     switch (state) {
       case LiquidationStatesEnum.DISPUTE_SUCCEEDED:
         return "LIQUIDATION FAILED (ACTION REQUIRED)";
       case LiquidationStatesEnum.DISPUTE_FAILED:
-        return "LIQUIDATED";
+        return "LIQUIDATED FOLLOWING FAILED DISPUTE";
+      case LiquidationStatesEnum.UNINITIALIZED:
+        return "LIQUIDATED WITHOUT DISPUTE";
       default:
         return "PENDING";
     }
@@ -49,12 +55,23 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const viewLiquidations = async () => {
     const backChoice = "Back";
     const choices = [{ name: backChoice }];
-    for (let i = 0; i < liquidations.length; i++) {
-      const liquidation = liquidations[i];
-      const display = `Minted: ${fromWei(liquidation.tokensOutstanding.toString())} Collateral: ${fromWei(
-        liquidation.lockedCollateral.toString()
-      )} Status: ${liquidationStateToDisplay(liquidation.state)}`;
-      choices.push({ name: display, value: i });
+    const liquidationStructs = await emp.getLiquidations(sponsorAddress);
+    for (let i = 0; i < liquidationEvents.length; i++) {
+      const liquidation = liquidationEvents[i];
+
+      // Fetch liquidation data from contract using ID in event.
+      const liquidationId = liquidation.args.liquidationId;
+      const liquidationData = liquidationStructs[liquidationId];
+      const liquidationState = liquidationData.state;
+
+      const display = `#${liquidationId}: Liquidated tokens: ${fromWei(
+        liquidation.args.tokensOutstanding.toString()
+      )}, Locked collateral: ${fromWei(
+        liquidation.args.lockedCollateral.toString()
+      )}, Liquidated collateral (including withdrawal requests) : ${fromWei(
+        liquidation.args.liquidatedCollateral.toString()
+      )}, Status: ${liquidationStateToDisplay(liquidationState)}`;
+      choices.push({ name: display, value: liquidationId });
     }
     const input = await inquirer.prompt({
       type: "list",
@@ -65,13 +82,13 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     if (input["choice"] === backChoice) {
       return;
     }
-    await viewLiquidationDetails(web3, artifacts, emp, liquidations[input["choice"]], input["choice"]);
+    await viewLiquidationDetails(web3, artifacts, emp, liquidationStructs[input["choice"]], input["choice"]);
   };
 
   let actions = {
     back: "Back"
   };
-  if (liquidations.length > 0) {
+  if (liquidationEvents.length > 0) {
     actions = {
       ...actions,
       viewLiquidations: "View your liquidations"
