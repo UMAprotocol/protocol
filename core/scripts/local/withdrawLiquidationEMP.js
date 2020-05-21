@@ -5,7 +5,7 @@ const { LiquidationStatesEnum } = require("../../../common/Enums.js");
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const argv = require("minimist")(process.argv.slice(), { string: ["emp"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "id"] });
 
 // Contracts we need to interact with.
 let emp;
@@ -44,8 +44,12 @@ const withdrawEMP = async callback => {
     const liquidator = accounts[1];
     console.log(`Liquidator: ${liquidator}`);
     console.log(`Sponsor that was liquidated: ${sponsor}`);
-    console.log("Withdrawing liquidation with ID 0");
-    const liquidationId = 0;
+
+    const liquidationId = argv.id;
+    if (!liquidationId) {
+      console.log("Missing 'id' command line argument, this selects which liquidation to withdraw from");
+    }
+    console.log(`Withdrawing liquidation with ID ${liquidationId}`);
     const liquidations = await emp.getLiquidations(sponsor);
     const liquidation = liquidations[liquidationId];
 

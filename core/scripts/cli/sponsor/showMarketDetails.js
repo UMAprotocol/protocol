@@ -14,6 +14,8 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
   let collateral = (await emp.getCollateral(sponsorAddress)).toString();
+  const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
+  const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
 
   // This function should only be called if the sponsor has an existing position.
   const printSponsorSummary = async sponsorAddress => {
@@ -22,11 +24,15 @@ const showMarketDetails = async (web3, artifacts, emp) => {
       throw "Sponsor does not have a position; cannot print a sponsor summar";
     } else {
       const position = await emp.positions(sponsorAddress);
-      const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
       const isWeth = await getIsWeth(web3, artifacts, collateralCurrency);
       const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
 
+      const getDateStringReadable = contractTime => {
+        return new Date(Number(contractTime.toString() * 1000)).toString();
+      };
+
       console.table({
+        "Current contract time": getDateStringReadable(await emp.getCurrentTime()),
         "Tokens you've minted": fromWei(position.tokensOutstanding.toString()),
         "Deposited collateral": fromWei(collateral) + (isWeth ? " ETH" : " " + collateralSymbol),
         "Collateral pending/available to withdraw": fromWei(position.withdrawalRequestAmount.toString()),
@@ -43,13 +49,15 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const liquidationStateToDisplay = state => {
     switch (state) {
       case LiquidationStatesEnum.DISPUTE_SUCCEEDED:
-        return "LIQUIDATION FAILED (ACTION REQUIRED)";
+        return "SUCCESSFULLY DISPUTED LIQUIDATION";
       case LiquidationStatesEnum.DISPUTE_FAILED:
         return "LIQUIDATED FOLLOWING FAILED DISPUTE";
       case LiquidationStatesEnum.UNINITIALIZED:
-        return "LIQUIDATED WITHOUT DISPUTE";
+        return "LIQUIDATED AND REWARDS WITHDRAWN";
+      case LiquidationStatesEnum.PENDING_DISPUTE:
+        return "LIQUIDATION PENDING DISPUTE";
       default:
-        return "PENDING";
+        return "PENDING OR EXPIRED LIQUIDATION";
     }
   };
   const viewLiquidations = async () => {
@@ -95,6 +103,11 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     };
   }
   let message = "What would you like to do?";
+
+  // For convenience, show user's collateral balance.
+  const collateralBalance = await collateralCurrency.balanceOf(sponsorAddress);
+  console.log(`Current collateral balance: ${fromWei(collateralBalance.toString())} ${collateralSymbol}`);
+
   if (collateral === "0") {
     // Sponsor doesn't have a position.
     actions = {

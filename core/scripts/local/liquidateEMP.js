@@ -1,4 +1,4 @@
-// Liquidates the position for acconts[0]. To be used in testing.
+// Liquidates the position for accounts[0]. To be used in testing.
 const { toWei, fromWei, toBN } = web3.utils;
 const { MAX_UINT_VAL } = require("../../../common/Constants");
 
@@ -39,8 +39,8 @@ const liquidateEMP = async callback => {
 
     const liquidationPrice = toBN(toWei(collateral.toString())).div(toBN(tokensOutstanding.toString()));
     console.group("Liquidation params:");
-    console.log(`- minPrice: ${fromWei(liquidationPrice)}`);
-    console.log(`- maxPrice: ${fromWei(liquidationPrice)}`);
+    console.log(`- minPrice: ${fromWei(toBN(liquidationPrice).sub(toBN(toWei("0.01"))))}`);
+    console.log(`- maxPrice: ${fromWei(toBN(liquidationPrice).add(toBN(toWei("0.01"))))}`);
     console.log(`- maxTokensToLiquidate: ${fromWei(tokensToLiquidate.toString())}`);
     const unreachableDeadline = MAX_UINT_VAL;
     console.log(`- deadline: ${unreachableDeadline}`);
