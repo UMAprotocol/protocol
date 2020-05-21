@@ -35,8 +35,12 @@ const getCurrencySymbol = async (web3, artifacts, collateralCurrency) => {
   if (await getIsWeth(web3, artifacts, collateralCurrency)) {
     return "WETH";
   } else {
-    // TODO: Do all collateral currencies we care about support `symbol()`?
-    return "collateral tokens";
+    try {
+      return await collateralCurrency.symbol();
+    } catch (err) {
+      // Return this if we cannot read `symbol()`.
+      return "collateral tokens";
+    }
   }
 };
 

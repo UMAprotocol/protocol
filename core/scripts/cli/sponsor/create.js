@@ -2,10 +2,19 @@ const BigNumber = require("bignumber.js");
 const inquirer = require("inquirer");
 const { wrapToWeth, getCurrencySymbol, getIsWeth } = require("./currencyUtils");
 const { submitTransaction } = require("./transactionUtils");
+const getDefaultAccount = require("../wallet/getDefaultAccount");
+
+// Apply settings to BigNumber.js library.
+// Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
+// Note: RANGE is set to 500 so values don't overflow to infinity until they hit +-1e500.
+// Note: EXPONENTIAL_AT is set to 500 to keep BigNumber from using exponential notation until the numbers hit
+// +-1e500.
+BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
 
 const create = async (web3, artifacts, emp, hasExistingPosition) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { toWei, fromWei } = web3.utils;
+  const account = await getDefaultAccount(web3);
 
   // TODO: Understand why we need a .rawValue in one case but not the other.
   const totalPositionCollateral = BigNumber((await emp.totalPositionCollateral()).rawValue.toString());
@@ -35,12 +44,6 @@ const create = async (web3, artifacts, emp, hasExistingPosition) => {
     }
   });
 
-  // Apply settings to BigNumber.js library.
-  // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
-  // Note: RANGE is set to 500 so values don't overflow to infinity until they hit +-1e500.
-  // Note: EXPONENTIAL_AT is set to 500 to keep BigNumber from using exponential notation until the numbers hit
-  // +-1e500.
-  BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
   const scalingFactor = BigNumber(toWei("1"));
   const tokens = BigNumber(toWei(input["tokensCreated"]));
   const gcr = totalPositionCollateral.times(scalingFactor).div(totalTokensOutstanding);
@@ -54,6 +57,18 @@ const create = async (web3, artifacts, emp, hasExistingPosition) => {
   const collateralSymbol = await getCurrencySymbol(web3, artifacts, collateralCurrency);
   const requiredCollateralSymbol = isWeth ? "ETH" : collateralSymbol;
   console.log(`You'll need ${fromWei(collateralNeeded)} ${requiredCollateralSymbol} to mint tokens`);
+
+  // Check if user has enough balance to continue.
+  const userCollateralBalance = await collateralCurrency.balanceOf(account);
+  if (BigNumber(userCollateralBalance).lt(collateralNeeded)) {
+    console.log(
+      `You do not have enough collateral to create this position. Your current collateral balance is: ${fromWei(
+        userCollateralBalance
+      )} ${requiredCollateralSymbol}`
+    );
+    return;
+  }
+
   const confirmation = await inquirer.prompt({
     type: "confirm",
     message: "Continue?",
@@ -79,7 +94,7 @@ const create = async (web3, artifacts, emp, hasExistingPosition) => {
     await submitTransaction(
       web3,
       async () => await emp.create({ rawValue: collateralNeeded }, { rawValue: tokens.toString() }),
-      "Minting more tokens",
+      "Minting synthetic tokens",
       transactionNum,
       totalTransactions
     );

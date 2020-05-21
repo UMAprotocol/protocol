@@ -5,7 +5,7 @@
  *
  * This script is intended to make testing the Sponsor CLI easier.
  */
-const { toWei } = web3.utils;
+const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { RegistryRolesEnum } = require("../../../common/Enums.js");
 const { interfaceName } = require("../../utils/Constants.js");
 
@@ -20,15 +20,15 @@ const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const Timer = artifacts.require("Timer");
 const TokenFactory = artifacts.require("TokenFactory");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["mock_dvm"] });
+const AddressWhitelist = artifacts.require("AddressWhitelist");
+const argv = require("minimist")(process.argv.slice(), { boolean: ["test"] });
 
 // Contracts we need to interact with.
 let collateralToken;
 let emp;
-let syntheticToken;
 let mockOracle;
 let identifierWhitelist;
-let registry;
+let collateralTokenWhitelist;
 let expiringMultiPartyCreator;
 
 /** ***************************************************
@@ -43,16 +43,26 @@ const deployEMP = async callback => {
     // Use Dai as the collateral token.
     collateralToken = await TestnetERC20.deployed();
 
-    if (argv.mock_dvm) {
+    const priceFeedIdentifier = utf8ToHex("ETH/BTC");
+
+    if (argv.test) {
       // Create a mockOracle and finder. Register the mockOracle with the finder.
       finder = await Finder.deployed();
       mockOracle = await MockOracle.new(finder.address, Timer.address);
       console.log("Mock Oracle deployed:", mockOracle.address);
-      const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
+      const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-    }
 
-    const priceFeedIdentifier = web3.utils.utf8ToHex("ETH/BTC");
+      // Whitelist the pricefeed identifier.
+      identifierWhitelist = await IdentifierWhitelist.deployed();
+      await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
+      console.log("Whitelisted new pricefeed identifier:", hexToUtf8(priceFeedIdentifier));
+
+      // Whitelist collateral currency
+      collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
+      await collateralTokenWhitelist.addToWhitelist(collateralToken.address);
+      console.log("Whitelisted collateral currency");
+    }
 
     // Create a new EMP
     const constructorParams = {
@@ -87,6 +97,20 @@ const deployEMP = async callback => {
     console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
     console.log(`Deployer address @ ${deployer}`);
     console.table(constructorParams);
+
+    // If in test environment, create an initial position so that we can create additional positions via the sponsor CLI.
+    // This step assumes that the web3 has access to the account at index 1 (i.e. accounts[1]).
+    if (argv.test) {
+      const initialSponsor = accounts[1];
+      await collateralToken.allocateTo(initialSponsor, toWei("1200"));
+      await collateralToken.approve(emp.address, toWei("1200"), { from: initialSponsor });
+      await emp.create({ rawValue: toWei("1200") }, { rawValue: toWei("1000") }, { from: initialSponsor });
+      console.log("Created an initial position with CR = 120 % for the sponsor: ", initialSponsor);
+
+      // Mint accounts[0] collateral.
+      await collateralToken.allocateTo(accounts[0], toWei("1000000"));
+      console.log("Minted accounts[0] 1,000,000 collateral tokens");
+    }
   } catch (err) {
     console.error(err);
     callback(err);

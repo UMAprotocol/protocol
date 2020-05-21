@@ -13,12 +13,13 @@ const showMarketDetails = async (web3, artifacts, emp) => {
   const ExpandedERC20 = artifacts.require("ExpandedERC20");
   const { fromWei } = web3.utils;
   const sponsorAddress = await getDefaultAccount(web3);
-  const collateral = (await emp.getCollateral(sponsorAddress)).toString();
+  let collateral = (await emp.getCollateral(sponsorAddress)).toString();
 
+  // This function should only be called if the sponsor has an existing position.
   const printSponsorSummary = async sponsorAddress => {
     const collateral = (await emp.getCollateral(sponsorAddress)).toString();
     if (collateral === "0") {
-      console.log("You are not currently a sponsor");
+      throw "Sponsor does not have a position; cannot print a sponsor summar";
     } else {
       const position = await emp.positions(sponsorAddress);
       const collateralCurrency = await ExpandedERC20.at(await emp.collateralCurrency());
@@ -141,8 +142,13 @@ const showMarketDetails = async (web3, artifacts, emp) => {
     default:
       console.log("unimplemented state");
   }
-  console.log("\nYour updated position:");
-  await printSponsorSummary(sponsorAddress);
+
+  // Print updated position summary if applicable.
+  collateral = (await emp.getCollateral(sponsorAddress)).toString();
+  if (collateral !== "0") {
+    console.log("\nYour updated position:");
+    await printSponsorSummary(sponsorAddress);
+  }
 };
 
 module.exports = showMarketDetails;
